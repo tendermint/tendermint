@@ -25,6 +25,7 @@ docs/_build
 docs/dist
 docs/node_modules/
 docs/spec
+docs/.vuepress/public/rpc
 index.html.md
 libs/pubsub/query/fuzz_test/output
 profile\.out
@@ -46,3 +47,10 @@ test/fuzz/**/corpus
 test/fuzz/**/crashers
 test/fuzz/**/suppressions
 test/fuzz/**/*.zip
+proto/tendermint/blocksync/types.proto
+proto/tendermint/consensus/types.proto
+proto/tendermint/mempool/*.proto
+proto/tendermint/p2p/*.proto
+proto/tendermint/statesync/*.proto
+proto/tendermint/types/*.proto
+proto/tendermint/version/*.proto

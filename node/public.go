@@ -2,13 +2,14 @@
 package node
 
 import (
+	"context"
 	"fmt"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,8 +17,12 @@ import (
 // process that host their own process-local tendermint node. This is
 // equivalent to running tendermint in it's own process communicating
 // to an external ABCI application.
-func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error) {
-	return newDefaultNode(conf, logger)
+func NewDefault(
+	ctx context.Context,
+	conf *config.Config,
+	logger log.Logger,
+) (service.Service, error) {
+	return newDefaultNode(ctx, conf, logger)
 }
 
 // New constructs a tendermint node. The ClientCreator makes it
@@ -26,9 +31,11 @@ func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error)
 // Genesis document: if the value is nil, the genesis document is read
 // from the file specified in the config, and otherwise the node uses
 // value of the final argument.
-func New(conf *config.Config,
+func New(
+	ctx context.Context,
+	conf *config.Config,
 	logger log.Logger,
-	cf proxy.ClientCreator,
+	cf abciclient.Creator,
 	gen *types.GenesisDoc,
 ) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())
@@ -51,7 +58,9 @@ func New(conf *config.Config,
 			return nil, err
 		}
 
-		return makeNode(conf,
+		return makeNode(
+			ctx,
+			conf,
 			pval,
 			nodeKey,
 			cf,

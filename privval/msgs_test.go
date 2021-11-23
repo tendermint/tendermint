@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privproto "github.com/tendermint/tendermint/proto/tendermint/privval"
@@ -60,7 +60,7 @@ func exampleProposal() *types.Proposal {
 // nolint:lll // ignore line length for tests
 func TestPrivvalVectors(t *testing.T) {
 	pk := ed25519.GenPrivKeyFromSecret([]byte("it's a secret")).PubKey()
-	ppk, err := cryptoenc.PubKeyToProto(pk)
+	ppk, err := encoding.PubKeyToProto(pk)
 	require.NoError(t, err)
 
 	// Generate a simple vote

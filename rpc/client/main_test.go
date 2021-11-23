@@ -3,10 +3,10 @@ package client_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
@@ -19,10 +19,11 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	conf := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t.Name())
+	require.NoError(t, err)
 
 	// start a tendermint node in the background to test against
-	dir, err := ioutil.TempDir("/tmp", fmt.Sprint("rpc-client-test-", t.Name()))
+	dir, err := os.MkdirTemp("/tmp", fmt.Sprint("rpc-client-test-", t.Name()))
 	require.NoError(t, err)
 
 	app := kvstore.NewPersistentKVStoreApplication(dir)
@@ -30,9 +31,10 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_ = closer(ctx)
 		cancel()
-		app.Close()
+		assert.NoError(t, closer(ctx))
+		assert.NoError(t, app.Close())
+		node.Wait()
 		_ = os.RemoveAll(dir)
 	})
 	return node, conf

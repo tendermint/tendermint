@@ -1,7 +1,6 @@
 package statesync
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -36,20 +35,20 @@ func TestNewChunkQueue_TempDir(t *testing.T) {
 		Hash:     []byte{7},
 		Metadata: nil,
 	}
-	dir, err := ioutil.TempDir("", "newchunkqueue")
+	dir, err := os.MkdirTemp("", "newchunkqueue")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	queue, err := newChunkQueue(snapshot, dir)
 	require.NoError(t, err)
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	assert.Len(t, files, 1)
 
 	err = queue.Close()
 	require.NoError(t, err)
 
-	files, err = ioutil.ReadDir(dir)
+	files, err = os.ReadDir(dir)
 	require.NoError(t, err)
 	assert.Len(t, files, 0)
 }
@@ -421,15 +420,7 @@ func TestChunkQueue_Retry(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	// Allocate and add all chunks to the queue
-	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate()
-		require.NoError(t, err)
-		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
-		require.NoError(t, err)
-		_, err = queue.Next()
-		require.NoError(t, err)
-	}
+	allocateAddChunksToQueue(t, queue)
 
 	// Retrying a couple of chunks makes Next() return them, but they are not allocatable
 	queue.Retry(3)
@@ -454,15 +445,7 @@ func TestChunkQueue_RetryAll(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	// Allocate and add all chunks to the queue
-	for i := uint32(0); i < queue.Size(); i++ {
-		_, err := queue.Allocate()
-		require.NoError(t, err)
-		_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
-		require.NoError(t, err)
-		_, err = queue.Next()
-		require.NoError(t, err)
-	}
+	allocateAddChunksToQueue(t, queue)
 
 	_, err := queue.Next()
 	assert.Equal(t, errDone, err)
@@ -551,4 +534,30 @@ func TestChunkQueue_WaitFor(t *testing.T) {
 	w = queue.WaitFor(3)
 	_, ok = <-w
 	assert.False(t, ok)
+}
+
+func TestNumChunkReturned(t *testing.T) {
+	queue, teardown := setupChunkQueue(t)
+	defer teardown()
+
+	assert.EqualValues(t, 5, queue.Size())
+
+	allocateAddChunksToQueue(t, queue)
+	assert.EqualValues(t, 5, queue.numChunksReturned())
+
+	err := queue.Close()
+	require.NoError(t, err)
+}
+
+// Allocate and add all chunks to the queue
+func allocateAddChunksToQueue(t *testing.T, q *chunkQueue) {
+	t.Helper()
+	for i := uint32(0); i < q.Size(); i++ {
+		_, err := q.Allocate()
+		require.NoError(t, err)
+		_, err = q.Add(&chunk{Height: 3, Format: 1, Index: i, Chunk: []byte{byte(i)}})
+		require.NoError(t, err)
+		_, err = q.Next()
+		require.NoError(t, err)
+	}
 }

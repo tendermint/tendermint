@@ -12,8 +12,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/state"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -89,7 +89,7 @@ type timeoutError interface {
 // NewTestHarness will load Tendermint data from the given files (including
 // validator public/private keypairs and chain details) and create a new
 // harness.
-func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, error) {
+func NewTestHarness(ctx context.Context, logger log.Logger, cfg TestHarnessConfig) (*TestHarness, error) {
 	keyFile := ExpandPath(cfg.KeyFile)
 	stateFile := ExpandPath(cfg.StateFile)
 	logger.Info("Loading private validator configuration", "keyFile", keyFile, "stateFile", stateFile)
@@ -113,7 +113,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
 
-	signerClient, err := privval.NewSignerClient(spv, st.ChainID)
+	signerClient, err := privval.NewSignerClient(ctx, spv, st.ChainID)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}

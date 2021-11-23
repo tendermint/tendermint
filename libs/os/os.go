@@ -29,11 +29,6 @@ func TrapSignal(logger logger, cb func()) {
 	}()
 }
 
-func Exit(s string) {
-	fmt.Printf(s + "\n")
-	os.Exit(1)
-}
-
 // EnsureDir ensures the given directory exists, creating it if necessary.
 // Errors if the path already exists as a non-directory.
 func EnsureDir(dir string, mode os.FileMode) error {

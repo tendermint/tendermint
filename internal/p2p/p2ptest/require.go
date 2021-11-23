@@ -1,6 +1,7 @@
 package p2ptest
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,6 +25,8 @@ func RequireEmpty(t *testing.T, channels ...*p2p.Channel) {
 
 // RequireReceive requires that the given envelope is received on the channel.
 func RequireReceive(t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
+	t.Helper()
+
 	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
 	defer timer.Stop()
 
@@ -93,11 +96,14 @@ func RequireSendReceive(
 }
 
 // RequireNoUpdates requires that a PeerUpdates subscription is empty.
-func RequireNoUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates) {
+func RequireNoUpdates(ctx context.Context, t *testing.T, peerUpdates *p2p.PeerUpdates) {
 	t.Helper()
 	select {
 	case update := <-peerUpdates.Updates():
-		require.Fail(t, "unexpected peer updates", "got %v", update)
+		if ctx.Err() == nil {
+			require.Fail(t, "unexpected peer updates", "got %v", update)
+		}
+	case <-ctx.Done():
 	default:
 	}
 }

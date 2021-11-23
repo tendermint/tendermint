@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -111,5 +110,5 @@ func writeStateJSONToFile(state interface{}, dir, filename string) error {
 		return fmt.Errorf("failed to encode state dump: %w", err)
 	}
 
-	return ioutil.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
+	return os.WriteFile(path.Join(dir, filename), stateJSON, os.ModePerm)
 }

@@ -11,25 +11,30 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	dbm "github.com/tendermint/tm-db"
+
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
+	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := configSetup(t)
 
 	nValidators := 4
@@ -51,7 +56,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, stateStore.Save(state))
 
-			thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+			thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+			require.NoError(t, err)
+
 			defer os.RemoveAll(thisConfig.RootDir)
 
 			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -63,13 +70,17 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			blockStore := store.NewBlockStore(blockDB)
 
 			// one for mempool, one for consensus
-			mtx := new(tmsync.RWMutex)
-			proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+			mtx := new(tmsync.Mutex)
+			proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
+			proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 
 			// Make Mempool
-			mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-			mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+			mempool := mempool.NewTxMempool(
+				log.TestingLogger().With("module", "mempool"),
+				thisConfig.Mempool,
+				proxyAppConnMem,
+				0,
+			)
 			if thisConfig.Consensus.WaitForTxs() {
 				mempool.EnableTxsAvailable()
 			}
@@ -81,26 +92,23 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make State
 			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-			cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-			cs.SetLogger(cs.Logger)
+			cs := NewState(logger, thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 			// set private validator
 			pv := privVals[i]
 			cs.SetPrivValidator(pv)
 
-			eventBus := types.NewEventBus()
-			eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-			err = eventBus.Start()
+			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
 
 			cs.SetTimeoutTicker(tickerFunc())
-			cs.SetLogger(logger)
 
 			states[i] = cs
 		}()
 	}
 
-	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nValidators, states, 100) // buffer must be large enough to not deadlock
 
 	var bzNodeID types.NodeID
 
@@ -208,7 +216,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
+		if err := lazyNodeState.privValidator.SignProposal(ctx, lazyNodeState.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -226,31 +234,34 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first six just in case
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
-	wg := new(sync.WaitGroup)
+	var wg sync.WaitGroup
 	i := 0
 	for _, sub := range rts.subs {
 		wg.Add(1)
 
-		go func(j int, s types.Subscription) {
+		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
-				select {
-				case msg := <-s.Out():
-					require.NotNil(t, msg)
-					block := msg.Data().(types.EventDataNewBlock).Block
-					if len(block.Evidence.Evidence) != 0 {
-						evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
-						return
-					}
-				case <-s.Canceled():
-					require.Fail(t, "subscription failed for %d", j)
+				if ctx.Err() != nil {
+					return
+				}
+
+				msg, err := s.Next(ctx)
+				if !assert.NoError(t, err) {
+					cancel()
+					return
+				}
+				require.NotNil(t, msg)
+				block := msg.Data().(types.EventDataNewBlock).Block
+				if len(block.Evidence.Evidence) != 0 {
+					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
 					return
 				}
 			}
@@ -261,7 +272,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	pubkey, err := bzNodeState.privValidator.GetPubKey(context.Background())
+	pubkey, err := bzNodeState.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
@@ -307,7 +318,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// 	eventBus.SetLogger(logger.With("module", "events", "validator", i))
 
 	// 	var err error
-	// 	blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	// 	blocksSubs[i], err = eventBus.Subscribe(ctx, testSubscriber, types.EventQueryNewBlock)
 	// 	require.NoError(t, err)
 
 	// 	conR := NewReactor(states[i], true) // so we don't start the consensus states

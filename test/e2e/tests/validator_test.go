@@ -20,6 +20,14 @@ func TestValidator_Sets(t *testing.T) {
 		require.NoError(t, err)
 
 		first := status.SyncInfo.EarliestBlockHeight
+
+		// for nodes that have to catch up, we should only
+		// check the validator sets for nodes after this
+		// point, to avoid inconsistencies with backfill.
+		if node.StartAt > first {
+			first = node.StartAt
+		}
+
 		last := status.SyncInfo.LatestBlockHeight
 
 		// skip first block if node is pruning blocks, to avoid race conditions

@@ -8,9 +8,7 @@ import (
 
 	context "context"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-
-	log "github.com/tendermint/tendermint/libs/log"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -542,13 +540,13 @@ func (_m *Client) NumUnconfirmedTxs(_a0 context.Context) (*coretypes.ResultUncon
 	return r0, r1
 }
 
-// OnReset provides a mock function with given fields:
-func (_m *Client) OnReset() error {
-	ret := _m.Called()
+// RemoveTx provides a mock function with given fields: _a0, _a1
+func (_m *Client) RemoveTx(_a0 context.Context, _a1 types.TxKey) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context, types.TxKey) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -556,67 +554,13 @@ func (_m *Client) OnReset() error {
 	return r0
 }
 
-// OnStart provides a mock function with given fields:
-func (_m *Client) OnStart() error {
-	ret := _m.Called()
+// Start provides a mock function with given fields: _a0
+func (_m *Client) Start(_a0 context.Context) error {
+	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// OnStop provides a mock function with given fields:
-func (_m *Client) OnStop() {
-	_m.Called()
-}
-
-// Quit provides a mock function with given fields:
-func (_m *Client) Quit() <-chan struct{} {
-	ret := _m.Called()
-
-	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func() <-chan struct{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan struct{})
-		}
-	}
-
-	return r0
-}
-
-// Reset provides a mock function with given fields:
-func (_m *Client) Reset() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SetLogger provides a mock function with given fields: _a0
-func (_m *Client) SetLogger(_a0 log.Logger) {
-	_m.Called(_a0)
-}
-
-// Start provides a mock function with given fields:
-func (_m *Client) Start() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -656,20 +600,6 @@ func (_m *Client) Stop() error {
 		r0 = rf()
 	} else {
 		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// String provides a mock function with given fields:
-func (_m *Client) String() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
 	}
 
 	return r0
@@ -823,9 +753,4 @@ func (_m *Client) Validators(ctx context.Context, height *int64, page *int, perP
 	}
 
 	return r0, r1
-}
-
-// Wait provides a mock function with given fields:
-func (_m *Client) Wait() {
-	_m.Called()
 }

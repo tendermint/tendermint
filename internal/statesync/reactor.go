@@ -14,74 +14,20 @@ import (
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/proxy"
+	sm "github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
 var (
 	_ service.Service = (*Reactor)(nil)
 	_ p2p.Wrapper     = (*ssproto.Message)(nil)
-
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		SnapshotChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(SnapshotChannel),
-				Priority:            6,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: snapshotMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
-		},
-		ChunkChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ChunkChannel),
-				Priority:            3,
-				SendQueueCapacity:   4,
-				RecvMessageCapacity: chunkMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
-		},
-		LightBlockChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(LightBlockChannel),
-				Priority:            5,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: lightBlockMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
-		},
-		ParamsChannel: {
-			MsgType: new(ssproto.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(ParamsChannel),
-				Priority:            2,
-				SendQueueCapacity:   10,
-				RecvMessageCapacity: paramMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        400,
-			},
-		},
-	}
 )
 
 const (
@@ -125,6 +71,57 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
+func GetChannelDescriptors() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
+		{
+
+			ID:                  SnapshotChannel,
+			MessageType:         new(ssproto.Message),
+			Priority:            6,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: snapshotMsgSize,
+			RecvBufferCapacity:  128,
+		},
+		{
+			ID:                  ChunkChannel,
+			Priority:            3,
+			MessageType:         new(ssproto.Message),
+			SendQueueCapacity:   4,
+			RecvMessageCapacity: chunkMsgSize,
+			RecvBufferCapacity:  128,
+		},
+		{
+			ID:                  LightBlockChannel,
+			MessageType:         new(ssproto.Message),
+			Priority:            5,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: lightBlockMsgSize,
+			RecvBufferCapacity:  128,
+		},
+		{
+			ID:                  ParamsChannel,
+			MessageType:         new(ssproto.Message),
+			Priority:            2,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: paramMsgSize,
+			RecvBufferCapacity:  128,
+		},
+	}
+
+}
+
+// Metricer defines an interface used for the rpc sync info query, please see statesync.metrics
+// for the details.
+type Metricer interface {
+	TotalSnapshots() int64
+	ChunkProcessAvgTime() time.Duration
+	SnapshotHeight() int64
+	SnapshotChunksCount() int64
+	SnapshotChunksTotal() int64
+	BackFilledBlocks() int64
+	BackFillBlocksTotal() int64
+}
+
 // Reactor handles state sync, both restoring snapshots for the local node and
 // serving snapshots for other nodes.
 type Reactor struct {
@@ -158,6 +155,10 @@ type Reactor struct {
 	syncer        *syncer
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
+
+	metrics            *Metrics
+	backfillBlockTotal int64
+	backfilledBlocks   int64
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -176,6 +177,7 @@ func NewReactor(
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
+	ssMetrics *Metrics,
 ) *Reactor {
 	r := &Reactor{
 		chainID:       chainID,
@@ -195,6 +197,7 @@ func NewReactor(
 		peers:         newPeerList(),
 		dispatcher:    NewDispatcher(blockCh.Out),
 		providers:     make(map[types.NodeID]*BlockProvider),
+		metrics:       ssMetrics,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -207,15 +210,11 @@ func NewReactor(
 // handle individual envelopes as to not have to deal with bounding workers or pools.
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
-func (r *Reactor) OnStart() error {
-	go r.processSnapshotCh()
-
-	go r.processChunkCh()
-
-	go r.processBlockCh()
-
-	go r.processParamsCh()
-
+func (r *Reactor) OnStart(ctx context.Context) error {
+	go r.processCh(r.snapshotCh, "snapshot")
+	go r.processCh(r.chunkCh, "chunk")
+	go r.processCh(r.blockCh, "light block")
+	go r.processCh(r.paramsCh, "consensus params")
 	go r.processPeerUpdates()
 
 	return nil
@@ -236,11 +235,11 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
+	<-r.peerUpdates.Done()
 	<-r.snapshotCh.Done()
 	<-r.chunkCh.Done()
 	<-r.blockCh.Done()
 	<-r.paramsCh.Done()
-	<-r.peerUpdates.Done()
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
@@ -251,7 +250,10 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	// We need at least two peers (for cross-referencing of light blocks) before we can
 	// begin state sync
-	r.waitForEnoughPeers(ctx, 2)
+	if err := r.waitForEnoughPeers(ctx, 2); err != nil {
+		return sm.State{}, err
+	}
+
 	r.mtx.Lock()
 	if r.syncer != nil {
 		r.mtx.Unlock()
@@ -259,6 +261,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	if err := r.initStateProvider(ctx, r.chainID, r.initialHeight); err != nil {
+		r.mtx.Unlock()
 		return sm.State{}, err
 	}
 
@@ -270,7 +273,9 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
+		r.snapshotCh.Done(),
 		r.tempDir,
+		r.metrics,
 	)
 	r.mtx.Unlock()
 	defer func() {
@@ -283,9 +288,15 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 
 	requestSnapshotsHook := func() {
 		// request snapshots from all currently connected peers
-		r.snapshotCh.Out <- p2p.Envelope{
+		msg := p2p.Envelope{
 			Broadcast: true,
 			Message:   &ssproto.SnapshotsRequest{},
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-r.closeCh:
+		case r.snapshotCh.Out <- msg:
 		}
 	}
 
@@ -346,6 +357,9 @@ func (r *Reactor) backfill(
 ) error {
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "stopTime", stopTime, "trustedBlockID", trustedBlockID)
+
+	r.backfillBlockTotal = startHeight - stopHeight + 1
+	r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
 
 	const sleepTime = 1 * time.Second
 	var (
@@ -476,10 +490,20 @@ func (r *Reactor) backfill(
 			}
 
 			trustedBlockID = resp.block.LastBlockID
-			queue.success(resp.block.Height)
+			queue.success()
 			r.Logger.Info("backfill: verified and stored light block", "height", resp.block.Height)
 
 			lastValidatorSet = resp.block.ValidatorSet
+
+			r.backfilledBlocks++
+			r.metrics.BackFilledBlocks.Add(1)
+
+			// The block height might be less than the stopHeight because of the stopTime condition
+			// hasn't been fulfilled.
+			if resp.block.Height < stopHeight {
+				r.backfillBlockTotal++
+				r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
+			}
 
 		case <-queue.done():
 			if err := queue.error(); err != nil {
@@ -579,7 +603,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
+		resp, err := r.conn.LoadSnapshotChunkSync(context.TODO(), abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
@@ -691,7 +715,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 		}
 
 	case *ssproto.LightBlockResponse:
-		var height int64 = 0
+		var height int64
 		if msg.LightBlock != nil {
 			height = msg.LightBlock.SignedHeader.Header.Height
 		}
@@ -736,7 +760,8 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
-			default:
+			case <-time.After(time.Second):
+				return errors.New("failed to send consensus params, stateprovider not ready for response")
 			}
 		} else {
 			r.Logger.Debug("received unexpected params response; using RPC state provider", "peer", envelope.From)
@@ -786,28 +811,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	return err
 }
 
-// processSnapshotCh initiates a blocking process where we listen for and handle
-// envelopes on the SnapshotChannel.
-func (r *Reactor) processSnapshotCh() {
-	r.processCh(r.snapshotCh, "snapshot")
-}
-
-// processChunkCh initiates a blocking process where we listen for and handle
-// envelopes on the ChunkChannel.
-func (r *Reactor) processChunkCh() {
-	r.processCh(r.chunkCh, "chunk")
-}
-
-// processBlockCh initiates a blocking process where we listen for and handle
-// envelopes on the LightBlockChannel.
-func (r *Reactor) processBlockCh() {
-	r.processCh(r.blockCh, "light block")
-}
-
-func (r *Reactor) processParamsCh() {
-	r.processCh(r.paramsCh, "consensus params")
-}
-
 // processCh routes state sync messages to their respective handlers. Any error
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
@@ -819,8 +822,11 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 		select {
 		case envelope := <-ch.In:
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
-				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName),
-					"ch_id", ch.ID, "envelope", envelope, "err", err)
+				r.Logger.Error("failed to process message",
+					"err", err,
+					"channel", chName,
+					"ch_id", ch.ID,
+					"envelope", envelope)
 				ch.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -828,7 +834,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
+			r.Logger.Debug("channel closed", "channel", chName)
 			return
 		}
 	}
@@ -847,17 +853,20 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 
 	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	if r.syncer == nil {
-		r.mtx.Unlock()
 		return
 	}
-	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
-		r.syncer.AddPeer(peerUpdate.NodeID)
+		err := r.syncer.AddPeer(peerUpdate.NodeID)
+		if err != nil {
+			r.Logger.Error("error adding peer to syncer", "error", err)
+			return
+		}
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			// we do this in a separate routine to not block whilst waiting for the light client to finish
 			// whatever call it's currently executing
@@ -891,7 +900,7 @@ func (r *Reactor) processPeerUpdates() {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshotsSync(context.Background(), abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshotsSync(context.TODO(), abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}
@@ -960,19 +969,35 @@ func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
 	}, nil
 }
 
-func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) {
-	t := time.NewTicker(200 * time.Millisecond)
+func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
+	startAt := time.Now()
+	t := time.NewTicker(100 * time.Millisecond)
 	defer t.Stop()
-	for {
+	logT := time.NewTicker(time.Minute)
+	defer logT.Stop()
+	var iter int
+	for r.peers.Len() < numPeers {
+		iter++
 		select {
 		case <-ctx.Done():
-			return
+			return fmt.Errorf("operation canceled while waiting for peers after %.2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
+		case <-r.closeCh:
+			return fmt.Errorf("shutdown while waiting for peers after %.2fs [%d/%d]",
+				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-t.C:
-			if r.peers.Len() >= numPeers {
-				return
-			}
+			continue
+		case <-logT.C:
+			r.Logger.Info("waiting for sufficient peers to start statesync",
+				"duration", time.Since(startAt).String(),
+				"target", numPeers,
+				"peers", r.peers.Len(),
+				"iters", iter,
+			)
+			continue
 		}
 	}
+	return nil
 }
 
 func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initialHeight int64) error {
@@ -987,6 +1012,10 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
 
 	if r.cfg.UseP2P {
+		if err := r.waitForEnoughPeers(ctx, 2); err != nil {
+			return err
+		}
+
 		peers := r.peers.All()
 		providers := make([]provider.Provider, len(peers))
 		for idx, p := range peers {
@@ -1004,4 +1033,67 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 		}
 	}
 	return nil
+}
+
+func (r *Reactor) TotalSnapshots() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil && r.syncer.snapshots != nil {
+		return int64(len(r.syncer.snapshots.snapshots))
+	}
+	return 0
+}
+
+func (r *Reactor) ChunkProcessAvgTime() time.Duration {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil {
+		return time.Duration(r.syncer.avgChunkTime)
+	}
+	return time.Duration(0)
+}
+
+func (r *Reactor) SnapshotHeight() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil {
+		return r.syncer.lastSyncedSnapshotHeight
+	}
+	return 0
+}
+func (r *Reactor) SnapshotChunksCount() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil && r.syncer.chunks != nil {
+		return int64(r.syncer.chunks.numChunksReturned())
+	}
+	return 0
+}
+
+func (r *Reactor) SnapshotChunksTotal() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil && r.syncer.processingSnapshot != nil {
+		return int64(r.syncer.processingSnapshot.Chunks)
+	}
+	return 0
+}
+
+func (r *Reactor) BackFilledBlocks() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.backfilledBlocks
+}
+
+func (r *Reactor) BackFillBlocksTotal() int64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.backfillBlockTotal
 }

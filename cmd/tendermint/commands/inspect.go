@@ -8,12 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/inspect"
-	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/indexer/sink"
-	"github.com/tendermint/tendermint/store"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/internal/inspect"
 )
 
 // InspectCmd is the command for starting an inspect server.
@@ -55,29 +50,10 @@ func runInspect(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
-	blockStoreDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "blockstore", Config: config})
+	ins, err := inspect.NewFromConfig(logger, config)
 	if err != nil {
 		return err
 	}
-	blockStore := store.NewBlockStore(blockStoreDB)
-	stateDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "state", Config: config})
-	if err != nil {
-		if err := blockStoreDB.Close(); err != nil {
-			logger.Error("error closing block store db", "error", err)
-		}
-		return err
-	}
-	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
-	if err != nil {
-		return err
-	}
-	sinks, err := sink.EventSinksFromConfig(config, cfg.DefaultDBProvider, genDoc.ChainID)
-	if err != nil {
-		return err
-	}
-	stateStore := state.NewStore(stateDB)
-
-	ins := inspect.New(config.RPC, blockStore, stateStore, sinks, logger)
 
 	logger.Info("starting inspect server")
 	if err := ins.Run(ctx); err != nil {

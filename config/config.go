@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,12 +27,6 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
-
-	BlockSyncV0 = "v0"
-	BlockSyncV2 = "v2"
-
-	MempoolV0 = "v0"
-	MempoolV1 = "v1"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -54,16 +47,14 @@ var (
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
-	defaultNodeKeyName  = "node_key.json"
-	defaultAddrBookName = "addrbook.json"
+	defaultNodeKeyName = "node_key.json"
 
 	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
 	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
 
-	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
-	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+	defaultNodeKeyPath = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -76,7 +67,6 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx-index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -91,7 +81,6 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
@@ -114,7 +103,6 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
@@ -142,17 +130,11 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.RPC.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [rpc] section: %w", err)
 	}
-	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [p2p] section: %w", err)
-	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [mempool] section: %w", err)
 	}
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
-	}
-	if err := cfg.BlockSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [blocksync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
@@ -283,7 +265,7 @@ func (cfg BaseConfig) NodeKeyFile() string {
 
 // LoadNodeKey loads NodeKey located in filePath.
 func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
-	jsonBytes, err := ioutil.ReadFile(cfg.NodeKeyFile())
+	jsonBytes, err := os.ReadFile(cfg.NodeKeyFile())
 	if err != nil {
 		return "", err
 	}
@@ -337,28 +319,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
-	}
-
-	// TODO (https://github.com/tendermint/tendermint/issues/6908) remove this check after the v0.35 release cycle.
-	// This check was added to give users an upgrade prompt to use the new
-	// configuration option in v0.35. In future release cycles they should no longer
-	// be using this configuration parameter so the check can be removed.
-	// The cfg.Other field can likely be removed at the same time if it is not referenced
-	// elsewhere as it was added to service this check.
-	if fs, ok := cfg.Other["fastsync"]; ok {
-		if _, ok := fs.(map[string]interface{}); ok {
-			return fmt.Errorf("a configuration section named 'fastsync' was found in the " +
-				"configuration file. The 'fastsync' section has been renamed to " +
-				"'blocksync', please update the 'fastsync' field in your configuration file to 'blocksync'")
-		}
-	}
-	if fs, ok := cfg.Other["fast-sync"]; ok {
-		if fs != "" {
-			return fmt.Errorf("a parameter named 'fast-sync' was found in the " +
-				"configuration file. The parameter to enable or disable quickly syncing with a blockchain" +
-				"has moved to the [blocksync] section of the configuration file as blocksync.enable. " +
-				"Please move the 'fast-sync' field in your configuration file to 'blocksync.enable'")
-		}
 	}
 
 	return nil
@@ -461,24 +421,10 @@ type RPCConfig struct {
 	// A list of non simple headers the client is allowed to use with cross-domain requests.
 	CORSAllowedHeaders []string `mapstructure:"cors-allowed-headers"`
 
-	// TCP or UNIX socket address for the gRPC server to listen on
-	// NOTE: This server only supports /broadcast_tx_commit
-	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
-	GRPCListenAddress string `mapstructure:"grpc-laddr"`
-
-	// Maximum number of simultaneous connections.
-	// Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-	// If you want to accept a larger number than the default, make sure
-	// you increase your OS limits.
-	// 0 - unlimited.
-	// Deprecated: gRPC in the RPC layer of Tendermint will be removed in 0.36.
-	GRPCMaxOpenConnections int `mapstructure:"grpc-max-open-connections"`
-
 	// Activate unsafe RPC commands like /dial-persistent-peers and /unsafe-flush-mempool
 	Unsafe bool `mapstructure:"unsafe"`
 
 	// Maximum number of simultaneous connections (including WebSocket).
-	// Does not include gRPC connections. See grpc-max-open-connections
 	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
@@ -492,7 +438,7 @@ type RPCConfig struct {
 	MaxSubscriptionClients int `mapstructure:"max-subscription-clients"`
 
 	// Maximum number of unique queries a given client can /subscribe to
-	// If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set
+	// If you're using a Local RPC client and /broadcast_tx_commit, set this
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
@@ -533,12 +479,10 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:          "tcp://127.0.0.1:26657",
-		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
-		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
-		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900,
+		ListenAddress:      "tcp://127.0.0.1:26657",
+		CORSAllowedOrigins: []string{},
+		CORSAllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost},
+		CORSAllowedHeaders: []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
@@ -559,7 +503,6 @@ func DefaultRPCConfig() *RPCConfig {
 func TestRPCConfig() *RPCConfig {
 	cfg := DefaultRPCConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36657"
-	cfg.GRPCListenAddress = "tcp://127.0.0.1:36658"
 	cfg.Unsafe = true
 	return cfg
 }
@@ -567,9 +510,6 @@ func TestRPCConfig() *RPCConfig {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *RPCConfig) ValidateBasic() error {
-	if cfg.GRPCMaxOpenConnections < 0 {
-		return errors.New("grpc-max-open-connections can't be negative")
-	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max-open-connections can't be negative")
 	}
@@ -647,25 +587,6 @@ type P2PConfig struct { //nolint: maligned
 	// UPNP port forwarding
 	UPNP bool `mapstructure:"upnp"`
 
-	// Path to address book
-	AddrBook string `mapstructure:"addr-book-file"`
-
-	// Set true for strict address routability rules
-	// Set false for private or local networks
-	AddrBookStrict bool `mapstructure:"addr-book-strict"`
-
-	// Maximum number of inbound peers
-	//
-	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
-
-	// Maximum number of outbound peers to connect to, excluding persistent peers.
-	//
-	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
-
 	// MaxConnections defines the maximum number of connected peers (inbound and
 	// outbound).
 	MaxConnections uint16 `mapstructure:"max-connections"`
@@ -674,11 +595,15 @@ type P2PConfig struct { //nolint: maligned
 	// attempts per IP address.
 	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
-	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
-	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
+	// Set true to enable the peer-exchange reactor
+	PexReactor bool `mapstructure:"pex"`
 
-	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent-peers-max-dial-period"`
+	// Comma separated list of peer IDs to keep private (will not be gossiped to
+	// other peers)
+	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
+
+	// Toggle to disable guard against peers connecting from the same ip.
+	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
 
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
@@ -692,16 +617,6 @@ type P2PConfig struct { //nolint: maligned
 	// Rate at which packets can be received, in bytes/second
 	RecvRate int64 `mapstructure:"recv-rate"`
 
-	// Set true to enable the peer-exchange reactor
-	PexReactor bool `mapstructure:"pex"`
-
-	// Comma separated list of peer IDs to keep private (will not be gossiped to
-	// other peers)
-	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
-
-	// Toggle to disable guard against peers connecting from the same ip.
-	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
-
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake-timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
@@ -710,13 +625,8 @@ type P2PConfig struct { //nolint: maligned
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
-	// UseLegacy enables the "legacy" P2P implementation and
-	// disables the newer default implementation. This flag will
-	// be removed in a future release.
-	UseLegacy bool `mapstructure:"use-legacy"`
-
 	// Makes it possible to configure which queue backend the p2p
-	// layer uses. Options are: "fifo", "priority" and "wdrr",
+	// layer uses. Options are: "fifo" and "priority",
 	// with the default being "priority".
 	QueueType string `mapstructure:"queue-type"`
 }
@@ -727,13 +637,8 @@ func DefaultP2PConfig() *P2PConfig {
 		ListenAddress:                 "tcp://0.0.0.0:26656",
 		ExternalAddress:               "",
 		UPNP:                          false,
-		AddrBook:                      defaultAddrBookPath,
-		AddrBookStrict:                true,
-		MaxNumInboundPeers:            40,
-		MaxNumOutboundPeers:           10,
 		MaxConnections:                64,
 		MaxIncomingConnectionAttempts: 100,
-		PersistentPeersMaxDialPeriod:  0 * time.Second,
 		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
 		// The IP header and the TCP header take up 20 bytes each at least (unless
@@ -749,38 +654,14 @@ func DefaultP2PConfig() *P2PConfig {
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
 		QueueType:               "priority",
-		UseLegacy:               false,
 	}
-}
-
-// TestP2PConfig returns a configuration for testing the peer-to-peer layer
-func TestP2PConfig() *P2PConfig {
-	cfg := DefaultP2PConfig()
-	cfg.ListenAddress = "tcp://127.0.0.1:36656"
-	cfg.FlushThrottleTimeout = 10 * time.Millisecond
-	cfg.AllowDuplicateIP = true
-	return cfg
-}
-
-// AddrBookFile returns the full path to the address book
-func (cfg *P2PConfig) AddrBookFile() string {
-	return rootify(cfg.AddrBook, cfg.RootDir)
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *P2PConfig) ValidateBasic() error {
-	if cfg.MaxNumInboundPeers < 0 {
-		return errors.New("max-num-inbound-peers can't be negative")
-	}
-	if cfg.MaxNumOutboundPeers < 0 {
-		return errors.New("max-num-outbound-peers can't be negative")
-	}
 	if cfg.FlushThrottleTimeout < 0 {
 		return errors.New("flush-throttle-timeout can't be negative")
-	}
-	if cfg.PersistentPeersMaxDialPeriod < 0 {
-		return errors.New("persistent-peers-max-dial-period can't be negative")
 	}
 	if cfg.MaxPacketMsgPayloadSize < 0 {
 		return errors.New("max-packet-msg-payload-size can't be negative")
@@ -794,12 +675,21 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	return nil
 }
 
+// TestP2PConfig returns a configuration for testing the peer-to-peer layer
+func TestP2PConfig() *P2PConfig {
+	cfg := DefaultP2PConfig()
+	cfg.ListenAddress = "tcp://127.0.0.1:36656"
+	cfg.AllowDuplicateIP = true
+	cfg.FlushThrottleTimeout = 10 * time.Millisecond
+
+	return cfg
+}
+
 //-----------------------------------------------------------------------------
 // MempoolConfig
 
 // MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
-	Version   string `mapstructure:"version"`
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
@@ -849,7 +739,6 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Version:   MempoolV1,
 		Recheck:   true,
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
@@ -1016,42 +905,6 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 	}
 
 	return nil
-}
-
-//-----------------------------------------------------------------------------
-
-// BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
-// If this node is many blocks behind the tip of the chain, BlockSync
-// allows them to catchup quickly by downloading blocks in parallel
-// and verifying their commits.
-type BlockSyncConfig struct {
-	Enable  bool   `mapstructure:"enable"`
-	Version string `mapstructure:"version"`
-}
-
-// DefaultBlockSyncConfig returns a default configuration for the block sync service
-func DefaultBlockSyncConfig() *BlockSyncConfig {
-	return &BlockSyncConfig{
-		Enable:  true,
-		Version: BlockSyncV0,
-	}
-}
-
-// TestBlockSyncConfig returns a default configuration for the block sync.
-func TestBlockSyncConfig() *BlockSyncConfig {
-	return DefaultBlockSyncConfig()
-}
-
-// ValidateBasic performs basic validation.
-func (cfg *BlockSyncConfig) ValidateBasic() error {
-	switch cfg.Version {
-	case BlockSyncV0:
-		return nil
-	case BlockSyncV2:
-		return errors.New("blocksync version v2 is no longer supported. Please use v0")
-	default:
-		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
-	}
 }
 
 //-----------------------------------------------------------------------------

@@ -99,7 +99,7 @@ We’re hoping that these Tendermint tools will become de facto the first respon
 
 Let us know what your experience has been so far! Have you had a chance to try `tendermint debug` or `tendermint inspect` yet?
 
-Join our [discord chat](https://discord.gg/vcExX9T), where we discuss the current issues and future improvements.
+Join our [discord chat](https://discord.gg/cosmosnetwork), where we discuss the current issues and future improvements.
 
 —
 

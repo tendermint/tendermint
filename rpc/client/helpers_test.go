@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/client/mock"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 func TestWaitForHeight(t *testing.T) {
@@ -33,7 +33,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// now set current block height to 10
 	m.Call = mock.Call{
-		Response: &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{LatestBlockHeight: 10}},
+		Response: &coretypes.ResultStatus{SyncInfo: coretypes.SyncInfo{LatestBlockHeight: 10}},
 	}
 
 	// we will not wait for more than 10 blocks
@@ -53,7 +53,7 @@ func TestWaitForHeight(t *testing.T) {
 	// we use the callback to update the status height
 	myWaiter := func(delta int64) error {
 		// update the height for the next call
-		m.Call.Response = &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{LatestBlockHeight: 15}}
+		m.Call.Response = &coretypes.ResultStatus{SyncInfo: coretypes.SyncInfo{LatestBlockHeight: 15}}
 		return client.DefaultWaitStrategy(delta)
 	}
 
@@ -65,13 +65,13 @@ func TestWaitForHeight(t *testing.T) {
 
 	pre := r.Calls[3]
 	require.Nil(pre.Error)
-	prer, ok := pre.Response.(*ctypes.ResultStatus)
+	prer, ok := pre.Response.(*coretypes.ResultStatus)
 	require.True(ok)
 	assert.Equal(int64(10), prer.SyncInfo.LatestBlockHeight)
 
 	post := r.Calls[4]
 	require.Nil(post.Error)
-	postr, ok := post.Response.(*ctypes.ResultStatus)
+	postr, ok := post.Response.(*coretypes.ResultStatus)
 	require.True(ok)
 	assert.Equal(int64(15), postr.SyncInfo.LatestBlockHeight)
 }

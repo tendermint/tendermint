@@ -1,4 +1,4 @@
-package abcicli
+package abciclient
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -24,7 +25,7 @@ type grpcClient struct {
 	conn     *grpc.ClientConn
 	chReqRes chan *ReqRes // dispatches "async" responses to callbacks *in order*, needed by mempool
 
-	mtx   tmsync.RWMutex
+	mtx   tmsync.Mutex
 	addr  string
 	err   error
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
@@ -42,7 +43,7 @@ var _ Client = (*grpcClient)(nil)
 // which is expensive, but easy - if you want something better, use the socket
 // protocol! maybe one day, if people really want it, we use grpc streams, but
 // hopefully not :D
-func NewGRPCClient(addr string, mustConnect bool) Client {
+func NewGRPCClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		addr:        addr,
 		mustConnect: mustConnect,
@@ -54,7 +55,7 @@ func NewGRPCClient(addr string, mustConnect bool) Client {
 		// gRPC calls while processing a slow callback at the channel head.
 		chReqRes: make(chan *ReqRes, 64),
 	}
-	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "grpcClient", cli)
 	return cli
 }
 
@@ -62,7 +63,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func (cli *grpcClient) OnStart() error {
+func (cli *grpcClient) OnStart(ctx context.Context) error {
 	// This processes asynchronous request/response messages and dispatches
 	// them to callbacks.
 	go func() {
@@ -149,8 +150,8 @@ func (cli *grpcClient) StopForError(err error) {
 }
 
 func (cli *grpcClient) Error() error {
-	cli.mtx.RLock()
-	defer cli.mtx.RUnlock()
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	return cli.err
 }
 
@@ -158,8 +159,8 @@ func (cli *grpcClient) Error() error {
 // NOTE: callback may get internally generated flush responses.
 func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 	cli.resCb = resCb
+	cli.mtx.Unlock()
 }
 
 //----------------------------------------

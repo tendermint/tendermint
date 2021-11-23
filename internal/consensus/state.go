@@ -5,18 +5,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"runtime/debug"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -27,7 +29,6 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -80,7 +81,7 @@ type State struct {
 	service.BaseService
 
 	// config details
-	config            *cfg.ConsensusConfig
+	config            *config.ConsensusConfig
 	privValidator     types.PrivValidator // for signing votes
 	privValidatorType types.PrivValidatorType
 
@@ -117,7 +118,7 @@ type State struct {
 
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
-	eventBus *types.EventBus
+	eventBus *eventbus.EventBus
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
@@ -152,7 +153,8 @@ type StateOption func(*State)
 
 // NewState returns a new State.
 func NewState(
-	config *cfg.ConsensusConfig,
+	logger log.Logger,
+	cfg *config.ConsensusConfig,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
@@ -161,13 +163,13 @@ func NewState(
 	options ...StateOption,
 ) *State {
 	cs := &State{
-		config:           config,
+		config:           cfg,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
-		timeoutTicker:    NewTimeoutTicker(),
+		timeoutTicker:    NewTimeoutTicker(logger),
 		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
@@ -192,7 +194,7 @@ func NewState(
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 
-	cs.BaseService = *service.NewBaseService(nil, "State", cs)
+	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
@@ -200,14 +202,8 @@ func NewState(
 	return cs
 }
 
-// SetLogger implements Service.
-func (cs *State) SetLogger(l log.Logger) {
-	cs.BaseService.Logger = l
-	cs.timeoutTicker.SetLogger(l)
-}
-
 // SetEventBus sets event bus.
-func (cs *State) SetEventBus(b *types.EventBus) {
+func (cs *State) SetEventBus(b *eventbus.EventBus) {
 	cs.eventBus = b
 	cs.blockExec.SetEventBus(b)
 }
@@ -241,8 +237,12 @@ func (cs *State) GetLastHeight() int64 {
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *State) GetRoundState() *cstypes.RoundState {
 	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	// NOTE: this might be dodgy, as RoundState itself isn't thread
+	// safe as it contains a number of pointers and is explicitly
+	// not thread safe.
 	rs := cs.RoundState // copy
-	cs.mtx.RUnlock()
 	return &rs
 }
 
@@ -329,11 +329,11 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
-func (cs *State) OnStart() error {
+func (cs *State) OnStart(ctx context.Context) error {
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
-		if err := cs.loadWalFile(); err != nil {
+		if err := cs.loadWalFile(ctx); err != nil {
 			return err
 		}
 	}
@@ -384,13 +384,13 @@ func (cs *State) OnStart() error {
 			cs.Logger.Info("successful WAL repair")
 
 			// reload WAL file
-			if err := cs.loadWalFile(); err != nil {
+			if err := cs.loadWalFile(ctx); err != nil {
 				return err
 			}
 		}
 	}
 
-	if err := cs.evsw.Start(); err != nil {
+	if err := cs.evsw.Start(ctx); err != nil {
 		return err
 	}
 
@@ -399,7 +399,7 @@ func (cs *State) OnStart() error {
 	// NOTE: we will get a build up of garbage go routines
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
-	if err := cs.timeoutTicker.Start(); err != nil {
+	if err := cs.timeoutTicker.Start(ctx); err != nil {
 		return err
 	}
 
@@ -420,8 +420,8 @@ func (cs *State) OnStart() error {
 
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
-func (cs *State) startRoutines(maxSteps int) {
-	err := cs.timeoutTicker.Start()
+func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
+	err := cs.timeoutTicker.Start(ctx)
 	if err != nil {
 		cs.Logger.Error("failed to start timeout ticker", "err", err)
 		return
@@ -431,8 +431,8 @@ func (cs *State) startRoutines(maxSteps int) {
 }
 
 // loadWalFile loads WAL data from file. It overwrites cs.wal.
-func (cs *State) loadWalFile() error {
-	wal, err := cs.OpenWAL(cs.config.WalFile())
+func (cs *State) loadWalFile(ctx context.Context) error {
+	wal, err := cs.OpenWAL(ctx, cs.config.WalFile())
 	if err != nil {
 		cs.Logger.Error("failed to load state WAL", "err", err)
 		return err
@@ -457,11 +457,15 @@ func (cs *State) OnStop() {
 	close(cs.onStopCh)
 
 	if err := cs.evsw.Stop(); err != nil {
-		cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+		}
 	}
 
 	if err := cs.timeoutTicker.Stop(); err != nil {
-		cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+		}
 	}
 	// WAL is stopped in receiveRoutine.
 }
@@ -475,16 +479,14 @@ func (cs *State) Wait() {
 
 // OpenWAL opens a file to log all consensus messages and timeouts for
 // deterministic accountability.
-func (cs *State) OpenWAL(walFile string) (WAL, error) {
-	wal, err := NewWAL(walFile)
+func (cs *State) OpenWAL(ctx context.Context, walFile string) (WAL, error) {
+	wal, err := NewWAL(cs.Logger.With("wal", walFile), walFile)
 	if err != nil {
 		cs.Logger.Error("failed to open WAL", "file", walFile, "err", err)
 		return nil, err
 	}
 
-	wal.SetLogger(cs.Logger.With("wal", walFile))
-
-	if err := wal.Start(); err != nil {
+	if err := wal.Start(ctx); err != nil {
 		cs.Logger.Error("failed to start WAL", "err", err)
 		return nil, err
 	}
@@ -764,7 +766,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 		// close wal now that we're done writing to it
 		if err := cs.wal.Stop(); err != nil {
-			cs.Logger.Error("failed trying to stop WAL", "error", err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop WAL", "error", err)
+			}
 		}
 
 		cs.wal.Wait()
@@ -1925,7 +1929,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
-		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
+		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}

@@ -1,6 +1,7 @@
 package p2p_test
 
 import (
+	"context"
 	"io"
 	"net"
 	"testing"
@@ -21,7 +22,7 @@ func init() {
 		transport := p2p.NewMConnTransport(
 			log.TestingLogger(),
 			conn.DefaultMConnConfig(),
-			[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+			[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 			p2p.MConnTransportOptions{},
 		)
 		err := transport.Listen(p2p.Endpoint{
@@ -43,7 +44,7 @@ func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 	transport := p2p.NewMConnTransport(
 		log.TestingLogger(),
 		conn.DefaultMConnConfig(),
-		[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: 2,
 		},
@@ -58,10 +59,13 @@ func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 }
 
 func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	transport := p2p.NewMConnTransport(
 		log.TestingLogger(),
 		conn.DefaultMConnConfig(),
-		[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: 2,
 		},
@@ -124,6 +128,9 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 }
 
 func TestMConnTransport_Listen(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testcases := []struct {
 		endpoint p2p.Endpoint
 		ok       bool
@@ -145,10 +152,13 @@ func TestMConnTransport_Listen(t *testing.T) {
 		t.Run(tc.endpoint.String(), func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
 
+			ctx, cancel = context.WithCancel(ctx)
+			defer cancel()
+
 			transport := p2p.NewMConnTransport(
 				log.TestingLogger(),
 				conn.DefaultMConnConfig(),
-				[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
+				[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 				p2p.MConnTransportOptions{},
 			)
 
@@ -185,6 +195,9 @@ func TestMConnTransport_Listen(t *testing.T) {
 			go func() {
 				// Dialing the endpoint should work.
 				var err error
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
 				peerConn, err = transport.Dial(ctx, endpoint)
 				require.NoError(t, err)
 				close(dialedChan)
@@ -195,7 +208,6 @@ func TestMConnTransport_Listen(t *testing.T) {
 			_ = conn.Close()
 			<-dialedChan
 
-			time.Sleep(time.Minute)
 			// closing the connection should not error
 			require.NoError(t, peerConn.Close())
 

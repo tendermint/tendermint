@@ -1,84 +1,71 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
 var (
 	_ service.Service = (*Reactor)(nil)
 	_ p2p.Wrapper     = (*tmcons.Message)(nil)
+)
 
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		StateChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(StateChannel),
-				Priority:            8,
-				SendQueueCapacity:   64,
-				RecvMessageCapacity: maxMsgSize,
-				RecvBufferCapacity:  128,
-				MaxSendBytes:        12000,
-			},
+// GetChannelDescriptor produces an instance of a descriptor for this
+// package's required channels.
+func GetChannelDescriptors() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
+		{
+			ID:                  StateChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            8,
+			SendQueueCapacity:   64,
+			RecvMessageCapacity: maxMsgSize,
+			RecvBufferCapacity:  128,
 		},
-		DataChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				// TODO: Consider a split between gossiping current block and catchup
-				// stuff. Once we gossip the whole block there is nothing left to send
-				// until next height or round.
-				ID:                  byte(DataChannel),
-				Priority:            12,
-				SendQueueCapacity:   64,
-				RecvBufferCapacity:  512,
-				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        40000,
-			},
+		{
+			// TODO: Consider a split between gossiping current block and catchup
+			// stuff. Once we gossip the whole block there is nothing left to send
+			// until next height or round.
+			ID:                  DataChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            12,
+			SendQueueCapacity:   64,
+			RecvBufferCapacity:  512,
+			RecvMessageCapacity: maxMsgSize,
 		},
-		VoteChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteChannel),
-				Priority:            10,
-				SendQueueCapacity:   64,
-				RecvBufferCapacity:  128,
-				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        150,
-			},
+		{
+			ID:                  VoteChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            10,
+			SendQueueCapacity:   64,
+			RecvBufferCapacity:  128,
+			RecvMessageCapacity: maxMsgSize,
 		},
-		VoteSetBitsChannel: {
-			MsgType: new(tmcons.Message),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(VoteSetBitsChannel),
-				Priority:            5,
-				SendQueueCapacity:   8,
-				RecvBufferCapacity:  128,
-				RecvMessageCapacity: maxMsgSize,
-				MaxSendBytes:        50,
-			},
+		{
+			ID:                  VoteSetBitsChannel,
+			MessageType:         new(tmcons.Message),
+			Priority:            5,
+			SendQueueCapacity:   8,
+			RecvBufferCapacity:  128,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
-)
+}
 
 const (
 	StateChannel       = p2p.ChannelID(0x20)
@@ -99,7 +86,7 @@ type ReactorOption func(*Reactor)
 // NOTE: Temporary interface for switching to block sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type BlockSyncReactor interface {
-	SwitchToBlockSync(sm.State) error
+	SwitchToBlockSync(context.Context, sm.State) error
 
 	GetMaxPeerBlockHeight() int64
 
@@ -125,7 +112,7 @@ type Reactor struct {
 	service.BaseService
 
 	state    *State
-	eventBus *types.EventBus
+	eventBus *eventbus.EventBus
 	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
@@ -188,7 +175,7 @@ func NewReactor(
 // envelopes on each. In addition, it also listens for peer updates and handles
 // messages on that p2p channel accordingly. The caller must be sure to execute
 // OnStop to ensure the outbound p2p Channels are closed.
-func (r *Reactor) OnStart() error {
+func (r *Reactor) OnStart(ctx context.Context) error {
 	r.Logger.Debug("consensus wait sync", "wait_sync", r.WaitSync())
 
 	// start routine that computes peer statistics for evaluating peer quality
@@ -200,7 +187,7 @@ func (r *Reactor) OnStart() error {
 	r.subscribeToBroadcastEvents()
 
 	if !r.WaitSync() {
-		if err := r.state.Start(); err != nil {
+		if err := r.state.Start(ctx); err != nil {
 			return err
 		}
 	}
@@ -230,16 +217,14 @@ func (r *Reactor) OnStop() {
 	}
 
 	r.mtx.Lock()
-	peers := r.peers
+	// Close and wait for each of the peers to shutdown.
+	// This is safe to perform with the lock since none of the peers require the
+	// lock to complete any of the methods that the waitgroup is waiting on.
+	for _, state := range r.peers {
+		state.closer.Close()
+		state.broadcastWG.Wait()
+	}
 	r.mtx.Unlock()
-
-	// wait for all spawned peer goroutines to gracefully exit
-	for _, ps := range peers {
-		ps.closer.Close()
-	}
-	for _, ps := range peers {
-		ps.broadcastWG.Wait()
-	}
 
 	// Close the StateChannel goroutine separately since it uses its own channel
 	// to signal closure.
@@ -260,7 +245,7 @@ func (r *Reactor) OnStop() {
 }
 
 // SetEventBus sets the reactor's event bus.
-func (r *Reactor) SetEventBus(b *types.EventBus) {
+func (r *Reactor) SetEventBus(b *eventbus.EventBus) {
 	r.eventBus = b
 	r.state.SetEventBus(b)
 }
@@ -280,7 +265,7 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 
 // SwitchToConsensus switches from block-sync mode to consensus mode. It resets
 // the state, turns off block-sync, and starts the consensus state-machine.
-func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL bool) {
 	r.Logger.Info("switching to consensus")
 
 	// we have no votes, so reconstruct LastCommit from SeenCommit
@@ -303,7 +288,7 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 		r.state.doWALCatchup = false
 	}
 
-	if err := r.state.Start(); err != nil {
+	if err := r.state.Start(ctx); err != nil {
 		panic(fmt.Sprintf(`failed to start consensus state: %v
 
 conS:

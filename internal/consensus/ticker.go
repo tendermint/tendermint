@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -15,12 +16,10 @@ var (
 // conditional on the height/round/step in the timeoutInfo.
 // The timeoutInfo.Duration may be non-positive.
 type TimeoutTicker interface {
-	Start() error
+	Start(context.Context) error
 	Stop() error
 	Chan() <-chan timeoutInfo       // on which to receive a timeout
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
-
-	SetLogger(log.Logger)
 }
 
 // timeoutTicker wraps time.Timer,
@@ -37,20 +36,19 @@ type timeoutTicker struct {
 }
 
 // NewTimeoutTicker returns a new TimeoutTicker.
-func NewTimeoutTicker() TimeoutTicker {
+func NewTimeoutTicker(logger log.Logger) TimeoutTicker {
 	tt := &timeoutTicker{
 		timer:    time.NewTimer(0),
 		tickChan: make(chan timeoutInfo, tickTockBufferSize),
 		tockChan: make(chan timeoutInfo, tickTockBufferSize),
 	}
-	tt.BaseService = *service.NewBaseService(nil, "TimeoutTicker", tt)
+	tt.BaseService = *service.NewBaseService(logger, "TimeoutTicker", tt)
 	tt.stopTimer() // don't want to fire until the first scheduled timeout
 	return tt
 }
 
 // OnStart implements service.Service. It starts the timeout routine.
-func (t *timeoutTicker) OnStart() error {
-
+func (t *timeoutTicker) OnStart(gctx context.Context) error {
 	go t.timeoutRoutine()
 
 	return nil

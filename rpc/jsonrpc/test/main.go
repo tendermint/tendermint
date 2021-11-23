@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -35,10 +36,12 @@ func main() {
 	config := rpcserver.DefaultConfig()
 	listener, err := rpcserver.Listen("tcp://127.0.0.1:8008", config.MaxOpenConnections)
 	if err != nil {
-		tmos.Exit(err.Error())
+		logger.Error("rpc listening", "err", err)
+		os.Exit(1)
 	}
 
 	if err = rpcserver.Serve(listener, mux, logger, config); err != nil {
-		tmos.Exit(err.Error())
+		logger.Error("rpc serve", "err", err)
+		os.Exit(1)
 	}
 }

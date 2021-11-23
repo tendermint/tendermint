@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -37,7 +37,7 @@ func DefaultValidationRequestHandler(
 		if err != nil {
 			return res, err
 		}
-		pk, err := cryptoenc.PubKeyToProto(pubKey)
+		pk, err := encoding.PubKeyToProto(pubKey)
 		if err != nil {
 			return res, err
 		}

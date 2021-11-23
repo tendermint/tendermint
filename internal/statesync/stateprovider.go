@@ -12,6 +12,7 @@ import (
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	lightprovider "github.com/tendermint/tendermint/light/provider"
@@ -20,7 +21,6 @@ import (
 	lightdb "github.com/tendermint/tendermint/light/store/db"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -337,9 +337,39 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 	}
 }
 
-// consensusParams sends out a request for consensus params blocking until one is returned.
-// If it fails to get a valid set of consensus params from any of the providers it returns an error.
+// consensusParams sends out a request for consensus params blocking
+// until one is returned.
+//
+// If it fails to get a valid set of consensus params from any of the
+// providers it returns an error; however, it will retry indefinitely
+// (with backoff) until the context is canceled.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
+	iterCount := 0
+	for {
+		params, err := s.tryGetConsensusParamsFromWitnesses(ctx, height)
+		if err != nil {
+			return types.ConsensusParams{}, err
+		}
+		if params != nil {
+			return *params, nil
+		}
+		iterCount++
+
+		select {
+		case <-ctx.Done():
+			return types.ConsensusParams{}, ctx.Err()
+		case <-time.After(time.Duration(iterCount) * consensusParamsResponseTimeout):
+		}
+	}
+}
+
+// tryGetConsensusParamsFromWitnesses attempts to get consensus
+// parameters from the light clients available witnesses. If both
+// return parameters are nil, then it can be retried.
+func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
+	ctx context.Context,
+	height int64,
+) (*types.ConsensusParams, error) {
 	for _, provider := range s.lc.Witnesses() {
 		p, ok := provider.(*BlockProvider)
 		if !ok {
@@ -349,7 +379,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		// extract the nodeID of the provider
 		peer, err := types.NewNodeID(p.String())
 		if err != nil {
-			return types.ConsensusParams{}, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
+			return nil, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
 		}
 
 		select {
@@ -360,7 +390,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			},
 		}:
 		case <-ctx.Done():
-			return types.ConsensusParams{}, ctx.Err()
+			return nil, ctx.Err()
 		}
 
 		select {
@@ -368,13 +398,15 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		case <-time.After(consensusParamsResponseTimeout):
 			continue
 		case <-ctx.Done():
-			return types.ConsensusParams{}, ctx.Err()
+			return nil, ctx.Err()
 		case params, ok := <-s.paramsRecvCh:
 			if !ok {
-				return types.ConsensusParams{}, errors.New("params channel closed")
+				return nil, errors.New("params channel closed")
 			}
-			return params, nil
+			return &params, nil
 		}
 	}
-	return types.ConsensusParams{}, errors.New("unable to fetch consensus params from connected providers")
+
+	// signal to caller to retry.
+	return nil, nil
 }

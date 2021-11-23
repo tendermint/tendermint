@@ -237,6 +237,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /remove_tx:
+    get:
+      summary: Removes a transaction from the mempool.
+      tags:
+        - TxKey
+      operationId: remove_tx
+      parameters:
+        - in: query
+          name: txKey
+          required: true
+          schema:
+            type: string
+            example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          description: The transaction key
+      responses:
+        "200":
+          description: empty response.
+        "500":
+          description: empty error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
@@ -1396,6 +1421,27 @@ components:
         remaining_time:
           type: string
           example: "0"
+        total_snapshots:
+          type: string
+          example: "10"      
+        chunk_process_avg_time:
+          type: string
+          example: "1000000000"      
+        snapshot_height:
+          type: string
+          example: "1262196"      
+        snapshot_chunks_count:
+          type: string
+          example: "10"      
+        snapshot_chunks_total:
+          type: string
+          example: "100"      
+        backfilled_blocks:
+          type: string
+          example: "10"      
+        backfill_blocks_total:
+          type: string
+          example: "100"                                                                  
     ValidatorInfo:
       type: object
       properties:

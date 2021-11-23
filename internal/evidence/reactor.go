@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -15,29 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	_ service.Service = (*Reactor)(nil)
-
-	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
-	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
-	// p2p proto.Message the new p2p Channel is responsible for handling.
-	//
-	//
-	// TODO: Remove once p2p refactor is complete.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		EvidenceChannel: {
-			MsgType: new(tmproto.EvidenceList),
-			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  byte(EvidenceChannel),
-				Priority:            6,
-				RecvMessageCapacity: maxMsgSize,
-				RecvBufferCapacity:  32,
-				MaxSendBytes:        400,
-			},
-		},
-	}
-)
+var _ service.Service = (*Reactor)(nil)
 
 const (
 	EvidenceChannel = p2p.ChannelID(0x38)
@@ -50,6 +29,18 @@ const (
 	// just over the block production rate before sending evidence again.
 	broadcastEvidenceIntervalS = 10
 )
+
+// GetChannelDescriptor produces an instance of a descriptor for this
+// package's required channels.
+func GetChannelDescriptor() *p2p.ChannelDescriptor {
+	return &p2p.ChannelDescriptor{
+		ID:                  EvidenceChannel,
+		MessageType:         new(tmproto.EvidenceList),
+		Priority:            6,
+		RecvMessageCapacity: maxMsgSize,
+		RecvBufferCapacity:  32,
+	}
+}
 
 // Reactor handles evpool evidence broadcasting amongst peers.
 type Reactor struct {
@@ -91,7 +82,7 @@ func NewReactor(
 // envelopes on each. In addition, it also listens for peer updates and handles
 // messages on that p2p channel accordingly. The caller must be sure to execute
 // OnStop to ensure the outbound p2p Channels are closed. No error is returned.
-func (r *Reactor) OnStart() error {
+func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.processEvidenceCh()
 	go r.processPeerUpdates()
 

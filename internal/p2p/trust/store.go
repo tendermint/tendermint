@@ -4,6 +4,7 @@
 package trust
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -11,6 +12,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -38,27 +40,27 @@ type MetricStore struct {
 // NewTrustMetricStore returns a store that saves data to the DB
 // and uses the config when creating new trust metrics.
 // Use Start to to initialize the trust metric store
-func NewTrustMetricStore(db dbm.DB, tmc MetricConfig) *MetricStore {
+func NewTrustMetricStore(db dbm.DB, tmc MetricConfig, logger log.Logger) *MetricStore {
 	tms := &MetricStore{
 		peerMetrics: make(map[string]*Metric),
 		db:          db,
 		config:      tmc,
 	}
 
-	tms.BaseService = *service.NewBaseService(nil, "MetricStore", tms)
+	tms.BaseService = *service.NewBaseService(logger, "MetricStore", tms)
 	return tms
 }
 
 // OnStart implements Service
-func (tms *MetricStore) OnStart() error {
-	if err := tms.BaseService.OnStart(); err != nil {
+func (tms *MetricStore) OnStart(ctx context.Context) error {
+	if err := tms.BaseService.OnStart(ctx); err != nil {
 		return err
 	}
 
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
-	tms.loadFromDB()
+	tms.loadFromDB(ctx)
 	go tms.saveRoutine()
 	return nil
 }
@@ -102,7 +104,7 @@ func (tms *MetricStore) AddPeerTrustMetric(key string, tm *Metric) {
 }
 
 // GetPeerTrustMetric returns a trust metric by peer key
-func (tms *MetricStore) GetPeerTrustMetric(key string) *Metric {
+func (tms *MetricStore) GetPeerTrustMetric(ctx context.Context, key string) *Metric {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
@@ -110,7 +112,7 @@ func (tms *MetricStore) GetPeerTrustMetric(key string) *Metric {
 	if !ok {
 		// If the metric is not available, we will create it
 		tm = NewMetricWithConfig(tms.config)
-		if err := tm.Start(); err != nil {
+		if err := tm.Start(ctx); err != nil {
 			tms.Logger.Error("unable to start metric store", "error", err)
 		}
 		// The metric needs to be in the map
@@ -151,7 +153,7 @@ func (tms *MetricStore) size() int {
 
 // Loads the history data for all peers from the store DB
 // cmn.Panics if file is corrupt
-func (tms *MetricStore) loadFromDB() bool {
+func (tms *MetricStore) loadFromDB(ctx context.Context) bool {
 	// Obtain the history data we have so far
 	bytes, err := tms.db.Get(trustMetricKey)
 	if err != nil {
@@ -172,7 +174,7 @@ func (tms *MetricStore) loadFromDB() bool {
 	for key, p := range peers {
 		tm := NewMetricWithConfig(tms.config)
 
-		if err := tm.Start(); err != nil {
+		if err := tm.Start(ctx); err != nil {
 			tms.Logger.Error("unable to start metric", "error", err)
 		}
 		tm.Init(p)

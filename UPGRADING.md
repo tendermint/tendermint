@@ -98,7 +98,7 @@ are:
 - `blockchain`
 - `evidence`
 
-Accordingly, the `node` package was changed to reduce access to
+Accordingly, the `node` package changed to reduce access to
 tendermint internals: applications that use tendermint as a library
 will need to change to accommodate these changes. Most notably:
 
@@ -108,6 +108,20 @@ will need to change to accommodate these changes. Most notably:
 - The `node.DefaultNewNode` and `node.NewNode` constructors are no
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
+
+To access any of the functionality previously available via the
+`node.Node` type, use the `*local.Local` "RPC" client, that exposes
+the full RPC interface provided as direct function calls. Import the
+`github.com/tendermint/tendermint/rpc/client/local` package and pass
+the node service as in the following: 
+
+```go
+    node := node.NewDefault() //construct the node object
+    // start and set up the node service 
+
+    client := local.New(node.(local.NodeService))
+    // use client object to interact with the node
+```
 
 ### gRPC Support
 
