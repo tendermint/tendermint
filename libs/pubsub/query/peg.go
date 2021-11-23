@@ -1,3 +1,3 @@
 package query
 
-//go:generate peg -inline -switch query.peg
+//go:generate go run github.com/pointlander/peg@v1.0.0 -inline -switch query.peg
