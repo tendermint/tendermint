@@ -92,7 +92,7 @@ func (p *Proposal) IsTimely(clock tmtime.Source, tp TimestampParams) bool {
 	lt := clock.Now()
 	lhs := lt.Add(-tp.Precision)
 	rhs := lt.Add(tp.Precision).Add(tp.MsgDelay)
-	if lhs.Before(p.Timestamp) && p.Timestamp.Before(rhs) {
+	if lhs.Before(p.Timestamp) && rhs.After(p.Timestamp) {
 		return true
 	}
 	return false
