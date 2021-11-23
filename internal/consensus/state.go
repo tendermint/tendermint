@@ -2416,3 +2416,39 @@ func repairWalFile(src, dst string) error {
 
 	return nil
 }
+
+// proposerWaitTime determines how long the proposer should wait to propose its next block.
+// If the result is zero, a block can be proposed immediately.
+//
+// Block times must be monotonically increasing, so if the block time of the previous
+// block is larger than the proposer's current time, then the proposer will sleep
+// until its local clock exceeds the previous block time.
+func proposerWaitTime(lt tmtime.Source, h types.Header) time.Duration {
+	t := lt.Now()
+	if h.Time.After(t) {
+		return h.Time.Sub(t)
+	}
+	return 0
+}
+
+// proposalStepWaitingTime is used along with the `timeout-propose` configuration
+// parameter to determines how long a validator will wait for a block to be sent from a proposer.
+// proposalStepWaitingTime ensures that the validator waits long enough for the proposer to
+// deliver a block with a monotically increasing timestamp.
+//
+// To ensure that the validator waits long enough, it must wait until the previous
+// block's timestamp. It also must account for the difference between its own clock and
+// the proposer's clock, i.e. the 'Precision', and the amount of time for the message to be transmitted,
+// i.e. the MsgDelay.
+//
+// The result of proposalStepWaitingTime is compared with the configured `timeout-propose` duration,
+// and the validator waits for whichever duration is larger before advancing to the next step
+// and prevoting nil.
+func proposalStepWaitingTime(lt tmtime.Source, h types.Header, tp types.TimestampParams) time.Duration {
+	t := lt.Now()
+	wt := h.Time.Add(tp.Precision).Add(tp.MsgDelay)
+	if t.After(wt) {
+		return 0
+	}
+	return wt.Sub(t)
+}
