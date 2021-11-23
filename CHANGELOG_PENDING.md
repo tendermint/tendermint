@@ -12,13 +12,13 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
-  - [config] \#7276 rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
+  - [config] [\#7276](https://github.com/tendermint/tendermint/pull/7276) rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
 
 - Apps
 
 - P2P Protocol
 
-  - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+  - [p2p] [\#7265](https://github.com/tendermint/tendermint/pull/7265) Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
 
 - Go API
 
@@ -29,3 +29,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [\#7310](https://github.com/tendermint/tendermint/issues/7310) pubsub: Report a non-nil error when shutting down (fixes #7306).
