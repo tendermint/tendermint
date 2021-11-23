@@ -2493,31 +2493,31 @@ func TestProposalTimeout(t *testing.T) {
 		name              string
 		localTime         time.Time
 		previousBlockTime time.Time
-		accuracy          time.Duration
+		precision         time.Duration
 		msgDelay          time.Duration
 		expectedDuration  time.Duration
 	}{
 		{
-			name:              "MsgDelay + 2 * Accuracy has not quite elapsed",
+			name:              "MsgDelay + Precision has not quite elapsed",
 			localTime:         genesisTime.Add(525 * time.Millisecond),
 			previousBlockTime: genesisTime.Add(6 * time.Millisecond),
-			accuracy:          time.Millisecond * 10,
+			precision:         time.Millisecond * 20,
 			msgDelay:          time.Millisecond * 500,
 			expectedDuration:  1 * time.Millisecond,
 		},
 		{
-			name:              "MsgDelay + 2 * Accuracy equals current time",
+			name:              "MsgDelay + Precision equals current time",
 			localTime:         genesisTime.Add(525 * time.Millisecond),
 			previousBlockTime: genesisTime.Add(5 * time.Millisecond),
-			accuracy:          time.Millisecond * 10,
+			precision:         time.Millisecond * 20,
 			msgDelay:          time.Millisecond * 500,
 			expectedDuration:  0,
 		},
 		{
-			name:              "MsgDelay + 2 * Accuracy has elapsed",
+			name:              "MsgDelay + Precision has elapsed",
 			localTime:         genesisTime.Add(725 * time.Millisecond),
 			previousBlockTime: genesisTime.Add(5 * time.Millisecond),
-			accuracy:          time.Millisecond * 10,
+			precision:         time.Millisecond * 20,
 			msgDelay:          time.Millisecond * 500,
 			expectedDuration:  0,
 		},
@@ -2534,8 +2534,8 @@ func TestProposalTimeout(t *testing.T) {
 			mockSource.On("Now").Return(testCase.localTime)
 
 			tp := types.TimestampParams{
-				Accuracy: testCase.accuracy,
-				MsgDelay: testCase.msgDelay,
+				Precision: testCase.precision,
+				MsgDelay:  testCase.msgDelay,
 			}
 
 			ti := proposalStepWaitingTime(mockSource, b.Header, tp)

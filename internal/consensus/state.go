@@ -2421,10 +2421,10 @@ func repairWalFile(src, dst string) error {
 // until its local clock exceeds the previous block time.
 func proposerWaitTime(lt tmtime.Source, h types.Header) time.Duration {
 	t := lt.Now()
-	if t.After(h.Time) {
-		return 0
+	if h.Time.After(t) {
+		return h.Time.Sub(t)
 	}
-	return h.Time.Sub(t)
+	return 0
 }
 
 // proposalStepWaitingTime is used along with the `timeout-propose` configuration
@@ -2433,15 +2433,16 @@ func proposerWaitTime(lt tmtime.Source, h types.Header) time.Duration {
 // deliver a block with a monotically increasing timestamp.
 //
 // To ensure that the validator waits long enough, it must wait until the previous
-// block's timestamp. It also must account for inaccuracy in its own clock, inaccuracy
-// in the proposer's clock and the amount of time for the message to be transmitted.
+// block's timestamp. It also must account for the difference between its own clock and
+// the proposer's clock, i.e. the 'Precision', and the amount of time for the message to be transmitted,
+// i.e. the MsgDelay.
 //
 // The result of proposalStepWaitingTime is compared with the configured `timeout-propose` duration,
 // and the validator waits for whichever duration is larger before advancing to the next step
 // and prevoting nil.
 func proposalStepWaitingTime(lt tmtime.Source, h types.Header, tp types.TimestampParams) time.Duration {
 	t := lt.Now()
-	wt := h.Time.Add(2 * tp.Accuracy).Add(tp.MsgDelay)
+	wt := h.Time.Add(tp.Precision).Add(tp.MsgDelay)
 	if t.After(wt) {
 		return 0
 	}
