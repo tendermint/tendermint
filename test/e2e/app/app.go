@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -26,6 +26,55 @@ type Application struct {
 	cfg             *Config
 	restoreSnapshot *abci.Snapshot
 	restoreChunks   [][]byte
+}
+
+// Config allows for the setting of high level parameters for running the e2e Application
+// KeyType and ValidatorUpdates must be the same for all nodes running the same application.
+type Config struct {
+	// The directory with which state.json will be persisted in. Usually $HOME/.tendermint/data
+	Dir string `toml:"dir"`
+
+	// SnapshotInterval specifies the height interval at which the application
+	// will take state sync snapshots. Defaults to 0 (disabled).
+	SnapshotInterval uint64 `toml:"snapshot_interval"`
+
+	// RetainBlocks specifies the number of recent blocks to retain. Defaults to
+	// 0, which retains all blocks. Must be greater that PersistInterval,
+	// SnapshotInterval and EvidenceAgeHeight.
+	RetainBlocks uint64 `toml:"retain_blocks"`
+
+	// KeyType sets the curve that will be used by validators.
+	// Options are ed25519 & secp256k1
+	KeyType string `toml:"key_type"`
+
+	// PersistInterval specifies the height interval at which the application
+	// will persist state to disk. Defaults to 1 (every height), setting this to
+	// 0 disables state persistence.
+	PersistInterval uint64 `toml:"persist_interval"`
+
+	// ValidatorUpdates is a map of heights to validator names and their power,
+	// and will be returned by the ABCI application. For example, the following
+	// changes the power of validator01 and validator02 at height 1000:
+	//
+	// [validator_update.1000]
+	// validator01 = 20
+	// validator02 = 10
+	//
+	// Specifying height 0 returns the validator update during InitChain. The
+	// application returns the validator updates as-is, i.e. removing a
+	// validator must be done by returning it with power 0, and any validators
+	// not specified are not changed.
+	//
+	// height <-> pubkey <-> voting power
+	ValidatorUpdates map[string]map[string]uint8 `toml:"validator_update"`
+}
+
+func DefaultConfig(dir string) *Config {
+	return &Config{
+		PersistInterval:  1,
+		SnapshotInterval: 100,
+		Dir:              dir,
+	}
 }
 
 // NewApplication creates the application.

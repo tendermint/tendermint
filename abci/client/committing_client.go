@@ -160,6 +160,13 @@ func (app *committingClient) InitChainAsync(req types.RequestInitChain) *ReqRes 
 }
 
 func (app *committingClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRes {
+	if len(req.Header.AppHash) > 0 && !app.mtx.IsInitialized() {
+		// We already have some state, so mark as initialized.
+		app.mtx.Lock()
+		app.mtx.Initialize()
+		app.mtx.Unlock()
+	}
+
 	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
@@ -309,6 +316,13 @@ func (app *committingClient) InitChainSync(req types.RequestInitChain) (*types.R
 }
 
 func (app *committingClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+	if len(req.Header.AppHash) > 0 && !app.mtx.IsInitialized() {
+		// We already have some state, so mark as initialized.
+		app.mtx.Lock()
+		app.mtx.Initialize()
+		app.mtx.Unlock()
+	}
+
 	// Blocked only by state writers
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()

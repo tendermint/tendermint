@@ -81,7 +81,7 @@ type ReqRes struct {
 	*sync.WaitGroup
 	*types.Response // Not set atomically, so be sure to use WaitGroup.
 
-	mtx  tmsync.RWMutex
+	mtx  tmsync.Mutex
 	done bool                  // Gets set to true once *after* WaitGroup.Done().
 	cb   func(*types.Response) // A single callback that may be set.
 }
@@ -131,16 +131,16 @@ func (r *ReqRes) InvokeCallback() {
 //
 // ref: https://github.com/tendermint/tendermint/issues/5439
 func (r *ReqRes) GetCallback() func(*types.Response) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	return r.cb
 }
 
 // SetDone marks the ReqRes object as done.
 func (r *ReqRes) SetDone() {
 	r.mtx.Lock()
-	defer r.mtx.Unlock()
 	r.done = true
+	r.mtx.Unlock()
 }
 
 func waitGroup1() (wg *sync.WaitGroup) {

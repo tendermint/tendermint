@@ -91,3 +91,7 @@ func (rwi *RWInitMutex) Initialize() {
 	rwi.initialized = true
 	rwi.waitForInit.Broadcast()
 }
+
+func (rwi *RWInitMutex) IsInitialized() bool {
+	return rwi.initialized
+}

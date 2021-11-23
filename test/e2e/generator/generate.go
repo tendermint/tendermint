@@ -15,7 +15,6 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"ipv6":          {false, true},
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -26,11 +25,12 @@ var (
 
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
+	ipv6          = uniformChoice{false, true}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
 	// FIXME: v2 disabled due to flake
-	nodeFastSyncs         = uniformChoice{"", "v0"} // "v2"
+	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -66,7 +66,8 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
-		IPv6:             opt["ipv6"].(bool),
+		IPv6:             ipv6.Choose(r).(bool),
+		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -207,7 +208,6 @@ func generateNode(
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
 		FastSync:         nodeFastSyncs.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
@@ -264,7 +264,6 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 		Mode:            string(e2e.ModeLight),
 		StartAt:         startAt,
 		Database:        nodeDatabases.Choose(r).(string),
-		ABCIProtocol:    "builtin",
 		PersistInterval: ptrUint64(0),
 		PersistentPeers: providers,
 	}
