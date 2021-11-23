@@ -3,12 +3,14 @@ package version
 import tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
 var (
-	// TMCoreSemVer is the current version of Tendermint Core.
-	// It's the Semantic Version of the software.
-	TMCoreSemVer string
+	TMVersion = TMVersionDefault
 )
 
 const (
+
+	// TMVersionDefault is the used as the fallback version of Tendermint Core
+	// when not using git describe. It is formatted with semantic versioning.
+	TMVersionDefault = "0.35.0-unreleased"
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer = "0.17.0"
 

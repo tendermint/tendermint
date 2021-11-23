@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -15,11 +16,9 @@ import (
 
 // ShowValidatorCmd adds capabilities for showing the validator info.
 var ShowValidatorCmd = &cobra.Command{
-	Use:     "show-validator",
-	Aliases: []string{"show_validator"},
-	Short:   "Show this node's validator info",
-	RunE:    showValidator,
-	PreRun:  deprecateSnakeCase,
+	Use:   "show-validator",
+	Short: "Show this node's validator info",
+	RunE:  showValidator,
 }
 
 func showValidator(cmd *cobra.Command, args []string) error {
@@ -29,27 +28,42 @@ func showValidator(cmd *cobra.Command, args []string) error {
 	)
 
 	//TODO: remove once gRPC is the only supported protocol
-	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 	switch protocol {
 	case "grpc":
-		pvsc, err := tmgrpc.DialRemoteSigner(config, config.ChainID(), logger)
+		pvsc, err := tmgrpc.DialRemoteSigner(
+			config.PrivValidator,
+			config.ChainID(),
+			logger,
+			config.Instrumentation.Prometheus,
+		)
 		if err != nil {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
-		pubKey, err = pvsc.GetPubKey()
+
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err = pvsc.GetPubKey(ctx)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
 	default:
 
-		keyFilePath := config.PrivValidatorKeyFile()
+		keyFilePath := config.PrivValidator.KeyFile()
 		if !tmos.FileExists(keyFilePath) {
 			return fmt.Errorf("private validator file %s does not exist", keyFilePath)
 		}
 
-		pv := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
+		pv, err := privval.LoadFilePV(keyFilePath, config.PrivValidator.StateFile())
+		if err != nil {
+			return err
+		}
 
-		pubKey, err = pv.GetPubKey()
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err = pv.GetPubKey(ctx)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

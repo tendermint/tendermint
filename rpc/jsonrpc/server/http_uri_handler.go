@@ -5,14 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"reflect"
 	"regexp"
 	"strings"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // HTTP + URI handler
@@ -22,31 +23,33 @@ var reInt = regexp.MustCompile(`^-?[0-9]+$`)
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
 	// Always return -1 as there's no ID here.
-	dummyID := types.JSONRPCIntID(-1) // URIClientRequestID
+	dummyID := rpctypes.JSONRPCIntID(-1) // URIClientRequestID
 
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTPError(w, types.RPCMethodNotFoundError(dummyID))
+			res := rpctypes.RPCMethodNotFoundError(dummyID)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 		}
 	}
 
 	// All other endpoints
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Debug("HTTP HANDLER", "req", r)
+		logger.Debug("HTTP HANDLER", "req", dumpHTTPRequest(r))
 
-		ctx := &types.Context{HTTPReq: r}
+		ctx := &rpctypes.Context{HTTPReq: r}
 		args := []reflect.Value{reflect.ValueOf(ctx)}
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTPError(
-				w,
-				types.RPCInvalidParamsError(
-					dummyID,
-					fmt.Errorf("error converting http params to arguments: %w", err),
-				),
+			res := rpctypes.RPCInvalidParamsError(dummyID,
+				fmt.Errorf("error converting http params to arguments: %w", err),
 			)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 		args = append(args, fnArgs...)
@@ -58,21 +61,33 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		switch e := err.(type) {
 		// if no error then return a success response
 		case nil:
-			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
+			res := rpctypes.NewRPCSuccessResponse(dummyID, result)
+			if wErr := WriteRPCResponseHTTP(w, rpcFunc.cache, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 
 		// if this already of type RPC error then forward that error.
-		case *types.RPCError:
-			WriteRPCResponseHTTPError(w, types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
+		case *rpctypes.RPCError:
+			res := rpctypes.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 
 		default: // we need to unwrap the error and parse it accordingly
+			var res rpctypes.RPCResponse
 
 			switch errors.Unwrap(err) {
-			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
-				ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
-				WriteRPCResponseHTTPError(w, types.RPCInvalidRequestError(dummyID, err))
-
+			case coretypes.ErrZeroOrNegativeHeight,
+				coretypes.ErrZeroOrNegativePerPage,
+				coretypes.ErrPageOutOfRange,
+				coretypes.ErrInvalidRequest:
+				res = rpctypes.RPCInvalidRequestError(dummyID, err)
 			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				WriteRPCResponseHTTPError(w, types.RPCInternalError(dummyID, err))
+				res = rpctypes.RPCInternalError(dummyID, err)
+			}
+
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
 			}
 		}
 
@@ -217,4 +232,13 @@ func getParam(r *http.Request, param string) string {
 		s = r.FormValue(param)
 	}
 	return s
+}
+
+func dumpHTTPRequest(r *http.Request) string {
+	d, e := httputil.DumpRequest(r, true)
+	if e != nil {
+		return e.Error()
+	}
+
+	return string(d)
 }

@@ -1,11 +1,12 @@
 package privval
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -22,9 +23,9 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
+func NewSignerClient(ctx context.Context, endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
-		if err := endpoint.Start(); err != nil {
+		if err := endpoint.Start(ctx); err != nil {
 			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}
@@ -68,7 +69,7 @@ func (sc *SignerClient) Ping() error {
 
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
-func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
+func (sc *SignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID}))
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
@@ -82,7 +83,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 		return nil, &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
 	}
 
-	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
+	pk, err := encoding.PubKeyFromProto(resp.PubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +92,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 }
 
 // SignVote requests a remote signer to sign a vote
-func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
+func (sc *SignerClient) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID}))
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (sc *SignerClient) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(
 		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID},
 	))

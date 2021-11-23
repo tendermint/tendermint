@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/tendermint/tendermint/libs/protoio"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
 )
 
 const (
@@ -15,11 +15,7 @@ const (
 func WriteMessage(msg proto.Message, w io.Writer) error {
 	protoWriter := protoio.NewDelimitedWriter(w)
 	_, err := protoWriter.WriteMsg(msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // ReadMessage reads a varint length-delimited protobuf message.

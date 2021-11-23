@@ -1,6 +1,8 @@
 package e2e_test
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -9,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -16,9 +19,6 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
 		if len(node.Testnet.InitialState) == 0 {
 			return
 		}
@@ -38,55 +38,125 @@ func TestApp_InitialState(t *testing.T) {
 // block and the node sync status.
 func TestApp_Hash(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
-
 		client, err := node.Client()
 		require.NoError(t, err)
 		info, err := client.ABCIInfo(ctx)
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
 
-		block, err := client.Block(ctx, nil)
-		require.NoError(t, err)
-		require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash,
-			"app hash does not match last block's app hash")
-
 		status, err := client.Status(ctx)
 		require.NoError(t, err)
-		require.EqualValues(t, info.Response.LastBlockAppHash, status.SyncInfo.LatestAppHash,
-			"app hash does not match node status")
+
+		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
+		require.NoError(t, err)
+
+		if info.Response.LastBlockHeight == block.Block.Height {
+			require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
+				"app hash does not match last block's app hash")
+		}
+
+		require.True(t, status.SyncInfo.LatestBlockHeight >= info.Response.LastBlockHeight,
+			"status out of sync with application")
 	})
 }
 
 // Tests that we can set a value and retrieve it.
 func TestApp_Tx(t *testing.T) {
-	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
+	type broadcastFunc func(context.Context, types.Tx) error
+
+	testCases := []struct {
+		Name        string
+		WaitTime    time.Duration
+		BroadcastTx func(client *http.HTTP) broadcastFunc
+		ShouldSkip  bool
+	}{
+		{
+			Name:     "Sync",
+			WaitTime: time.Minute,
+			BroadcastTx: func(client *http.HTTP) broadcastFunc {
+				return func(ctx context.Context, tx types.Tx) error {
+					_, err := client.BroadcastTxSync(ctx, tx)
+					return err
+				}
+			},
+		},
+		{
+			Name:     "Commit",
+			WaitTime: 15 * time.Second,
+			// TODO: turn this check back on if it can
+			// return reliably. Currently these calls have
+			// a hard timeout of 10s (server side
+			// configured). The Sync check is probably
+			// safe.
+			ShouldSkip: true,
+			BroadcastTx: func(client *http.HTTP) broadcastFunc {
+				return func(ctx context.Context, tx types.Tx) error {
+					_, err := client.BroadcastTxCommit(ctx, tx)
+					return err
+				}
+			},
+		},
+		{
+			Name:     "Async",
+			WaitTime: 90 * time.Second,
+			// TODO: turn this check back on if there's a
+			// way to avoid failures in the case that the
+			// transaction doesn't make it into the
+			// mempool. (retries?)
+			ShouldSkip: true,
+			BroadcastTx: func(client *http.HTTP) broadcastFunc {
+				return func(ctx context.Context, tx types.Tx) error {
+					_, err := client.BroadcastTxAsync(ctx, tx)
+					return err
+				}
+			},
+		},
+	}
+
+	for idx, test := range testCases {
+		if test.ShouldSkip {
+			continue
 		}
+		t.Run(test.Name, func(t *testing.T) {
+			// testNode calls t.Parallel as well, so we should
+			// have a copy of the
+			test := testCases[idx]
+			testNode(t, func(t *testing.T, node e2e.Node) {
+				client, err := node.Client()
+				require.NoError(t, err)
 
-		client, err := node.Client()
-		require.NoError(t, err)
+				// Generate a random value, to prevent duplicate tx errors when
+				// manually running the test multiple times for a testnet.
+				bz := make([]byte, 32)
+				_, err = rand.Read(bz)
+				require.NoError(t, err)
 
-		// Generate a random value, to prevent duplicate tx errors when
-		// manually running the test multiple times for a testnet.
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		bz := make([]byte, 32)
-		_, err = r.Read(bz)
-		require.NoError(t, err)
+				key := fmt.Sprintf("testapp-tx-%v", node.Name)
+				value := fmt.Sprintf("%x", bz)
+				tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
-		key := fmt.Sprintf("testapp-tx-%v", node.Name)
-		value := fmt.Sprintf("%x", bz)
-		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
+				require.NoError(t, test.BroadcastTx(client)(ctx, tx))
 
-		_, err = client.BroadcastTxCommit(ctx, tx)
-		require.NoError(t, err)
+				hash := tx.Hash()
 
-		resp, err := client.ABCIQuery(ctx, "", []byte(key))
-		require.NoError(t, err)
-		assert.Equal(t, key, string(resp.Response.Key))
-		assert.Equal(t, value, string(resp.Response.Value))
-	})
+				require.Eventuallyf(t, func() bool {
+					txResp, err := client.Tx(ctx, hash, false)
+					return err == nil && bytes.Equal(txResp.Tx, tx)
+				},
+					test.WaitTime, // timeout
+					time.Second,   // interval
+					"submitted tx %X wasn't committed after %v",
+					hash, test.WaitTime,
+				)
+
+				abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
+				require.NoError(t, err)
+				assert.Equal(t, key, string(abciResp.Response.Key))
+				assert.Equal(t, value, string(abciResp.Response.Value))
+			})
+
+		})
+
+	}
+
 }

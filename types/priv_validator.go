@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 
@@ -10,13 +11,25 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
+// PrivValidatorType defines the implemtation types.
+type PrivValidatorType uint8
+
+const (
+	MockSignerClient      = PrivValidatorType(0x00) // mock signer
+	FileSignerClient      = PrivValidatorType(0x01) // signer client via file
+	RetrySignerClient     = PrivValidatorType(0x02) // signer client with retry via socket
+	SignerSocketClient    = PrivValidatorType(0x03) // signer client via socket
+	ErrorMockSignerClient = PrivValidatorType(0x04) // error mock signer
+	SignerGRPCClient      = PrivValidatorType(0x05) // signer client via gRPC
+)
+
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
-	GetPubKey() (crypto.PubKey, error)
+	GetPubKey(context.Context) (crypto.PubKey, error)
 
-	SignVote(chainID string, vote *tmproto.Vote) error
-	SignProposal(chainID string, proposal *tmproto.Proposal) error
+	SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error
+	SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error
 }
 
 type PrivValidatorsByAddress []PrivValidator
@@ -26,11 +39,11 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	pvi, err := pvs[i].GetPubKey()
+	pvi, err := pvs[i].GetPubKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
-	pvj, err := pvs[j].GetPubKey()
+	pvj, err := pvs[j].GetPubKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -65,12 +78,12 @@ func NewMockPVWithParams(privKey crypto.PrivKey, breakProposalSigning, breakVote
 }
 
 // Implements PrivValidator.
-func (pv MockPV) GetPubKey() (crypto.PubKey, error) {
+func (pv MockPV) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	return pv.PrivKey.PubKey(), nil
 }
 
 // Implements PrivValidator.
-func (pv MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
+func (pv MockPV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
@@ -86,7 +99,7 @@ func (pv MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // Implements PrivValidator.
-func (pv MockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (pv MockPV) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	useChainID := chainID
 	if pv.breakProposalSigning {
 		useChainID = "incorrect-chain-id"
@@ -102,7 +115,7 @@ func (pv MockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error 
 }
 
 func (pv MockPV) ExtractIntoValidator(votingPower int64) *Validator {
-	pubKey, _ := pv.GetPubKey()
+	pubKey, _ := pv.GetPubKey(context.Background())
 	return &Validator{
 		Address:     pubKey.Address(),
 		PubKey:      pubKey,
@@ -112,7 +125,7 @@ func (pv MockPV) ExtractIntoValidator(votingPower int64) *Validator {
 
 // String returns a string representation of the MockPV.
 func (pv MockPV) String() string {
-	mpv, _ := pv.GetPubKey() // mockPV will never return an error, ignored here
+	mpv, _ := pv.GetPubKey(context.Background()) // mockPV will never return an error, ignored here
 	return fmt.Sprintf("MockPV{%v}", mpv.Address())
 }
 
@@ -129,17 +142,17 @@ type ErroringMockPV struct {
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
 // Implements PrivValidator.
-func (pv *ErroringMockPV) GetPubKey() (crypto.PubKey, error) {
+func (pv *ErroringMockPV) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	return nil, ErroringMockPVErr
 }
 
 // Implements PrivValidator.
-func (pv *ErroringMockPV) SignVote(chainID string, vote *tmproto.Vote) error {
+func (pv *ErroringMockPV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	return ErroringMockPVErr
 }
 
 // Implements PrivValidator.
-func (pv *ErroringMockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (pv *ErroringMockPV) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	return ErroringMockPVErr
 }
 

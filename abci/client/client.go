@@ -1,4 +1,4 @@
-package abcicli
+package abciclient
 
 import (
 	"context"
@@ -6,8 +6,9 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 	echoRetryIntervalSeconds = 1
 )
 
-//go:generate mockery --case underscore --name Client
+//go:generate ../../scripts/mockery_generate.sh Client
 
 // Client defines an interface for an ABCI client.
 //
@@ -68,12 +69,12 @@ type Client interface {
 
 // NewClient returns a new ABCI client of the specified transport type.
 // It returns an error if the transport is not "socket" or "grpc"
-func NewClient(addr, transport string, mustConnect bool) (client Client, err error) {
+func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (client Client, err error) {
 	switch transport {
 	case "socket":
-		client = NewSocketClient(addr, mustConnect)
+		client = NewSocketClient(logger, addr, mustConnect)
 	case "grpc":
-		client = NewGRPCClient(addr, mustConnect)
+		client = NewGRPCClient(logger, addr, mustConnect)
 	default:
 		err = fmt.Errorf("unknown abci transport %s", transport)
 	}

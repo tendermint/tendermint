@@ -224,7 +224,7 @@ This can be made automatically. Say we set queue size to 1000 and, when it's >=
 
 ## Status
 
-In review
+Implemented
 
 ## Consequences
 

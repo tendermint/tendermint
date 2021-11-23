@@ -8,7 +8,9 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
@@ -21,12 +23,34 @@ type Proxy struct {
 	Listener net.Listener
 }
 
+// NewProxy creates the struct used to run an HTTP server for serving light
+// client rpc requests.
+func NewProxy(
+	lightClient *light.Client,
+	listenAddr, providerAddr string,
+	config *rpcserver.Config,
+	logger log.Logger,
+	opts ...lrpc.Option,
+) (*Proxy, error) {
+	rpcClient, err := rpchttp.NewWithTimeout(providerAddr, config.WriteTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create http client for %s: %w", providerAddr, err)
+	}
+
+	return &Proxy{
+		Addr:   listenAddr,
+		Config: config,
+		Client: lrpc.NewClient(rpcClient, lightClient, opts...),
+		Logger: logger,
+	}, nil
+}
+
 // ListenAndServe configures the rpcserver.WebsocketManager, sets up the RPC
 // routes to proxy via Client, and starts up an HTTP server on the TCP network
 // address p.Addr.
 // See http#Server#ListenAndServe.
-func (p *Proxy) ListenAndServe() error {
-	listener, mux, err := p.listen()
+func (p *Proxy) ListenAndServe(ctx context.Context) error {
+	listener, mux, err := p.listen(ctx)
 	if err != nil {
 		return err
 	}
@@ -43,8 +67,8 @@ func (p *Proxy) ListenAndServe() error {
 // ListenAndServeTLS acts identically to ListenAndServe, except that it expects
 // HTTPS connections.
 // See http#Server#ListenAndServeTLS.
-func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
-	listener, mux, err := p.listen()
+func (p *Proxy) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
+	listener, mux, err := p.listen(ctx)
 	if err != nil {
 		return err
 	}
@@ -60,7 +84,7 @@ func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
 	)
 }
 
-func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
+func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error) {
 	mux := http.NewServeMux()
 
 	// 1) Register regular routes.
@@ -83,13 +107,13 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 
 	// 3) Start a client.
 	if !p.Client.IsRunning() {
-		if err := p.Client.Start(); err != nil {
+		if err := p.Client.Start(ctx); err != nil {
 			return nil, mux, fmt.Errorf("can't start client: %w", err)
 		}
 	}
 
 	// 4) Start listening for new connections.
-	listener, err := rpcserver.Listen(p.Addr, p.Config)
+	listener, err := rpcserver.Listen(p.Addr, p.Config.MaxOpenConnections)
 	if err != nil {
 		return nil, mux, err
 	}

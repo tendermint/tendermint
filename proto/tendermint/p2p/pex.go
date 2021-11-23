@@ -1,9 +1,9 @@
 package p2p
 
 import (
-	fmt "fmt"
+	"fmt"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a PEX message.
@@ -14,7 +14,7 @@ func (m *PexMessage) Wrap(pb proto.Message) error {
 	case *PexResponse:
 		m.Sum = &PexMessage_PexResponse{PexResponse: msg}
 	default:
-		return fmt.Errorf("unknown message: %T", msg)
+		return fmt.Errorf("unknown pex message: %T", msg)
 	}
 	return nil
 }
@@ -28,6 +28,6 @@ func (m *PexMessage) Unwrap() (proto.Message, error) {
 	case *PexMessage_PexResponse:
 		return msg.PexResponse, nil
 	default:
-		return nil, fmt.Errorf("unknown message: %T", msg)
+		return nil, fmt.Errorf("unknown pex message: %T", msg)
 	}
 }

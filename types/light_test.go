@@ -12,14 +12,14 @@ import (
 )
 
 func TestLightBlockValidateBasic(t *testing.T) {
-	header := makeRandHeader()
+	header := MakeRandHeader()
 	commit := randCommit(time.Now())
-	vals, _ := RandValidatorSet(5, 1)
+	vals, _ := randValidatorPrivValSet(5, 1)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.ValidatorsHash = vals.Hash()
 	header.Version.Block = version.BlockProtocol
-	vals2, _ := RandValidatorSet(3, 1)
+	vals2, _ := randValidatorPrivValSet(3, 1)
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
 	commit.BlockID.Hash = header.Hash()
@@ -57,9 +57,9 @@ func TestLightBlockValidateBasic(t *testing.T) {
 }
 
 func TestLightBlockProtobuf(t *testing.T) {
-	header := makeRandHeader()
+	header := MakeRandHeader()
 	commit := randCommit(time.Now())
-	vals, _ := RandValidatorSet(5, 1)
+	vals, _ := randValidatorPrivValSet(5, 1)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.Version.Block = version.BlockProtocol
@@ -152,11 +152,13 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 				Header: tc.shHeader,
 				Commit: tc.shCommit,
 			}
-			assert.Equal(
+			err := sh.ValidateBasic(validSignedHeader.Header.ChainID)
+			assert.Equalf(
 				t,
 				tc.expectErr,
-				sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil,
+				err != nil,
 				"Validate Basic had an unexpected result",
+				err,
 			)
 		})
 	}

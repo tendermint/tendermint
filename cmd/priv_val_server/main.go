@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -46,9 +45,8 @@ func main() {
 		rootCA           = flag.String("rootcafile", "", "absolute path to root CA")
 		prometheusAddr   = flag.String("prometheus-addr", "", "address for prometheus endpoint (host:port)")
 
-		logger = log.NewTMLogger(
-			log.NewSyncWriter(os.Stdout),
-		).With("module", "priv_val")
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false).
+			With("module", "priv_val")
 	)
 	flag.Parse()
 
@@ -64,7 +62,11 @@ func main() {
 		"rootCA", *rootCA,
 	)
 
-	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
+	pv, err := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	opts := []grpc.ServerOption{}
 	if !*insecure {
@@ -75,7 +77,7 @@ func main() {
 		}
 
 		certPool := x509.NewCertPool()
-		bs, err := ioutil.ReadFile(*rootCA)
+		bs, err := os.ReadFile(*rootCA)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to read client ca cert: %s", err)
 			os.Exit(1)

@@ -4,33 +4,27 @@ order: 7
 
 ## Logging
 
-Logging adds detail and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per-module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on. 
+Logging adds detail and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per-module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on.
 
 ## Configuring Log Levels
-
 
 There are three log levels, `info`, `debug` and `error`. These can be configured either through the command line via  `tendermint start --log-level ""` or within the `config.toml` file.
 
 - `info` Info represents an informational message. It is used to show that modules have started, stopped and how they are functioning.
 - `debug` Debug is used to trace various calls or problems. Debug is used widely throughout a codebase and can lead to overly verbose logging.
-- `error` Error represents something that has gone wrong. An error log can represent a potential problem that can lead to a node halt. 
-
-
-The default setting is a global `main:info,state:info,statesync:info,*:error` level. If you would like to set the log level for a specific module, it can be done in the following format: 
-
-> We are setting all modules to log level `info` and the mempool to `error`. This will log all errors within the mempool module. 
+- `error` Error represents something that has gone wrong. An error log can represent a potential problem that can lead to a node halt.
 
 Within the `config.toml`:
 
 ```toml
 # Output level for logging, including package level options
-log-level = "*:info,mempool:error"
+log-level = "info"
 ```
 
 Via the command line:
 
 ```sh
-tendermint start --log-level "*:info,mempool:error"
+tendermint start --log-level "info"
 ```
 
 ## List of modules
@@ -38,7 +32,7 @@ tendermint start --log-level "*:info,mempool:error"
 Here is the list of modules you may encounter in Tendermint's log and a
 little overview what they do.
 
-- `abci-client` As mentioned in [Application Development Guide](../app-dev/app-development.md), Tendermint acts as an ABCI
+- `abci-client` As mentioned in [Application Architecture Guide](../app-dev/app-architecture.md), Tendermint acts as an ABCI
   client with respect to the application and maintains 3 connections:
   mempool, consensus and query. The code used by Tendermint Core can
   be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
@@ -51,18 +45,17 @@ little overview what they do.
   from a crash.
   [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
   You can subscribe to them by calling `subscribe` RPC method. Refer
-  to [RPC docs](./rpc.md) for additional information.
+  to [RPC docs](../tendermint-core/rpc.md) for additional information.
 - `mempool` Mempool module handles all incoming transactions, whenever
   they are coming from peers or the application.
 - `p2p` Provides an abstraction around peer-to-peer communication. For
   more details, please check out the
-  [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
+  [README](https://github.com/tendermint/spec/tree/master/spec/p2p).
 - `rpc-server` RPC server. For implementation details, please read the
   [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `statesync` Provides a way to quickly sync a node with pruned history.
-
 
 ### Walkabout example
 

@@ -3,7 +3,6 @@ package debug
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -28,13 +27,13 @@ go-routine state, and the node's WAL and config information. This aggregated dat
 is packaged into a compressed archive.
 
 Example:
-$ tendermint debug 34255 /path/to/tm-debug.zip`,
+$ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 	Args: cobra.ExactArgs(2),
 	RunE: killCmdHandler,
 }
 
 func killCmdHandler(cmd *cobra.Command, args []string) error {
-	pid, err := strconv.ParseUint(args[0], 10, 64)
+	pid, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -44,19 +43,19 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create new http client: %w", err)
 	}
 
 	home := viper.GetString(cli.HomeFlag)
-	conf := cfg.DefaultConfig()
+	conf := config.DefaultConfig()
 	conf = conf.SetRoot(home)
-	cfg.EnsureRoot(conf.RootDir)
+	config.EnsureRoot(conf.RootDir)
 
 	// Create a temporary directory which will contain all the state dumps and
 	// relevant files and directories that will be compressed into a file.
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "tendermint_debug_tmp")
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "tendermint_debug_tmp")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
@@ -92,7 +91,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.Info("killing Tendermint process")
-	if err := killProc(pid, tmpDir); err != nil {
+	if err := killProc(int(pid), tmpDir); err != nil {
 		return err
 	}
 
@@ -105,7 +104,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 // is tailed and piped to a file under the directory dir. An error is returned
 // if the output file cannot be created or the tail command cannot be started.
 // An error is not returned if any subsequent syscall fails.
-func killProc(pid uint64, dir string) error {
+func killProc(pid int, dir string) error {
 	// pipe STDERR output from tailing the Tendermint process to a file
 	//
 	// NOTE: This will only work on UNIX systems.
@@ -128,7 +127,7 @@ func killProc(pid uint64, dir string) error {
 	go func() {
 		// Killing the Tendermint process with the '-ABRT|-6' signal will result in
 		// a goroutine stacktrace.
-		p, err := os.FindProcess(int(pid))
+		p, err := os.FindProcess(pid)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to find PID to kill Tendermint process: %s", err)
 		} else if err = p.Signal(syscall.SIGABRT); err != nil {

@@ -119,11 +119,11 @@ network usage.
 ---
 
 Check out the formal specification
-[here](https://docs.tendermint.com/master/spec/consensus/light-client.html).
+[here](https://github.com/tendermint/spec/tree/master/spec/light-client).
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Consequences
 

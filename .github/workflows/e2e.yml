@@ -16,9 +16,9 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.15'
-      - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v4
+          go-version: '1.17'
+      - uses: actions/checkout@v2.4.0
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
@@ -28,15 +28,11 @@ jobs:
       - name: Build
         working-directory: test/e2e
         # Run two make jobs in parallel, since we can't run steps in parallel.
-        run: make -j2 docker runner
+        run: make -j2 docker runner tests
         if: "env.GIT_DIFF != ''"
 
       - name: Run CI testnet
         working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml
+        run: ./run-multiple.sh networks/ci.toml
         if: "env.GIT_DIFF != ''"
 
-      - name: Emit logs on failure
-        if: ${{ failure() }}
-        working-directory: test/e2e
-        run: ./build/runner -f networks/ci.toml logs

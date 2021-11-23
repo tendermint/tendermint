@@ -1,7 +1,6 @@
 package types
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 )
 
 func TestGenesisBad(t *testing.T) {
@@ -122,7 +121,7 @@ func TestGenesisGood(t *testing.T) {
 }
 
 func TestGenesisSaveAs(t *testing.T) {
-	tmpfile, err := ioutil.TempFile("", "genesis")
+	tmpfile, err := os.CreateTemp("", "genesis")
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 

@@ -1,35 +1,35 @@
-// Package pubsub implements a pub-sub model with a single publisher (Server)
-// and multiple subscribers (clients).
+// Package pubsub implements an event dispatching server with a single publisher
+// and multiple subscriber clients. Multiple goroutines can safely publish to a
+// single Server instance.
 //
-// Though you can have multiple publishers by sharing a pointer to a server or
-// by giving the same channel to each publisher and publishing messages from
-// that channel (fan-in).
-//
-// Clients subscribe for messages, which could be of any type, using a query.
-// When some message is published, we match it with all queries. If there is a
-// match, this message will be pushed to all clients, subscribed to that query.
-// See query subpackage for our implementation.
+// Clients register subscriptions with a query to select which messages they
+// wish to receive. When messages are published, they are broadcast to all
+// clients whose subscription query matches that message. Queries are
+// constructed using the github.com/tendermint/tendermint/libs/pubsub/query
+// package.
 //
 // Example:
 //
-//     q, err := query.New("account.name='John'")
+//     q, err := query.New(`account.name='John'`)
 //     if err != nil {
 //         return err
 //     }
-//     ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
-//     defer cancel()
-//     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q)
+//     sub, err := pubsub.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
+//         ClientID: "johns-transactions",
+//         Query:    q,
+//     })
 //     if err != nil {
 //         return err
 //     }
 //
 //     for {
-//         select {
-//         case msg <- subscription.Out():
-//             // handle msg.Data() and msg.Events()
-//         case <-subscription.Canceled():
-//             return subscription.Err()
+//         next, err := sub.Next(ctx)
+//         if err == pubsub.ErrTerminated {
+//            return err // terminated by publisher
+//         } else if err != nil {
+//            return err // timed out, client unsubscribed, etc.
 //         }
+//         process(next)
 //     }
 //
 package pubsub
@@ -38,18 +38,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
+	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-)
-
-type operation int
-
-const (
-	sub operation = iota
-	pub
-	unsub
-	shutdown
 )
 
 var (
@@ -60,6 +52,10 @@ var (
 	// ErrAlreadySubscribed is returned when a client tries to subscribe twice or
 	// more using the same query.
 	ErrAlreadySubscribed = errors.New("already subscribed")
+
+	// ErrServerStopped is returned when attempting to publish or subscribe to a
+	// server that has been stopped.
+	ErrServerStopped = errors.New("pubsub server is stopped")
 )
 
 // Query defines an interface for a query to be used for subscribing. A query
@@ -69,21 +65,38 @@ var (
 // allows event types to repeat themselves with the same set of keys and
 // different values.
 type Query interface {
-	Matches(events map[string][]string) (bool, error)
+	Matches(events []types.Event) (bool, error)
 	String() string
 }
 
-type cmd struct {
-	op operation
+// SubscribeArgs are the parameters to create a new subscription.
+type SubscribeArgs struct {
+	ClientID string // Client ID
+	Query    Query  // filter query for events (required)
+	Limit    int    // subscription queue capacity limit (0 means 1)
+	Quota    int    // subscription queue soft quota (0 uses Limit)
+}
 
-	// subscribe, unsubscribe
-	query        Query
-	subscription *Subscription
-	clientID     string
+// UnsubscribeArgs are the parameters to remove a subscription.
+// The subscriber ID must be populated, and at least one of the client ID or
+// the registered query.
+type UnsubscribeArgs struct {
+	Subscriber string // subscriber ID chosen by the client (required)
+	ID         string // subscription ID (assigned by the server)
+	Query      Query  // the query registered with the subscription
+}
 
-	// publish
-	msg    interface{}
-	events map[string][]string
+// Validate returns nil if args are valid to identify a subscription to remove.
+// Otherwise, it reports an error.
+func (args UnsubscribeArgs) Validate() error {
+	if args.Subscriber == "" {
+		return errors.New("must specify a subscriber")
+	}
+	if args.ID == "" && args.Query == nil {
+		return fmt.Errorf("subscription is not fully defined [subscriber=%q]", args.Subscriber)
+	}
+
+	return nil
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
@@ -91,13 +104,28 @@ type cmd struct {
 type Server struct {
 	service.BaseService
 
-	cmds    chan cmd
-	cmdsCap int
+	queue  chan item
+	done   <-chan struct{} // closed when server should exit
+	stop   func()          // signal the server to exit
+	pubs   sync.RWMutex    // excl: shutdown; shared: active publisher
+	exited chan struct{}   // server exited
 
-	// check if we have subscription before
-	// subscribing or unsubscribing
-	mtx           tmsync.RWMutex
-	subscriptions map[string]map[string]struct{} // subscriber -> query (string) -> empty struct
+	// All subscriptions currently known.
+	// Lock exclusive to add, remove, or cancel subscriptions.
+	// Lock shared to look up or publish to subscriptions.
+	subs struct {
+		sync.RWMutex
+		index *subIndex
+
+		// This function is called synchronously with each message published
+		// before it is delivered to any other subscriber. This allows an index
+		// to be persisted before any subscribers see the messages.
+		observe func(Message) error
+	}
+
+	// TODO(creachadair): Rework the options so that this does not need to live
+	// as a field. It is not otherwise needed.
+	queueCap int
 }
 
 // Option sets a parameter for the server.
@@ -107,326 +135,328 @@ type Option func(*Server)
 // for a detailed description of how to configure buffering. If no options are
 // provided, the resulting server's queue is unbuffered.
 func NewServer(options ...Option) *Server {
-	s := &Server{
-		subscriptions: make(map[string]map[string]struct{}),
-	}
+	s := new(Server)
 	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
-
-	for _, option := range options {
-		option(s)
+	for _, opt := range options {
+		opt(s)
 	}
 
-	// if BufferCapacity option was not set, the channel is unbuffered
-	s.cmds = make(chan cmd, s.cmdsCap)
+	// The queue receives items to be published.
+	s.queue = make(chan item, s.queueCap)
+
+	// The index tracks subscriptions by ID and query terms.
+	s.subs.index = newSubIndex()
 
 	return s
 }
 
-// BufferCapacity allows you to specify capacity for the internal server's
-// queue. Since the server, given Y subscribers, could only process X messages,
-// this option could be used to survive spikes (e.g. high amount of
-// transactions during peak hours).
+// BufferCapacity allows you to specify capacity for publisher's queue.  This
+// is the number of messages that can be published without blocking.  If no
+// buffer is specified, publishing is synchronous with delivery.  This function
+// will panic if cap < 0.
 func BufferCapacity(cap int) Option {
-	return func(s *Server) {
-		if cap > 0 {
-			s.cmdsCap = cap
+	if cap < 0 {
+		panic("negative buffer capacity")
+	}
+	return func(s *Server) { s.queueCap = cap }
+}
+
+// BufferCapacity returns capacity of the publication queue.
+func (s *Server) BufferCapacity() int { return cap(s.queue) }
+
+// Subscribe creates a subscription for the given client ID and query.
+// If len(capacities) > 0, its first value is used as the queue capacity.
+//
+// Deprecated: Use SubscribeWithArgs. This method will be removed in v0.36.
+func (s *Server) Subscribe(ctx context.Context,
+	clientID string, query Query, capacities ...int) (*Subscription, error) {
+
+	args := SubscribeArgs{
+		ClientID: clientID,
+		Query:    query,
+		Limit:    1,
+	}
+	if len(capacities) > 0 {
+		args.Limit = capacities[0]
+		if len(capacities) > 1 {
+			args.Quota = capacities[1]
+		}
+		// bounds are checked below
+	}
+	return s.SubscribeWithArgs(ctx, args)
+}
+
+// Observe registers an observer function that will be called synchronously
+// with each published message matching any of the given queries, prior to it
+// being forwarded to any subscriber.  If no queries are specified, all
+// messages will be observed. An error is reported if an observer is already
+// registered.
+func (s *Server) Observe(ctx context.Context, observe func(Message) error, queries ...Query) error {
+	s.subs.Lock()
+	defer s.subs.Unlock()
+	if observe == nil {
+		return errors.New("observe callback is nil")
+	} else if s.subs.observe != nil {
+		return errors.New("an observer is already registered")
+	}
+
+	// Compile the message filter.
+	var matches func(Message) bool
+	if len(queries) == 0 {
+		matches = func(Message) bool { return true }
+	} else {
+		matches = func(msg Message) bool {
+			for _, q := range queries {
+				match, err := q.Matches(msg.events)
+				if err == nil && match {
+					return true
+				}
+			}
+			return false
 		}
 	}
-}
 
-// BufferCapacity returns capacity of the internal server's queue.
-func (s *Server) BufferCapacity() int {
-	return s.cmdsCap
-}
-
-// Subscribe creates a subscription for the given client.
-//
-// An error will be returned to the caller if the context is canceled or if
-// subscription already exist for pair clientID and query.
-//
-// outCapacity can be used to set a capacity for Subscription#Out channel (1 by
-// default). Panics if outCapacity is less than or equal to zero. If you want
-// an unbuffered channel, use SubscribeUnbuffered.
-func (s *Server) Subscribe(
-	ctx context.Context,
-	clientID string,
-	query Query,
-	outCapacity ...int) (*Subscription, error) {
-	outCap := 1
-	if len(outCapacity) > 0 {
-		if outCapacity[0] <= 0 {
-			panic("Negative or zero capacity. Use SubscribeUnbuffered if you want an unbuffered channel")
+	s.subs.observe = func(msg Message) error {
+		if matches(msg) {
+			return observe(msg)
 		}
-		outCap = outCapacity[0]
+		return nil // nothing to do for this message
 	}
-
-	return s.subscribe(ctx, clientID, query, outCap)
+	return nil
 }
 
-// SubscribeUnbuffered does the same as Subscribe, except it returns a
-// subscription with unbuffered channel. Use with caution as it can freeze the
-// server.
-func (s *Server) SubscribeUnbuffered(ctx context.Context, clientID string, query Query) (*Subscription, error) {
-	return s.subscribe(ctx, clientID, query, 0)
-}
-
-func (s *Server) subscribe(ctx context.Context, clientID string, query Query, outCapacity int) (*Subscription, error) {
-	s.mtx.RLock()
-	clientSubscriptions, ok := s.subscriptions[clientID]
-	if ok {
-		_, ok = clientSubscriptions[query.String()]
+// SubscribeWithArgs creates a subscription for the given arguments.  It is an
+// error if the query is nil, a subscription already exists for the specified
+// client ID and query, or if the capacity arguments are invalid.
+func (s *Server) SubscribeWithArgs(ctx context.Context, args SubscribeArgs) (*Subscription, error) {
+	if args.Query == nil {
+		return nil, errors.New("query is nil")
 	}
-	s.mtx.RUnlock()
-	if ok {
+	s.subs.Lock()
+	defer s.subs.Unlock()
+
+	if s.subs.index == nil {
+		return nil, ErrServerStopped
+	} else if s.subs.index.contains(args.ClientID, args.Query.String()) {
 		return nil, ErrAlreadySubscribed
 	}
 
-	subscription := NewSubscription(outCapacity)
-	select {
-	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, subscription: subscription}:
-		s.mtx.Lock()
-		if _, ok = s.subscriptions[clientID]; !ok {
-			s.subscriptions[clientID] = make(map[string]struct{})
-		}
-		s.subscriptions[clientID][query.String()] = struct{}{}
-		s.mtx.Unlock()
-		return subscription, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-s.Quit():
-		return nil, nil
+	if args.Limit == 0 {
+		args.Limit = 1
 	}
+	sub, err := newSubscription(args.Quota, args.Limit)
+	if err != nil {
+		return nil, err
+	}
+	s.subs.index.add(&subInfo{
+		clientID: args.ClientID,
+		query:    args.Query,
+		subID:    sub.id,
+		sub:      sub,
+	})
+	return sub, nil
 }
 
-// Unsubscribe removes the subscription on the given query. An error will be
-// returned to the caller if the context is canceled or if subscription does
-// not exist.
-func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) error {
-	s.mtx.RLock()
-	clientSubscriptions, ok := s.subscriptions[clientID]
-	if ok {
-		_, ok = clientSubscriptions[query.String()]
+// Unsubscribe removes the subscription for the given client and/or query.  It
+// returns ErrSubscriptionNotFound if no such subscription exists.
+func (s *Server) Unsubscribe(ctx context.Context, args UnsubscribeArgs) error {
+	if err := args.Validate(); err != nil {
+		return err
 	}
-	s.mtx.RUnlock()
-	if !ok {
+	s.subs.Lock()
+	defer s.subs.Unlock()
+	if s.subs.index == nil {
+		return ErrServerStopped
+	}
+
+	// TODO(creachadair): Do we need to support unsubscription for an "empty"
+	// query?  I believe that case is not possible by the Query grammar, but we
+	// should make sure.
+	//
+	// Revisit this logic once we are able to remove indexing by query.
+
+	var evict subInfoSet
+	if args.Subscriber != "" {
+		evict = s.subs.index.findClientID(args.Subscriber)
+		if args.Query != nil {
+			evict = evict.withQuery(args.Query.String())
+		}
+	} else {
+		evict = s.subs.index.findQuery(args.Query.String())
+	}
+
+	if len(evict) == 0 {
 		return ErrSubscriptionNotFound
 	}
-
-	select {
-	case s.cmds <- cmd{op: unsub, clientID: clientID, query: query}:
-		s.mtx.Lock()
-		delete(clientSubscriptions, query.String())
-		if len(clientSubscriptions) == 0 {
-			delete(s.subscriptions, clientID)
-		}
-		s.mtx.Unlock()
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.Quit():
-		return nil
-	}
+	s.removeSubs(evict, ErrUnsubscribed)
+	return nil
 }
 
-// UnsubscribeAll removes all client subscriptions. An error will be returned
-// to the caller if the context is canceled or if subscription does not exist.
+// UnsubscribeAll removes all subscriptions for the given client ID.
+// It returns ErrSubscriptionNotFound if no subscriptions exist for that client.
 func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
-	s.mtx.RLock()
-	_, ok := s.subscriptions[clientID]
-	s.mtx.RUnlock()
-	if !ok {
+	s.subs.Lock()
+	defer s.subs.Unlock()
+
+	evict := s.subs.index.findClientID(clientID)
+	if len(evict) == 0 {
 		return ErrSubscriptionNotFound
 	}
-
-	select {
-	case s.cmds <- cmd{op: unsub, clientID: clientID}:
-		s.mtx.Lock()
-		delete(s.subscriptions, clientID)
-		s.mtx.Unlock()
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.Quit():
-		return nil
-	}
+	s.removeSubs(evict, ErrUnsubscribed)
+	return nil
 }
 
 // NumClients returns the number of clients.
 func (s *Server) NumClients() int {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	return len(s.subscriptions)
+	s.subs.RLock()
+	defer s.subs.RUnlock()
+	return len(s.subs.index.byClient)
 }
 
 // NumClientSubscriptions returns the number of subscriptions the client has.
 func (s *Server) NumClientSubscriptions(clientID string) int {
-	s.mtx.RLock()
-	defer s.mtx.RUnlock()
-	return len(s.subscriptions[clientID])
+	s.subs.RLock()
+	defer s.subs.RUnlock()
+	return len(s.subs.index.findClientID(clientID))
 }
 
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithEvents(ctx, msg, make(map[string][]string))
+	return s.publish(ctx, msg, []types.Event{})
 }
 
 // PublishWithEvents publishes the given message with the set of events. The set
 // is matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events map[string][]string) error {
-	select {
-	case s.cmds <- cmd{op: pub, msg: msg, events: events}:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.Quit():
-		return nil
-	}
+func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events []types.Event) error {
+	return s.publish(ctx, msg, events)
 }
 
 // OnStop implements Service.OnStop by shutting down the server.
-func (s *Server) OnStop() {
-	s.cmds <- cmd{op: shutdown}
-}
+func (s *Server) OnStop() { s.stop() }
 
-// NOTE: not goroutine safe
-type state struct {
-	// query string -> client -> subscription
-	subscriptions map[string]map[string]*Subscription
-	// query string -> queryPlusRefCount
-	queries map[string]*queryPlusRefCount
-}
-
-// queryPlusRefCount holds a pointer to a query and reference counter. When
-// refCount is zero, query will be removed.
-type queryPlusRefCount struct {
-	q        Query
-	refCount int
-}
+// Wait implements Service.Wait by blocking until the server has exited, then
+// yielding to the base service wait.
+func (s *Server) Wait() { <-s.exited; s.BaseService.Wait() }
 
 // OnStart implements Service.OnStart by starting the server.
-func (s *Server) OnStart() error {
-	go s.loop(state{
-		subscriptions: make(map[string]map[string]*Subscription),
-		queries:       make(map[string]*queryPlusRefCount),
-	})
-	return nil
+func (s *Server) OnStart(ctx context.Context) error { s.run(); return nil }
+
+// OnReset implements Service.OnReset. It has no effect for this service.
+func (s *Server) OnReset() error { return nil }
+
+func (s *Server) publish(ctx context.Context, data interface{}, events []types.Event) error {
+	s.pubs.RLock()
+	defer s.pubs.RUnlock()
+
+	select {
+	case <-s.done:
+		return ErrServerStopped
+	case <-ctx.Done():
+		return ctx.Err()
+	case s.queue <- item{
+		Data:   data,
+		Events: events,
+	}:
+		return nil
+	}
 }
 
-// OnReset implements Service.OnReset
-func (s *Server) OnReset() error {
-	return nil
-}
+func (s *Server) run() {
+	// The server runs until ctx is canceled.
+	ctx, cancel := context.WithCancel(context.Background())
+	s.done = ctx.Done()
+	s.stop = cancel
 
-func (s *Server) loop(state state) {
-loop:
-	for cmd := range s.cmds {
-		switch cmd.op {
-		case unsub:
-			if cmd.query != nil {
-				state.remove(cmd.clientID, cmd.query.String(), ErrUnsubscribed)
-			} else {
-				state.removeClient(cmd.clientID, ErrUnsubscribed)
+	// Shutdown monitor: When the context ends, wait for any active publish
+	// calls to exit, then close the queue to signal the sender to exit.
+	go func() {
+		<-ctx.Done()
+		s.pubs.Lock()
+		defer s.pubs.Unlock()
+		close(s.queue)
+	}()
+
+	s.exited = make(chan struct{})
+	go func() {
+		defer close(s.exited)
+
+		// Sender: Service the queue and forward messages to subscribers.
+		for it := range s.queue {
+			if err := s.send(it.Data, it.Events); err != nil {
+				s.Logger.Error("Error sending event", "err", err)
 			}
-		case shutdown:
-			state.removeAll(nil)
-			break loop
-		case sub:
-			state.add(cmd.clientID, cmd.query, cmd.subscription)
-		case pub:
-			if err := state.send(cmd.msg, cmd.events); err != nil {
-				s.Logger.Error("Error querying for events", "err", err)
-			}
 		}
-	}
-}
-
-func (state *state) add(clientID string, q Query, subscription *Subscription) {
-	qStr := q.String()
-
-	// initialize subscription for this client per query if needed
-	if _, ok := state.subscriptions[qStr]; !ok {
-		state.subscriptions[qStr] = make(map[string]*Subscription)
-	}
-	// create subscription
-	state.subscriptions[qStr][clientID] = subscription
-
-	// initialize query if needed
-	if _, ok := state.queries[qStr]; !ok {
-		state.queries[qStr] = &queryPlusRefCount{q: q, refCount: 0}
-	}
-	// increment reference counter
-	state.queries[qStr].refCount++
-}
-
-func (state *state) remove(clientID string, qStr string, reason error) {
-	clientSubscriptions, ok := state.subscriptions[qStr]
-	if !ok {
-		return
-	}
-
-	subscription, ok := clientSubscriptions[clientID]
-	if !ok {
-		return
-	}
-
-	subscription.cancel(reason)
-
-	// remove client from query map.
-	// if query has no other clients subscribed, remove it.
-	delete(state.subscriptions[qStr], clientID)
-	if len(state.subscriptions[qStr]) == 0 {
-		delete(state.subscriptions, qStr)
-	}
-
-	// decrease ref counter in queries
-	state.queries[qStr].refCount--
-	// remove the query if nobody else is using it
-	if state.queries[qStr].refCount == 0 {
-		delete(state.queries, qStr)
-	}
-}
-
-func (state *state) removeClient(clientID string, reason error) {
-	for qStr, clientSubscriptions := range state.subscriptions {
-		if _, ok := clientSubscriptions[clientID]; ok {
-			state.remove(clientID, qStr, reason)
+		// Terminate all subscribers before exit.
+		s.subs.Lock()
+		defer s.subs.Unlock()
+		for si := range s.subs.index.all {
+			si.sub.stop(ErrTerminated)
 		}
-	}
+		s.subs.index = nil
+	}()
 }
 
-func (state *state) removeAll(reason error) {
-	for qStr, clientSubscriptions := range state.subscriptions {
-		for clientID := range clientSubscriptions {
-			state.remove(clientID, qStr, reason)
+// removeSubs cancels and removes all the subscriptions in evict with the given
+// error. The caller must hold the s.subs lock.
+func (s *Server) removeSubs(evict subInfoSet, reason error) {
+	for si := range evict {
+		si.sub.stop(reason)
+	}
+	s.subs.index.removeAll(evict)
+}
+
+// send delivers the given message to all matching subscribers.  An error in
+// query matching stops transmission and is returned.
+func (s *Server) send(data interface{}, events []types.Event) error {
+	// At exit, evict any subscriptions that were too slow.
+	evict := make(subInfoSet)
+	defer func() {
+		if len(evict) != 0 {
+			s.subs.Lock()
+			defer s.subs.Unlock()
+			s.removeSubs(evict, ErrTerminated)
 		}
-	}
-}
+	}()
 
-func (state *state) send(msg interface{}, events map[string][]string) error {
-	for qStr, clientSubscriptions := range state.subscriptions {
-		q := state.queries[qStr].q
+	// N.B. Order is important here. We must acquire and defer the lock release
+	// AFTER deferring the eviction cleanup: The cleanup must happen after the
+	// reader lock has released, or it will deadlock.
+	s.subs.RLock()
+	defer s.subs.RUnlock()
 
-		match, err := q.Matches(events)
+	// If an observer is defined, give it control of the message before
+	// attempting to deliver it to any matching subscribers. If the observer
+	// fails, the message will not be forwarded.
+	if s.subs.observe != nil {
+		err := s.subs.observe(Message{
+			data:   data,
+			events: events,
+		})
 		if err != nil {
-			return fmt.Errorf("failed to match against query %s: %w", q.String(), err)
+			return fmt.Errorf("observer failed on message: %w", err)
+		}
+	}
+
+	for si := range s.subs.index.all {
+		match, err := si.query.Matches(events)
+		if err != nil {
+			return fmt.Errorf("match failed against query: %w", err)
+			// TODO(creachadair): Should we evict this subscription?
+		} else if !match {
+			continue
 		}
 
-		if match {
-			for clientID, subscription := range clientSubscriptions {
-				if cap(subscription.out) == 0 {
-					// block on unbuffered channel
-					subscription.out <- NewMessage(msg, events)
-				} else {
-					// don't block on buffered channels
-					select {
-					case subscription.out <- NewMessage(msg, events):
-					default:
-						state.remove(clientID, qStr, ErrOutOfCapacity)
-					}
-				}
-			}
+		// Publish the events to the subscriber's queue. If this fails, e.g.,
+		// because the queue is over capacity or out of quota, evict the
+		// subscription from the index.
+		if err := si.sub.publish(Message{
+			subID:  si.sub.id,
+			data:   data,
+			events: events,
+		}); err != nil {
+			evict.add(si)
 		}
 	}
 

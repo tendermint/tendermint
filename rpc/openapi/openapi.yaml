@@ -237,6 +237,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /remove_tx:
+    get:
+      summary: Removes a transaction from the mempool.
+      tags:
+        - TxKey
+      operationId: remove_tx
+      parameters:
+        - in: query
+          name: txKey
+          required: true
+          schema:
+            type: string
+            example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          description: The transaction key
+      responses:
+        "200":
+          description: empty response.
+        "500":
+          description: empty error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
@@ -340,7 +365,7 @@ paths:
         import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp://0.0.0.0:26657")
         err := client.Start()
         if err != nil {
           handle error
@@ -397,7 +422,7 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp://0.0.0.0:26657")
         err := client.Start()
         if err != nil {
            handle error
@@ -484,7 +509,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Tendermint status including node info, pubkey, latest block hash, app hash, block height and time.
+        Get Tendermint status including node info, pubkey, latest block hash, app hash, block height, current max peer height, and time.
       responses:
         "200":
           description: Status of the node
@@ -537,8 +562,7 @@ paths:
             type: array
             items:
               type: string
-              example:
-                ["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"]
+              example: "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"
       responses:
         "200":
           description: Dialing seeds in progress. See /net_info for details
@@ -588,8 +612,7 @@ paths:
             type: array
             items:
               type: string
-              example:
-                ["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"]
+              example: "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"
       responses:
         "200":
           description: Dialing seeds in progress. See /net_info for details
@@ -603,6 +626,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /unsafe_flush_mempool:
+    get:
+      summary: Flush mempool of all unconfirmed transactions
+      operationId: unsafe_flush_mempool
+      tags:
+        - Unsafe
+      description: |
+        Flush flushes out the mempool. It acquires a read-lock, fetches all the
+        transactions currently in the transaction store and removes each transaction
+        from the store and all indexes and finally resets the cache.
+
+        Note, flushing the mempool may leave the mempool in an inconsistent state.
+      responses:
+        "200":
+          description: empty answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyResponse"
+        "500":
+          description: empty error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /blockchain:
     get:
       summary: "Get block headers (max: 20) for minHeight <= height <= maxHeight."
@@ -724,7 +773,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BlockResultsResponse"
+                $ref: "#/components/schemas/BlockSearchResponse"
         "500":
           description: Error
           content:
@@ -808,6 +857,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
   /genesis:
     get:
       summary: Get Genesis
@@ -815,7 +865,7 @@ paths:
       tags:
         - Info
       description: |
-        Get genesis.
+        Get the genesis document.
       responses:
         "200":
           description: Genesis results.
@@ -829,6 +879,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /genesis_chunked:
+    get:
+      summary: Get Genesis in paginated chunks
+      operationId: genesis_chunked
+      tags:
+        - Info
+      description: |
+        Get genesis document in a paginated/chunked format to make it
+        easier to iterate through larger genesis structures.
+      parameters:
+        - in: query
+          name: chunkID
+          description: Sequence number of the chunk to download.
+          schema:
+            type: integer
+            default: 0
+            example: 1
+      responses:
+        "200":
+          description: Genesis results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisChunkedResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
   /dump_consensus_state:
     get:
       summary: Get consensus state
@@ -1004,13 +1087,13 @@ paths:
           required: false
           schema:
             type: string
-            default: "asc"
+            default: "desc"
             example: "asc"
       tags:
         - Info
       responses:
         "200":
-          description: List of unconfirmed transactions
+          description: List of transactions
           content:
             application/json:
               schema:
@@ -1021,6 +1104,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /block_search:
+    get:
+      summary: Search for blocks by BeginBlock and EndBlock events
+      description: |
+        Search for blocks by BeginBlock and EndBlock events.
+
+        See /subscribe for the query syntax.
+      operationId: block_search
+      parameters:
+        - in: query
+          name: query
+          description: Query
+          required: true
+          schema:
+            type: string
+            example: "block.height > 1000 AND valset.changed > 0"
+        - in: query
+          name: page
+          description: "Page number (1-based)"
+          required: false
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - in: query
+          name: per_page
+          description: "Number of entries per page (max: 100)"
+          required: false
+          schema:
+            type: integer
+            default: 30
+            example: 30
+        - in: query
+          name: order_by
+          description: Order in which blocks are sorted ("asc" or "desc"), by height. If empty, default sorting will be still applied.
+          required: false
+          schema:
+            type: string
+            default: "desc"
+            example: "asc"
+      tags:
+        - Info
+      responses:
+        "200":
+          description: List of paginated blocks matching the search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockResultsResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /tx:
     get:
       summary: Get transactions by hash
@@ -1044,10 +1183,10 @@ paths:
       tags:
         - Info
       description: |
-        Get a trasasction
+        Get a transaction
       responses:
         "200":
-          description: Get a transaction`
+          description: Get a transaction
           content:
             application/json:
               schema:
@@ -1221,7 +1360,7 @@ components:
           example: "5576458aef205977e18fd50b274e9b5d9014525a"
         listen_addr:
           type: string
-          example: "tcp:0.0.0.0:26656"
+          example: "tcp://0.0.0.0:26656"
         network:
           type: string
           example: "cosmoshub-2"
@@ -1242,7 +1381,7 @@ components:
               example: "on"
             rpc_address:
               type: string
-              example: "tcp:0.0.0.0:26657"
+              example: "tcp://0.0.0.0:26657"
     SyncInfo:
       type: object
       properties:
@@ -1270,9 +1409,39 @@ components:
         earliest_block_time:
           type: string
           example: "2019-08-01T11:52:22.818762194Z"
+        max_peer_block_height:
+          type: string
+          example: "1262196"
         catching_up:
           type: boolean
           example: false
+        total_synced_time:
+          type: string
+          example: "1000000000"
+        remaining_time:
+          type: string
+          example: "0"
+        total_snapshots:
+          type: string
+          example: "10"      
+        chunk_process_avg_time:
+          type: string
+          example: "1000000000"      
+        snapshot_height:
+          type: string
+          example: "1262196"      
+        snapshot_chunks_count:
+          type: string
+          example: "10"      
+        snapshot_chunks_total:
+          type: string
+          example: "100"      
+        backfilled_blocks:
+          type: string
+          example: "10"      
+        backfill_blocks_total:
+          type: string
+          example: "100"                                                                  
     ValidatorInfo:
       type: object
       properties:
@@ -1379,16 +1548,12 @@ components:
     Peer:
       type: object
       properties:
-        node_info:
-          $ref: "#/components/schemas/NodeInfo"
-        is_outbound:
-          type: boolean
-          example: true
-        connection_status:
-          $ref: "#/components/schemas/ConnectionStatus"
-        remote_ip:
+        node_id:
           type: string
-          example: "95.179.155.35"
+          example: ""
+        url:
+          type: string
+          example: "<id>@95.179.155.35:2385>"
     NetInfo:
       type: object
       properties:
@@ -1609,6 +1774,9 @@ components:
                   codespace:
                     type: string
                     example: "ibc"
+            total_gas_used:
+              type: string
+              example: "100"
             begin_block_events:
               type: array
               nullable: true
@@ -1827,6 +1995,35 @@ components:
                 app_state:
                   properties: {}
                   type: object
+
+    GenesisChunkedResponse:
+      type: object
+      required:
+        - "jsonrpc"
+        - "id"
+        - "result"
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          type: integer
+          example: 0
+        result:
+          required:
+            - "chunk"
+            - "total"
+            - "data"
+          properties:
+            chunk:
+              type: integer
+              example: 0
+            total:
+              type: integer
+              example: 1
+            data:
+              type: string
+              example: "Z2VuZXNpcwo="
 
     DumpConsensusResponse:
       type: object
@@ -2690,6 +2887,33 @@ components:
         Log:
           type: string
           example: "Dialing seeds in progress. See /net_info for details"
+
+    BlockSearchResponse:
+      type: object
+      required:
+        - "jsonrpc"
+        - "id"
+        - "result"
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          type: integer
+          example: 0
+        result:
+          required:
+            - "blocks"
+            - "total_count"
+          properties:
+            blocks:
+              type: array
+              items:
+                $ref: "#/components/schemas/BlockComplete"
+            total_count:
+              type: integer
+              example: 2
+          type: object
 
     ###### Reuseable types ######
 

@@ -1,6 +1,7 @@
 package os
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,11 +29,6 @@ func TrapSignal(logger logger, cb func()) {
 	}()
 }
 
-func Exit(s string) {
-	fmt.Printf(s + "\n")
-	os.Exit(1)
-}
-
 // EnsureDir ensures the given directory exists, creating it if necessary.
 // Errors if the path already exists as a non-directory.
 func EnsureDir(dir string, mode os.FileMode) error {
@@ -50,16 +46,19 @@ func FileExists(filePath string) bool {
 
 // CopyFile copies a file. It truncates the destination file if it exists.
 func CopyFile(src, dst string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
 	srcfile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer srcfile.Close()
+
+	info, err := srcfile.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return errors.New("cannot read from directories")
+	}
 
 	// create new file, truncate if exists and apply same permissions as the original one
 	dstfile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode().Perm())

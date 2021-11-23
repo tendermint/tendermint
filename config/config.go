@@ -8,6 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	tmjson "github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -16,13 +21,12 @@ const (
 	// FuzzModeDelay is a mode in which we randomly sleep
 	FuzzModeDelay
 
-	// LogFormatPlain is a format for colored text
-	LogFormatPlain = "plain"
-	// LogFormatJSON is a format for json output
-	LogFormatJSON = "json"
-
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
+
+	ModeFull      = "full"
+	ModeValidator = "validator"
+	ModeSeed      = "seed"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -39,19 +43,18 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
+	defaultMode             = ModeFull
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
-	defaultNodeKeyName  = "node_key.json"
-	defaultAddrBookName = "addrbook.json"
+	defaultNodeKeyName = "node_key.json"
 
 	defaultConfigFilePath   = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath  = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValKeyPath   = filepath.Join(defaultConfigDir, defaultPrivValKeyName)
 	defaultPrivValStatePath = filepath.Join(defaultDataDir, defaultPrivValStateName)
 
-	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
-	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+	defaultNodeKeyPath = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -64,10 +67,10 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx-index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
+	PrivValidator   *PrivValidatorConfig   `mapstructure:"priv-validator"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -78,11 +81,18 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		FastSync:        DefaultFastSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
+		PrivValidator:   DefaultPrivValidatorConfig(),
 	}
+}
+
+// DefaultValidatorConfig returns default config with mode as validator
+func DefaultValidatorConfig() *Config {
+	cfg := DefaultConfig()
+	cfg.Mode = ModeValidator
+	return cfg
 }
 
 // TestConfig returns a configuration that can be used for testing
@@ -93,10 +103,10 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		FastSync:        TestFastSyncConfig(),
 		Consensus:       TestConsensusConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
+		PrivValidator:   DefaultPrivValidatorConfig(),
 	}
 }
 
@@ -107,6 +117,7 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
+	cfg.PrivValidator.RootDir = root
 	return cfg
 }
 
@@ -119,17 +130,11 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.RPC.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [rpc] section: %w", err)
 	}
-	if err := cfg.P2P.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [p2p] section: %w", err)
-	}
 	if err := cfg.Mempool.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [mempool] section: %w", err)
 	}
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
-	}
-	if err := cfg.FastSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [fastsync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
@@ -159,10 +164,17 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// If this node is many blocks behind the tip of the chain, FastSync
-	// allows them to catchup quickly by downloading blocks in parallel
-	// and verifying their commits
-	FastSyncMode bool `mapstructure:"fast-sync"`
+	// Mode of Node: full | validator | seed
+	// * validator
+	//   - all reactors
+	//   - with priv_validator_key.json, priv_validator_state.json
+	// * full
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
+	// * seed
+	//   - only P2P, PEX Reactor
+	//   - No priv_validator_key.json, priv_validator_state.json
+	Mode string `mapstructure:"mode"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -197,26 +209,6 @@ type BaseConfig struct { //nolint: maligned
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis-file"`
 
-	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
-	PrivValidatorKey string `mapstructure:"priv-validator-key-file"`
-
-	// Path to the JSON file containing the last sign state of a validator
-	PrivValidatorState string `mapstructure:"priv-validator-state-file"`
-
-	// TCP or UNIX socket address for Tendermint to listen on for
-	// connections from an external PrivValidator process
-	PrivValidatorListenAddr string `mapstructure:"priv-validator-laddr"`
-
-	// Client certificate generated while creating needed files for secure connection.
-	// If a remote validator address is provided but no certificate, the connection will be insecure
-	PrivValidatorClientCertificate string `mapstructure:"priv-validator-client-certificate-file"`
-
-	// Client key generated while creating certificates for secure connection
-	PrivValidatorClientKey string `mapstructure:"priv-validator-client-key-file"`
-
-	// Path Root Certificate Authority used to sign both client and server certificates
-	PrivValidatorRootCA string `mapstructure:"priv-validator-root-ca-file"`
-
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node-key-file"`
 
@@ -226,24 +218,24 @@ type BaseConfig struct { //nolint: maligned
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter-peers"` // false
+
+	Other map[string]interface{} `mapstructure:",remain"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:            defaultGenesisJSONPath,
-		PrivValidatorKey:   defaultPrivValKeyPath,
-		PrivValidatorState: defaultPrivValStatePath,
-		NodeKey:            defaultNodeKeyPath,
-		Moniker:            defaultMoniker,
-		ProxyApp:           "tcp://127.0.0.1:26658",
-		ABCI:               "socket",
-		LogLevel:           DefaultLogLevel,
-		LogFormat:          LogFormatPlain,
-		FastSyncMode:       true,
-		FilterPeers:        false,
-		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		Genesis:     defaultGenesisJSONPath,
+		NodeKey:     defaultNodeKeyPath,
+		Mode:        defaultMode,
+		Moniker:     defaultMoniker,
+		ProxyApp:    "tcp://127.0.0.1:26658",
+		ABCI:        "socket",
+		LogLevel:    DefaultLogLevel,
+		LogFormat:   log.LogFormatPlain,
+		FilterPeers: false,
+		DBBackend:   "goleveldb",
+		DBPath:      "data",
 	}
 }
 
@@ -251,8 +243,8 @@ func DefaultBaseConfig() BaseConfig {
 func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
+	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -266,34 +258,44 @@ func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
-// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
-func (cfg BaseConfig) PrivValidatorClientKeyFile() string {
-	return rootify(cfg.PrivValidatorClientKey, cfg.RootDir)
-}
-
-// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
-func (cfg BaseConfig) PrivValidatorClientCertificateFile() string {
-	return rootify(cfg.PrivValidatorClientCertificate, cfg.RootDir)
-}
-
-// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
-func (cfg BaseConfig) PrivValidatorRootCAFile() string {
-	return rootify(cfg.PrivValidatorRootCA, cfg.RootDir)
-}
-
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
-func (cfg BaseConfig) PrivValidatorKeyFile() string {
-	return rootify(cfg.PrivValidatorKey, cfg.RootDir)
-}
-
-// PrivValidatorFile returns the full path to the priv_validator_state.json file
-func (cfg BaseConfig) PrivValidatorStateFile() string {
-	return rootify(cfg.PrivValidatorState, cfg.RootDir)
-}
-
 // NodeKeyFile returns the full path to the node_key.json file
 func (cfg BaseConfig) NodeKeyFile() string {
 	return rootify(cfg.NodeKey, cfg.RootDir)
+}
+
+// LoadNodeKey loads NodeKey located in filePath.
+func (cfg BaseConfig) LoadNodeKeyID() (types.NodeID, error) {
+	jsonBytes, err := os.ReadFile(cfg.NodeKeyFile())
+	if err != nil {
+		return "", err
+	}
+	nodeKey := types.NodeKey{}
+	err = tmjson.Unmarshal(jsonBytes, &nodeKey)
+	if err != nil {
+		return "", err
+	}
+	nodeKey.ID = types.NodeIDFromPubKey(nodeKey.PubKey())
+	return nodeKey.ID, nil
+}
+
+// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
+// the file does not exist, it generates and saves a new NodeKey.
+func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
+	if tmos.FileExists(cfg.NodeKeyFile()) {
+		nodeKey, err := cfg.LoadNodeKeyID()
+		if err != nil {
+			return "", err
+		}
+		return nodeKey, nil
+	}
+
+	nodeKey := types.GenNodeKey()
+
+	if err := nodeKey.SaveAs(cfg.NodeKeyFile()); err != nil {
+		return "", err
+	}
+
+	return nodeKey.ID, nil
 }
 
 // DBDir returns the full path to the database directory
@@ -301,28 +303,100 @@ func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
-func (cfg *BaseConfig) ArePrivValidatorClientSecurityOptionsPresent() bool {
-	switch {
-	case cfg.PrivValidatorRootCA == "":
-		return false
-	case cfg.PrivValidatorClientKey == "":
-		return false
-	case cfg.PrivValidatorClientCertificate == "":
-		return false
-	default:
-		return true
-	}
-}
-
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
 	switch cfg.LogFormat {
-	case LogFormatPlain, LogFormatJSON:
+	case log.LogFormatJSON, log.LogFormatText, log.LogFormatPlain:
 	default:
-		return errors.New("unknown log format (must be 'plain' or 'json')")
+		return errors.New("unknown log format (must be 'plain', 'text' or 'json')")
 	}
+
+	switch cfg.Mode {
+	case ModeFull, ModeValidator, ModeSeed:
+	case "":
+		return errors.New("no mode has been set")
+
+	default:
+		return fmt.Errorf("unknown mode: %v", cfg.Mode)
+	}
+
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// PrivValidatorConfig
+
+// PrivValidatorConfig defines the configuration parameters for running a validator
+type PrivValidatorConfig struct {
+	RootDir string `mapstructure:"home"`
+
+	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
+	Key string `mapstructure:"key-file"`
+
+	// Path to the JSON file containing the last sign state of a validator
+	State string `mapstructure:"state-file"`
+
+	// TCP or UNIX socket address for Tendermint to listen on for
+	// connections from an external PrivValidator process
+	ListenAddr string `mapstructure:"laddr"`
+
+	// Client certificate generated while creating needed files for secure connection.
+	// If a remote validator address is provided but no certificate, the connection will be insecure
+	ClientCertificate string `mapstructure:"client-certificate-file"`
+
+	// Client key generated while creating certificates for secure connection
+	ClientKey string `mapstructure:"client-key-file"`
+
+	// Path Root Certificate Authority used to sign both client and server certificates
+	RootCA string `mapstructure:"root-ca-file"`
+}
+
+// DefaultBaseConfig returns a default private validator configuration
+// for a Tendermint node.
+func DefaultPrivValidatorConfig() *PrivValidatorConfig {
+	return &PrivValidatorConfig{
+		Key:   defaultPrivValKeyPath,
+		State: defaultPrivValStatePath,
+	}
+}
+
+// ClientKeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientKeyFile() string {
+	return rootify(cfg.ClientKey, cfg.RootDir)
+}
+
+// ClientCertificateFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) ClientCertificateFile() string {
+	return rootify(cfg.ClientCertificate, cfg.RootDir)
+}
+
+// CertificateAuthorityFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) RootCAFile() string {
+	return rootify(cfg.RootCA, cfg.RootDir)
+}
+
+// KeyFile returns the full path to the priv_validator_key.json file
+func (cfg *PrivValidatorConfig) KeyFile() string {
+	return rootify(cfg.Key, cfg.RootDir)
+}
+
+// StateFile returns the full path to the priv_validator_state.json file
+func (cfg *PrivValidatorConfig) StateFile() string {
+	return rootify(cfg.State, cfg.RootDir)
+}
+
+func (cfg *PrivValidatorConfig) AreSecurityOptionsPresent() bool {
+	switch {
+	case cfg.RootCA == "":
+		return false
+	case cfg.ClientKey == "":
+		return false
+	case cfg.ClientCertificate == "":
+		return false
+	default:
+		return true
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -347,22 +421,10 @@ type RPCConfig struct {
 	// A list of non simple headers the client is allowed to use with cross-domain requests.
 	CORSAllowedHeaders []string `mapstructure:"cors-allowed-headers"`
 
-	// TCP or UNIX socket address for the gRPC server to listen on
-	// NOTE: This server only supports /broadcast_tx_commit
-	GRPCListenAddress string `mapstructure:"grpc-laddr"`
-
-	// Maximum number of simultaneous connections.
-	// Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-	// If you want to accept a larger number than the default, make sure
-	// you increase your OS limits.
-	// 0 - unlimited.
-	GRPCMaxOpenConnections int `mapstructure:"grpc-max-open-connections"`
-
 	// Activate unsafe RPC commands like /dial-persistent-peers and /unsafe-flush-mempool
 	Unsafe bool `mapstructure:"unsafe"`
 
 	// Maximum number of simultaneous connections (including WebSocket).
-	// Does not include gRPC connections. See grpc-max-open-connections
 	// If you want to accept a larger number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
@@ -376,7 +438,7 @@ type RPCConfig struct {
 	MaxSubscriptionClients int `mapstructure:"max-subscription-clients"`
 
 	// Maximum number of unique queries a given client can /subscribe to
-	// If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set
+	// If you're using a Local RPC client and /broadcast_tx_commit, set this
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
@@ -417,12 +479,10 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:          "tcp://127.0.0.1:26657",
-		CORSAllowedOrigins:     []string{},
-		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
-		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
-		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900,
+		ListenAddress:      "tcp://127.0.0.1:26657",
+		CORSAllowedOrigins: []string{},
+		CORSAllowedMethods: []string{http.MethodHead, http.MethodGet, http.MethodPost},
+		CORSAllowedHeaders: []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
 
 		Unsafe:             false,
 		MaxOpenConnections: 900,
@@ -443,7 +503,6 @@ func DefaultRPCConfig() *RPCConfig {
 func TestRPCConfig() *RPCConfig {
 	cfg := DefaultRPCConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36657"
-	cfg.GRPCListenAddress = "tcp://127.0.0.1:36658"
 	cfg.Unsafe = true
 	return cfg
 }
@@ -451,9 +510,6 @@ func TestRPCConfig() *RPCConfig {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *RPCConfig) ValidateBasic() error {
-	if cfg.GRPCMaxOpenConnections < 0 {
-		return errors.New("grpc-max-open-connections can't be negative")
-	}
 	if cfg.MaxOpenConnections < 0 {
 		return errors.New("max-open-connections can't be negative")
 	}
@@ -515,7 +571,15 @@ type P2PConfig struct { //nolint: maligned
 
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
+	// NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
+	// TODO: Remove once p2p refactor is complete
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of peers to be added to the peer store
+	// on startup. Either BootstrapPeers or PersistentPeers are
+	// needed for peer discovery
+	BootstrapPeers string `mapstructure:"bootstrap-peers"`
 
 	// Comma separated list of nodes to keep persistent connections to
 	PersistentPeers string `mapstructure:"persistent-peers"`
@@ -523,24 +587,23 @@ type P2PConfig struct { //nolint: maligned
 	// UPNP port forwarding
 	UPNP bool `mapstructure:"upnp"`
 
-	// Path to address book
-	AddrBook string `mapstructure:"addr-book-file"`
+	// MaxConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxConnections uint16 `mapstructure:"max-connections"`
 
-	// Set true for strict address routability rules
-	// Set false for private or local networks
-	AddrBookStrict bool `mapstructure:"addr-book-strict"`
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address.
+	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
-	// Maximum number of inbound peers
-	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
+	// Set true to enable the peer-exchange reactor
+	PexReactor bool `mapstructure:"pex"`
 
-	// Maximum number of outbound peers to connect to, excluding persistent peers
-	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+	// Comma separated list of peer IDs to keep private (will not be gossiped to
+	// other peers)
+	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
 
-	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
-	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
-
-	// Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-	PersistentPeersMaxDialPeriod time.Duration `mapstructure:"persistent-peers-max-dial-period"`
+	// Toggle to disable guard against peers connecting from the same ip.
+	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
 
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
@@ -554,22 +617,6 @@ type P2PConfig struct { //nolint: maligned
 	// Rate at which packets can be received, in bytes/second
 	RecvRate int64 `mapstructure:"recv-rate"`
 
-	// Set true to enable the peer-exchange reactor
-	PexReactor bool `mapstructure:"pex"`
-
-	// Seed mode, in which node constantly crawls the network and looks for
-	// peers. If another node asks it for addresses, it responds and disconnects.
-	//
-	// Does not work if the peer-exchange reactor is disabled.
-	SeedMode bool `mapstructure:"seed-mode"`
-
-	// Comma separated list of peer IDs to keep private (will not be gossiped to
-	// other peers)
-	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
-
-	// Toggle to disable guard against peers connecting from the same ip.
-	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
-
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake-timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
@@ -577,20 +624,22 @@ type P2PConfig struct { //nolint: maligned
 	// Testing params.
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
+
+	// Makes it possible to configure which queue backend the p2p
+	// layer uses. Options are: "fifo" and "priority",
+	// with the default being "priority".
+	QueueType string `mapstructure:"queue-type"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:                "tcp://0.0.0.0:26656",
-		ExternalAddress:              "",
-		UPNP:                         false,
-		AddrBook:                     defaultAddrBookPath,
-		AddrBookStrict:               true,
-		MaxNumInboundPeers:           40,
-		MaxNumOutboundPeers:          10,
-		PersistentPeersMaxDialPeriod: 0 * time.Second,
-		FlushThrottleTimeout:         100 * time.Millisecond,
+		ListenAddress:                 "tcp://0.0.0.0:26656",
+		ExternalAddress:               "",
+		UPNP:                          false,
+		MaxConnections:                64,
+		MaxIncomingConnectionAttempts: 100,
+		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
 		// The IP header and the TCP header take up 20 bytes each at least (unless
 		// optional header fields are used) and thus the max for (non-Jumbo frame)
@@ -600,42 +649,19 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
-		SeedMode:                false,
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
+		QueueType:               "priority",
 	}
-}
-
-// TestP2PConfig returns a configuration for testing the peer-to-peer layer
-func TestP2PConfig() *P2PConfig {
-	cfg := DefaultP2PConfig()
-	cfg.ListenAddress = "tcp://127.0.0.1:36656"
-	cfg.FlushThrottleTimeout = 10 * time.Millisecond
-	cfg.AllowDuplicateIP = true
-	return cfg
-}
-
-// AddrBookFile returns the full path to the address book
-func (cfg *P2PConfig) AddrBookFile() string {
-	return rootify(cfg.AddrBook, cfg.RootDir)
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *P2PConfig) ValidateBasic() error {
-	if cfg.MaxNumInboundPeers < 0 {
-		return errors.New("max-num-inbound-peers can't be negative")
-	}
-	if cfg.MaxNumOutboundPeers < 0 {
-		return errors.New("max-num-outbound-peers can't be negative")
-	}
 	if cfg.FlushThrottleTimeout < 0 {
 		return errors.New("flush-throttle-timeout can't be negative")
-	}
-	if cfg.PersistentPeersMaxDialPeriod < 0 {
-		return errors.New("persistent-peers-max-dial-period can't be negative")
 	}
 	if cfg.MaxPacketMsgPayloadSize < 0 {
 		return errors.New("max-packet-msg-payload-size can't be negative")
@@ -649,48 +675,80 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	return nil
 }
 
+// TestP2PConfig returns a configuration for testing the peer-to-peer layer
+func TestP2PConfig() *P2PConfig {
+	cfg := DefaultP2PConfig()
+	cfg.ListenAddress = "tcp://127.0.0.1:36656"
+	cfg.AllowDuplicateIP = true
+	cfg.FlushThrottleTimeout = 10 * time.Millisecond
+
+	return cfg
+}
+
 //-----------------------------------------------------------------------------
 // MempoolConfig
 
-// MempoolConfig defines the configuration options for the Tendermint mempool
+// MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal-dir"`
+
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
+
 	// Limit the total size of all txs in the mempool.
 	// This only accounts for raw transactions (e.g. given 1MB transactions and
 	// max-txs-bytes=5MB, mempool will only accept 5 transactions).
 	MaxTxsBytes int64 `mapstructure:"max-txs-bytes"`
+
 	// Size of the cache (used to filter transactions we saw earlier) in transactions
 	CacheSize int `mapstructure:"cache-size"`
+
 	// Do not remove invalid transactions from the cache (default: false)
 	// Set to true if it's not possible for any invalid transaction to become
 	// valid again in the future.
 	KeepInvalidTxsInCache bool `mapstructure:"keep-invalid-txs-in-cache"`
+
 	// Maximum size of a single transaction
 	// NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
 	MaxTxBytes int `mapstructure:"max-tx-bytes"`
+
 	// Maximum size of a batch of transactions to send to a peer
 	// Including space needed by encoding (one varint per transaction).
 	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 	MaxBatchBytes int `mapstructure:"max-batch-bytes"`
+
+	// TTLDuration, if non-zero, defines the maximum amount of time a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLNumBlocks is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if it's
+	// insertion time into the mempool is beyond TTLDuration.
+	TTLDuration time.Duration `mapstructure:"ttl-duration"`
+
+	// TTLNumBlocks, if non-zero, defines the maximum number of blocks a transaction
+	// can exist for in the mempool.
+	//
+	// Note, if TTLDuration is also defined, a transaction will be removed if it
+	// has existed in the mempool at least TTLNumBlocks number of blocks or if
+	// it's insertion time into the mempool is beyond TTLDuration.
+	TTLNumBlocks int64 `mapstructure:"ttl-num-blocks"`
 }
 
-// DefaultMempoolConfig returns a default configuration for the Tendermint mempool
+// DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
 		Recheck:   true,
 		Broadcast: true,
-		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
+		Size:         5000,
+		MaxTxsBytes:  1024 * 1024 * 1024, // 1GB
+		CacheSize:    10000,
+		MaxTxBytes:   1024 * 1024, // 1MB
+		TTLDuration:  0 * time.Second,
+		TTLNumBlocks: 0,
 	}
 }
 
@@ -699,16 +757,6 @@ func TestMempoolConfig() *MempoolConfig {
 	cfg := DefaultMempoolConfig()
 	cfg.CacheSize = 1000
 	return cfg
-}
-
-// WalDir returns the full path to the mempool's write-ahead log
-func (cfg *MempoolConfig) WalDir() string {
-	return rootify(cfg.WalPath, cfg.RootDir)
-}
-
-// WalEnabled returns true if the WAL is enabled.
-func (cfg *MempoolConfig) WalEnabled() bool {
-	return cfg.WalPath != ""
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
@@ -726,6 +774,13 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max-tx-bytes can't be negative")
 	}
+	if cfg.TTLDuration < 0 {
+		return errors.New("ttl-duration can't be negative")
+	}
+	if cfg.TTLNumBlocks < 0 {
+		return errors.New("ttl-num-blocks can't be negative")
+	}
+
 	return nil
 }
 
@@ -734,13 +789,46 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enable        bool          `mapstructure:"enable"`
-	TempDir       string        `mapstructure:"temp-dir"`
-	RPCServers    []string      `mapstructure:"rpc-servers"`
-	TrustPeriod   time.Duration `mapstructure:"trust-period"`
-	TrustHeight   int64         `mapstructure:"trust-height"`
-	TrustHash     string        `mapstructure:"trust-hash"`
+	// State sync rapidly bootstraps a new node by discovering, fetching, and restoring a
+	// state machine snapshot from peers instead of fetching and replaying historical
+	// blocks. Requires some peers in the network to take and serve state machine
+	// snapshots. State sync is not attempted if the node has any local state
+	// (LastBlockHeight > 0). The node will have a truncated block history, starting from
+	// the height of the snapshot.
+	Enable bool `mapstructure:"enable"`
+
+	// State sync uses light client verification to verify state. This can be done either
+	// through the P2P layer or the RPC layer. Set this to true to use the P2P layer. If
+	// false (default), the RPC layer will be used.
+	UseP2P bool `mapstructure:"use-p2p"`
+
+	// If using RPC, at least two addresses need to be provided. They should be compatible
+	// with net.Dial, for example: "host.example.com:2125".
+	RPCServers []string `mapstructure:"rpc-servers"`
+
+	// The hash and height of a trusted block. Must be within the trust-period.
+	TrustHeight int64  `mapstructure:"trust-height"`
+	TrustHash   string `mapstructure:"trust-hash"`
+
+	// The trust period should be set so that Tendermint can detect and gossip
+	// misbehavior before it is considered expired. For chains based on the Cosmos SDK,
+	// one day less than the unbonding period should suffice.
+	TrustPeriod time.Duration `mapstructure:"trust-period"`
+
+	// Time to spend discovering snapshots before initiating a restore.
 	DiscoveryTime time.Duration `mapstructure:"discovery-time"`
+
+	// Temporary directory for state sync snapshot chunks, defaults to os.TempDir().
+	// The synchronizer will create a new, randomly named directory within this directory
+	// and remove it when the sync is complete.
+	TempDir string `mapstructure:"temp-dir"`
+
+	// The timeout duration before re-requesting a chunk, possibly from a different
+	// peer (default: 15 seconds).
+	ChunkRequestTimeout time.Duration `mapstructure:"chunk-request-timeout"`
+
+	// The number of concurrent chunk and block fetchers to run (default: 4).
+	Fetchers int32 `mapstructure:"fetchers"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
@@ -755,77 +843,68 @@ func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
 	return &StateSyncConfig{
-		TrustPeriod:   168 * time.Hour,
-		DiscoveryTime: 15 * time.Second,
+		TrustPeriod:         168 * time.Hour,
+		DiscoveryTime:       15 * time.Second,
+		ChunkRequestTimeout: 15 * time.Second,
+		Fetchers:            4,
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the state sync service
+// TestStateSyncConfig returns a default configuration for the state sync service
 func TestStateSyncConfig() *StateSyncConfig {
 	return DefaultStateSyncConfig()
 }
 
 // ValidateBasic performs basic validation.
 func (cfg *StateSyncConfig) ValidateBasic() error {
-	if cfg.Enable {
-		if len(cfg.RPCServers) == 0 {
-			return errors.New("rpc-servers is required")
-		}
+	if !cfg.Enable {
+		return nil
+	}
+
+	// If we're not using the P2P stack then we need to validate the
+	// RPCServers
+	if !cfg.UseP2P {
 		if len(cfg.RPCServers) < 2 {
-			return errors.New("at least two rpc-servers entries is required")
+			return errors.New("at least two rpc-servers must be specified")
 		}
+
 		for _, server := range cfg.RPCServers {
-			if len(server) == 0 {
+			if server == "" {
 				return errors.New("found empty rpc-servers entry")
 			}
 		}
-		if cfg.TrustPeriod <= 0 {
-			return errors.New("trusted-period is required")
-		}
-		if cfg.TrustHeight <= 0 {
-			return errors.New("trusted-height is required")
-		}
-		if len(cfg.TrustHash) == 0 {
-			return errors.New("trusted-hash is required")
-		}
-		_, err := hex.DecodeString(cfg.TrustHash)
-		if err != nil {
-			return fmt.Errorf("invalid trusted-hash: %w", err)
-		}
 	}
+
+	if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
+		return errors.New("discovery time must be 0s or greater than five seconds")
+	}
+
+	if cfg.TrustPeriod <= 0 {
+		return errors.New("trusted-period is required")
+	}
+
+	if cfg.TrustHeight <= 0 {
+		return errors.New("trusted-height is required")
+	}
+
+	if len(cfg.TrustHash) == 0 {
+		return errors.New("trusted-hash is required")
+	}
+
+	_, err := hex.DecodeString(cfg.TrustHash)
+	if err != nil {
+		return fmt.Errorf("invalid trusted-hash: %w", err)
+	}
+
+	if cfg.ChunkRequestTimeout < 5*time.Second {
+		return errors.New("chunk-request-timeout must be at least 5 seconds")
+	}
+
+	if cfg.Fetchers <= 0 {
+		return errors.New("fetchers is required")
+	}
+
 	return nil
-}
-
-//-----------------------------------------------------------------------------
-// FastSyncConfig
-
-// FastSyncConfig defines the configuration for the Tendermint fast sync service
-type FastSyncConfig struct {
-	Version string `mapstructure:"version"`
-}
-
-// DefaultFastSyncConfig returns a default configuration for the fast sync service
-func DefaultFastSyncConfig() *FastSyncConfig {
-	return &FastSyncConfig{
-		Version: "v0",
-	}
-}
-
-// TestFastSyncConfig returns a default configuration for the fast sync.
-func TestFastSyncConfig() *FastSyncConfig {
-	return DefaultFastSyncConfig()
-}
-
-// ValidateBasic performs basic validation.
-func (cfg *FastSyncConfig) ValidateBasic() error {
-	switch cfg.Version {
-	case "v0":
-		return nil
-	case "v2":
-		return nil
-	default:
-		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -838,6 +917,7 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal-file"`
 	walFile string // overrides WalPath if set
 
+	// TODO: remove timeout configs, these should be global not local
 	// How long we wait for a proposal block before prevoting nil
 	TimeoutPropose time.Duration `mapstructure:"timeout-propose"`
 	// How much timeout-propose increases with each round
@@ -1002,19 +1082,25 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 // TxIndexConfig defines the configuration for the transaction indexer,
 // including composite keys to index.
 type TxIndexConfig struct {
-	// What indexer to use for transactions
+	// The backend database list to back the indexer.
+	// If list contains `null`, meaning no indexer service will be used.
 	//
 	// Options:
-	//   1) "null"
+	//   1) "null" - no indexer services.
 	//   2) "kv" (default) - the simplest possible indexer,
 	//      backed by key-value storage (defaults to levelDB; see DBBackend).
-	Indexer string `mapstructure:"indexer"`
+	//   3) "psql" - the indexer services backed by PostgreSQL.
+	Indexer []string `mapstructure:"indexer"`
+
+	// The PostgreSQL connection configuration, the connection format:
+	// postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
+	PsqlConn string `mapstructure:"psql-conn"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer: "kv",
+		Indexer: []string{"kv"},
 	}
 }
 

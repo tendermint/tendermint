@@ -23,6 +23,8 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+
 ## Built-in app vs external app
 
 Running your application inside the same process as Tendermint Core will give
@@ -40,7 +42,7 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.15.x darwin/amd64
+go version go1.16.x darwin/amd64
 ```
 
 ## 1.2 Creating a new Go project
@@ -50,9 +52,12 @@ We'll start by creating a new Go project.
 ```bash
 mkdir kvstore
 cd kvstore
+go mod init github.com/<github_username>/<repo_name>
 ```
 
 Inside the example directory create a `main.go` file with the following content:
+
+> Note: there is no need to clone or fork Tendermint in this tutorial. 
 
 ```go
 package main
@@ -336,7 +341,6 @@ Put the following code into the "main.go" file:
 package main
 
 import (
- "errors"
  "flag"
  "fmt"
  "os"
@@ -352,7 +356,7 @@ import (
  tmflags "github.com/tendermint/tendermint/libs/cli/flags"
  "github.com/tendermint/tendermint/libs/log"
  nm "github.com/tendermint/tendermint/node"
- "github.com/tendermint/tendermint/p2p"
+ "github.com/tendermint/tendermint/internal/p2p"
  "github.com/tendermint/tendermint/privval"
  "github.com/tendermint/tendermint/proxy"
 )
@@ -389,12 +393,11 @@ func main() {
  c := make(chan os.Signal, 1)
  signal.Notify(c, os.Interrupt, syscall.SIGTERM)
  <-c
- os.Exit(0)
 }
 
 func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
  // read config
- config := cfg.DefaultConfig()
+ config := cfg.DefaultValidatorConfig()
  config.RootDir = filepath.Dir(filepath.Dir(configFile))
  viper.SetConfigFile(configFile)
  if err := viper.ReadInConfig(); err != nil {
@@ -410,7 +413,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
  // create logger
  logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
  var err error
- logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+ logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
  if err != nil {
   return nil, fmt.Errorf("failed to parse log level: %w", err)
  }
@@ -432,7 +435,7 @@ func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
   config,
   pv,
   nodeKey,
-  proxy.NewLocalClientCreator(app),
+  abcicli.NewLocalClientCreator(app),
   nm.DefaultGenesisDocProviderFunc(config),
   nm.DefaultDBProvider,
   nm.DefaultMetricsProvider(config.Instrumentation),
@@ -484,7 +487,7 @@ node, err := nm.NewNode(
  config,
  pv,
  nodeKey,
- proxy.NewLocalClientCreator(app),
+ abcicli.NewLocalClientCreator(app),
  nm.DefaultGenesisDocProviderFunc(config),
  nm.DefaultDBProvider,
  nm.DefaultMetricsProvider(config.Instrumentation),
@@ -497,14 +500,14 @@ if err != nil {
 `NewNode` requires a few things including a configuration file, a private
 validator, a node key and a few others in order to construct the full node.
 
-Note we use `proxy.NewLocalClientCreator` here to create a local client instead
+Note we use `abcicli.NewLocalClientCreator` here to create a local client instead
 of one communicating through a socket or gRPC.
 
 [viper](https://github.com/spf13/viper) is being used for reading the config,
 which we will generate later using the `tendermint init` command.
 
 ```go
-config := cfg.DefaultConfig()
+config := cfg.DefaultValidatorConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
@@ -565,7 +568,6 @@ defer func() {
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
-os.Exit(0)
 ```
 
 ## 1.5 Getting Up and Running
@@ -605,7 +607,7 @@ go build
 ```
 
 To create a default configuration, nodeKey and private validator files, let's
-execute `tendermint init`. But before we do that, we will need to install
+execute `tendermint init validator`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
 guide](https://docs.tendermint.com/master/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git
@@ -614,11 +616,12 @@ major version.
 
 ```bash
 $ rm -rf /tmp/example
-$ TMHOME="/tmp/example" tendermint init
+$ TMHOME="/tmp/example" tendermint init validator
 
 I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:40:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
 I[2019-07-16|18:40:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
+I[2019-07-16|18:40:36.483] Generated config                             module=main mode=validator
 ```
 
 We are ready to start our application:

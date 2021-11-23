@@ -14,8 +14,8 @@ import (
 	"time"
 
 	gogotypes "github.com/gogo/protobuf/types"
-	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/oasisprotocol/curve25519-voi/primitives/merlin"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -23,10 +23,10 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/async"
-	"github.com/tendermint/tendermint/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmprivval "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
@@ -42,15 +42,15 @@ const (
 	aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
 	aeadKeySize      = chacha20poly1305.KeySize
 	aeadNonceSize    = chacha20poly1305.NonceSize
+
+	labelEphemeralLowerPublicKey = "EPHEMERAL_LOWER_PUBLIC_KEY"
+	labelEphemeralUpperPublicKey = "EPHEMERAL_UPPER_PUBLIC_KEY"
+	labelDHSecret                = "DH_SECRET"
+	labelSecretConnectionMac     = "SECRET_CONNECTION_MAC"
 )
 
 var (
 	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
-
-	labelEphemeralLowerPublicKey = []byte("EPHEMERAL_LOWER_PUBLIC_KEY")
-	labelEphemeralUpperPublicKey = []byte("EPHEMERAL_UPPER_PUBLIC_KEY")
-	labelDHSecret                = []byte("DH_SECRET")
-	labelSecretConnectionMac     = []byte("SECRET_CONNECTION_MAC")
 
 	secretConnKeyAndChallengeGen = []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN")
 )
@@ -136,9 +136,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 
 	const challengeSize = 32
 	var challenge [challengeSize]byte
-	challengeSlice := transcript.ExtractBytes(labelSecretConnectionMac, challengeSize)
-
-	copy(challenge[:], challengeSlice[0:challengeSize])
+	transcript.ExtractBytes(challenge[:], labelSecretConnectionMac)
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
@@ -410,7 +408,7 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 	// Send our info and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			pbpk, err := cryptoenc.PubKeyToProto(pubKey)
+			pbpk, err := encoding.PubKeyToProto(pubKey)
 			if err != nil {
 				return nil, true, err
 			}
@@ -427,7 +425,7 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 				return nil, true, err // abort
 			}
 
-			pk, err := cryptoenc.PubKeyFromProto(pba.PubKey)
+			pk, err := encoding.PubKeyFromProto(pba.PubKey)
 			if err != nil {
 				return nil, true, err // abort
 			}

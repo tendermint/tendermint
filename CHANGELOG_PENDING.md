@@ -1,74 +1,49 @@
 # Unreleased Changes
 
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
+
 ## vX.X
 
-Special thanks to external contributors on this release:
+Month, DD, YYYY
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Special thanks to external contributors on this release:
 
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
-  - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
-  - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
-  - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
-  - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
-  - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
+
+  - [rpc] Remove the deprecated gRPC interface to the RPC service. (@creachadair)
+  - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
+  - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
 
 - Apps
-  - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
-  - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
-  - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
+
+  - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
 
 - P2P Protocol
 
+  - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
+  - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+
 - Go API
-  - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
-  - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
-  - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
-  - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
-  - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
-  - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
-  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)  
-  - [state] \#5864 Use an iterator when pruning state (@cmwaters)
-  - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
-    - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
-  - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
-    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
-  - [all] \#6077 Change spelling from British English to American (@cmwaters)
-    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
-    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+
+  - [pubsub] \#7231 Remove unbuffered subscriptions and rework the Subscription interface. (@creachadair)
+  - [eventbus] \#7231 Move the EventBus type to the internal/eventbus package. (@creachadair)
+  - [blocksync] \#7046 Remove v2 implementation of the blocksync service and recactor, which was disabled in the previous release. (@tychoish)
+  - [p2p] \#7064 Remove WDRR queue implementation. (@tychoish)
+  - [config] \#7169 `WriteConfigFile` now returns an error. (@tychoish)
+  - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychosih)
+
 
 - Blockchain Protocol
 
-- Data Storage
-  - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
-
 ### FEATURES
+
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
+- [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
 
-- [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
-- [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
-- [privval] \#5725 Add gRPC support to private validator.
-- [privval] \#5876 `tendermint show-validator` will query the remote signer if gRPC is being used (@marbar3778)
-- [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
-- [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
-- [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
-- [blockchain/v1] \#5728 Remove in favor of v2 (@melekes)
-- [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
-- [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
-- [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
-- [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
-- [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. This is a quick fix for underlying issues around tm-db and ACID guarantees. (@githubsands)
-- [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
-- [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
-  - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
-
 ### BUG FIXES
 
-- [ABCI] \#6124 Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
-- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
-- [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
-- [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
-- [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)

@@ -1,17 +1,21 @@
 ---
 order: 1
 parent:
-  title: Nodes
+  title: Node Operators
   order: 4
 ---
+
+# Overview
 
 This section will focus on how to operate full nodes, validators and light clients.
 
 - [Node Types](#node-types)
 - [Configuration](./configuration.md)
-        - [Configure State sync](./state_sync.md)
+  - [Configure State sync](./state-sync.md)
 - [Validator Guides](./validators.md)
+  - [Running in Production](./running-in-production.md)
   - [How to secure your keys](./validators.md#validator_keys)
+  - [Remote Signer](./remote-signer.md)
 - [Light Client guides](./light-client.md)
   - [How to sync a light client](./light-client.md#)
 - [Metrics](./metrics.md)

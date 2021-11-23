@@ -5,20 +5,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mrand "math/rand"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
-var ctx = context.Background()
-
-func InitChain(client abcicli.Client) error {
+func InitChain(ctx context.Context, client abciclient.Client) error {
 	total := 10
 	vals := make([]types.ValidatorUpdate, total)
 	for i := 0; i < total; i++ {
 		pubkey := tmrand.Bytes(33)
-		power := tmrand.Int()
+		// nolint:gosec // G404: Use of weak random number generator
+		power := mrand.Int()
 		vals[i] = types.UpdateValidator(pubkey, int64(power), "")
 	}
 	_, err := client.InitChainSync(ctx, types.RequestInitChain{
@@ -32,7 +32,7 @@ func InitChain(client abcicli.Client) error {
 	return nil
 }
 
-func Commit(client abcicli.Client, hashExp []byte) error {
+func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error {
 	res, err := client.CommitSync(ctx)
 	data := res.Data
 	if err != nil {
@@ -49,7 +49,7 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 	return nil
 }
 
-func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
+func DeliverTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
 	res, _ := client.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: txBytes})
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
@@ -68,7 +68,7 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []
 	return nil
 }
 
-func CheckTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
+func CheckTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
 	res, _ := client.CheckTxSync(ctx, types.RequestCheckTx{Tx: txBytes})
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {

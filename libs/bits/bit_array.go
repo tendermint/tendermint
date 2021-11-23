@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	mrand "math/rand"
 	"regexp"
 	"strings"
 	"sync"
@@ -24,12 +25,26 @@ type BitArray struct {
 // NewBitArray returns a new bit array.
 // It returns nil if the number of bits is zero.
 func NewBitArray(bits int) *BitArray {
+	// Reseed non-deterministically.
+	tmrand.Reseed()
 	if bits <= 0 {
 		return nil
 	}
-	return &BitArray{
-		Bits:  bits,
-		Elems: make([]uint64, numElems(bits)),
+	bA := &BitArray{}
+	bA.reset(bits)
+	return bA
+}
+
+// reset changes size of BitArray to `bits` and re-allocates (zeroed) data buffer
+func (bA *BitArray) reset(bits int) {
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	bA.Bits = bits
+	if bits == 0 {
+		bA.Elems = nil
+	} else {
+		bA.Elems = make([]uint64, numElems(bits))
 	}
 }
 
@@ -242,7 +257,7 @@ func (bA *BitArray) IsFull() bool {
 
 // PickRandom returns a random index for a set bit in the bit array.
 // If there is no such value, it returns 0, false.
-// It uses the global randomness in `random.go` to get this index.
+// It uses math/rand's global randomness Source to get this index.
 func (bA *BitArray) PickRandom() (int, bool) {
 	if bA == nil {
 		return 0, false
@@ -255,8 +270,8 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
-
-	return trueIndices[tmrand.Intn(len(trueIndices))], true
+	// nolint:gosec // G404: Use of weak random number generator
+	return trueIndices[mrand.Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {
@@ -396,8 +411,7 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 	if b == "null" {
 		// This is required e.g. for encoding/json when decoding
 		// into a pointer with pre-allocated BitArray.
-		bA.Bits = 0
-		bA.Elems = nil
+		bA.reset(0)
 		return nil
 	}
 
@@ -407,36 +421,35 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 		return fmt.Errorf("bitArray in JSON should be a string of format %q but got %s", bitArrayJSONRegexp.String(), b)
 	}
 	bits := match[1]
-
-	// Construct new BitArray and copy over.
 	numBits := len(bits)
-	bA2 := NewBitArray(numBits)
+
+	bA.reset(numBits)
 	for i := 0; i < numBits; i++ {
 		if bits[i] == 'x' {
-			bA2.SetIndex(i, true)
+			bA.SetIndex(i, true)
 		}
 	}
-	*bA = *bA2 //nolint:govet
+
 	return nil
 }
 
 // ToProto converts BitArray to protobuf. It returns nil if BitArray is
 // nil/empty.
-//
-// XXX: It does not copy the array.
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 	if bA == nil ||
 		(len(bA.Elems) == 0 && bA.Bits == 0) { // empty
 		return nil
 	}
 
-	return &tmprotobits.BitArray{Bits: int64(bA.Bits), Elems: bA.Elems}
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	bc := bA.copy()
+	return &tmprotobits.BitArray{Bits: int64(bc.Bits), Elems: bc.Elems}
 }
 
 // FromProto sets BitArray to the given protoBitArray. It returns an error if
 // protoBitArray is invalid.
-//
-// XXX: It does not copy the array.
 func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 	if protoBitArray == nil {
 		return nil
@@ -454,8 +467,14 @@ func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 		return fmt.Errorf("invalid number of Elems: got %d, but exp %d", got, exp)
 	}
 
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	ec := make([]uint64, len(protoBitArray.Elems))
+	copy(ec, protoBitArray.Elems)
+
 	bA.Bits = int(protoBitArray.Bits)
-	bA.Elems = protoBitArray.Elems
+	bA.Elems = ec
 	return nil
 }
 

@@ -64,13 +64,42 @@ It won’t kill the node, but it will gather all of the above data and package i
 
 At this point, depending on how severe the degradation is, you may want to restart the process.
 
+## Tendermint Inspect
+
+What if the Tendermint node will not start up due to inconsistent consensus state? 
+
+When a node running the Tendermint consensus engine detects an inconsistent state 
+it will crash the entire Tendermint process. 
+The Tendermint consensus engine cannot be run in this inconsistent state and the so node
+will fail to start up as a result.
+The Tendermint RPC server can provide valuable information for debugging in this situation.
+The Tendermint `inspect` command will run a subset of the Tendermint RPC server 
+that is useful for debugging inconsistent state.
+
+### Running inspect
+
+Start up the `inspect` tool on the machine where Tendermint crashed using: 
+```bash
+tendermint inspect --home=</path/to/app.d>
+```
+
+`inspect` will use the data directory specified in your Tendermint configuration file.
+`inspect` will also run the RPC server at the address specified in your Tendermint configuration file.
+
+### Using inspect
+
+With the `inspect` server running, you can access RPC endpoints that are critically important
+for debugging.
+Calling the `/status`, `/consensus_state` and `/dump_consensus_state` RPC endpoint 
+will return useful information about the Tendermint consensus state.
+
 ## Outro
 
-We’re hoping that the `tendermint debug` subcommand will become de facto the first response to any accidents.
+We’re hoping that these Tendermint tools will become de facto the first response for any accidents.
 
-Let us know what your experience has been so far! Have you had a chance to try `tendermint debug` yet?
+Let us know what your experience has been so far! Have you had a chance to try `tendermint debug` or `tendermint inspect` yet?
 
-Join our chat, where we discuss the current issues and future improvements.
+Join our [discord chat](https://discord.gg/cosmosnetwork), where we discuss the current issues and future improvements.
 
 —
 

@@ -4,17 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"os"
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
@@ -65,7 +64,7 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 	}
 
 	certPool := x509.NewCertPool()
-	bs, err := ioutil.ReadFile(ca)
+	bs, err := os.ReadFile(ca)
 	if err != nil {
 		log.Error("failed to read ca cert:", "error", err)
 		os.Exit(1)
@@ -88,29 +87,30 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 
 // DialRemoteSigner is  a generalized function to dial the gRPC server.
 func DialRemoteSigner(
-	config *cfg.Config,
+	cfg *config.PrivValidatorConfig,
 	chainID string,
 	logger log.Logger,
+	usePrometheus bool,
 ) (*SignerClient, error) {
 	var transportSecurity grpc.DialOption
-	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
-		transportSecurity = GenerateTLS(config.PrivValidatorClientCertificateFile(),
-			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
+	if cfg.AreSecurityOptionsPresent() {
+		transportSecurity = GenerateTLS(cfg.ClientCertificateFile(),
+			cfg.ClientKeyFile(), cfg.RootCAFile(), logger)
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Info("Using an insecure gRPC connection!")
 	}
 
 	dialOptions := DefaultDialOptions()
-	if config.Instrumentation.Prometheus {
+	if usePrometheus {
 		grpcMetrics := grpc_prometheus.DefaultClientMetrics
 		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpcMetrics.UnaryClientInterceptor()))
 	}
 
 	dialOptions = append(dialOptions, transportSecurity)
 
-	ctx := context.Background()
-	_, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	ctx := context.TODO()
+	_, address := tmnet.ProtocolAndAddress(cfg.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
 		logger.Error("unable to connect to server", "target", address, "err", err)

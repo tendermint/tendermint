@@ -1,32 +1,35 @@
 linters:
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
+    - exportloopref
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
+    # - gocognit
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
     - ineffassign
     # - interfacer
     - lll
-    - misspell
     # - maligned
+    - misspell
     - nakedret
+    - nolintlint
     - prealloc
-    - scopelint
     - staticcheck
     - structcheck
     - stylecheck
@@ -37,8 +40,6 @@ linters:
     - varcheck
     # - whitespace
     # - wsl
-    # - gocognit
-    - nolintlint
 
 issues:
   exclude-rules:

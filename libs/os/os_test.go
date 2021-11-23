@@ -3,7 +3,6 @@ package os_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestCopyFile(t *testing.T) {
-	tmpfile, err := ioutil.TempFile("", "example")
+	tmpfile, err := os.CreateTemp("", "example")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +32,7 @@ func TestCopyFile(t *testing.T) {
 	if _, err := os.Stat(copyfile); os.IsNotExist(err) {
 		t.Fatal("copy should exist")
 	}
-	data, err := ioutil.ReadFile(copyfile)
+	data, err := os.ReadFile(copyfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +69,7 @@ func TestTrapSignal(t *testing.T) {
 }
 
 func TestEnsureDir(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "ensure-dir")
+	tmp, err := os.MkdirTemp("", "ensure-dir")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmp)
 
@@ -84,7 +83,7 @@ func TestEnsureDir(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should fail on file.
-	err = ioutil.WriteFile(filepath.Join(tmp, "file"), []byte{}, 0644)
+	err = os.WriteFile(filepath.Join(tmp, "file"), []byte{}, 0644)
 	require.NoError(t, err)
 	err = tmos.EnsureDir(filepath.Join(tmp, "file"), 0755)
 	require.Error(t, err)
@@ -134,4 +133,45 @@ func newTestProgram(t *testing.T, environVar string) (cmd *exec.Cmd, stdout *byt
 	cmd.Stderr = stderr
 
 	return
+}
+
+// Ensure that using CopyFile does not truncate the destination file before
+// the origin is positively a non-directory and that it is ready for copying.
+// See https://github.com/tendermint/tendermint/issues/6427
+func TestTrickedTruncation(t *testing.T) {
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "pwn_truncate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpDir)
+
+	originalWALPath := filepath.Join(tmpDir, "wal")
+	originalWALContent := []byte("I AM BECOME DEATH, DESTROYER OF ALL WORLDS!")
+	if err := os.WriteFile(originalWALPath, originalWALContent, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Sanity check.
+	readWAL, err := os.ReadFile(originalWALPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(readWAL, originalWALContent) {
+		t.Fatalf("Cannot proceed as the content does not match\nGot:  %q\nWant: %q", readWAL, originalWALContent)
+	}
+
+	// 2. Now cause the truncation of the original file.
+	// It is absolutely legal to invoke os.Open on a directory.
+	if err := tmos.CopyFile(tmpDir, originalWALPath); err == nil {
+		t.Fatal("Expected an error")
+	}
+
+	// 3. Check the WAL's content
+	reReadWAL, err := os.ReadFile(originalWALPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(reReadWAL, originalWALContent) {
+		t.Fatalf("Oops, the WAL's content was changed :(\nGot:  %q\nWant: %q", reReadWAL, originalWALContent)
+	}
 }

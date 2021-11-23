@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/protoio"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -56,7 +57,7 @@ func TestProposalString(t *testing.T) {
 
 func TestProposalVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	prop := NewProposal(
@@ -66,7 +67,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	signBytes := ProposalSignBytes("test_chain_id", p)
 
 	// sign it
-	err = privVal.SignProposal("test_chain_id", p)
+	err = privVal.SignProposal(context.Background(), "test_chain_id", p)
 	require.NoError(t, err)
 	prop.Signature = p.Signature
 
@@ -103,7 +104,7 @@ func BenchmarkProposalWriteSignBytes(b *testing.B) {
 func BenchmarkProposalSign(b *testing.B) {
 	privVal := NewMockPV()
 	for i := 0; i < b.N; i++ {
-		err := privVal.SignProposal("test_chain_id", pbp)
+		err := privVal.SignProposal(context.Background(), "test_chain_id", pbp)
 		if err != nil {
 			b.Error(err)
 		}
@@ -112,9 +113,9 @@ func BenchmarkProposalSign(b *testing.B) {
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	privVal := NewMockPV()
-	err := privVal.SignProposal("test_chain_id", pbp)
+	err := privVal.SignProposal(context.Background(), "test_chain_id", pbp)
 	require.NoError(b, err)
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
@@ -154,7 +155,7 @@ func TestProposalValidateBasic(t *testing.T) {
 				4, 2, 2,
 				blockID)
 			p := prop.ToProto()
-			err := privVal.SignProposal("test_chain_id", p)
+			err := privVal.SignProposal(context.Background(), "test_chain_id", p)
 			prop.Signature = p.Signature
 			require.NoError(t, err)
 			tc.malleateProposal(prop)

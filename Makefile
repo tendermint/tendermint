@@ -12,10 +12,10 @@ else
 VERSION := $(shell git describe)
 endif
 
-LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMVersion=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
-HTTPS_GIT := https://github.com/tendermint/tendermint.git
-DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
+BUILD_IMAGE := ghcr.io/tendermint/docker-build-proto
+DOCKER_PROTO_BUILDER := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
 CGO_ENABLED ?= 0
 
 # handle nostrip
@@ -79,31 +79,16 @@ $(BUILDDIR)/:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-proto-all: proto-gen proto-lint proto-check-breaking
-.PHONY: proto-all
-
 proto-gen:
 	@docker pull -q tendermintdev/docker-build-proto
 	@echo "Generating Protobuf files"
-	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
+	@$(DOCKER_PROTO_BUILDER) sh ./scripts/protocgen.sh
 .PHONY: proto-gen
-
-proto-lint:
-	@$(DOCKER_BUF) check lint --error-format=json
-.PHONY: proto-lint
 
 proto-format:
 	@echo "Formatting Protobuf files"
-	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+	@$(DOCKER_PROTO_BUILDER) find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
 .PHONY: proto-format
-
-proto-check-breaking:
-	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
-.PHONY: proto-check-breaking
-
-proto-check-breaking-ci:
-	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
-.PHONY: proto-check-breaking-ci
 
 ###############################################################################
 ###                              Build ABCI                                 ###
@@ -131,11 +116,11 @@ generate_test_cert:
 	# generate server cerificate
 	@certstrap request-cert -cn server -ip 127.0.0.1
 	# self-sign server cerificate with rootCA
-	@certstrap sign server --CA "root CA" 
+	@certstrap sign server --CA "root CA"
 	# generate client cerificate
 	@certstrap request-cert -cn client -ip 127.0.0.1
 	# self-sign client cerificate with rootCA
-	@certstrap sign client --CA "root CA" 
+	@certstrap sign client --CA "root CA"
 .PHONY: generate_test_cert
 
 ###############################################################################
@@ -202,7 +187,7 @@ format:
 
 lint:
 	@echo "--> Running linter"
-	@golangci-lint run
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 .PHONY: lint
 
 DESTINATION = ./index.html.md
@@ -214,7 +199,7 @@ DESTINATION = ./index.html.md
 build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
-		(git checkout $${branch} && npm install && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
+		(git checkout $${branch} && npm ci && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
@@ -227,9 +212,18 @@ build-docs:
 
 build-docker: build-linux
 	cp $(BUILDDIR)/tendermint DOCKER/tendermint
-	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
+	docker build --label=tendermint --tag="tendermint/tendermint" -f DOCKER/Dockerfile .
 	rm -rf DOCKER/tendermint
 .PHONY: build-docker
+
+
+###############################################################################
+###                                Mocks                                    ###
+###############################################################################
+
+mockery:
+	go generate -run="./scripts/mockery_generate.sh" ./...
+.PHONY: mockery
 
 ###############################################################################
 ###                       Local testnet using docker                        ###

@@ -23,7 +23,7 @@ The above should hold for any arbitrary, valid network configuration, and that c
 
 A testnet configuration is specified as a TOML testnet manifest (see below). The testnet runner uses the manifest to configure a set of Docker containers and start them in some order. The manifests can be written manually (to test specific configurations) or generated randomly by the testnet generator (to test a wide range of configuration permutations).
 
-When running a testnet, the runner will first start the Docker nodes in some sequence, submit random transactions, and wait for the nodes to come online and the first blocks to be produced. This may involve e.g. waiting for nodes to fast sync and/or state sync. If specified, it will then run any misbehaviors (e.g. double-signing) and perturbations (e.g. killing or disconnecting nodes). It then waits for the testnet to stabilize, with all nodes online and having reached the latest height.
+When running a testnet, the runner will first start the Docker nodes in some sequence, submit random transactions, and wait for the nodes to come online and the first blocks to be produced. This may involve e.g. waiting for nodes to block sync and/or state sync. If specified, it will then run any misbehaviors (e.g. double-signing) and perturbations (e.g. killing or disconnecting nodes). It then waits for the testnet to stabilize, with all nodes online and having reached the latest height.
 
 Once the testnet stabilizes, a set of Go end-to-end tests are run against the live testnet to verify network invariants (for example that blocks are identical across nodes). These use the RPC client to interact with the network, and should consider the entire network as a black box (i.e. it should not test any network or node internals, only externally visible behavior via RPC). The tests may use the `testNode()` helper to run parallel tests against each individual testnet node, and/or inspect the full blockchain history via `fetchBlockChain()`.
 
@@ -69,6 +69,8 @@ The test runner has the following stages, which can also be executed explicitly 
 * `stop`: stops Docker containers.
 
 * `cleanup`: removes configuration files and Docker containers/networks.
+
+Auxiliary commands:
 
 * `logs`: outputs all node logs.
 
@@ -139,3 +141,43 @@ Docker does not enable IPv6 by default. To do so, enter the following in
   "fixed-cidr-v6": "2001:db8:1::/64"
 }
 ```
+
+## Benchmarking Testnets
+
+It is also possible to run a simple benchmark on a testnet. This is done through the `benchmark` command. This manages the entire process: setting up the environment, starting the test net, waiting for a considerable amount of blocks to be used (currently 100), and then returning the following metrics from the sample of the blockchain:
+
+- Average time to produce a block
+- Standard deviation of producing a block
+- Minimum and maximum time to produce a block
+
+## Running Individual Nodes
+
+The E2E test harness is designed to run several nodes of varying configurations within docker. It is also possible to run a single node in the case of running larger, geographically-dispersed testnets. To run a single node you can either run:
+
+**Built-in**
+
+```bash
+make node
+tendermint init validator
+TMHOME=$HOME/.tendermint ./build/node ./node/built-in.toml
+```
+
+To make things simpler the e2e application can also be run in the tendermint binary
+by running
+
+```bash
+tendermint start --proxy-app e2e
+```
+
+However this won't offer the same level of configurability of the application.
+
+**Socket**
+
+```bash
+make node
+tendermint init validator
+tendermint start
+./build/node ./node.socket.toml
+```
+
+Check `node/config.go` to see how the settings of the test application can be tweaked.

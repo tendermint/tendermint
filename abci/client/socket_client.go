@@ -1,4 +1,4 @@
-package abcicli
+package abciclient
 
 import (
 	"bufio"
@@ -12,18 +12,16 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const (
 	// reqQueueSize is the max number of queued async requests.
 	// (memory: 256MB max assuming 1MB transactions)
 	reqQueueSize = 256
-	// Don't wait longer than...
-	flushThrottleMS = 20
 )
 
 type reqResWithContext struct {
@@ -40,8 +38,7 @@ type socketClient struct {
 	mustConnect bool
 	conn        net.Conn
 
-	reqQueue   chan *reqResWithContext
-	flushTimer *timer.ThrottleTimer
+	reqQueue chan *reqResWithContext
 
 	mtx     tmsync.Mutex
 	err     error
@@ -54,23 +51,22 @@ var _ Client = (*socketClient)(nil)
 // NewSocketClient creates a new socket client, which connects to a given
 // address. If mustConnect is true, the client will return an error upon start
 // if it fails to connect.
-func NewSocketClient(addr string, mustConnect bool) Client {
+func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		reqQueue:    make(chan *reqResWithContext, reqQueueSize),
-		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
 		addr:    addr,
 		reqSent: list.New(),
 		resCb:   nil,
 	}
-	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "socketClient", cli)
 	return cli
 }
 
 // OnStart implements Service by connecting to the server and spawning reading
 // and writing goroutines.
-func (cli *socketClient) OnStart() error {
+func (cli *socketClient) OnStart(ctx context.Context) error {
 	var (
 		err  error
 		conn net.Conn
@@ -89,8 +85,8 @@ func (cli *socketClient) OnStart() error {
 		}
 		cli.conn = conn
 
-		go cli.sendRequestsRoutine(conn)
-		go cli.recvResponseRoutine(conn)
+		go cli.sendRequestsRoutine(ctx, conn)
+		go cli.recvResponseRoutine(ctx, conn)
 
 		return nil
 	}
@@ -102,8 +98,7 @@ func (cli *socketClient) OnStop() {
 		cli.conn.Close()
 	}
 
-	cli.flushQueue()
-	cli.flushTimer.Stop()
+	cli.drainQueue()
 }
 
 // Error returns an error if the client was stopped abruptly.
@@ -119,54 +114,49 @@ func (cli *socketClient) Error() error {
 // NOTE: callback may get internally generated flush responses.
 func (cli *socketClient) SetResponseCallback(resCb Callback) {
 	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.resCb = resCb
-	cli.mtx.Unlock()
 }
 
 //----------------------------------------
 
-func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
-	w := bufio.NewWriter(conn)
+func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer) {
+	bw := bufio.NewWriter(conn)
 	for {
 		select {
+		case <-ctx.Done():
+			return
+		case <-cli.Quit():
+			return
 		case reqres := <-cli.reqQueue:
-			// cli.Logger.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
+			if ctx.Err() != nil {
+				return
+			}
 
 			if reqres.C.Err() != nil {
 				cli.Logger.Debug("Request's context is done", "req", reqres.R, "err", reqres.C.Err())
 				continue
 			}
-
 			cli.willSendReq(reqres.R)
-			err := types.WriteMessage(reqres.R.Request, w)
-			if err != nil {
+
+			if err := types.WriteMessage(reqres.R.Request, bw); err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
 			}
-
-			// If it's a flush request, flush the current buffer.
-			if _, ok := reqres.R.Request.Value.(*types.Request_Flush); ok {
-				err = w.Flush()
-				if err != nil {
-					cli.stopForError(fmt.Errorf("flush buffer: %w", err))
-					return
-				}
+			if err := bw.Flush(); err != nil {
+				cli.stopForError(fmt.Errorf("flush buffer: %w", err))
+				return
 			}
-		case <-cli.flushTimer.Ch: // flush queue
-			select {
-			case cli.reqQueue <- &reqResWithContext{R: NewReqRes(types.ToRequestFlush()), C: context.Background()}:
-			default:
-				// Probably will fill the buffer, or retry later.
-			}
-		case <-cli.Quit():
-			return
 		}
 	}
 }
 
-func (cli *socketClient) recvResponseRoutine(conn io.Reader) {
+func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader) {
 	r := bufio.NewReader(conn)
 	for {
+		if ctx.Err() != nil {
+			return
+		}
 		var res = &types.Response{}
 		err := types.ReadMessage(r, res)
 		if err != nil {
@@ -492,14 +482,6 @@ func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request, s
 		}
 	}
 
-	// Maybe auto-flush, or unset auto-flush
-	switch req.Value.(type) {
-	case *types.Request_Flush:
-		cli.flushTimer.Unset()
-	default:
-		cli.flushTimer.Set()
-	}
-
 	return reqres, nil
 }
 
@@ -537,7 +519,9 @@ func queueErr(e error) error {
 	return fmt.Errorf("can't queue req: %w", e)
 }
 
-func (cli *socketClient) flushQueue() {
+// drainQueue marks as complete and discards all remaining pending requests
+// from the queue.
+func (cli *socketClient) drainQueue() {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 
@@ -547,14 +531,17 @@ func (cli *socketClient) flushQueue() {
 		reqres.Done()
 	}
 
-	// mark all queued messages as resolved
-LOOP:
+	// Mark all queued messages as resolved.
+	//
+	// TODO(creachadair): We can't simply range the channel, because it is never
+	// closed, and the writer continues to add work.
+	// See https://github.com/tendermint/tendermint/issues/6996.
 	for {
 		select {
 		case reqres := <-cli.reqQueue:
 			reqres.R.Done()
 		default:
-			break LOOP
+			return
 		}
 	}
 }

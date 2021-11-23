@@ -6,7 +6,7 @@ pull_request_rules:
     actions:
       merge:
         method: squash
-        strict: true
+        strict: smart+fasttrack
         commit_message: title+body
   - name: backport patches to v0.34.x branch
     conditions:
@@ -16,3 +16,12 @@ pull_request_rules:
       backport:
         branches:
           - v0.34.x
+  - name: backport patches to v0.35.x branch
+    conditions:
+      - base=master
+      - label=S:backport-to-v0.35.x
+    actions:
+      backport:
+        branches:
+          - v0.35.x
+

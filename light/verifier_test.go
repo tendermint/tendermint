@@ -64,7 +64,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(-1*time.Hour), nil, vals, vals,
 				hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
 			vals,
-			3 * time.Hour,
+			4 * time.Hour,
 			bTime.Add(2 * time.Hour),
 			nil,
 			"to be after old header time",
@@ -146,7 +146,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 				hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
 			keys.ToValidators(10, 1),
 			1 * time.Hour,
-			bTime.Add(1 * time.Hour),
+			bTime.Add(2 * time.Hour),
 			nil,
 			"old header has expired",
 		},
@@ -311,25 +311,26 @@ func TestValidateTrustLevel(t *testing.T) {
 		valid bool
 	}{
 		// valid
-		0: {tmmath.Fraction{Numerator: 1, Denominator: 1}, true},
-		1: {tmmath.Fraction{Numerator: 1, Denominator: 3}, true},
-		2: {tmmath.Fraction{Numerator: 2, Denominator: 3}, true},
-		3: {tmmath.Fraction{Numerator: 3, Denominator: 3}, true},
-		4: {tmmath.Fraction{Numerator: 4, Denominator: 5}, true},
+		0: {tmmath.Fraction{Numerator: 1, Denominator: 3}, true},
+		1: {tmmath.Fraction{Numerator: 2, Denominator: 3}, true},
+		2: {tmmath.Fraction{Numerator: 4, Denominator: 5}, true},
+		3: {tmmath.Fraction{Numerator: 99, Denominator: 100}, true},
 
 		// invalid
+		4: {tmmath.Fraction{Numerator: 3, Denominator: 3}, false},
 		5: {tmmath.Fraction{Numerator: 6, Denominator: 5}, false},
-		6: {tmmath.Fraction{Numerator: 0, Denominator: 1}, false},
-		7: {tmmath.Fraction{Numerator: 0, Denominator: 0}, false},
-		8: {tmmath.Fraction{Numerator: 1, Denominator: 0}, false},
+		6: {tmmath.Fraction{Numerator: 3, Denominator: 10}, false},
+		7: {tmmath.Fraction{Numerator: 0, Denominator: 1}, false},
+		8: {tmmath.Fraction{Numerator: 0, Denominator: 0}, false},
+		9: {tmmath.Fraction{Numerator: 1, Denominator: 0}, false},
 	}
 
-	for _, tc := range testCases {
+	for idx, tc := range testCases {
 		err := light.ValidateTrustLevel(tc.lvl)
 		if !tc.valid {
-			assert.Error(t, err)
+			assert.Error(t, err, idx)
 		} else {
-			assert.NoError(t, err)
+			assert.NoError(t, err, idx)
 		}
 	}
 }

@@ -21,7 +21,7 @@ this by setting the `TMHOME` environment variable.
 Initialize the root directory by running:
 
 ```sh
-tendermint init
+tendermint init validator
 ```
 
 This will create a new private key (`priv_validator_key.json`), and a
@@ -127,7 +127,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 To run a Tendermint node, use:
 
 ```bash
-tendermint node
+tendermint start
 ```
 
 By default, Tendermint will try to connect to an ABCI application on
@@ -136,7 +136,7 @@ another window. If you don't, kill Tendermint and run an in-process version of
 the `kvstore` app:
 
 ```bash
-tendermint node --proxy-app=kvstore
+tendermint start --proxy-app=kvstore
 ```
 
 After a few seconds, you should see blocks start streaming in. Note that blocks
@@ -150,10 +150,10 @@ Go, run it in another process, and use the `--proxy-app` flag to specify the
 address of the socket it is listening on, for instance:
 
 ```bash
-tendermint node --proxy-app=/var/run/abci.sock
+tendermint start --proxy-app=/var/run/abci.sock
 ```
 
-You can find out what flags are supported by running `tendermint node --help`.
+You can find out what flags are supported by running `tendermint start --help`.
 
 ## Transactions
 
@@ -185,51 +185,65 @@ the argument name and use `_` as a placeholder.
 
 ### Formatting
 
-The following nuances when sending/formatting transactions should be
-taken into account:
+When sending transactions to the RPC interface, the following formatting rules
+must be followed:
 
-With `GET`:
+Using `GET` (with parameters in the URL):
 
-To send a UTF8 string byte array, quote the value of the tx parameter:
+To send a UTF8 string as transaction data, enclose the value of the `tx`
+parameter in double quotes:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 ```
 
-which sends a 5 byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
+which sends a 5-byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
 
-Note the URL must be wrapped with single quotes, else bash will ignore
-the double quotes. To avoid the single quotes, escape the double quotes:
+Note that the URL in this example is enclosed in single quotes to prevent the
+shell from interpreting the double quotes. Alternatively, you may escape the
+double quotes with backslashes:
 
 ```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
 ```
 
-Using a special character:
+The double-quoted format works with for multibyte characters, as long as they
+are valid UTF8, for example:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
 ```
 
-sends a 4 byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
+sends a 4-byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
 
-To send as raw hex, omit quotes AND prefix the hex string with `0x`:
-
-```sh
-curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
-```
-
-which sends a 4 byte transaction: \[01 02 03 04\].
-
-With `POST` (using `json`), the raw hex must be `base64` encoded:
+Arbitrary (non-UTF8) transaction data may also be encoded as a string of
+hexadecimal digits (2 digits per byte). To do this, omit the quotation marks
+and prefix the hex string with `0x`:
 
 ```sh
-curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
+curl http://localhost:26657/broadcast_tx_commit?tx=0x68656C6C6F
 ```
 
-which sends the same 4 byte transaction: \[01 02 03 04\].
+which sends the 5-byte transaction: \[68 65 6c 6c 6f\].
 
-Note that raw hex cannot be used in `POST` transactions.
+Using `POST` (with parameters in JSON), the transaction data are sent as a JSON
+string in base64 encoding:
+
+```sh
+curl http://localhost:26657 -H 'Content-Type: application/json' --data-binary '{
+  "jsonrpc": "2.0",
+  "id": "anything",
+  "method": "broadcast_tx_commit",
+  "params": {
+    "tx": "aGVsbG8="
+  }
+}'
+```
+
+which sends the same 5-byte transaction: \[68 65 6c 6c 6f\].
+
+Note that the hexadecimal encoding of transaction data is _not_ supported in
+JSON (`POST`) requests.
 
 ## Reset
 
@@ -270,7 +284,7 @@ transactions or the app hash changes, run Tendermint with this
 additional flag:
 
 ```sh
-tendermint node --consensus.create_empty_blocks=false
+tendermint start --consensus.create_empty_blocks=false
 ```
 
 or set the configuration via the `config.toml` file:
@@ -445,7 +459,7 @@ persistent connections with.
 For example,
 
 ```sh
-tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
+tendermint start --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
 ```
 
 Alternatively, you can use the `/dial_seeds` endpoint of the RPC to
@@ -465,7 +479,7 @@ maintain a persistent connection with each, you can use the
 stopping Tendermint core instance.
 
 ```sh
-tendermint node --p2p.persistent-peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
+tendermint start --p2p.persistent-peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
 
 curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
 ```
@@ -543,7 +557,7 @@ Update the `genesis.json` in `~/.tendermint/config`. Copy the genesis
 file and the new `priv_validator_key.json` to the `~/.tendermint/config` on
 a new machine.
 
-Now run `tendermint node` on both machines, and use either
+Now run `tendermint start` on both machines, and use either
 `--p2p.persistent-peers` or the `/dial_peers` to get them to peer up.
 They should start making blocks, and will only continue to do so as long
 as both of them are online.
@@ -552,8 +566,7 @@ To make a Tendermint network that can tolerate one of the validators
 failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
-explicitly programmed by the application developer. See the [application
-developers guide](../app-dev/app-development.md) for more details.
+explicitly programmed by the application developer.
 
 ### Local Network
 

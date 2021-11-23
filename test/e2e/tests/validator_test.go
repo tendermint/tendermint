@@ -14,16 +14,20 @@ import (
 // scheduled validator updates.
 func TestValidator_Sets(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
-
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
 		require.NoError(t, err)
 
 		first := status.SyncInfo.EarliestBlockHeight
+
+		// for nodes that have to catch up, we should only
+		// check the validator sets for nodes after this
+		// point, to avoid inconsistencies with backfill.
+		if node.StartAt > first {
+			first = node.StartAt
+		}
+
 		last := status.SyncInfo.LatestBlockHeight
 
 		// skip first block if node is pruning blocks, to avoid race conditions

@@ -2,10 +2,11 @@
 package events
 
 import (
+	"context"
 	"fmt"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // ErrListenerWasRemoved is returned by AddEvent if the listener was removed.
@@ -32,7 +33,7 @@ type Eventable interface {
 //
 // FireEvent fires an event with the given name and data.
 type Fireable interface {
-	FireEvent(event string, data EventData)
+	FireEvent(eventValue string, data EventData)
 }
 
 // EventSwitch is the interface for synchronous pubsub, where listeners
@@ -45,8 +46,9 @@ type Fireable interface {
 type EventSwitch interface {
 	service.Service
 	Fireable
+	Stop() error
 
-	AddListenerForEvent(listenerID, event string, cb EventCallback) error
+	AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error
 	RemoveListenerForEvent(event string, listenerID string)
 	RemoveListener(listenerID string)
 }
@@ -68,33 +70,35 @@ func NewEventSwitch() EventSwitch {
 	return evsw
 }
 
-func (evsw *eventSwitch) OnStart() error {
+func (evsw *eventSwitch) OnStart(ctx context.Context) error {
 	return nil
 }
 
 func (evsw *eventSwitch) OnStop() {}
 
-func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) error {
+func (evsw *eventSwitch) AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error {
 	// Get/Create eventCell and listener.
 	evsw.mtx.Lock()
-	eventCell := evsw.eventCells[event]
+
+	eventCell := evsw.eventCells[eventValue]
 	if eventCell == nil {
 		eventCell = newEventCell()
-		evsw.eventCells[event] = eventCell
+		evsw.eventCells[eventValue] = eventCell
 	}
+
 	listener := evsw.listeners[listenerID]
 	if listener == nil {
 		listener = newEventListener(listenerID)
 		evsw.listeners[listenerID] = listener
 	}
+
 	evsw.mtx.Unlock()
 
-	// Add event and listener.
-	if err := listener.AddEvent(event); err != nil {
+	if err := listener.AddEvent(eventValue); err != nil {
 		return err
 	}
-	eventCell.AddListener(listenerID, cb)
 
+	eventCell.AddListener(listenerID, cb)
 	return nil
 }
 

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -11,8 +12,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/state"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -88,13 +89,16 @@ type timeoutError interface {
 // NewTestHarness will load Tendermint data from the given files (including
 // validator public/private keypairs and chain details) and create a new
 // harness.
-func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, error) {
+func NewTestHarness(ctx context.Context, logger log.Logger, cfg TestHarnessConfig) (*TestHarness, error) {
 	keyFile := ExpandPath(cfg.KeyFile)
 	stateFile := ExpandPath(cfg.StateFile)
 	logger.Info("Loading private validator configuration", "keyFile", keyFile, "stateFile", stateFile)
 	// NOTE: LoadFilePV ultimately calls os.Exit on failure. No error will be
 	// returned if this call fails.
-	fpv := privval.LoadFilePV(keyFile, stateFile)
+	fpv, err := privval.LoadFilePV(keyFile, stateFile)
+	if err != nil {
+		return nil, err
+	}
 
 	genesisFile := ExpandPath(cfg.GenesisFile)
 	logger.Info("Loading chain ID from genesis file", "genesisFile", genesisFile)
@@ -109,7 +113,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
 
-	signerClient, err := privval.NewSignerClient(spv, st.ChainID)
+	signerClient, err := privval.NewSignerClient(ctx, spv, st.ChainID)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
@@ -192,12 +196,12 @@ func (th *TestHarness) Run() {
 // local Tendermint version.
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
-	fpvk, err := th.fpv.GetPubKey()
+	fpvk, err := th.fpv.GetPubKey(context.Background())
 	if err != nil {
 		return err
 	}
 	th.logger.Info("Local", "pubKey", fpvk)
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(context.Background())
 	if err != nil {
 		return err
 	}
@@ -231,7 +235,7 @@ func (th *TestHarness) TestSignProposal() error {
 	}
 	p := prop.ToProto()
 	propBytes := types.ProposalSignBytes(th.chainID, p)
-	if err := th.signerClient.SignProposal(th.chainID, p); err != nil {
+	if err := th.signerClient.SignProposal(context.Background(), th.chainID, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
@@ -242,7 +246,7 @@ func (th *TestHarness) TestSignProposal() error {
 		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(context.Background())
 	if err != nil {
 		return err
 	}
@@ -281,7 +285,7 @@ func (th *TestHarness) TestSignVote() error {
 		v := vote.ToProto()
 		voteBytes := types.VoteSignBytes(th.chainID, v)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, v); err != nil {
+		if err := th.signerClient.SignVote(context.Background(), th.chainID, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
@@ -292,7 +296,7 @@ func (th *TestHarness) TestSignVote() error {
 			th.logger.Error("FAILED: Signed vote is invalid", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
-		sck, err := th.signerClient.GetPubKey()
+		sck, err := th.signerClient.GetPubKey(context.Background())
 		if err != nil {
 			return err
 		}

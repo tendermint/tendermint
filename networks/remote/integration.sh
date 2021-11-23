@@ -10,8 +10,8 @@ sudo apt-get upgrade -y
 sudo apt-get install -y jq unzip python-pip software-properties-common make
 
 # get and unpack golang
-curl -O https://dl.google.com/go/go1.15.4.linux-amd64.tar.gz
-tar -xvf go1.15.4.linux-amd64.tar.gz
+curl -O https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
+tar -xvf go1.16.5.linux-amd64.tar.gz
 
 ## move binary and add to path
 mv go /usr/local
@@ -124,7 +124,7 @@ Restart=on-failure
 User={{service}}
 Group={{service}}
 PermissionsStartOnly=true
-ExecStart=/usr/bin/tendermint node --proxy-app=kvstore --p2p.persistent-peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
+ExecStart=/usr/bin/tendermint node --mode validator --proxy-app=kvstore --p2p.persistent-peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
 ExecReload=/bin/kill -HUP \$MAINPID
 KillSignal=SIGTERM
 
