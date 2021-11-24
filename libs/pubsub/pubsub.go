@@ -376,6 +376,7 @@ func (s *Server) run() {
 		s.pubs.Lock()
 		defer s.pubs.Unlock()
 		close(s.queue)
+		s.queue = nil
 	}()
 
 	s.exited = make(chan struct{})
