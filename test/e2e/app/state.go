@@ -23,7 +23,7 @@ type State struct {
 	Hash   []byte
 
 	// private fields aren't marshaled to disk.
-	currentFile     string
+	currentFile string
 	// app saves current and previous state for rollback functionality
 	previousFile    string
 	persistInterval uint64
@@ -57,7 +57,7 @@ func (s *State) load() error {
 		if errors.Is(err, os.ErrNotExist) {
 			bz, err = os.ReadFile(s.previousFile)
 			if err != nil {
-				return fmt.Errorf("failed to read both current and previous state (%q): %w", 
+				return fmt.Errorf("failed to read both current and previous state (%q): %w",
 					s.previousFile, err)
 			}
 		} else {
@@ -91,7 +91,7 @@ func (s *State) save() error {
 			return fmt.Errorf("failed to replace previous state: %w", err)
 		}
 	}
-	// Finally, we take the new state and replace the current state. 
+	// Finally, we take the new state and replace the current state.
 	return os.Rename(newFile, s.currentFile)
 }
 

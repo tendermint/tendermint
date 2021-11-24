@@ -46,7 +46,7 @@ func TestRollbackIntegration(t *testing.T) {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	for {
 		select {
-		case <- newCtx.Done():
+		case <-newCtx.Done():
 			t.Fatal("failed to make progress after 20 seconds")
 		case <-ticker.C:
 			status, err := client.Status(newCtx)
