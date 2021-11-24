@@ -57,6 +57,14 @@ func (t Token) String() string {
 	return tString[v]
 }
 
+const (
+	// TimeFormat is the format string used for timestamp values.
+	TimeFormat = time.RFC3339
+
+	// DateFormat is the format string used for datestamp values.
+	DateFormat = "2006-01-02"
+)
+
 // Scanner reads lexical tokens of the query language from an input stream.
 // Each call to Next advances the scanner to the next token, or reports an
 // error.
@@ -232,7 +240,7 @@ func (s *Scanner) scanTimestamp() error {
 	if err := s.scanWhile(isTimeRune); err != nil {
 		return err
 	}
-	if ts, err := time.Parse(time.RFC3339, s.buf.String()); err != nil {
+	if ts, err := time.Parse(TimeFormat, s.buf.String()); err != nil {
 		return s.fail(fmt.Errorf("invalid TIME value: %w", err))
 	} else if y := ts.Year(); y < 1900 || y > 2999 {
 		return s.fail(fmt.Errorf("timestamp year %d out of range", ts.Year()))
@@ -246,7 +254,7 @@ func (s *Scanner) scanDatestamp() error {
 	if err := s.scanWhile(isDateRune); err != nil {
 		return err
 	}
-	if ts, err := time.Parse("2006-01-02", s.buf.String()); err != nil {
+	if ts, err := time.Parse(DateFormat, s.buf.String()); err != nil {
 		return s.fail(fmt.Errorf("invalid DATE value: %w", err))
 	} else if y := ts.Year(); y < 1900 || y > 2999 {
 		return s.fail(fmt.Errorf("datestamp year %d out of range", ts.Year()))
