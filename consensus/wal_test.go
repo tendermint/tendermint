@@ -15,7 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/consensus/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -148,6 +150,69 @@ func TestWALWrite(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}
+}
+
+func TestWALWriteCommit(t *testing.T) {
+	walDir, err := ioutil.TempDir("", "wal")
+	require.NoError(t, err)
+	defer os.RemoveAll(walDir)
+	walFile := filepath.Join(walDir, "wal")
+
+	wal, err := NewWAL(walFile)
+	require.NoError(t, err)
+	err = wal.Start()
+	require.NoError(t, err)
+	defer func() {
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
+		// wait for the wal to finish shutting down so we
+		// can safely remove the directory
+		wal.Wait()
+	}()
+
+	// Prepare and write commit msg
+	stateID := tmtypes.RandStateID()
+	blockID := tmtypes.BlockID{
+		Hash: tmcrypto.CRandBytes(tmhash.Size),
+		PartSetHeader: tmtypes.PartSetHeader{
+			Total: 0,
+			Hash:  tmcrypto.CRandBytes(tmhash.Size)},
+	}
+	msg := &CommitMessage{
+		Commit: &tmtypes.Commit{
+			Height:                  stateID.Height + 1,
+			StateID:                 stateID,
+			BlockID:                 blockID,
+			ThresholdBlockSignature: tmcrypto.CRandBytes(96),
+			ThresholdStateSignature: tmcrypto.CRandBytes(96),
+		},
+	}
+	err = wal.Write(msgInfo{
+		Msg: msg,
+	})
+	assert.NoError(t, err)
+	assert.NoError(t, wal.FlushAndSync())
+
+	// open WAL for reading
+	gr, err := wal.Group().NewReader(0)
+	require.NoError(t, err)
+	defer gr.Close()
+
+	// starting msg which we ignore
+	dec := NewWALDecoder(gr)
+	_, err = dec.Decode()
+	assert.NoError(t, err, "expected to decode a message")
+
+	readMsg, err := dec.Decode()
+	assert.NoError(t, err, "expected to decode a message")
+	assert.NotNil(t, readMsg)
+
+	msgInfo, ok := readMsg.Msg.(msgInfo)
+	require.True(t, ok, "expected message of type msgInfo, got %T", readMsg.Msg)
+	commitMsg, ok := msgInfo.Msg.(*CommitMessage)
+	require.True(t, ok, "expected message of type *CommitMessage, got %T", msgInfo.Msg)
+	assert.EqualValues(t, stateID.Height, commitMsg.Commit.StateID.Height)
 }
 
 func TestWALSearchForEndHeight(t *testing.T) {
