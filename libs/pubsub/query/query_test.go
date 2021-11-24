@@ -173,7 +173,7 @@ func TestCompiledMatches(t *testing.T) {
 	// since that was reqired by the original "flattened" event representation.
 
 	for _, tc := range testCases {
-		c, err := query.NewCompiled(tc.s)
+		c, err := query.New(tc.s)
 		if err != nil {
 			t.Errorf("NewCompiled %#q: unexpected error: %v", tc.s, err)
 			continue

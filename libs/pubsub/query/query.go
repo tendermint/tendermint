@@ -1,3 +1,15 @@
+// Package query implements the custom query format used to filter event
+// subscriptions in Tendermint.
+//
+// Query expressions describe properties of events and their attributes, using
+// strings like:
+//
+//    abci.invoice.number = 22 AND abci.invoice.owner = 'Ivan'
+//
+// Query expressions can handle attribute values encoding numbers, strings,
+// dates, and timestamps.  The complete query grammar is described in the
+// query/syntax package.
+//
 package query
 
 import (
@@ -11,13 +23,14 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
 )
 
-// Compiled is the compiled form of a query.
-type Compiled struct {
+// A Query is the compiled form of a query.
+type Query struct {
 	ast   syntax.Query
 	conds []condition
 }
 
-func NewCompiled(s string) (*Compiled, error) {
+// New parses and compiles the query expression s into an executable query.
+func New(s string) (*Query, error) {
 	ast, err := syntax.Parse(s)
 	if err != nil {
 		return nil, err
@@ -26,7 +39,7 @@ func NewCompiled(s string) (*Compiled, error) {
 }
 
 // Compile compiles the given query AST so it can be used to match events.
-func Compile(ast syntax.Query) (*Compiled, error) {
+func Compile(ast syntax.Query) (*Query, error) {
 	conds := make([]condition, len(ast))
 	for i, q := range ast {
 		cond, err := compileCondition(q)
@@ -35,18 +48,18 @@ func Compile(ast syntax.Query) (*Compiled, error) {
 		}
 		conds[i] = cond
 	}
-	return &Compiled{ast: ast, conds: conds}, nil
+	return &Query{ast: ast, conds: conds}, nil
 }
 
 // Matches satisfies part of the pubsub.Query interface.  This implementation
 // never reports an error.
-func (c *Compiled) Matches(events []types.Event) (bool, error) {
-	return c.matchesEvents(events), nil
+func (q *Query) Matches(events []types.Event) (bool, error) {
+	return q.matchesEvents(events), nil
 }
 
 // matchesEvents reports whether all the conditions match the given events.
-func (c *Compiled) matchesEvents(events []types.Event) bool {
-	for _, cond := range c.conds {
+func (q *Query) matchesEvents(events []types.Event) bool {
+	for _, cond := range q.conds {
 		if !cond.matchesAny(events) {
 			return false
 		}
