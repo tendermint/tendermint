@@ -106,7 +106,8 @@ func (a *Arg) Value() string {
 	return a.text
 }
 
-// Parser is a query expression parser. It accepts the grammar in query.peg.
+// Parser is a query expression parser. The grammar for query expressions is
+// defined in the syntax package documentation.
 type Parser struct {
 	scanner *Scanner
 }
