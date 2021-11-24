@@ -53,6 +53,9 @@ type Arg struct {
 }
 
 func (a *Arg) String() string {
+	if a == nil {
+		return ""
+	}
 	switch a.Type {
 	case TString:
 		return "'" + a.text + "'"
