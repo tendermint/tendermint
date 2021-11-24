@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	oldquery "github.com/tendermint/tendermint/libs/pubsub/query/oldquery"
 	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
 )
 
@@ -12,7 +12,7 @@ func BenchmarkParsePEG(b *testing.B) {
 	const input = `tm.events.type='NewBlock' AND abci.account.name='Igor'`
 
 	for i := 0; i < b.N; i++ {
-		_, err := query.New(input)
+		_, err := oldquery.New(input)
 		if err != nil {
 			b.Fatal(err)
 		}
