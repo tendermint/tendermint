@@ -32,13 +32,26 @@ type Query struct {
 	conds []condition
 }
 
-// New parses and compiles the query expression s into an executable query.
-func New(s string) (*Query, error) {
-	ast, err := syntax.Parse(s)
+// New parses and compiles the query expression into an executable query.
+func New(query string) (*Query, error) {
+	ast, err := syntax.Parse(query)
 	if err != nil {
 		return nil, err
 	}
 	return Compile(ast)
+}
+
+// MustCompile compiles the query expression into an executable query.
+// In case of error, MustCompile will panic.
+//
+// This is intended for use in program initialization; use query.New if you
+// need to check errors.
+func MustCompile(query string) *Query {
+	q, err := New(query)
+	if err != nil {
+		panic(err)
+	}
+	return q
 }
 
 // Compile compiles the given query AST so it can be used to match events.
