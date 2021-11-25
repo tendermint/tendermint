@@ -11,8 +11,8 @@ This file defines the JSON-RPC spec of Tendermint. This is meant to be implement
 
 ## Support
 
-  |              | [Tendermint-Go](https://github.com/tendermint/tendermint/) | [endermint-Rs](https://github.com/informalsystems/tendermint-rs) |
-  |--------------|:----------------------------------------------------------:|:----------------------------------------------------------------:|
+  |              | [Tendermint-Go](https://github.com/tendermint/tendermint/)  | [Tendermint-Rs](https://github.com/informalsystems/tendermint-rs) |
+  |--------------|:-----------------------------------------------------------:|:-----------------------------------------------------------------:|
   | JSON-RPC 2.0 |                             ✅                              |                                ✅                                 |
   | HTTP         |                             ✅                              |                                ✅                                 |
   | HTTPS        |                             ✅                              |                                ❌                                 |
