@@ -296,28 +296,28 @@ paths:
           Events: []abci.Event{
               {
                   Type: "rewards.withdraw",
-                  Attributes: abci.EventAttribute{
-                      {Key: []byte("address"), Value: []byte("AddrA"), Index: true},
-                      {Key: []byte("source"), Value: []byte("SrcX"), Index: true},
-                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
-                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
+                  Attributes: []abci.EventAttribute{
+                      {Key: "address", Value: "AddrA", Index: true},
+                      {Key: "source", Value: "SrcX", Index: true},
+                      {Key: "amount", Value: "...", Index: true},
+                      {Key: "balance", Value: "...", Index: true},
                   },
               },
               {
                   Type: "rewards.withdraw",
-                  Attributes: abci.EventAttribute{
-                      {Key: []byte("address"), Value: []byte("AddrB"), Index: true},
-                      {Key: []byte("source"), Value: []byte("SrcY"), Index: true},
-                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
-                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
+                  Attributes: []abci.EventAttribute{
+                      {Key: "address", Value: "AddrB", Index: true},
+                      {Key: "source", Value: "SrcY", Index: true},
+                      {Key: "amount", Value: "...", Index: true},
+                      {Key: "balance", Value: "...", Index: true},
                   },
               },
               {
                   Type: "transfer",
-                  Attributes: abci.EventAttribute{
-                      {Key: []byte("sender"), Value: []byte("AddrC"), Index: true},
-                      {Key: []byte("recipient"), Value: []byte("AddrD"), Index: true},
-                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
+                  Attributes: []abci.EventAttribute{
+                      {Key: "sender", Value: "AddrC", Index: true},
+                      {Key: "recipient", Value: "AddrD", Index: true},
+                      {Key: "amount", Value: "...", Index: true},
                   },
               },
           },
@@ -1423,25 +1423,25 @@ components:
           example: "0"
         total_snapshots:
           type: string
-          example: "10"      
+          example: "10"
         chunk_process_avg_time:
           type: string
-          example: "1000000000"      
+          example: "1000000000"
         snapshot_height:
           type: string
-          example: "1262196"      
+          example: "1262196"
         snapshot_chunks_count:
           type: string
-          example: "10"      
+          example: "10"
         snapshot_chunks_total:
           type: string
-          example: "100"      
+          example: "100"
         backfilled_blocks:
           type: string
-          example: "10"      
+          example: "10"
         backfill_blocks_total:
           type: string
-          example: "100"                                                                  
+          example: "100"
     ValidatorInfo:
       type: object
       properties:
