@@ -23,6 +23,9 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
 )
 
+// All is a query that matches all events.
+var All *Query
+
 // A Query is the compiled form of a query.
 type Query struct {
 	ast   syntax.Query
@@ -52,9 +55,20 @@ func Compile(ast syntax.Query) (*Query, error) {
 }
 
 // Matches satisfies part of the pubsub.Query interface.  This implementation
-// never reports an error.
+// never reports an error. A nil *Query matches all events.
 func (q *Query) Matches(events []types.Event) (bool, error) {
+	if q == nil {
+		return true, nil
+	}
 	return q.matchesEvents(events), nil
+}
+
+// String matches part of the pubsub.Query interface.
+func (q *Query) String() string {
+	if q == nil {
+		return "<empty>"
+	}
+	return q.ast.String()
 }
 
 // matchesEvents reports whether all the conditions match the given events.
