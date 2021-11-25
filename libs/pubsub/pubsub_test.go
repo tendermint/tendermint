@@ -27,7 +27,7 @@ func TestSubscribeWithArgs(t *testing.T) {
 	t.Run("DefaultLimit", func(t *testing.T) {
 		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
-			Query:    query.Empty{},
+			Query:    query.All,
 		}))
 
 		require.Equal(t, 1, s.NumClients())
@@ -39,7 +39,7 @@ func TestSubscribeWithArgs(t *testing.T) {
 	t.Run("PositiveLimit", func(t *testing.T) {
 		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID + "-2",
-			Query:    query.Empty{},
+			Query:    query.All,
 			Limit:    10,
 		}))
 		require.NoError(t, s.Publish(ctx, "Aggamon"))
@@ -73,9 +73,9 @@ func TestObserverErrors(t *testing.T) {
 
 	s := newTestServer(ctx, t)
 
-	require.Error(t, s.Observe(ctx, nil, query.Empty{}))
+	require.Error(t, s.Observe(ctx, nil, query.All))
 	require.NoError(t, s.Observe(ctx, func(pubsub.Message) error { return nil }))
-	require.Error(t, s.Observe(ctx, func(pubsub.Message) error { return nil }, query.Empty{}))
+	require.Error(t, s.Observe(ctx, func(pubsub.Message) error { return nil }, query.All))
 }
 
 func TestPublishDoesNotBlock(t *testing.T) {
@@ -86,7 +86,7 @@ func TestPublishDoesNotBlock(t *testing.T) {
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.Empty{},
+		Query:    query.All,
 	}))
 	published := make(chan struct{})
 	go func() {
@@ -119,7 +119,7 @@ func TestSubscribeErrors(t *testing.T) {
 	t.Run("NegativeLimitErr", func(t *testing.T) {
 		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
-			Query:    query.Empty{},
+			Query:    query.All,
 			Limit:    -5,
 		})
 		require.Error(t, err)
@@ -134,7 +134,7 @@ func TestSlowSubscriber(t *testing.T) {
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.Empty{},
+		Query:    query.All,
 	}))
 
 	require.NoError(t, s.Publish(ctx, "Fat Cobra"))
@@ -155,7 +155,7 @@ func TestDifferentClients(t *testing.T) {
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-1",
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 
 	events := []abci.Event{{
@@ -168,7 +168,7 @@ func TestDifferentClients(t *testing.T) {
 
 	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-2",
-		Query:    query.MustParse("tm.events.type='NewBlock' AND abci.account.name='Igor'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock' AND abci.account.name='Igor'`),
 	}))
 
 	events = []abci.Event{
@@ -188,7 +188,7 @@ func TestDifferentClients(t *testing.T) {
 
 	sub3 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-3",
-		Query:    query.MustParse("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"),
+		Query:    query.MustCompile(`tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10`),
 	}))
 
 	events = []abci.Event{{
@@ -218,7 +218,7 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 
 	for i, tc := range testCases {
 		id := fmt.Sprintf("client-%d", i)
-		q := query.MustParse(tc.query)
+		q := query.MustCompile(tc.query)
 		t.Run(id, func(t *testing.T) {
 			sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 				ClientID: id,
@@ -261,7 +261,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 
 	s := newTestServer(ctx, t)
 
-	q := query.MustParse("tm.events.type='NewBlock'")
+	q := query.MustCompile(`tm.events.type='NewBlock'`)
 	events := []abci.Event{{
 		Type:       "tm.events",
 		Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
@@ -298,13 +298,13 @@ func TestUnsubscribe(t *testing.T) {
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 
 	// Removing the subscription we just made should succeed.
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'"),
+		Query:      query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 
 	// Publishing should still work.
@@ -322,15 +322,15 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 
 	newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'"),
+		Query:      query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 	require.ErrorIs(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'"),
+		Query:      query.MustCompile(`tm.events.type='NewBlock'`),
 	}), pubsub.ErrSubscriptionNotFound)
 	require.ErrorIs(t, s.UnsubscribeAll(ctx, clientID), pubsub.ErrSubscriptionNotFound)
 }
@@ -343,13 +343,13 @@ func TestResubscribe(t *testing.T) {
 
 	args := pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.Empty{},
+		Query:    query.All,
 	}
 	newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
 
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.Empty{},
+		Query:      query.All,
 	}))
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
@@ -366,11 +366,11 @@ func TestUnsubscribeAll(t *testing.T) {
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlockHeader'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlockHeader'`),
 	}))
 
 	require.NoError(t, s.UnsubscribeAll(ctx, clientID))
