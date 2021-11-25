@@ -382,9 +382,10 @@ func (s *Server) run() {
 	s.exited = make(chan struct{})
 	go func() {
 		defer close(s.exited)
+		queue := s.queue
 
 		// Sender: Service the queue and forward messages to subscribers.
-		for it := range s.queue {
+		for it := range queue {
 			if err := s.send(it.Data, it.Events); err != nil {
 				s.Logger.Error("Error sending event", "err", err)
 			}
