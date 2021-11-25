@@ -155,17 +155,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
-	// validate the validator updates and convert to tendermint types
-	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
-	if err != nil {
-		return state, 0, fmt.Errorf("error in validator updates: %v", err)
-	}
-
-	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+	validatorUpdates, err := validateAndConvertValidatorUpdates(
+		abciResponses.EndBlock.ValidatorUpdates,
+		&state.ConsensusParams.Validator,
+	)
 	if err != nil {
 		return state, 0, err
 	}
+
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
@@ -527,14 +524,18 @@ func fireEvents(
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
+// It fires events when the node is replaying the final block.
 func ExecCommitBlock(
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
 	store Store,
 	initialHeight int64,
+	finalReplayBlock bool,
+	eventBus types.BlockEventPublisher,
+	validator *tmproto.ValidatorParams,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+	abciResponses, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
 		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
@@ -547,6 +548,28 @@ func ExecCommitBlock(
 		return nil, err
 	}
 
+	// fire events for indexer during the final block replay.
+	if finalReplayBlock && eventBus != nil {
+		validatorUpdates, err := validateAndConvertValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates, validator)
+		if err != nil {
+			return nil, err
+		}
+
+		fireEvents(logger, eventBus, block, abciResponses, validatorUpdates)
+	}
+
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
+}
+
+// validateAndConvertValidatorUpdates validate the validator updates and convert to tendermint types.
+func validateAndConvertValidatorUpdates(
+	validatorUpdates []abci.ValidatorUpdate,
+	validator *tmproto.ValidatorParams,
+) ([]*types.Validator, error) {
+	if err := validateValidatorUpdates(validatorUpdates, *validator); err != nil {
+		return nil, fmt.Errorf("error in validator updates: %v", err)
+	}
+
+	return types.PB2TM.ValidatorUpdates(validatorUpdates)
 }
