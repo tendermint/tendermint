@@ -65,6 +65,7 @@ func TestCompiledMatches(t *testing.T) {
 		txTime = "2018-05-03T14:45:00Z"
 	)
 
+	//nolint:lll
 	testCases := []struct {
 		s       string
 		events  []types.Event
@@ -260,9 +261,9 @@ func newTestEvent(s string) types.Event {
 // newTestEvents constructs a slice of Event messages by applying newTestEvent
 // to each element of ss.
 func newTestEvents(ss ...string) []types.Event {
-	var events []types.Event
-	for _, s := range ss {
-		events = append(events, newTestEvent(s))
+	events := make([]types.Event, len(ss))
+	for i, s := range ss {
+		events[i] = newTestEvent(s)
 	}
 	return events
 }

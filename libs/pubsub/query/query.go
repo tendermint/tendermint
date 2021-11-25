@@ -200,7 +200,7 @@ func compileCondition(cond syntax.Condition) (condition, error) {
 }
 
 // TODO(creachadair): The existing implementation allows anything number shaped
-// to be treated as a number. This preserves the parts of that behaviour we had
+// to be treated as a number. This preserves the parts of that behavior we had
 // tests for, but we should probably get rid of that.
 var extractNum = regexp.MustCompile(`^\d+(\.\d+)?`)
 
@@ -210,6 +210,9 @@ func parseNumber(s string) (float64, error) {
 
 // A map of operator ⇒ argtype ⇒ match-constructor.
 // An entry does not exist if the combination is not valid.
+//
+// Disable the dupl lint for this map. The result isn't even correct.
+//nolint:dupl
 var opTypeMap = map[syntax.Token]map[syntax.Token]func(interface{}) func(string) bool{
 	syntax.TContains: {
 		syntax.TString: func(v interface{}) func(string) bool {

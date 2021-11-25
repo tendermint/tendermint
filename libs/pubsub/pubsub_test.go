@@ -188,7 +188,8 @@ func TestDifferentClients(t *testing.T) {
 
 	sub3 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-3",
-		Query:    query.MustCompile(`tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10`),
+		Query: query.MustCompile(
+			`tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10`),
 	}))
 
 	events = []abci.Event{{

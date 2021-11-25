@@ -286,7 +286,7 @@ func (s *Scanner) rune() (rune, error) {
 }
 
 func (s *Scanner) unrune() {
-	s.r.UnreadRune()
+	_ = s.r.UnreadRune()
 	s.end -= s.last
 }
 

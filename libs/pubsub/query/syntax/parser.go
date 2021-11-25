@@ -20,9 +20,9 @@ func Parse(s string) (Query, error) {
 type Query []Condition
 
 func (q Query) String() string {
-	var ss []string
-	for _, cond := range q {
-		ss = append(ss, cond.String())
+	ss := make([]string, len(q))
+	for i, cond := range q {
+		ss[i] = cond.String()
 	}
 	return strings.Join(ss, " AND ")
 }
@@ -195,9 +195,9 @@ func tokLabel(tokens []Token) string {
 		return tokens[0].String()
 	}
 	last := len(tokens) - 1
-	var ss []string
-	for _, tok := range tokens[:last] {
-		ss = append(ss, tok.String())
+	ss := make([]string, len(tokens)-1)
+	for i, tok := range tokens[:last] {
+		ss[i] = tok.String()
 	}
 	return strings.Join(ss, ", ") + " or " + tokens[last].String()
 }
