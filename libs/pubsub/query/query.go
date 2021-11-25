@@ -84,6 +84,14 @@ func (q *Query) String() string {
 	return q.ast.String()
 }
 
+// Syntax returns the syntax tree representation of q.
+func (q *Query) Syntax() syntax.Query {
+	if q == nil {
+		return nil
+	}
+	return q.ast
+}
+
 // matchesEvents reports whether all the conditions match the given events.
 func (q *Query) matchesEvents(events []types.Event) bool {
 	for _, cond := range q.conds {
