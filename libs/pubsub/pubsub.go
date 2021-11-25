@@ -368,6 +368,7 @@ func (s *Server) run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.done = ctx.Done()
 	s.stop = cancel
+	queue := s.queue
 
 	// Shutdown monitor: When the context ends, wait for any active publish
 	// calls to exit, then close the queue to signal the sender to exit.
@@ -382,7 +383,6 @@ func (s *Server) run() {
 	s.exited = make(chan struct{})
 	go func() {
 		defer close(s.exited)
-		queue := s.queue
 
 		// Sender: Service the queue and forward messages to subscribers.
 		for it := range queue {
