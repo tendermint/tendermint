@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	"github.com/tendermint/tendermint/internal/libs/tempfile"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -51,6 +51,7 @@ type FilePVKey struct {
 	PubKey  crypto.PubKey  `json:"pub_key"`
 	PrivKey crypto.PrivKey `json:"priv_key"`
 
+	f        *os.File
 	filePath string
 }
 
@@ -61,15 +62,26 @@ func (pvKey FilePVKey) Save() {
 		panic("cannot save PrivValidator key: filePath not set")
 	}
 
+	if pvKey.f == nil {
+		panic("pvKey.f is nil")
+	}
+
 	jsonBytes, err := tmjson.MarshalIndent(pvKey, "", "  ")
 	if err != nil {
 		panic(err)
 	}
-	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
+	// Seek back to the front of the file so that
+	// we can overwrite its content.
+	if _, err := pvKey.f.Seek(0, io.SeekStart); err != nil {
+		panic(err)
+	}
+	n, err := pvKey.f.Write(jsonBytes)
 	if err != nil {
 		panic(err)
 	}
-
+	if err := pvKey.f.Truncate(int64(n)); err != nil {
+		panic(err)
+	}
 }
 
 //-------------------------------------------------------------------------------
@@ -82,6 +94,7 @@ type FilePVLastSignState struct {
 	Signature []byte           `json:"signature,omitempty"`
 	SignBytes tmbytes.HexBytes `json:"signbytes,omitempty"`
 
+	f        *os.File
 	filePath string
 }
 
@@ -128,16 +141,24 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (
 
 // Save persists the FilePvLastSignState to its filePath.
 func (lss *FilePVLastSignState) Save() {
-	outFile := lss.filePath
-	if outFile == "" {
-		panic("cannot save FilePVLastSignState: filePath not set")
+	if lss.f == nil {
+		panic("cannot save FilePVLastSignState.f is nil")
 	}
+
 	jsonBytes, err := tmjson.MarshalIndent(lss, "", "  ")
 	if err != nil {
 		panic(err)
 	}
-	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
+	// Seek back to the front of the file so that
+	// we can overwrite its content.
+	if _, err := lss.f.Seek(0, io.SeekStart); err != nil {
+		panic(err)
+	}
+	n, err := lss.f.Write(jsonBytes)
 	if err != nil {
+		panic(err)
+	}
+	if err := lss.f.Truncate(int64(n)); err != nil {
 		panic(err)
 	}
 }
@@ -158,14 +179,26 @@ var _ types.PrivValidator = (*FilePV)(nil)
 
 // NewFilePV generates a new validator from the given key and paths.
 func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FilePV {
+	keyFile, _, err := fileAndContents(keyFilePath)
+	if err != nil {
+		panic(err)
+	}
+	stateFile, _, err := fileAndContents(stateFilePath)
+	if err != nil {
+		keyFile.Close()
+		panic(err)
+	}
+
 	return &FilePV{
 		Key: FilePVKey{
+			f:        keyFile,
 			Address:  privKey.PubKey().Address(),
 			PubKey:   privKey.PubKey(),
 			PrivKey:  privKey,
 			filePath: keyFilePath,
 		},
 		LastSignState: FilePVLastSignState{
+			f:        stateFile,
 			Step:     stepNone,
 			filePath: stateFilePath,
 		},
@@ -198,15 +231,34 @@ func LoadFilePVEmptyState(keyFilePath, stateFilePath string) (*FilePV, error) {
 	return loadFilePV(keyFilePath, stateFilePath, false)
 }
 
+func fileAndContents(path string) (*os.File, []byte, error) {
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	blob, err := io.ReadAll(f)
+	if err != nil {
+		f.Close()
+		return nil, nil, err
+	}
+	return f, blob, nil
+}
+
 // If loadState is true, we load from the stateFilePath. Otherwise, we use an empty LastSignState.
-func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, error) {
-	keyJSONBytes, err := os.ReadFile(keyFilePath)
+func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (_ *FilePV, lerr error) {
+	keyFile, keyJSONBytes, err := fileAndContents(keyFilePath)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if lerr != nil {
+			keyFile.Close()
+		}
+	}()
+
 	pvKey := FilePVKey{}
-	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
-	if err != nil {
+	if err := tmjson.Unmarshal(keyJSONBytes, &pvKey); err != nil {
 		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
 
@@ -214,21 +266,22 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, err
 	pvKey.PubKey = pvKey.PrivKey.PubKey()
 	pvKey.Address = pvKey.PubKey.Address()
 	pvKey.filePath = keyFilePath
+	pvKey.f = keyFile
 
 	pvState := FilePVLastSignState{}
+	stateFile, stateJSONBytes, err := fileAndContents(stateFilePath)
+	if err != nil {
+		return nil, err
+	}
 
 	if loadState {
-		stateJSONBytes, err := os.ReadFile(stateFilePath)
-		if err != nil {
-			return nil, err
-		}
-		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
-		if err != nil {
+		if err = tmjson.Unmarshal(stateJSONBytes, &pvState); err != nil {
 			return nil, fmt.Errorf("error reading PrivValidator state from %v: %w", stateFilePath, err)
 		}
 	}
 
 	pvState.filePath = stateFilePath
+	pvState.f = stateFile
 
 	return &FilePV{
 		Key:           pvKey,

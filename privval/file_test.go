@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -52,8 +53,14 @@ func TestResetValidator(t *testing.T) {
 	require.NoError(t, err)
 	emptyState := FilePVLastSignState{filePath: tempStateFile.Name()}
 
+	// LastSignState has some internal state that obviously cannot be equal to
+	// the kind deserialized from disk.
+	prevF := privVal.LastSignState.f
+	privVal.LastSignState.f = nil
 	// new priv val has empty state
 	assert.Equal(t, privVal.LastSignState, emptyState)
+	// Revert the file.
+	privVal.LastSignState.f = prevF
 
 	// test vote
 	height, round := int64(10), int32(1)
@@ -69,6 +76,7 @@ func TestResetValidator(t *testing.T) {
 
 	// priv val after AcceptNewConnection is same as empty
 	privVal.Reset()
+	privVal.LastSignState.f = nil
 	assert.Equal(t, privVal.LastSignState, emptyState)
 }
 
@@ -347,5 +355,27 @@ func newProposal(height int64, round int32, blockID types.BlockID) *types.Propos
 		Round:     round,
 		BlockID:   blockID,
 		Timestamp: tmtime.Now(),
+	}
+}
+
+func BenchmarkFilePVSignVote(b *testing.B) {
+	tempDir := b.TempDir()
+	privVal, err := GenFilePV(filepath.Join(tempDir, "key_file"), filepath.Join(tempDir, "state_file"), "")
+	require.NoError(b, err)
+
+	// test vote
+	height, round := int64(10), int32(1)
+	voteType := tmproto.PrevoteType
+	randBytes := tmrand.Bytes(tmhash.Size)
+	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
+	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := privVal.SignVote(context.Background(), "mychainid", vote.ToProto()); err != nil {
+			b.Fatal(err)
+		}
+		privVal.Reset()
 	}
 }
