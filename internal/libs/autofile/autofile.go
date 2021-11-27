@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -43,8 +44,12 @@ const (
 //
 // This is useful for using a log file with the logrotate tool.
 type AutoFile struct {
-	ID   string
-	Path string
+	// Putting this file nWrites at the beginning so that it is
+	// ALWAYS byte aligned to be safely used in atomics, given
+	// that we need it super fast and able to check
+	nWrites uint64
+	ID      string
+	Path    string
 
 	closeTicker      *time.Ticker
 	closeTickerStopc chan struct{} // closed when closeTicker is stopped
@@ -103,7 +108,11 @@ func (af *AutoFile) closeFileRoutine() {
 	for {
 		select {
 		case <-af.closeTicker.C:
-			_ = af.closeFile()
+			if atomic.LoadUint64(&af.nWrites) != 0 {
+				// Only invoke .closeFile if we had some writes.
+				_ = af.closeFile()
+			}
+
 		case <-af.closeTickerStopc:
 			return
 		}
@@ -113,6 +122,13 @@ func (af *AutoFile) closeFileRoutine() {
 func (af *AutoFile) closeFile() (err error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
+
+	defer func() {
+		// Otherwise reset .nWrites if there was no error.
+		if err == nil {
+			af.nWrites = 0
+		}
+	}()
 
 	file := af.file
 	if file == nil {
@@ -129,7 +145,12 @@ func (af *AutoFile) closeFile() (err error) {
 // Opens AutoFile if needed.
 func (af *AutoFile) Write(b []byte) (n int, err error) {
 	af.mtx.Lock()
-	defer af.mtx.Unlock()
+	defer func() {
+		if n > 0 {
+			af.nWrites++
+		}
+		af.mtx.Unlock()
+	}()
 
 	if af.file == nil {
 		if err = af.openFile(); err != nil {
@@ -170,6 +191,8 @@ func (af *AutoFile) openFile() error {
 	// 	return errors.NewErrPermissionsChanged(file.Name(), fileInfo.Mode(), autoFilePerms)
 	// }
 	af.file = file
+	// Reset .nWrites as this is a fresh file.
+	atomic.StoreUint64(&af.nWrites, 0)
 	return nil
 }
 
