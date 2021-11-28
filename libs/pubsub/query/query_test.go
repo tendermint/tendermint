@@ -201,7 +201,7 @@ func TestCompiledMatches(t *testing.T) {
 	//
 	// On that basis, I removed that test case. This implementation still does
 	// correctly handle variable type/attribute splits ("x", "y.z" / "x.y", "z")
-	// since that was reqired by the original "flattened" event representation.
+	// since that was required by the original "flattened" event representation.
 
 	for _, tc := range testCases {
 		c, err := query.New(tc.s)
