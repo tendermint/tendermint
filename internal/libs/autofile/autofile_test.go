@@ -143,3 +143,49 @@ func mustReadFile(t *testing.T, filePath string) []byte {
 
 	return fileBytes
 }
+
+func TestAutoFileDeletionAndRecreation(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFilePath := filepath.Join(tmpDir, "moveable")
+
+	af, err := OpenAutoFile(tmpFilePath)
+	require.Nil(t, err)
+	defer func() {
+		af.Close()
+		require.Nil(t, os.RemoveAll(tmpFilePath), "Clean up failed")
+	}()
+
+	// Firstly reset the ticker so that it doesn't fire and that we are in absolute
+	// control of syncFile and others.
+	af.refreshTicker.Reset(time.Hour)
+
+	intro := []byte("Hello, autofile!")
+	n, err := af.Write(intro)
+	require.Nil(t, err)
+	require.Equal(t, len(intro), n, "Expecting a match in the number of bytes written")
+	require.Nil(t, af.syncFile(), "syncFile should succeed")
+
+	// Explicitly invoke syncFile.
+	require.Nil(t, af.syncFile(), "syncFile should succeed")
+	require.NotNil(t, af.file, "file should be non-nil")
+
+	// Ensure that the file contents our content.
+	readBlob := mustReadFile(t, tmpFilePath)
+	require.Equal(t, intro, readBlob, "Mismatch of the file")
+
+	// Now delete the file.
+	require.Nil(t, os.RemoveAll(tmpFilePath), "Expected the file removal to succeed")
+	fi, err := os.Lstat(tmpFilePath)
+	require.NotNil(t, err, "Expecting the file not to exist")
+	require.True(t, os.IsNotExist(err), "The error should report non-existence")
+	require.Nil(t, fi)
+
+	// Invoke a .Write right now, then ensure that that write
+	// triggered a recreation of the file.
+	ni, err := af.Write(intro)
+	require.Nil(t, err)
+	require.Equal(t, len(intro), ni, "Expecting a match in the number of bytes written")
+	require.Nil(t, af.syncFile(), "syncFile should succeed")
+	reReadBlob := mustReadFile(t, tmpFilePath)
+	require.Equal(t, intro, reReadBlob, "Mismatch of the file")
+}

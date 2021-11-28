@@ -1,6 +1,7 @@
 package autofile
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -38,15 +39,15 @@ const (
 	autoFilePerms       = os.FileMode(0600)
 )
 
-// AutoFile automatically closes and re-opens file for writing. The file is
-// automatically setup to close itself every 1s and upon receiving SIGHUP.
+// AutoFile handles persisting data to a target file every 1 second. If the file was
+// perhaps deleted, it'll re-create it. On receiving SIGHUP, it'll automatically close.
 //
 // This is useful for using a log file with the logrotate tool.
 type AutoFile struct {
 	ID   string
 	Path string
 
-	closeTicker      *time.Ticker
+	refreshTicker    *time.Ticker
 	closeTickerStopc chan struct{} // closed when closeTicker is stopped
 	hupc             chan os.Signal
 
@@ -66,7 +67,7 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 	af := &AutoFile{
 		ID:               tmrand.Str(12) + ":" + path,
 		Path:             path,
-		closeTicker:      time.NewTicker(autoFileClosePeriod),
+		refreshTicker:    time.NewTicker(autoFileClosePeriod),
 		closeTickerStopc: make(chan struct{}),
 	}
 	if err := af.openFile(); err != nil {
@@ -83,7 +84,7 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 		}
 	}()
 
-	go af.closeFileRoutine()
+	go af.syncFileRoutine()
 
 	return af, nil
 }
@@ -91,7 +92,7 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 // Close shuts down the closing goroutine, SIGHUP handler and closes the
 // AutoFile.
 func (af *AutoFile) Close() error {
-	af.closeTicker.Stop()
+	af.refreshTicker.Stop()
 	close(af.closeTickerStopc)
 	if af.hupc != nil {
 		close(af.hupc)
@@ -99,15 +100,50 @@ func (af *AutoFile) Close() error {
 	return af.closeFile()
 }
 
-func (af *AutoFile) closeFileRoutine() {
+func (af *AutoFile) syncFileRoutine() {
 	for {
 		select {
-		case <-af.closeTicker.C:
-			_ = af.closeFile()
+		case <-af.refreshTicker.C:
+			_ = af.syncFile()
 		case <-af.closeTickerStopc:
 			return
 		}
 	}
+}
+
+func (af *AutoFile) syncFile() error {
+	af.mtx.Lock()
+	defer af.mtx.Unlock()
+
+	if af.file == nil {
+		return nil
+	}
+
+	// Firstly let's try to stat to see if the file is still available.
+	if fi, err := os.Lstat(af.Path); err != nil || fi.IsDir() {
+		// The file disappeared so remove the reference,
+		// and it shall be reopened at the next write.
+		af.file = nil
+		return nil
+	}
+
+	err := af.file.Sync()
+	if err == nil {
+		return nil
+	}
+
+	// There could be multiple reasons why the .Sync failed,
+	// maybe the file permissions changed?
+	_ = af.file.Close()
+
+	// Otherwise, examine if we actually need to create a new file.
+	if errors.Is(err, os.ErrInvalid) {
+		// It shall be opened for the next write.
+		af.file = nil
+		return nil
+	}
+
+	return err
 }
 
 func (af *AutoFile) closeFile() (err error) {
@@ -123,6 +159,16 @@ func (af *AutoFile) closeFile() (err error) {
 	return file.Close()
 }
 
+// needsReOpen returns true if the underlying file
+// is nil or if the file cannot be stat-ed.
+func (af *AutoFile) needsReOpen() bool {
+	if af.file == nil {
+		return true
+	}
+	_, err := os.Lstat(af.Path)
+	return err != nil
+}
+
 // Write writes len(b) bytes to the AutoFile. It returns the number of bytes
 // written and an error, if any. Write returns a non-nil error when n !=
 // len(b).
@@ -131,7 +177,7 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
 
-	if af.file == nil {
+	if af.needsReOpen() {
 		if err = af.openFile(); err != nil {
 			return
 		}

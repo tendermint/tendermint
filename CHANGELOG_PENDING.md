@@ -46,6 +46,7 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [internal/autofile] \#7333 autofile conservatively open its destination file and no longer opens a file every second. Only if the prior file doesn't exist does it create a fresh one. It however invokes .Sync every 1 second. This improves performance and reduces on file resources consumed. (@odeke-em)
 
 ### BUG FIXES
 
