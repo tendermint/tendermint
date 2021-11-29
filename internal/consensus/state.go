@@ -848,6 +848,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		case <-ctx.Done():
 			onExit(cs)
 			return
+
 		}
 		// TODO should we handle context cancels here?
 	}
@@ -875,7 +876,11 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(ctx, msg, peerID)
 		if added {
-			cs.statsMsgQueue <- mi
+			select {
+			case cs.statsMsgQueue <- mi:
+			case <-ctx.Done():
+				return
+			}
 		}
 
 		if err != nil && msg.Round != cs.Round {
@@ -893,7 +898,11 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		added, err = cs.tryAddVote(ctx, msg.Vote, peerID)
 		if added {
-			cs.statsMsgQueue <- mi
+			select {
+			case cs.statsMsgQueue <- mi:
+			case <-ctx.Done():
+				return
+			}
 		}
 
 		// if err == ErrAddingVote {
