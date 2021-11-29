@@ -102,7 +102,15 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, false, nil, nil)
+		params := sm.BlockCommitExecParams{
+			AppConnConsensus: proxyApp.Consensus(),
+			Block:            block,
+			Logger:           log.TestingLogger(),
+			Store:            stateStore,
+			InitialHeight:    1,
+		}
+
+		_, err = sm.ExecCommitBlock(params)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed

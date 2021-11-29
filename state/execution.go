@@ -50,6 +50,18 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 	}
 }
 
+// BlockCommitExecParams provides context for excuting the block commit.
+type BlockCommitExecParams struct {
+	AppConnConsensus proxy.AppConnConsensus
+	Block            *types.Block
+	Logger           log.Logger
+	Store            Store
+	EventBus         types.BlockEventPublisher
+	InitialHeight    int64
+	FinalReplayBlock bool
+	Validator        *tmproto.ValidatorParams
+}
+
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
@@ -525,37 +537,34 @@ func fireEvents(
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
 // It fires events when the node is replaying the final block.
-func ExecCommitBlock(
-	appConnConsensus proxy.AppConnConsensus,
-	block *types.Block,
-	logger log.Logger,
-	store Store,
-	initialHeight int64,
-	finalReplayBlock bool,
-	eventBus types.BlockEventPublisher,
-	validator *tmproto.ValidatorParams,
-) ([]byte, error) {
-	abciResponses, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+func ExecCommitBlock(params BlockCommitExecParams) ([]byte, error) {
+	abciResponses, err := execBlockOnProxyApp(
+		params.Logger,
+		params.AppConnConsensus,
+		params.Block,
+		params.Store,
+		params.InitialHeight,
+	)
 	if err != nil {
-		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
+		params.Logger.Error("failed executing block on proxy app", "height", params.Block.Height, "err", err)
 		return nil, err
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync()
+	res, err := params.AppConnConsensus.CommitSync()
 	if err != nil {
-		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
+		params.Logger.Error("client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err
 	}
 
 	// fire events for indexer during the final block replay.
-	if finalReplayBlock && eventBus != nil {
-		validatorUpdates, err := validateAndConvertValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates, validator)
+	if params.FinalReplayBlock && params.EventBus != nil {
+		validatorUpdates, err := validateAndConvertValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates, params.Validator)
 		if err != nil {
 			return nil, err
 		}
 
-		fireEvents(logger, eventBus, block, abciResponses, validatorUpdates)
+		fireEvents(params.Logger, params.EventBus, params.Block, abciResponses, validatorUpdates)
 	}
 
 	// ResponseCommit has no error or log, just data
