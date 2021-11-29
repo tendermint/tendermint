@@ -2,221 +2,275 @@ package query_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
+	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
 )
 
-func TestMatches(t *testing.T) {
+var _ pubsub.Query = (*query.Query)(nil)
+
+// Example events from the OpenAPI documentation:
+//  https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
+//
+// Redactions:
+//
+//   - Add an explicit "tm" event for the built-in attributes.
+//   - Remove Index fields (not relevant to tests).
+//   - Add explicit balance values (to use in tests).
+//
+var apiEvents = []types.Event{
+	{
+		Type: "tm",
+		Attributes: []types.EventAttribute{
+			{Key: "event", Value: "Tx"},
+			{Key: "hash", Value: "XYZ"},
+			{Key: "height", Value: "5"},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{Key: "address", Value: "AddrA"},
+			{Key: "source", Value: "SrcX"},
+			{Key: "amount", Value: "100"},
+			{Key: "balance", Value: "1500"},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{Key: "address", Value: "AddrB"},
+			{Key: "source", Value: "SrcY"},
+			{Key: "amount", Value: "45"},
+			{Key: "balance", Value: "999"},
+		},
+	},
+	{
+		Type: "transfer",
+		Attributes: []types.EventAttribute{
+			{Key: "sender", Value: "AddrC"},
+			{Key: "recipient", Value: "AddrD"},
+			{Key: "amount", Value: "160"},
+		},
+	},
+}
+
+func TestCompiledMatches(t *testing.T) {
 	var (
 		txDate = "2017-01-01"
 		txTime = "2018-05-03T14:45:00Z"
 	)
 
+	//nolint:lll
 	testCases := []struct {
-		s        string
-		events   map[string][]string
-		err      bool
-		matches  bool
-		matchErr bool
+		s       string
+		events  []types.Event
+		matches bool
 	}{
-		{"tm.events.type='NewBlock'", map[string][]string{"tm.events.type": {"NewBlock"}}, false, true, false},
-		{"tx.gas > 7", map[string][]string{"tx.gas": {"8"}}, false, true, false},
-		{"transfer.amount > 7", map[string][]string{"transfer.amount": {"8stake"}}, false, true, false},
-		{"transfer.amount > 7", map[string][]string{"transfer.amount": {"8.045stake"}}, false, true, false},
-		{"transfer.amount > 7.043", map[string][]string{"transfer.amount": {"8.045stake"}}, false, true, false},
-		{"transfer.amount > 8.045", map[string][]string{"transfer.amount": {"8.045stake"}}, false, false, false},
-		{"tx.gas > 7 AND tx.gas < 9", map[string][]string{"tx.gas": {"8"}}, false, true, false},
-		{"body.weight >= 3.5", map[string][]string{"body.weight": {"3.5"}}, false, true, false},
-		{"account.balance < 1000.0", map[string][]string{"account.balance": {"900"}}, false, true, false},
-		{"apples.kg <= 4", map[string][]string{"apples.kg": {"4.0"}}, false, true, false},
-		{"body.weight >= 4.5", map[string][]string{"body.weight": {fmt.Sprintf("%v", float32(4.5))}}, false, true, false},
-		{
-			"oranges.kg < 4 AND watermellons.kg > 10",
-			map[string][]string{"oranges.kg": {"3"}, "watermellons.kg": {"12"}},
-			false,
-			true,
-			false,
-		},
-		{"peaches.kg < 4", map[string][]string{"peaches.kg": {"5"}}, false, false, false},
-		{
-			"tx.date > DATE 2017-01-01",
-			map[string][]string{"tx.date": {time.Now().Format(query.DateLayout)}},
-			false,
-			true,
-			false,
-		},
-		{"tx.date = DATE 2017-01-01", map[string][]string{"tx.date": {txDate}}, false, true, false},
-		{"tx.date = DATE 2018-01-01", map[string][]string{"tx.date": {txDate}}, false, false, false},
-		{
-			"tx.time >= TIME 2013-05-03T14:45:00Z",
-			map[string][]string{"tx.time": {time.Now().Format(query.TimeLayout)}},
-			false,
-			true,
-			false,
-		},
-		{"tx.time = TIME 2013-05-03T14:45:00Z", map[string][]string{"tx.time": {txTime}}, false, false, false},
-		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Igor,Ivan"}}, false, true, false},
-		{"abci.owner.name CONTAINS 'Igor'", map[string][]string{"abci.owner.name": {"Pavel,Ivan"}}, false, false, false},
-		{"abci.owner.name = 'Igor'", map[string][]string{"abci.owner.name": {"Igor", "Ivan"}}, false, true, false},
-		{
-			"abci.owner.name = 'Ivan'",
-			map[string][]string{"abci.owner.name": {"Igor", "Ivan"}},
-			false,
-			true,
-			false,
-		},
-		{
-			"abci.owner.name = 'Ivan' AND abci.owner.name = 'Igor'",
-			map[string][]string{"abci.owner.name": {"Igor", "Ivan"}},
-			false,
-			true,
-			false,
-		},
-		{
-			"abci.owner.name = 'Ivan' AND abci.owner.name = 'John'",
-			map[string][]string{"abci.owner.name": {"Igor", "Ivan"}},
-			false,
-			false,
-			false,
-		},
-		{
-			"tm.events.type='NewBlock'",
-			map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}},
-			false,
-			true,
-			false,
-		},
-		{
-			"app.name = 'fuzzed'",
-			map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}},
-			false,
-			true,
-			false,
-		},
-		{
-			"tm.events.type='NewBlock' AND app.name = 'fuzzed'",
-			map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}},
-			false,
-			true,
-			false,
-		},
-		{
-			"tm.events.type='NewHeader' AND app.name = 'fuzzed'",
-			map[string][]string{"tm.events.type": {"NewBlock"}, "app.name": {"fuzzed"}},
-			false,
-			false,
-			false,
-		},
-		{"slash EXISTS",
-			map[string][]string{"slash.reason": {"missing_signature"}, "slash.power": {"6000"}},
-			false,
-			true,
-			false,
-		},
-		{"sl EXISTS",
-			map[string][]string{"slash.reason": {"missing_signature"}, "slash.power": {"6000"}},
-			false,
-			true,
-			false,
-		},
-		{"slash EXISTS",
-			map[string][]string{"transfer.recipient": {"cosmos1gu6y2a0ffteesyeyeesk23082c6998xyzmt9mz"},
-				"transfer.sender": {"cosmos1crje20aj4gxdtyct7z3knxqry2jqt2fuaey6u5"}},
-			false,
-			false,
-			false,
-		},
-		{"slash.reason EXISTS AND slash.power > 1000",
-			map[string][]string{"slash.reason": {"missing_signature"}, "slash.power": {"6000"}},
-			false,
-			true,
-			false,
-		},
-		{"slash.reason EXISTS AND slash.power > 1000",
-			map[string][]string{"slash.reason": {"missing_signature"}, "slash.power": {"500"}},
-			false,
-			false,
-			false,
-		},
-		{"slash.reason EXISTS",
-			map[string][]string{"transfer.recipient": {"cosmos1gu6y2a0ffteesyeyeesk23082c6998xyzmt9mz"},
-				"transfer.sender": {"cosmos1crje20aj4gxdtyct7z3knxqry2jqt2fuaey6u5"}},
-			false,
-			false,
-			false,
-		},
+		{`tm.events.type='NewBlock'`,
+			newTestEvents(`tm|events.type=NewBlock`),
+			true},
+		{`tx.gas > 7`,
+			newTestEvents(`tx|gas=8`),
+			true},
+		{`transfer.amount > 7`,
+			newTestEvents(`transfer|amount=8stake`),
+			true},
+		{`transfer.amount > 7`,
+			newTestEvents(`transfer|amount=8.045`),
+			true},
+		{`transfer.amount > 7.043`,
+			newTestEvents(`transfer|amount=8.045stake`),
+			true},
+		{`transfer.amount > 8.045`,
+			newTestEvents(`transfer|amount=8.045stake`),
+			false},
+		{`tx.gas > 7 AND tx.gas < 9`,
+			newTestEvents(`tx|gas=8`),
+			true},
+		{`body.weight >= 3.5`,
+			newTestEvents(`body|weight=3.5`),
+			true},
+		{`account.balance < 1000.0`,
+			newTestEvents(`account|balance=900`),
+			true},
+		{`apples.kg <= 4`,
+			newTestEvents(`apples|kg=4.0`),
+			true},
+		{`body.weight >= 4.5`,
+			newTestEvents(`body|weight=4.5`),
+			true},
+		{`oranges.kg < 4 AND watermellons.kg > 10`,
+			newTestEvents(`oranges|kg=3`, `watermellons|kg=12`),
+			true},
+		{`peaches.kg < 4`,
+			newTestEvents(`peaches|kg=5`),
+			false},
+		{`tx.date > DATE 2017-01-01`,
+			newTestEvents(`tx|date=` + time.Now().Format(syntax.DateFormat)),
+			true},
+		{`tx.date = DATE 2017-01-01`,
+			newTestEvents(`tx|date=` + txDate),
+			true},
+		{`tx.date = DATE 2018-01-01`,
+			newTestEvents(`tx|date=` + txDate),
+			false},
+		{`tx.time >= TIME 2013-05-03T14:45:00Z`,
+			newTestEvents(`tx|time=` + time.Now().Format(syntax.TimeFormat)),
+			true},
+		{`tx.time = TIME 2013-05-03T14:45:00Z`,
+			newTestEvents(`tx|time=` + txTime),
+			false},
+		{`abci.owner.name CONTAINS 'Igor'`,
+			newTestEvents(`abci|owner.name=Igor|owner.name=Ivan`),
+			true},
+		{`abci.owner.name CONTAINS 'Igor'`,
+			newTestEvents(`abci|owner.name=Pavel|owner.name=Ivan`),
+			false},
+		{`abci.owner.name = 'Igor'`,
+			newTestEvents(`abci|owner.name=Igor|owner.name=Ivan`),
+			true},
+		{`abci.owner.name = 'Ivan'`,
+			newTestEvents(`abci|owner.name=Igor|owner.name=Ivan`),
+			true},
+		{`abci.owner.name = 'Ivan' AND abci.owner.name = 'Igor'`,
+			newTestEvents(`abci|owner.name=Igor|owner.name=Ivan`),
+			true},
+		{`abci.owner.name = 'Ivan' AND abci.owner.name = 'John'`,
+			newTestEvents(`abci|owner.name=Igor|owner.name=Ivan`),
+			false},
+		{`tm.events.type='NewBlock'`,
+			newTestEvents(`tm|events.type=NewBlock`, `app|name=fuzzed`),
+			true},
+		{`app.name = 'fuzzed'`,
+			newTestEvents(`tm|events.type=NewBlock`, `app|name=fuzzed`),
+			true},
+		{`tm.events.type='NewBlock' AND app.name = 'fuzzed'`,
+			newTestEvents(`tm|events.type=NewBlock`, `app|name=fuzzed`),
+			true},
+		{`tm.events.type='NewHeader' AND app.name = 'fuzzed'`,
+			newTestEvents(`tm|events.type=NewBlock`, `app|name=fuzzed`),
+			false},
+		{`slash EXISTS`,
+			newTestEvents(`slash|reason=missing_signature|power=6000`),
+			true},
+		{`slash EXISTS`,
+			newTestEvents(`transfer|recipient=cosmos1gu6y2a0ffteesyeyeesk23082c6998xyzmt9mz|sender=cosmos1crje20aj4gxdtyct7z3knxqry2jqt2fuaey6u5`),
+			false},
+		{`slash.reason EXISTS AND slash.power > 1000`,
+			newTestEvents(`slash|reason=missing_signature|power=6000`),
+			true},
+		{`slash.reason EXISTS AND slash.power > 1000`,
+			newTestEvents(`slash|reason=missing_signature|power=500`),
+			false},
+		{`slash.reason EXISTS`,
+			newTestEvents(`transfer|recipient=cosmos1gu6y2a0ffteesyeyeesk23082c6998xyzmt9mz|sender=cosmos1crje20aj4gxdtyct7z3knxqry2jqt2fuaey6u5`),
+			false},
+
+		// Test cases based on the OpenAPI examples.
+		{`tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA'`,
+			apiEvents, true},
+		{`tm.event = 'Tx' AND rewards.withdraw.address = 'AddrA' AND rewards.withdraw.source = 'SrcY'`,
+			apiEvents, true},
+		{`tm.event = 'Tx' AND transfer.sender = 'AddrA'`,
+			apiEvents, false},
+		{`tm.event = 'Tx' AND transfer.sender = 'AddrC'`,
+			apiEvents, true},
+		{`tm.event = 'Tx' AND transfer.sender = 'AddrZ'`,
+			apiEvents, false},
+		{`tm.event = 'Tx' AND rewards.withdraw.address = 'AddrZ'`,
+			apiEvents, false},
+		{`tm.event = 'Tx' AND rewards.withdraw.source = 'W'`,
+			apiEvents, false},
 	}
 
-	for _, tc := range testCases {
-		q, err := query.New(tc.s)
-		if !tc.err {
-			require.Nil(t, err)
-		}
-		require.NotNil(t, q, "Query '%s' should not be nil", tc.s)
+	// NOTE: The original implementation allowed arbitrary prefix matches on
+	// attribute tags, e.g., "sl" would match "slash".
+	//
+	// That is weird and probably wrong: "foo.ba" should not match "foo.bar",
+	// or there is no way to distinguish the case where there were two values
+	// for "foo.bar" or one value each for "foo.ba" and "foo.bar".
+	//
+	// Apart from a single test case, I could not find any attested usage of
+	// this implementation detail. It isn't documented in the OpenAPI docs and
+	// is not shown in any of the example inputs.
+	//
+	// On that basis, I removed that test case. This implementation still does
+	// correctly handle variable type/attribute splits ("x", "y.z" / "x.y", "z")
+	// since that was required by the original "flattened" event representation.
 
-		if tc.matches {
-			match, err := q.Matches(tc.events)
-			assert.Nil(t, err, "Query '%s' should not error on match %v", tc.s, tc.events)
-			assert.True(t, match, "Query '%s' should match %v", tc.s, tc.events)
-		} else {
-			match, err := q.Matches(tc.events)
-			assert.Equal(t, tc.matchErr, err != nil, "Unexpected error for query '%s' match %v", tc.s, tc.events)
-			assert.False(t, match, "Query '%s' should not match %v", tc.s, tc.events)
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%02d", i+1), func(t *testing.T) {
+			c, err := query.New(tc.s)
+			if err != nil {
+				t.Fatalf("NewCompiled %#q: unexpected error: %v", tc.s, err)
+			}
+
+			got, err := c.Matches(tc.events)
+			if err != nil {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
+					tc.s, tc.events, err)
+			}
+			if got != tc.matches {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
+					tc.s, tc.events, got, tc.matches)
+			}
+		})
+	}
+}
+
+func TestAllMatchesAll(t *testing.T) {
+	events := newTestEvents(
+		``,
+		`Asher|Roth=`,
+		`Route|66=`,
+		`Rilly|Blue=`,
+	)
+	for i := 0; i < len(events); i++ {
+		match, err := query.All.Matches(events[:i])
+		if err != nil {
+			t.Errorf("Matches failed: %v", err)
+		} else if !match {
+			t.Errorf("Did not match on %+v ", events[:i])
 		}
 	}
 }
 
-func TestMustParse(t *testing.T) {
-	assert.Panics(t, func() { query.MustParse("=") })
-	assert.NotPanics(t, func() { query.MustParse("tm.events.type='NewBlock'") })
+// newTestEvent constructs an Event message from a template string.
+// The format is "type|attr1=val1|attr2=val2|...".
+func newTestEvent(s string) types.Event {
+	var event types.Event
+	parts := strings.Split(s, "|")
+	event.Type = parts[0]
+	if len(parts) == 1 {
+		return event // type only, no attributes
+	}
+	for _, kv := range parts[1:] {
+		key, val := splitKV(kv)
+		event.Attributes = append(event.Attributes, types.EventAttribute{
+			Key:   key,
+			Value: val,
+		})
+	}
+	return event
 }
 
-func TestConditions(t *testing.T) {
-	txTime, err := time.Parse(time.RFC3339, "2013-05-03T14:45:00Z")
-	require.NoError(t, err)
-
-	testCases := []struct {
-		s          string
-		conditions []query.Condition
-	}{
-		{
-			s: "tm.events.type='NewBlock'",
-			conditions: []query.Condition{
-				{CompositeKey: "tm.events.type", Op: query.OpEqual, Operand: "NewBlock"},
-			},
-		},
-		{
-			s: "tx.gas > 7 AND tx.gas < 9",
-			conditions: []query.Condition{
-				{CompositeKey: "tx.gas", Op: query.OpGreater, Operand: int64(7)},
-				{CompositeKey: "tx.gas", Op: query.OpLess, Operand: int64(9)},
-			},
-		},
-		{
-			s: "tx.time >= TIME 2013-05-03T14:45:00Z",
-			conditions: []query.Condition{
-				{CompositeKey: "tx.time", Op: query.OpGreaterEqual, Operand: txTime},
-			},
-		},
-		{
-			s: "slashing EXISTS",
-			conditions: []query.Condition{
-				{CompositeKey: "slashing", Op: query.OpExists},
-			},
-		},
+// newTestEvents constructs a slice of Event messages by applying newTestEvent
+// to each element of ss.
+func newTestEvents(ss ...string) []types.Event {
+	events := make([]types.Event, len(ss))
+	for i, s := range ss {
+		events[i] = newTestEvent(s)
 	}
+	return events
+}
 
-	for _, tc := range testCases {
-		q, err := query.New(tc.s)
-		require.Nil(t, err)
-
-		c, err := q.Conditions()
-		require.NoError(t, err)
-		assert.Equal(t, tc.conditions, c)
-	}
+func splitKV(s string) (key, value string) {
+	kv := strings.SplitN(s, "=", 2)
+	return kv[0], kv[1]
 }
