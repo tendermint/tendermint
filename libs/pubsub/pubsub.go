@@ -341,7 +341,7 @@ func (s *Server) OnStop() { s.stop() }
 func (s *Server) Wait() { <-s.exited; s.BaseService.Wait() }
 
 // OnStart implements Service.OnStart by starting the server.
-func (s *Server) OnStart(ctx context.Context) error { s.run(); return nil }
+func (s *Server) OnStart(ctx context.Context) error { s.run(ctx); return nil }
 
 // OnReset implements Service.OnReset. It has no effect for this service.
 func (s *Server) OnReset() error { return nil }
@@ -363,9 +363,9 @@ func (s *Server) publish(ctx context.Context, data interface{}, events []types.E
 	}
 }
 
-func (s *Server) run() {
+func (s *Server) run(ctx context.Context) {
 	// The server runs until ctx is canceled.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	s.done = ctx.Done()
 	s.stop = cancel
 	queue := s.queue
