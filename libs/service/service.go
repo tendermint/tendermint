@@ -30,9 +30,6 @@ type Service interface {
 	// Return true if the service is running
 	IsRunning() bool
 
-	// Quit returns a channel, which is closed once service is stopped.
-	Quit() <-chan struct{}
-
 	// String representation of the service
 	String() string
 

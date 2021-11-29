@@ -26,14 +26,13 @@ type noopStoppableClientImpl struct {
 func (c *noopStoppableClientImpl) Stop() error { c.count++; return nil }
 
 func TestAppConns_Start_Stop(t *testing.T) {
-	quitCh := make(<-chan struct{})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	clientMock := &abcimocks.Client{}
 	clientMock.On("Start", mock.Anything).Return(nil).Times(4)
-	clientMock.On("Quit").Return(quitCh).Times(4)
+	clientMock.On("Error").Return(nil)
+	clientMock.On("Wait").Return(nil).Times(4)
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creatorCallCount := 0
@@ -65,22 +64,19 @@ func TestAppConns_Failure(t *testing.T) {
 	go func() {
 		for range c {
 			close(ok)
+			return
 		}
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	quitCh := make(chan struct{})
-	var recvQuitCh <-chan struct{} // nolint:gosimple
-	recvQuitCh = quitCh
-
 	clientMock := &abcimocks.Client{}
 	clientMock.On("SetLogger", mock.Anything).Return()
 	clientMock.On("Start", mock.Anything).Return(nil)
 
-	clientMock.On("Quit").Return(recvQuitCh)
-	clientMock.On("Error").Return(errors.New("EOF")).Once()
+	clientMock.On("Wait").Return(nil)
+	clientMock.On("Error").Return(errors.New("EOF"))
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creator := func(log.Logger) (abciclient.Client, error) {
@@ -92,9 +88,6 @@ func TestAppConns_Failure(t *testing.T) {
 	err := appConns.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { cancel(); appConns.Wait() })
-
-	// simulate failure
-	close(quitCh)
 
 	select {
 	case <-ok:

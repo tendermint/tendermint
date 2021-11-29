@@ -128,7 +128,7 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 	app.consensusConn = NewAppConnConsensus(c, app.metrics)
 
 	// Kill Tendermint if the ABCI application crashes.
-	go app.killTMOnClientError()
+	app.startWatchersForClientErrorToKillTendermint(ctx)
 
 	return nil
 }
@@ -137,7 +137,12 @@ func (app *multiAppConn) OnStop() {
 	app.stopAllClients()
 }
 
-func (app *multiAppConn) killTMOnClientError() {
+func (app *multiAppConn) startWatchersForClientErrorToKillTendermint(ctx context.Context) {
+	// this function starts a number of threads (per abci client)
+	// that will SIGTERM's our own PID if any of the ABCI clients
+	// exit/return early. If the context is canceled then these
+	// functions will not kill tendermint.
+
 	killFn := func(conn string, err error, logger log.Logger) {
 		logger.Error(
 			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
@@ -147,23 +152,38 @@ func (app *multiAppConn) killTMOnClientError() {
 		}
 	}
 
-	select {
-	case <-app.consensusConnClient.Quit():
-		if err := app.consensusConnClient.Error(); err != nil {
-			killFn(connConsensus, err, app.Logger)
-		}
-	case <-app.mempoolConnClient.Quit():
-		if err := app.mempoolConnClient.Error(); err != nil {
-			killFn(connMempool, err, app.Logger)
-		}
-	case <-app.queryConnClient.Quit():
-		if err := app.queryConnClient.Error(); err != nil {
-			killFn(connQuery, err, app.Logger)
-		}
-	case <-app.snapshotConnClient.Quit():
-		if err := app.snapshotConnClient.Error(); err != nil {
-			killFn(connSnapshot, err, app.Logger)
-		}
+	type op struct {
+		connClient stoppableClient
+		name       string
+	}
+
+	for _, client := range []op{
+		{
+			connClient: app.consensusConnClient,
+			name:       connConsensus,
+		},
+		{
+			connClient: app.mempoolConnClient,
+			name:       connMempool,
+		},
+		{
+			connClient: app.queryConnClient,
+			name:       connQuery,
+		},
+		{
+			connClient: app.snapshotConnClient,
+			name:       connSnapshot,
+		},
+	} {
+		go func(name string, client stoppableClient) {
+			client.Wait()
+			if ctx.Err() != nil {
+				return
+			}
+			if err := client.Error(); err != nil {
+				killFn(name, err, app.Logger)
+			}
+		}(client.name, client.connClient)
 	}
 }
 
