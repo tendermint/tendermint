@@ -363,6 +363,7 @@ func (cs *State) OnStart(ctx context.Context) error {
 
 			// 1) prep work
 			if err := cs.wal.Stop(); err != nil {
+
 				return err
 			}
 
@@ -421,6 +422,8 @@ func (cs *State) OnStart(ctx context.Context) error {
 
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
+//
+// this is only used in tests.
 func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
 	err := cs.timeoutTicker.Start(ctx)
 	if err != nil {
@@ -445,7 +448,6 @@ func (cs *State) loadWalFile(ctx context.Context) error {
 
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
-
 	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
@@ -457,15 +459,19 @@ func (cs *State) OnStop() {
 
 	close(cs.onStopCh)
 
-	if err := cs.evsw.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+	if cs.evsw.IsRunning() {
+		if err := cs.evsw.Stop(); err != nil {
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+			}
 		}
 	}
 
-	if err := cs.timeoutTicker.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+	if cs.timeoutTicker.IsRunning() {
+		if err := cs.timeoutTicker.Stop(); err != nil {
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+			}
 		}
 	}
 	// WAL is stopped in receiveRoutine.

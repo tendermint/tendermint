@@ -175,7 +175,12 @@ func (wal *BaseWAL) OnStop() {
 // Wait for the underlying autofile group to finish shutting down
 // so it's safe to cleanup files.
 func (wal *BaseWAL) Wait() {
-	wal.group.Wait()
+	if wal.IsRunning() {
+		wal.BaseService.Wait()
+	}
+	if wal.group.IsRunning() {
+		wal.group.Wait()
+	}
 }
 
 // Write is called in newStep and for each receive on the

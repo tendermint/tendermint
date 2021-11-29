@@ -18,6 +18,7 @@ var (
 type TimeoutTicker interface {
 	Start(context.Context) error
 	Stop() error
+	IsRunning() bool
 	Chan() <-chan timeoutInfo       // on which to receive a timeout
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
 }

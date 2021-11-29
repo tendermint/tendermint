@@ -142,6 +142,12 @@ func (bs *BaseService) Start(ctx context.Context) error {
 				// and then we shouldn't.
 				return
 			case <-ctx.Done():
+				// if nothing is running, no need to
+				// shut down again.
+				if !bs.impl.IsRunning() {
+					return
+				}
+
 				// the context was cancel and we
 				// should stop.
 				if err := bs.Stop(); err != nil {
