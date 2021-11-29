@@ -111,6 +111,9 @@ func (r *Reactor) OnStop() {
 	// panics will occur.
 	<-r.evidenceCh.Done()
 	<-r.peerUpdates.Done()
+
+	// Close the evidence db
+	r.evpool.Close()
 }
 
 // handleEvidenceMessage handles envelopes sent from peers on the EvidenceChannel.

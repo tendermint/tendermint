@@ -23,8 +23,8 @@ func TestRollback(t *testing.T) {
 	initialState, err := stateStore.Load()
 	require.NoError(t, err)
 
-	height++
 	block := &types.BlockMeta{
+		BlockID: initialState.LastBlockID,
 		Header: types.Header{
 			Height:          height,
 			AppHash:         initialState.AppHash,
@@ -33,6 +33,7 @@ func TestRollback(t *testing.T) {
 		},
 	}
 	blockStore.On("LoadBlockMeta", height).Return(block)
+	height++
 	blockStore.On("Height").Return(height)
 
 	// perform the rollback over a version bump
@@ -82,11 +83,11 @@ func TestRollbackNoBlocks(t *testing.T) {
 	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height)
-	blockStore.On("LoadBlockMeta", height).Return(nil)
+	blockStore.On("LoadBlockMeta", height-1).Return(nil)
 
 	_, _, err := state.Rollback(blockStore, stateStore)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "block at height 100 not found")
+	require.Contains(t, err.Error(), "block at height 99 not found")
 }
 
 func TestRollbackDifferentStateHeight(t *testing.T) {

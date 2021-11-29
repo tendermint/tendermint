@@ -15,45 +15,47 @@ import (
 
 func TestRollbackIntegration(t *testing.T) {
 	dir := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	cfg, err := rpctest.CreateConfig(t.Name())
 	require.NoError(t, err)
 	cfg.BaseConfig.DBBackend = "goleveldb"
 
-	t.Log(cfg.DBDir())
-
-	ctx, cancel := context.WithCancel(context.Background())
+	subctx, subcancel := context.WithCancel(ctx)
+	defer subcancel()
 	app, err := e2e.NewApplication(e2e.DefaultConfig(dir))
 	require.NoError(t, err)
-	node, _, err := rpctest.StartTendermint(ctx, cfg, app)
+	node, _, err := rpctest.StartTendermint(subctx, cfg, app)
 	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
-	cancel()
+	subcancel()
 	node.Wait()
+	require.False(t, node.IsRunning())
 
 	require.NoError(t, app.Rollback())
 	height, _, err := commands.RollbackState(cfg)
 	require.NoError(t, err)
 
-	newCtx, newCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer newCancel()
-	node, _, err = rpctest.StartTendermint(ctx, cfg, app)
-	require.NoError(t, err)
+	subctx2, subcancel2 := context.WithTimeout(ctx, 10*time.Second)
+	defer subcancel2()
+	node2, _, err2 := rpctest.StartTendermint(subctx2, cfg, app)
+	require.NoError(t, err2)
 
-	client, err := local.New(node.(local.NodeService))
+	client, err := local.New(node2.(local.NodeService))
 	require.NoError(t, err)
 
 	ticker := time.NewTicker(200 * time.Millisecond)
 	for {
 		select {
-		case <-newCtx.Done():
-			t.Fatal("failed to make progress after 20 seconds")
+		case <-subctx2.Done():
+			t.Fatalf("failed to make progress after 20 seconds. Min height: %d", height)
 		case <-ticker.C:
-			status, err := client.Status(newCtx)
+			status, err := client.Status(subctx2)
 			require.NoError(t, err)
 
 			if status.SyncInfo.LatestBlockHeight > height {
-				break
+				return
 			}
 		}
 	}
