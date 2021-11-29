@@ -25,7 +25,7 @@ func TestRollbackIntegration(t *testing.T) {
 	defer subcancel()
 	app, err := e2e.NewApplication(e2e.DefaultConfig(dir))
 	require.NoError(t, err)
-	node, _, err := rpctest.StartTendermint(subctx, cfg, app)
+	node, _, err := rpctest.StartTendermint(subctx, cfg, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 
 	time.Sleep(3 * time.Second)
@@ -39,7 +39,7 @@ func TestRollbackIntegration(t *testing.T) {
 
 	subctx2, subcancel2 := context.WithTimeout(ctx, 10*time.Second)
 	defer subcancel2()
-	node2, _, err2 := rpctest.StartTendermint(subctx2, cfg, app)
+	node2, _, err2 := rpctest.StartTendermint(subctx2, cfg, app, rpctest.SuppressStdout)
 	require.NoError(t, err2)
 
 	client, err := local.New(node2.(local.NodeService))
