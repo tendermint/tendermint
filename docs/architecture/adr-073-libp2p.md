@@ -15,7 +15,7 @@ As part of the 0.35 development cycle, the Tendermint team completed
 the first phase of the work described in ADRs 61 and 62, which included a
 large scale refactoring of the reactors and the p2p message
 routing. This replaced the switch and many of the other legacy
-components, without breaking protocol or network-level
+components without breaking protocol or network-level
 interoperability and left the legacy connection/socket handling code.
 
 Following the release, the team has reexamined the state of the code
@@ -37,7 +37,7 @@ systems while also achieving many of our broader objectives.
 
 LibP2P is a thoroughly-specified implementation of a peer-to-peer
 networking stack, designed specifically for systems such as
-ours. Adopting LibP2P as the basis of the Tendermint will allow the
+ours. Adopting LibP2P as the basis of Tendermint will allow the
 Tendermint team to focus more of their time on other differentiating
 aspects of the system, and make it possible for the ecosystem as a
 whole to take advantage of tooling and efforts of the LibP2P
