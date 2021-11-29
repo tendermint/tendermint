@@ -140,6 +140,7 @@ func (p *pbtsTestHarness) height2() heightResult {
 	return p.nextHeight(signer, p.height2ProposalDeliverTime, p.height2ProposedBlockTime, time.Now())
 }
 
+// nolint: lll
 func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
 	p.validatorClock.On("Now").Return(nextProposedTime).Times(8)
 	pubKey, err := p.observedValidator.PrivValidator.GetPubKey(p.ctx)
@@ -186,7 +187,7 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 func collectResults(ctx context.Context, t *testing.T, eb *eventbus.EventBus, address []byte) <-chan heightResult {
 	t.Helper()
 	resultCh := make(chan heightResult)
-	voteSub, err := eb.Subscribe(context.Background(), "voteSubscriber", types.EventQueryVote, 0)
+	voteSub, err := eb.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{ClientID: "voteSubscriber", Query: types.EventQueryVote})
 	require.NoError(t, err)
 	go func() {
 		var res heightResult
