@@ -1,6 +1,7 @@
 package query_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -203,22 +204,23 @@ func TestCompiledMatches(t *testing.T) {
 	// correctly handle variable type/attribute splits ("x", "y.z" / "x.y", "z")
 	// since that was required by the original "flattened" event representation.
 
-	for _, tc := range testCases {
-		c, err := query.New(tc.s)
-		if err != nil {
-			t.Errorf("NewCompiled %#q: unexpected error: %v", tc.s, err)
-			continue
-		}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%02d", i+1), func(t *testing.T) {
+			c, err := query.New(tc.s)
+			if err != nil {
+				t.Fatalf("NewCompiled %#q: unexpected error: %v", tc.s, err)
+			}
 
-		got, err := c.Matches(tc.events)
-		if err != nil {
-			t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
-				tc.s, tc.events, err)
-		}
-		if got != tc.matches {
-			t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
-				tc.s, tc.events, got, tc.matches)
-		}
+			got, err := c.Matches(tc.events)
+			if err != nil {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
+					tc.s, tc.events, err)
+			}
+			if got != tc.matches {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
+					tc.s, tc.events, got, tc.matches)
+			}
+		})
 	}
 }
 
