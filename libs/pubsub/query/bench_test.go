@@ -5,7 +5,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	oldquery "github.com/tendermint/tendermint/libs/pubsub/query/oldquery"
 )
 
 const testQuery = `tm.events.type='NewBlock' AND abci.account.name='Igor'`
@@ -33,36 +32,11 @@ var testEvents = []types.Event{
 	},
 }
 
-func BenchmarkParsePEG(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_, err := oldquery.New(testQuery)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func BenchmarkParseCustom(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := query.New(testQuery)
 		if err != nil {
 			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkMatchPEG(b *testing.B) {
-	q, err := oldquery.New(testQuery)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		ok, err := q.Matches(testEvents)
-		if err != nil {
-			b.Fatal(err)
-		} else if !ok {
-			b.Error("no match")
 		}
 	}
 }
