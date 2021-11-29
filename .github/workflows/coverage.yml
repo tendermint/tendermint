@@ -88,7 +88,7 @@ jobs:
           go-version: "1.17"
       - name: test & coverage report creation
         run: |
-          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out
+          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 15m -race -coverprofile=${{ matrix.part }}profile.out
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:
