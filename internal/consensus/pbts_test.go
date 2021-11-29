@@ -187,7 +187,9 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 func collectResults(ctx context.Context, t *testing.T, eb *eventbus.EventBus, address []byte) <-chan heightResult {
 	t.Helper()
 	resultCh := make(chan heightResult)
-	voteSub, err := eb.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{ClientID: "voteSubscriber", Query: types.EventQueryVote})
+	voteSub, err := eb.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: "voteSubscriber",
+		Query:    types.EventQueryVote})
 	require.NoError(t, err)
 	go func() {
 		var res heightResult

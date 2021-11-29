@@ -1119,9 +1119,11 @@ func (cs *State) enterPropose(height int64, round int32) {
 		}
 	}()
 
-	// If we don't get the proposal and all block parts quick enough, enterPrevote
+	//nolint: lll
 	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timestamp)
 	proposalTimeout := maxDuration(cs.config.Propose(round), waitingTime)
+
+	// If we don't get the proposal and all block parts quick enough, enterPrevote
 	cs.scheduleTimeout(proposalTimeout, height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
