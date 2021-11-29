@@ -15,51 +15,49 @@ import (
 
 func TestRollback(t *testing.T) {
 	var (
-		height     int64  = 100
-		appVersion uint64 = 10
+		height     int64 = 100
+		nextHeight int64 = 101
 	)
 	blockStore := &mocks.BlockStore{}
 	stateStore := setupStateStore(t, height)
 	initialState, err := stateStore.Load()
 	require.NoError(t, err)
 
-	block := &types.BlockMeta{
-		BlockID: initialState.LastBlockID,
-		Header: types.Header{
-			Height:          height,
-			AppHash:         initialState.AppHash,
-			LastBlockID:     initialState.LastBlockID,
-			LastResultsHash: initialState.LastResultsHash,
-		},
-	}
-	blockStore.On("LoadBlockMeta", height).Return(block)
-	height++
-	blockStore.On("Height").Return(height)
-
 	// perform the rollback over a version bump
-	appVersion++
 	newParams := types.DefaultConsensusParams()
-	newParams.Version.AppVersion = appVersion
+	newParams.Version.AppVersion = 11
 	newParams.Block.MaxBytes = 1000
 	nextState := initialState.Copy()
-	nextState.LastBlockHeight = height
-	nextState.Version.Consensus.App = appVersion
+	nextState.LastBlockHeight = nextHeight
+	nextState.Version.Consensus.App = 11
 	nextState.LastBlockID = factory.MakeBlockID()
 	nextState.AppHash = factory.RandomHash()
 	nextState.LastValidators = initialState.Validators
 	nextState.Validators = initialState.NextValidators
 	nextState.NextValidators = initialState.NextValidators.CopyIncrementProposerPriority(1)
 	nextState.ConsensusParams = *newParams
-	nextState.LastHeightConsensusParamsChanged = height + 1
-	nextState.LastHeightValidatorsChanged = height + 1
+	nextState.LastHeightConsensusParamsChanged = nextHeight + 1
+	nextState.LastHeightValidatorsChanged = nextHeight + 1
 
 	// update the state
 	require.NoError(t, stateStore.Save(nextState))
 
+	block := &types.BlockMeta{
+		BlockID: initialState.LastBlockID,
+		Header: types.Header{
+			Height:          initialState.LastBlockHeight,
+			AppHash:         initialState.AppHash,
+			LastBlockID:     factory.MakeBlockID(),
+			LastResultsHash: initialState.LastResultsHash,
+		},
+	}
+	blockStore.On("LoadBlockMeta", initialState.LastBlockHeight).Return(block)
+	blockStore.On("Height").Return(nextHeight)
+
 	// rollback the state
 	rollbackHeight, rollbackHash, err := state.Rollback(blockStore, stateStore)
 	require.NoError(t, err)
-	require.EqualValues(t, int64(100), rollbackHeight)
+	require.EqualValues(t, height, rollbackHeight)
 	require.EqualValues(t, initialState.AppHash, rollbackHash)
 	blockStore.AssertExpectations(t)
 

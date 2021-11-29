@@ -661,6 +661,6 @@ func (store dbStore) saveConsensusParamsInfo(
 	return batch.Set(consensusParamsKey(nextHeight), bz)
 }
 
-func (store dbStore) Close() error { 
+func (store dbStore) Close() error {
 	return store.db.Close()
 }
