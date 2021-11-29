@@ -60,7 +60,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		}
 	}
 
-	txQuery := query.MustParse("transfer.address = 'address_43' AND transfer.amount = 50")
+	txQuery := query.MustCompile(`transfer.address = 'address_43' AND transfer.amount = 50`)
 
 	b.ResetTimer()
 

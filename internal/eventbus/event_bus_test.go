@@ -38,7 +38,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -96,7 +96,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -205,7 +205,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 
 			sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 				ClientID: fmt.Sprintf("client-%d", i),
-				Query:    tmquery.MustParse(tc.query),
+				Query:    tmquery.MustCompile(tc.query),
 			})
 			require.NoError(t, err)
 
@@ -269,7 +269,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -312,7 +312,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	const query = `tm.event='NewEvidence'`
 	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -352,7 +352,7 @@ func TestEventBusPublish(t *testing.T) {
 
 	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.Empty{},
+		Query:    tmquery.All,
 		Limit:    numEventsExpected,
 	})
 	require.NoError(t, err)
