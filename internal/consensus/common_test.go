@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +30,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
@@ -397,14 +399,22 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte)
 	return ch
 }
 
-func subscribeToVoterBuffered(cs *State, addr []byte) <-chan tmpubsub.Message {
-	votesSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote)
+func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+	t.Helper()
+	votesSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote, 10)
 	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
+		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
 	}
 	ch := make(chan tmpubsub.Message)
 	go func() {
-		for msg := range votesSub.Out() {
+		for {
+			msg, err := votesSub.Next(ctx)
+			if err != nil {
+				if !errors.Is(err, pubsub.ErrTerminated) && !errors.Is(err, context.Canceled) {
+					t.Fatalf("error retrieving value of subscription %s", err)
+				}
+				return
+			}
 			vote := msg.Data().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
