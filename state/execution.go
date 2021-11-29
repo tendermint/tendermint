@@ -50,7 +50,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 	}
 }
 
-// BlockCommitExecParams provides context for excuting the block commit.
+// BlockCommitExecParams provides context for executing the block commit.
 type BlockCommitExecParams struct {
 	AppConnConsensus proxy.AppConnConsensus
 	Block            *types.Block
