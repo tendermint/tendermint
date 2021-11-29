@@ -313,7 +313,7 @@ func makeNode(
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
-	csReactor, csState, err := createConsensusReactor(
+	csReactor, csState, err := createConsensusReactor(ctx,
 		cfg, state, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, logger,
@@ -599,7 +599,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		// At the beginning of the statesync start, we use the initialHeight as the event height
 		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
 		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
-		if err := n.eventBus.PublishEventStateSyncStatus(d); err != nil {
+		if err := n.eventBus.PublishEventStateSyncStatus(ctx, d); err != nil {
 			n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
 		}
 
@@ -619,7 +619,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 			n.consensusReactor.SetStateSyncingMetrics(0)
 
-			if err := n.eventBus.PublishEventStateSyncStatus(
+			if err := n.eventBus.PublishEventStateSyncStatus(ctx,
 				types.EventDataStateSyncStatus{
 					Complete: true,
 					Height:   state.LastBlockHeight,
@@ -638,7 +638,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 				return
 			}
 
-			if err := n.eventBus.PublishEventBlockSyncStatus(
+			if err := n.eventBus.PublishEventBlockSyncStatus(ctx,
 				types.EventDataBlockSyncStatus{
 					Complete: false,
 					Height:   state.LastBlockHeight,

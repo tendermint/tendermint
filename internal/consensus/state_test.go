@@ -191,7 +191,7 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 	timeoutCh := subscribe(ctx, t, cs.eventBus, types.EventQueryTimeoutPropose)
 	proposalCh := subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal)
 
-	cs.enterNewRound(height, round)
+	cs.enterNewRound(ctx, height, round)
 	cs.startRoutines(ctx, 3)
 
 	ensureNewProposal(proposalCh, height, round)
@@ -399,7 +399,7 @@ func TestStateFullRoundNil(t *testing.T) {
 
 	voteCh := subscribe(ctx, t, cs.eventBus, types.EventQueryVote)
 
-	cs.enterPrevote(height, round)
+	cs.enterPrevote(ctx, height, round)
 	cs.startRoutines(ctx, 4)
 
 	ensurePrevote(voteCh, height, round)   // prevote
@@ -479,7 +479,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	*/
 
 	// start round and wait for prevote
-	cs1.enterNewRound(height, round)
+	cs1.enterNewRound(ctx, height, round)
 	cs1.startRoutines(ctx, 0)
 
 	ensureNewRound(newRoundCh, height, round)
@@ -1986,26 +1986,26 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	}
 
 	cs.ProposalBlockParts = types.NewPartSetFromHeader(parts.Header())
-	cs.handleMsg(msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID})
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, msg, statsMessage.Msg, "")
 	require.Equal(t, peerID, statsMessage.PeerID, "")
 
 	// sending the same part from different peer
-	cs.handleMsg(msgInfo{msg, "peer2"})
+	cs.handleMsg(ctx, msgInfo{msg, "peer2"})
 
 	// sending the part with the same height, but different round
 	msg.Round = 1
-	cs.handleMsg(msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID})
 
 	// sending the part from the smaller height
 	msg.Height = 0
-	cs.handleMsg(msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID})
 
 	// sending the part from the bigger height
 	msg.Height = 3
-	cs.handleMsg(msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID})
 
 	select {
 	case <-cs.statsMsgQueue:
@@ -2031,20 +2031,20 @@ func TestStateOutputVoteStats(t *testing.T) {
 	vote := signVote(ctx, vss[1], config, tmproto.PrecommitType, randBytes, types.PartSetHeader{})
 
 	voteMessage := &VoteMessage{vote}
-	cs.handleMsg(msgInfo{voteMessage, peerID})
+	cs.handleMsg(ctx, msgInfo{voteMessage, peerID})
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, voteMessage, statsMessage.Msg, "")
 	require.Equal(t, peerID, statsMessage.PeerID, "")
 
 	// sending the same part from different peer
-	cs.handleMsg(msgInfo{&VoteMessage{vote}, "peer2"})
+	cs.handleMsg(ctx, msgInfo{&VoteMessage{vote}, "peer2"})
 
 	// sending the vote for the bigger height
 	incrementHeight(vss[1])
 	vote = signVote(ctx, vss[1], config, tmproto.PrecommitType, randBytes, types.PartSetHeader{})
 
-	cs.handleMsg(msgInfo{&VoteMessage{vote}, peerID})
+	cs.handleMsg(ctx, msgInfo{&VoteMessage{vote}, peerID})
 
 	select {
 	case <-cs.statsMsgQueue:

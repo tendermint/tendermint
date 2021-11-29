@@ -275,7 +275,7 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
-	r.state.updateToState(state)
+	r.state.updateToState(ctx, state)
 
 	r.mtx.Lock()
 	r.waitSync = false
@@ -299,7 +299,7 @@ conR:
 	}
 
 	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
-	if err := r.eventBus.PublishEventBlockSyncStatus(d); err != nil {
+	if err := r.eventBus.PublishEventBlockSyncStatus(ctx, d); err != nil {
 		r.Logger.Error("failed to emit the blocksync complete event", "err", err)
 	}
 }
