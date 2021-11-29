@@ -1,6 +1,5 @@
 gen_query_parser:
-	go get -u -v github.com/pointlander/peg
-	peg -inline -switch query.peg
+	go generate .
 
 fuzzy_test:
 	go get -u -v github.com/dvyukov/go-fuzz/go-fuzz

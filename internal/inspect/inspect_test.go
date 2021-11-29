@@ -115,7 +115,7 @@ func TestBlock(t *testing.T) {
 func TestTxSearch(t *testing.T) {
 	testHash := []byte("test")
 	testTx := []byte("tx")
-	testQuery := fmt.Sprintf("tx.hash='%s'", string(testHash))
+	testQuery := fmt.Sprintf("tx.hash = '%s'", string(testHash))
 	testTxResult := &abcitypes.TxResult{
 		Height: 1,
 		Index:  100,
