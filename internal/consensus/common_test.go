@@ -405,13 +405,13 @@ func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr
 	if err != nil {
 		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
 	}
-	ch := make(chan tmpubsub.Message)
+	ch := make(chan tmpubsub.Message, 10)
 	go func() {
 		for {
 			msg, err := votesSub.Next(ctx)
 			if err != nil {
 				if !errors.Is(err, pubsub.ErrTerminated) && !errors.Is(err, context.Canceled) {
-					t.Fatalf("error retrieving value of subscription %s", err)
+					t.Logf("error terminating pubsub %s", err)
 				}
 				return
 			}
