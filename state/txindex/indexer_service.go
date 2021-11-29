@@ -2,7 +2,6 @@ package txindex
 
 import (
 	"context"
-	"sync"
 
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/state/indexer"
@@ -23,7 +22,6 @@ type IndexerService struct {
 	txIdxr    TxIndexer
 	blockIdxr indexer.BlockIndexer
 	eventBus  *types.EventBus
-	wg        *sync.WaitGroup
 }
 
 // NewIndexerService returns a new service instance.
@@ -57,14 +55,10 @@ func (is *IndexerService) OnStart() error {
 		return err
 	}
 
-	is.wg = &sync.WaitGroup{}
-	is.wg.Add(1)
-
 	go func() {
 		for {
 			select {
 			case <-blockHeadersSub.Cancelled():
-				is.wg.Done()
 				return
 			case msg := <-blockHeadersSub.Out():
 				eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
@@ -107,6 +101,4 @@ func (is *IndexerService) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}
-
-	is.wg.Wait()
 }
