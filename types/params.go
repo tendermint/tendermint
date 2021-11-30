@@ -90,6 +90,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
+		Timing:    DefaultTimingParams(),
 	}
 }
 
@@ -165,7 +166,7 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return fmt.Errorf("evidence.MaxAgeDuration must be grater than 0 if provided, Got %v",
+		return fmt.Errorf("evidence.MaxAgeDuration must be greater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
 
@@ -177,6 +178,16 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	if params.Evidence.MaxBytes < 0 {
 		return fmt.Errorf("evidence.MaxBytes must be non negative. Got: %d",
 			params.Evidence.MaxBytes)
+	}
+
+	if params.Timing.MessageDelay <= 0 {
+		return fmt.Errorf("timing.MessageDelay must be greater than 0. Got: %d",
+			params.Timing.MessageDelay)
+	}
+
+	if params.Timing.Precision <= 0 {
+		return fmt.Errorf("timing.Precision must be greater than 0. Got: %d",
+			params.Timing.Precision)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -222,6 +233,8 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.Block == params2.Block &&
 		params.Evidence == params2.Evidence &&
+		params.Version == params2.Version &&
+		params.Timing == params2.Timing &&
 		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
@@ -251,6 +264,10 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	}
 	if params2.Version != nil {
 		res.Version.AppVersion = params2.Version.AppVersion
+	}
+	if params2.Timing != nil {
+		res.Timing.Precision = params2.Timing.Precision
+		res.Timing.MessageDelay = params2.Timing.MessageDelay
 	}
 	return res
 }
