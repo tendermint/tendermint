@@ -38,7 +38,7 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // Unmarshal and apply a single message to the consensus state as if it were
 // received in receiveRoutine.  Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running.
-func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub eventbus.Subscription) error {
+func (cs *State) readReplayMessage(ctx context.Context, msg *TimedWALMessage, newStepSub eventbus.Subscription) error {
 	// Skip meta messages which exist for demarcating boundaries.
 	if _, ok := msg.Msg.(EndHeightMessage); ok {
 		return nil
@@ -81,10 +81,10 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub eventbus.Sub
 				"blockID", v.BlockID, "peer", peerID)
 		}
 
-		cs.handleMsg(m)
+		cs.handleMsg(ctx, m)
 	case timeoutInfo:
 		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
-		cs.handleTimeout(m, cs.RoundState)
+		cs.handleTimeout(ctx, m, cs.RoundState)
 	default:
 		return fmt.Errorf("replay: Unknown TimedWALMessage type: %v", reflect.TypeOf(msg.Msg))
 	}
@@ -93,7 +93,7 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub eventbus.Sub
 
 // Replay only those messages since the last block.  `timeoutRoutine` should
 // run concurrently to read off tickChan.
-func (cs *State) catchupReplay(csHeight int64) error {
+func (cs *State) catchupReplay(ctx context.Context, csHeight int64) error {
 
 	// Set replayMode to true so we don't log signing errors.
 	cs.replayMode = true
@@ -160,7 +160,7 @@ LOOP:
 		// NOTE: since the priv key is set when the msgs are received
 		// it will attempt to eg double sign but we can just ignore it
 		// since the votes will be replayed and we'll get to the next step
-		if err := cs.readReplayMessage(msg, nil); err != nil {
+		if err := cs.readReplayMessage(ctx, msg, nil); err != nil {
 			return err
 		}
 	}
@@ -390,7 +390,7 @@ func (h *Handshaker) ReplayBlocks(
 		// Either the app is asking for replay, or we're all synced up.
 		if appBlockHeight < storeBlockHeight {
 			// the app is behind, so replay blocks, but no need to go through WAL (state is already synced to store)
-			return h.replayBlocks(state, proxyApp, appBlockHeight, storeBlockHeight, false)
+			return h.replayBlocks(ctx, state, proxyApp, appBlockHeight, storeBlockHeight, false)
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
@@ -405,7 +405,7 @@ func (h *Handshaker) ReplayBlocks(
 		case appBlockHeight < stateBlockHeight:
 			// the app is further behind than it should be, so replay blocks
 			// but leave the last block to go through the WAL
-			return h.replayBlocks(state, proxyApp, appBlockHeight, storeBlockHeight, true)
+			return h.replayBlocks(ctx, state, proxyApp, appBlockHeight, storeBlockHeight, true)
 
 		case appBlockHeight == stateBlockHeight:
 			// We haven't run Commit (both the state and app are one block behind),
@@ -413,7 +413,7 @@ func (h *Handshaker) ReplayBlocks(
 			// NOTE: We could instead use the cs.WAL on cs.Start,
 			// but we'd have to allow the WAL to replay a block that wrote it's #ENDHEIGHT
 			h.logger.Info("Replay last block using real app")
-			state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus())
+			state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp.Consensus())
 			return state.AppHash, err
 
 		case appBlockHeight == storeBlockHeight:
@@ -424,7 +424,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			mockApp := newMockProxyApp(ctx, h.logger, appHash, abciResponses)
 			h.logger.Info("Replay last block using mock app")
-			state, err = h.replayBlock(state, storeBlockHeight, mockApp)
+			state, err = h.replayBlock(ctx, state, storeBlockHeight, mockApp)
 			return state.AppHash, err
 		}
 
@@ -435,6 +435,7 @@ func (h *Handshaker) ReplayBlocks(
 }
 
 func (h *Handshaker) replayBlocks(
+	ctx context.Context,
 	state sm.State,
 	proxyApp proxy.AppConns,
 	appBlockHeight,
@@ -474,13 +475,13 @@ func (h *Handshaker) replayBlocks(
 			blockExec := sm.NewBlockExecutor(
 				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
 			blockExec.SetEventBus(h.eventBus)
-			appHash, err = sm.ExecCommitBlock(
+			appHash, err = sm.ExecCommitBlock(ctx,
 				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			appHash, err = sm.ExecCommitBlock(
+			appHash, err = sm.ExecCommitBlock(ctx,
 				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
@@ -492,7 +493,7 @@ func (h *Handshaker) replayBlocks(
 
 	if mutateState {
 		// sync the final block
-		state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus())
+		state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp.Consensus())
 		if err != nil {
 			return nil, err
 		}
@@ -504,7 +505,12 @@ func (h *Handshaker) replayBlocks(
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus) (sm.State, error) {
+func (h *Handshaker) replayBlock(
+	ctx context.Context,
+	state sm.State,
+	height int64,
+	proxyApp proxy.AppConnConsensus,
+) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
@@ -514,7 +520,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
-	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)
+	state, err = blockExec.ApplyBlock(ctx, state, meta.BlockID, block)
 	if err != nil {
 		return sm.State{}, err
 	}

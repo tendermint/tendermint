@@ -224,7 +224,7 @@ func (vss ValidatorStubsByPower) Swap(i, j int) {
 // Functions for transitioning the consensus state
 
 func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
-	cs.enterNewRound(height, round)
+	cs.enterNewRound(ctx, height, round)
 	cs.startRoutines(ctx, 0)
 }
 
@@ -467,7 +467,15 @@ func newStateWithConfigAndBlockStore(
 	}
 
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore)
-	cs := NewState(logger.With("module", "consensus"), thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+	cs := NewState(ctx,
+		logger.With("module", "consensus"),
+		thisConfig.Consensus,
+		state,
+		blockExec,
+		blockStore,
+		mempool,
+		evpool,
+	)
 	cs.SetPrivValidator(pv)
 
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))

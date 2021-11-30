@@ -82,10 +82,7 @@ func (b *EventBus) Observe(ctx context.Context, observe func(tmpubsub.Message) e
 	return b.pubsub.Observe(ctx, observe, queries...)
 }
 
-func (b *EventBus) Publish(eventValue string, eventData types.TMEventData) error {
-	// no explicit deadline for publishing events
-	ctx := context.Background()
-
+func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData types.TMEventData) error {
 	tokens := strings.Split(types.EventTypeKey, ".")
 	event := abci.Event{
 		Type: tokens[0],
@@ -100,9 +97,7 @@ func (b *EventBus) Publish(eventValue string, eventData types.TMEventData) error
 	return b.pubsub.PublishWithEvents(ctx, eventData, []abci.Event{event})
 }
 
-func (b *EventBus) PublishEventNewBlock(data types.EventDataNewBlock) error {
-	// no explicit deadline for publishing events
-	ctx := context.Background()
+func (b *EventBus) PublishEventNewBlock(ctx context.Context, data types.EventDataNewBlock) error {
 	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
 	// add Tendermint-reserved new block event
@@ -111,9 +106,9 @@ func (b *EventBus) PublishEventNewBlock(data types.EventDataNewBlock) error {
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
-func (b *EventBus) PublishEventNewBlockHeader(data types.EventDataNewBlockHeader) error {
+func (b *EventBus) PublishEventNewBlockHeader(ctx context.Context, data types.EventDataNewBlockHeader) error {
 	// no explicit deadline for publishing events
-	ctx := context.Background()
+
 	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
 
 	// add Tendermint-reserved new block header event
@@ -122,32 +117,30 @@ func (b *EventBus) PublishEventNewBlockHeader(data types.EventDataNewBlockHeader
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
-func (b *EventBus) PublishEventNewEvidence(evidence types.EventDataNewEvidence) error {
-	return b.Publish(types.EventNewEvidenceValue, evidence)
+func (b *EventBus) PublishEventNewEvidence(ctx context.Context, evidence types.EventDataNewEvidence) error {
+	return b.Publish(ctx, types.EventNewEvidenceValue, evidence)
 }
 
-func (b *EventBus) PublishEventVote(data types.EventDataVote) error {
-	return b.Publish(types.EventVoteValue, data)
+func (b *EventBus) PublishEventVote(ctx context.Context, data types.EventDataVote) error {
+	return b.Publish(ctx, types.EventVoteValue, data)
 }
 
-func (b *EventBus) PublishEventValidBlock(data types.EventDataRoundState) error {
-	return b.Publish(types.EventValidBlockValue, data)
+func (b *EventBus) PublishEventValidBlock(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventValidBlockValue, data)
 }
 
-func (b *EventBus) PublishEventBlockSyncStatus(data types.EventDataBlockSyncStatus) error {
-	return b.Publish(types.EventBlockSyncStatusValue, data)
+func (b *EventBus) PublishEventBlockSyncStatus(ctx context.Context, data types.EventDataBlockSyncStatus) error {
+	return b.Publish(ctx, types.EventBlockSyncStatusValue, data)
 }
 
-func (b *EventBus) PublishEventStateSyncStatus(data types.EventDataStateSyncStatus) error {
-	return b.Publish(types.EventStateSyncStatusValue, data)
+func (b *EventBus) PublishEventStateSyncStatus(ctx context.Context, data types.EventDataStateSyncStatus) error {
+	return b.Publish(ctx, types.EventStateSyncStatusValue, data)
 }
 
 // PublishEventTx publishes tx event with events from Result. Note it will add
 // predefined keys (EventTypeKey, TxHashKey). Existing events with the same keys
 // will be overwritten.
-func (b *EventBus) PublishEventTx(data types.EventDataTx) error {
-	// no explicit deadline for publishing events
-	ctx := context.Background()
+func (b *EventBus) PublishEventTx(ctx context.Context, data types.EventDataTx) error {
 	events := data.Result.Events
 
 	// add Tendermint-reserved events
@@ -178,44 +171,44 @@ func (b *EventBus) PublishEventTx(data types.EventDataTx) error {
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
-func (b *EventBus) PublishEventNewRoundStep(data types.EventDataRoundState) error {
-	return b.Publish(types.EventNewRoundStepValue, data)
+func (b *EventBus) PublishEventNewRoundStep(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventNewRoundStepValue, data)
 }
 
-func (b *EventBus) PublishEventTimeoutPropose(data types.EventDataRoundState) error {
-	return b.Publish(types.EventTimeoutProposeValue, data)
+func (b *EventBus) PublishEventTimeoutPropose(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventTimeoutProposeValue, data)
 }
 
-func (b *EventBus) PublishEventTimeoutWait(data types.EventDataRoundState) error {
-	return b.Publish(types.EventTimeoutWaitValue, data)
+func (b *EventBus) PublishEventTimeoutWait(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventTimeoutWaitValue, data)
 }
 
-func (b *EventBus) PublishEventNewRound(data types.EventDataNewRound) error {
-	return b.Publish(types.EventNewRoundValue, data)
+func (b *EventBus) PublishEventNewRound(ctx context.Context, data types.EventDataNewRound) error {
+	return b.Publish(ctx, types.EventNewRoundValue, data)
 }
 
-func (b *EventBus) PublishEventCompleteProposal(data types.EventDataCompleteProposal) error {
-	return b.Publish(types.EventCompleteProposalValue, data)
+func (b *EventBus) PublishEventCompleteProposal(ctx context.Context, data types.EventDataCompleteProposal) error {
+	return b.Publish(ctx, types.EventCompleteProposalValue, data)
 }
 
-func (b *EventBus) PublishEventPolka(data types.EventDataRoundState) error {
-	return b.Publish(types.EventPolkaValue, data)
+func (b *EventBus) PublishEventPolka(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventPolkaValue, data)
 }
 
-func (b *EventBus) PublishEventUnlock(data types.EventDataRoundState) error {
-	return b.Publish(types.EventUnlockValue, data)
+func (b *EventBus) PublishEventUnlock(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventUnlockValue, data)
 }
 
-func (b *EventBus) PublishEventRelock(data types.EventDataRoundState) error {
-	return b.Publish(types.EventRelockValue, data)
+func (b *EventBus) PublishEventRelock(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventRelockValue, data)
 }
 
-func (b *EventBus) PublishEventLock(data types.EventDataRoundState) error {
-	return b.Publish(types.EventLockValue, data)
+func (b *EventBus) PublishEventLock(ctx context.Context, data types.EventDataRoundState) error {
+	return b.Publish(ctx, types.EventLockValue, data)
 }
 
-func (b *EventBus) PublishEventValidatorSetUpdates(data types.EventDataValidatorSetUpdates) error {
-	return b.Publish(types.EventValidatorSetUpdatesValue, data)
+func (b *EventBus) PublishEventValidatorSetUpdates(ctx context.Context, data types.EventDataValidatorSetUpdates) error {
+	return b.Publish(ctx, types.EventValidatorSetUpdatesValue, data)
 }
 
 //-----------------------------------------------------------------------------
@@ -223,22 +216,22 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data types.EventDataValidator
 // NopEventBus implements a types.BlockEventPublisher that discards all events.
 type NopEventBus struct{}
 
-func (NopEventBus) PublishEventNewBlock(types.EventDataNewBlock) error {
+func (NopEventBus) PublishEventNewBlock(context.Context, types.EventDataNewBlock) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewBlockHeader(types.EventDataNewBlockHeader) error {
+func (NopEventBus) PublishEventNewBlockHeader(context.Context, types.EventDataNewBlockHeader) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventNewEvidence(types.EventDataNewEvidence) error {
+func (NopEventBus) PublishEventNewEvidence(context.Context, types.EventDataNewEvidence) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventTx(types.EventDataTx) error {
+func (NopEventBus) PublishEventTx(context.Context, types.EventDataTx) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdates) error {
+func (NopEventBus) PublishEventValidatorSetUpdates(context.Context, types.EventDataValidatorSetUpdates) error {
 	return nil
 }
