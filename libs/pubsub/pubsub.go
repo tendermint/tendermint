@@ -106,7 +106,6 @@ type Server struct {
 
 	queue  chan item
 	done   <-chan struct{} // closed when server should exit
-	stop   func()          // signal the server to exit
 	pubs   sync.RWMutex    // excl: shutdown; shared: active publisher
 	exited chan struct{}   // server exited
 
@@ -333,8 +332,8 @@ func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events 
 	return s.publish(ctx, msg, events)
 }
 
-// OnStop implements Service.OnStop by shutting down the server.
-func (s *Server) OnStop() { s.stop() }
+// OnStop implements part of the Service interface. It is a no-op.
+func (s *Server) OnStop() {}
 
 // Wait implements Service.Wait by blocking until the server has exited, then
 // yielding to the base service wait.
@@ -365,9 +364,7 @@ func (s *Server) publish(ctx context.Context, data interface{}, events []types.E
 
 func (s *Server) run(ctx context.Context) {
 	// The server runs until ctx is canceled.
-	ctx, cancel := context.WithCancel(ctx)
 	s.done = ctx.Done()
-	s.stop = cancel
 	queue := s.queue
 
 	// Shutdown monitor: When the context ends, wait for any active publish
