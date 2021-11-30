@@ -15,6 +15,8 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+
+	_ "github.com/lib/pq" // for the psql sink
 )
 
 const (
