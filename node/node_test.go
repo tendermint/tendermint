@@ -573,12 +573,12 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	cfg.TxIndex.Indexer = []string{"null", "kv", "Kv"}
-	ns, err = newDefaultNode(cfg, logger)
+	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
 	cfg.TxIndex.Indexer = []string{"Null", "kV", "kv", "nUlL"}
-	ns, err = newDefaultNode(cfg, logger)
+	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 }
