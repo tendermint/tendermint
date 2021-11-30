@@ -28,6 +28,8 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS
 
+- [\#7338](https://github.com/tendermint/tendermint/pull/7338) pubsub: Performance improvements for the event query API (backport of #7319) (@creachadair)
+
 ### BUG FIXES
 
 - [\#7310](https://github.com/tendermint/tendermint/issues/7310) pubsub: Report a non-nil error when shutting down (fixes #7306).
