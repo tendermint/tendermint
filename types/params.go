@@ -80,7 +80,6 @@ type VersionParams struct {
 // TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
 type TimestampParams struct {
 	Precision time.Duration `json:"precision"`
-	Accuracy  time.Duration `json:"accuracy"`
 	MsgDelay  time.Duration `json:"msg_delay"`
 }
 
@@ -130,7 +129,6 @@ func DefaultTimestampParams() TimestampParams {
 	// https://github.com/tendermint/tendermint/issues/7202
 	return TimestampParams{
 		Precision: 2 * time.Second,
-		Accuracy:  500 * time.Millisecond,
 		MsgDelay:  3 * time.Second,
 	}
 }
