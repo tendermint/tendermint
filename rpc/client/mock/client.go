@@ -131,6 +131,7 @@ func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.env.Health(&rpctypes.Context{})
 }
 
+<<<<<<< HEAD
 func (c Client) DialSeeds(ctx context.Context, seeds []string) (*coretypes.ResultDialSeeds, error) {
 	return c.env.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
 }
@@ -146,6 +147,9 @@ func (c Client) DialPeers(
 }
 
 func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
+=======
+func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
+>>>>>>> 76dea94a0 (Remove now-unused nolint:lll directives. (#7356))
 	return c.env.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
 }
 
@@ -165,7 +169,7 @@ func (c Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCom
 	return c.env.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) { //nolint:lll
+func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
 	return c.env.Validators(&rpctypes.Context{}, height, page, perPage)
 }
 
