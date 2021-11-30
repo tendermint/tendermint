@@ -140,7 +140,6 @@ func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.env.Health(c.ctx)
 }
 
-<<<<<<< HEAD
 func (c *Local) DialSeeds(ctx context.Context, seeds []string) (*coretypes.ResultDialSeeds, error) {
 	return c.env.UnsafeDialSeeds(c.ctx, seeds)
 }
@@ -155,10 +154,7 @@ func (c *Local) DialPeers(
 	return c.env.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
 }
 
-func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
-=======
 func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
->>>>>>> 76dea94a0 (Remove now-unused nolint:lll directives. (#7356))
 	return c.env.BlockchainInfo(c.ctx, minHeight, maxHeight)
 }
 
