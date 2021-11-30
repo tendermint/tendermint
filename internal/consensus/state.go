@@ -1069,9 +1069,10 @@ func (cs *State) enterNewRound(height int64, round int32) {
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
-	} else {
-		cs.enterPropose(height, round)
+		return
 	}
+
+	cs.enterPropose(height, round)
 }
 
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
@@ -1102,6 +1103,16 @@ func (cs *State) enterPropose(height int64, round int32) {
 			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
 		)
 		return
+	}
+
+	ourAddress := cs.privValidatorPubKey.Address()
+	if cs.isProposer(ourAddress) {
+		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
+		if proposerWaitTime > 0 {
+			fmt.Println("scheduling a wait!")
+			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
+			return
+		}
 	}
 
 	logger.Debug("entering propose step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
@@ -1141,18 +1152,16 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 
-	address := cs.privValidatorPubKey.Address()
-
 	// if not a validator, we're done
-	if !cs.Validators.HasAddress(address) {
-		logger.Debug("node is not a validator", "addr", address, "vals", cs.Validators)
+	if !cs.Validators.HasAddress(ourAddress) {
+		logger.Debug("node is not a validator", "addr", ourAddress, "vals", cs.Validators)
 		return
 	}
 
-	if cs.isProposer(address) {
+	if cs.isProposer(ourAddress) {
 		logger.Debug(
 			"propose step; our turn to propose",
-			"proposer", address,
+			"proposer", ourAddress,
 		)
 
 		cs.decideProposal(height, round)
