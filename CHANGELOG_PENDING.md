@@ -44,6 +44,8 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS
 
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+
 ### BUG FIXES
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
