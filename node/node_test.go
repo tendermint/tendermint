@@ -223,7 +223,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -316,7 +316,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
@@ -379,7 +379,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
