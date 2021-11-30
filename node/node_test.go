@@ -73,7 +73,7 @@ func TestNodeStartStop(t *testing.T) {
 
 	cancel()  // stop the subscription context
 	bcancel() // stop the base context
-	n.Wait()  // wait
+	n.Wait()
 
 	require.False(t, n.IsRunning(), "node must shut down")
 }
