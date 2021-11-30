@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -387,6 +388,35 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte)
 	}, types.EventQueryVote); err != nil {
 		t.Fatalf("Failed to observe query %v: %v", types.EventQueryVote, err)
 	}
+	return ch
+}
+
+func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+	t.Helper()
+	votesSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: testSubscriber,
+		Query:    types.EventQueryVote,
+		Limit:    10})
+	if err != nil {
+		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
+	}
+	ch := make(chan tmpubsub.Message, 10)
+	go func() {
+		for {
+			msg, err := votesSub.Next(ctx)
+			if err != nil {
+				if !errors.Is(err, tmpubsub.ErrTerminated) && !errors.Is(err, context.Canceled) {
+					t.Errorf("error terminating pubsub %s", err)
+				}
+				return
+			}
+			vote := msg.Data().(types.EventDataVote)
+			// we only fire for our own votes
+			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+				ch <- msg
+			}
+		}
+	}()
 	return ch
 }
 
