@@ -33,7 +33,7 @@ func TestSubscribe(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
+	subscription, err := s.Subscribe(ctx, clientID, query.All)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, s.NumClients())
@@ -79,14 +79,14 @@ func TestSubscribeWithCapacity(t *testing.T) {
 
 	ctx := context.Background()
 	require.Panics(t, func() {
-		_, err = s.Subscribe(ctx, clientID, query.Empty{}, -1)
+		_, err = s.Subscribe(ctx, clientID, query.All, -1)
 		require.NoError(t, err)
 	})
 	require.Panics(t, func() {
-		_, err = s.Subscribe(ctx, clientID, query.Empty{}, 0)
+		_, err = s.Subscribe(ctx, clientID, query.All, 0)
 		require.NoError(t, err)
 	})
-	subscription, err := s.Subscribe(ctx, clientID, query.Empty{}, 1)
+	subscription, err := s.Subscribe(ctx, clientID, query.All, 1)
 	require.NoError(t, err)
 	err = s.Publish(ctx, "Aggamon")
 	require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestSubscribeUnbuffered(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	subscription, err := s.SubscribeUnbuffered(ctx, clientID, query.Empty{})
+	subscription, err := s.SubscribeUnbuffered(ctx, clientID, query.All)
 	require.NoError(t, err)
 
 	published := make(chan struct{})
@@ -140,7 +140,7 @@ func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
+	subscription, err := s.Subscribe(ctx, clientID, query.All)
 	require.NoError(t, err)
 	err = s.Publish(ctx, "Fat Cobra")
 	require.NoError(t, err)
@@ -163,7 +163,7 @@ func TestDifferentClients(t *testing.T) {
 
 	ctx := context.Background()
 
-	subscription1, err := s.Subscribe(ctx, "client-1", query.MustParse("tm.events.type='NewBlock'"))
+	subscription1, err := s.Subscribe(ctx, "client-1", query.MustCompile("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
 
 	events := []abci.Event{
@@ -179,7 +179,7 @@ func TestDifferentClients(t *testing.T) {
 	subscription2, err := s.Subscribe(
 		ctx,
 		"client-2",
-		query.MustParse("tm.events.type='NewBlock' AND abci.account.name='Igor'"),
+		query.MustCompile("tm.events.type='NewBlock' AND abci.account.name='Igor'"),
 	)
 	require.NoError(t, err)
 
@@ -201,7 +201,7 @@ func TestDifferentClients(t *testing.T) {
 	subscription3, err := s.Subscribe(
 		ctx,
 		"client-3",
-		query.MustParse("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"),
+		query.MustCompile("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"),
 	)
 	require.NoError(t, err)
 
@@ -252,7 +252,7 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		sub, err := s.Subscribe(ctx, fmt.Sprintf("client-%d", i), query.MustParse(tc.query))
+		sub, err := s.Subscribe(ctx, fmt.Sprintf("client-%d", i), query.MustCompile(tc.query))
 		require.NoError(t, err)
 
 		events := []abci.Event{
@@ -296,7 +296,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	q := query.MustParse("tm.events.type='NewBlock'")
+	q := query.MustCompile("tm.events.type='NewBlock'")
 
 	subscription1, err := s.Subscribe(ctx, clientID, q)
 	require.NoError(t, err)
@@ -331,11 +331,11 @@ func TestUnsubscribe(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	subscription, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	subscription, err := s.Subscribe(ctx, clientID, query.MustCompile("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
 	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'")})
+		Query:      query.MustCompile("tm.events.type='NewBlock'")})
 	require.NoError(t, err)
 
 	err = s.Publish(ctx, "Nick Fury")
@@ -357,16 +357,16 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	_, err = s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	_, err = s.Subscribe(ctx, clientID, query.MustCompile("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
 	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'")})
+		Query:      query.MustCompile("tm.events.type='NewBlock'")})
 	require.NoError(t, err)
 
 	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'")})
+		Query:      query.MustCompile("tm.events.type='NewBlock'")})
 	require.Equal(t, pubsub.ErrSubscriptionNotFound, err)
 	err = s.UnsubscribeAll(ctx, clientID)
 	require.Equal(t, pubsub.ErrSubscriptionNotFound, err)
@@ -384,11 +384,11 @@ func TestResubscribe(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	_, err = s.Subscribe(ctx, clientID, query.Empty{})
+	_, err = s.Subscribe(ctx, clientID, query.All)
 	require.NoError(t, err)
-	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{Subscriber: clientID, Query: query.Empty{}})
+	err = s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{Subscriber: clientID, Query: query.All})
 	require.NoError(t, err)
-	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
+	subscription, err := s.Subscribe(ctx, clientID, query.All)
 	require.NoError(t, err)
 
 	err = s.Publish(ctx, "Cable")
@@ -408,9 +408,9 @@ func TestUnsubscribeAll(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	subscription1, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	subscription1, err := s.Subscribe(ctx, clientID, query.MustCompile("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
-	subscription2, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlockHeader'"))
+	subscription2, err := s.Subscribe(ctx, clientID, query.MustCompile("tm.events.type='NewBlockHeader'"))
 	require.NoError(t, err)
 
 	err = s.UnsubscribeAll(ctx, clientID)
@@ -470,7 +470,7 @@ func benchmarkNClients(n int, b *testing.B) {
 		subscription, err := s.Subscribe(
 			ctx,
 			clientID,
-			query.MustParse(fmt.Sprintf("abci.Account.Owner = 'Ivan' AND abci.Invoices.Number = %d", i)),
+			query.MustCompile(fmt.Sprintf("abci.Account.Owner = 'Ivan' AND abci.Invoices.Number = %d", i)),
 		)
 		if err != nil {
 			b.Fatal(err)
@@ -516,7 +516,7 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	})
 
 	ctx := context.Background()
-	q := query.MustParse("abci.Account.Owner = 'Ivan' AND abci.Invoices.Number = 1")
+	q := query.MustCompile("abci.Account.Owner = 'Ivan' AND abci.Invoices.Number = 1")
 	for i := 0; i < n; i++ {
 		id := fmt.Sprintf("clientID-%d", i+1)
 		subscription, err := s.Subscribe(ctx, id, q)

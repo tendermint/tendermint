@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/orderedcode"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -85,10 +85,10 @@ func parseValueFromEventKey(key []byte) (string, error) {
 	return eventValue, nil
 }
 
-func lookForHeight(conditions []query.Condition) (int64, bool) {
+func lookForHeight(conditions []syntax.Condition) (int64, bool) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.BlockHeightKey && c.Op == query.OpEqual {
-			return c.Operand.(int64), true
+		if c.Tag == types.BlockHeightKey && c.Op == syntax.TEq {
+			return int64(c.Arg.Number()), true
 		}
 	}
 
