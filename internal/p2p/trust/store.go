@@ -6,6 +6,7 @@ package trust
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -75,10 +76,12 @@ func (tms *MetricStore) OnStop() {
 		go func(m *Metric) {
 			defer wg.Done()
 			if err := m.Stop(); err != nil {
-				tms.Logger.Info("problem stopping peer metrics",
-					"peer", m.String(),
-					"error", err.Error(),
-				)
+				if !errors.Is(err, service.ErrAlreadyStopped) {
+					tms.Logger.Info("problem stopping peer metrics",
+						"peer", m.String(),
+						"error", err.Error(),
+					)
+				}
 			}
 		}(tm)
 	}
