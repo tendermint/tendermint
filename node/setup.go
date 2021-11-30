@@ -302,6 +302,7 @@ func createBlockchainReactor(
 }
 
 func createConsensusReactor(
+	ctx context.Context,
 	cfg *config.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
@@ -318,7 +319,7 @@ func createConsensusReactor(
 ) (*consensus.Reactor, *consensus.State, error) {
 	logger = logger.With("module", "consensus")
 
-	consensusState := consensus.NewState(
+	consensusState := consensus.NewState(ctx,
 		logger,
 		cfg.Consensus,
 		state.Copy(),

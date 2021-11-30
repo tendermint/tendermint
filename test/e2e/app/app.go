@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -97,6 +98,9 @@ func NewApplication(cfg *Config) (*Application, error) {
 
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
+	app.state.RLock()
+	defer app.state.RUnlock()
+
 	return abci.ResponseInfo{
 		Version:          version.ABCIVersion,
 		AppVersion:       1,
@@ -283,6 +287,14 @@ func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, 
 		}
 		valUpdates = append(valUpdates, abci.UpdateValidator(keyBytes, int64(power), app.cfg.KeyType))
 	}
+
+	// the validator updates could be returned in arbitrary order,
+	// and that seems potentially bad. This orders the validator
+	// set.
+	sort.Slice(valUpdates, func(i, j int) bool {
+		return valUpdates[i].PubKey.Compare(valUpdates[j].PubKey) < 0
+	})
+
 	return valUpdates, nil
 }
 

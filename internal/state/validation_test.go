@@ -103,7 +103,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			A good block passes
 		*/
 		var err error
-		state, _, lastCommit, err = makeAndCommitGoodBlock(
+		state, _, lastCommit, err = makeAndCommitGoodBlock(ctx,
 			state, height, lastCommit, state.Validators.GetProposer().Address, blockExec, privVals, nil)
 		require.NoError(t, err, "height %d", height)
 	}
@@ -186,6 +186,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		var err error
 		var blockID types.BlockID
 		state, blockID, lastCommit, err = makeAndCommitGoodBlock(
+			ctx,
 			state,
 			height,
 			lastCommit,
@@ -310,6 +311,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 		var err error
 		state, _, lastCommit, err = makeAndCommitGoodBlock(
+			ctx,
 			state,
 			height,
 			lastCommit,

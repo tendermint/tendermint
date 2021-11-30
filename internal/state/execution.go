@@ -150,7 +150,10 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
-	state State, blockID types.BlockID, block *types.Block,
+	ctx context.Context,
+	state State,
+	blockID types.BlockID,
+	block *types.Block,
 ) (State, error) {
 
 	// validate the block if we haven't already
@@ -232,7 +235,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, abciResponses, validatorUpdates)
+	fireEvents(ctx, blockExec.logger, blockExec.eventBus, block, blockID, abciResponses, validatorUpdates)
 
 	return state, nil
 }
@@ -508,6 +511,7 @@ func updateState(
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
 func fireEvents(
+	ctx context.Context,
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
@@ -515,7 +519,7 @@ func fireEvents(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
-	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+	if err := eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
 		Block:            block,
 		BlockID:          blockID,
 		ResultBeginBlock: *abciResponses.BeginBlock,
@@ -524,7 +528,7 @@ func fireEvents(
 		logger.Error("failed publishing new block", "err", err)
 	}
 
-	if err := eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+	if err := eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
 		Header:           block.Header,
 		NumTxs:           int64(len(block.Txs)),
 		ResultBeginBlock: *abciResponses.BeginBlock,
@@ -535,7 +539,7 @@ func fireEvents(
 
 	if len(block.Evidence.Evidence) != 0 {
 		for _, ev := range block.Evidence.Evidence {
-			if err := eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
+			if err := eventBus.PublishEventNewEvidence(ctx, types.EventDataNewEvidence{
 				Evidence: ev,
 				Height:   block.Height,
 			}); err != nil {
@@ -545,7 +549,7 @@ func fireEvents(
 	}
 
 	for i, tx := range block.Data.Txs {
-		if err := eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
+		if err := eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: abci.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
@@ -556,7 +560,7 @@ func fireEvents(
 	}
 
 	if len(validatorUpdates) > 0 {
-		if err := eventBus.PublishEventValidatorSetUpdates(
+		if err := eventBus.PublishEventValidatorSetUpdates(ctx,
 			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
 			logger.Error("failed publishing event", "err", err)
 		}
@@ -569,6 +573,7 @@ func fireEvents(
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
 func ExecCommitBlock(
+	ctx context.Context,
 	be *BlockExecutor,
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
@@ -598,7 +603,7 @@ func ExecCommitBlock(
 		}
 
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
-		fireEvents(be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
+		fireEvents(ctx, be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
 	}
 
 	// Commit block, get hash back

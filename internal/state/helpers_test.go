@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"time"
 
@@ -36,15 +37,17 @@ func newTestApp() proxy.AppConns {
 }
 
 func makeAndCommitGoodBlock(
+	ctx context.Context,
 	state sm.State,
 	height int64,
 	lastCommit *types.Commit,
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
-	evidence []types.Evidence) (sm.State, types.BlockID, *types.Commit, error) {
+	evidence []types.Evidence,
+) (sm.State, types.BlockID, *types.Commit, error) {
 	// A good block passes
-	state, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
+	state, blockID, err := makeAndApplyGoodBlock(ctx, state, height, lastCommit, proposerAddr, blockExec, evidence)
 	if err != nil {
 		return state, types.BlockID{}, nil, err
 	}
@@ -57,15 +60,22 @@ func makeAndCommitGoodBlock(
 	return state, blockID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
-	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
+func makeAndApplyGoodBlock(
+	ctx context.Context,
+	state sm.State,
+	height int64,
+	lastCommit *types.Commit,
+	proposerAddr []byte,
+	blockExec *sm.BlockExecutor,
+	evidence []types.Evidence,
+) (sm.State, types.BlockID, error) {
 	block, _ := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
-	state, err := blockExec.ApplyBlock(state, blockID, block)
+	state, err := blockExec.ApplyBlock(ctx, state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
 	}

@@ -104,7 +104,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 			return err
 		}
 
-		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
+		if err := pb.cs.readReplayMessage(ctx, msg, newStepSub); err != nil {
 			return err
 		}
 
@@ -141,13 +141,13 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) error {
+func (pb *playback) replayReset(ctx context.Context, count int, newStepSub eventbus.Subscription) error {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
 	pb.cs.Wait()
 
-	newCS := NewState(pb.cs.Logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(ctx, pb.cs.Logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -173,7 +173,7 @@ func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) err
 		} else if err != nil {
 			return err
 		}
-		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
+		if err := pb.cs.readReplayMessage(ctx, msg, newStepSub); err != nil {
 			return err
 		}
 		pb.count++
@@ -254,7 +254,7 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 			}()
 
 			if len(tokens) == 1 {
-				if err := pb.replayReset(1, newStepSub); err != nil {
+				if err := pb.replayReset(ctx, 1, newStepSub); err != nil {
 					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			} else {
@@ -263,7 +263,7 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else if err := pb.replayReset(i, newStepSub); err != nil {
+				} else if err := pb.replayReset(ctx, i, newStepSub); err != nil {
 					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			}
@@ -359,7 +359,7 @@ func newConsensusStateForReplay(
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
 
-	consensusState := NewState(logger, csConfig, state.Copy(), blockExec,
+	consensusState := NewState(ctx, logger, csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)
