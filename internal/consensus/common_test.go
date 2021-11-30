@@ -30,7 +30,6 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
@@ -277,6 +276,7 @@ func signAddVotes(
 	addVotes(to, signVotes(ctx, voteType, chainID, blockID, vss...)...)
 }
 
+// nolint: lll
 func validatePrevote(ctx context.Context, t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
 	t.Helper()
 	prevotes := cs.Votes.Prevotes(round)
@@ -401,7 +401,10 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte)
 
 func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
 	t.Helper()
-	votesSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote, 10)
+	votesSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: testSubscriber,
+		Query:    types.EventQueryVote,
+		Limit:    10})
 	if err != nil {
 		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
 	}
@@ -410,8 +413,8 @@ func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr
 		for {
 			msg, err := votesSub.Next(ctx)
 			if err != nil {
-				if !errors.Is(err, pubsub.ErrTerminated) && !errors.Is(err, context.Canceled) {
-					t.Logf("error terminating pubsub %s", err)
+				if !errors.Is(err, tmpubsub.ErrTerminated) && !errors.Is(err, context.Canceled) {
+					t.Errorf("error terminating pubsub %s", err)
 				}
 				return
 			}
@@ -516,6 +519,7 @@ func loadPrivValidator(t *testing.T, config *config.Config) *privval.FilePV {
 	return privValidator
 }
 
+// nolint: lll
 func makeState(ctx context.Context, cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub, error) {
 	// Get State
 	state, privVals := makeGenesisState(cfg, genesisStateArgs{

@@ -187,6 +187,7 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 	return <-p.resultCh
 }
 
+// nolint: lll
 func registerResultCollector(ctx context.Context, t *testing.T, eb *eventbus.EventBus, address []byte) <-chan heightResult {
 	t.Helper()
 	resultCh := make(chan heightResult, 2)
