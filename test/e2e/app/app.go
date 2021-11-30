@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/types"
@@ -339,6 +341,14 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 
 		valUpdates = append(valUpdates, validator)
 	}
+
+	// the validator updates could be returned in arbitrary order,
+	// and that seems potentially bad. This orders the validator
+	// set.
+	sort.Slice(valUpdates, func(i, j int) bool {
+		return valUpdates[i].PubKey.Compare(valUpdates[j].PubKey) < 0
+	})
+
 	valSetUpdates.ValidatorUpdates = valUpdates
 	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
 	valSetUpdates.QuorumHash = quorumHashUpdate
@@ -378,6 +388,7 @@ func (app *Application) chainLockUpdate(height uint64) (*types1.CoreChainLock, e
 	}
 	chainLock := types.NewMockChainLock(uint32(chainlockUpdateHeight))
 	return chainLock.ToProto(), nil
+
 }
 
 // parseTx parses a tx in 'key=value' format into a key and value.
