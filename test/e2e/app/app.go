@@ -97,6 +97,9 @@ func NewApplication(cfg *Config) (*Application, error) {
 
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
+	app.state.RLock()
+	defer app.state.RUnlock()
+
 	return abci.ResponseInfo{
 		Version:          version.ABCIVersion,
 		AppVersion:       1,
