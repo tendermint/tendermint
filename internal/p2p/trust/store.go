@@ -74,13 +74,32 @@ func (tms *MetricStore) OnStop() {
 		wg.Add(1)
 		go func(m *Metric) {
 			defer wg.Done()
-			m.Wait()
+			if err := m.Stop(); err != nil {
+				tms.Logger.Info("problem stopping peer metrics",
+					"peer", m.String(),
+					"error", err.Error(),
+				)
+			}
 		}(tm)
 	}
 	wg.Wait()
 
 	// Make the final trust history data save
 	tms.saveToDB()
+}
+
+func (tms *MetricStore) Wait() {
+	wg := &sync.WaitGroup{}
+
+	for _, tm := range tms.peerMetrics {
+		wg.Add(1)
+		go func(m *Metric) {
+			defer wg.Done()
+			m.Wait()
+		}(tm)
+	}
+	wg.Wait()
+	tms.BaseService.Wait()
 }
 
 // Size returns the number of entries in the trust metric store

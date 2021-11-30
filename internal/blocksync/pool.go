@@ -84,7 +84,7 @@ type BlockPool struct {
 
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
-	quitCh     chan struct{}
+	exitedCh   chan struct{}
 
 	startHeight               int64
 	lastHundredBlockTimeStamp time.Time
@@ -107,7 +107,7 @@ func NewBlockPool(
 		height:       start,
 		startHeight:  start,
 		numPending:   0,
-		quitCh:       make(chan struct{}),
+		exitedCh:     make(chan struct{}),
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 		lastSyncRate: 0,
@@ -124,7 +124,7 @@ func (pool *BlockPool) OnStart(ctx context.Context) error {
 	go pool.makeRequestersRoutine(ctx)
 
 	go func() {
-		defer close(pool.quitCh)
+		defer close(pool.exitedCh)
 		pool.Wait()
 	}()
 
@@ -675,7 +675,7 @@ OUTER_LOOP:
 			select {
 			case <-ctx.Done():
 				return
-			case <-bpr.pool.quitCh:
+			case <-bpr.pool.exitedCh:
 				if err := bpr.Stop(); err != nil {
 					bpr.Logger.Error("Error stopped requester", "err", err)
 				}

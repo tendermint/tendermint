@@ -607,7 +607,7 @@ FOR_LOOP:
 
 		case <-r.closeCh:
 			break FOR_LOOP
-		case <-r.pool.quitCh:
+		case <-r.pool.exitedCh:
 			break FOR_LOOP
 		}
 	}
