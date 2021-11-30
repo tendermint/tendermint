@@ -58,7 +58,7 @@ type pbtsTestHarness struct {
 
 type pbtsTestConfiguration struct {
 	// The timestamp consensus parameters to be used by the state machine under test.
-	timestampParams types.TimestampParams
+	timingParams types.TimingParams
 
 	// The setting to use for the TimeoutPropose configuration parameter.
 	timeoutPropose time.Duration
@@ -80,7 +80,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	clock := new(tmtimemocks.Source)
 	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
 	consensusParams := types.DefaultConsensusParams()
-	consensusParams.Timestamp = tc.timestampParams
+	consensusParams.Timing = tc.timingParams
 
 	state, privVals := makeGenesisState(cfg, genesisStateArgs{
 		Params:     consensusParams,
@@ -240,9 +240,9 @@ func TestReceiveProposalWaitsForPreviousBlockTime(t *testing.T) {
 	defer cancel()
 	initialTime := time.Now().Add(50 * time.Millisecond)
 	cfg := pbtsTestConfiguration{
-		timestampParams: types.TimestampParams{
-			Precision: 100 * time.Millisecond,
-			MsgDelay:  500 * time.Millisecond,
+		timingParams: types.TimingParams{
+			Precision:    100 * time.Millisecond,
+			MessageDelay: 500 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
 		genesisTime:                initialTime,
@@ -256,7 +256,7 @@ func TestReceiveProposalWaitsForPreviousBlockTime(t *testing.T) {
 	// Check that the validator waited until after the proposer-based timestamp
 	// waitingTime bound.
 	assert.True(t, results.height2.prevoteIssuedAt.After(cfg.height2ProposalDeliverTime))
-	maxWaitingTime := cfg.genesisTime.Add(cfg.timestampParams.Precision).Add(cfg.timestampParams.MsgDelay)
+	maxWaitingTime := cfg.genesisTime.Add(cfg.timingParams.Precision).Add(cfg.timingParams.MessageDelay)
 	assert.True(t, results.height2.prevoteIssuedAt.Before(maxWaitingTime))
 
 	// Check that the validator did not prevote for nil.
@@ -275,9 +275,9 @@ func TestReceiveProposalTimesOutOnSlowDelivery(t *testing.T) {
 	defer cancel()
 	initialTime := time.Now()
 	cfg := pbtsTestConfiguration{
-		timestampParams: types.TimestampParams{
-			Precision: 100 * time.Millisecond,
-			MsgDelay:  500 * time.Millisecond,
+		timingParams: types.TimingParams{
+			Precision:    100 * time.Millisecond,
+			MessageDelay: 500 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
 		genesisTime:                initialTime,
@@ -290,7 +290,7 @@ func TestReceiveProposalTimesOutOnSlowDelivery(t *testing.T) {
 
 	// Check that the validator waited until after the proposer-based timestamp
 	// waitinTime bound.
-	maxWaitingTime := initialTime.Add(cfg.timestampParams.Precision).Add(cfg.timestampParams.MsgDelay)
+	maxWaitingTime := initialTime.Add(cfg.timingParams.Precision).Add(cfg.timingParams.MessageDelay)
 	assert.True(t, results.height2.prevoteIssuedAt.After(maxWaitingTime))
 
 	// Ensure that the validator issued a prevote for nil.
@@ -378,9 +378,9 @@ func TestProposalTimeout(t *testing.T) {
 			mockSource := new(tmtimemocks.Source)
 			mockSource.On("Now").Return(testCase.localTime)
 
-			tp := types.TimestampParams{
-				Precision: testCase.precision,
-				MsgDelay:  testCase.msgDelay,
+			tp := types.TimingParams{
+				Precision:    testCase.precision,
+				MessageDelay: testCase.msgDelay,
 			}
 
 			ti := proposalStepWaitingTime(mockSource, testCase.previousBlockTime, tp)
