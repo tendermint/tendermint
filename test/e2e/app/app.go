@@ -285,18 +285,7 @@ func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, 
 	// and that seems potentially bad. This orders the validator
 	// set.
 	sort.Slice(valUpdates, func(i, j int) bool {
-		if valUpdates[i].Power < valUpdates[j].Power {
-			return true
-		}
-
-		switch valUpdates[i].PubKey.Compare(valUpdates[j].PubKey) {
-		case -1:
-			return true
-		case 1:
-			return false
-		}
-
-		return false
+		return valUpdates[i].PubKey.Compare(valUpdates[j].PubKey) < 0
 	})
 
 	return valUpdates, nil
