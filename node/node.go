@@ -1078,6 +1078,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 				p2p:       p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				state:     sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				statesync: statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				proxy:     proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
@@ -1087,6 +1088,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 			p2p:       p2p.NopMetrics(),
 			state:     sm.NopMetrics(),
 			statesync: statesync.NopMetrics(),
+			proxy:     proxy.NopMetrics(),
 		}
 	}
 }
