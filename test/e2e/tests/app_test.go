@@ -46,6 +46,7 @@ func TestApp_Hash(t *testing.T) {
 
 		status, err := client.Status(ctx)
 		require.NoError(t, err)
+		require.NotZero(t, status.SyncInfo.LatestBlockHeight)
 
 		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
 		require.NoError(t, err)
@@ -54,6 +55,29 @@ func TestApp_Hash(t *testing.T) {
 			require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
 				"app hash does not match last block's app hash")
 		}
+
+		require.True(t, status.SyncInfo.LatestBlockHeight >= info.Response.LastBlockHeight,
+			"status out of sync with application")
+	})
+}
+
+// Tests that the app and blockstore have and report the same height.
+func TestApp_Height(t *testing.T) {
+	testNode(t, func(t *testing.T, node e2e.Node) {
+		client, err := node.Client()
+		require.NoError(t, err)
+		info, err := client.ABCIInfo(ctx)
+		require.NoError(t, err)
+		require.NotZero(t, info.Response.LastBlockHeight)
+
+		status, err := client.Status(ctx)
+		require.NoError(t, err)
+		require.NotZero(t, status.SyncInfo.LatestBlockHeight)
+
+		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
+		require.NoError(t, err)
+
+		require.Equal(t, info.Response.LastBlockHeight, block.Block.Height)
 
 		require.True(t, status.SyncInfo.LatestBlockHeight >= info.Response.LastBlockHeight,
 			"status out of sync with application")
