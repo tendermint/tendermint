@@ -97,9 +97,9 @@ func loadGenerate(ctx context.Context, r *rand.Rand, chTx chan<- types.Tx, txSiz
 		case <-timer.C:
 		}
 
-		// We keep generating the same 100 keys over and over, with different values.
-		// This gives a reasonable load without putting too much data in the app.
-		id := rand.Int63() % 100 // nolint: gosec
+		// Constrain the key space to avoid using too much
+		// space, while reduce the size of the data in the app.
+		id := r.Int63n(100)
 
 		bz := make([]byte, txSize)
 		_, err := r.Read(bz)
