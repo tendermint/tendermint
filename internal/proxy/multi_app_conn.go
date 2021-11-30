@@ -33,8 +33,8 @@ type AppConns interface {
 }
 
 // NewAppConns calls NewMultiAppConn.
-func NewAppConns(clientCreator abciclient.Creator) AppConns {
-	return NewMultiAppConn(clientCreator)
+func NewAppConns(clientCreator abciclient.Creator, metrics *Metrics) AppConns {
+	return NewMultiAppConn(clientCreator, metrics)
 }
 
 // multiAppConn implements AppConns.
@@ -45,6 +45,7 @@ func NewAppConns(clientCreator abciclient.Creator) AppConns {
 type multiAppConn struct {
 	service.BaseService
 
+	metrics       *Metrics
 	consensusConn AppConnConsensus
 	mempoolConn   AppConnMempool
 	queryConn     AppConnQuery
@@ -59,8 +60,9 @@ type multiAppConn struct {
 }
 
 // NewMultiAppConn makes all necessary abci connections to the application.
-func NewMultiAppConn(clientCreator abciclient.Creator) AppConns {
+func NewMultiAppConn(clientCreator abciclient.Creator, metrics *Metrics) AppConns {
 	multiAppConn := &multiAppConn{
+		metrics:       metrics,
 		clientCreator: clientCreator,
 	}
 	multiAppConn.BaseService = *service.NewBaseService(nil, "multiAppConn", multiAppConn)
@@ -89,7 +91,7 @@ func (app *multiAppConn) OnStart() error {
 		return err
 	}
 	app.queryConnClient = c
-	app.queryConn = NewAppConnQuery(c)
+	app.queryConn = NewAppConnQuery(c, app.metrics)
 
 	c, err = app.abciClientFor(connSnapshot)
 	if err != nil {
@@ -97,7 +99,7 @@ func (app *multiAppConn) OnStart() error {
 		return err
 	}
 	app.snapshotConnClient = c
-	app.snapshotConn = NewAppConnSnapshot(c)
+	app.snapshotConn = NewAppConnSnapshot(c, app.metrics)
 
 	c, err = app.abciClientFor(connMempool)
 	if err != nil {
@@ -105,7 +107,7 @@ func (app *multiAppConn) OnStart() error {
 		return err
 	}
 	app.mempoolConnClient = c
-	app.mempoolConn = NewAppConnMempool(c)
+	app.mempoolConn = NewAppConnMempool(c, app.metrics)
 
 	c, err = app.abciClientFor(connConsensus)
 	if err != nil {
@@ -113,7 +115,7 @@ func (app *multiAppConn) OnStart() error {
 		return err
 	}
 	app.consensusConnClient = c
-	app.consensusConn = NewAppConnConsensus(c)
+	app.consensusConn = NewAppConnConsensus(c, app.metrics)
 
 	// Kill Tendermint if the ABCI application crashes.
 	go app.killTMOnClientError()

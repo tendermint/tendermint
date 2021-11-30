@@ -20,6 +20,7 @@ The following metrics are available:
 
 | **Name**                               | **Type**  | **Tags**      | **Description**                                                        |
 | -------------------------------------- | --------- | ------------- | ---------------------------------------------------------------------- |
+| abci_connection_method_timing          | Histogram | method, type  | Timings for each of the ABCI methods                                   |
 | consensus_height                       | Gauge     |               | Height of the chain                                                    |
 | consensus_validators                   | Gauge     |               | Number of validators                                                   |
 | consensus_validators_power             | Gauge     |               | Total voting power of all validators                                   |
@@ -55,6 +56,16 @@ The following metrics are available:
 
 Percentage of missing + byzantine validators:
 
-```md
-((consensus\_byzantine\_validators\_power + consensus\_missing\_validators\_power) / consensus\_validators\_power) * 100
+```prometheus
+((consensus_byzantine_validators_power + consensus_missing_validators_power) / consensus_validators_power) * 100
+```
+
+Rate at which the application is responding to each ABCI method call.
+```
+sum(rate(tendermint_abci_connection_method_timing_count[5m])) by (method)
+```
+
+The 95th percentile response time for the application to the `deliver_tx` ABCI method call.
+```
+histogram_quantile(0.95, sum by(le) (rate(tendermint_abci_connection_method_timing_bucket{method="deliver_tx"}[5m])))
 ```
