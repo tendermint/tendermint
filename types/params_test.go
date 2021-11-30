@@ -23,26 +23,140 @@ func TestConsensusParamsValidation(t *testing.T) {
 		valid  bool
 	}{
 		// test block params
-		{makeParams(makeParamsArgs{blockBytes: 1, evidenceAge: 2, precision: 1, messageDelay: 1}), true},
-		{makeParams(makeParamsArgs{blockBytes: 0, evidenceAge: 2, precision: 1, messageDelay: 1}), false},
-		{makeParams(makeParamsArgs{blockBytes: 47 * 1024 * 1024, evidenceAge: 2, precision: 1, messageDelay: 1}), true},
-		{makeParams(makeParamsArgs{blockBytes: 10, evidenceAge: 2, precision: 1, messageDelay: 1}), true},
-		{makeParams(makeParamsArgs{blockBytes: 100 * 1024 * 1024, evidenceAge: 2, precision: 1, messageDelay: 1}), true},
-		{makeParams(makeParamsArgs{blockBytes: 101 * 1024 * 1024, evidenceAge: 2, precision: 1, messageDelay: 1}), false},
-		{makeParams(makeParamsArgs{blockBytes: 1024 * 1024 * 1024, evidenceAge: 2, precision: 1, messageDelay: 1}), false},
-		{makeParams(makeParamsArgs{blockBytes: 1024 * 1024 * 1024, evidenceAge: 2, precision: 1, messageDelay: 1}), false},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   1,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: true,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   0,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: false,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   47 * 1024 * 1024,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: true,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   10,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: true,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   100 * 1024 * 1024,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: true,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   101 * 1024 * 1024,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: false,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   1024 * 1024 * 1024,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: false,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:   1024 * 1024 * 1024,
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: 1}),
+			valid: false,
+		},
 		// test evidence params
-		{makeParams(makeParamsArgs{blockBytes: 1, evidenceAge: 0, maxEvidenceBytes: 0, precision: 1, messageDelay: 1}), false},
-		{makeParams(makeParamsArgs{blockBytes: 1, evidenceAge: 2, maxEvidenceBytes: 2, precision: 1, messageDelay: 1}), false},
-		{makeParams(makeParamsArgs{blockBytes: 1000, evidenceAge: 2, maxEvidenceBytes: 1, precision: 1, messageDelay: 1}), true},
-		{makeParams(makeParamsArgs{blockBytes: 1, evidenceAge: -1, maxEvidenceBytes: 0, precision: 1, messageDelay: 1}), false},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:       1,
+				evidenceAge:      0,
+				maxEvidenceBytes: 0,
+				precision:        1,
+				messageDelay:     1}),
+			valid: false,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:       1,
+				evidenceAge:      2,
+				maxEvidenceBytes: 2,
+				precision:        1,
+				messageDelay:     1}),
+			valid: false,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:       1000,
+				evidenceAge:      2,
+				maxEvidenceBytes: 1,
+				precision:        1,
+				messageDelay:     1}),
+			valid: true,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				blockBytes:       1,
+				evidenceAge:      -1,
+				maxEvidenceBytes: 0,
+				precision:        1,
+				messageDelay:     1}),
+			valid: false,
+		},
 		// test no pubkey type provided
-		{makeParams(makeParamsArgs{evidenceAge: 2, pubkeyTypes: []string{}, precision: 1, messageDelay: 1}), false},
+		{
+			params: makeParams(makeParamsArgs{
+				evidenceAge:  2,
+				pubkeyTypes:  []string{},
+				precision:    1,
+				messageDelay: 1}),
+			valid: false,
+		},
 		// test invalid pubkey type provided
-		{makeParams(makeParamsArgs{evidenceAge: 2, pubkeyTypes: []string{"potatoes make good pubkeys"}, precision: 1, messageDelay: 1}), false},
+		{
+			params: makeParams(makeParamsArgs{
+				evidenceAge:  2,
+				pubkeyTypes:  []string{"potatoes make good pubkeys"},
+				precision:    1,
+				messageDelay: 1}),
+			valid: false,
+		},
 		// test invalid pubkey type provided
-		{makeParams(makeParamsArgs{evidenceAge: 2, precision: 1, messageDelay: -1}), false},
-		{makeParams(makeParamsArgs{evidenceAge: 2, precision: -1, messageDelay: 1}), false},
+		{
+			params: makeParams(makeParamsArgs{
+				evidenceAge:  2,
+				precision:    1,
+				messageDelay: -1}),
+			valid: false,
+		},
+		{
+			params: makeParams(makeParamsArgs{
+				evidenceAge:  2,
+				precision:    -1,
+				messageDelay: 1}),
+			valid: false,
+		},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
