@@ -268,7 +268,7 @@ func (state State) MakeBlock(
 	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
-		timestamp = MedianTime(commit, state.LastValidators)
+		timestamp = time.Now()
 	}
 
 	// Fill rest of header with state data.
@@ -281,29 +281,6 @@ func (state State) MakeBlock(
 	)
 
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
-}
-
-// MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
-// corresponding validator set. The computed time is always between timestamps of
-// the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
-// computed value.
-func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-	weightedTimes := make([]*weightedTime, len(commit.Signatures))
-	totalVotingPower := int64(0)
-
-	for i, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue
-		}
-		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
-		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
-		if validator != nil {
-			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = newWeightedTime(commitSig.Timestamp, validator.VotingPower)
-		}
-	}
-
-	return weightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------
