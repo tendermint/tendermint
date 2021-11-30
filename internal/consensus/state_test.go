@@ -2529,6 +2529,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	cs, _, err := makeState(ctx, config, logger, 1)
 	require.NoError(t, err)
 	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	require.NoError(t, err)
 
 	// 1) new block part
 	parts := types.NewPartSetFromData(tmrand.Bytes(100), 10)
