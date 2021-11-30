@@ -442,22 +442,14 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	return res, nil
 }
 
-// Header calls rpcclient#Header and updates the client if it's falling behind.
+// Header fetches and verifies the header directly via the light client
 func (c *Client) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
-	res, err := c.next.Header(ctx, height)
+	lb, err := c.updateLightClientIfNeededTo(ctx, height)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := res.Header.ValidateBasic(); err != nil {
-		return nil, err
-	}
-
-	if _, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height); err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return &coretypes.ResultHeader{Header: lb.Header}, nil
 }
 
 // HeaderByHash calls rpcclient#HeaderByHash and updates the client if it's falling behind.
@@ -471,8 +463,14 @@ func (c *Client) HeaderByHash(ctx context.Context, hash tmbytes.HexBytes) (*core
 		return nil, err
 	}
 
-	if _, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height); err != nil {
+	lb, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height)
+	if err != nil {
 		return nil, err
+	}
+
+	if !bytes.Equal(lb.Header.Hash(), res.Header.Hash()) {
+		return nil, fmt.Errorf("primary header hash does not match trusted header hash. (%X != %X)",
+			lb.Header.Hash(), res.Header.Hash())
 	}
 
 	return res, nil

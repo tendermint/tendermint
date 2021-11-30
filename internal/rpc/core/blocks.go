@@ -132,12 +132,12 @@ func (env *Environment) Header(ctx *rpctypes.Context, heightPtr *int64) (*corety
 		return nil, err
 	}
 
-	block := env.BlockStore.LoadBlock(height)
-	if block == nil {
+	blockMeta := env.BlockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
 		return &coretypes.ResultHeader{}, nil
 	}
 
-	return &coretypes.ResultHeader{Header: &block.Header}, nil
+	return &coretypes.ResultHeader{Header: &blockMeta.Header}, nil
 }
 
 // HeaderByHash gets header by hash.
@@ -147,12 +147,12 @@ func (env *Environment) HeaderByHash(ctx *rpctypes.Context, hash bytes.HexBytes)
 	// decoding logic in the HTTP service will correctly translate from JSON.
 	// See https://github.com/tendermint/tendermint/issues/6802 for context.
 
-	block := env.BlockStore.LoadBlockByHash(hash)
-	if block == nil {
+	blockMeta := env.BlockStore.LoadBlockMetaByHash(hash)
+	if blockMeta == nil {
 		return &coretypes.ResultHeader{}, nil
 	}
 
-	return &coretypes.ResultHeader{Header: &block.Header}, nil
+	return &coretypes.ResultHeader{Header: &blockMeta.Header}, nil
 }
 
 // Commit gets block commit at a given height.

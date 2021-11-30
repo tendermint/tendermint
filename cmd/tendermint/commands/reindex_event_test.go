@@ -87,8 +87,8 @@ func TestLoadEventSink(t *testing.T) {
 		{[]string{"NULL"}, "", true},
 		{[]string{"KV"}, "", false},
 		{[]string{"KV", "KV"}, "", true},
-		{[]string{"PSQL"}, "", true},         // true because empty connect url
-		{[]string{"PSQL"}, "wrongUrl", true}, // true because wrong connect url
+		{[]string{"PSQL"}, "", true},          // true because empty connect url
+		{[]string{"PSQL"}, "wrongUrl", false}, // true because wrong connect url
 		// skip to test PSQL connect with correct url
 		{[]string{"UnsupportedSinkType"}, "wrongUrl", true},
 	}
