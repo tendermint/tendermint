@@ -59,7 +59,7 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_commit
-func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) { //nolint:lll
+func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
 	resCh := make(chan *abci.Response, 1)
 	err := env.Mempool.CheckTx(
 		ctx.Context(),
