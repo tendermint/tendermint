@@ -41,7 +41,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
-	Timestamp TimestampParams `json:"timestamp"`
+	Timing    TimingParams    `json:"timestamp"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -76,11 +76,11 @@ type VersionParams struct {
 	AppVersion uint64 `json:"app_version"`
 }
 
-// TimestampParams influence the validity of block timestamps.
+// TimingParams influence the validity of block timestamps.
 // TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
-type TimestampParams struct {
-	Precision time.Duration `json:"precision"`
-	MsgDelay  time.Duration `json:"msg_delay"`
+type TimingParams struct {
+	Precision    time.Duration `json:"precision"`
+	MessageDelay time.Duration `json:"message_delay"`
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -124,12 +124,12 @@ func DefaultVersionParams() VersionParams {
 	}
 }
 
-func DefaultTimestampParams() TimestampParams {
+func DefaultTimingParams() TimingParams {
 	// TODO(@wbanfield): Determine experimental values for these defaults
 	// https://github.com/tendermint/tendermint/issues/7202
-	return TimestampParams{
-		Precision: 2 * time.Second,
-		MsgDelay:  3 * time.Second,
+	return TimingParams{
+		Precision:    2 * time.Second,
+		MessageDelay: 3 * time.Second,
 	}
 }
 
@@ -272,6 +272,10 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		Version: &tmproto.VersionParams{
 			AppVersion: params.Version.AppVersion,
 		},
+		Timing: &tmproto.TimingParams{
+			MessageDelay: params.Timing.MessageDelay,
+			Precision:    params.Timing.Precision,
+		},
 	}
 }
 
@@ -291,6 +295,10 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 		},
 		Version: VersionParams{
 			AppVersion: pbParams.Version.AppVersion,
+		},
+		Timing: TimingParams{
+			MessageDelay: pbParams.Timing.MessageDelay,
+			Precision:    pbParams.Timing.Precision,
 		},
 	}
 }

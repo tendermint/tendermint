@@ -241,9 +241,9 @@ func TestIsTimely(t *testing.T) {
 				Timestamp: testCase.proposalTime,
 			}
 
-			tp := TimestampParams{
-				Precision: testCase.precision,
-				MsgDelay:  testCase.msgDelay,
+			tp := TimingParams{
+				Precision:    testCase.precision,
+				MessageDelay: testCase.msgDelay,
 			}
 
 			mockSource := new(tmtimemocks.Source)
