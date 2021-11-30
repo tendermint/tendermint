@@ -572,25 +572,13 @@ func TestNodeSetEventSink(t *testing.T) {
 	// instance for it to talk to. The indexer service tests exercise that case.
 
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
-<<<<<<< HEAD
-	cfg.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(cfg, logger)
-=======
 	cfg.TxIndex.Indexer = []string{"null", "kv", "Kv"}
 	ns, err = newDefaultNode(ctx, cfg, logger)
->>>>>>> ab1788b92 (Fix incorrect tests using the PSQL sink. (#7349))
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
-<<<<<<< HEAD
-	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	_, err = newDefaultNode(cfg, logger)
-=======
 	cfg.TxIndex.Indexer = []string{"Null", "kV", "kv", "nUlL"}
 	ns, err = newDefaultNode(ctx, cfg, logger)
->>>>>>> ab1788b92 (Fix incorrect tests using the PSQL sink. (#7349))
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 }
