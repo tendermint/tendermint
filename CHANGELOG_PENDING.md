@@ -26,5 +26,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [\#7057](https://github.com/tendermint/tendermint/pull/7057) Import Postgres driver support for the psql indexer (@creachadair).
 - [\#7106](https://github.com/tendermint/tendermint/pull/7106) Revert mutex change to ABCI Clients (@tychoish).
-
 - [\#7323](https://github.com/tendermint/tendermint/pull/7323) Fix missing tx/block indexing when shutdown the node (@jayt106).
