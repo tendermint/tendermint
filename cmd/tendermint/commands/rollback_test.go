@@ -29,7 +29,7 @@ func TestRollbackIntegration(t *testing.T) {
 		require.NoError(t, err)
 		node, _, err := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err)
-	
+
 		time.Sleep(3 * time.Second)
 		cancel()
 		node.Wait()
@@ -48,10 +48,10 @@ func TestRollbackIntegration(t *testing.T) {
 		defer cancel()
 		node2, _, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err2)
-	
+
 		client, err := local.New(node2.(local.NodeService))
 		require.NoError(t, err)
-	
+
 		ticker := time.NewTicker(200 * time.Millisecond)
 		for {
 			select {
@@ -60,7 +60,7 @@ func TestRollbackIntegration(t *testing.T) {
 			case <-ticker.C:
 				status, err := client.Status(ctx)
 				require.NoError(t, err)
-	
+
 				if status.SyncInfo.LatestBlockHeight > height {
 					return
 				}
