@@ -52,7 +52,6 @@ func TestGenesisBad(t *testing.T) {
 
 	for _, testCase := range testCases {
 		_, err := GenesisDocFromJSON(testCase)
-		t.Logf("err %s", err)
 		assert.Error(t, err, "expected error for empty genDoc json")
 	}
 }
