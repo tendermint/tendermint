@@ -141,7 +141,7 @@ func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.env.Health(c.ctx)
 }
 
-func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
+func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	return c.env.BlockchainInfo(c.ctx, minHeight, maxHeight)
 }
 
@@ -169,7 +169,7 @@ func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCom
 	return c.env.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) { //nolint:lll
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
 	return c.env.Validators(c.ctx, height, page, perPage)
 }
 
