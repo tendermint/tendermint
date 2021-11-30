@@ -477,7 +477,7 @@ func (h *Handshaker) replayBlocks(
 			InitialHeight:    h.genDoc.InitialHeight,
 			EventBus:         h.eventBus,
 			FinalReplayBlock: i == finalBlock,
-			Validator:        &state.ConsensusParams.Validator,
+			Validator:        state.ConsensusParams.Validator,
 		}
 
 		appHash, err = sm.ExecCommitBlock(params)
