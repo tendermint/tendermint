@@ -43,7 +43,7 @@ func TestRollbackIntegration(t *testing.T) {
 
 	})
 
-	t.Run("R0estart", func(t *testing.T) {
+	t.Run("Restart", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		node2, _, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
