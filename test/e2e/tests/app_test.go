@@ -52,7 +52,9 @@ func TestApp_Hash(t *testing.T) {
 		require.NoError(t, err)
 
 		if info.Response.LastBlockHeight == block.Block.Height {
-			require.EqualValues(t, info.Response.LastBlockAppHash, block.Block.AppHash.Bytes(),
+			require.Equal(t,
+				fmt.Sprintf("%x", info.Response.LastBlockAppHash),
+				fmt.Sprintf("%x", block.Block.AppHash.Bytes()),
 				"app hash does not match last block's app hash")
 		}
 
