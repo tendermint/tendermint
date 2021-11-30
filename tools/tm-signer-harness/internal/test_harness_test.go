@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -73,17 +74,24 @@ const (
 )
 
 func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cfg := makeConfig(t, 1, 2)
 	defer cleanup(cfg)
 
-	th, err := NewTestHarness(log.TestingLogger(), cfg)
+	th, err := NewTestHarness(ctx, log.TestingLogger(), cfg)
 	require.NoError(t, err)
 	th.Run()
 	assert.Equal(t, ErrMaxAcceptRetriesReached, th.exitCode)
 }
 
 func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	harnessTest(
+		ctx,
 		t,
 		func(th *TestHarness) *privval.SignerServer {
 			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, false, false)
@@ -93,7 +101,11 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 }
 
 func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	harnessTest(
+		ctx,
 		t,
 		func(th *TestHarness) *privval.SignerServer {
 			return newMockSignerServer(t, th, ed25519.GenPrivKey(), false, false)
@@ -103,7 +115,11 @@ func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 }
 
 func TestRemoteSignerProposalSigningFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	harnessTest(
+		ctx,
 		t,
 		func(th *TestHarness) *privval.SignerServer {
 			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, true, false)
@@ -113,7 +129,11 @@ func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 }
 
 func TestRemoteSignerVoteSigningFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	harnessTest(
+		ctx,
 		t,
 		func(th *TestHarness) *privval.SignerServer {
 			return newMockSignerServer(t, th, th.fpv.Key.PrivKey, false, true)
@@ -144,11 +164,16 @@ func newMockSignerServer(
 }
 
 // For running relatively standard tests.
-func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.SignerServer, expectedExitCode int) {
+func harnessTest(
+	ctx context.Context,
+	t *testing.T,
+	signerServerMaker func(th *TestHarness) *privval.SignerServer,
+	expectedExitCode int,
+) {
 	cfg := makeConfig(t, 100, 3)
 	defer cleanup(cfg)
 
-	th, err := NewTestHarness(log.TestingLogger(), cfg)
+	th, err := NewTestHarness(ctx, log.TestingLogger(), cfg)
 	require.NoError(t, err)
 	donec := make(chan struct{})
 	go func() {
@@ -157,7 +182,7 @@ func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.
 	}()
 
 	ss := signerServerMaker(th)
-	require.NoError(t, ss.Start())
+	require.NoError(t, ss.Start(ctx))
 	assert.True(t, ss.IsRunning())
 	defer ss.Stop() //nolint:errcheck // ignore for tests
 

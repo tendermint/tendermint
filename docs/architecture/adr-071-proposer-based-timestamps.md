@@ -1,45 +1,13 @@
 # ADR 71: Proposer-Based Timestamps
 
-* [Changelog](#changelog)
-* [Status](#status)
-* [Context](#context)
-* [Alternative Approaches](#alternative-approaches)
-	* [Remove timestamps altogether](#remove-timestamps-altogether)
-* [Decision](#decision)
-* [Detailed Design](#detailed-design)
-	* [Overview](#overview)
-	* [Proposal Timestamp and Block Timestamp](#proposal-timestamp-and-block-timestamp)
-	* [Saving the timestamp across heights](#saving-the-timestamp-across-heights)
-	* [Changes to `CommitSig`](#changes-to-commitsig)
-	* [Changes to `Commit`](#changes-to-commit)
-	* [Changes to `Vote` messages](#changes-to-vote-messages)
-	* [New consensus parameters](#new-consensus-parameters)
-	* [Changes to `Header`](#changes-to-header)
-	* [Changes to the block proposal step](#changes-to-the-block-proposal-step)
-		* [Proposer selects proposal timestamp](#proposer-selects-proposal-timestamp)
-		* [Proposer selects block timestamp](#proposer-selects-block-timestamp)
-		* [Proposer waits](#proposer-waits)
-		* [Changes to the propose step timeout](#changes-to-the-propose-step-timeout)
-	* [Changes to validation rules](#changes-to-validation-rules)
-		* [Proposal timestamp validation](#proposal-timestamp-validation)
-		* [Block timestamp validation](#block-timestamp-validation)
-	* [Changes to the prevote step](#changes-to-the-prevote-step)
-	* [Changes to the precommit step](#changes-to-the-precommit-step)
-	* [Changes to locking a block](#changes-to-locking-a-block)
-	* [Remove voteTime Completely](#remove-votetime-completely)
-* [Future Improvements](#future-improvements)
-* [Consequences](#consequences)
-	* [Positive](#positive)
-	* [Neutral](#neutral)
-	* [Negative](#negative)
-* [References](#references)
-
 ## Changelog
 
  - July 15 2021: Created by @williambanfield 
  - Aug 4 2021: Draft completed by @williambanfield
  - Aug 5 2021: Draft updated to include data structure changes by @williambanfield
  - Aug 20 2021: Language edits completed by @williambanfield
+ - Oct 25 2021: Update the ADR to match updated spec from @cason by @williambanfield
+ - Nov 10 2021: Additional language updates by @williambanfield per feedback from @cason
 
 ## Status
 
@@ -68,7 +36,7 @@ However, their currently known Unix time may be greatly divergent from the block
 The proposer-based timestamps specification suggests an alternative approach for producing block timestamps that remedies these issues.
 Proposer-based timestamps alter the current mechanism for producing block timestamps in two main ways:
 
-1. The block proposer is amended to offer up its currently known Unix time as the timestamp for the next block. 
+1. The block proposer is amended to offer up its currently known Unix time as the timestamp for the next block instead of the `BFTTime`.
 1. Correct validators only approve the proposed block timestamp if it is close enough to their own currently known Unix time. 
 
 The result of these changes is a more meaningful timestamp that cannot be controlled by `<= 2/3` of the validator voting power. 
@@ -111,44 +79,8 @@ Implementing proposer-based timestamps will require a few changes to Tendermint�
 These changes will be to the following components:
 * The `internal/consensus/` package.
 * The `state/` package.
-* The `Vote`, `CommitSig`, `Commit` and `Header` types.
+* The `Vote`, `CommitSig` and `Header` types.
 * The consensus parameters.
-
-### Proposal Timestamp and Block Timestamp
-
-This design discusses two timestamps: (1) The timestamp in the block and (2) the timestamp in the proposal message.
-The existence and use of both of these timestamps can get a bit confusing, so some background is given here to clarify their uses.
-
-The [proposal message currently has a timestamp](https://github.com/tendermint/tendermint/blob/e5312942e30331e7c42b75426da2c6c9c00ae476/types/proposal.go#L31).
-This timestamp is the current Unix time known to the proposer when sending the `Proposal` message.
-This timestamp is not currently used as part of consensus.
-The changes in this ADR will begin using the proposal message timestamp as part of consensus.
-We will refer to this as the **proposal timestamp** throughout this design.
-
-The block has a timestamp field [in the header](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/types/block.go#L338).
-This timestamp is set currently as part of Tendermint’s `BFTtime` algorithm.
-It is set when a block is proposed and it is checked by the validators when they are deciding to prevote the block.
-This field will continue to be used but the logic for creating and validating this timestamp will change.
-We will refer to this as the **block timestamp** throughout this design.
-
-At a high level, the proposal timestamp from height `H` is used as the block timestamp at height `H+1`.
-The following image shows this relationship.
-The rest of this document describes the code changes that will make this possible.
-
-![](./img/pbts-message.png)
-
-### Saving the timestamp across heights
-
-Currently, `BFTtime` uses `LastCommit` to construct the block timestamp.
-The `LastCommit` is created at height `H-1` and is saved in the state store to be included in the block at height `H`.
-`BFTtime` takes the weighted median of the timestamps in `LastCommit.CommitSig` to build the timestamp for height `H`. 
-
-For proposer-based timestamps, the `LastCommit.CommitSig` timestamps will no longer be used to build the timestamps for height `H`.
-Instead, the proposal timestamp from height `H-1` will become the block timestamp for height `H`.
-To enable this, we will add a `Timestamp` field to the `Commit` struct.
-This field will be populated at each height with the proposal timestamp decided on at the previous height.
-This timestamp will also be saved with the rest of the commit in the state store [when the commit is finalized](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L1611) so that it can be recovered if Tendermint crashes.
-Changes to the `CommitSig` and `Commit` struct are detailed below. 
 
 ### Changes to `CommitSig`
 
@@ -167,32 +99,14 @@ type CommitSig struct {
 }
 ```
 
-### Changes to `Commit`
-
-The [Commit](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L746) struct does not currently contain a timestamp. 
-The timestamps in the `Commit.CommitSig` entries are currently used to build the block timestamp.
-With these timestamps removed, the commit time will instead be stored in the `Commit` struct.
-
-`Commit` will be updated as follows. 
-
-```diff
-type Commit struct {
-	Height     int64       `json:"height"`
-	Round      int32       `json:"round"`
-++	Timestamp  time.Time  `json:"timestamp"` 
-	BlockID    BlockID     `json:"block_id"`
-	Signatures []CommitSig `json:"signatures"`
-}
-```
-
 ### Changes to `Vote` messages
 
 `Precommit` and `Prevote` messages use a common [Vote struct](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/vote.go#L50).
 This struct currently contains a timestamp.
 This timestamp is set using the [voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241) function and therefore vote times correspond to the current Unix time known to the validator.
 For precommits, this timestamp is used to construct the [CommitSig that is included in the block in the LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L754) field.
-For prevotes, this field is unused.
-Proposer-based timestamps will use the [RoundState.Proposal](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/internal/consensus/types/round_state.go#L76) timestamp to construct the `signedBytes` `CommitSig`.
+For prevotes, this field is currently unused.
+Proposer-based timestamps will use the timestamp that the proposer sets into the block and will therefore no longer require that a timestamp be included in the vote messages. 
 This timestamp is therefore no longer useful and will be dropped.
 
 `Vote` will be updated as follows:
@@ -250,58 +164,28 @@ type TimestampParams struct {
 }
 ```
 
-### Changes to `Header`
-
-The [Header](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L338) struct currently contains a timestamp.
-This timestamp is set as the `BFTtime` derived from the block's `LastCommit.CommitSig` timestamps.
-This timestamp will no longer be derived from the `LastCommit.CommitSig` timestamps and will instead be included directly into the block's `LastCommit`.
-This timestamp will therfore be identical in both the `Header` and the `LastCommit`.
-To clarify that the timestamp in the header corresponds to the `LastCommit`'s time, we will rename this timestamp field to `last_timestamp`.
-
-`Header` will be updated as follows:
-
-```diff
-type Header struct {
-	// basic block info
-	Version       version.Consensus `json:"version"`
-	ChainID       string            `json:"chain_id"`
-	Height        int64             `json:"height"`
---	Time          time.Time         `json:"time"`
-++	LastTimestamp time.Time         `json:"last_timestamp"`
-
-	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
-
-	// hashes of block data
-	LastCommitHash tmbytes.HexBytes `json:"last_commit_hash"`
-	DataHash       tmbytes.HexBytes `json:"data_hash"`
-
-	// hashes from the app output from the prev block
-	ValidatorsHash     tmbytes.HexBytes `json:"validators_hash"`
-	NextValidatorsHash tmbytes.HexBytes `json:"next_validators_hash"`
-	ConsensusHash      tmbytes.HexBytes `json:"consensus_hash"`
-	AppHash            tmbytes.HexBytes `json:"app_hash"`
-
-	// root hash of all results from the txs from the previous block
-	LastResultsHash tmbytes.HexBytes `json:"last_results_hash"`
-
-	// consensus info
-	EvidenceHash    tmbytes.HexBytes `json:"evidence_hash"`
-	ProposerAddress Address          `json:"proposer_address"`
-}
-```
-
 ### Changes to the block proposal step
-
-#### Proposer selects proposal timestamp
-
-The proposal logic already [sets the Unix time known to the validator](https://github.com/tendermint/tendermint/blob/2abfe20114ee3bb3adfee817589033529a804e4d/types/proposal.go#L44) into the `Proposal` message.
-This satisfies the proposer-based timestamp specification and does not need to change. 
 
 #### Proposer selects block timestamp
 
-The proposal timestamp that was decided in height `H-1` will be stored in the `State` struct's in the `RoundState.LastCommit` field.
-The proposer will select this timestamp to use as the block timestamp at height `H`.
+Tendermint currently uses the `BFTTime` algorithm to produce the block's `Header.Timestamp`.
+The [proposal logic](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/internal/state/state.go#L269) sets the weighted median of the times in the `LastCommit.CommitSigs` as the proposed block's `Header.Timestamp`.
+
+In proposer-based timestamps, the proposer will still set a timestamp into the `Header.Timestamp`.
+The timestamp the proposer sets into the `Header` will change depending on if the block has previously received a [polka](https://github.com/tendermint/tendermint/blob/053651160f496bb44b107a434e3e6482530bb287/docs/introduction/what-is-tendermint.md#consensus-overview) or not.
+
+#### Proposal of a block that has not previously received a polka
+
+If a proposer is proposing a new block, then it will set the Unix time currently known to the proposer into the `Header.Timestamp` field.
+The proposer will also set this same timestamp into the `Timestamp` field of the `Proposal` message that it issues.
+
+#### Re-proposal of a block that has previously received a polka
+
+If a proposer is re-proposing a block that has previously received a polka on the network, then the proposer does not update the `Header.Timestamp` of that block.
+Instead, the proposer simply re-proposes the exact same block.
+This way, the proposed block has the exact same block ID as the previously proposed block and the validators that have already received that block do not need to attempt to receive it again. 
+
+The proposer will set the re-proposed block's `Header.Timestamp` as the `Proposal` message's `Timestamp`.
 
 #### Proposer waits
 
@@ -310,72 +194,94 @@ In `BFTTime`, if a validator’s clock was behind, the [validator added 1 millis
 A goal of adding proposer-based timestamps is to enforce some degree of clock synchronization, so having a mechanism that completely ignores the Unix time of the validator time no longer works.
 
 Validator clocks will not be perfectly in sync.
-Therefore, the proposer’s current known Unix time may be less than the `LastCommit.Timestamp`.
-If the proposer’s current known Unix time is less than the `LastCommit.Timestamp`, the proposer will sleep until its known Unix time exceeds `LastCommit.Timestamp`.
+Therefore, the proposer’s current known Unix time may be less than the previous block's `Header.Time`.
+If the proposer’s current known Unix time is less than the previous block's `Header.Time`, the proposer will sleep until its known Unix time exceeds it.
 
 This change will require amending the [defaultDecideProposal](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1180) method.
-This method should now block until the proposer’s time is greater than `LastCommit.Timestamp`.
+This method should now schedule a timeout that fires when the proposer’s time is greater than the previous block's `Header.Time`.
+When the timeout fires, the proposer will finally issue the `Proposal` message. 
 
 #### Changes to the propose step timeout
 
 Currently, a validator waiting for a proposal will proceed past the propose step if the configured propose timeout is reached and no proposal is seen.
-Proposer-based timestamps requires changing this timeout logic. 
+Proposer-based timestamps requires changing this timeout logic.
 
-The proposer will now wait until its current known Unix time exceeds the `LastCommit.Timestamp` to propose a block.
+The proposer will now wait until its current known Unix time exceeds the previous block's `Header.Time` to propose a block.
 The validators must now take this and some other factors into account when deciding when to timeout the propose step.
 Specifically, the propose step timeout must also take into account potential inaccuracy in the validator’s clock and in the clock of the proposer.
 Additionally, there may be a delay communicating the proposal message from the proposer to the other validators. 
 
-Therefore, validators waiting for a proposal must wait until after the `LastCommit.Timestamp` before timing out.
-To account for possible inaccuracy in its own clock, inaccuracy in the proposer’s clock, and message delay, validators waiting for a proposal will wait until `LastCommit.Timesatmp + 2*ACCURACY + MSGDELAY`.
+Therefore, validators waiting for a proposal must wait until after the previous block's `Header.Time` before timing out.
+To account for possible inaccuracy in its own clock, inaccuracy in the proposer’s clock, and message delay, validators waiting for a proposal will wait until the previous block's `Header.Time + 2*ACCURACY + MSGDELAY`.
  The spec defines this as `waitingTime`.
  
 The [propose step’s timeout is set in enterPropose](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1108) in `state.go`. 
 `enterPropose` will be changed to calculate waiting time using the new consensus parameters.
 The timeout in `enterPropose` will then be set as the maximum of `waitingTime` and the [configured proposal step timeout](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/config/config.go#L1013).
 
-### Changes to validation rules
+### Changes to proposal validation rules
 
-The rules for validating that a proposal is valid will need slight modification to implement proposer-based timestamps.
-Specifically, we will change the validation logic to ensure that the proposal timestamp is `timely` and we will modify the way the block timestamp is validated as well.
+The rules for validating a proposed block will be modification to implement proposer-based timestamps.
+We will change the validation logic to ensure that a proposal is `timely`.
 
-#### Proposal timestamp validation
+Per the proposer-based timestamps spec, `timely` only needs to be checked if a block has not received a +2/3 majority of `Prevotes` in a round.
+If a block previously received a +2/3 majority of prevotes in a previous round, then +2/3 of the voting power considered the block's timestamp near enough to their own currently known Unix time in that round.
 
-Adding proposal timestamp validation is a reasonably straightforward change.
-The current Unix time known to the proposer is already included in the [Proposal message](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/types/proposal.go#L31).
-Once the proposal is received, the complete message is stored in the `RoundState.Proposal` field.
-The precommit and prevote validation logic does not currently use this timestamp.
-This validation logic will be updated to check that the proposal timestamp is within `PRECISION` of the current Unix time known to the validators.
-If the timestamp is not within `PRECISION` of the current Unix time known to the validator, the proposal will not be considered it valid.
-The validator will also check that the proposal time is greater than the block timestamp from the previous height.
+The validation logic will be updated to check `timely` for blocks that did not previously receive +2/3 prevotes in a round. 
+Receiving +2/3 prevotes in a round is frequently referred to as a 'polka' and we will use this term for simplicity.
 
-If no valid proposal is received by the proposal timeout, the validator will prevote nil.
-This is identical to the current logic.
+#### Current timestamp validation logic
 
-#### Block timestamp validation
+To provide a better understanding of the changes needed to timestamp validation, we will first detail how timestamp validation works currently in Tendermint.
 
 The [validBlock function](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/state/validation.go#L14) currently [validates the proposed block timestamp in three ways](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/state/validation.go#L118).
 First, the validation logic checks that this timestamp is greater than the previous block’s timestamp.
-Additionally, it validates that the block timestamp is correctly calculated as the weighted median of the timestamps in the [block’s LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L48).
-Finally, the logic also authenticates the timestamps in the `LastCommit`.
-The cryptographic signature in each `CommitSig` is created by signing a hash of fields in the block with the validator’s private key.
-One of the items in this `signedBytes` hash is derived from the timestamp in the `CommitSig`.
-To authenticate the `CommitSig` timestamp, the validator builds a hash of fields that includes the timestamp and checks this hash against the provided signature. 
+
+Second, it validates that the block timestamp is correctly calculated as the weighted median of the timestamps in the [block’s LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L48).
+
+Finally, the validation logic authenticates the timestamps in the `LastCommit.CommitSig`.
+The cryptographic signature in each `CommitSig` is created by signing a hash of fields in the block with the voting validator’s private key.
+One of the items in this `signedBytes` hash is the timestamp in the `CommitSig`.
+To authenticate the `CommitSig` timestamp, the validator authenticating votes builds a hash of fields that includes the `CommitSig` timestamp and checks this hash against the signature.
 This takes place in the [VerifyCommit function](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/validation.go#L25).
 
-The logic to validate that the block timestamp is greater than the previous block’s timestamp also works for proposer-based timestamps and will not change.
+#### Remove unused timestamp validation logic
 
 `BFTTime` validation is no longer applicable and will be removed.
-Validators will no longer check that the block timestamp is a weighted median of `LastCommit` timestamps.
-This will mean removing the call to [MedianTime in the validateBlock function](https://github.com/tendermint/tendermint/blob/4db71da68e82d5cb732b235eeb2fd69d62114b45/state/validation.go#L117).
+This means that validators will no longer check that the block timestamp is a weighted median of `LastCommit` timestamps.
+Specifically, we will remove the call to [MedianTime in the validateBlock function](https://github.com/tendermint/tendermint/blob/4db71da68e82d5cb732b235eeb2fd69d62114b45/state/validation.go#L117).
 The `MedianTime` function can be completely removed. 
-The `LastCommit` timestamps may also be removed. 
 
-The `signedBytes` validation logic in `VerifyCommit` will be slightly altered.
-The `CommitSig`s in the block’s `LastCommit` will no longer each contain a timestamp.
-The validation logic will instead include the `LastCommit.Timestamp` in the hash of fields for generating the `signedBytes`.
-The cryptographic signatures included in the `CommitSig`s will then be checked against this `signedBytes` hash to authenticate the timestamp.
-Specifically, the `VerifyCommit` function will be updated to use this new timestamp.  
+Since `CommitSig`s will no longer contain a timestamp, the validator authenticating a commit will no longer include the `CommitSig` timestamp in the hash of fields it builds to check against the cryptographic signature.
+
+#### Timestamp validation when a block has not received a polka
+
+The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/types/proposal.go#L29) in the `Proposal` message indicates which round the block received a polka.
+A negative value in the `POLRound` field indicates that the block has not previously been proposed on the network. 
+Therefore the validation logic will check for timely when `POLRound < 0`.
+
+When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is at most `PRECISION` greater than the current Unix time known to the validator, and at minimum `PRECISION + MSGDELAY` less than the current Unix time known to the validator.
+If the timestamp is not within these bounds, the proposed block will not be considered `timely`.
+
+Once a full block matching the `Proposal` message is received, the validator will also check that the timestamp in the `Header.Timestamp` of the block matches this `Proposal.Timestamp`.
+Using the `Proposal.Timestamp` to check `timely` allows for the `MSGDELAY` parameter to be more finely tuned since `Proposal` messages do not change sizes and are therefore faster to gossip than full blocks across the network.
+
+A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
+If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
+
+#### Timestamp validation when a block has received a polka
+
+When a block is re-proposed that has already received a +2/3 majority of `Prevote`s on the network, the `Proposal` message for the re-proposed block is created with a `POLRound` that is `>= 0`.
+A validator will not check that the `Proposal` is `timely` if the propose message has a non-negative `POLRound`.
+If the `POLRound` is non-negative, each validator will simply ensure that it received the `Prevote` messages for the proposed block in the round indicated by `POLRound`.
+
+If the validator did not receive `Prevote` messages for the proposed block in `POLRound`, then it will prevote nil.
+Validators already check that +2/3 prevotes were seen in `POLRound`, so this does not represent a change to the prevote logic.
+
+A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
+If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
+
+Additionally, this validation logic can be updated to check that the `Proposal.Timestamp` matches the `Header.Timestamp` of the proposed block, but it is less relevant since checking that votes were received is sufficient to ensure the block timestamp is correct. 
 
 ### Changes to the prevote step
 
@@ -383,26 +289,14 @@ Currently, a validator will prevote a proposal in one of three cases:
 
 * Case 1:  Validator has no locked block and receives a valid proposal.
 * Case 2:  Validator has a locked block and receives a valid proposal matching its locked block.
-* Case 3:  Validator has a locked block, sees a valid proposal not matching its locked block but sees +⅔ prevotes for the new proposal’s block. 
+* Case 3:  Validator has a locked block, sees a valid proposal not matching its locked block but sees +⅔ prevotes for the proposal’s block, either in the current round or in a round greater than or equal to the round in which it locked its locked block. 
 
 The only change we will make to the prevote step is to what a validator considers a valid proposal as detailed above.
 
 ### Changes to the precommit step
 
 The precommit step will not require much modification.
-Its proposal validation rules will change in the same ways that validation will change in the prevote step.
-
-### Changes to locking a block
-When a validator receives a valid proposed block and +2/3 prevotes for that block, it stores the block as its ‘locked block’ in the [RoundState.ValidBlock](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/types/round_state.go#L85) field.
-In each subsequent round it will prevote that block.
-A validator will only change which block it has locked if it sees +2/3 prevotes for a different block.
-
-This mechanism will remain largely unchanged.
-The only difference is the addition of proposal timestamp validation.
-A validator will prevote nil in a round if the proposal message it received is not `timely`.
-Prevoting nil in this case will not cause a validator to ‘unlock’ its locked block.
-This difference is an incidental result of the changes to prevote validation.
-It is included in this design for completeness and to clarify that no additional changes will be made to block locking. 
+Its proposal validation rules will change in the same ways that validation will change in the prevote step with the exception of the `timely` check: precommit validation will never check that the timestamp is `timely`.
 
 ### Remove voteTime Completely
 

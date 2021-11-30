@@ -29,47 +29,48 @@ func init() {
 }
 
 func TestKVStore(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	fmt.Println("### Testing KVStore")
-	testStream(t, kvstore.NewApplication())
+	testStream(ctx, t, kvstore.NewApplication())
 }
 
 func TestBaseApp(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	fmt.Println("### Testing BaseApp")
-	testStream(t, types.NewBaseApplication())
+	testStream(ctx, t, types.NewBaseApplication())
 }
 
 func TestGRPC(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	fmt.Println("### Testing GRPC")
-	testGRPCSync(t, types.NewGRPCApplication(types.NewBaseApplication()))
+	testGRPCSync(ctx, t, types.NewGRPCApplication(types.NewBaseApplication()))
 }
 
-func testStream(t *testing.T, app types.Application) {
+func testStream(ctx context.Context, t *testing.T, app types.Application) {
+	t.Helper()
+
 	const numDeliverTxs = 20000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-
+	logger := log.TestingLogger()
 	// Start the listener
-	server := abciserver.NewSocketServer(socket, app)
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	err := server.Start()
+	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
+	t.Cleanup(server.Wait)
+	err := server.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := server.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(socket, false)
-	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	err = client.Start()
+	client := abciclient.NewSocketClient(log.TestingLogger().With("module", "abci-client"), socket, false)
+	t.Cleanup(client.Wait)
+
+	err = client.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := client.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	done := make(chan struct{})
 	counter := 0
@@ -98,8 +99,6 @@ func testStream(t *testing.T, app types.Application) {
 		}
 	})
 
-	ctx := context.Background()
-
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
@@ -127,24 +126,20 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
+func testGRPCSync(ctx context.Context, t *testing.T, app types.ABCIApplicationServer) {
 	numDeliverTxs := 2000
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-
+	logger := log.TestingLogger()
 	// Start the listener
-	server := abciserver.NewGRPCServer(socket, app)
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if err := server.Start(); err != nil {
+	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
+
+	if err := server.Start(ctx); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
 
-	t.Cleanup(func() {
-		if err := server.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(func() { server.Wait() })
 
 	// Connect to the socket
 	conn, err := grpc.Dial(socket, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))

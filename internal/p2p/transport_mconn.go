@@ -291,7 +291,7 @@ func (c *mConnConnection) Handshake(
 		}
 		c.mconn = mconn
 		c.logger = mconn.Logger
-		if err = c.mconn.Start(); err != nil {
+		if err = c.mconn.Start(ctx); err != nil {
 			return types.NodeInfo{}, nil, err
 		}
 		return peerInfo, peerKey, nil
@@ -336,13 +336,13 @@ func (c *mConnConnection) handshake(
 	}
 
 	mconn := conn.NewMConnectionWithConfig(
+		c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)),
 		secretConn,
 		c.channelDescs,
 		c.onReceive,
 		c.onError,
 		c.mConnConfig,
 	)
-	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)))
 
 	return mconn, peerInfo, secretConn.RemotePubKey(), nil
 }

@@ -18,7 +18,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
 )
@@ -32,16 +31,27 @@ const (
 // replay messages interactively or all at once
 
 // replay the wal file
-func RunReplayFile(cfg config.BaseConfig, csConfig *config.ConsensusConfig, console bool) {
-	consensusState := newConsensusStateForReplay(cfg, csConfig)
-
-	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
-		tmos.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
+func RunReplayFile(
+	ctx context.Context,
+	logger log.Logger,
+	cfg config.BaseConfig,
+	csConfig *config.ConsensusConfig,
+	console bool,
+) error {
+	consensusState, err := newConsensusStateForReplay(ctx, cfg, logger, csConfig)
+	if err != nil {
+		return err
 	}
+
+	if err := consensusState.ReplayFile(ctx, csConfig.WalFile(), console); err != nil {
+		return fmt.Errorf("consensus replay: %w", err)
+	}
+
+	return nil
 }
 
 // Replay msgs in file or start the console
-func (cs *State) ReplayFile(file string, console bool) error {
+func (cs *State) ReplayFile(ctx context.Context, file string, console bool) error {
 
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
@@ -54,7 +64,6 @@ func (cs *State) ReplayFile(file string, console bool) error {
 
 	// ensure all new step events are regenerated as expected
 
-	ctx := context.Background()
 	newStepSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: subscriber,
 		Query:    types.EventQueryNewRoundStep,
@@ -82,7 +91,10 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	var msg *TimedWALMessage
 	for {
 		if nextN == 0 && console {
-			nextN = pb.replayConsoleLoop()
+			nextN, err = pb.replayConsoleLoop()
+			if err != nil {
+				return err
+			}
 		}
 
 		msg, err = pb.dec.Decode()
@@ -92,7 +104,7 @@ func (cs *State) ReplayFile(file string, console bool) error {
 			return err
 		}
 
-		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
+		if err := pb.cs.readReplayMessage(ctx, msg, newStepSub); err != nil {
 			return err
 		}
 
@@ -129,13 +141,13 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) error {
+func (pb *playback) replayReset(ctx context.Context, count int, newStepSub eventbus.Subscription) error {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
 	pb.cs.Wait()
 
-	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(ctx, pb.cs.Logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -161,7 +173,7 @@ func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) err
 		} else if err != nil {
 			return err
 		}
-		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
+		if err := pb.cs.readReplayMessage(ctx, msg, newStepSub); err != nil {
 			return err
 		}
 		pb.count++
@@ -184,16 +196,17 @@ func (cs *State) startForReplay() {
 		}()*/
 }
 
-// console function for parsing input and running commands
-func (pb *playback) replayConsoleLoop() int {
+// console function for parsing input and running commands. The integer
+// return value is invalid unless the error is nil.
+func (pb *playback) replayConsoleLoop() (int, error) {
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			tmos.Exit("input is too long")
+			return 0, fmt.Errorf("input is too long")
 		} else if err != nil {
-			tmos.Exit(err.Error())
+			return 0, err
 		}
 
 		tokens := strings.Split(string(line), " ")
@@ -207,13 +220,13 @@ func (pb *playback) replayConsoleLoop() int {
 			// "next N" -> replay next N messages
 
 			if len(tokens) == 1 {
-				return 0
+				return 0, nil
 			}
 			i, err := strconv.Atoi(tokens[1])
 			if err != nil {
 				fmt.Println("next takes an integer argument")
 			} else {
-				return i
+				return i, nil
 			}
 
 		case "back":
@@ -223,7 +236,7 @@ func (pb *playback) replayConsoleLoop() int {
 			// NOTE: "back" is not supported in the state machine design,
 			// so we restart and replay up to
 
-			ctx := context.Background()
+			ctx := context.TODO()
 			// ensure all new step events are regenerated as expected
 
 			newStepSub, err := pb.cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
@@ -231,7 +244,7 @@ func (pb *playback) replayConsoleLoop() int {
 				Query:    types.EventQueryNewRoundStep,
 			})
 			if err != nil {
-				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				return 0, fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 			}
 			defer func() {
 				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
@@ -241,7 +254,7 @@ func (pb *playback) replayConsoleLoop() int {
 			}()
 
 			if len(tokens) == 1 {
-				if err := pb.replayReset(1, newStepSub); err != nil {
+				if err := pb.replayReset(ctx, 1, newStepSub); err != nil {
 					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			} else {
@@ -250,7 +263,7 @@ func (pb *playback) replayConsoleLoop() int {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else if err := pb.replayReset(i, newStepSub); err != nil {
+				} else if err := pb.replayReset(ctx, i, newStepSub); err != nil {
 					pb.cs.Logger.Error("Replay reset error", "err", err)
 				}
 			}
@@ -293,56 +306,62 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.ConsensusConfig) *State {
+func newConsensusStateForReplay(
+	ctx context.Context,
+	cfg config.BaseConfig,
+	logger log.Logger,
+	csConfig *config.ConsensusConfig,
+) (*State, error) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	// Get BlockStore
 	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
+
 	stateStore := sm.NewStore(stateDB)
 	gdoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
+
 	state, err := sm.MakeGenesisState(gdoc)
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
-	clientCreator, _ := proxy.DefaultClientCreator(cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
-	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
-	err = proxyApp.Start()
+	clientCreator, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
+	err = proxyApp.Start(ctx)
 	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
+		return nil, fmt.Errorf("starting proxy app conns: %w", err)
 	}
 
-	eventBus := eventbus.NewDefault()
-	if err := eventBus.Start(); err != nil {
-		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
+	eventBus := eventbus.NewDefault(logger)
+	if err := eventBus.Start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start event bus: %w", err)
 	}
 
-	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc)
-	handshaker.SetEventBus(eventBus)
-	err = handshaker.Handshake(proxyApp)
-	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error on handshake: %v", err))
+	handshaker := NewHandshaker(logger, stateStore, state, blockStore, eventBus, gdoc)
+
+	if err = handshaker.Handshake(ctx, proxyApp); err != nil {
+		return nil, err
 	}
 
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
 
-	consensusState := NewState(csConfig, state.Copy(), blockExec,
+	consensusState := NewState(ctx, logger, csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)
-	return consensusState
+	return consensusState, nil
 }

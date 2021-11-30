@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	auto "github.com/tendermint/tendermint/internal/libs/autofile"
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 const Version = "0.0.1"
@@ -32,21 +34,10 @@ func parseFlags() (headPath string, chopSize int64, limitSize int64, version boo
 	return
 }
 
-type fmtLogger struct{}
-
-func (fmtLogger) Info(msg string, keyvals ...interface{}) {
-	strs := make([]string, len(keyvals))
-	for i, kv := range keyvals {
-		strs[i] = fmt.Sprintf("%v", kv)
-	}
-	fmt.Printf("%s %s\n", msg, strings.Join(strs, ","))
-}
-
 func main() {
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(fmtLogger{}, func() {
-		fmt.Println("logjack shutting down")
-	})
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	defer cancel()
+	defer func() { fmt.Println("logjack shutting down") }()
 
 	// Read options
 	headPath, chopSize, limitSize, version := parseFlags()
@@ -62,7 +53,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = group.Start(); err != nil {
+	if err = group.Start(ctx); err != nil {
 		fmt.Printf("logjack couldn't start with file %v\n", headPath)
 		os.Exit(1)
 	}

@@ -4,6 +4,7 @@
 package trust
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,19 +16,21 @@ import (
 )
 
 func TestTrustMetricStoreSaveLoad(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	dir := t.TempDir()
+	logger := log.TestingLogger()
 
 	historyDB, err := dbm.NewDB("trusthistory", "goleveldb", dir)
 	require.NoError(t, err)
 
 	// 0 peers saved
-	store := NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
+	store := NewTrustMetricStore(historyDB, DefaultConfig(), logger)
 	store.saveToDB()
 	// Load the data from the file
-	store = NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
-	err = store.Start()
+	store = NewTrustMetricStore(historyDB, DefaultConfig(), logger)
+	err = store.Start(ctx)
 	require.NoError(t, err)
 	// Make sure we still have 0 entries
 	assert.Zero(t, store.Size())
@@ -45,7 +48,7 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 		tm := NewMetric()
 
 		tm.SetTicker(tt[i])
-		err = tm.Start()
+		err = tm.Start(ctx)
 		require.NoError(t, err)
 		store.AddPeerTrustMetric(key, tm)
 
@@ -64,9 +67,9 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load the data from the DB
-	store = NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
-	err = store.Start()
+	store = NewTrustMetricStore(historyDB, DefaultConfig(), logger)
+
+	err = store.Start(ctx)
 	require.NoError(t, err)
 
 	// Check that we still have 100 peers with imperfect trust values
@@ -80,6 +83,9 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 }
 
 func TestTrustMetricStoreConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	historyDB, err := dbm.NewDB("", "memdb", "")
 	require.NoError(t, err)
 
@@ -88,14 +94,15 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 		IntegralWeight:     0.5,
 	}
 
+	logger := log.TestingLogger()
 	// Create a store with custom config
-	store := NewTrustMetricStore(historyDB, config)
-	store.SetLogger(log.TestingLogger())
-	err = store.Start()
+	store := NewTrustMetricStore(historyDB, config, logger)
+
+	err = store.Start(ctx)
 	require.NoError(t, err)
 
 	// Have the store make us a metric with the config
-	tm := store.GetPeerTrustMetric("TestKey")
+	tm := store.GetPeerTrustMetric(ctx, "TestKey")
 
 	// Check that the options made it to the metric
 	assert.Equal(t, 0.5, tm.proportionalWeight)
@@ -105,18 +112,21 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 }
 
 func TestTrustMetricStoreLookup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	historyDB, err := dbm.NewDB("", "memdb", "")
 	require.NoError(t, err)
 
-	store := NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
-	err = store.Start()
+	store := NewTrustMetricStore(historyDB, DefaultConfig(), log.TestingLogger())
+
+	err = store.Start(ctx)
 	require.NoError(t, err)
 
 	// Create 100 peers in the trust metric store
 	for i := 0; i < 100; i++ {
 		key := fmt.Sprintf("peer_%d", i)
-		store.GetPeerTrustMetric(key)
+		store.GetPeerTrustMetric(ctx, key)
 
 		// Check that the trust metric was successfully entered
 		ktm := store.peerMetrics[key]
@@ -128,16 +138,19 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 }
 
 func TestTrustMetricStorePeerScore(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	historyDB, err := dbm.NewDB("", "memdb", "")
 	require.NoError(t, err)
 
-	store := NewTrustMetricStore(historyDB, DefaultConfig())
-	store.SetLogger(log.TestingLogger())
-	err = store.Start()
+	store := NewTrustMetricStore(historyDB, DefaultConfig(), log.TestingLogger())
+
+	err = store.Start(ctx)
 	require.NoError(t, err)
 
 	key := "TestKey"
-	tm := store.GetPeerTrustMetric(key)
+	tm := store.GetPeerTrustMetric(ctx, key)
 
 	// This peer is innocent so far
 	first := tm.TrustScore()
@@ -156,7 +169,7 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	store.PeerDisconnected(key)
 
 	// We will remember our experiences with this peer
-	tm = store.GetPeerTrustMetric(key)
+	tm = store.GetPeerTrustMetric(ctx, key)
 	assert.NotEqual(t, 100, tm.TrustScore())
 	err = store.Stop()
 	require.NoError(t, err)

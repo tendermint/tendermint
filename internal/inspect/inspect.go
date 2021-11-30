@@ -41,23 +41,19 @@ type Inspector struct {
 // The Inspector type does not modify the state or block stores.
 // The sinks are used to enable block and transaction querying via the RPC server.
 // The caller is responsible for starting and stopping the Inspector service.
-///
-//nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
-	routes := rpc.Routes(*cfg, ss, bs, es, logger)
-	eb := eventbus.NewDefault()
-	eb.SetLogger(logger.With("module", "events"))
-	is := indexer.NewService(indexer.ServiceArgs{
-		Sinks:    es,
-		EventBus: eb,
-		Logger:   logger.With("module", "txindex"),
-	})
+	eb := eventbus.NewDefault(logger.With("module", "events"))
+
 	return &Inspector{
-		routes:         routes,
-		config:         cfg,
-		logger:         logger,
-		eventBus:       eb,
-		indexerService: is,
+		routes:   rpc.Routes(*cfg, ss, bs, es, logger),
+		config:   cfg,
+		logger:   logger,
+		eventBus: eb,
+		indexerService: indexer.NewService(indexer.ServiceArgs{
+			Sinks:    es,
+			EventBus: eb,
+			Logger:   logger.With("module", "txindex"),
+		}),
 	}
 }
 
@@ -87,26 +83,18 @@ func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
 // Run starts the Inspector servers and blocks until the servers shut down. The passed
 // in context is used to control the lifecycle of the servers.
 func (ins *Inspector) Run(ctx context.Context) error {
-	err := ins.eventBus.Start()
+	err := ins.eventBus.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("error starting event bus: %s", err)
 	}
-	defer func() {
-		err := ins.eventBus.Stop()
-		if err != nil {
-			ins.logger.Error("event bus stopped with error", "err", err)
-		}
-	}()
-	err = ins.indexerService.Start()
+	defer ins.eventBus.Wait()
+
+	err = ins.indexerService.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("error starting indexer service: %s", err)
 	}
-	defer func() {
-		err := ins.indexerService.Stop()
-		if err != nil {
-			ins.logger.Error("indexer service stopped with error", "err", err)
-		}
-	}()
+	defer ins.indexerService.Wait()
+
 	return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
 }
 

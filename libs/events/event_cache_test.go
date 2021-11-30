@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,8 +9,11 @@ import (
 )
 
 func TestEventCache_Flush(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	evsw := NewEventSwitch()
-	err := evsw.Start()
+	err := evsw.Start(ctx)
 	require.NoError(t, err)
 
 	err = evsw.AddListenerForEvent("nothingness", "", func(data EventData) {

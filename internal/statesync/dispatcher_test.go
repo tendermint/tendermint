@@ -114,6 +114,10 @@ func TestDispatcherProviders(t *testing.T) {
 
 func TestPeerListBasic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peerList := newPeerList()
 	assert.Zero(t, peerList.Len())
 	numPeers := 10
@@ -199,6 +203,9 @@ func TestEmptyPeerListReturnsWhenContextCanceled(t *testing.T) {
 
 func TestPeerListConcurrent(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peerList := newPeerList()
 	numPeers := 10
 
@@ -229,7 +236,6 @@ func TestPeerListConcurrent(t *testing.T) {
 
 	// we use a context with cancel and a separate go routine to wait for all
 	// the other goroutines to close.
-	ctx, cancel := context.WithCancel(context.Background())
 	go func() { wg.Wait(); cancel() }()
 
 	select {

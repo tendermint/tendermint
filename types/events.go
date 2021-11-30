@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -232,22 +233,22 @@ var (
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
+	return tmquery.MustCompile(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
 func QueryForEvent(eventValue string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
+	return tmquery.MustCompile(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
 }
 
 // BlockEventPublisher publishes all block related events
 type BlockEventPublisher interface {
-	PublishEventNewBlock(block EventDataNewBlock) error
-	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
-	PublishEventNewEvidence(evidence EventDataNewEvidence) error
-	PublishEventTx(EventDataTx) error
-	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
+	PublishEventNewBlock(ctx context.Context, block EventDataNewBlock) error
+	PublishEventNewBlockHeader(ctx context.Context, header EventDataNewBlockHeader) error
+	PublishEventNewEvidence(ctx context.Context, evidence EventDataNewEvidence) error
+	PublishEventTx(context.Context, EventDataTx) error
+	PublishEventValidatorSetUpdates(context.Context, EventDataValidatorSetUpdates) error
 }
 
 type TxEventPublisher interface {
-	PublishEventTx(EventDataTx) error
+	PublishEventTx(context.Context, EventDataTx) error
 }

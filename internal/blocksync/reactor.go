@@ -1,6 +1,7 @@
 package blocksync
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -49,7 +50,7 @@ func GetChannelDescriptor() *p2p.ChannelDescriptor {
 type consensusReactor interface {
 	// For when we switch from block sync reactor to the consensus
 	// machine.
-	SwitchToConsensus(state sm.State, skipWAL bool)
+	SwitchToConsensus(ctx context.Context, state sm.State, skipWAL bool)
 }
 
 type peerError struct {
@@ -127,7 +128,7 @@ func NewReactor(
 		initialState:         state,
 		blockExec:            blockExec,
 		store:                store,
-		pool:                 NewBlockPool(startHeight, requestsCh, errorsCh),
+		pool:                 NewBlockPool(logger, startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
 		blockSync:            tmsync.NewBool(blockSync),
 		requestsCh:           requestsCh,
@@ -151,9 +152,9 @@ func NewReactor(
 //
 // If blockSync is enabled, we also start the pool and the pool processing
 // goroutine. If the pool fails to start, an error is returned.
-func (r *Reactor) OnStart() error {
+func (r *Reactor) OnStart(ctx context.Context) error {
 	if r.blockSync.IsSet() {
-		if err := r.pool.Start(); err != nil {
+		if err := r.pool.Start(ctx); err != nil {
 			return err
 		}
 		r.poolWG.Add(1)
@@ -362,12 +363,12 @@ func (r *Reactor) processPeerUpdates() {
 
 // SwitchToBlockSync is called by the state sync reactor when switching to fast
 // sync.
-func (r *Reactor) SwitchToBlockSync(state sm.State) error {
+func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	r.blockSync.Set()
 	r.initialState = state
 	r.pool.height = state.LastBlockHeight + 1
 
-	if err := r.pool.Start(); err != nil {
+	if err := r.pool.Start(ctx); err != nil {
 		return err
 	}
 
@@ -423,6 +424,17 @@ func (r *Reactor) requestRoutine() {
 	}
 }
 
+func (r *Reactor) stopCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-r.closeCh
+		cancel()
+	}()
+
+	return ctx
+}
+
 // poolRoutine handles messages from the poolReactor telling the reactor what to
 // do.
 //
@@ -441,6 +453,7 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 		lastRate    = 0.0
 
 		didProcessCh = make(chan struct{}, 1)
+		ctx          = r.stopCtx()
 	)
 
 	defer trySyncTicker.Stop()
@@ -488,7 +501,7 @@ FOR_LOOP:
 			r.blockSync.UnSet()
 
 			if r.consReactor != nil {
-				r.consReactor.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+				r.consReactor.SwitchToConsensus(ctx, state, blocksSynced > 0 || stateSynced)
 			}
 
 			break FOR_LOOP
@@ -567,7 +580,7 @@ FOR_LOOP:
 
 				// TODO: Same thing for app - but we would need a way to get the hash
 				// without persisting the state.
-				state, err = r.blockExec.ApplyBlock(state, firstID, first)
+				state, err = r.blockExec.ApplyBlock(ctx, state, firstID, first)
 				if err != nil {
 					// TODO: This is bad, are we zombie?
 					panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

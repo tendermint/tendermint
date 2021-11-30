@@ -143,6 +143,9 @@ func TestType(t *testing.T) {
 }
 
 func TestIndexing(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("IndexBlockEvents", func(t *testing.T) {
 		indexer := &EventSink{store: testDB(), chainID: chainID}
 		require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
@@ -154,7 +157,7 @@ func TestIndexing(t *testing.T) {
 		verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(2) })
 
 		verifyNotImplemented(t, "block search", func() (bool, error) {
-			v, err := indexer.SearchBlockEvents(context.Background(), nil)
+			v, err := indexer.SearchBlockEvents(ctx, nil)
 			return v != nil, err
 		})
 
@@ -188,7 +191,7 @@ func TestIndexing(t *testing.T) {
 			return txr != nil, err
 		})
 		verifyNotImplemented(t, "tx search", func() (bool, error) {
-			txr, err := indexer.SearchTxEvents(context.Background(), nil)
+			txr, err := indexer.SearchTxEvents(ctx, nil)
 			return txr != nil, err
 		})
 

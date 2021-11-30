@@ -3,6 +3,7 @@ package consensus
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -30,7 +31,7 @@ import (
 // persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created.
 // If the node fails to produce given numBlocks, it returns an error.
-func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
+func WALGenerateNBlocks(ctx context.Context, t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	cfg := getConfig(t)
 
 	app := kvstore.NewPersistentKVStoreApplication(filepath.Join(cfg.DBDir(), "wal_generator"))
@@ -66,32 +67,20 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 
 	blockStore := store.NewBlockStore(blockStoreDB)
 
-	proxyApp := proxy.NewAppConns(abciclient.NewLocalCreator(app), proxy.NopMetrics())
-	proxyApp.SetLogger(logger.With("module", "proxy"))
-	if err := proxyApp.Start(); err != nil {
+	proxyApp := proxy.NewAppConns(abciclient.NewLocalCreator(app), logger.With("module", "proxy"), proxy.NopMetrics())
+	if err := proxyApp.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start proxy app connections: %w", err)
 	}
-	t.Cleanup(func() {
-		if err := proxyApp.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
-	eventBus := eventbus.NewDefault()
-	eventBus.SetLogger(logger.With("module", "events"))
-	if err := eventBus.Start(); err != nil {
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
+	if err := eventBus.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start event bus: %w", err)
 	}
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
-	consensusState := NewState(cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
-	consensusState.SetLogger(logger)
+	consensusState := NewState(ctx, logger, cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
 		consensusState.SetPrivValidator(privValidator)
@@ -108,7 +97,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 
 	consensusState.wal = wal
 
-	if err := consensusState.Start(); err != nil {
+	if err := consensusState.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start consensus state: %w", err)
 	}
 
@@ -127,11 +116,11 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 }
 
 // WALWithNBlocks returns a WAL content with numBlocks.
-func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
+func WALWithNBlocks(ctx context.Context, t *testing.T, numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 
-	if err := WALGenerateNBlocks(t, wr, numBlocks); err != nil {
+	if err := WALGenerateNBlocks(ctx, t, wr, numBlocks); err != nil {
 		return []byte{}, err
 	}
 
@@ -230,6 +219,6 @@ func (w *byteBufferWAL) SearchForEndHeight(
 	return nil, false, nil
 }
 
-func (w *byteBufferWAL) Start() error { return nil }
-func (w *byteBufferWAL) Stop() error  { return nil }
-func (w *byteBufferWAL) Wait()        {}
+func (w *byteBufferWAL) Start(context.Context) error { return nil }
+func (w *byteBufferWAL) Stop() error                 { return nil }
+func (w *byteBufferWAL) Wait()                       {}

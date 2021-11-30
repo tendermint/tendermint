@@ -2,6 +2,7 @@
 package events
 
 import (
+	"context"
 	"fmt"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -45,6 +46,7 @@ type Fireable interface {
 type EventSwitch interface {
 	service.Service
 	Fireable
+	Stop() error
 
 	AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error
 	RemoveListenerForEvent(event string, listenerID string)
@@ -68,7 +70,7 @@ func NewEventSwitch() EventSwitch {
 	return evsw
 }
 
-func (evsw *eventSwitch) OnStart() error {
+func (evsw *eventSwitch) OnStart(ctx context.Context) error {
 	return nil
 }
 

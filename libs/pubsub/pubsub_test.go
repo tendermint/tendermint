@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -20,13 +19,15 @@ const (
 )
 
 func TestSubscribeWithArgs(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	t.Run("DefaultLimit", func(t *testing.T) {
 		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
-			Query:    query.Empty{},
+			Query:    query.All,
 		}))
 
 		require.Equal(t, 1, s.NumClients())
@@ -38,7 +39,7 @@ func TestSubscribeWithArgs(t *testing.T) {
 	t.Run("PositiveLimit", func(t *testing.T) {
 		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID + "-2",
-			Query:    query.Empty{},
+			Query:    query.All,
 			Limit:    10,
 		}))
 		require.NoError(t, s.Publish(ctx, "Aggamon"))
@@ -47,8 +48,10 @@ func TestSubscribeWithArgs(t *testing.T) {
 }
 
 func TestObserver(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	done := make(chan struct{})
 	var got interface{}
@@ -65,21 +68,25 @@ func TestObserver(t *testing.T) {
 }
 
 func TestObserverErrors(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	require.Error(t, s.Observe(ctx, nil, query.Empty{}))
+	s := newTestServer(ctx, t)
+
+	require.Error(t, s.Observe(ctx, nil, query.All))
 	require.NoError(t, s.Observe(ctx, func(pubsub.Message) error { return nil }))
-	require.Error(t, s.Observe(ctx, func(pubsub.Message) error { return nil }, query.Empty{}))
+	require.Error(t, s.Observe(ctx, func(pubsub.Message) error { return nil }, query.All))
 }
 
 func TestPublishDoesNotBlock(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.Empty{},
+		Query:    query.All,
 	}))
 	published := make(chan struct{})
 	go func() {
@@ -100,8 +107,10 @@ func TestPublishDoesNotBlock(t *testing.T) {
 }
 
 func TestSubscribeErrors(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	t.Run("EmptyQueryErr", func(t *testing.T) {
 		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{ClientID: clientID})
@@ -110,7 +119,7 @@ func TestSubscribeErrors(t *testing.T) {
 	t.Run("NegativeLimitErr", func(t *testing.T) {
 		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
-			Query:    query.Empty{},
+			Query:    query.All,
 			Limit:    -5,
 		})
 		require.Error(t, err)
@@ -118,12 +127,14 @@ func TestSubscribeErrors(t *testing.T) {
 }
 
 func TestSlowSubscriber(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.Empty{},
+		Query:    query.All,
 	}))
 
 	require.NoError(t, s.Publish(ctx, "Fat Cobra"))
@@ -137,12 +148,14 @@ func TestSlowSubscriber(t *testing.T) {
 }
 
 func TestDifferentClients(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-1",
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 
 	events := []abci.Event{{
@@ -155,7 +168,7 @@ func TestDifferentClients(t *testing.T) {
 
 	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-2",
-		Query:    query.MustParse("tm.events.type='NewBlock' AND abci.account.name='Igor'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock' AND abci.account.name='Igor'`),
 	}))
 
 	events = []abci.Event{
@@ -175,7 +188,8 @@ func TestDifferentClients(t *testing.T) {
 
 	sub3 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-3",
-		Query:    query.MustParse("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"),
+		Query: query.MustCompile(
+			`tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10`),
 	}))
 
 	events = []abci.Event{{
@@ -188,8 +202,10 @@ func TestDifferentClients(t *testing.T) {
 }
 
 func TestSubscribeDuplicateKeys(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	testCases := []struct {
 		query    string
@@ -203,7 +219,7 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 
 	for i, tc := range testCases {
 		id := fmt.Sprintf("client-%d", i)
-		q := query.MustParse(tc.query)
+		q := query.MustCompile(tc.query)
 		t.Run(id, func(t *testing.T) {
 			sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 				ClientID: id,
@@ -241,10 +257,12 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 }
 
 func TestClientSubscribesTwice(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	q := query.MustParse("tm.events.type='NewBlock'")
+	s := newTestServer(ctx, t)
+
+	q := query.MustCompile(`tm.events.type='NewBlock'`)
 	events := []abci.Event{{
 		Type:       "tm.events",
 		Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
@@ -274,18 +292,20 @@ func TestClientSubscribesTwice(t *testing.T) {
 }
 
 func TestUnsubscribe(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 
 	// Removing the subscription we just made should succeed.
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'"),
+		Query:      query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 
 	// Publishing should still work.
@@ -296,37 +316,41 @@ func TestUnsubscribe(t *testing.T) {
 }
 
 func TestClientUnsubscribesTwice(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'"),
+		Query:      query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 	require.ErrorIs(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.MustParse("tm.events.type='NewBlock'"),
+		Query:      query.MustCompile(`tm.events.type='NewBlock'`),
 	}), pubsub.ErrSubscriptionNotFound)
 	require.ErrorIs(t, s.UnsubscribeAll(ctx, clientID), pubsub.ErrSubscriptionNotFound)
 }
 
 func TestResubscribe(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	args := pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.Empty{},
+		Query:    query.All,
 	}
 	newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
 
 	require.NoError(t, s.Unsubscribe(ctx, pubsub.UnsubscribeArgs{
 		Subscriber: clientID,
-		Query:      query.Empty{},
+		Query:      query.All,
 	}))
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
@@ -336,16 +360,18 @@ func TestResubscribe(t *testing.T) {
 }
 
 func TestUnsubscribeAll(t *testing.T) {
-	s := newTestServer(t)
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := newTestServer(ctx, t)
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlock'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlock'`),
 	}))
 	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
-		Query:    query.MustParse("tm.events.type='NewBlockHeader'"),
+		Query:    query.MustCompile(`tm.events.type='NewBlockHeader'`),
 	}))
 
 	require.NoError(t, s.UnsubscribeAll(ctx, clientID))
@@ -357,31 +383,34 @@ func TestUnsubscribeAll(t *testing.T) {
 }
 
 func TestBufferCapacity(t *testing.T) {
-	s := pubsub.NewServer(pubsub.BufferCapacity(2))
-	s.SetLogger(log.TestingLogger())
+	s := pubsub.NewServer(pubsub.BufferCapacity(2),
+		func(s *pubsub.Server) {
+			s.Logger = log.TestingLogger()
+		})
 
 	require.Equal(t, 2, s.BufferCapacity())
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	require.NoError(t, s.Publish(ctx, "Nighthawk"))
 	require.NoError(t, s.Publish(ctx, "Sage"))
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 
 	require.ErrorIs(t, s.Publish(ctx, "Ironclad"), context.DeadlineExceeded)
 }
 
-func newTestServer(t testing.TB) *pubsub.Server {
+func newTestServer(ctx context.Context, t testing.TB) *pubsub.Server {
 	t.Helper()
 
-	s := pubsub.NewServer()
-	s.SetLogger(log.TestingLogger())
-	require.NoError(t, s.Start())
-	t.Cleanup(func() {
-		assert.NoError(t, s.Stop())
+	s := pubsub.NewServer(func(s *pubsub.Server) {
+		s.Logger = log.TestingLogger()
 	})
+
+	require.NoError(t, s.Start(ctx))
+	t.Cleanup(s.Wait)
 	return s
 }
 

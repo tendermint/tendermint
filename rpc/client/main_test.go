@@ -32,7 +32,6 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		cancel()
-		assert.NoError(t, node.Stop())
 		assert.NoError(t, closer(ctx))
 		assert.NoError(t, app.Close())
 		node.Wait()

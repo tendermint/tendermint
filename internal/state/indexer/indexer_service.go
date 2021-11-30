@@ -41,15 +41,6 @@ func NewService(args ServiceArgs) *Service {
 	return is
 }
 
-// NewIndexerService returns a new service instance.
-// Deprecated: Use NewService instead.
-func NewIndexerService(es []EventSink, eventBus *eventbus.EventBus) *Service {
-	return NewService(ServiceArgs{
-		Sinks:    es,
-		EventBus: eventBus,
-	})
-}
-
 // publish publishes a pubsub message to the service. The service blocks until
 // the message has been fully processed.
 func (is *Service) publish(msg pubsub.Message) error {
@@ -125,7 +116,7 @@ func (is *Service) publish(msg pubsub.Message) error {
 // indexer if the underlying event sinks support indexing.
 //
 // TODO(creachadair): Can we get rid of the "enabled" check?
-func (is *Service) OnStart() error {
+func (is *Service) OnStart(ctx context.Context) error {
 	// If the event sinks support indexing, register an observer to capture
 	// block header data for the indexer.
 	if IndexingEnabled(is.eventSinks) {

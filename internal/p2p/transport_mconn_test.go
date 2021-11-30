@@ -1,6 +1,7 @@
 package p2p_test
 
 import (
+	"context"
 	"io"
 	"net"
 	"testing"
@@ -58,6 +59,9 @@ func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 }
 
 func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	transport := p2p.NewMConnTransport(
 		log.TestingLogger(),
 		conn.DefaultMConnConfig(),
@@ -124,6 +128,9 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 }
 
 func TestMConnTransport_Listen(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testcases := []struct {
 		endpoint p2p.Endpoint
 		ok       bool
@@ -144,6 +151,9 @@ func TestMConnTransport_Listen(t *testing.T) {
 		tc := tc
 		t.Run(tc.endpoint.String(), func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
+
+			ctx, cancel = context.WithCancel(ctx)
+			defer cancel()
 
 			transport := p2p.NewMConnTransport(
 				log.TestingLogger(),
@@ -185,6 +195,9 @@ func TestMConnTransport_Listen(t *testing.T) {
 			go func() {
 				// Dialing the endpoint should work.
 				var err error
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
 				peerConn, err = transport.Dial(ctx, endpoint)
 				require.NoError(t, err)
 				close(dialedChan)

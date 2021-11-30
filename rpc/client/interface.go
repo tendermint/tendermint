@@ -35,7 +35,7 @@ type Client interface {
 	// These methods define the operational structure of the client.
 
 	// Start the client. Start must report an error if the client is running.
-	Start() error
+	Start(context.Context) error
 
 	// Stop the client. Stop must report an error if the client is not running.
 	Stop() error
@@ -136,7 +136,7 @@ type EventsClient interface {
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
-	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) //nolint:lll
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error)
 	// Unsubscribe unsubscribes given subscriber from query.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.

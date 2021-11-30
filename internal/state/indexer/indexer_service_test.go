@@ -1,6 +1,7 @@
 package indexer_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -38,17 +39,24 @@ var (
 	dbName   = "postgres"
 )
 
-func TestIndexerServiceIndexesBlocks(t *testing.T) {
-	// event bus
-	eventBus := eventbus.NewDefault()
-	eventBus.SetLogger(tmlog.TestingLogger())
-	err := eventBus.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			t.Error(err)
-		}
+// NewIndexerService returns a new service instance.
+func NewIndexerService(es []indexer.EventSink, eventBus *eventbus.EventBus) *indexer.Service {
+	return indexer.NewService(indexer.ServiceArgs{
+		Sinks:    es,
+		EventBus: eventBus,
 	})
+}
+
+func TestIndexerServiceIndexesBlocks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := tmlog.TestingLogger()
+	// event bus
+	eventBus := eventbus.NewDefault(logger)
+	err := eventBus.Start(ctx)
+	require.NoError(t, err)
+	t.Cleanup(eventBus.Wait)
 
 	assert.False(t, indexer.KVSinkEnabled([]indexer.EventSink{}))
 	assert.False(t, indexer.IndexingEnabled([]indexer.EventSink{}))
@@ -62,18 +70,12 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
-	service := indexer.NewIndexerService(eventSinks, eventBus)
-	service.SetLogger(tmlog.TestingLogger())
-	err = service.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := service.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	service := NewIndexerService(eventSinks, eventBus)
+	require.NoError(t, service.Start(ctx))
+	t.Cleanup(service.Wait)
 
 	// publish block with txs
-	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+	err = eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
 		NumTxs: int64(2),
 	})
@@ -84,7 +86,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("foo"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
-	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
+	err = eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: *txResult1})
 	require.NoError(t, err)
 	txResult2 := &abci.TxResult{
 		Height: 1,
@@ -92,7 +94,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("bar"),
 		Result: abci.ResponseDeliverTx{Code: 0},
 	}
-	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
+	err = eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: *txResult2})
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)

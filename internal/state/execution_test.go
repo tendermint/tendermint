@@ -38,21 +38,25 @@ var (
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	state, err = blockExec.ApplyBlock(state, blockID, block)
+	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.Nil(t, err)
 
 	// TODO check state and mempool
@@ -61,12 +65,15 @@ func TestApplyBlock(t *testing.T) {
 
 // TestBeginBlockValidators ensures we send absent validators list.
 func TestBeginBlockValidators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
 	stateStore := sm.NewStore(stateDB)
@@ -104,7 +111,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block := sf.MakeBlock(state, 2, lastCommit)
 
-		_, err = sm.ExecCommitBlock(nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
+		_, err = sm.ExecCommitBlock(ctx, nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -124,12 +131,14 @@ func TestBeginBlockValidators(t *testing.T) {
 
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
 func TestBeginBlockByzantineValidators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -210,7 +219,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
-	_, err = blockExec.ApplyBlock(state, blockID, block)
+	_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.Nil(t, err)
 
 	// TODO check state and mempool
@@ -349,12 +358,15 @@ func TestUpdateValidators(t *testing.T) {
 
 // TestEndBlockValidatorUpdates ensures we update validator set and send an event.
 func TestEndBlockValidatorUpdates(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -362,15 +374,15 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
+		logger,
 		proxyApp.Consensus(),
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
 	)
 
-	eventBus := eventbus.NewDefault()
-	err = eventBus.Start()
+	eventBus := eventbus.NewDefault(logger)
+	err = eventBus.Start(ctx)
 	require.NoError(t, err)
 	defer eventBus.Stop() //nolint:errcheck // ignore for tests
 
@@ -392,7 +404,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		{PubKey: pk, Power: 10},
 	}
 
-	state, err = blockExec.ApplyBlock(state, blockID, block)
+	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.Nil(t, err)
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
@@ -403,7 +415,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	// test we threw an event
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	msg, err := updatesSub.Next(ctx)
 	require.NoError(t, err)
@@ -418,12 +430,15 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 // TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
 func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -447,7 +462,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		{PubKey: vp, Power: 0},
 	}
 
-	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(ctx, state, blockID, block) })
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }

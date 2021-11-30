@@ -273,6 +273,9 @@ func TestPeerManager_Add(t *testing.T) {
 }
 
 func TestPeerManager_DialNext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -296,6 +299,9 @@ func TestPeerManager_DialNext(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_Retry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	options := p2p.PeerManagerOptions{
@@ -311,7 +317,7 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 
 	// Do five dial retries (six dials total). The retry time should double for
 	// each failure. At the forth retry, MaxRetryTime should kick in.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	for i := 0; i <= 5; i++ {
@@ -342,6 +348,9 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_WakeOnAdd(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -356,7 +365,7 @@ func TestPeerManager_DialNext_WakeOnAdd(t *testing.T) {
 	}()
 
 	// This will block until peer is added above.
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	dial, err := peerManager.DialNext(ctx)
 	require.NoError(t, err)
@@ -364,6 +373,9 @@ func TestPeerManager_DialNext_WakeOnAdd(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected: 1,
 	})
@@ -395,7 +407,7 @@ func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
 	}()
 
 	// This should make b available for dialing (not a, retries are disabled).
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	dial, err = peerManager.DialNext(ctx)
 	require.NoError(t, err)
@@ -403,6 +415,9 @@ func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	options := p2p.PeerManagerOptions{MinRetryTime: 200 * time.Millisecond}
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), options)
 	require.NoError(t, err)
@@ -421,7 +436,7 @@ func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
 
 	// The retry timer should unblock DialNext and make a available again after
 	// the retry time passes.
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	dial, err = peerManager.DialNext(ctx)
 	require.NoError(t, err)
@@ -430,6 +445,9 @@ func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -450,7 +468,7 @@ func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
 		peerManager.Disconnected(a.NodeID)
 	}()
 
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	dial, err = peerManager.DialNext(ctx)
 	require.NoError(t, err)
@@ -1289,6 +1307,9 @@ func TestPeerManager_Ready(t *testing.T) {
 
 // See TryEvictNext for most tests, this just tests blocking behavior.
 func TestPeerManager_EvictNext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -1322,6 +1343,9 @@ func TestPeerManager_EvictNext(t *testing.T) {
 }
 
 func TestPeerManager_EvictNext_WakeOnError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -1340,7 +1364,7 @@ func TestPeerManager_EvictNext_WakeOnError(t *testing.T) {
 	}()
 
 	// This will block until peer errors above.
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	evict, err := peerManager.EvictNext(ctx)
 	require.NoError(t, err)
@@ -1348,6 +1372,9 @@ func TestPeerManager_EvictNext_WakeOnError(t *testing.T) {
 }
 
 func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
 
@@ -1378,7 +1405,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 	}()
 
 	// This will block until peer is upgraded above.
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	evict, err := peerManager.EvictNext(ctx)
 	require.NoError(t, err)
@@ -1386,6 +1413,9 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 }
 
 func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
 
@@ -1410,7 +1440,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	}()
 
 	// This will block until peer is upgraded above.
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	evict, err := peerManager.EvictNext(ctx)
 	require.NoError(t, err)

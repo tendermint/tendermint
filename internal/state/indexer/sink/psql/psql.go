@@ -39,6 +39,8 @@ func NewEventSink(connStr, chainID string) (*EventSink, error) {
 	db, err := sql.Open(driverName, connStr)
 	if err != nil {
 		return nil, err
+	} else if err := db.Ping(); err != nil {
+		return nil, err
 	}
 
 	return &EventSink{

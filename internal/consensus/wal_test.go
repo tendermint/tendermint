@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"path/filepath"
 
 	"testing"
@@ -18,39 +19,33 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-const (
-	walTestFlushInterval = time.Duration(100) * time.Millisecond
-)
+const walTestFlushInterval = 100 * time.Millisecond
 
 func TestWALTruncate(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
+	logger := log.TestingLogger()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// this magic number 4K can truncate the content when RotateFile.
 	// defaultHeadSizeLimit(10M) is hard to simulate.
 	// this magic number 1 * time.Millisecond make RotateFile check frequently.
 	// defaultGroupCheckDuration(5s) is hard to simulate.
-	wal, err := NewWAL(walFile,
+	wal, err := NewWAL(logger, walFile,
 		autofile.GroupHeadSizeLimit(4096),
 		autofile.GroupCheckDuration(1*time.Millisecond),
 	)
 	require.NoError(t, err)
-	wal.SetLogger(log.TestingLogger())
-	err = wal.Start()
+	err = wal.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := wal.Stop(); err != nil {
-			t.Error(err)
-		}
-		// wait for the wal to finish shutting down so we
-		// can safely remove the directory
-		wal.Wait()
-	})
+	t.Cleanup(wal.Wait)
 
 	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
 	// when headBuf is full, truncate content will Flush to the file. at this
 	// time, RotateFile is called, truncate content exist in each file.
-	err = WALGenerateNBlocks(t, wal.Group(), 60)
+	err = WALGenerateNBlocks(ctx, t, wal.Group(), 60)
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond) // wait groupCheckDuration, make sure RotateFile run
@@ -105,18 +100,14 @@ func TestWALWrite(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
 
-	wal, err := NewWAL(walFile)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	wal, err := NewWAL(log.TestingLogger(), walFile)
 	require.NoError(t, err)
-	err = wal.Start()
+	err = wal.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := wal.Stop(); err != nil {
-			t.Error(err)
-		}
-		// wait for the wal to finish shutting down so we
-		// can safely remove the directory
-		wal.Wait()
-	})
+	t.Cleanup(wal.Wait)
 
 	// 1) Write returns an error if msg is too big
 	msg := &BlockPartMessage{
@@ -142,15 +133,17 @@ func TestWALWrite(t *testing.T) {
 }
 
 func TestWALSearchForEndHeight(t *testing.T) {
-	walBody, err := WALWithNBlocks(t, 6)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	walBody, err := WALWithNBlocks(ctx, t, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
 	walFile := tempWALWithData(walBody)
 
-	wal, err := NewWAL(walFile)
+	wal, err := NewWAL(log.TestingLogger(), walFile)
 	require.NoError(t, err)
-	wal.SetLogger(log.TestingLogger())
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -170,21 +163,23 @@ func TestWALSearchForEndHeight(t *testing.T) {
 func TestWALPeriodicSync(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
-	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+	wal, err := NewWAL(log.TestingLogger(), walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	require.NoError(t, err)
 
 	wal.SetFlushInterval(walTestFlushInterval)
-	wal.SetLogger(log.TestingLogger())
 
 	// Generate some data
-	err = WALGenerateNBlocks(t, wal.Group(), 5)
+	err = WALGenerateNBlocks(ctx, t, wal.Group(), 5)
 	require.NoError(t, err)
 
 	// We should have data in the buffer now
 	assert.NotZero(t, wal.Group().Buffered())
 
-	require.NoError(t, wal.Start())
+	require.NoError(t, wal.Start(ctx))
 	t.Cleanup(func() {
 		if err := wal.Stop(); err != nil {
 			t.Error(err)

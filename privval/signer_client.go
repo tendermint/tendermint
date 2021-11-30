@@ -23,9 +23,9 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
+func NewSignerClient(ctx context.Context, endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
-		if err := endpoint.Start(); err != nil {
+		if err := endpoint.Start(ctx); err != nil {
 			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}

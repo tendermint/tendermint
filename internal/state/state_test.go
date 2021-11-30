@@ -310,6 +310,8 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 }
 
 func TestProposerFrequency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// some explicit test cases
 	testCases := []struct {
@@ -370,7 +372,7 @@ func TestProposerFrequency(t *testing.T) {
 			votePower := int64(mrand.Int()%maxPower) + 1
 			totalVotePower += votePower
 			privVal := types.NewMockPV()
-			pubKey, err := privVal.GetPubKey(context.Background())
+			pubKey, err := privVal.GetPubKey(ctx)
 			require.NoError(t, err)
 			val := types.NewValidator(pubKey, votePower)
 			val.ProposerPriority = mrand.Int63()

@@ -7,7 +7,7 @@
     "vuepress-theme-cosmos": "^1.0.182"
   },
   "devDependencies": {
-    "watchpack": "^2.2.0"
+    "watchpack": "^2.3.0"
   },
   "scripts": {
     "preserve": "./pre.sh",
