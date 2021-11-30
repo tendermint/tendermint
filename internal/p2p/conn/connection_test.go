@@ -529,7 +529,6 @@ func TestMConnectionTrySend(t *testing.T) {
 	assert.Equal(t, "TrySend", <-resultCh)
 }
 
-// nolint:lll //ignore line length for tests
 func TestConnVectors(t *testing.T) {
 
 	testCases := []struct {

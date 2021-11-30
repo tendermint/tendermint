@@ -502,7 +502,6 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 	}
 }
 
-// nolint:lll
 func TestEvidenceListSerialization(t *testing.T) {
 	exampleVote := func(msgType byte) *types.Vote {
 		return &types.Vote{

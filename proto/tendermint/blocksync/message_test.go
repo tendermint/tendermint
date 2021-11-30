@@ -84,7 +84,6 @@ func TestStatusResponse_Validate(t *testing.T) {
 	}
 }
 
-// nolint:lll
 func TestBlockchainMessageVectors(t *testing.T) {
 	coreChainLock := types.NewMockChainLock(1)
 

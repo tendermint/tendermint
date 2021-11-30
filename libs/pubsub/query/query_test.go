@@ -66,7 +66,6 @@ func TestCompiledMatches(t *testing.T) {
 		txTime = "2018-05-03T14:45:00Z"
 	)
 
-	//nolint:lll
 	testCases := []struct {
 		s       string
 		events  []types.Event
