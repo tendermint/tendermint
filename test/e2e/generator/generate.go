@@ -402,14 +402,10 @@ func generateNode(
 		node.StateSync = nodeStateSyncs.Choose(r)
 		if manifest.InitialHeight-startAt <= 5 && node.StateSync == e2e.StateSyncDisabled {
 			// avoid needing to blocsync more than five total blocks.
-			if node.UseLegacyP2P {
-				node.StateSync = e2e.StateSyncRPC
-			} else {
-				node.StateSync = uniformSetChoice([]string{
-					e2e.StateSyncP2P,
-					e2e.StateSyncRPC,
-				}).Choose(r)[0]
-			}
+			node.StateSync = uniformSetChoice([]string{
+				e2e.StateSyncP2P,
+				e2e.StateSyncRPC,
+			}).Choose(r)[0]
 		}
 	}
 
