@@ -186,10 +186,6 @@ func (r *Reactor) OnStop() {
 	// p2p Channels should execute Close().
 	close(r.closeCh)
 
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
-	<-r.blockSyncCh.Done()
 	<-r.peerUpdates.Done()
 }
 
@@ -294,8 +290,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // When the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processBlockSyncCh(ctx context.Context) {
-	defer r.blockSyncCh.Close()
-
 	for {
 		select {
 		case <-ctx.Done():

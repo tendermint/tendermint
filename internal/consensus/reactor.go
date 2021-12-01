@@ -231,18 +231,11 @@ func (r *Reactor) OnStop() {
 	// Close the StateChannel goroutine separately since it uses its own channel
 	// to signal closure.
 	close(r.stateCloseCh)
-	<-r.stateCh.Done()
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
 
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
-	<-r.voteSetBitsCh.Done()
-	<-r.dataCh.Done()
-	<-r.voteCh.Done()
 	<-r.peerUpdates.Done()
 }
 
@@ -1339,8 +1332,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processStateCh(ctx context.Context) {
-	defer r.stateCh.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -1367,8 +1358,6 @@ func (r *Reactor) processStateCh(ctx context.Context) {
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processDataCh(ctx context.Context) {
-	defer r.dataCh.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -1395,8 +1384,6 @@ func (r *Reactor) processDataCh(ctx context.Context) {
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processVoteCh(ctx context.Context) {
-	defer r.voteCh.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -1423,8 +1410,6 @@ func (r *Reactor) processVoteCh(ctx context.Context) {
 // When the reactor is stopped, we will catch the signal and close the p2p
 // Channel gracefully.
 func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
-	defer r.voteSetBitsCh.Close()
-
 	for {
 		select {
 		case <-ctx.Done():

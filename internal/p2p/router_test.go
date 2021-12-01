@@ -27,7 +27,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func echoReactor(channel *p2p.Channel) {
+func echoReactor(ctx context.Context, channel *p2p.Channel) {
 	for {
 		select {
 		case envelope := <-channel.In:
@@ -37,7 +37,7 @@ func echoReactor(channel *p2p.Channel) {
 				Message: &p2ptest.Message{Value: value},
 			}
 
-		case <-channel.Done():
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -59,7 +59,7 @@ func TestRouter_Network(t *testing.T) {
 
 	channel := channels[local.NodeID]
 	for _, peer := range peers {
-		go echoReactor(channels[peer.NodeID])
+		go echoReactor(ctx, channels[peer.NodeID])
 	}
 
 	// Sending a message to each peer should work.
@@ -125,7 +125,10 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	t.Cleanup(router.Wait)
 
 	// Opening a channel should work.
-	channel, err := router.OpenChannel(ctx, chDesc)
+	chctx, chcancel := context.WithCancel(ctx)
+	defer chcancel()
+
+	channel, err := router.OpenChannel(chctx, chDesc)
 	require.NoError(t, err)
 	require.Contains(t, router.NodeInfo().Channels, byte(chDesc.ID))
 
@@ -141,8 +144,8 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	require.Contains(t, router.NodeInfo().Channels, byte(chDesc2.ID))
 
 	// Closing the channel, then opening it again should be fine.
-	channel.Close()
-	time.Sleep(100 * time.Millisecond) // yes yes, but Close() is async...
+	chcancel()
+	time.Sleep(200 * time.Millisecond) // yes yes, but Close() is async...
 
 	channel, err = router.OpenChannel(ctx, chDesc)
 	require.NoError(t, err)

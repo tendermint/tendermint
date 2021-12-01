@@ -401,17 +401,20 @@ func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
 	require.Zero(t, dial)
 
 	// Spawn a goroutine to fail a's dial attempt.
+	sig := make(chan struct{})
 	go func() {
+		defer close(sig)
 		time.Sleep(200 * time.Millisecond)
 		require.NoError(t, peerManager.DialFailed(ctx, a))
 	}()
 
 	// This should make b available for dialing (not a, retries are disabled).
-	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	dial, err = peerManager.DialNext(ctx)
+	opctx, opcancel := context.WithTimeout(ctx, 3*time.Second)
+	defer opcancel()
+	dial, err = peerManager.DialNext(opctx)
 	require.NoError(t, err)
 	require.Equal(t, b, dial)
+	<-sig
 }
 
 func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {

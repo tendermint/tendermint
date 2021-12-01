@@ -297,7 +297,6 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
 	require.NoError(t, reactor.Start(ctx))
 	t.Cleanup(func() {
-		pexCh.Close()
 		peerUpdates.Close()
 		reactor.Wait()
 	})
@@ -402,11 +401,9 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 				reactor.Wait()
 				require.False(t, reactor.IsRunning())
 			}
-			rts.pexChannels[nodeID].Close()
 			rts.peerUpdates[nodeID].Close()
 		}
 		for _, nodeID := range rts.mocks {
-			rts.pexChannels[nodeID].Close()
 			rts.peerUpdates[nodeID].Close()
 		}
 	})

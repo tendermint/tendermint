@@ -109,7 +109,6 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
-	<-r.evidenceCh.Done()
 	<-r.peerUpdates.Done()
 }
 
@@ -181,8 +180,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // processEvidenceCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the evidenceCh.
 func (r *Reactor) processEvidenceCh(ctx context.Context) {
-	defer r.evidenceCh.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -339,11 +336,15 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
-		r.evidenceCh.Out <- p2p.Envelope{
+		select {
+		case <-ctx.Done():
+			return
+		case r.evidenceCh.Out <- p2p.Envelope{
 			To: peerID,
 			Message: &tmproto.EvidenceList{
 				Evidence: []tmproto.Evidence{*evProto},
 			},
+		}:
 		}
 		r.Logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 

@@ -232,14 +232,7 @@ func (r *Reactor) OnStop() {
 	// p2p Channels should execute Close().
 	close(r.closeCh)
 
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
 	<-r.peerUpdates.Done()
-	<-r.snapshotCh.Done()
-	<-r.chunkCh.Done()
-	<-r.blockCh.Done()
-	<-r.paramsCh.Done()
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
@@ -273,7 +266,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
-		r.snapshotCh.Done(),
+		ctx.Done(),
 		r.tempDir,
 		r.metrics,
 	)
@@ -818,8 +811,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
 func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string) {
-	defer ch.Close()
-
 	for {
 		select {
 		case <-ctx.Done():

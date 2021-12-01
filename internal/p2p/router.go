@@ -62,8 +62,6 @@ type Channel struct {
 	Error chan<- PeerError // peer error reporting
 
 	messageType proto.Message // the channel's message type, used for unmarshaling
-	closeCh     chan struct{}
-	closeOnce   sync.Once
 }
 
 // NewChannel creates a new channel. It is primarily for internal and test
@@ -81,24 +79,7 @@ func NewChannel(
 		In:          inCh,
 		Out:         outCh,
 		Error:       errCh,
-		closeCh:     make(chan struct{}),
 	}
-}
-
-// Close closes the channel. Future sends on Out and Error will panic. The In
-// channel remains open to avoid having to synchronize Router senders, which
-// should use Done() to detect channel closure instead.
-func (c *Channel) Close() {
-	c.closeOnce.Do(func() {
-		close(c.closeCh)
-		close(c.Out)
-		close(c.Error)
-	})
-}
-
-// Done returns a channel that's closed when Channel.Close() is called.
-func (c *Channel) Done() <-chan struct{} {
-	return c.closeCh
 }
 
 // Wrapper is a Protobuf message that can contain a variety of inner messages
@@ -507,6 +488,7 @@ func (r *Router) routeChannel(
 
 			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 		case <-ctx.Done():
+			return
 		case <-r.stopCh:
 			return
 		}
@@ -897,10 +879,14 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 	_ = conn.Close()
 	sendQueue.close()
 
-	if e := <-errCh; err == nil {
+	select {
+	case <-ctx.Done():
+	case e := <-errCh:
 		// The first err was nil, so we update it with the second err, which may
 		// or may not be nil.
-		err = e
+		if err == nil {
+			err = e
+		}
 	}
 
 	// if the context was canceled

@@ -290,12 +290,13 @@ func (n *Node) MakeChannel(
 	t *testing.T,
 	chDesc *p2p.ChannelDescriptor,
 ) *p2p.Channel {
+	ctx, cancel := context.WithCancel(ctx)
 	channel, err := n.Router.OpenChannel(ctx, chDesc)
 	require.NoError(t, err)
 	require.Contains(t, n.Router.NodeInfo().Channels, byte(chDesc.ID))
 	t.Cleanup(func() {
 		RequireEmpty(t, channel)
-		channel.Close()
+		cancel()
 	})
 	return channel
 }
