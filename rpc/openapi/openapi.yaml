@@ -708,7 +708,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Header.
+        Retrieve the block header corresponding to a specified height.
       responses:
         "200":
           description: Header information.
@@ -737,7 +737,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Header By Hash.
+        Retrieve the block header corresponding to a block hash.
       responses:
         "200":
           description: Header information.
