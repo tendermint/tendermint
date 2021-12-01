@@ -12,64 +12,14 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
-	keyFileContents = `{
-	"address": "D08FCA3BA74CF17CBFC15E64F9505302BB0E2748",
-	"pub_key": {
-		"type": "tendermint/PubKeyEd25519",
-		"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
-		},
-	"priv_key": {
-		"type": "tendermint/PrivKeyEd25519",
-		"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="
-	}
-}`
-
-	stateFileContents = `{
-	"height": "0",
-	"round": 0,
-	"step": 0
-}`
-
-	genesisFileContents = `{
-	"genesis_time": "2019-01-15T11:56:34.8963Z",
-	"chain_id": "test-chain-0XwP5E",
-	"consensus_params": {
-		"block": {
-			"max_bytes": "22020096",
-			"max_gas": "-1",
-			"time_iota_ms": "1000"
-		},
-		"evidence": {
-			"max_age_num_blocks": "100000",
-			"max_age_duration": "172800000000000",
-			"max_num": 50
-		},
-		"validator": {
-			"pub_key_types": [
-				"ed25519"
-			]
-		}
-	},
-	"validators": [
-		{
-		"address": "D08FCA3BA74CF17CBFC15E64F9505302BB0E2748",
-		"pub_key": {
-			"type": "tendermint/PubKeyEd25519",
-			"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
-		},
-		"power": "10",
-		"name": ""
-		}
-	],
-	"app_hash": ""
-}`
-
 	defaultConnDeadline = 100
 )
 
@@ -191,6 +141,29 @@ func harnessTest(
 }
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
+	t.Helper()
+	pvFile, err := privval.GenFilePV("tm-testharness-keyfile", "tm-testharness-statefile", types.ABCIPubKeyTypeEd25519)
+	if err != nil {
+		panic(err)
+	}
+	pvGenDoc := types.GenesisDoc{
+		ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+		GenesisTime:     time.Now(),
+		ConsensusParams: types.DefaultConsensusParams(),
+		Validators: []types.GenesisValidator{
+			{
+				Address: pvFile.Key.Address,
+				PubKey:  pvFile.Key.PubKey,
+			},
+		},
+	}
+
+	keyFileContents, err := tmjson.Marshal(pvFile.Key)
+	require.NoError(t, err)
+	stateFileContents, err := tmjson.Marshal(pvFile.LastSignState)
+	require.NoError(t, err)
+	genesisFileContents, err := tmjson.Marshal(pvGenDoc)
+	require.NoError(t, err)
 	return TestHarnessConfig{
 		BindAddr:         privval.GetFreeLocalhostAddrPort(),
 		KeyFile:          makeTempFile("tm-testharness-keyfile", keyFileContents),
@@ -210,12 +183,12 @@ func cleanup(cfg TestHarnessConfig) {
 	os.Remove(cfg.GenesisFile)
 }
 
-func makeTempFile(name, content string) string {
+func makeTempFile(name string, content []byte) string {
 	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s-*", name))
 	if err != nil {
 		panic(err)
 	}
-	if _, err := tempFile.Write([]byte(content)); err != nil {
+	if _, err := tempFile.Write(content); err != nil {
 		tempFile.Close()
 		panic(err)
 	}
