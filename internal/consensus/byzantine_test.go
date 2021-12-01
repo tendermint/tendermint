@@ -221,7 +221,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			lazyNodeState.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, ""})
 			for i := 0; i < int(blockParts.Total()); i++ {
 				part := blockParts.GetPart(i)
-				lazyNodeState.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{lazyNodeState.Height, lazyNodeState.Round, part}, ""})
+				lazyNodeState.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{
+					lazyNodeState.Height, lazyNodeState.Round, part,
+				}, ""})
 			}
 			lazyNodeState.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 			lazyNodeState.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))

@@ -20,6 +20,7 @@ func TrapSignal(ctx context.Context, logger logger, cb func()) {
 	opctx, _ := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
+		defer opcancel()
 		<-opctx.Done()
 		logger.Info("captured signal, exiting...")
 		if cb != nil {
