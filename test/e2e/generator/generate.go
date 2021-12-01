@@ -105,6 +105,21 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			continue
 		}
 
+		if opt["p2p"] == HybridP2PMode {
+			numLegacy := 0
+			for _, n := range manifest.Nodes {
+				if n.UseLegacyP2P {
+					numLegacy++
+				}
+			}
+			if numLegacy == len(manifest.Nodes) {
+				continue
+			}
+			if numLegacy == 0 {
+				continue
+			}
+		}
+
 		manifests = append(manifests, manifest)
 	}
 
@@ -215,6 +230,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 				hybridNumLegacy++
 				if hybridNumNew == 0 {
 					hybridNumNew++
+					hybridNumLegacy--
+					node.UseLegacyP2P = false
+				}
+
+				if node.StartAt > manifest.InitialHeight {
 					hybridNumLegacy--
 					node.UseLegacyP2P = false
 				}
