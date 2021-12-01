@@ -50,6 +50,11 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 
 	s.Logger.Info("Listening", "proto", s.proto, "addr", s.addr)
 	go func() {
+		go func() {
+			<-ctx.Done()
+			s.server.GracefulStop()
+		}()
+
 		if err := s.server.Serve(s.listener); err != nil {
 			s.Logger.Error("Error serving gRPC server", "err", err)
 		}

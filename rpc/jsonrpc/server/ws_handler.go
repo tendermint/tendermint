@@ -87,14 +87,16 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 
 	// register connection
 	logger := wm.logger.With("remote", wsConn.RemoteAddr())
-	con := newWSConnection(wsConn, wm.funcMap, logger, wm.wsConnOptions...)
-	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
-	err = con.Start() // BLOCKING
-	if err != nil {
+	conn := newWSConnection(wsConn, wm.funcMap, logger, wm.wsConnOptions...)
+	wm.logger.Info("New websocket connection", "remote", conn.remoteAddr)
+
+	// starting the conn is blocking
+	if err = conn.Start(r.Context()); err != nil {
 		wm.logger.Error("Failed to start connection", "err", err)
 		return
 	}
-	if err := con.Stop(); err != nil {
+
+	if err := conn.Stop(); err != nil {
 		wm.logger.Error("error while stopping connection", "error", err)
 	}
 }
@@ -220,16 +222,16 @@ func ReadLimit(readLimit int64) func(*wsConnection) {
 }
 
 // Start starts the client service routines and blocks until there is an error.
-func (wsc *wsConnection) Start() error {
-	if err := wsc.RunState.Start(); err != nil {
+func (wsc *wsConnection) Start(ctx context.Context) error {
+	if err := wsc.RunState.Start(ctx); err != nil {
 		return err
 	}
 	wsc.writeChan = make(chan rpctypes.RPCResponse, wsc.writeChanCapacity)
 
 	// Read subscriptions/unsubscriptions to events
-	go wsc.readRoutine()
+	go wsc.readRoutine(ctx)
 	// Write responses, BLOCKING.
-	wsc.writeRoutine()
+	wsc.writeRoutine(ctx)
 
 	return nil
 }
@@ -259,8 +261,6 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 // It implements WSRPCConnection. It is Goroutine-safe.
 func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp rpctypes.RPCResponse) error {
 	select {
-	case <-wsc.Quit():
-		return errors.New("connection was stopped")
 	case <-ctx.Done():
 		return ctx.Err()
 	case wsc.writeChan <- resp:
@@ -271,9 +271,9 @@ func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp rpctypes.RPC
 // TryWriteRPCResponse attempts to push a response to the writeChan, but does
 // not block.
 // It implements WSRPCConnection. It is Goroutine-safe
-func (wsc *wsConnection) TryWriteRPCResponse(resp rpctypes.RPCResponse) bool {
+func (wsc *wsConnection) TryWriteRPCResponse(ctx context.Context, resp rpctypes.RPCResponse) bool {
 	select {
-	case <-wsc.Quit():
+	case <-ctx.Done():
 		return false
 	case wsc.writeChan <- resp:
 		return true
@@ -293,7 +293,7 @@ func (wsc *wsConnection) Context() context.Context {
 }
 
 // Read from the socket and subscribe to or unsubscribe from events
-func (wsc *wsConnection) readRoutine() {
+func (wsc *wsConnection) readRoutine(ctx context.Context) {
 	// readRoutine will block until response is written or WS connection is closed
 	writeCtx := context.Background()
 
@@ -307,7 +307,7 @@ func (wsc *wsConnection) readRoutine() {
 			if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)); err != nil {
 				wsc.Logger.Error("Error writing RPC response", "err", err)
 			}
-			go wsc.readRoutine()
+			go wsc.readRoutine(ctx)
 		}
 	}()
 
@@ -317,7 +317,7 @@ func (wsc *wsConnection) readRoutine() {
 
 	for {
 		select {
-		case <-wsc.Quit():
+		case <-ctx.Done():
 			return
 		default:
 			// reset deadline for every type of message (control or data)
@@ -422,7 +422,7 @@ func (wsc *wsConnection) readRoutine() {
 }
 
 // receives on a write channel and writes out on the socket
-func (wsc *wsConnection) writeRoutine() {
+func (wsc *wsConnection) writeRoutine(ctx context.Context) {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer pingTicker.Stop()
 
@@ -438,7 +438,7 @@ func (wsc *wsConnection) writeRoutine() {
 
 	for {
 		select {
-		case <-wsc.Quit():
+		case <-ctx.Done():
 			return
 		case <-wsc.readRoutineQuit: // error in readRoutine
 			return

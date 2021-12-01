@@ -71,11 +71,14 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 	defer s.Close()
 
-	c := startClient(t, "//"+s.Listener.Addr().String())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
 	defer c.Stop() // nolint:errcheck // ignore for tests
 
 	wg.Add(1)
-	go callWgDoneOnResult(t, c, &wg)
+	go callWgDoneOnResult(ctx, t, c, &wg)
 
 	h.mtx.Lock()
 	h.closeConnAfterRead = true
@@ -103,11 +106,14 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	h := &myHandler{}
 	s := httptest.NewServer(h)
 
-	c := startClient(t, "//"+s.Listener.Addr().String())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
 	defer c.Stop() // nolint:errcheck // ignore for tests
 
 	wg.Add(2)
-	go callWgDoneOnResult(t, c, &wg)
+	go callWgDoneOnResult(ctx, t, c, &wg)
 
 	// hacky way to abort the connection before write
 	if err := c.conn.Close(); err != nil {
@@ -131,14 +137,17 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	h := &myHandler{}
 	s := httptest.NewServer(h)
 
-	c := startClient(t, "//"+s.Listener.Addr().String())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
 	defer c.Stop() // nolint:errcheck // ignore for tests
 
 	go func() {
 		for {
 			select {
 			case <-c.ResponsesCh:
-			case <-c.Quit():
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -152,9 +161,9 @@ func TestWSClientReconnectFailure(t *testing.T) {
 
 	// results in WS write error
 	// provide timeout to avoid blocking
-	ctx, cancel := context.WithTimeout(context.Background(), wsCallTimeout)
+	cctx, cancel := context.WithTimeout(ctx, wsCallTimeout)
 	defer cancel()
-	if err := c.Call(ctx, "a", make(map[string]interface{})); err != nil {
+	if err := c.Call(cctx, "a", make(map[string]interface{})); err != nil {
 		t.Error(err)
 	}
 
@@ -180,7 +189,10 @@ func TestWSClientReconnectFailure(t *testing.T) {
 func TestNotBlockingOnStop(t *testing.T) {
 	timeout := 2 * time.Second
 	s := httptest.NewServer(&myHandler{})
-	c := startClient(t, "//"+s.Listener.Addr().String())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
 	c.Call(context.Background(), "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)
@@ -201,12 +213,12 @@ func TestNotBlockingOnStop(t *testing.T) {
 	}
 }
 
-func startClient(t *testing.T, addr string) *WSClient {
+func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	c, err := NewWS(addr, "/websocket")
 	require.Nil(t, err)
-	err = c.Start()
+	err = c.Start(ctx)
 	require.Nil(t, err)
-	c.SetLogger(log.TestingLogger())
+	c.Logger = log.TestingLogger()
 	return c
 }
 
@@ -215,7 +227,7 @@ func call(t *testing.T, method string, c *WSClient) {
 	require.NoError(t, err)
 }
 
-func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
+func callWgDoneOnResult(ctx context.Context, t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 	for {
 		select {
 		case resp := <-c.ResponsesCh:
@@ -226,7 +238,7 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 			if resp.Result != nil {
 				wg.Done()
 			}
-		case <-c.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}

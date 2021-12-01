@@ -1023,7 +1023,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			defer wg.Done()
 
 			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
-			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
+			select {
+			case witnessResponsesC <- witnessResponse{lb, witnessIndex, err}:
+			case <-ctx.Done():
+			}
+
 		}(index, witnessResponsesC)
 	}
 

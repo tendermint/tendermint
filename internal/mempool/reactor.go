@@ -117,8 +117,8 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		r.Logger.Info("tx broadcasting is disabled")
 	}
 
-	go r.processMempoolCh()
-	go r.processPeerUpdates()
+	go r.processMempoolCh(ctx)
+	go r.processPeerUpdates(ctx)
 
 	return nil
 }
@@ -209,7 +209,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 
 // processMempoolCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the mempoolCh.
-func (r *Reactor) processMempoolCh() {
+func (r *Reactor) processMempoolCh(ctx context.Context) {
 	defer r.mempoolCh.Close()
 
 	for {
@@ -222,7 +222,8 @@ func (r *Reactor) processMempoolCh() {
 					Err:    err,
 				}
 			}
-
+		case <-ctx.Done():
+			return
 		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on mempool channel; closing...")
 			return
@@ -235,7 +236,7 @@ func (r *Reactor) processMempoolCh() {
 // goroutine or not. If not, we start one for the newly added peer. For down or
 // removed peers, we remove the peer from the mempool peer ID set and signal to
 // stop the tx broadcasting goroutine.
-func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
+func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
@@ -266,7 +267,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 				r.ids.ReserveForPeer(peerUpdate.NodeID)
 
 				// start a broadcast routine ensuring all txs are forwarded to the peer
-				go r.broadcastTxRoutine(peerUpdate.NodeID, closer)
+				go r.broadcastTxRoutine(ctx, peerUpdate.NodeID, closer)
 			}
 		}
 
@@ -287,13 +288,15 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // processPeerUpdates initiates a blocking process where we listen for and handle
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
-func (r *Reactor) processPeerUpdates() {
+func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	defer r.peerUpdates.Close()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case peerUpdate := <-r.peerUpdates.Updates():
-			r.processPeerUpdate(peerUpdate)
+			r.processPeerUpdate(ctx, peerUpdate)
 
 		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on peer updates channel; closing...")
@@ -302,7 +305,7 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, closer *tmsync.Closer) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
 	var nextGossipTx *clist.CElement
 
@@ -342,6 +345,9 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 			case <-closer.Done():
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
+				return
+
+			case <-ctx.Done():
 				return
 
 			case <-r.closeCh:
@@ -387,6 +393,9 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		case <-closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
+			return
+
+		case <-ctx.Done():
 			return
 
 		case <-r.closeCh:

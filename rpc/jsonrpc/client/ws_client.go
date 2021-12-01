@@ -143,8 +143,8 @@ func (c *WSClient) String() string {
 }
 
 // Start dials the specified service address and starts the I/O routines.
-func (c *WSClient) Start() error {
-	if err := c.RunState.Start(); err != nil {
+func (c *WSClient) Start(ctx context.Context) error {
+	if err := c.RunState.Start(ctx); err != nil {
 		return err
 	}
 	err := c.dial()
@@ -162,8 +162,8 @@ func (c *WSClient) Start() error {
 	// channel is unbuffered.
 	c.backlog = make(chan rpctypes.RPCRequest, 1)
 
-	c.startReadWriteRoutines()
-	go c.reconnectRoutine()
+	c.startReadWriteRoutines(ctx)
+	go c.reconnectRoutine(ctx)
 
 	return nil
 }
@@ -292,11 +292,11 @@ func (c *WSClient) reconnect() error {
 	}
 }
 
-func (c *WSClient) startReadWriteRoutines() {
+func (c *WSClient) startReadWriteRoutines(ctx context.Context) {
 	c.wg.Add(2)
 	c.readRoutineQuit = make(chan struct{})
-	go c.readRoutine()
-	go c.writeRoutine()
+	go c.readRoutine(ctx)
+	go c.writeRoutine(ctx)
 }
 
 func (c *WSClient) processBacklog() error {
@@ -320,7 +320,7 @@ func (c *WSClient) processBacklog() error {
 	return nil
 }
 
-func (c *WSClient) reconnectRoutine() {
+func (c *WSClient) reconnectRoutine(ctx context.Context) {
 	for {
 		select {
 		case originalError := <-c.reconnectAfter:
@@ -345,10 +345,9 @@ func (c *WSClient) reconnectRoutine() {
 			}
 			err := c.processBacklog()
 			if err == nil {
-				c.startReadWriteRoutines()
+				c.startReadWriteRoutines(ctx)
 			}
-
-		case <-c.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -356,7 +355,7 @@ func (c *WSClient) reconnectRoutine() {
 
 // The client ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *WSClient) writeRoutine() {
+func (c *WSClient) writeRoutine(ctx context.Context) {
 	var ticker *time.Ticker
 	if c.pingPeriod > 0 {
 		// ticker with a predefined period
@@ -408,7 +407,7 @@ func (c *WSClient) writeRoutine() {
 			c.Logger.Debug("sent ping")
 		case <-c.readRoutineQuit:
 			return
-		case <-c.Quit():
+		case <-ctx.Done():
 			if err := c.conn.WriteMessage(
 				websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
@@ -422,7 +421,7 @@ func (c *WSClient) writeRoutine() {
 
 // The client ensures that there is at most one reader to a connection by
 // executing all reads from this goroutine.
-func (c *WSClient) readRoutine() {
+func (c *WSClient) readRoutine(ctx context.Context) {
 	defer func() {
 		c.conn.Close()
 		// err != nil {
@@ -494,7 +493,7 @@ func (c *WSClient) readRoutine() {
 		c.Logger.Info("got response", "id", response.ID, "result", response.Result)
 
 		select {
-		case <-c.Quit():
+		case <-ctx.Done():
 		case c.ResponsesCh <- response:
 		}
 	}

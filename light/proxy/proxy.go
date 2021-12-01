@@ -57,6 +57,7 @@ func (p *Proxy) ListenAndServe(ctx context.Context) error {
 	p.Listener = listener
 
 	return rpcserver.Serve(
+		ctx,
 		listener,
 		mux,
 		p.Logger,
@@ -75,6 +76,7 @@ func (p *Proxy) ListenAndServeTLS(ctx context.Context, certFile, keyFile string)
 	p.Listener = listener
 
 	return rpcserver.ServeTLS(
+		ctx,
 		listener,
 		mux,
 		certFile,

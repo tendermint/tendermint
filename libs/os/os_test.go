@@ -2,6 +2,7 @@ package os_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -108,7 +109,10 @@ func (ml mockLogger) Info(msg string, keyvals ...interface{}) {}
 func killer() {
 	logger := mockLogger{}
 
-	tmos.TrapSignal(logger, func() { _, _ = fmt.Fprintf(os.Stderr, "exiting") })
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tmos.TrapSignal(ctx, logger, func() { _, _ = fmt.Fprintf(os.Stderr, "exiting") })
 	time.Sleep(1 * time.Second)
 
 	p, err := os.FindProcess(os.Getpid())

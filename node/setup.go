@@ -190,6 +190,7 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolReactor(
+	ctx context.Context,
 	cfg *config.Config,
 	proxyApp proxy.AppConns,
 	state sm.State,
@@ -201,7 +202,7 @@ func createMempoolReactor(
 
 	logger = logger.With("module", "mempool")
 
-	ch, err := router.OpenChannel(mempool.GetChannelDescriptor(cfg.Mempool))
+	ch, err := router.OpenChannel(ctx, mempool.GetChannelDescriptor(cfg.Mempool))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -222,7 +223,7 @@ func createMempoolReactor(
 		peerManager,
 		mp,
 		ch,
-		peerManager.Subscribe(),
+		peerManager.Subscribe(ctx),
 	)
 
 	if cfg.Consensus.WaitForTxs() {
@@ -233,6 +234,7 @@ func createMempoolReactor(
 }
 
 func createEvidenceReactor(
+	ctx context.Context,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	stateDB dbm.DB,
@@ -253,7 +255,7 @@ func createEvidenceReactor(
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
-	ch, err := router.OpenChannel(evidence.GetChannelDescriptor())
+	ch, err := router.OpenChannel(ctx, evidence.GetChannelDescriptor())
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating evidence channel: %w", err)
 	}
@@ -261,7 +263,7 @@ func createEvidenceReactor(
 	evidenceReactor := evidence.NewReactor(
 		logger,
 		ch,
-		peerManager.Subscribe(),
+		peerManager.Subscribe(ctx),
 		evidencePool,
 	)
 
@@ -269,6 +271,7 @@ func createEvidenceReactor(
 }
 
 func createBlockchainReactor(
+	ctx context.Context,
 	logger log.Logger,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
@@ -282,12 +285,12 @@ func createBlockchainReactor(
 
 	logger = logger.With("module", "blockchain")
 
-	ch, err := router.OpenChannel(blocksync.GetChannelDescriptor())
+	ch, err := router.OpenChannel(ctx, blocksync.GetChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}
 
-	peerUpdates := peerManager.Subscribe()
+	peerUpdates := peerManager.Subscribe(ctx)
 
 	reactor, err := blocksync.NewReactor(
 		logger, state.Copy(), blockExec, blockStore, csReactor,
@@ -338,7 +341,7 @@ func createConsensusReactor(
 	channels := make(map[p2p.ChannelID]*p2p.Channel, len(csChDesc))
 	for idx := range csChDesc {
 		chd := csChDesc[idx]
-		ch, err := router.OpenChannel(chd)
+		ch, err := router.OpenChannel(ctx, chd)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -353,7 +356,7 @@ func createConsensusReactor(
 		channels[consensus.DataChannel],
 		channels[consensus.VoteChannel],
 		channels[consensus.VoteSetBitsChannel],
-		peerManager.Subscribe(),
+		peerManager.Subscribe(ctx),
 		waitSync,
 		consensus.ReactorMetrics(csMetrics),
 	)
@@ -450,6 +453,7 @@ func createPeerManager(
 }
 
 func createRouter(
+	ctx context.Context,
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
 	nodeInfo types.NodeInfo,
@@ -468,6 +472,7 @@ func createRouter(
 	}
 
 	return p2p.NewRouter(
+		ctx,
 		p2pLogger,
 		p2pMetrics,
 		nodeInfo,
@@ -480,17 +485,18 @@ func createRouter(
 }
 
 func createPEXReactor(
+	ctx context.Context,
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 ) (service.Service, error) {
 
-	channel, err := router.OpenChannel(pex.ChannelDescriptor())
+	channel, err := router.OpenChannel(ctx, pex.ChannelDescriptor())
 	if err != nil {
 		return nil, err
 	}
 
-	return pex.NewReactor(logger, peerManager, channel, peerManager.Subscribe()), nil
+	return pex.NewReactor(logger, peerManager, channel, peerManager.Subscribe(ctx)), nil
 }
 
 func makeNodeInfo(

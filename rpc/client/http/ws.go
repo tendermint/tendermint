@@ -86,17 +86,17 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 		// resubscribe immediately
 		w.redoSubscriptionsAfter(0 * time.Second)
 	})
-	w.ws.SetLogger(w.Logger)
+	w.ws.Logger = w.Logger
 
 	return w, nil
 }
 
 // Start starts the websocket client and the event loop.
 func (w *wsEvents) Start(ctx context.Context) error {
-	if err := w.ws.Start(); err != nil {
+	if err := w.ws.Start(ctx); err != nil {
 		return err
 	}
-	go w.eventListener()
+	go w.eventListener(ctx)
 	return nil
 }
 
@@ -216,7 +216,7 @@ func isErrAlreadySubscribed(err error) bool {
 	return strings.Contains(err.Error(), pubsub.ErrAlreadySubscribed.Error())
 }
 
-func (w *wsEvents) eventListener() {
+func (w *wsEvents) eventListener(ctx context.Context) {
 	for {
 		select {
 		case resp, ok := <-w.ws.ResponsesCh:
@@ -258,11 +258,11 @@ func (w *wsEvents) eventListener() {
 			if ok {
 				select {
 				case out.res <- *result:
-				case <-w.Quit():
+				case <-ctx.Done():
 					return
 				}
 			}
-		case <-w.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}

@@ -134,13 +134,16 @@ func NewTestHarness(ctx context.Context, logger log.Logger, cfg TestHarnessConfi
 // here is to call this from one's `main` function, as the way it succeeds or
 // fails at present is to call os.Exit() with an exit code related to the error
 // that caused the tests to fail, or exit code 0 on success.
-func (th *TestHarness) Run() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+func (th *TestHarness) Run(ctx context.Context) {
+	ictx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	defer cancel()
+
 	go func() {
-		for sig := range c {
-			th.logger.Info("Caught interrupt, terminating...", "sig", sig)
+		select {
+		case <-ictx.Done():
+			th.logger.Info("Caught interrupt, terminating...")
 			th.Shutdown(newTestHarnessError(ErrInterrupted, nil, ""))
+		case <-ctx.Done():
 		}
 	}()
 

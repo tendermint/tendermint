@@ -48,7 +48,8 @@ type Client struct {
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
 
-	quitCh chan struct{}
+	closers []func()
+	quitCh  chan struct{}
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -115,6 +116,10 @@ func (c *Client) OnStart(ctx context.Context) error {
 }
 
 func (c *Client) OnStop() {
+	for _, closer := range c.closers {
+		closer()
+	}
+
 	if c.next.IsRunning() {
 		if err := c.next.Stop(); err != nil {
 			c.Logger.Error("Error stopping on next", "err", err)
@@ -579,7 +584,10 @@ func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 // a subscriber, but does not verify responses (UNSAFE)!
 // TODO: verify data
 func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultSubscribe, error) {
-	out, err := c.next.Subscribe(context.Background(), ctx.RemoteAddr(), query)
+	bctx, bcancel := context.WithCancel(context.Background())
+	c.closers = append(c.closers, bcancel)
+
+	out, err := c.next.Subscribe(bctx, ctx.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -590,12 +598,12 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 			case resultEvent := <-out:
 				// We should have a switch here that performs a validation
 				// depending on the event's type.
-				ctx.WSConn.TryWriteRPCResponse(
+				ctx.WSConn.TryWriteRPCResponse(bctx,
 					rpctypes.NewRPCSuccessResponse(
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
-			case <-c.quitCh:
+			case <-bctx.Done():
 				return
 			}
 		}

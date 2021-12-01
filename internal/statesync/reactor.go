@@ -211,11 +211,11 @@ func NewReactor(
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
 func (r *Reactor) OnStart(ctx context.Context) error {
-	go r.processCh(r.snapshotCh, "snapshot")
-	go r.processCh(r.chunkCh, "chunk")
-	go r.processCh(r.blockCh, "light block")
-	go r.processCh(r.paramsCh, "consensus params")
-	go r.processPeerUpdates()
+	go r.processCh(ctx, r.snapshotCh, "snapshot")
+	go r.processCh(ctx, r.chunkCh, "chunk")
+	go r.processCh(ctx, r.blockCh, "light block")
+	go r.processCh(ctx, r.paramsCh, "consensus params")
+	go r.processPeerUpdates(ctx)
 
 	return nil
 }
@@ -380,6 +380,8 @@ func (r *Reactor) backfill(
 		go func() {
 			for {
 				select {
+				case <-ctx.Done():
+					return
 				case height := <-queue.nextHeight():
 					// pop the next peer of the list to send a request to
 					peer := r.peers.Pop(ctx)
@@ -815,11 +817,13 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
-func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
+func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string) {
 	defer ch.Close()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case envelope := <-ch.In:
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
 				r.Logger.Error("failed to process message",
@@ -883,11 +887,13 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // processPeerUpdates initiates a blocking process where we listen for and handle
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
-func (r *Reactor) processPeerUpdates() {
+func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	defer r.peerUpdates.Close()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
 

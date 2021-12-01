@@ -55,7 +55,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	}
 
 	chDesc := GetChannelDescriptor(cfg.Mempool)
-	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
+	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
@@ -65,7 +65,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
 		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
@@ -96,9 +96,9 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	return rts
 }
 
-func (rts *reactorTestSuite) start(t *testing.T) {
+func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 	t.Helper()
-	rts.network.Start(t)
+	rts.network.Start(ctx, t)
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
 		len(rts.nodes)-1,
@@ -170,11 +170,11 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	primaryMempool.insertTx(firstTx)
 
 	// run the router
-	rts.start(t)
+	rts.start(ctx, t)
 
 	closer := tmsync.NewCloser()
 	primaryReactor.peerWG.Add(1)
-	go primaryReactor.broadcastTxRoutine(secondary, closer)
+	go primaryReactor.broadcastTxRoutine(ctx, secondary, closer)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
@@ -206,7 +206,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 
 	// run the router
-	rts.start(t)
+	rts.start(ctx, t)
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
@@ -228,7 +228,7 @@ func TestReactorConcurrency(t *testing.T) {
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	var wg sync.WaitGroup
 
@@ -292,7 +292,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	peerID := uint16(1)
 	_ = checkTxs(ctx, t, rts.mempools[primary], numTxs, peerID)
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -328,7 +328,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	rts.reactors[primary].mempool.Flush()
 	rts.reactors[secondary].mempool.Flush()
@@ -421,7 +421,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	// disconnect peer
 	rts.peerChans[primary] <- p2p.PeerUpdate{

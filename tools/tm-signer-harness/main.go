@@ -137,7 +137,7 @@ func runTestHarness(ctx context.Context, acceptRetries int, bindAddr, tmhome str
 		}
 		os.Exit(internal.ErrOther)
 	}
-	harness.Run()
+	harness.Run(ctx)
 }
 
 func extractKey(tmhome, outputPath string) {

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,9 @@ func TestPeerScoring(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("Synchronous", func(t *testing.T) {
 		// update the manager and make sure it's correct
 		require.EqualValues(t, 0, peerManager.Scores()[id])
@@ -53,7 +57,7 @@ func TestPeerScoring(t *testing.T) {
 	})
 	t.Run("AsynchronousIncrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
-		pu := peerManager.Subscribe()
+		pu := peerManager.Subscribe(ctx)
 		defer pu.Close()
 		pu.SendUpdate(PeerUpdate{
 			NodeID: id,
@@ -67,7 +71,7 @@ func TestPeerScoring(t *testing.T) {
 	})
 	t.Run("AsynchronousDecrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
-		pu := peerManager.Subscribe()
+		pu := peerManager.Subscribe(ctx)
 		defer pu.Close()
 		pu.SendUpdate(PeerUpdate{
 			NodeID: id,

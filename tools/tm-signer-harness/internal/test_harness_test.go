@@ -82,7 +82,7 @@ func TestRemoteSignerTestHarnessMaxAcceptRetriesReached(t *testing.T) {
 
 	th, err := NewTestHarness(ctx, log.TestingLogger(), cfg)
 	require.NoError(t, err)
-	th.Run()
+	th.Run(ctx)
 	assert.Equal(t, ErrMaxAcceptRetriesReached, th.exitCode)
 }
 
@@ -178,7 +178,7 @@ func harnessTest(
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		th.Run()
+		th.Run(ctx)
 	}()
 
 	ss := signerServerMaker(th)

@@ -161,11 +161,11 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		go r.requestRoutine(ctx)
 
 		r.poolWG.Add(1)
-		go r.poolRoutine(false)
+		go r.poolRoutine(ctx, false)
 	}
 
-	go r.processBlockSyncCh()
-	go r.processPeerUpdates()
+	go r.processBlockSyncCh(ctx)
+	go r.processPeerUpdates(ctx)
 
 	return nil
 }
@@ -293,11 +293,13 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // message execution will result in a PeerError being sent on the BlockSyncChannel.
 // When the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
-func (r *Reactor) processBlockSyncCh() {
+func (r *Reactor) processBlockSyncCh(ctx context.Context) {
 	defer r.blockSyncCh.Close()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case envelope := <-r.blockSyncCh.In:
 			if err := r.handleMessage(r.blockSyncCh.ID, envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
@@ -346,11 +348,13 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // processPeerUpdates initiates a blocking process where we listen for and handle
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
-func (r *Reactor) processPeerUpdates() {
+func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	defer r.peerUpdates.Close()
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
 
@@ -378,7 +382,7 @@ func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	go r.requestRoutine(ctx)
 
 	r.poolWG.Add(1)
-	go r.poolRoutine(true)
+	go r.poolRoutine(ctx, true)
 
 	return nil
 }
@@ -415,31 +419,23 @@ func (r *Reactor) requestRoutine(ctx context.Context) {
 			go func() {
 				defer r.poolWG.Done()
 
-				r.blockSyncOutBridgeCh <- p2p.Envelope{
+				select {
+				case r.blockSyncOutBridgeCh <- p2p.Envelope{
 					Broadcast: true,
 					Message:   &bcproto.StatusRequest{},
+				}:
+				case <-ctx.Done():
 				}
 			}()
 		}
 	}
 }
 
-func (r *Reactor) stopCtx() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		<-r.closeCh
-		cancel()
-	}()
-
-	return ctx
-}
-
 // poolRoutine handles messages from the poolReactor telling the reactor what to
 // do.
 //
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
-func (r *Reactor) poolRoutine(stateSynced bool) {
+func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool) {
 	var (
 		trySyncTicker           = time.NewTicker(trySyncIntervalMS * time.Millisecond)
 		switchToConsensusTicker = time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
@@ -453,7 +449,6 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 		lastRate    = 0.0
 
 		didProcessCh = make(chan struct{}, 1)
-		ctx          = r.stopCtx()
 	)
 
 	defer trySyncTicker.Stop()
@@ -605,6 +600,8 @@ FOR_LOOP:
 
 			continue FOR_LOOP
 
+		case <-ctx.Done():
+			break FOR_LOOP
 		case <-r.closeCh:
 			break FOR_LOOP
 		case <-r.pool.exitedCh:
