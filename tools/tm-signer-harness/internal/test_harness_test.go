@@ -142,7 +142,9 @@ func harnessTest(
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
 	t.Helper()
-	pvFile, err := privval.GenFilePV("tm-testharness-keyfile", "tm-testharness-statefile", types.ABCIPubKeyTypeEd25519)
+	keyFilename := "tm-testharness-keyfile"
+	stateFilename := "tm-testharness-statefile"
+	pvFile, err := privval.GenFilePV(keyFilename, stateFilename, types.ABCIPubKeyTypeEd25519)
 	if err != nil {
 		panic(err)
 	}
@@ -166,8 +168,8 @@ func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConf
 	require.NoError(t, err)
 	return TestHarnessConfig{
 		BindAddr:         privval.GetFreeLocalhostAddrPort(),
-		KeyFile:          makeTempFile("tm-testharness-keyfile", keyFileContents),
-		StateFile:        makeTempFile("tm-testharness-statefile", stateFileContents),
+		KeyFile:          makeTempFile(keyFilename, keyFileContents),
+		StateFile:        makeTempFile(stateFilename, stateFileContents),
 		GenesisFile:      makeTempFile("tm-testharness-genesisfile", genesisFileContents),
 		AcceptDeadline:   time.Duration(acceptDeadline) * time.Millisecond,
 		ConnDeadline:     time.Duration(defaultConnDeadline) * time.Millisecond,
