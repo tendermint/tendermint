@@ -113,11 +113,9 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 				}
 			}
 			if numLegacy == len(manifest.Nodes) {
-				fmt.Println("omit")
 				continue
 			}
 			if numLegacy == 0 {
-				fmt.Println("omit", "omit")
 				continue
 			}
 		}
