@@ -348,8 +348,16 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	partSize := types.BlockPartSizeBytes
 
-	newRoundCh := subscribe(ctx, t, css[0].eventBus, types.EventQueryNewRound)
-	proposalCh := subscribe(ctx, t, css[0].eventBus, types.EventQueryCompleteProposal)
+	roundChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, css[0].eventBus, types.EventQueryNewRound),
+	}
+	proposalChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, css[0].eventBus, types.EventQueryCompleteProposal),
+	}
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -360,15 +368,15 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	// start the machine
 	startTestRound(ctx, css[0], height, round)
 	incrementHeight(vss...)
-	ensureNewRound(t, newRoundCh, height, 0)
-	ensureNewProposal(t, proposalCh, height, round)
+	roundChecker.ensureNewRound(height, 0)
+	proposalChecker.ensureNewProposal(height, round)
 	rs := css[0].GetRoundState()
 
 	signAddVotes(ctx, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
 		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	roundChecker.ensureNewRound(height+1, 0)
 
 	// HEIGHT 2
 	height++
@@ -395,12 +403,12 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(t, proposalCh, height, round)
+	proposalChecker.ensureNewProposal(height, round)
 	rs = css[0].GetRoundState()
 	signAddVotes(ctx, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
 		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	roundChecker.ensureNewRound(height+1, 0)
 
 	// HEIGHT 3
 	height++
@@ -427,12 +435,12 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(t, proposalCh, height, round)
+	proposalChecker.ensureNewProposal(height, round)
 	rs = css[0].GetRoundState()
 	signAddVotes(ctx, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
 		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	roundChecker.ensureNewRound(height+1, 0)
 
 	// HEIGHT 4
 	height++
@@ -486,7 +494,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(t, proposalCh, height, round)
+	proposalChecker.ensureNewProposal(height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, removeValidatorTx2, nil, mempool.TxInfo{})
@@ -503,7 +511,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			newVss[i])
 	}
 
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	roundChecker.ensureNewRound(height+1, 0)
 
 	// HEIGHT 5
 	height++
@@ -513,7 +521,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	newVss[newVssIdx].VotingPower = 25
 	sort.Sort(ValidatorStubsByPower(newVss))
 	selfIndex = valIndexFn(0)
-	ensureNewProposal(t, proposalCh, height, round)
+	proposalChecker.ensureNewProposal(height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
 		if i == selfIndex {
@@ -524,7 +532,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 			newVss[i])
 	}
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	roundChecker.ensureNewRound(height+1, 0)
 
 	// HEIGHT 6
 	height++
@@ -551,7 +559,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-	ensureNewProposal(t, proposalCh, height, round)
+	proposalChecker.ensureNewProposal(height, round)
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+3; i++ {
 		if i == selfIndex {
@@ -562,7 +570,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 			newVss[i])
 	}
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	roundChecker.ensureNewRound(height+1, 0)
 
 	sim.Chain = make([]*types.Block, 0)
 	sim.Commits = make([]*types.Commit, 0)

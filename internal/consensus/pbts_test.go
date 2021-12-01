@@ -45,7 +45,7 @@ type pbtsTestHarness struct {
 	chainID string
 
 	// channels for verifying that the observed validator completes certain actions.
-	ensureProposalCh, roundCh, blockCh, ensureVoteCh <-chan tmpubsub.Message
+	proposalChecker, roundChecker, blockChecker, voteChecker eventChecker
 
 	resultCh <-chan heightResult
 
@@ -111,10 +111,10 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		validatorClock:        clock,
 		currentHeight:         1,
 		chainID:               cfg.ChainID(),
-		roundCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound),
-		ensureProposalCh:      subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal),
-		blockCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),
-		ensureVoteCh:          subscribeToVoterBuffered(ctx, t, cs, pubKey.Address()),
+		roundChecker:          eventChecker{ctx: ctx, t: t, ch: subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)},
+		proposalChecker:       eventChecker{ctx: ctx, t: t, ch: subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal)},
+		blockChecker:          eventChecker{ctx: ctx, t: t, ch: subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)},
+		voteChecker:           eventChecker{ctx: ctx, t: t, ch: subscribeToVoterBuffered(ctx, t, cs, pubKey.Address())},
 		resultCh:              resultCh,
 		t:                     t,
 		ctx:                   ctx,
@@ -125,17 +125,17 @@ func (p *pbtsTestHarness) genesisHeight() heightResult {
 	p.validatorClock.On("Now").Return(p.height2ProposedBlockTime).Times(8)
 
 	startTestRound(p.ctx, p.observedState, p.currentHeight, p.currentRound)
-	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
+	p.roundChecker.ensureNewRound(p.currentHeight, p.currentRound)
 	propBlock, partSet := p.observedState.createProposalBlock()
 	bid := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: partSet.Header()}
-	ensureProposal(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, bid)
-	ensurePrevote(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	p.proposalChecker.ensureMatchingProposal(p.currentHeight, p.currentRound, bid)
+	p.voteChecker.ensurePrevote(p.currentHeight, p.currentRound)
 	signAddVotes(p.ctx, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
 
 	signAddVotes(p.ctx, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
-	ensurePrecommit(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	p.voteChecker.ensurePrecommit(p.currentHeight, p.currentRound)
 
-	ensureNewBlock(p.t, p.blockCh, p.currentHeight)
+	p.blockChecker.ensureNewBlock(p.currentHeight)
 	p.currentHeight++
 	incrementHeight(p.otherValidators...)
 	return <-p.resultCh
@@ -150,7 +150,7 @@ func (p *pbtsTestHarness) height2() heightResult {
 func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
 	p.validatorClock.On("Now").Return(nextProposedTime).Times(8)
 
-	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
+	p.roundChecker.ensureNewRound(p.currentHeight, p.currentRound)
 
 	b, _ := p.observedState.createProposalBlock()
 	b.Height = p.currentHeight
@@ -174,13 +174,13 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 	if err := p.observedState.SetProposalAndBlock(prop, b, ps, "peerID"); err != nil {
 		p.t.Fatal(err)
 	}
-	ensureProposal(p.t, p.ensureProposalCh, p.currentHeight, 0, bid)
+	p.proposalChecker.ensureMatchingProposal(p.currentHeight, 0, bid)
 
-	ensurePrevote(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	p.voteChecker.ensurePrevote(p.currentHeight, p.currentRound)
 	signAddVotes(p.ctx, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
 
 	signAddVotes(p.ctx, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
-	ensurePrecommit(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	p.voteChecker.ensurePrecommit(p.currentHeight, p.currentRound)
 
 	p.currentHeight++
 	incrementHeight(p.otherValidators...)

@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -19,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 // for testing
@@ -43,15 +43,19 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
+	blockChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),
+	}
 	startTestRound(ctx, cs, height, round)
 
-	ensureNewEventOnChannel(t, newBlockCh) // first block gets committed
-	ensureNoNewEventOnChannel(t, newBlockCh)
+	blockChecker.ensureNewBlock(height) // first block gets committed
+	blockChecker.ensureNoNewEvent("unexpected block event")
 	deliverTxsRange(ctx, cs, 0, 1)
-	ensureNewEventOnChannel(t, newBlockCh) // commit txs
-	ensureNewEventOnChannel(t, newBlockCh) // commit updated app hash
-	ensureNoNewEventOnChannel(t, newBlockCh)
+	blockChecker.ensureNewEvent() // commit txs
+	blockChecker.ensureNewEvent() // commit updated app hash
+	blockChecker.ensureNoNewEvent("unexpected block event")
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -71,12 +75,16 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
-	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
+	blockChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),
+	}
 	startTestRound(ctx, cs, cs.Height, cs.Round)
 
-	ensureNewEventOnChannel(t, newBlockCh)   // first block gets committed
-	ensureNoNewEventOnChannel(t, newBlockCh) // then we dont make a block ...
-	ensureNewEventOnChannel(t, newBlockCh)   // until the CreateEmptyBlocksInterval has passed
+	blockChecker.ensureNewEvent()                     // first block gets committed
+	blockChecker.ensureNoNewEvent("unexpected block") // then we dont make a block ...
+	blockChecker.ensureNewEvent()                     // until the CreateEmptyBlocksInterval has passed
 }
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
@@ -95,9 +103,21 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
-	newRoundCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)
-	timeoutCh := subscribe(ctx, t, cs.eventBus, types.EventQueryTimeoutPropose)
+	blockChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),
+	}
+	roundChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound),
+	}
+	proposalTimeoutChecker := eventChecker{
+		ctx: ctx,
+		t:   t,
+		ch:  subscribe(ctx, t, cs.eventBus, types.EventQueryTimeoutPropose),
+	}
 	cs.setProposal = func(proposal *types.Proposal) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
@@ -109,19 +129,19 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	}
 	startTestRound(ctx, cs, height, round)
 
-	ensureNewRound(t, newRoundCh, height, round) // first round at first height
-	ensureNewEventOnChannel(t, newBlockCh)       // first block gets committed
+	roundChecker.ensureNewRound(height, round) // first round at first height
+	blockChecker.ensureNewEvent()              // first block gets committed
 
 	height++ // moving to the next height
 	round = 0
 
-	ensureNewRound(t, newRoundCh, height, round) // first round at next height
-	deliverTxsRange(ctx, cs, 0, 1)               // we deliver txs, but dont set a proposal so we get the next round
-	ensureNewTimeout(t, timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
+	roundChecker.ensureNewRound(height, round) // first round at next height
+	deliverTxsRange(ctx, cs, 0, 1)             // we deliver txs, but dont set a proposal so we get the next round
+	proposalTimeoutChecker.ensureNewTimeout(height, round)
 
-	round++                                      // moving to the next round
-	ensureNewRound(t, newRoundCh, height, round) // wait for the next round
-	ensureNewEventOnChannel(t, newBlockCh)       // now we can commit the block
+	round++                                    // moving to the next round
+	roundChecker.ensureNewRound(height, round) // wait for the next round
+	blockChecker.ensureNewEvent()              // now we can commit the block
 }
 
 func deliverTxsRange(ctx context.Context, cs *State, start, end int) {

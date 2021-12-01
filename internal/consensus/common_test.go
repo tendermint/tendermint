@@ -544,239 +544,244 @@ func makeState(ctx context.Context, cfg *config.Config, logger log.Logger, nVali
 
 //-------------------------------------------------------------------------------
 
-func ensureNoNewEvent(t *testing.T, ch <-chan tmpubsub.Message, timeout time.Duration,
-	errorMessage string) {
-	t.Helper()
+type eventChecker struct {
+	ctx     context.Context
+	t       *testing.T
+	ch      <-chan tmpubsub.Message
+	timeout time.Duration
+}
+
+func (ec eventChecker) ensureMatchingProposal(height int64, round int32, propID types.BlockID) {
+	ec.t.Helper()
 	select {
-	case <-time.After(timeout):
-		break
-	case <-ch:
-		t.Fatalf("unexpected event: %s", errorMessage)
+	case <-time.After(ensureTimeout):
+		ec.t.Fatalf("Timeout expired while waiting for NewProposal event")
+	case msg := <-ec.ch:
+		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
+		if !ok {
+			ec.t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
+				msg.Data())
+		}
+		if proposalEvent.Height != height {
+			ec.t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
+		}
+		if proposalEvent.Round != round {
+			ec.t.Fatalf("expected round %v, got %v", round, proposalEvent.Round)
+		}
+		if !proposalEvent.BlockID.Equals(propID) {
+			ec.t.Fatalf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
+		}
 	}
 }
 
-func ensureNoNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
-	t.Helper()
-	ensureNoNewEvent(
-		t,
-		ch,
-		ensureTimeout,
-		"We should be stuck waiting, not receiving new event on the channel")
-}
-
-func ensureNoNewRoundStep(t *testing.T, stepCh <-chan tmpubsub.Message) {
-	t.Helper()
-	ensureNoNewEvent(
-		t,
-		stepCh,
-		ensureTimeout,
-		"We should be stuck waiting, not receiving NewRoundStep event")
-}
-
-func ensureNoNewTimeout(t *testing.T, stepCh <-chan tmpubsub.Message, timeout int64) {
-	t.Helper()
-	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
-	ensureNoNewEvent(
-		t,
-		stepCh,
-		timeoutDuration,
-		"We should be stuck waiting, not receiving NewTimeout event")
-}
-
-func ensureNewEvent(t *testing.T, ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration, errorMessage string) { // nolint: lll
-	t.Helper()
+func (ec eventChecker) ensureNewProposal(height int64, round int32) {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
+	}
 	select {
-	case <-time.After(timeout):
-		t.Fatalf("timed out waiting for new event: %s", errorMessage)
-	case msg := <-ch:
+	case <-time.After(to):
+		ec.t.Fatalf("Timeout expired while waiting for NewProposal event")
+	case msg := <-ec.ch:
+		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
+		if !ok {
+			ec.t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
+				msg.Data())
+		}
+		if proposalEvent.Height != height {
+			ec.t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
+		}
+		if proposalEvent.Round != round {
+			ec.t.Fatalf("expected round %v, got %v", round, proposalEvent.Round)
+		}
+	}
+
+}
+func (ec eventChecker) ensureNewRound(height int64, round int32) {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
+	}
+	select {
+	case <-time.After(to):
+		ec.t.Fatal("Timeout expired while waiting for NewRound event")
+	case msg := <-ec.ch:
+		newRoundEvent, ok := msg.Data().(types.EventDataNewRound)
+		if !ok {
+			ec.t.Fatalf("expected a EventDataNewRound, got %T. Wrong subscription channel?", msg.Data())
+		}
+		if newRoundEvent.Height != height {
+			ec.t.Fatalf("expected height %v, got %v", height, newRoundEvent.Height)
+		}
+		if newRoundEvent.Round != round {
+			ec.t.Fatalf("expected round %v, got %v", round, newRoundEvent.Round)
+		}
+	}
+}
+
+func (ec eventChecker) ensureNewEvent() {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
+	}
+	select {
+	case <-time.After(to):
+		ec.t.Fatal("timeout occured while waiting for event")
+	case <-ec.ch:
+	}
+}
+func (ec eventChecker) ensureNoNewEvent(errorMessage string) {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
+	}
+	select {
+	case <-time.After(to):
+		break
+	case <-ec.ch:
+		ec.t.Fatalf("unexpected event: %s", errorMessage)
+	}
+}
+
+func (ec eventChecker) ensureNoNewRoundStep() {
+	ec.t.Helper()
+	ec.ensureNoNewEvent("We should be stuck waiting, not receiving NewRoundStep event")
+}
+
+func (ec eventChecker) ensureNoNewTimeout() {
+	ec.t.Helper()
+	ec.ensureNoNewEvent("We should be stuck waiting, not receiving NewTimeout event")
+}
+
+func (ec eventChecker) ensureNewRoundState(height int64, round int32, errorMessage string) { // nolint: lll
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
+	}
+	select {
+	case <-time.After(to):
+		ec.t.Fatalf("timed out waiting for new event: %s", errorMessage)
+	case msg := <-ec.ch:
 		roundStateEvent, ok := msg.Data().(types.EventDataRoundState)
 		if !ok {
-			t.Fatalf("expected a EventDataRoundState, got %T. Wrong subscription channel?", msg.Data())
+			ec.t.Fatalf("expected a EventDataRoundState, got %T. Wrong subscription channel?", msg.Data())
 		}
 		if roundStateEvent.Height != height {
-			t.Fatalf("expected height %v, got %v", height, roundStateEvent.Height)
+			ec.t.Fatalf("expected height %v, got %v", height, roundStateEvent.Height)
 		}
 		if roundStateEvent.Round != round {
-			t.Fatalf("expected round %v, got %v", round, roundStateEvent.Round)
+			ec.t.Fatalf("expected round %v, got %v", round, roundStateEvent.Round)
 		}
 		// TODO: We could check also for a step at this point!
 	}
 }
 
-func ensureNewRound(t *testing.T, roundCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
-	select {
-	case <-time.After(ensureTimeout):
-		t.Fatal("Timeout expired while waiting for NewRound event")
-	case msg := <-roundCh:
-		newRoundEvent, ok := msg.Data().(types.EventDataNewRound)
-		if !ok {
-			t.Fatalf("expected a EventDataNewRound, got %T. Wrong subscription channel?", msg.Data())
-		}
-		if newRoundEvent.Height != height {
-			t.Fatalf("expected height %v, got %v", height, newRoundEvent.Height)
-		}
-		if newRoundEvent.Round != round {
-			t.Fatalf("expected round %v, got %v", round, newRoundEvent.Round)
-		}
+func (ec eventChecker) ensureNewTimeout(height int64, round int32) {
+	ec.t.Helper()
+	ec.ensureNewRoundState(height, round, "Timeout expired while waiting for NewTimeout event")
+}
+
+func (ec eventChecker) ensureNewValidBlock(height int64, round int32) {
+	ec.t.Helper()
+	ec.ensureNewRoundState(height, round, "Timeout expired while waiting for NewValidBlock event")
+}
+
+func (ec eventChecker) ensureNewBlock(height int64) {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
 	}
-}
-
-func ensureNewTimeout(t *testing.T, timeoutCh <-chan tmpubsub.Message, height int64, round int32, timeout int64) {
-	t.Helper()
-	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
-	ensureNewEvent(t, timeoutCh, height, round, timeoutDuration,
-		"Timeout expired while waiting for NewTimeout event")
-}
-
-func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
 	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for NewProposal event")
-	case msg := <-proposalCh:
-		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
-		if !ok {
-			t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-				msg.Data())
-		}
-		if proposalEvent.Height != height {
-			t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
-		}
-		if proposalEvent.Round != round {
-			t.Fatalf("expected round %v, got %v", round, proposalEvent.Round)
-		}
-	}
-}
-
-func ensureNewValidBlock(t *testing.T, validBlockCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
-	ensureNewEvent(t, validBlockCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewValidBlock event")
-}
-
-func ensureNewBlock(t *testing.T, blockCh <-chan tmpubsub.Message, height int64) {
-	t.Helper()
-	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for NewBlock event")
-	case msg := <-blockCh:
+	case <-time.After(to):
+		ec.t.Fatalf("Timeout expired while waiting for NewBlock event")
+	case msg := <-ec.ch:
 		blockEvent, ok := msg.Data().(types.EventDataNewBlock)
 		if !ok {
-			t.Fatalf("expected a EventDataNewBlock, got %T. Wrong subscription channel?",
+			ec.t.Fatalf("expected a EventDataNewBlock, got %T. Wrong subscription channel?",
 				msg.Data())
 		}
 		if blockEvent.Block.Height != height {
-			t.Fatalf("expected height %v, got %v", height, blockEvent.Block.Height)
+			ec.t.Fatalf("expected height %v, got %v", height, blockEvent.Block.Height)
 		}
 	}
 }
 
-func ensureNewBlockHeader(t *testing.T, blockCh <-chan tmpubsub.Message, height int64, blockHash tmbytes.HexBytes) {
-	t.Helper()
+func (ec eventChecker) ensureNewBlockHeader(height int64, blockHash tmbytes.HexBytes) {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
+
+	}
 	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for NewBlockHeader event")
-	case msg := <-blockCh:
+	case <-time.After(to):
+		ec.t.Fatalf("Timeout expired while waiting for NewBlockHeader event")
+	case msg := <-ec.ch:
 		blockHeaderEvent, ok := msg.Data().(types.EventDataNewBlockHeader)
 		if !ok {
-			t.Fatalf("expected a EventDataNewBlockHeader, got %T. Wrong subscription channel?",
+			ec.t.Fatalf("expected a EventDataNewBlockHeader, got %T. Wrong subscription channel?",
 				msg.Data())
 		}
 		if blockHeaderEvent.Header.Height != height {
-			t.Fatalf("expected height %v, got %v", height, blockHeaderEvent.Header.Height)
+			ec.t.Fatalf("expected height %v, got %v", height, blockHeaderEvent.Header.Height)
 		}
 		if !bytes.Equal(blockHeaderEvent.Header.Hash(), blockHash) {
-			t.Fatalf("expected header %X, got %X", blockHash, blockHeaderEvent.Header.Hash())
+			ec.t.Fatalf("expected header %X, got %X", blockHash, blockHeaderEvent.Header.Hash())
 		}
 	}
 }
 
-func ensureLock(t *testing.T, lockCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
-	ensureNewEvent(t, lockCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for LockValue event")
+func (ec eventChecker) ensureLock(height int64, round int32) {
+	ec.t.Helper()
+	ec.ensureNewRoundState(height, round, "Timeout expired while waiting for LockValue event")
 }
 
-func ensureRelock(t *testing.T, relockCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
-	ensureNewEvent(t, relockCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for RelockValue event")
+func (ec eventChecker) ensureRelock(height int64, round int32) {
+	ec.t.Helper()
+	ec.ensureNewRoundState(height, round, "Timeout expired while waiting for RelockValue event")
 }
 
-func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
-	t.Helper()
-	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for NewProposal event")
-	case msg := <-proposalCh:
-		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
-		if !ok {
-			t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-				msg.Data())
-		}
-		if proposalEvent.Height != height {
-			t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
-		}
-		if proposalEvent.Round != round {
-			t.Fatalf("expected round %v, got %v", round, proposalEvent.Round)
-		}
-		if !proposalEvent.BlockID.Equals(propID) {
-			t.Fatalf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
-		}
+func (ec eventChecker) ensurePrecommit(height int64, round int32) {
+	ec.t.Helper()
+	ec.ensureVote(height, round, tmproto.PrecommitType)
+}
+
+func (ec eventChecker) ensurePrevote(height int64, round int32) {
+	ec.t.Helper()
+	ec.ensureVote(height, round, tmproto.PrevoteType)
+}
+
+func (ec eventChecker) ensureVote(height int64, round int32, voteType tmproto.SignedMsgType) {
+	ec.t.Helper()
+	to := ec.timeout
+	if to == 0 {
+		to = ensureTimeout
 	}
-}
-
-func ensurePrecommit(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
-	ensureVote(t, voteCh, height, round, tmproto.PrecommitType)
-}
-
-func ensurePrevote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
-	t.Helper()
-	ensureVote(t, voteCh, height, round, tmproto.PrevoteType)
-}
-
-func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32,
-	voteType tmproto.SignedMsgType) {
-	t.Helper()
 	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for NewVote event")
-	case msg := <-voteCh:
+	case <-time.After(to):
+		ec.t.Fatalf("Timeout expired while waiting for NewVote event")
+	case msg := <-ec.ch:
 		voteEvent, ok := msg.Data().(types.EventDataVote)
 		if !ok {
-			t.Fatalf("expected a EventDataVote, got %T. Wrong subscription channel?",
+			ec.t.Fatalf("expected a EventDataVote, got %T. Wrong subscription channel?",
 				msg.Data())
 		}
 		vote := voteEvent.Vote
 		if vote.Height != height {
-			t.Fatalf("expected height %v, got %v", height, vote.Height)
+			ec.t.Fatalf("expected height %v, got %v", height, vote.Height)
 		}
 		if vote.Round != round {
-			t.Fatalf("expected round %v, got %v", round, vote.Round)
+			ec.t.Fatalf("expected round %v, got %v", round, vote.Round)
 		}
 		if vote.Type != voteType {
-			t.Fatalf("expected type %v, got %v", voteType, vote.Type)
+			ec.t.Fatalf("expected type %v, got %v", voteType, vote.Type)
 		}
-	}
-}
-
-func ensurePrecommitTimeout(t *testing.T, ch <-chan tmpubsub.Message) {
-	t.Helper()
-	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for the Precommit to Timeout")
-	case <-ch:
-	}
-}
-
-func ensureNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
-	t.Helper()
-	select {
-	case <-time.After(ensureTimeout):
-		t.Fatalf("Timeout expired while waiting for new activity on the channel")
-	case <-ch:
 	}
 }
 
