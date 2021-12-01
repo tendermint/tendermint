@@ -142,8 +142,8 @@ func harnessTest(
 
 func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConfig {
 	t.Helper()
-	keyFilename := "tm-testharness-keyfile"
-	stateFilename := "tm-testharness-statefile"
+	const keyFilename = "tm-testharness-keyfile"
+	const stateFilename = "tm-testharness-statefile"
 	pvFile, err := privval.GenFilePV(keyFilename, stateFilename, types.ABCIPubKeyTypeEd25519)
 	if err != nil {
 		panic(err)
