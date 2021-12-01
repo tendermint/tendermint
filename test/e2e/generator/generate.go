@@ -105,6 +105,23 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			continue
 		}
 
+		if opt["p2p"] == HybridP2PMode {
+			numLegacy := 0
+			for _, n := range manifest.Nodes {
+				if n.UseLegacyP2P {
+					numLegacy++
+				}
+			}
+			if numLegacy == len(manifest.Nodes) {
+				fmt.Println("omit")
+				continue
+			}
+			if numLegacy == 0 {
+				fmt.Println("omit", "omit")
+				continue
+			}
+		}
+
 		manifests = append(manifests, manifest)
 	}
 
@@ -215,6 +232,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 				hybridNumLegacy++
 				if hybridNumNew == 0 {
 					hybridNumNew++
+					hybridNumLegacy--
+					node.UseLegacyP2P = false
+				}
+
+				if node.StartAt > manifest.InitialHeight {
 					hybridNumLegacy--
 					node.UseLegacyP2P = false
 				}
@@ -380,10 +402,14 @@ func generateNode(
 		node.StateSync = nodeStateSyncs.Choose(r)
 		if manifest.InitialHeight-startAt <= 5 && node.StateSync == e2e.StateSyncDisabled {
 			// avoid needing to blocsync more than five total blocks.
-			node.StateSync = uniformSetChoice([]string{
-				e2e.StateSyncP2P,
-				e2e.StateSyncRPC,
-			}).Choose(r)[0]
+			if node.UseLegacyP2P {
+				node.StateSync = e2e.StateSyncRPC
+			} else {
+				node.StateSync = uniformSetChoice([]string{
+					e2e.StateSyncP2P,
+					e2e.StateSyncRPC,
+				}).Choose(r)[0]
+			}
 		}
 	}
 
