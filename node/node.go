@@ -514,25 +514,24 @@ func makeSeedNode(
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
 	if n.config.RPC.PprofListenAddress != "" {
+		rpcCtx, rpcCancel := context.WithCancel(ctx)
+		srv := &http.Server{Addr: n.config.RPC.PprofListenAddress, Handler: nil}
 		go func() {
-			sig := make(chan struct{})
+			select {
+			case <-ctx.Done():
+				sctx, scancel := context.WithTimeout(context.Background(), time.Second)
+				defer scancel()
+				_ = srv.Shutdown(sctx)
+			case <-rpcCtx.Done():
+			}
+		}()
 
+		go func() {
 			n.Logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
-			srv := &http.Server{Addr: n.config.RPC.PprofListenAddress, Handler: nil}
-
-			go func() {
-				select {
-				case <-ctx.Done():
-					sctx, cancel := context.WithTimeout(context.Background(), time.Second)
-					defer cancel()
-					_ = srv.Shutdown(sctx)
-				case <-sig:
-				}
-			}()
 
 			if err := srv.ListenAndServe(); err != nil {
 				n.Logger.Error("pprof server error", "err", err)
-				close(sig)
+				rpcCancel()
 			}
 		}()
 	}
@@ -835,23 +834,25 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 			),
 		),
 	}
+
+	promCtx, promCancel := context.WithCancel(ctx)
 	go func() {
-		sig := make(chan struct{})
-		go func() {
-			select {
-			case <-ctx.Done():
-				sctx, cancel := context.WithTimeout(context.Background(), time.Second)
-				defer cancel()
-				_ = srv.Shutdown(sctx)
-			case <-sig:
-			}
-		}()
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			// Error starting or closing listener:
-			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
-			close(sig)
+		select {
+		case <-ctx.Done():
+			sctx, scancel := context.WithTimeout(context.Background(), time.Second)
+			defer scancel()
+			_ = srv.Shutdown(sctx)
+		case <-promCtx.Done():
 		}
 	}()
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+			promCancel()
+		}
+	}()
+
 	return srv
 }
 

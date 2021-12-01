@@ -89,7 +89,6 @@ func TestServeTLS(t *testing.T) {
 
 	chErr := make(chan error, 1)
 	go func() {
-		// FIXME This goroutine leaks
 		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 	}()
 
