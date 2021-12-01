@@ -1109,7 +1109,6 @@ func (cs *State) enterPropose(height int64, round int32) {
 	if cs.isProposer(ourAddress) {
 		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
 		if proposerWaitTime > 0 {
-			fmt.Println("scheduling a wait!")
 			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
 			return
 		}
@@ -1208,6 +1207,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	ctx, cancel := context.WithTimeout(context.TODO(), cs.config.TimeoutPropose)
 	defer cancel()
 	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
+		fmt.Printf("signed the proposal with time %v for height %d\n", block.Header.Time, block.Height)
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
