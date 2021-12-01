@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -117,7 +118,7 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 				logger.Info("RPC HTTPS server starting", "address", listenerAddr,
 					"certfile", certFile, "keyfile", keyFile)
 				err := server.ListenAndServeTLS(tctx, certFile, keyFile)
-				if !errors.Is(err, net.ErrClosed) {
+				if !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
 					return err
 				}
 				logger.Info("RPC HTTPS server stopped", "address", listenerAddr)
@@ -128,7 +129,7 @@ func startRPCServers(ctx context.Context, cfg *config.RPCConfig, logger log.Logg
 			g.Go(func() error {
 				logger.Info("RPC HTTP server starting", "address", listenerAddr)
 				err := server.ListenAndServe(tctx)
-				if !errors.Is(err, net.ErrClosed) {
+				if !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
 					return err
 				}
 				logger.Info("RPC HTTP server stopped", "address", listenerAddr)
