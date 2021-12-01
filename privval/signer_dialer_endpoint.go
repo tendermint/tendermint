@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -68,6 +69,9 @@ func NewSignerDialerEndpoint(
 
 	return sd
 }
+
+func (sd *SignerDialerEndpoint) OnStart(context.Context) error { return nil }
+func (sd *SignerDialerEndpoint) OnStop()                       {}
 
 func (sd *SignerDialerEndpoint) ensureConnection() error {
 	if sd.IsConnected() {

@@ -60,10 +60,10 @@ func getSignerTestCases(ctx context.Context, t *testing.T) []signerTestCase {
 }
 
 func TestSignerClose(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	for _, tc := range getSignerTestCases(bctx, t) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 

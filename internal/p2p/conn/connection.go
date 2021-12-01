@@ -101,6 +101,8 @@ type MConnection struct {
 	// are safe to call concurrently.
 	stopMtx tmsync.Mutex
 
+	cancel context.CancelFunc
+
 	flushTimer *timer.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer  *time.Ticker         // send pings periodically
 
@@ -187,6 +189,7 @@ func NewMConnectionWithConfig(
 		onError:       onError,
 		config:        config,
 		created:       time.Now(),
+		cancel:        func() {},
 	}
 
 	mconn.BaseService = *service.NewBaseService(logger, "MConnection", mconn)
@@ -211,9 +214,6 @@ func NewMConnectionWithConfig(
 
 // OnStart implements BaseService
 func (c *MConnection) OnStart(ctx context.Context) error {
-	if err := c.BaseService.OnStart(ctx); err != nil {
-		return err
-	}
 	c.flushTimer = timer.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = time.NewTicker(c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
@@ -247,7 +247,6 @@ func (c *MConnection) stopServices() (alreadyStopped bool) {
 	default:
 	}
 
-	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
@@ -296,6 +295,7 @@ func (c *MConnection) stopForError(r interface{}) {
 	if err := c.Stop(); err != nil {
 		c.Logger.Error("Error stopping connection", "err", err)
 	}
+
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {
 			c.onError(r)

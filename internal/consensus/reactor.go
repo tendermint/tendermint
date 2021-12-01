@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"time"
@@ -205,11 +206,12 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
-
 	r.unsubscribeFromBroadcastEvents()
 
 	if err := r.state.Stop(); err != nil {
-		r.Logger.Error("failed to stop consensus state", "err", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			r.Logger.Error("failed to stop consensus state", "err", err)
+		}
 	}
 
 	if !r.WaitSync() {

@@ -203,7 +203,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
-	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 
 	// run the router
 	rts.start(t)
@@ -238,7 +238,7 @@ func TestReactorConcurrency(t *testing.T) {
 		// 1. submit a bunch of txs
 		// 2. update the whole mempool
 
-		txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+		txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
@@ -257,7 +257,7 @@ func TestReactorConcurrency(t *testing.T) {
 
 		// 1. submit a bunch of txs
 		// 2. update none
-		_ = checkTxs(t, rts.reactors[secondary].mempool, numTxs, UnknownPeerID)
+		_ = checkTxs(ctx, t, rts.reactors[secondary].mempool, numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
@@ -290,7 +290,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	secondary := rts.nodes[1]
 
 	peerID := uint16(1)
-	_ = checkTxs(t, rts.mempools[primary], numTxs, peerID)
+	_ = checkTxs(ctx, t, rts.mempools[primary], numTxs, peerID)
 
 	rts.start(t)
 
@@ -430,7 +430,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	txs := checkTxs(t, rts.reactors[primary].mempool, 4, UnknownPeerID)
+	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, 4, UnknownPeerID)
 	require.Equal(t, 4, len(txs))
 	require.Equal(t, 4, rts.mempools[primary].Size())
 	require.Equal(t, 0, rts.mempools[secondary].Size())

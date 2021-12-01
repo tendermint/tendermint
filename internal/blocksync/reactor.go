@@ -158,7 +158,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 			return err
 		}
 		r.poolWG.Add(1)
-		go r.requestRoutine()
+		go r.requestRoutine(ctx)
 
 		r.poolWG.Add(1)
 		go r.poolRoutine(false)
@@ -375,7 +375,7 @@ func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	r.syncStartTime = time.Now()
 
 	r.poolWG.Add(1)
-	go r.requestRoutine()
+	go r.requestRoutine(ctx)
 
 	r.poolWG.Add(1)
 	go r.poolRoutine(true)
@@ -383,7 +383,7 @@ func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	return nil
 }
 
-func (r *Reactor) requestRoutine() {
+func (r *Reactor) requestRoutine(ctx context.Context) {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	defer statusUpdateTicker.Stop()
 
@@ -394,7 +394,7 @@ func (r *Reactor) requestRoutine() {
 		case <-r.closeCh:
 			return
 
-		case <-r.pool.Quit():
+		case <-ctx.Done():
 			return
 
 		case request := <-r.requestsCh:
@@ -607,7 +607,7 @@ FOR_LOOP:
 
 		case <-r.closeCh:
 			break FOR_LOOP
-		case <-r.pool.Quit():
+		case <-r.pool.exitedCh:
 			break FOR_LOOP
 		}
 	}
