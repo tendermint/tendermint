@@ -84,6 +84,7 @@ type BlockPool struct {
 
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
+	exitedCh   chan struct{}
 
 	startHeight               int64
 	lastHundredBlockTimeStamp time.Time
@@ -102,11 +103,11 @@ func NewBlockPool(
 	bp := &BlockPool{
 		peers: make(map[types.NodeID]*bpPeer),
 
-		requesters:  make(map[int64]*bpRequester),
-		height:      start,
-		startHeight: start,
-		numPending:  0,
-
+		requesters:   make(map[int64]*bpRequester),
+		height:       start,
+		startHeight:  start,
+		numPending:   0,
+		exitedCh:     make(chan struct{}),
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 		lastSyncRate: 0,
@@ -121,8 +122,16 @@ func (pool *BlockPool) OnStart(ctx context.Context) error {
 	pool.lastAdvance = time.Now()
 	pool.lastHundredBlockTimeStamp = pool.lastAdvance
 	go pool.makeRequestersRoutine(ctx)
+
+	go func() {
+		defer close(pool.exitedCh)
+		pool.Wait()
+	}()
+
 	return nil
 }
+
+func (*BlockPool) OnStop() {}
 
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
@@ -572,9 +581,11 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 }
 
 func (bpr *bpRequester) OnStart(ctx context.Context) error {
-	go bpr.requestRoutine()
+	go bpr.requestRoutine(ctx)
 	return nil
 }
+
+func (*bpRequester) OnStop() {}
 
 // Returns true if the peer matches and block doesn't already exist.
 func (bpr *bpRequester) setBlock(block *types.Block, peerID types.NodeID) bool {
@@ -630,7 +641,13 @@ func (bpr *bpRequester) redo(peerID types.NodeID) {
 
 // Responsible for making more requests as necessary
 // Returns only when a block is found (e.g. AddBlock() is called)
-func (bpr *bpRequester) requestRoutine() {
+func (bpr *bpRequester) requestRoutine(ctx context.Context) {
+	bprPoolDone := make(chan struct{})
+	go func() {
+		defer close(bprPoolDone)
+		bpr.pool.Wait()
+	}()
+
 OUTER_LOOP:
 	for {
 		// Pick a peer to send request to.
@@ -656,12 +673,12 @@ OUTER_LOOP:
 	WAIT_LOOP:
 		for {
 			select {
-			case <-bpr.pool.Quit():
+			case <-ctx.Done():
+				return
+			case <-bpr.pool.exitedCh:
 				if err := bpr.Stop(); err != nil {
 					bpr.Logger.Error("Error stopped requester", "err", err)
 				}
-				return
-			case <-bpr.Quit():
 				return
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {

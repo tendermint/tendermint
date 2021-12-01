@@ -158,7 +158,7 @@ func (rts *reactorTestSuite) addNode(
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

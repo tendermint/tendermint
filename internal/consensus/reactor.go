@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"time"
@@ -205,11 +206,12 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
-
 	r.unsubscribeFromBroadcastEvents()
 
 	if err := r.state.Stop(); err != nil {
-		r.Logger.Error("failed to stop consensus state", "err", err)
+		if !errors.Is(err, service.ErrAlreadyStopped) {
+			r.Logger.Error("failed to stop consensus state", "err", err)
+		}
 	}
 
 	if !r.WaitSync() {
@@ -275,7 +277,7 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
-	r.state.updateToState(state)
+	r.state.updateToState(ctx, state)
 
 	r.mtx.Lock()
 	r.waitSync = false
@@ -299,7 +301,7 @@ conR:
 	}
 
 	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
-	if err := r.eventBus.PublishEventBlockSyncStatus(d); err != nil {
+	if err := r.eventBus.PublishEventBlockSyncStatus(ctx, d); err != nil {
 		r.Logger.Error("failed to emit the blocksync complete event", "err", err)
 	}
 }

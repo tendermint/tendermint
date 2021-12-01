@@ -38,7 +38,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
 	txsSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -55,7 +55,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		assert.Equal(t, result, edt.Result)
 	}()
 
-	err = eventBus.PublishEventTx(types.EventDataTx{
+	err = eventBus.PublishEventTx(ctx, types.EventDataTx{
 		TxResult: abci.TxResult{
 			Height: 1,
 			Index:  0,
@@ -96,7 +96,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
 	blocksSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -113,7 +113,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
 	}()
 
-	err = eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+	err = eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
 		Block:            block,
 		BlockID:          blockID,
 		ResultBeginBlock: resultBeginBlock,
@@ -205,7 +205,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 
 			sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 				ClientID: fmt.Sprintf("client-%d", i),
-				Query:    tmquery.MustParse(tc.query),
+				Query:    tmquery.MustCompile(tc.query),
 			})
 			require.NoError(t, err)
 
@@ -225,7 +225,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 				}
 			}()
 
-			assert.NoError(t, eventBus.PublishEventTx(types.EventDataTx{
+			assert.NoError(t, eventBus.PublishEventTx(ctx, types.EventDataTx{
 				TxResult: abci.TxResult{
 					Height: 1,
 					Index:  0,
@@ -269,7 +269,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
 	headersSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -285,7 +285,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
 	}()
 
-	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+	err = eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
 		Header:           block.Header,
 		ResultBeginBlock: resultBeginBlock,
 		ResultEndBlock:   resultEndBlock,
@@ -312,7 +312,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	const query = `tm.event='NewEvidence'`
 	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.MustParse(query),
+		Query:    tmquery.MustCompile(query),
 	})
 	require.NoError(t, err)
 
@@ -327,7 +327,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		assert.Equal(t, int64(4), edt.Height)
 	}()
 
-	err = eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
+	err = eventBus.PublishEventNewEvidence(ctx, types.EventDataNewEvidence{
 		Evidence: ev,
 		Height:   4,
 	})
@@ -352,7 +352,7 @@ func TestEventBusPublish(t *testing.T) {
 
 	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: "test",
-		Query:    tmquery.Empty{},
+		Query:    tmquery.All,
 		Limit:    numEventsExpected,
 	})
 	require.NoError(t, err)
@@ -371,23 +371,23 @@ func TestEventBusPublish(t *testing.T) {
 		}
 	}()
 
-	require.NoError(t, eventBus.Publish(types.EventNewBlockHeaderValue,
+	require.NoError(t, eventBus.Publish(ctx, types.EventNewBlockHeaderValue,
 		types.EventDataNewBlockHeader{}))
-	require.NoError(t, eventBus.PublishEventNewBlock(types.EventDataNewBlock{}))
-	require.NoError(t, eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{}))
-	require.NoError(t, eventBus.PublishEventVote(types.EventDataVote{}))
-	require.NoError(t, eventBus.PublishEventNewRoundStep(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventTimeoutPropose(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventTimeoutWait(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventNewRound(types.EventDataNewRound{}))
-	require.NoError(t, eventBus.PublishEventCompleteProposal(types.EventDataCompleteProposal{}))
-	require.NoError(t, eventBus.PublishEventPolka(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventUnlock(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventRelock(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventLock(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdates{}))
-	require.NoError(t, eventBus.PublishEventBlockSyncStatus(types.EventDataBlockSyncStatus{}))
-	require.NoError(t, eventBus.PublishEventStateSyncStatus(types.EventDataStateSyncStatus{}))
+	require.NoError(t, eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{}))
+	require.NoError(t, eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{}))
+	require.NoError(t, eventBus.PublishEventVote(ctx, types.EventDataVote{}))
+	require.NoError(t, eventBus.PublishEventNewRoundStep(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventTimeoutPropose(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventTimeoutWait(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventNewRound(ctx, types.EventDataNewRound{}))
+	require.NoError(t, eventBus.PublishEventCompleteProposal(ctx, types.EventDataCompleteProposal{}))
+	require.NoError(t, eventBus.PublishEventPolka(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventUnlock(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventRelock(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventLock(ctx, types.EventDataRoundState{}))
+	require.NoError(t, eventBus.PublishEventValidatorSetUpdates(ctx, types.EventDataValidatorSetUpdates{}))
+	require.NoError(t, eventBus.PublishEventBlockSyncStatus(ctx, types.EventDataBlockSyncStatus{}))
+	require.NoError(t, eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{}))
 
 	require.GreaterOrEqual(t, <-count, numEventsExpected)
 }
@@ -436,11 +436,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	if err != nil {
 		b.Error(err)
 	}
-	b.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			b.Error(err)
-		}
-	})
+	b.Cleanup(eventBus.Wait)
 
 	q := types.EventQueryNewBlock
 
@@ -473,7 +469,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 			eventValue = randEventValue()
 		}
 
-		err := eventBus.Publish(eventValue, types.EventDataString("Gamora"))
+		err := eventBus.Publish(ctx, eventValue, types.EventDataString("Gamora"))
 		if err != nil {
 			b.Error(err)
 		}

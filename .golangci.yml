@@ -24,7 +24,7 @@ linters:
     - govet
     - ineffassign
     # - interfacer
-    - lll
+    # - lll
     # - maligned
     - misspell
     - nakedret
@@ -46,9 +46,6 @@ issues:
     - path: _test\.go
       linters:
         - gosec
-    - linters:
-        - lll
-      source: "https://"
   max-same-issues: 50
 
 linters-settings:

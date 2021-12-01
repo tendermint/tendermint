@@ -47,6 +47,8 @@ type Client struct {
 	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
+
+	quitCh chan struct{}
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -87,9 +89,10 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 // NewClient returns a new client.
 func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
-		next: next,
-		lc:   lc,
-		prt:  merkle.DefaultProofRuntime(),
+		next:   next,
+		lc:     lc,
+		prt:    merkle.DefaultProofRuntime(),
+		quitCh: make(chan struct{}),
 	}
 	c.BaseService = *service.NewBaseService(nil, "Client", c)
 	for _, o := range opts {
@@ -102,6 +105,12 @@ func (c *Client) OnStart(ctx context.Context) error {
 	if !c.next.IsRunning() {
 		return c.next.Start(ctx)
 	}
+
+	go func() {
+		defer close(c.quitCh)
+		c.Wait()
+	}()
+
 	return nil
 }
 
@@ -122,7 +131,7 @@ func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error
 }
 
 // ABCIQuery requests proof by default.
-func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*coretypes.ResultABCIQuery, error) { //nolint:lll
+func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
@@ -263,7 +272,7 @@ func (c *Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 
 // BlockchainInfo calls rpcclient#BlockchainInfo and then verifies every header
 // returned.
-func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
+func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	res, err := c.next.BlockchainInfo(ctx, minHeight, maxHeight)
 	if err != nil {
 		return nil, err
@@ -586,7 +595,7 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
-			case <-c.Quit():
+			case <-c.quitCh:
 				return
 			}
 		}

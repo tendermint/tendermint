@@ -18,7 +18,7 @@ func TestExample(t *testing.T) {
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "example-client",
-		Query:    query.MustParse("abci.account.name='John'"),
+		Query:    query.MustCompile(`abci.account.name='John'`),
 	}))
 
 	events := []abci.Event{

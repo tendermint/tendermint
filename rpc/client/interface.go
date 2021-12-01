@@ -134,7 +134,7 @@ type EventsClient interface {
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
-	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) //nolint:lll
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error)
 	// Unsubscribe unsubscribes given subscriber from query.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.

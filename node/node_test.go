@@ -48,45 +48,34 @@ func TestNodeStartStop(t *testing.T) {
 	// create & start node
 	ns, err := newDefaultNode(ctx, cfg, log.TestingLogger())
 	require.NoError(t, err)
-	require.NoError(t, ns.Start(ctx))
-
-	t.Cleanup(func() {
-		if ns.IsRunning() {
-			bcancel()
-			ns.Wait()
-		}
-	})
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
+	t.Cleanup(func() {
+		if n.IsRunning() {
+			bcancel()
+			n.Wait()
+		}
+	})
 
+	require.NoError(t, n.Start(ctx))
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
+	tctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	blocksSub, err := n.EventBus().SubscribeWithArgs(tctx, pubsub.SubscribeArgs{
 		ClientID: "node_test",
 		Query:    types.EventQueryNewBlock,
 	})
 	require.NoError(t, err)
-	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if _, err := blocksSub.Next(tctx); err != nil {
-		t.Fatalf("Waiting for event: %v", err)
-	}
+	_, err = blocksSub.Next(tctx)
+	require.NoError(t, err, "waiting for event")
 
-	// stop the node
-	go func() {
-		bcancel()
-		n.Wait()
-	}()
+	cancel()  // stop the subscription context
+	bcancel() // stop the base context
+	n.Wait()
 
-	select {
-	case <-n.Quit():
-		return
-	case <-time.After(10 * time.Second):
-		if n.IsRunning() {
-			t.Fatal("timed out waiting for shutdown")
-		}
-
-	}
+	require.False(t, n.IsRunning(), "node must shut down")
 }
 
 func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl {
@@ -636,50 +625,17 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Contains(t, err.Error(), "the psql connection settings cannot be empty")
 	t.Cleanup(cleanup(ns))
 
-	var psqlConn = "test"
-
-	cfg.TxIndex.Indexer = []string{"psql"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	eventSinks = setupTest(t, cfg)
-
-	assert.Equal(t, 1, len(eventSinks))
-	assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
-
-	cfg.TxIndex.Indexer = []string{"psql", "kv"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	eventSinks = setupTest(t, cfg)
-
-	assert.Equal(t, 2, len(eventSinks))
-	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
-	if eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
-	} else {
-		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, eventSinks[1].Type())
-	}
-
-	cfg.TxIndex.Indexer = []string{"kv", "psql"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	eventSinks = setupTest(t, cfg)
-
-	assert.Equal(t, 2, len(eventSinks))
-	if eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
-	} else {
-		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, eventSinks[1].Type())
-	}
+	// N.B. We can't create a PSQL event sink without starting a postgres
+	// instance for it to talk to. The indexer service tests exercise that case.
 
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
-	cfg.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
-	cfg.TxIndex.PsqlConn = psqlConn
+	cfg.TxIndex.Indexer = []string{"null", "kv", "Kv"}
 	ns, err = newDefaultNode(ctx, cfg, logger)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), e.Error())
 	t.Cleanup(cleanup(ns))
 
-	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
-	cfg.TxIndex.PsqlConn = psqlConn
+	cfg.TxIndex.Indexer = []string{"Null", "kV", "kv", "nUlL"}
 	ns, err = newDefaultNode(ctx, cfg, logger)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), e.Error())

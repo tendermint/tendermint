@@ -131,18 +131,18 @@ func (wal *BaseWAL) OnStart(ctx context.Context) error {
 		return err
 	}
 	wal.flushTicker = time.NewTicker(wal.flushInterval)
-	go wal.processFlushTicks()
+	go wal.processFlushTicks(ctx)
 	return nil
 }
 
-func (wal *BaseWAL) processFlushTicks() {
+func (wal *BaseWAL) processFlushTicks(ctx context.Context) {
 	for {
 		select {
 		case <-wal.flushTicker.C:
 			if err := wal.FlushAndSync(); err != nil {
 				wal.Logger.Error("Periodic WAL flush failed", "err", err)
 			}
-		case <-wal.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -175,7 +175,12 @@ func (wal *BaseWAL) OnStop() {
 // Wait for the underlying autofile group to finish shutting down
 // so it's safe to cleanup files.
 func (wal *BaseWAL) Wait() {
-	wal.group.Wait()
+	if wal.IsRunning() {
+		wal.BaseService.Wait()
+	}
+	if wal.group.IsRunning() {
+		wal.group.Wait()
+	}
 }
 
 // Write is called in newStep and for each receive on the
