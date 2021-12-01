@@ -168,7 +168,8 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	options ...Option) (*Client, error) {
+	options ...Option,
+) (*Client, error) {
 
 	// Check whether the trusted store already has a trusted block. If so, then create
 	// a new client from the trusted store instead of the trust options.
