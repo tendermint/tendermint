@@ -38,10 +38,13 @@ func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	return cli
 }
 
+func (*localClient) OnStart(context.Context) error { return nil }
+func (*localClient) OnStop()                       {}
+
 func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
+	defer app.mtx.Unlock()
 	app.Callback = cb
-	app.mtx.Unlock()
 }
 
 // TODO: change types.Application to include Error()?

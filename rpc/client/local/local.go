@@ -220,7 +220,7 @@ func (c *Local) Subscribe(
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	go func() { <-c.Quit(); cancel() }()
+	go func() { c.Wait(); cancel() }()
 
 	subArgs := pubsub.SubscribeArgs{
 		ClientID: subscriber,

@@ -77,11 +77,7 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 
 	err = signerServer.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := signerServer.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(signerServer.Wait)
 
 	select {
 	case attempts := <-attemptCh:

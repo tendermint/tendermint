@@ -363,6 +363,7 @@ func (cs *State) OnStart(ctx context.Context) error {
 
 			// 1) prep work
 			if err := cs.wal.Stop(); err != nil {
+
 				return err
 			}
 
@@ -421,6 +422,8 @@ func (cs *State) OnStart(ctx context.Context) error {
 
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
+//
+// this is only used in tests.
 func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
 	err := cs.timeoutTicker.Start(ctx)
 	if err != nil {
@@ -445,7 +448,6 @@ func (cs *State) loadWalFile(ctx context.Context) error {
 
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
-
 	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
@@ -457,15 +459,19 @@ func (cs *State) OnStop() {
 
 	close(cs.onStopCh)
 
-	if err := cs.evsw.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+	if cs.evsw.IsRunning() {
+		if err := cs.evsw.Stop(); err != nil {
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
+			}
 		}
 	}
 
-	if err := cs.timeoutTicker.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+	if cs.timeoutTicker.IsRunning() {
+		if err := cs.timeoutTicker.Stop(); err != nil {
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
+			}
 		}
 	}
 	// WAL is stopped in receiveRoutine.
@@ -845,9 +851,10 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			// go to the next step
 			cs.handleTimeout(ctx, ti, rs)
 
-		case <-cs.Quit():
+		case <-ctx.Done():
 			onExit(cs)
 			return
+
 		}
 		// TODO should we handle context cancels here?
 	}
@@ -875,7 +882,11 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(ctx, msg, peerID)
 		if added {
-			cs.statsMsgQueue <- mi
+			select {
+			case cs.statsMsgQueue <- mi:
+			case <-ctx.Done():
+				return
+			}
 		}
 
 		if err != nil && msg.Round != cs.Round {
@@ -893,7 +904,11 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		added, err = cs.tryAddVote(ctx, msg.Vote, peerID)
 		if added {
-			cs.statsMsgQueue <- mi
+			select {
+			case cs.statsMsgQueue <- mi:
+			case <-ctx.Done():
+				return
+			}
 		}
 
 		// if err == ErrAddingVote {
@@ -1012,7 +1027,7 @@ func (cs *State) handleTxsAvailable(ctx context.Context) {
 // Used internally by handleTimeout and handleMsg to make state transitions
 
 // Enter: `timeoutNewHeight` by startTime (commitTime+timeoutCommit),
-// 	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
+//	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
@@ -1097,7 +1112,7 @@ func (cs *State) needProofBlock(height int64) bool {
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
 // Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ):
-// 		after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+//		after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
@@ -2011,7 +2026,7 @@ func (cs *State) tryAddVote(ctx context.Context, vote *types.Vote, peerID types.
 			// 1) bad peer OR
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
-			// 		(https://github.com/tendermint/tendermint/issues/3839).
+			//		(https://github.com/tendermint/tendermint/issues/3839).
 			cs.Logger.Info("failed attempting to add vote", "err", err)
 			return added, ErrAddingVote
 		}

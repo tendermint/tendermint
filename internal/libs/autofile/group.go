@@ -138,7 +138,7 @@ func GroupTotalSizeLimit(limit int64) func(*Group) {
 // and group limits.
 func (g *Group) OnStart(ctx context.Context) error {
 	g.ticker = time.NewTicker(g.groupCheckDuration)
-	go g.processTicks()
+	go g.processTicks(ctx)
 	return nil
 }
 
@@ -237,15 +237,16 @@ func (g *Group) FlushAndSync() error {
 	return err
 }
 
-func (g *Group) processTicks() {
+func (g *Group) processTicks(ctx context.Context) {
 	defer close(g.doneProcessTicks)
+
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-g.ticker.C:
 			g.checkHeadSizeLimit()
 			g.checkTotalSizeLimit()
-		case <-g.Quit():
-			return
 		}
 	}
 }

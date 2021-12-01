@@ -94,8 +94,6 @@ func (ss *SignerServer) servicePendingRequest() {
 func (ss *SignerServer) serviceLoop(ctx context.Context) {
 	for {
 		select {
-		case <-ss.Quit():
-			return
 		case <-ctx.Done():
 			return
 		default:
