@@ -78,8 +78,6 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 		defer subs[node.NodeID].Close()
 	}
 
-	timer := time.NewTimer(0)
-	defer timer.Stop()
 	// For each node, dial the nodes that it still doesn't have a connection to
 	// (either inbound or outbound), and wait for both sides to confirm the
 	// connection via the subscriptions.
@@ -94,7 +92,6 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, added)
 
-			timer.Reset(3 * time.Second)
 			select {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
@@ -103,12 +100,11 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 					NodeID: targetNode.NodeID,
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
-			case <-timer.C:
+			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 					sourceNode.NodeID, targetNode.NodeID)
 			}
 
-			timer.Reset(3 * time.Second)
 			select {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
@@ -117,7 +113,7 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 					NodeID: sourceNode.NodeID,
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
-			case <-timer.C:
+			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 					targetNode.NodeID, sourceNode.NodeID)
 			}

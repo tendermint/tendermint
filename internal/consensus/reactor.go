@@ -664,14 +664,17 @@ OUTER_LOOP:
 
 // pickSendVote picks a vote and sends it to the peer. It will return true if
 // there is a vote to send and false otherwise.
-func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
+func (r *Reactor) pickSendVote(ctx context.Context, ps *PeerState, votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
-		r.voteCh.Out <- p2p.Envelope{
+		select {
+		case <-ctx.Done():
+		case r.voteCh.Out <- p2p.Envelope{
 			To: ps.peerID,
 			Message: &tmcons.Vote{
 				Vote: vote.ToProto(),
 			},
+		}:
 		}
 
 		ps.SetHasVote(vote)
@@ -681,12 +684,17 @@ func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
 	return false
 }
 
-func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
+func (r *Reactor) gossipVotesForHeight(
+	ctx context.Context,
+	rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState,
+	ps *PeerState,
+) bool {
 	logger := r.Logger.With("height", prs.Height).With("peer", ps.peerID)
 
 	// if there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
-		if r.pickSendVote(ps, rs.LastCommit) {
+		if r.pickSendVote(ctx, ps, rs.LastCommit) {
 			logger.Debug("picked rs.LastCommit to send")
 			return true
 		}
@@ -695,7 +703,7 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 	// if there are POL prevotes to send...
 	if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
 		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if r.pickSendVote(ps, polPrevotes) {
+			if r.pickSendVote(ctx, ps, polPrevotes) {
 				logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
 				return true
 			}
@@ -704,7 +712,7 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 
 	// if there are prevotes to send...
 	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
-		if r.pickSendVote(ps, rs.Votes.Prevotes(prs.Round)) {
+		if r.pickSendVote(ctx, ps, rs.Votes.Prevotes(prs.Round)) {
 			logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
 			return true
 		}
@@ -712,7 +720,7 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 
 	// if there are precommits to send...
 	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
-		if r.pickSendVote(ps, rs.Votes.Precommits(prs.Round)) {
+		if r.pickSendVote(ctx, ps, rs.Votes.Precommits(prs.Round)) {
 			logger.Debug("picked rs.Precommits(prs.Round) to send", "round", prs.Round)
 			return true
 		}
@@ -720,7 +728,7 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 
 	// if there are prevotes to send...(which are needed because of validBlock mechanism)
 	if prs.Round != -1 && prs.Round <= rs.Round {
-		if r.pickSendVote(ps, rs.Votes.Prevotes(prs.Round)) {
+		if r.pickSendVote(ctx, ps, rs.Votes.Prevotes(prs.Round)) {
 			logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
 			return true
 		}
@@ -729,7 +737,7 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 	// if there are POLPrevotes to send...
 	if prs.ProposalPOLRound != -1 {
 		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if r.pickSendVote(ps, polPrevotes) {
+			if r.pickSendVote(ctx, ps, polPrevotes) {
 				logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
 				return true
 			}
@@ -779,14 +787,14 @@ OUTER_LOOP:
 
 		// if height matches, then send LastCommit, Prevotes, and Precommits
 		if rs.Height == prs.Height {
-			if r.gossipVotesForHeight(rs, prs, ps) {
+			if r.gossipVotesForHeight(ctx, rs, prs, ps) {
 				continue OUTER_LOOP
 			}
 		}
 
 		// special catchup logic -- if peer is lagging by height 1, send LastCommit
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
-			if r.pickSendVote(ps, rs.LastCommit) {
+			if r.pickSendVote(ctx, ps, rs.LastCommit) {
 				logger.Debug("picked rs.LastCommit to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
@@ -798,7 +806,7 @@ OUTER_LOOP:
 			// Load the block commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
 			if commit := r.state.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if r.pickSendVote(ps, commit) {
+				if r.pickSendVote(ctx, ps, commit) {
 					logger.Debug("picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
