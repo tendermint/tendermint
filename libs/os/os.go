@@ -17,7 +17,7 @@ type logger interface {
 // TrapSignal catches SIGTERM and SIGINT, executes the cleanup function,
 // and exits with code 0.
 func TrapSignal(ctx context.Context, logger logger, cb func()) {
-	opctx, _ := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	opctx, opcancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		defer opcancel()
