@@ -156,6 +156,7 @@ func makeConfig(t *testing.T, acceptDeadline, acceptRetries int) TestHarnessConf
 			{
 				Address: pvFile.Key.Address,
 				PubKey:  pvFile.Key.PubKey,
+				Power:   10,
 			},
 		},
 	}
