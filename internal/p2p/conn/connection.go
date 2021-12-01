@@ -292,6 +292,10 @@ func (c *MConnection) _recover() {
 }
 
 func (c *MConnection) stopForError(r interface{}) {
+	if err := c.Stop(); err != nil {
+		c.Logger.Error("Error stopping connection", "err", err)
+	}
+
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {
 			c.onError(r)
