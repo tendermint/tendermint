@@ -71,7 +71,7 @@ func Serve(
 		case <-ctx.Done():
 			sctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			s.Shutdown(sctx)
+			_ = s.Shutdown(sctx)
 		case <-sig:
 		}
 	}()
@@ -111,7 +111,7 @@ func ServeTLS(
 		case <-ctx.Done():
 			sctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			s.Shutdown(sctx)
+			_ = s.Shutdown(sctx)
 		case <-sig:
 		}
 	}()

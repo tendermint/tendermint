@@ -21,7 +21,7 @@ func TrapSignal(ctx context.Context, logger logger, cb func()) {
 
 	go func() {
 		<-opctx.Done()
-		logger.Info(fmt.Sprintf("captured signal, exiting..."))
+		logger.Info("captured signal, exiting...")
 		if cb != nil {
 			cb()
 		}

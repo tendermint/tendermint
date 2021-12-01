@@ -525,7 +525,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 				case <-ctx.Done():
 					sctx, cancel := context.WithTimeout(context.Background(), time.Second)
 					defer cancel()
-					srv.Shutdown(sctx)
+					_ = srv.Shutdown(sctx)
 				case <-sig:
 				}
 			}()
@@ -842,7 +842,7 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 			case <-ctx.Done():
 				sctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				srv.Shutdown(sctx)
+				_ = srv.Shutdown(sctx)
 			case <-sig:
 			}
 		}()
