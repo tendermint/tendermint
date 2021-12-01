@@ -50,6 +50,10 @@ const (
 			"max_age_duration": "172800000000000",
 			"max_num": 50
 		},
+		"timing": {
+			"message_delay": "3000",
+			"precision": "150",
+		},
 		"validator": {
 			"pub_key_types": [
 				"ed25519"
