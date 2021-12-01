@@ -98,7 +98,6 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			select {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
-				return
 			case peerUpdate := <-sourceSub.Updates():
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID: targetNode.NodeID,
@@ -109,10 +108,10 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 					sourceNode.NodeID, targetNode.NodeID)
 			}
 
+			timer.Reset(3 * time.Second)
 			select {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
-				return
 			case peerUpdate := <-targetSub.Updates():
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID: sourceNode.NodeID,
