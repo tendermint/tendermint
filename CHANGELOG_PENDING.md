@@ -28,7 +28,6 @@ Special thanks to external contributors on this release:
 
 - [rpc] [\#7270](https://github.com/tendermint/tendermint/pull/7270) Add `header` and `header_by_hash` RPC Client queries. (@fedekunze) (@cmwaters)
 
->>>>>>> 5f57d84dd (rpc: implement header and header_by_hash queries (#7270))
 ### IMPROVEMENTS
 
 - [\#7338](https://github.com/tendermint/tendermint/pull/7338) pubsub: Performance improvements for the event query API (backport of #7319) (@creachadair)
