@@ -2,6 +2,21 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.15
+
+Special thanks to external contributors on this release: @thanethomson
+
+### BUG FIXES
+
+- [\#7368](https://github.com/tendermint/tendermint/issues/7368) cmd: add integration test for rollback functionality (@cmwaters).
+- [\#7309](https://github.com/tendermint/tendermint/issues/7309) pubsub: Report a non-nil error when shutting down (fixes #7306).
+- [\#7057](https://github.com/tendermint/tendermint/pull/7057) Import Postgres driver support for the psql indexer (@creachadair).
+- [\#7106](https://github.com/tendermint/tendermint/pull/7106) Revert mutex change to ABCI Clients (@tychoish).
+
+### IMPROVEMENTS
+
+- [config] [\#7230](https://github.com/tendermint/tendermint/issues/7230) rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
+
 ## v0.34.14
 
 This release backports the `rollback` feature to allow recovery in the event of an incorrect app hash.
