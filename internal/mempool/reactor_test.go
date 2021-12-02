@@ -39,7 +39,6 @@ type reactorTestSuite struct {
 
 func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
-	t.Cleanup(leaktest.Check(t))
 
 	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
@@ -95,6 +94,8 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		}
 	})
 
+	t.Cleanup(leaktest.Check(t))
+
 	return rts
 }
 
@@ -109,13 +110,6 @@ func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 
 func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 	t.Helper()
-
-	for id, r := range rts.reactors {
-		require.NoError(t, r.Stop(), "stopping reactor %s", id)
-		if r.IsRunning() {
-			r.Wait()
-		}
-	}
 
 	for _, mch := range rts.mempoolChannels {
 		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
