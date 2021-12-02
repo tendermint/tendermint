@@ -263,7 +263,27 @@ func TestABCIQuery(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+<<<<<<< HEAD
 	n, conf := NodeSuite(t)
+=======
+				// check that the header matches the block hash
+				header, err := c.Header(ctx, &apph)
+				require.NoError(t, err)
+				require.Equal(t, block.Block.Header, *header.Header)
+
+				headerByHash, err := c.HeaderByHash(ctx, block.BlockID.Hash)
+				require.NoError(t, err)
+				require.Equal(t, header, headerByHash)
+
+				// now check the results
+				blockResults, err := c.BlockResults(ctx, &txh)
+				require.NoError(t, err, "%d: %+v", i, err)
+				assert.Equal(t, txh, blockResults.Height)
+				if assert.Equal(t, 1, len(blockResults.TxsResults)) {
+					// check success code
+					assert.EqualValues(t, 0, blockResults.TxsResults[0].Code)
+				}
+>>>>>>> 5f57d84dd (rpc: implement header and header_by_hash queries (#7270))
 
 	for i, c := range GetClients(t, n, conf) {
 		// write something
@@ -428,6 +448,7 @@ func TestBroadcastTxSync(t *testing.T) {
 	pool := getMempool(t, n)
 	initMempoolSize := pool.Size()
 
+<<<<<<< HEAD
 	for i, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxSync(ctx, tx)
@@ -439,6 +460,19 @@ func TestBroadcastTxSync(t *testing.T) {
 		txs := pool.ReapMaxTxs(len(tx))
 		require.EqualValues(t, tx, txs[0])
 		pool.Flush()
+=======
+					for _, fake := range fakes {
+						_, err := c.BroadcastEvidence(ctx, fake)
+						require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
+					}
+				})
+				t.Run("BroadcastEmpty", func(t *testing.T) {
+					_, err := c.BroadcastEvidence(ctx, nil)
+					assert.Error(t, err)
+				})
+			})
+		})
+>>>>>>> 5f57d84dd (rpc: implement header and header_by_hash queries (#7270))
 	}
 }
 
@@ -596,12 +630,80 @@ func TestTx(t *testing.T) {
 			// since there's only one tx, we know index=0.
 			ptx, err := c.Tx(ctx, tc.hash, tc.prove)
 
+<<<<<<< HEAD
 			if !tc.valid {
 				require.NotNil(t, err)
 			} else {
 				require.Nil(t, err, "%+v", err)
 				assert.EqualValues(t, txHeight, ptx.Height)
 				assert.EqualValues(t, tx, ptx.Tx)
+=======
+						if !tc.valid {
+							require.NotNil(t, err)
+						} else {
+							require.Nil(t, err, "%+v", err)
+							assert.EqualValues(t, txHeight, ptx.Height)
+							assert.EqualValues(t, tx, ptx.Tx)
+							assert.Zero(t, ptx.Index)
+							assert.True(t, ptx.TxResult.IsOK())
+							assert.EqualValues(t, txHash, ptx.Hash)
+
+							// time to verify the proof
+							proof := ptx.Proof
+							if tc.prove && assert.EqualValues(t, tx, proof.Data) {
+								assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
+							}
+						}
+					})
+				}
+			})
+		}
+	})
+	t.Run("TxSearchWithTimeout", func(t *testing.T) {
+		timeoutClient := getHTTPClientWithTimeout(t, conf, 10*time.Second)
+
+		_, _, tx := MakeTxKV()
+		_, err := timeoutClient.BroadcastTxCommit(ctx, tx)
+		require.NoError(t, err)
+
+		// query using a compositeKey (see kvstore application)
+		result, err := timeoutClient.TxSearch(ctx, "app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
+		require.Nil(t, err)
+		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
+	})
+	t.Run("TxSearch", func(t *testing.T) {
+		t.Skip("Test Asserts Non-Deterministic Results")
+		c := getHTTPClient(t, conf)
+
+		// first we broadcast a few txs
+		for i := 0; i < 10; i++ {
+			_, _, tx := MakeTxKV()
+			_, err := c.BroadcastTxSync(ctx, tx)
+			require.NoError(t, err)
+		}
+
+		// since we're not using an isolated test server, we'll have lingering transactions
+		// from other tests as well
+		result, err := c.TxSearch(ctx, "tx.height >= 0", true, nil, nil, "asc")
+		require.NoError(t, err)
+		txCount := len(result.Txs)
+
+		// pick out the last tx to have something to search for in tests
+		find := result.Txs[len(result.Txs)-1]
+		anotherTxHash := types.Tx("a different tx").Hash()
+
+		for _, c := range GetClients(t, n, conf) {
+			t.Run(fmt.Sprintf("%T", c), func(t *testing.T) {
+				// now we query for the tx.
+				result, err := c.TxSearch(ctx, fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
+				require.Nil(t, err)
+				require.Len(t, result.Txs, 1)
+				require.Equal(t, find.Hash, result.Txs[0].Hash)
+
+				ptx := result.Txs[0]
+				assert.EqualValues(t, find.Height, ptx.Height)
+				assert.EqualValues(t, find.Tx, ptx.Tx)
+>>>>>>> 5f57d84dd (rpc: implement header and header_by_hash queries (#7270))
 				assert.Zero(t, ptx.Index)
 				assert.True(t, ptx.TxResult.IsOK())
 				assert.EqualValues(t, txHash, ptx.Hash)

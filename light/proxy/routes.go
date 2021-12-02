@@ -24,6 +24,8 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", true),
 		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", true),
 		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", true),
+		"header":               rpcserver.NewRPCFunc(makeHeaderFunc(c), "height", true),
+		"header_by_hash":       rpcserver.NewRPCFunc(makeHeaderByHashFunc(c), "hash", true),
 		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", true),
 		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", true),
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", true),
@@ -98,6 +100,22 @@ type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunk uint) (*coretypes.R
 func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
 	return func(ctx *rpctypes.Context, chunk uint) (*coretypes.ResultGenesisChunk, error) {
 		return c.GenesisChunked(ctx.Context(), chunk)
+	}
+}
+
+type rpcHeaderFunc func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultHeader, error)
+
+func makeHeaderFunc(c *lrpc.Client) rpcHeaderFunc {
+	return func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultHeader, error) {
+		return c.Header(ctx.Context(), height)
+	}
+}
+
+type rpcHeaderByHashFunc func(ctx *rpctypes.Context, hash []byte) (*coretypes.ResultHeader, error)
+
+func makeHeaderByHashFunc(c *lrpc.Client) rpcHeaderByHashFunc {
+	return func(ctx *rpctypes.Context, hash []byte) (*coretypes.ResultHeader, error) {
+		return c.HeaderByHash(ctx.Context(), hash)
 	}
 }
 
