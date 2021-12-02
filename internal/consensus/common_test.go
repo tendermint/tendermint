@@ -626,8 +626,7 @@ func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height 
 	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
 	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
 	if !ok {
-		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-			msg.Data())
+		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?", msg.Data())
 	}
 	if proposalEvent.Height != height {
 		t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
@@ -648,8 +647,7 @@ func ensureNewBlock(t *testing.T, blockCh <-chan tmpubsub.Message, height int64)
 	msg := ensureMessageBeforeTimeout(t, blockCh, ensureTimeout)
 	blockEvent, ok := msg.Data().(types.EventDataNewBlock)
 	if !ok {
-		t.Fatalf("expected a EventDataNewBlock, got %T. Wrong subscription channel?",
-			msg.Data())
+		t.Fatalf("expected a EventDataNewBlock, got %T. Wrong subscription channel?", msg.Data())
 	}
 	if blockEvent.Block.Height != height {
 		t.Fatalf("expected height %v, got %v", height, blockEvent.Block.Height)
@@ -661,8 +659,7 @@ func ensureNewBlockHeader(t *testing.T, blockCh <-chan tmpubsub.Message, height 
 	msg := ensureMessageBeforeTimeout(t, blockCh, ensureTimeout)
 	blockHeaderEvent, ok := msg.Data().(types.EventDataNewBlockHeader)
 	if !ok {
-		t.Fatalf("expected a EventDataNewBlockHeader, got %T. Wrong subscription channel?",
-			msg.Data())
+		t.Fatalf("expected a EventDataNewBlockHeader, got %T. Wrong subscription channel?", msg.Data())
 	}
 	if blockHeaderEvent.Header.Height != height {
 		t.Fatalf("expected height %v, got %v", height, blockHeaderEvent.Header.Height)
@@ -688,8 +685,7 @@ func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int
 	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
 	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
 	if !ok {
-		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-			msg.Data())
+		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?", msg.Data())
 	}
 	if proposalEvent.Height != height {
 		t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
