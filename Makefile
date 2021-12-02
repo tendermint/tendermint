@@ -296,8 +296,11 @@ GO_TEST_FILES != find $(CURDIR) -name "*_test.go"
 # default to four splits by default
 NUM_SPLIT ?= 4
 
+$(BUILDDIR):
+	mkdir -p $@
+
 # the format statement filters out all packages that don't have tests.
-$(BUILDDIR)/packages.txt:$(GO_TEST_FILES)
+$(BUILDDIR)/packages.txt:$(GO_TEST_FILES) $(BUILDDIR)
 	go list -f "{{ if .TestGoFiles }}{{ .ImportPath }}{{ end }}" ./... | sort > $@
 
 split-test-packages:$(BUILDDIR)/packages.txt
