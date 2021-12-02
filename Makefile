@@ -291,12 +291,10 @@ build-reproducible:
 # Implements test splitting and running. This is pulled directly from
 # the github action workflows for better local reproducibility.
 
-GO_TEST_FILES := $(shell find $(CURDIR) -name "*_test.go")
+GO_TEST_FILES != find $(CURDIR) -name "*_test.go"
 
 # default to four splits by default
-ifeq (,$(NUM_SPLIT))
-NUM_SPLIT := 4
-endif
+NUM_SPLIT ?= 4
 
 # the format statement filters out all packages that don't have tests.
 $(BUILDDIR)/packages.txt:$(GO_TEST_FILES)
