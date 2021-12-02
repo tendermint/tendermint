@@ -471,16 +471,19 @@ func TestClientMethodCalls(t *testing.T) {
 			t.Run("Events", func(t *testing.T) {
 				// start for this test it if it wasn't already running
 				if !c.IsRunning() {
+					ctx, cancel := context.WithCancel(ctx)
+					defer cancel()
+
 					// if so, then we start it, listen, and stop it.
 					err := c.Start(ctx)
 					require.Nil(t, err)
 					t.Cleanup(func() {
+						cancel()
 						if err := c.Stop(); err != nil {
 							t.Error(err)
 						}
 					})
 				}
-
 				t.Run("Header", func(t *testing.T) {
 					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
 					require.Nil(t, err, "%d: %+v", i, err)
