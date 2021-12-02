@@ -37,9 +37,6 @@ type Client interface {
 	// Start the client. Start must report an error if the client is running.
 	Start(context.Context) error
 
-	// Stop the client. Stop must report an error if the client is not running.
-	Stop() error
-
 	// IsRunning reports whether the client is running.
 	IsRunning() bool
 

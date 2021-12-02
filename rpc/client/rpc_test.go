@@ -477,12 +477,6 @@ func TestClientMethodCalls(t *testing.T) {
 					// if so, then we start it, listen, and stop it.
 					err := c.Start(ctx)
 					require.Nil(t, err)
-					t.Cleanup(func() {
-						cancel()
-						if err := c.Stop(); err != nil {
-							t.Error(err)
-						}
-					})
 				}
 				t.Run("Header", func(t *testing.T) {
 					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)

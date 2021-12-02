@@ -104,7 +104,9 @@ func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 
 func (c *Client) OnStart(ctx context.Context) error {
 	if !c.next.IsRunning() {
-		return c.next.Start(ctx)
+		nctx, ncancel := context.WithCancel(ctx)
+		c.closers = append(c.closers, ncancel)
+		return c.next.Start(nctx)
 	}
 
 	go func() {
@@ -118,12 +120,6 @@ func (c *Client) OnStart(ctx context.Context) error {
 func (c *Client) OnStop() {
 	for _, closer := range c.closers {
 		closer()
-	}
-
-	if c.next.IsRunning() {
-		if err := c.next.Stop(); err != nil {
-			c.Logger.Error("Error stopping on next", "err", err)
-		}
 	}
 }
 
