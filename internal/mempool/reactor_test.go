@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -38,6 +39,7 @@ type reactorTestSuite struct {
 
 func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
+	t.Cleanup(leaktest.Check(t))
 
 	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
@@ -108,18 +110,15 @@ func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 	t.Helper()
 
-	rts.stop(t)
+	for id, r := range rts.reactors {
+		require.NoError(t, r.Stop(), "stopping reactor %s", id)
+		if r.IsRunning() {
+			r.Wait()
+		}
+	}
 
 	for _, mch := range rts.mempoolChannels {
 		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
-	}
-}
-
-func (rts *reactorTestSuite) stop(t *testing.T) {
-	for id, r := range rts.reactors {
-		require.NoError(t, r.Stop(), "stopping reactor %s", id)
-		r.Wait()
-		require.False(t, r.IsRunning(), "reactor %s did not stop", id)
 	}
 }
 
@@ -211,8 +210,6 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
 	rts.waitForTxns(t, convertTex(txs), secondaries...)
-
-	rts.stop(t)
 }
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
