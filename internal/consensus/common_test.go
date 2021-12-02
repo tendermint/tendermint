@@ -733,11 +733,6 @@ func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, roun
 	}
 }
 
-func ensurePrecommitTimeout(t *testing.T, ch <-chan tmpubsub.Message) {
-	t.Helper()
-	ensureNoMessageBeforeTimeout(t, ch, ensureTimeout, "Timeout expired while waiting for the Precommit to Timeout")
-}
-
 func ensureNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
 	t.Helper()
 	ensureMessageBeforeTimeout(t, ch, ensureTimeout)
