@@ -51,7 +51,8 @@ func (env *Environment) BlockchainInfo(
 
 	return &coretypes.ResultBlockchainInfo{
 		LastHeight: env.BlockStore.Height(),
-		BlockMetas: blockMetas}, nil
+		BlockMetas: blockMetas,
+	}, nil
 }
 
 // error if either min or max are negative or min > max
@@ -120,6 +121,38 @@ func (env *Environment) BlockByHash(ctx *rpctypes.Context, hash bytes.HexBytes) 
 	// If block is not nil, then blockMeta can't be nil.
 	blockMeta := env.BlockStore.LoadBlockMeta(block.Height)
 	return &coretypes.ResultBlock{BlockID: blockMeta.BlockID, Block: block}, nil
+}
+
+// Header gets block header at a given height.
+// If no height is provided, it will fetch the latest header.
+// More: https://docs.tendermint.com/master/rpc/#/Info/header
+func (env *Environment) Header(ctx *rpctypes.Context, heightPtr *int64) (*coretypes.ResultHeader, error) {
+	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
+	if err != nil {
+		return nil, err
+	}
+
+	blockMeta := env.BlockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return &coretypes.ResultHeader{}, nil
+	}
+
+	return &coretypes.ResultHeader{Header: &blockMeta.Header}, nil
+}
+
+// HeaderByHash gets header by hash.
+// More: https://docs.tendermint.com/master/rpc/#/Info/header_by_hash
+func (env *Environment) HeaderByHash(ctx *rpctypes.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
+	// N.B. The hash parameter is HexBytes so that the reflective parameter
+	// decoding logic in the HTTP service will correctly translate from JSON.
+	// See https://github.com/tendermint/tendermint/issues/6802 for context.
+
+	blockMeta := env.BlockStore.LoadBlockMetaByHash(hash)
+	if blockMeta == nil {
+		return &coretypes.ResultHeader{}, nil
+	}
+
+	return &coretypes.ResultHeader{Header: &blockMeta.Header}, nil
 }
 
 // Commit gets block commit at a given height.

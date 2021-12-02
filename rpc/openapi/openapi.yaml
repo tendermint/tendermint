@@ -525,7 +525,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /net_info:
     get:
-      summary: Network informations
+      summary: Network information
       operationId: net_info
       tags:
         - Info
@@ -693,6 +693,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /header:
+    get:
+      summary: Get the header at a specified height
+      operationId: header
+      parameters:
+        - in: query
+          name: height
+          schema:
+            type: integer
+            default: 0
+            example: 1
+          description: height to return. If no height is provided, it will fetch the latest height.
+      tags:
+        - Info
+      description: |
+        Retrieve the block header corresponding to a specified height.
+      responses:
+        "200":
+          description: Header information.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeaderResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /header_by_hash:
+    get:
+      summary: Get header by hash
+      operationId: header_by_hash
+      parameters:
+        - in: query
+          name: hash
+          description: header hash
+          required: true
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+      tags:
+        - Info
+      description: |
+        Retrieve the block header corresponding to a block hash.
+      responses:
+        "200":
+          description: Header information.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeaderResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /block:
     get:
       summary: Get block at a specified height
@@ -711,7 +769,7 @@ paths:
         Get Block.
       responses:
         "200":
-          description: Block informations.
+          description: Block information.
           content:
             application/json:
               schema:
@@ -740,7 +798,7 @@ paths:
         Get Block By Hash.
       responses:
         "200":
-          description: Block informations.
+          description: Block information.
           content:
             application/json:
               schema:
@@ -758,7 +816,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -787,7 +845,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch commit information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -968,7 +1026,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch commit information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -1703,13 +1761,21 @@ components:
         block:
           $ref: "#/components/schemas/Block"
     BlockResponse:
-      description: Blockc info
+      description: Block info
       allOf:
         - $ref: "#/components/schemas/JSONRPC"
         - type: object
           properties:
             result:
               $ref: "#/components/schemas/BlockComplete"
+    HeaderResponse:
+      description: Block Header info
+      allOf:
+        - $ref: "#/components/schemas/JSONRPC"
+        - type: object
+          properties:
+            result:
+              $ref: "#/components/schemas/BlockHeader"
 
     ################## FROM NOW ON NEEDS REFACTOR ##################
     BlockResultsResponse:
