@@ -21,9 +21,6 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 		return -1, nil, errors.New("no state found")
 	}
 
-<<<<<<< HEAD:state/rollback.go
-	rollbackHeight := invalidState.LastBlockHeight
-=======
 	height := bs.Height()
 
 	// NOTE: persistence of state and blocks don't happen atomically. Therefore it is possible that
@@ -42,7 +39,6 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 
 	// state store height is equal to blockstore height. We're good to proceed with rolling back state
 	rollbackHeight := invalidState.LastBlockHeight - 1
->>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315)):internal/state/rollback.go
 	rollbackBlock := bs.LoadBlockMeta(rollbackHeight)
 	if rollbackBlock == nil {
 		return -1, nil, fmt.Errorf("block at height %d not found", rollbackHeight)

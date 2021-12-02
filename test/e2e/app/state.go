@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -52,11 +51,7 @@ func NewState(dir string, persistInterval uint64) (*State, error) {
 // load loads state from disk. It does not take out a lock, since it is called
 // during construction.
 func (s *State) load() error {
-<<<<<<< HEAD
-	bz, err := ioutil.ReadFile(s.file)
-=======
 	bz, err := os.ReadFile(s.currentFile)
->>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315))
 	if err != nil {
 		// if the current state doesn't exist then we try recover from the previous state
 		if errors.Is(err, os.ErrNotExist) {
@@ -85,13 +80,8 @@ func (s *State) save() error {
 	}
 	// We write the state to a separate file and move it to the destination, to
 	// make it atomic.
-<<<<<<< HEAD
-	newFile := fmt.Sprintf("%v.new", s.file)
-	err = ioutil.WriteFile(newFile, bz, 0644)
-=======
 	newFile := fmt.Sprintf("%v.new", s.currentFile)
 	err = os.WriteFile(newFile, bz, 0644)
->>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315))
 	if err != nil {
 		return fmt.Errorf("failed to write state to %q: %w", s.currentFile, err)
 	}

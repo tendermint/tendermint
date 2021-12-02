@@ -17,63 +17,15 @@ import (
 )
 
 func TestRollback(t *testing.T) {
-	stateStore := state.NewStore(dbm.NewMemDB())
-	blockStore := &mocks.BlockStore{}
 	var (
 		height     int64 = 100
 		nextHeight int64 = 101
 	)
+	blockStore := &mocks.BlockStore{}
+	stateStore := setupStateStore(t, height)
+	initialState, err := stateStore.Load()
+	require.NoError(t, err)
 
-	valSet, _ := types.RandValidatorSet(5, 10)
-
-	params := types.DefaultConsensusParams()
-	params.Version.AppVersion = appVersion
-	newParams := types.DefaultConsensusParams()
-	newParams.Block.MaxBytes = 10000
-
-	initialState := state.State{
-		Version: tmstate.Version{
-			Consensus: tmversion.Consensus{
-				Block: version.BlockProtocol,
-				App:   10,
-			},
-			Software: version.TMCoreSemVer,
-		},
-		ChainID:                          "test-chain",
-		InitialHeight:                    10,
-		LastBlockID:                      makeBlockIDRandom(),
-		AppHash:                          tmhash.Sum([]byte("app_hash")),
-		LastResultsHash:                  tmhash.Sum([]byte("last_results_hash")),
-		LastBlockHeight:                  height,
-		LastValidators:                   valSet,
-		Validators:                       valSet.CopyIncrementProposerPriority(1),
-		NextValidators:                   valSet.CopyIncrementProposerPriority(2),
-		LastHeightValidatorsChanged:      height + 1,
-		ConsensusParams:                  *params,
-		LastHeightConsensusParamsChanged: height + 1,
-	}
-	require.NoError(t, stateStore.Bootstrap(initialState))
-
-<<<<<<< HEAD:state/rollback_test.go
-	height++
-	block := &types.BlockMeta{
-		Header: types.Header{
-			Height:          height,
-			AppHash:         initialState.AppHash,
-			LastBlockID:     initialState.LastBlockID,
-			LastResultsHash: initialState.LastResultsHash,
-		},
-	}
-	blockStore.On("LoadBlockMeta", height).Return(block)
-
-	appVersion++
-	newParams.Version.AppVersion = appVersion
-	nextState := initialState.Copy()
-	nextState.LastBlockHeight = height
-	nextState.Version.Consensus.App = appVersion
-	nextState.LastBlockID = makeBlockIDRandom()
-	nextState.AppHash = tmhash.Sum([]byte("next_app_hash"))
-=======
 	// perform the rollback over a version bump
 	newParams := types.DefaultConsensusParams()
 	newParams.Version.AppVersion = 11
@@ -81,9 +33,8 @@ func TestRollback(t *testing.T) {
 	nextState := initialState.Copy()
 	nextState.LastBlockHeight = nextHeight
 	nextState.Version.Consensus.App = 11
-	nextState.LastBlockID = factory.MakeBlockID()
-	nextState.AppHash = factory.RandomHash()
->>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315)):internal/state/rollback_test.go
+	nextState.LastBlockID = makeBlockIDRandom()
+	nextState.AppHash = tmhash.Sum([]byte("app_hash"))
 	nextState.LastValidators = initialState.Validators
 	nextState.Validators = initialState.NextValidators
 	nextState.NextValidators = initialState.NextValidators.CopyIncrementProposerPriority(1)
@@ -99,7 +50,7 @@ func TestRollback(t *testing.T) {
 		Header: types.Header{
 			Height:          initialState.LastBlockHeight,
 			AppHash:         initialState.AppHash,
-			LastBlockID:     factory.MakeBlockID(),
+			LastBlockID:     makeBlockIDRandom(),
 			LastResultsHash: initialState.LastResultsHash,
 		},
 	}
@@ -129,8 +80,6 @@ func TestRollbackNoState(t *testing.T) {
 }
 
 func TestRollbackNoBlocks(t *testing.T) {
-<<<<<<< HEAD:state/rollback_test.go
-=======
 	const height = int64(100)
 	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
@@ -154,20 +103,11 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 }
 
 func setupStateStore(t *testing.T, height int64) state.Store {
->>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315)):internal/state/rollback_test.go
 	stateStore := state.NewStore(dbm.NewMemDB())
-	blockStore := &mocks.BlockStore{}
-	var (
-		height     int64  = 100
-		appVersion uint64 = 10
-	)
-
 	valSet, _ := types.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()
-	params.Version.AppVersion = appVersion
-	newParams := types.DefaultConsensusParams()
-	newParams.Block.MaxBytes = 10000
+	params.Version.AppVersion = 10
 
 	initialState := state.State{
 		Version: tmstate.Version{
@@ -190,12 +130,8 @@ func setupStateStore(t *testing.T, height int64) state.Store {
 		ConsensusParams:                  *params,
 		LastHeightConsensusParamsChanged: height + 1,
 	}
-	require.NoError(t, stateStore.Save(initialState))
-	blockStore.On("LoadBlockMeta", height).Return(nil)
-
-	_, _, err := state.Rollback(blockStore, stateStore)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "block at height 100 not found")
+	require.NoError(t, stateStore.Bootstrap(initialState))
+	return stateStore
 }
 
 func makeBlockIDRandom() types.BlockID {
