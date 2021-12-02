@@ -56,15 +56,18 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	// Capture the current ID, since it can change in the future.
 	subscriptionID := ctx.JSONReq.ID
 	go func() {
+		opctx, opcancel := context.WithCancel(context.Background())
+		defer opcancel()
+
 		for {
-			msg, err := sub.Next(context.Background())
+			msg, err := sub.Next(opctx)
 			if errors.Is(err, tmpubsub.ErrUnsubscribed) {
 				// The subscription was removed by the client.
 				return
 			} else if errors.Is(err, tmpubsub.ErrTerminated) {
 				// The subscription was terminated by the publisher.
 				resp := rpctypes.RPCServerError(subscriptionID, err)
-				ok := ctx.WSConn.TryWriteRPCResponse(resp)
+				ok := ctx.WSConn.TryWriteRPCResponse(opctx, resp)
 				if !ok {
 					env.Logger.Info("Unable to write response (slow client)",
 						"to", addr, "subscriptionID", subscriptionID, "err", err)
@@ -78,7 +81,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 				Data:   msg.Data(),
 				Events: msg.Events(),
 			})
-			wctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			wctx, cancel := context.WithTimeout(opctx, 10*time.Second)
 			err = ctx.WSConn.WriteRPCResponse(wctx, resp)
 			cancel()
 			if err != nil {

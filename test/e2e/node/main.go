@@ -246,6 +246,10 @@ func startSigner(ctx context.Context, cfg *Config) error {
 			if err := s.Serve(lis); err != nil {
 				panic(err)
 			}
+			go func() {
+				<-ctx.Done()
+				s.GracefulStop()
+			}()
 		}()
 
 		return nil

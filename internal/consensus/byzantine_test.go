@@ -123,7 +123,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bzReactor := rts.reactors[bzNodeID]
 
 	// alter prevote so that the byzantine node double votes when height is 2
-	bzNodeState.doPrevote = func(height int64, round int32) {
+	bzNodeState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			prevote1, err := bzNodeState.signVote(
@@ -161,7 +161,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 		} else {
 			bzNodeState.Logger.Info("behaving normally")
-			bzNodeState.defaultDoPrevote(height, round)
+			bzNodeState.defaultDoPrevote(ctx, height, round)
 		}
 	}
 
@@ -218,10 +218,12 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
-			lazyNodeState.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+			lazyNodeState.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, ""})
 			for i := 0; i < int(blockParts.Total()); i++ {
 				part := blockParts.GetPart(i)
-				lazyNodeState.sendInternalMessage(msgInfo{&BlockPartMessage{lazyNodeState.Height, lazyNodeState.Round, part}, ""})
+				lazyNodeState.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{
+					lazyNodeState.Height, lazyNodeState.Round, part,
+				}, ""})
 			}
 			lazyNodeState.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 			lazyNodeState.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))

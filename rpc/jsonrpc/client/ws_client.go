@@ -24,6 +24,7 @@ type WSOptions struct {
 	ReadWait             time.Duration // deadline for any read op
 	WriteWait            time.Duration // deadline for any write op
 	PingPeriod           time.Duration // frequency with which pings are sent
+	SkipMetrics          bool          // do not keep metrics for ping/pong latency
 }
 
 // DefaultWSOptions returns default WS options.
@@ -117,8 +118,6 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
-		PingPongLatencyTimer: metrics.NewTimer(),
-
 		maxReconnectAttempts: opts.MaxReconnectAttempts,
 		readWait:             opts.ReadWait,
 		writeWait:            opts.WriteWait,
@@ -127,6 +126,14 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
+
+	switch opts.SkipMetrics {
+	case true:
+		c.PingPongLatencyTimer = metrics.NilTimer{}
+	case false:
+		c.PingPongLatencyTimer = metrics.NewTimer()
+	}
+
 	return c, nil
 }
 
@@ -143,8 +150,8 @@ func (c *WSClient) String() string {
 }
 
 // Start dials the specified service address and starts the I/O routines.
-func (c *WSClient) Start() error {
-	if err := c.RunState.Start(); err != nil {
+func (c *WSClient) Start(ctx context.Context) error {
+	if err := c.RunState.Start(ctx); err != nil {
 		return err
 	}
 	err := c.dial()
@@ -162,8 +169,8 @@ func (c *WSClient) Start() error {
 	// channel is unbuffered.
 	c.backlog = make(chan rpctypes.RPCRequest, 1)
 
-	c.startReadWriteRoutines()
-	go c.reconnectRoutine()
+	c.startReadWriteRoutines(ctx)
+	go c.reconnectRoutine(ctx)
 
 	return nil
 }
@@ -173,6 +180,7 @@ func (c *WSClient) Stop() error {
 	if err := c.RunState.Stop(); err != nil {
 		return err
 	}
+
 	// only close user-facing channels when we can't write to them
 	c.wg.Wait()
 	close(c.ResponsesCh)
@@ -253,7 +261,7 @@ func (c *WSClient) dial() error {
 
 // reconnect tries to redial up to maxReconnectAttempts with exponential
 // backoff.
-func (c *WSClient) reconnect() error {
+func (c *WSClient) reconnect(ctx context.Context) error {
 	attempt := uint(0)
 
 	c.mtx.Lock()
@@ -265,13 +273,21 @@ func (c *WSClient) reconnect() error {
 		c.mtx.Unlock()
 	}()
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
 	for {
 		// nolint:gosec // G404: Use of weak random number generator
 		jitter := time.Duration(mrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitter + ((1 << attempt) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
-		time.Sleep(backoffDuration)
+		timer.Reset(backoffDuration)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+		}
 
 		err := c.dial()
 		if err != nil {
@@ -292,11 +308,11 @@ func (c *WSClient) reconnect() error {
 	}
 }
 
-func (c *WSClient) startReadWriteRoutines() {
+func (c *WSClient) startReadWriteRoutines(ctx context.Context) {
 	c.wg.Add(2)
 	c.readRoutineQuit = make(chan struct{})
-	go c.readRoutine()
-	go c.writeRoutine()
+	go c.readRoutine(ctx)
+	go c.writeRoutine(ctx)
 }
 
 func (c *WSClient) processBacklog() error {
@@ -320,13 +336,15 @@ func (c *WSClient) processBacklog() error {
 	return nil
 }
 
-func (c *WSClient) reconnectRoutine() {
+func (c *WSClient) reconnectRoutine(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case originalError := <-c.reconnectAfter:
 			// wait until writeRoutine and readRoutine finish
 			c.wg.Wait()
-			if err := c.reconnect(); err != nil {
+			if err := c.reconnect(ctx); err != nil {
 				c.Logger.Error("failed to reconnect", "err", err, "original_err", originalError)
 				if err = c.Stop(); err != nil {
 					c.Logger.Error("failed to stop conn", "error", err)
@@ -338,6 +356,8 @@ func (c *WSClient) reconnectRoutine() {
 		LOOP:
 			for {
 				select {
+				case <-ctx.Done():
+					return
 				case <-c.reconnectAfter:
 				default:
 					break LOOP
@@ -345,18 +365,15 @@ func (c *WSClient) reconnectRoutine() {
 			}
 			err := c.processBacklog()
 			if err == nil {
-				c.startReadWriteRoutines()
+				c.startReadWriteRoutines(ctx)
 			}
-
-		case <-c.Quit():
-			return
 		}
 	}
 }
 
 // The client ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *WSClient) writeRoutine() {
+func (c *WSClient) writeRoutine(ctx context.Context) {
 	var ticker *time.Ticker
 	if c.pingPeriod > 0 {
 		// ticker with a predefined period
@@ -408,7 +425,7 @@ func (c *WSClient) writeRoutine() {
 			c.Logger.Debug("sent ping")
 		case <-c.readRoutineQuit:
 			return
-		case <-c.Quit():
+		case <-ctx.Done():
 			if err := c.conn.WriteMessage(
 				websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
@@ -422,7 +439,7 @@ func (c *WSClient) writeRoutine() {
 
 // The client ensures that there is at most one reader to a connection by
 // executing all reads from this goroutine.
-func (c *WSClient) readRoutine() {
+func (c *WSClient) readRoutine(ctx context.Context) {
 	defer func() {
 		c.conn.Close()
 		// err != nil {
@@ -494,7 +511,8 @@ func (c *WSClient) readRoutine() {
 		c.Logger.Info("got response", "id", response.ID, "result", response.Result)
 
 		select {
-		case <-c.Quit():
+		case <-ctx.Done():
+			return
 		case c.ResponsesCh <- response:
 		}
 	}

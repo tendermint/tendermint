@@ -31,13 +31,8 @@ func RequireReceive(t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
 	defer timer.Stop()
 
 	select {
-	case e, ok := <-channel.In:
-		require.True(t, ok, "channel %v is closed", channel.ID)
+	case e := <-channel.In:
 		require.Equal(t, expect, e)
-
-	case <-channel.Done():
-		require.Fail(t, "channel %v is closed", channel.ID)
-
 	case <-timer.C:
 		require.Fail(t, "timed out waiting for message", "%v on channel %v", expect, channel.ID)
 	}
@@ -52,16 +47,12 @@ func RequireReceiveUnordered(t *testing.T, channel *p2p.Channel, expect []p2p.En
 	actual := []p2p.Envelope{}
 	for {
 		select {
-		case e, ok := <-channel.In:
-			require.True(t, ok, "channel %v is closed", channel.ID)
+		case e := <-channel.In:
 			actual = append(actual, e)
 			if len(actual) == len(expect) {
 				require.ElementsMatch(t, expect, actual)
 				return
 			}
-
-		case <-channel.Done():
-			require.Fail(t, "channel %v is closed", channel.ID)
 
 		case <-timer.C:
 			require.ElementsMatch(t, expect, actual)

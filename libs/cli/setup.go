@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ const (
 // wrap if desired before the test
 type Executable interface {
 	Execute() error
+	Context() context.Context
 }
 
 // PrepareBaseCmd is meant for tendermint and other servers

@@ -528,7 +528,8 @@ func TestNodeNewSeedNode(t *testing.T) {
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	require.NoError(t, err)
 
-	ns, err := makeSeedNode(cfg,
+	ns, err := makeSeedNode(ctx,
+		cfg,
 		config.DefaultDBProvider,
 		nodeKey,
 		defaultGenesisDocProviderFunc(cfg),

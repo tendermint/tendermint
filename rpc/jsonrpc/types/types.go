@@ -253,7 +253,7 @@ type WSRPCConnection interface {
 	// WriteRPCResponse writes the response onto connection (BLOCKING).
 	WriteRPCResponse(context.Context, RPCResponse) error
 	// TryWriteRPCResponse tries to write the response onto connection (NON-BLOCKING).
-	TryWriteRPCResponse(RPCResponse) bool
+	TryWriteRPCResponse(context.Context, RPCResponse) bool
 	// Context returns the connection's context.
 	Context() context.Context
 }

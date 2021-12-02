@@ -3,6 +3,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,7 +51,13 @@ func DefaultConfig() *Config {
 // body size to config.MaxBodyBytes.
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
-func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
+func Serve(
+	ctx context.Context,
+	listener net.Listener,
+	handler http.Handler,
+	logger log.Logger,
+	config *Config,
+) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
@@ -58,9 +65,23 @@ func Serve(listener net.Listener, handler http.Handler, logger log.Logger, confi
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	err := s.Serve(listener)
-	logger.Info("RPC HTTP server stopped", "err", err)
-	return err
+	sig := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			sctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = s.Shutdown(sctx)
+		case <-sig:
+		}
+	}()
+
+	if err := s.Serve(listener); err != nil {
+		logger.Info("RPC HTTP server stopped", "err", err)
+		close(sig)
+		return err
+	}
+	return nil
 }
 
 // Serve creates a http.Server and calls ServeTLS with the given listener,
@@ -69,6 +90,7 @@ func Serve(listener net.Listener, handler http.Handler, logger log.Logger, confi
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func ServeTLS(
+	ctx context.Context,
 	listener net.Listener,
 	handler http.Handler,
 	certFile, keyFile string,
@@ -83,10 +105,23 @@ func ServeTLS(
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	err := s.ServeTLS(listener, certFile, keyFile)
+	sig := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			sctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = s.Shutdown(sctx)
+		case <-sig:
+		}
+	}()
 
-	logger.Error("RPC HTTPS server stopped", "err", err)
-	return err
+	if err := s.ServeTLS(listener, certFile, keyFile); err != nil {
+		logger.Error("RPC HTTPS server stopped", "err", err)
+		close(sig)
+		return err
+	}
+	return nil
 }
 
 // WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it

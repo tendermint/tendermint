@@ -64,7 +64,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 	}
 
 	chDesc := &p2p.ChannelDescriptor{ID: evidence.EvidenceChannel, MessageType: new(tmproto.EvidenceList)}
-	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
+	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), 0)
 
 	idx := 0
@@ -86,7 +86,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 		rts.nodes = append(rts.nodes, rts.network.Nodes[nodeID])
 
 		rts.reactors[nodeID] = evidence.NewReactor(logger,
@@ -114,8 +114,8 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 	return rts
 }
 
-func (rts *reactorTestSuite) start(t *testing.T) {
-	rts.network.Start(t)
+func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
+	rts.network.Start(ctx, t)
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
 		rts.numStateStores-1,
@@ -251,7 +251,7 @@ func TestReactorMultiDisconnect(t *testing.T) {
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusUp)
 	// Ensure "disconnecting" the secondary peer from the primary more than once
@@ -289,7 +289,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	defer cancel()
 
 	rts := setup(ctx, t, stateDBs, 0)
-	rts.start(t)
+	rts.start(ctx, t)
 
 	// Create a series of fixtures where each suite contains a reactor and
 	// evidence pool. In addition, we mark a primary suite and the rest are
@@ -346,7 +346,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	defer cancel()
 
 	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
-	rts.start(t)
+	rts.start(ctx, t)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -396,7 +396,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
@@ -449,7 +449,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
 
 	// start the network and ensure it's configured
-	rts.start(t)
+	rts.start(ctx, t)
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already committed evidence.
@@ -480,7 +480,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 	defer cancel()
 
 	rts := setup(ctx, t, stateDBs, 0)
-	rts.start(t)
+	rts.start(ctx, t)
 
 	evList := createEvidenceList(t, rts.pools[rts.network.RandomNode().NodeID], val, numEvidence)
 

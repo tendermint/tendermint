@@ -35,10 +35,6 @@ const (
 	testVal = "acbd"
 )
 
-var (
-	ctx = context.Background()
-)
-
 type ResultEcho struct {
 	Value string `json:"value"`
 }
@@ -85,13 +81,16 @@ func EchoDataBytesResult(ctx *rpctypes.Context, v tmbytes.HexBytes) (*ResultEcho
 }
 
 func TestMain(m *testing.M) {
-	setup()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	setup(ctx)
 	code := m.Run()
 	os.Exit(code)
 }
 
 // launch unix and tcp servers
-func setup() {
+func setup(ctx context.Context) {
 	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 	cmd := exec.Command("rm", "-f", unixSocket)
@@ -115,7 +114,7 @@ func setup() {
 		panic(err)
 	}
 	go func() {
-		if err := server.Serve(listener1, mux, tcpLogger, config); err != nil {
+		if err := server.Serve(ctx, listener1, mux, tcpLogger, config); err != nil {
 			panic(err)
 		}
 	}()
@@ -131,7 +130,7 @@ func setup() {
 		panic(err)
 	}
 	go func() {
-		if err := server.Serve(listener2, mux2, unixLogger, config); err != nil {
+		if err := server.Serve(ctx, listener2, mux2, unixLogger, config); err != nil {
 			panic(err)
 		}
 	}()
@@ -140,7 +139,7 @@ func setup() {
 	time.Sleep(time.Second * 2)
 }
 
-func echoViaHTTP(cl client.Caller, val string) (string, error) {
+func echoViaHTTP(ctx context.Context, cl client.Caller, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -151,7 +150,7 @@ func echoViaHTTP(cl client.Caller, val string) (string, error) {
 	return result.Value, nil
 }
 
-func echoIntViaHTTP(cl client.Caller, val int) (int, error) {
+func echoIntViaHTTP(ctx context.Context, cl client.Caller, val int) (int, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
@@ -162,7 +161,7 @@ func echoIntViaHTTP(cl client.Caller, val int) (int, error) {
 	return result.Value, nil
 }
 
-func echoBytesViaHTTP(cl client.Caller, bytes []byte) ([]byte, error) {
+func echoBytesViaHTTP(ctx context.Context, cl client.Caller, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -173,7 +172,7 @@ func echoBytesViaHTTP(cl client.Caller, bytes []byte) ([]byte, error) {
 	return result.Value, nil
 }
 
-func echoDataBytesViaHTTP(cl client.Caller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
+func echoDataBytesViaHTTP(ctx context.Context, cl client.Caller, bytes tmbytes.HexBytes) (tmbytes.HexBytes, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -184,24 +183,24 @@ func echoDataBytesViaHTTP(cl client.Caller, bytes tmbytes.HexBytes) (tmbytes.Hex
 	return result.Value, nil
 }
 
-func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
+func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.HTTPClient) {
 	val := testVal
-	got, err := echoViaHTTP(cl, val)
+	got, err := echoViaHTTP(ctx, cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 
 	val2 := randBytes(t)
-	got2, err := echoBytesViaHTTP(cl, val2)
+	got2, err := echoBytesViaHTTP(ctx, cl, val2)
 	require.Nil(t, err)
 	assert.Equal(t, got2, val2)
 
 	val3 := tmbytes.HexBytes(randBytes(t))
-	got3, err := echoDataBytesViaHTTP(cl, val3)
+	got3, err := echoDataBytesViaHTTP(ctx, cl, val3)
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)
 
 	val4 := mrand.Intn(10000)
-	got4, err := echoIntViaHTTP(cl, val4)
+	got4, err := echoIntViaHTTP(ctx, cl, val4)
 	require.Nil(t, err)
 	assert.Equal(t, got4, val4)
 }
@@ -265,55 +264,70 @@ func testWithWSClient(t *testing.T, cl *client.WSClient) {
 //-------------
 
 func TestServersAndClientsBasic(t *testing.T) {
+	bctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	serverAddrs := [...]string{tcpAddr, unixAddr}
 	for _, addr := range serverAddrs {
-		cl1, err := client.NewURI(addr)
-		require.Nil(t, err)
-		fmt.Printf("=== testing server on %s using URI client", addr)
-		testWithHTTPClient(t, cl1)
+		t.Run(addr, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(bctx)
+			defer cancel()
 
-		cl2, err := client.New(addr)
-		require.Nil(t, err)
-		fmt.Printf("=== testing server on %s using JSONRPC client", addr)
-		testWithHTTPClient(t, cl2)
+			cl1, err := client.NewURI(addr)
+			require.Nil(t, err)
+			fmt.Printf("=== testing server on %s using URI client", addr)
+			testWithHTTPClient(ctx, t, cl1)
 
-		cl3, err := client.NewWS(addr, websocketEndpoint)
-		require.Nil(t, err)
-		cl3.SetLogger(log.TestingLogger())
-		err = cl3.Start()
-		require.Nil(t, err)
-		fmt.Printf("=== testing server on %s using WS client", addr)
-		testWithWSClient(t, cl3)
-		err = cl3.Stop()
-		require.NoError(t, err)
+			cl2, err := client.New(addr)
+			require.Nil(t, err)
+			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
+			testWithHTTPClient(ctx, t, cl2)
+
+			cl3, err := client.NewWS(addr, websocketEndpoint)
+			require.Nil(t, err)
+			cl3.Logger = log.TestingLogger()
+			err = cl3.Start(ctx)
+			require.Nil(t, err)
+			fmt.Printf("=== testing server on %s using WS client", addr)
+			testWithWSClient(t, cl3)
+			cancel()
+		})
 	}
 }
 
 func TestHexStringArg(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cl, err := client.NewURI(tcpAddr)
 	require.Nil(t, err)
 	// should NOT be handled as hex
 	val := "0xabc"
-	got, err := echoViaHTTP(cl, val)
+	got, err := echoViaHTTP(ctx, cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 }
 
 func TestQuotedStringArg(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	cl, err := client.NewURI(tcpAddr)
 	require.Nil(t, err)
 	// should NOT be unquoted
 	val := "\"abc\""
-	got, err := echoViaHTTP(cl, val)
+	got, err := echoViaHTTP(ctx, cl, val)
 	require.Nil(t, err)
 	assert.Equal(t, got, val)
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
-	cl.SetLogger(log.TestingLogger())
-	err = cl.Start()
+	cl.Logger = log.TestingLogger()
+	err = cl.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(func() {
 		if err := cl.Stop(); err != nil {
@@ -340,11 +354,14 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 }
 
 func TestWSHandlesArrayParams(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
-	cl.SetLogger(log.TestingLogger())
-	err = cl.Start()
-	require.Nil(t, err)
+
+	cl.Logger = log.TestingLogger()
+	require.Nil(t, cl.Start(ctx))
 	t.Cleanup(func() {
 		if err := cl.Stop(); err != nil {
 			t.Error(err)
@@ -370,10 +387,13 @@ func TestWSHandlesArrayParams(t *testing.T) {
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
-	cl.SetLogger(log.TestingLogger())
-	err = cl.Start()
+	cl.Logger = log.TestingLogger()
+	err = cl.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(func() {
 		if err := cl.Stop(); err != nil {

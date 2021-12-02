@@ -343,7 +343,7 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 			require.Fail(t, "unexpected retry")
 		}
 
-		require.NoError(t, peerManager.DialFailed(a))
+		require.NoError(t, peerManager.DialFailed(ctx, a))
 	}
 }
 
@@ -401,17 +401,20 @@ func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
 	require.Zero(t, dial)
 
 	// Spawn a goroutine to fail a's dial attempt.
+	sig := make(chan struct{})
 	go func() {
+		defer close(sig)
 		time.Sleep(200 * time.Millisecond)
-		require.NoError(t, peerManager.DialFailed(a))
+		require.NoError(t, peerManager.DialFailed(ctx, a))
 	}()
 
 	// This should make b available for dialing (not a, retries are disabled).
-	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	dial, err = peerManager.DialNext(ctx)
+	opctx, opcancel := context.WithTimeout(ctx, 3*time.Second)
+	defer opcancel()
+	dial, err = peerManager.DialNext(opctx)
 	require.NoError(t, err)
 	require.Equal(t, b, dial)
+	<-sig
 }
 
 func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
@@ -431,7 +434,7 @@ func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
 	dial, err := peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
-	require.NoError(t, peerManager.DialFailed(dial))
+	require.NoError(t, peerManager.DialFailed(ctx, dial))
 	failed := time.Now()
 
 	// The retry timer should unblock DialNext and make a available again after
@@ -680,6 +683,9 @@ func TestPeerManager_TryDialNext_DialingConnected(t *testing.T) {
 }
 
 func TestPeerManager_TryDialNext_Multiple(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	aID := types.NodeID(strings.Repeat("a", 40))
 	bID := types.NodeID(strings.Repeat("b", 40))
 	addresses := []p2p.NodeAddress{
@@ -704,7 +710,7 @@ func TestPeerManager_TryDialNext_Multiple(t *testing.T) {
 		address, err := peerManager.TryDialNext()
 		require.NoError(t, err)
 		require.NotZero(t, address)
-		require.NoError(t, peerManager.DialFailed(address))
+		require.NoError(t, peerManager.DialFailed(ctx, address))
 		dial = append(dial, address)
 	}
 	require.ElementsMatch(t, dial, addresses)
@@ -729,13 +735,16 @@ func TestPeerManager_DialFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Dialing and then calling DialFailed with a different address (same
 	// NodeID) should unmark as dialing and allow us to dial the other address
 	// again, but not register the failed address.
 	dial, err := peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
-	require.NoError(t, peerManager.DialFailed(p2p.NodeAddress{
+	require.NoError(t, peerManager.DialFailed(ctx, p2p.NodeAddress{
 		Protocol: "tcp", NodeID: aID, Hostname: "localhost"}))
 	require.Equal(t, []p2p.NodeAddress{a}, peerManager.Addresses(aID))
 
@@ -744,15 +753,18 @@ func TestPeerManager_DialFailed(t *testing.T) {
 	require.Equal(t, a, dial)
 
 	// Calling DialFailed on same address twice should be fine.
-	require.NoError(t, peerManager.DialFailed(a))
-	require.NoError(t, peerManager.DialFailed(a))
+	require.NoError(t, peerManager.DialFailed(ctx, a))
+	require.NoError(t, peerManager.DialFailed(ctx, a))
 
 	// DialFailed on an unknown peer shouldn't error or add it.
-	require.NoError(t, peerManager.DialFailed(b))
+	require.NoError(t, peerManager.DialFailed(ctx, b))
 	require.Equal(t, []types.NodeID{aID}, peerManager.Peers())
 }
 
 func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
@@ -792,7 +804,7 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	require.Empty(t, dial)
 
 	// Failing b's dial will now make c available for dialing.
-	require.NoError(t, peerManager.DialFailed(b))
+	require.NoError(t, peerManager.DialFailed(ctx, b))
 	dial, err = peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, c, dial)
@@ -1274,10 +1286,13 @@ func TestPeerManager_Ready(t *testing.T) {
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	sub := peerManager.Subscribe()
+	sub := peerManager.Subscribe(ctx)
 	defer sub.Close()
 
 	// Connecting to a should still have it as status down.
@@ -1488,7 +1503,10 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	sub := peerManager.Subscribe()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sub := peerManager.Subscribe(ctx)
 	defer sub.Close()
 
 	// Disconnecting an unknown peer does nothing.
@@ -1573,13 +1591,16 @@ func TestPeerManager_Errored(t *testing.T) {
 }
 
 func TestPeerManager_Subscribe(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
 	// This tests all subscription events for full peer lifecycles.
-	sub := peerManager.Subscribe()
+	sub := peerManager.Subscribe(ctx)
 	defer sub.Close()
 
 	added, err := peerManager.Add(a)
@@ -1629,17 +1650,20 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.Equal(t, a, dial)
 	require.Empty(t, sub.Updates())
 
-	require.NoError(t, peerManager.DialFailed(a))
+	require.NoError(t, peerManager.DialFailed(ctx, a))
 	require.Empty(t, sub.Updates())
 }
 
 func TestPeerManager_Subscribe_Close(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	sub := peerManager.Subscribe()
+	sub := peerManager.Subscribe(ctx)
 	defer sub.Close()
 
 	added, err := peerManager.Add(a)
@@ -1659,6 +1683,9 @@ func TestPeerManager_Subscribe_Close(t *testing.T) {
 }
 
 func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Cleanup(leaktest.Check(t))
 
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
@@ -1666,11 +1693,11 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	s1 := peerManager.Subscribe()
+	s1 := peerManager.Subscribe(ctx)
 	defer s1.Close()
-	s2 := peerManager.Subscribe()
+	s2 := peerManager.Subscribe(ctx)
 	defer s2.Close()
-	s3 := peerManager.Subscribe()
+	s3 := peerManager.Subscribe(ctx)
 	defer s3.Close()
 
 	// Connecting to a peer should send updates on all subscriptions.
@@ -1705,6 +1732,9 @@ func TestPeerManager_Close(t *testing.T) {
 	// leaktest will check that spawned goroutines are closed.
 	t.Cleanup(leaktest.CheckTimeout(t, 1*time.Second))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
@@ -1714,7 +1744,7 @@ func TestPeerManager_Close(t *testing.T) {
 
 	// This subscription isn't closed, but PeerManager.Close()
 	// should reap the spawned goroutine.
-	_ = peerManager.Subscribe()
+	_ = peerManager.Subscribe(ctx)
 
 	// This dial failure will start a retry timer for 10 seconds, which
 	// should be reaped.
@@ -1724,7 +1754,7 @@ func TestPeerManager_Close(t *testing.T) {
 	dial, err := peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
-	require.NoError(t, peerManager.DialFailed(a))
+	require.NoError(t, peerManager.DialFailed(ctx, a))
 
 	// This should clean up the goroutines.
 	peerManager.Close()

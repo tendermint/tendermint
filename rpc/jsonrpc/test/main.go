@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -29,8 +30,11 @@ func main() {
 		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {})
+	tmos.TrapSignal(ctx, logger, func() {})
 
 	rpcserver.RegisterRPCFuncs(mux, routes, logger)
 	config := rpcserver.DefaultConfig()
@@ -40,7 +44,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = rpcserver.Serve(listener, mux, logger, config); err != nil {
+	if err = rpcserver.Serve(ctx, listener, mux, logger, config); err != nil {
 		logger.Error("rpc serve", "err", err)
 		os.Exit(1)
 	}

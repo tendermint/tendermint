@@ -92,7 +92,9 @@ func newDefaultNode(
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", cfg.NodeKeyFile(), err)
 	}
 	if cfg.Mode == config.ModeSeed {
-		return makeSeedNode(cfg,
+		return makeSeedNode(
+			ctx,
+			cfg,
 			config.DefaultDBProvider,
 			nodeKey,
 			defaultGenesisDocProviderFunc(cfg),
@@ -280,7 +282,7 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey,
+	router, err := createRouter(ctx, logger, nodeMetrics.p2p, nodeInfo, nodeKey,
 		peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
@@ -288,14 +290,14 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	mpReactor, mp, err := createMempoolReactor(
+	mpReactor, mp, err := createMempoolReactor(ctx,
 		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	evReactor, evPool, err := createEvidenceReactor(
+	evReactor, evPool, err := createEvidenceReactor(ctx,
 		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger,
 	)
 	if err != nil {
@@ -324,7 +326,7 @@ func makeNode(
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactor, err := createBlockchainReactor(
+	bcReactor, err := createBlockchainReactor(ctx,
 		logger, state, blockExec, blockStore, csReactor,
 		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
@@ -350,7 +352,7 @@ func makeNode(
 	channels := make(map[p2p.ChannelID]*p2p.Channel, len(ssChDesc))
 	for idx := range ssChDesc {
 		chd := ssChDesc[idx]
-		ch, err := router.OpenChannel(chd)
+		ch, err := router.OpenChannel(ctx, chd)
 		if err != nil {
 			return nil, err
 		}
@@ -369,7 +371,7 @@ func makeNode(
 		channels[statesync.ChunkChannel],
 		channels[statesync.LightBlockChannel],
 		channels[statesync.ParamsChannel],
-		peerManager.Subscribe(),
+		peerManager.Subscribe(ctx),
 		stateStore,
 		blockStore,
 		cfg.StateSync.TempDir,
@@ -378,7 +380,7 @@ func makeNode(
 
 	var pexReactor service.Service
 	if cfg.P2P.PexReactor {
-		pexReactor, err = createPEXReactor(logger, peerManager, router)
+		pexReactor, err = createPEXReactor(ctx, logger, peerManager, router)
 		if err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
@@ -441,7 +443,9 @@ func makeNode(
 }
 
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
-func makeSeedNode(cfg *config.Config,
+func makeSeedNode(
+	ctx context.Context,
+	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeKey types.NodeKey,
 	genesisDocProvider genesisDocProvider,
@@ -476,7 +480,7 @@ func makeSeedNode(cfg *config.Config,
 			closer)
 	}
 
-	router, err := createRouter(logger, p2pMetrics, nodeInfo, nodeKey,
+	router, err := createRouter(ctx, logger, p2pMetrics, nodeInfo, nodeKey,
 		peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
@@ -484,7 +488,7 @@ func makeSeedNode(cfg *config.Config,
 			closer)
 	}
 
-	pexReactor, err := createPEXReactor(logger, peerManager, router)
+	pexReactor, err := createPEXReactor(ctx, logger, peerManager, router)
 	if err != nil {
 		return nil, combineCloseError(err, closer)
 	}
@@ -510,12 +514,25 @@ func makeSeedNode(cfg *config.Config,
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
 	if n.config.RPC.PprofListenAddress != "" {
-		// this service is not cleaned up (I believe that we'd
-		// need to have another thread and a potentially a
-		// context to get this functionality.)
+		rpcCtx, rpcCancel := context.WithCancel(ctx)
+		srv := &http.Server{Addr: n.config.RPC.PprofListenAddress, Handler: nil}
+		go func() {
+			select {
+			case <-ctx.Done():
+				sctx, scancel := context.WithTimeout(context.Background(), time.Second)
+				defer scancel()
+				_ = srv.Shutdown(sctx)
+			case <-rpcCtx.Done():
+			}
+		}()
+
 		go func() {
 			n.Logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
-			n.Logger.Error("pprof server error", "err", http.ListenAndServe(n.config.RPC.PprofListenAddress, nil))
+
+			if err := srv.ListenAndServe(); err != nil {
+				n.Logger.Error("pprof server error", "err", err)
+				rpcCancel()
+			}
 		}()
 	}
 
@@ -538,7 +555,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 	if n.config.Instrumentation.Prometheus &&
 		n.config.Instrumentation.PrometheusListenAddr != "" {
-		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
+		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
 	}
 
 	// Start the transport.
@@ -784,6 +801,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 		if n.config.RPC.IsTLSEnabled() {
 			go func() {
 				if err := rpcserver.ServeTLS(
+					ctx,
 					listener,
 					rootHandler,
 					n.config.RPC.CertFile(),
@@ -797,6 +815,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 		} else {
 			go func() {
 				if err := rpcserver.Serve(
+					ctx,
 					listener,
 					rootHandler,
 					rpcLogger,
@@ -815,7 +834,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
 // collectors on addr.
-func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
+func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http.Server {
 	srv := &http.Server{
 		Addr: addr,
 		Handler: promhttp.InstrumentMetricHandler(
@@ -825,12 +844,25 @@ func (n *nodeImpl) startPrometheusServer(addr string) *http.Server {
 			),
 		),
 	}
+
+	promCtx, promCancel := context.WithCancel(ctx)
 	go func() {
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			// Error starting or closing listener:
-			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+		select {
+		case <-ctx.Done():
+			sctx, scancel := context.WithTimeout(context.Background(), time.Second)
+			defer scancel()
+			_ = srv.Shutdown(sctx)
+		case <-promCtx.Done():
 		}
 	}()
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+			promCancel()
+		}
+	}()
+
 	return srv
 }
 

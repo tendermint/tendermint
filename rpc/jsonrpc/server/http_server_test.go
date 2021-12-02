@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -27,6 +28,9 @@ type sampleResult struct {
 func TestMaxOpenConnections(t *testing.T) {
 	const max = 5 // max simultaneous connections
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start the server.
 	var open int32
 	mux := http.NewServeMux()
@@ -42,7 +46,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	l, err := Listen("tcp://127.0.0.1:0", max)
 	require.NoError(t, err)
 	defer l.Close()
-	go Serve(l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
+	go Serve(ctx, l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -80,10 +84,12 @@ func TestServeTLS(t *testing.T) {
 		fmt.Fprint(w, "some body")
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	chErr := make(chan error, 1)
 	go func() {
-		// FIXME This goroutine leaks
-		chErr <- ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 	}()
 
 	select {

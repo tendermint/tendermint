@@ -71,7 +71,7 @@ func setup(
 	}
 
 	chDesc := &p2p.ChannelDescriptor{ID: BlockSyncChannel, MessageType: new(bcproto.Message)}
-	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
+	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 
 	i := 0
 	for nodeID := range rts.network.Nodes {
@@ -166,7 +166,7 @@ func (rts *reactorTestSuite) addNode(
 
 	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-	rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+	rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 	rts.reactors[nodeID], err = NewReactor(
 		rts.logger.With("nodeID", nodeID),
 		state.Copy(),
@@ -183,9 +183,9 @@ func (rts *reactorTestSuite) addNode(
 	require.True(t, rts.reactors[nodeID].IsRunning())
 }
 
-func (rts *reactorTestSuite) start(t *testing.T) {
+func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 	t.Helper()
-	rts.network.Start(t)
+	rts.network.Start(ctx, t)
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
 		len(rts.nodes)-1,
@@ -207,7 +207,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	secondaryPool := rts.reactors[rts.nodes[1]].pool
 
@@ -244,7 +244,7 @@ func TestReactor_SyncTime(t *testing.T) {
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
-	rts.start(t)
+	rts.start(ctx, t)
 
 	require.Eventually(
 		t,
@@ -274,7 +274,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	testCases := []struct {
 		height   int64
@@ -325,7 +325,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	require.Eventually(
 		t,
