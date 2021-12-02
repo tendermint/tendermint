@@ -289,7 +289,7 @@ build-reproducible:
 .PHONY: build-reproducible
 
 # Implements test splitting and running. This is pulled directly from
-# the github action workflows for better local reproducability.
+# the github action workflows for better local reproducibility.
 
 GO_TEST_FILES := $(shell find $(CURDIR) -name "*_test.go")
 
