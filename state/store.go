@@ -66,8 +66,15 @@ type Store interface {
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
+<<<<<<< HEAD:state/store.go
 	// PruneStates takes the height from which to start prning and which height stop at
 	PruneStates(int64, int64) error
+=======
+	// PruneStates takes the height from which to prune up to (exclusive)
+	PruneStates(int64) error
+	// Close closes the connection with the database
+	Close() error
+>>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315)):internal/state/store.go
 }
 
 // dbStore wraps a db (github.com/tendermint/tm-db)
@@ -592,4 +599,8 @@ func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, par
 	}
 
 	return nil
+}
+
+func (store dbStore) Close() error {
+	return store.db.Close()
 }
