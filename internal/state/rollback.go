@@ -36,18 +36,18 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	}
 
 	// state store height is equal to blockstore height. We're good to proceed with rolling back state
-	rollbackHeight := invalidState.LastBlockHeight
+	rollbackHeight := invalidState.LastBlockHeight - 1
 	rollbackBlock := bs.LoadBlockMeta(rollbackHeight)
 	if rollbackBlock == nil {
 		return -1, nil, fmt.Errorf("block at height %d not found", rollbackHeight)
 	}
 
-	previousValidatorSet, err := ss.LoadValidators(rollbackHeight - 1)
+	previousLastValidatorSet, err := ss.LoadValidators(rollbackHeight)
 	if err != nil {
 		return -1, nil, err
 	}
 
-	previousParams, err := ss.LoadConsensusParams(rollbackHeight)
+	previousParams, err := ss.LoadConsensusParams(rollbackHeight + 1)
 	if err != nil {
 		return -1, nil, err
 	}
@@ -55,13 +55,13 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	valChangeHeight := invalidState.LastHeightValidatorsChanged
 	// this can only happen if the validator set changed since the last block
 	if valChangeHeight > rollbackHeight {
-		valChangeHeight = rollbackHeight
+		valChangeHeight = rollbackHeight + 1
 	}
 
 	paramsChangeHeight := invalidState.LastHeightConsensusParamsChanged
 	// this can only happen if params changed from the last block
 	if paramsChangeHeight > rollbackHeight {
-		paramsChangeHeight = rollbackHeight
+		paramsChangeHeight = rollbackHeight + 1
 	}
 
 	// build the new state from the old state and the prior block
@@ -77,13 +77,13 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 		ChainID:       invalidState.ChainID,
 		InitialHeight: invalidState.InitialHeight,
 
-		LastBlockHeight: invalidState.LastBlockHeight - 1,
-		LastBlockID:     rollbackBlock.Header.LastBlockID,
+		LastBlockHeight: rollbackBlock.Header.Height,
+		LastBlockID:     rollbackBlock.BlockID,
 		LastBlockTime:   rollbackBlock.Header.Time,
 
 		NextValidators:              invalidState.Validators,
 		Validators:                  invalidState.LastValidators,
-		LastValidators:              previousValidatorSet,
+		LastValidators:              previousLastValidatorSet,
 		LastHeightValidatorsChanged: valChangeHeight,
 
 		ConsensusParams:                  previousParams,

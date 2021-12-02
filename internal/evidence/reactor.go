@@ -110,6 +110,9 @@ func (r *Reactor) OnStop() {
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
 	<-r.peerUpdates.Done()
+
+	// Close the evidence db
+	r.evpool.Close()
 }
 
 // handleEvidenceMessage handles envelopes sent from peers on the EvidenceChannel.
