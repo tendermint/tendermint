@@ -1,6 +1,5 @@
 #!/usr/bin/make -f
 
-PACKAGES=$(shell go list ./...)
 BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
@@ -103,7 +102,7 @@ install_abci:
 .PHONY: install_abci
 
 ###############################################################################
-###                           	Privval Server                              ###
+###				Privval Server                              ###
 ###############################################################################
 
 build_privval_server:
@@ -288,3 +287,23 @@ build-reproducible:
 		--name latest-build cosmossdk/rbuilder:latest
 	docker cp -a latest-build:/home/builder/artifacts/ $(CURDIR)/
 .PHONY: build-reproducible
+
+# Implements test splitting and running. This is pulled directly from
+# the github action workflows for better local reproducibility.
+
+GO_TEST_FILES != find $(CURDIR) -name "*_test.go"
+
+# default to four splits by default
+NUM_SPLIT ?= 4
+
+$(BUILDDIR):
+	mkdir -p $@
+
+# the format statement filters out all packages that don't have tests.
+$(BUILDDIR)/packages.txt:$(GO_TEST_FILES) $(BUILDDIR)
+	go list -f "{{ if .TestGoFiles }}{{ .ImportPath }}{{ end }}" ./... | sort > $@
+
+split-test-packages:$(BUILDDIR)/packages.txt
+	split -d -n l/$(NUM_SPLIT) $< $<.
+test-group-%:split-test-packages
+	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=15m -race -coverprofile=$(BUILDDIR)/$*.profile.out
