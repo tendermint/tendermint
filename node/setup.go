@@ -44,12 +44,27 @@ func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *stor
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
+<<<<<<< HEAD
 		return
+=======
+		return nil, nil, func() error { return nil }, fmt.Errorf("unable to initialize blockstore: %w", err)
+>>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315))
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
+<<<<<<< HEAD
 	stateDB, err = dbProvider(&config.DBContext{ID: "state", Config: cfg})
 	return
+=======
+	stateDB, err := dbProvider(&config.DBContext{ID: "state", Config: cfg})
+	if err != nil {
+		return nil, nil, makeCloser(closers), fmt.Errorf("unable to initialize statestore: %w", err)
+	}
+
+	closers = append(closers, stateDB.Close)
+
+	return blockStore, stateDB, makeCloser(closers), nil
+>>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315))
 }
 
 // nolint:lll
@@ -252,7 +267,11 @@ func createEvidenceReactor(
 ) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
+<<<<<<< HEAD
 		return nil, nil, nil, err
+=======
+		return nil, nil, fmt.Errorf("unable to initialize evidence db: %w", err)
+>>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315))
 	}
 
 	logger = logger.With("module", "evidence")
@@ -479,7 +498,11 @@ func createPeerManager(
 
 	peerDB, err := dbProvider(&config.DBContext{ID: "peerstore", Config: cfg})
 	if err != nil {
+<<<<<<< HEAD
 		return nil, err
+=======
+		return nil, func() error { return nil }, fmt.Errorf("unable to initialize peer store: %w", err)
+>>>>>>> bca2080c0 (cmd: add integration test and fix bug in rollback command (#7315))
 	}
 
 	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
