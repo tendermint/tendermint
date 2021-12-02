@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
@@ -83,7 +84,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	h.mtx.Unlock()
 
 	// results in WS read error, no send retry because write succeeded
-	call(t, "a", c)
+	call(ctx, t, "a", c)
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)
@@ -92,7 +93,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	h.mtx.Unlock()
 
 	// should succeed
-	call(t, "b", c)
+	call(ctx, t, "b", c)
 }
 
 func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
@@ -101,6 +102,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	// start server
 	h := &myHandler{}
 	s := httptest.NewServer(h)
+	defer s.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -115,13 +117,13 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	}
 
 	// results in WS write error, the client should resend on reconnect
-	call(t, "a", c)
+	call(ctx, t, "a", c)
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)
 
 	// should succeed
-	call(t, "b", c)
+	call(ctx, t, "b", c)
 }
 
 func TestWSClientReconnectFailure(t *testing.T) {
@@ -166,7 +168,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		// client should block on this
-		call(t, "b", c)
+		call(ctx, t, "b", c)
 		close(done)
 	}()
 
@@ -182,38 +184,47 @@ func TestWSClientReconnectFailure(t *testing.T) {
 func TestNotBlockingOnStop(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	timeout := 2 * time.Second
+	timeout := 3 * time.Second
 	s := httptest.NewServer(&myHandler{})
+	defer s.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
-	c.Call(context.Background(), "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
+	c.Call(ctx, "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)
 	passCh := make(chan struct{})
 	go func() {
 		// Unless we have a non-blocking write to ResponsesCh from readRoutine
 		// this blocks forever ont the waitgroup
-		err := c.Stop()
-		require.NoError(t, err)
-
+		cancel()
+		require.NoError(t, c.Stop())
 		select {
 		case <-ctx.Done():
 		case passCh <- struct{}{}:
 		}
 	}()
+
+	runtime.Gosched() // hacks: force context switch
+
 	select {
 	case <-passCh:
 		// Pass
 	case <-time.After(timeout):
-		t.Fatalf("WSClient did failed to stop within %v seconds - is one of the read/write routines blocking?",
-			timeout.Seconds())
+		if c.IsRunning() {
+			t.Fatalf("WSClient did failed to stop within %v seconds - is one of the read/write routines blocking?",
+				timeout.Seconds())
+		}
 	}
 }
 
 func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
-	c, err := NewWS(addr, "/websocket")
+	t.Helper()
+	opts := DefaultWSOptions()
+	opts.SkipMetrics = true
+	c, err := NewWSWithOptions(addr, "/websocket", opts)
+
 	require.Nil(t, err)
 	err = c.Start(ctx)
 	require.Nil(t, err)
@@ -221,9 +232,13 @@ func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	return c
 }
 
-func call(t *testing.T, method string, c *WSClient) {
-	err := c.Call(context.Background(), method, make(map[string]interface{}))
-	require.NoError(t, err)
+func call(ctx context.Context, t *testing.T, method string, c *WSClient) {
+	t.Helper()
+
+	err := c.Call(ctx, method, make(map[string]interface{}))
+	if ctx.Err() == nil {
+		require.NoError(t, err)
+	}
 }
 
 func handleResponses(ctx context.Context, t *testing.T, c *WSClient) {
