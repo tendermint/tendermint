@@ -12,7 +12,8 @@ type testService struct {
 	BaseService
 }
 
-func (testService) OnReset() error {
+func (testService) OnStop() {}
+func (testService) OnStart(context.Context) error {
 	return nil
 }
 
@@ -31,7 +32,7 @@ func TestBaseServiceWait(t *testing.T) {
 		waitFinished <- struct{}{}
 	}()
 
-	go ts.Stop() //nolint:errcheck // ignore for tests
+	go cancel()
 
 	select {
 	case <-waitFinished:

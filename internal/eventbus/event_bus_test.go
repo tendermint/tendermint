@@ -436,11 +436,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	if err != nil {
 		b.Error(err)
 	}
-	b.Cleanup(func() {
-		if err := eventBus.Stop(); err != nil {
-			b.Error(err)
-		}
-	})
+	b.Cleanup(eventBus.Wait)
 
 	q := types.EventQueryNewBlock
 

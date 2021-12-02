@@ -72,8 +72,8 @@ func (sl *SignerListenerEndpoint) OnStart(ctx context.Context) error {
 	sl.pingInterval = time.Duration(sl.signerEndpoint.timeoutReadWrite.Milliseconds()*2/3) * time.Millisecond
 	sl.pingTimer = time.NewTicker(sl.pingInterval)
 
-	go sl.serviceLoop()
-	go sl.pingLoop()
+	go sl.serviceLoop(ctx)
+	go sl.pingLoop(ctx)
 
 	sl.connectRequestCh <- struct{}{}
 
@@ -173,7 +173,7 @@ func (sl *SignerListenerEndpoint) triggerReconnect() {
 	sl.triggerConnect()
 }
 
-func (sl *SignerListenerEndpoint) serviceLoop() {
+func (sl *SignerListenerEndpoint) serviceLoop(ctx context.Context) {
 	for {
 		select {
 		case <-sl.connectRequestCh:
@@ -185,7 +185,7 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 					// We have a good connection, wait for someone that needs one otherwise cancellation
 					select {
 					case sl.connectionAvailableCh <- conn:
-					case <-sl.Quit():
+					case <-ctx.Done():
 						return
 					}
 				}
@@ -195,13 +195,13 @@ func (sl *SignerListenerEndpoint) serviceLoop() {
 				default:
 				}
 			}
-		case <-sl.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (sl *SignerListenerEndpoint) pingLoop() {
+func (sl *SignerListenerEndpoint) pingLoop(ctx context.Context) {
 	for {
 		select {
 		case <-sl.pingTimer.C:
@@ -212,7 +212,7 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 					sl.triggerReconnect()
 				}
 			}
-		case <-sl.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}

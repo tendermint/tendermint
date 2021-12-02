@@ -98,7 +98,9 @@ func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoo
 	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
 }
 
-func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
+func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
+	t.Helper()
+
 	txs := make([]testTx, numTxs)
 	txInfo := TxInfo{SenderID: peerID}
 
@@ -115,7 +117,7 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx
 			tx:       []byte(fmt.Sprintf("sender-%d-%d=%X=%d", i, peerID, prefix, priority)),
 			priority: priority,
 		}
-		require.NoError(t, txmp.CheckTx(context.Background(), txs[i].tx, nil, txInfo))
+		require.NoError(t, txmp.CheckTx(ctx, txs[i].tx, nil, txInfo))
 	}
 
 	return txs
@@ -161,7 +163,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 
 	// Execute CheckTx for some transactions and ensure TxsAvailable only fires
 	// once.
-	txs := checkTxs(t, txmp, 100, 0)
+	txs := checkTxs(ctx, t, txmp, 100, 0)
 	ensureTxFire()
 	ensureNoTxFire()
 
@@ -184,7 +186,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 
 	// Execute CheckTx for more transactions and ensure we do not fire another
 	// event as we're still on the same height (1).
-	_ = checkTxs(t, txmp, 100, 0)
+	_ = checkTxs(ctx, t, txmp, 100, 0)
 	ensureNoTxFire()
 }
 
@@ -193,7 +195,7 @@ func TestTxMempool_Size(t *testing.T) {
 	defer cancel()
 
 	txmp := setup(ctx, t, 0)
-	txs := checkTxs(t, txmp, 100, 0)
+	txs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
 
@@ -220,7 +222,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	defer cancel()
 
 	txmp := setup(ctx, t, 0)
-	txs := checkTxs(t, txmp, 100, 0)
+	txs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
 
@@ -248,7 +250,7 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	defer cancel()
 
 	txmp := setup(ctx, t, 0)
-	tTxs := checkTxs(t, txmp, 100, 0) // all txs request 1 gas unit
+	tTxs := checkTxs(ctx, t, txmp, 100, 0) // all txs request 1 gas unit
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
 
@@ -301,7 +303,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	defer cancel()
 
 	txmp := setup(ctx, t, 0)
-	tTxs := checkTxs(t, txmp, 100, 0)
+	tTxs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
 
@@ -424,7 +426,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for i := 0; i < 20; i++ {
-			_ = checkTxs(t, txmp, 100, 0)
+			_ = checkTxs(ctx, t, txmp, 100, 0)
 			dur := rng.Intn(1000-500) + 500
 			time.Sleep(time.Duration(dur) * time.Millisecond)
 		}
@@ -486,7 +488,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	txmp.height = 100
 	txmp.config.TTLNumBlocks = 10
 
-	tTxs := checkTxs(t, txmp, 100, 0)
+	tTxs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, 100, txmp.heightIndex.Size())
 
@@ -505,7 +507,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	require.Equal(t, 95, txmp.heightIndex.Size())
 
 	// check more txs at height 101
-	_ = checkTxs(t, txmp, 50, 1)
+	_ = checkTxs(ctx, t, txmp, 50, 1)
 	require.Equal(t, 145, txmp.Size())
 	require.Equal(t, 145, txmp.heightIndex.Size())
 

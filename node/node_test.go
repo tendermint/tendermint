@@ -48,45 +48,34 @@ func TestNodeStartStop(t *testing.T) {
 	// create & start node
 	ns, err := newDefaultNode(ctx, cfg, log.TestingLogger())
 	require.NoError(t, err)
-	require.NoError(t, ns.Start(ctx))
-
-	t.Cleanup(func() {
-		if ns.IsRunning() {
-			bcancel()
-			ns.Wait()
-		}
-	})
 
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
+	t.Cleanup(func() {
+		if n.IsRunning() {
+			bcancel()
+			n.Wait()
+		}
+	})
 
+	require.NoError(t, n.Start(ctx))
 	// wait for the node to produce a block
-	blocksSub, err := n.EventBus().SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
+	tctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	blocksSub, err := n.EventBus().SubscribeWithArgs(tctx, pubsub.SubscribeArgs{
 		ClientID: "node_test",
 		Query:    types.EventQueryNewBlock,
 	})
 	require.NoError(t, err)
-	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if _, err := blocksSub.Next(tctx); err != nil {
-		t.Fatalf("Waiting for event: %v", err)
-	}
+	_, err = blocksSub.Next(tctx)
+	require.NoError(t, err, "waiting for event")
 
-	// stop the node
-	go func() {
-		bcancel()
-		n.Wait()
-	}()
+	cancel()  // stop the subscription context
+	bcancel() // stop the base context
+	n.Wait()
 
-	select {
-	case <-n.Quit():
-		return
-	case <-time.After(10 * time.Second):
-		if n.IsRunning() {
-			t.Fatal("timed out waiting for shutdown")
-		}
-
-	}
+	require.False(t, n.IsRunning(), "node must shut down")
 }
 
 func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger log.Logger) *nodeImpl {

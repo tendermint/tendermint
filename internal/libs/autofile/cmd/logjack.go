@@ -63,14 +63,10 @@ func main() {
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
-			if err := group.Stop(); err != nil {
-				fmt.Fprintf(os.Stderr, "logjack stopped with error %v\n", headPath)
-				os.Exit(1)
-			}
 			if err == io.EOF {
 				os.Exit(0)
 			} else {
-				fmt.Println("logjack errored")
+				fmt.Println("logjack errored:", err.Error())
 				os.Exit(1)
 			}
 		}

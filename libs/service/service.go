@@ -136,17 +136,31 @@ func (bs *BaseService) Start(ctx context.Context) error {
 		}
 
 		go func(ctx context.Context) {
-			<-ctx.Done()
-			if err := bs.Stop(); err != nil {
-				bs.Logger.Error("stopped service",
-					"err", err.Error(),
+			select {
+			case <-bs.quit:
+				// someone else explicitly called stop
+				// and then we shouldn't.
+				return
+			case <-ctx.Done():
+				// if nothing is running, no need to
+				// shut down again.
+				if !bs.impl.IsRunning() {
+					return
+				}
+
+				// the context was cancel and we
+				// should stop.
+				if err := bs.Stop(); err != nil {
+					bs.Logger.Error("stopped service",
+						"err", err.Error(),
+						"service", bs.name,
+						"impl", bs.impl.String())
+				}
+
+				bs.Logger.Info("stopped service",
 					"service", bs.name,
 					"impl", bs.impl.String())
 			}
-
-			bs.Logger.Info("stopped service",
-				"service", bs.name,
-				"impl", bs.impl.String())
 		}(ctx)
 
 		return nil
@@ -155,11 +169,6 @@ func (bs *BaseService) Start(ctx context.Context) error {
 	bs.Logger.Debug("not starting service; already started", "service", bs.name, "impl", bs.impl.String())
 	return ErrAlreadyStarted
 }
-
-// OnStart implements Service by doing nothing.
-// NOTE: Do not put anything in here,
-// that way users don't need to call BaseService.OnStart()
-func (bs *BaseService) OnStart(ctx context.Context) error { return nil }
 
 // Stop implements Service by calling OnStop (if defined) and closing quit
 // channel. An error will be returned if the service is already stopped.
@@ -182,11 +191,6 @@ func (bs *BaseService) Stop() error {
 	return ErrAlreadyStopped
 }
 
-// OnStop implements Service by doing nothing.
-// NOTE: Do not put anything in here,
-// that way users don't need to call BaseService.OnStop()
-func (bs *BaseService) OnStop() {}
-
 // IsRunning implements Service by returning true or false depending on the
 // service's state.
 func (bs *BaseService) IsRunning() bool {
@@ -198,6 +202,3 @@ func (bs *BaseService) Wait() { <-bs.quit }
 
 // String implements Service by returning a string representation of the service.
 func (bs *BaseService) String() string { return bs.name }
-
-// Quit Implements Service by returning a quit channel.
-func (bs *BaseService) Quit() <-chan struct{} { return bs.quit }

@@ -47,6 +47,8 @@ type Client struct {
 	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
+
+	quitCh chan struct{}
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -87,9 +89,10 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 // NewClient returns a new client.
 func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
-		next: next,
-		lc:   lc,
-		prt:  merkle.DefaultProofRuntime(),
+		next:   next,
+		lc:     lc,
+		prt:    merkle.DefaultProofRuntime(),
+		quitCh: make(chan struct{}),
 	}
 	c.BaseService = *service.NewBaseService(nil, "Client", c)
 	for _, o := range opts {
@@ -102,6 +105,12 @@ func (c *Client) OnStart(ctx context.Context) error {
 	if !c.next.IsRunning() {
 		return c.next.Start(ctx)
 	}
+
+	go func() {
+		defer close(c.quitCh)
+		c.Wait()
+	}()
+
 	return nil
 }
 
@@ -442,6 +451,40 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	return res, nil
 }
 
+// Header fetches and verifies the header directly via the light client
+func (c *Client) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	lb, err := c.updateLightClientIfNeededTo(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+
+	return &coretypes.ResultHeader{Header: lb.Header}, nil
+}
+
+// HeaderByHash calls rpcclient#HeaderByHash and updates the client if it's falling behind.
+func (c *Client) HeaderByHash(ctx context.Context, hash tmbytes.HexBytes) (*coretypes.ResultHeader, error) {
+	res, err := c.next.HeaderByHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := res.Header.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	lb, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	if !bytes.Equal(lb.Header.Hash(), res.Header.Hash()) {
+		return nil, fmt.Errorf("primary header hash does not match trusted header hash. (%X != %X)",
+			lb.Header.Hash(), res.Header.Hash())
+	}
+
+	return res, nil
+}
+
 func (c *Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height
 	// or at the latest height if no height is provided.
@@ -526,7 +569,8 @@ func (c *Client) Validators(
 		BlockHeight: l.Height,
 		Validators:  v,
 		Count:       len(v),
-		Total:       totalCount}, nil
+		Total:       totalCount,
+	}, nil
 }
 
 func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
@@ -586,7 +630,7 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
 						resultEvent,
 					))
-			case <-c.Quit():
+			case <-c.quitCh:
 				return
 			}
 		}
