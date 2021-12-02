@@ -291,7 +291,6 @@ func TestServersAndClientsBasic(t *testing.T) {
 			fmt.Printf("=== testing server on %s using WS client", addr)
 			testWithWSClient(t, cl3)
 			cancel()
-			require.False(t, cl3.IsRunning())
 		})
 	}
 }
