@@ -15,6 +15,7 @@ This section will focus on how to operate full nodes, validators and light clien
 - [Validator Guides](./validators.md)
   - [Running in Production](./running-in-production.md)
   - [How to secure your keys](./validators.md#validator_keys)
+  - [Remote Signer](./remote-signer.md)
 - [Light Client guides](./light-client.md)
   - [How to sync a light client](./light-client.md#)
 - [Metrics](./metrics.md)
