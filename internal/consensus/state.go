@@ -1119,8 +1119,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		}
 	}()
 
-	//nolint: lll
-	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timing)
+	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timing) // nolint: lll
 	proposalTimeout := maxDuration(cs.config.Propose(round), waitingTime)
 
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
