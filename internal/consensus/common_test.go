@@ -718,8 +718,7 @@ func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, roun
 	msg := ensureMessageBeforeTimeout(t, voteCh, ensureTimeout)
 	voteEvent, ok := msg.Data().(types.EventDataVote)
 	if !ok {
-		t.Fatalf("expected a EventDataVote, got %T. Wrong subscription channel?",
-			msg.Data())
+		t.Fatalf("expected a EventDataVote, got %T. Wrong subscription channel?", msg.Data())
 	}
 	vote := voteEvent.Vote
 	if vote.Height != height {
