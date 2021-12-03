@@ -389,6 +389,7 @@ func makeNode(
 
 	node := &nodeImpl{
 		config:        cfg,
+		logger:        logger,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
@@ -496,6 +497,7 @@ func makeSeedNode(
 
 	node := &nodeImpl{
 		config:     cfg,
+		logger:     logger,
 		genesisDoc: genDoc,
 
 		nodeInfo:    nodeInfo,
