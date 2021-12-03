@@ -276,10 +276,12 @@ func collectHeightResults(ctx context.Context, t *testing.T, eventCh <-chan time
 			res.proposalIssuedAt = event.ts
 		}
 		if res.isComplete() {
-			break
+			return res
 		}
 	}
-	return res
+	t.Fatalf("complete height result never seen for height %d", height)
+
+	panic("unreachable")
 }
 
 type timestampedEvent struct {
