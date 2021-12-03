@@ -105,7 +105,7 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	}
 }
 
-func (ch *Channel) Recieve(ctx context.Context) *ChannelIterator {
+func (ch *Channel) Receive(ctx context.Context) *ChannelIterator {
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
 	}

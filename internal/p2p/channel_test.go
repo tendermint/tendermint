@@ -87,7 +87,7 @@ func TestChannel(t *testing.T) {
 			Name: "ReceiveEmptyIteratorBlocks",
 			Case: func(ctx context.Context, t *testing.T) {
 				_, ch := testChannel(1)
-				iter := ch.Recieve(ctx)
+				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 				out := make(chan bool)
 				go func() {
@@ -110,7 +110,7 @@ func TestChannel(t *testing.T) {
 			Case: func(ctx context.Context, t *testing.T) {
 				ins, ch := testChannel(1)
 				ins.In <- Envelope{From: "kip", To: "merlin"}
-				iter := ch.Recieve(ctx)
+				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 				require.True(t, iter.Next(ctx))
 
@@ -126,7 +126,7 @@ func TestChannel(t *testing.T) {
 				cctx, ccancel := context.WithCancel(ctx)
 				ccancel()
 
-				iter := ch.Recieve(cctx)
+				iter := ch.Receive(cctx)
 				require.NotNil(t, iter)
 				require.False(t, iter.Next(cctx))
 				require.Nil(t, iter.Envelope())
@@ -137,7 +137,7 @@ func TestChannel(t *testing.T) {
 			Case: func(ctx context.Context, t *testing.T) {
 				_, ch := testChannel(0)
 
-				iter := ch.Recieve(ctx)
+				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 
 				cctx, ccancel := context.WithCancel(ctx)
@@ -152,7 +152,7 @@ func TestChannel(t *testing.T) {
 				ins, ch := testChannel(1)
 
 				ins.In <- Envelope{From: "kip", To: "merlin"}
-				iter := ch.Recieve(ctx)
+				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 
 				require.True(t, iter.Next(ctx))
