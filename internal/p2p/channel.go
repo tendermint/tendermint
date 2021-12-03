@@ -58,8 +58,8 @@ type PeerError struct {
 func (pe PeerError) Resolve() error { return fmt.Errorf("peer=%q: %w", pe.NodeID, pe.Err) }
 func (pe PeerError) Error() string  { return pe.Resolve().Error() }
 
-// Channel is a bidirectional channel to exchange Protobuf messages with peers,
-// wrapped in Envelope to specify routing info (i.e. sender/receiver).
+// Channel is a bidirectional channel to exchange Protobuf messages with peers.
+// Each message is wrapped in an Envelope to specify its sender and receiver.
 type Channel struct {
 	ID    ChannelID
 	In    <-chan Envelope  // inbound messages (peers to reactors)
@@ -87,6 +87,8 @@ func NewChannel(
 	}
 }
 
+// Send blocks until the envelope has been sent, or until ctx ends.
+// An error only occurs if the context ends before the send completes.
 func (ch *Channel) Send(ctx context.Context, envelope Envelope) error {
 	select {
 	case <-ctx.Done():
@@ -96,6 +98,8 @@ func (ch *Channel) Send(ctx context.Context, envelope Envelope) error {
 	}
 }
 
+// SendError blocks until the given error has been sent, or ctx ends.
+// An error only occurs if the context ends before the send completes.
 func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	select {
 	case <-ctx.Done():
@@ -105,6 +109,8 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	}
 }
 
+// Receive returns a new unbuffered iterator to receive messages from ch.
+// The iterator runs until ctx ends.
 func (ch *Channel) Receive(ctx context.Context) *ChannelIterator {
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
@@ -174,18 +180,19 @@ func (iter *ChannelIterator) Next(ctx context.Context) bool {
 // always nil.
 func (iter *ChannelIterator) Envelope() *Envelope { return iter.current }
 
-// MergedChannelIterator produces a Receive iterator from multiple
-// channels to support the reactor use case of needing to consume
-// messages from multiple sources in a single reactor without needing
-// the reactor to manage the concurrency for these handlers.
+// MergedChannelIterator produces an iterator that merges the
+// messages from the given channels in arbitrary order.
+//
+// This allows the caller to consume messages from multiple channels
+// without needing to manage the concurrency separately.
 func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterator {
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
 	}
 	wg := &sync.WaitGroup{}
 
-	wait := make(chan struct{})
-	go func() { defer close(wait); wg.Wait() }()
+	done := make(chan struct{})
+	go func() { defer close(done); wg.Wait() }()
 
 	go func() {
 		defer close(iter.pipe)
@@ -193,15 +200,15 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 		// but this is safer because it means the pipe stays
 		// open until all of the ch worker threads end, which
 		// should happen very quickly.
-		<-wait
+		<-done
 	}()
 
-	for idx := range chs {
+	for _, ch := range chs {
 		wg.Add(1)
 		go func(ch *Channel) {
 			defer wg.Done()
 			iteratorWorker(ctx, ch, iter.pipe)
-		}(chs[idx])
+		}(ch)
 	}
 
 	return iter

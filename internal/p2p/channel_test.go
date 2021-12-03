@@ -170,14 +170,14 @@ func TestChannel(t *testing.T) {
 		},
 	}
 
-	for idx := range testCases {
-		t.Run(testCases[idx].Name, func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
 
 			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
-			testCases[idx].Case(ctx, t)
+			tc.Case(ctx, t)
 		})
 	}
 }
