@@ -233,7 +233,11 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 
 func timestampedCollector(ctx context.Context, t *testing.T, eb *eventbus.EventBus) <-chan timestampedEvent {
 	t.Helper()
+
+	// Since eventCh is not read until the end of each height, it must be large
+	// enough to hold all of the events produced during a single height.
 	eventCh := make(chan timestampedEvent, 100)
+
 	if err := eb.Observe(ctx, func(msg tmpubsub.Message) error {
 		eventCh <- timestampedEvent{
 			ts: time.Now(),
