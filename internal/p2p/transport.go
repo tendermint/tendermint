@@ -39,7 +39,7 @@ type Transport interface {
 	// Accept waits for the next inbound connection on a listening endpoint, blocking
 	// until either a connection is available or the transport is closed. On closure,
 	// io.EOF is returned and further Accept calls are futile.
-	Accept() (Connection, error)
+	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
 	Dial(context.Context, Endpoint) (Connection, error)

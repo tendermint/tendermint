@@ -125,13 +125,6 @@ type Reactor struct {
 	voteCh        *p2p.Channel
 	voteSetBitsCh *p2p.Channel
 	peerUpdates   *p2p.PeerUpdates
-
-	// NOTE: We need a dedicated stateCloseCh channel for signaling closure of
-	// the StateChannel due to the fact that the StateChannel message handler
-	// performs a send on the VoteSetBitsChannel. This is an antipattern, so having
-	// this dedicated channel,stateCloseCh, is necessary in order to avoid data races.
-	stateCloseCh chan struct{}
-	closeCh      chan struct{}
 }
 
 // NewReactor returns a reference to a new consensus reactor, which implements
@@ -160,8 +153,6 @@ func NewReactor(
 		voteCh:        voteCh,
 		voteSetBitsCh: voteSetBitsCh,
 		peerUpdates:   peerUpdates,
-		stateCloseCh:  make(chan struct{}),
-		closeCh:       make(chan struct{}),
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
 
@@ -227,14 +218,6 @@ func (r *Reactor) OnStop() {
 		state.broadcastWG.Wait()
 	}
 	r.mtx.Unlock()
-
-	// Close the StateChannel goroutine separately since it uses its own channel
-	// to signal closure.
-	close(r.stateCloseCh)
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
 
 	<-r.peerUpdates.Done()
 }
@@ -1335,6 +1318,7 @@ func (r *Reactor) processStateCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on StateChannel; closing...")
 			return
 		case envelope := <-r.stateCh.In:
 			if err := r.handleMessage(r.stateCh.ID, envelope); err != nil {
@@ -1344,10 +1328,6 @@ func (r *Reactor) processStateCh(ctx context.Context) {
 					Err:    err,
 				}
 			}
-
-		case <-r.stateCloseCh:
-			r.Logger.Debug("stopped listening on StateChannel; closing...")
-			return
 		}
 	}
 }
@@ -1361,6 +1341,7 @@ func (r *Reactor) processDataCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on DataChannel; closing...")
 			return
 		case envelope := <-r.dataCh.In:
 			if err := r.handleMessage(r.dataCh.ID, envelope); err != nil {
@@ -1370,10 +1351,6 @@ func (r *Reactor) processDataCh(ctx context.Context) {
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on DataChannel; closing...")
-			return
 		}
 	}
 }
@@ -1387,6 +1364,7 @@ func (r *Reactor) processVoteCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on VoteChannel; closing...")
 			return
 		case envelope := <-r.voteCh.In:
 			if err := r.handleMessage(r.voteCh.ID, envelope); err != nil {
@@ -1396,10 +1374,6 @@ func (r *Reactor) processVoteCh(ctx context.Context) {
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on VoteChannel; closing...")
-			return
 		}
 	}
 }
@@ -1413,6 +1387,7 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on VoteSetBitsChannel; closing...")
 			return
 		case envelope := <-r.voteSetBitsCh.In:
 			if err := r.handleMessage(r.voteSetBitsCh.ID, envelope); err != nil {
@@ -1422,10 +1397,6 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on VoteSetBitsChannel; closing...")
-			return
 		}
 	}
 }
@@ -1439,13 +1410,10 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
@@ -1468,7 +1436,7 @@ func (r *Reactor) peerStatsRoutine(ctx context.Context) {
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
-					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
+					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
@@ -1476,15 +1444,13 @@ func (r *Reactor) peerStatsRoutine(ctx context.Context) {
 
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
-					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
+					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
 				}
 			}
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
 			return
 		}
 	}

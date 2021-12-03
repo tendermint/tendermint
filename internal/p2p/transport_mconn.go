@@ -44,10 +44,10 @@ type MConnTransport struct {
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
-	closeCh      chan struct{}
-	closeOnce    sync.Once
 
-	listener net.Listener
+	closeOnce   sync.Once
+	hasFinished bool
+	listener    net.Listener
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -63,7 +63,6 @@ func NewMConnTransport(
 		logger:       logger,
 		options:      options,
 		mConnConfig:  mConnConfig,
-		closeCh:      make(chan struct{}),
 		channelDescs: channelDescs,
 	}
 }
@@ -83,11 +82,10 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 	if m.listener == nil {
 		return []Endpoint{}
 	}
-	select {
-	case <-m.closeCh:
+	if m.hasFinished {
 		return []Endpoint{}
-	default:
 	}
+
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
 	}
@@ -132,7 +130,7 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 }
 
 // Accept implements Transport.
-func (m *MConnTransport) Accept() (Connection, error) {
+func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	if m.listener == nil {
 		return nil, errors.New("transport is not listening")
 	}
@@ -140,9 +138,12 @@ func (m *MConnTransport) Accept() (Connection, error) {
 	tcpConn, err := m.listener.Accept()
 	if err != nil {
 		select {
-		case <-m.closeCh:
+		case <-ctx.Done():
 			return nil, io.EOF
 		default:
+			if m.hasFinished {
+				return nil, io.EOF
+			}
 			return nil, err
 		}
 	}
@@ -178,7 +179,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 func (m *MConnTransport) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
-		close(m.closeCh) // must be closed first, to handle error in Accept()
+		m.hasFinished = true
 		if m.listener != nil {
 			err = m.listener.Close()
 		}

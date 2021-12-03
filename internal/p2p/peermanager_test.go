@@ -154,7 +154,6 @@ func TestNewPeerManager_Persistence(t *testing.T) {
 		PeerScores:      map[types.NodeID]p2p.PeerScore{bID: 1},
 	})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	for _, addr := range append(append(aAddresses, bAddresses...), cAddresses...) {
 		added, err := peerManager.Add(addr)
@@ -171,8 +170,6 @@ func TestNewPeerManager_Persistence(t *testing.T) {
 		cID: 0,
 	}, peerManager.Scores())
 
-	peerManager.Close()
-
 	// Creating a new peer manager with the same database should retain the
 	// peers, but they should have updated scores from the new PersistentPeers
 	// configuration.
@@ -181,7 +178,6 @@ func TestNewPeerManager_Persistence(t *testing.T) {
 		PeerScores:      map[types.NodeID]p2p.PeerScore{cID: 1},
 	})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	require.ElementsMatch(t, aAddresses, peerManager.Addresses(aID))
 	require.ElementsMatch(t, bAddresses, peerManager.Addresses(bID))
@@ -208,7 +204,6 @@ func TestNewPeerManager_SelfIDChange(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.ElementsMatch(t, []types.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
-	peerManager.Close()
 
 	// If we change our selfID to one of the peers in the peer store, it
 	// should be removed from the store.
@@ -1755,9 +1750,6 @@ func TestPeerManager_Close(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.DialFailed(ctx, a))
-
-	// This should clean up the goroutines.
-	peerManager.Close()
 }
 
 func TestPeerManager_Advertise(t *testing.T) {
@@ -1780,7 +1772,6 @@ func TestPeerManager_Advertise(t *testing.T) {
 		PeerScores: map[types.NodeID]p2p.PeerScore{aID: 3, bID: 2, cID: 1},
 	})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	added, err := peerManager.Add(aTCP)
 	require.NoError(t, err)
@@ -1847,7 +1838,6 @@ func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 	require.ElementsMatch(t, []types.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
 
 	// The heights should not be persisted.
-	peerManager.Close()
 	peerManager, err = p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 

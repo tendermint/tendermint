@@ -203,7 +203,6 @@ func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
 	if node.Router.IsRunning() {
 		require.NoError(t, node.Router.Stop())
 	}
-	node.PeerManager.Close()
 
 	for _, sub := range subs {
 		RequireUpdate(t, sub, p2p.PeerUpdate{
@@ -267,7 +266,6 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		if router.IsRunning() {
 			require.NoError(t, router.Stop())
 		}
-		peerManager.Close()
 		require.NoError(t, transport.Close())
 	})
 

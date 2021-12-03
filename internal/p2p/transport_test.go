@@ -54,13 +54,13 @@ func TestTransport_AcceptClose(t *testing.T) {
 			errCh <- a.Close()
 		}()
 
-		_, err := a.Accept()
+		_, err := a.Accept(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 		require.NoError(t, <-errCh)
 
 		// Closed transport should return error immediately.
-		_, err = a.Accept()
+		_, err = a.Accept(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 	})
@@ -93,7 +93,7 @@ func TestTransport_DialEndpoints(t *testing.T) {
 		// Spawn a goroutine to simply accept any connections until closed.
 		go func() {
 			for {
-				conn, err := a.Accept()
+				conn, err := a.Accept(ctx)
 				if err != nil {
 					return
 				}
@@ -188,7 +188,7 @@ func TestTransport_Dial(t *testing.T) {
 		// Dialing from a closed transport should still work.
 		errCh := make(chan error, 1)
 		go func() {
-			conn, err := a.Accept()
+			conn, err := a.Accept(ctx)
 			if err == nil {
 				_ = conn.Close()
 			}
@@ -606,7 +606,7 @@ func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Conn
 	acceptCh := make(chan p2p.Connection, 1)
 	errCh := make(chan error, 1)
 	go func() {
-		conn, err := b.Accept()
+		conn, err := b.Accept(ctx)
 		errCh <- err
 		acceptCh <- conn
 	}()

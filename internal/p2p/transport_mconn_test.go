@@ -52,8 +52,10 @@ func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 	t.Cleanup(func() {
 		_ = transport.Close()
 	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	_, err := transport.Accept()
+	_, err := transport.Accept(ctx)
 	require.Error(t, err)
 	require.NotEqual(t, io.EOF, err) // io.EOF should be returned after Close()
 }
@@ -85,7 +87,7 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 	acceptCh := make(chan p2p.Connection, 10)
 	go func() {
 		for {
-			conn, err := transport.Accept()
+			conn, err := transport.Accept(ctx)
 			if err != nil {
 				return
 			}
@@ -203,7 +205,7 @@ func TestMConnTransport_Listen(t *testing.T) {
 				close(dialedChan)
 			}()
 
-			conn, err := transport.Accept()
+			conn, err := transport.Accept(ctx)
 			require.NoError(t, err)
 			_ = conn.Close()
 			<-dialedChan

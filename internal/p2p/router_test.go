@@ -106,7 +106,6 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	// Set up a router with no transports (so no peers).
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,
@@ -410,7 +409,6 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
-			defer peerManager.Close()
 
 			sub := peerManager.Subscribe(ctx)
 			defer sub.Close()
@@ -470,7 +468,6 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,
@@ -509,7 +506,6 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,
@@ -562,7 +558,6 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,
@@ -663,7 +658,6 @@ func TestRouter_DialPeers(t *testing.T) {
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
-			defer peerManager.Close()
 
 			added, err := peerManager.Add(address)
 			require.NoError(t, err)
@@ -745,7 +739,6 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
@@ -831,7 +824,6 @@ func TestRouter_EvictPeers(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	sub := peerManager.Subscribe(ctx)
 	defer sub.Close()
@@ -899,7 +891,6 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,
@@ -954,7 +945,6 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	sub := peerManager.Subscribe(ctx)
 	defer sub.Close()

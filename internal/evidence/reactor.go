@@ -49,7 +49,6 @@ type Reactor struct {
 	evpool      *Pool
 	evidenceCh  *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	peerWG sync.WaitGroup
 
@@ -70,7 +69,6 @@ func NewReactor(
 		evpool:       evpool,
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
-		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 	}
 
@@ -101,10 +99,6 @@ func (r *Reactor) OnStop() {
 	// Wait for all spawned peer evidence broadcasting goroutines to gracefully
 	// exit.
 	r.peerWG.Wait()
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
 
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
@@ -186,6 +180,7 @@ func (r *Reactor) processEvidenceCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on evidence channel; closing...")
 			return
 		case envelope := <-r.evidenceCh.In:
 			if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
@@ -195,10 +190,6 @@ func (r *Reactor) processEvidenceCh(ctx context.Context) {
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on evidence channel; closing...")
-			return
 		}
 	}
 }
@@ -266,8 +257,6 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
@@ -321,11 +310,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
 				return
-
-			case <-r.closeCh:
-				// The reactor has signaled that we are stopped and thus we should
-				// implicitly exit this peer's goroutine.
-				return
 			}
 		}
 
@@ -364,9 +348,7 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 			// explicitly closed to signal we should exit.
 			return
 
-		case <-r.closeCh:
-			// The reactor has signaled that we are stopped and thus we should
-			// implicitly exit this peer's goroutine.
+		case <-ctx.Done():
 			return
 		}
 	}

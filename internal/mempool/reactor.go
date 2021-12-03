@@ -47,7 +47,6 @@ type Reactor struct {
 
 	mempoolCh   *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	// peerWG is used to coordinate graceful termination of all peer broadcasting
 	// goroutines.
@@ -78,7 +77,6 @@ func NewReactor(
 		ids:          NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
-		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 		observePanic: defaultObservePanic,
 	}
@@ -134,10 +132,6 @@ func (r *Reactor) OnStop() {
 
 	// wait for all spawned peer tx broadcasting goroutines to gracefully exit
 	r.peerWG.Wait()
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
 
 	<-r.peerUpdates.Done()
 }
@@ -217,8 +211,6 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 				}
 			}
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on mempool channel; closing...")
 			return
 		}
@@ -288,13 +280,10 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
@@ -343,11 +332,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 
 			case <-ctx.Done():
 				return
-
-			case <-r.closeCh:
-				// The reactor has signaled that we are stopped and thus we should
-				// implicitly exit this peer's goroutine.
-				return
 			}
 		}
 
@@ -393,11 +377,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 			return
 
 		case <-ctx.Done():
-			return
-
-		case <-r.closeCh:
-			// The reactor has signaled that we are stopped and thus we should
-			// implicitly exit this peer's goroutine.
 			return
 		}
 	}
