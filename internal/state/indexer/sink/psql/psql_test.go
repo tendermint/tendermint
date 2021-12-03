@@ -99,7 +99,7 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			return err
 		}
-		db = sink.DB() // set global for test use
+		db = sink.DB() // Set global for test use.
 		return db.Ping()
 	}); err != nil {
 		log.Fatalf("Connecting to database: %v", err)

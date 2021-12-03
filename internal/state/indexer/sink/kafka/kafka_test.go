@@ -234,14 +234,14 @@ func TestIndexing(t *testing.T) {
 			return txr != nil, err
 		})
 
-		// try to insert the duplicate tx events.
+		// Try to insert the duplicate tx events.
 		err := indexer.IndexTxEvents([]*abci.TxResult{txResult})
 		require.NoError(t, err)
 	})
 }
 
 func verifyBlock(t *testing.T, height int64) {
-	consumer, err := sarama.NewConsumer([]string{"localhost:9093"}, nil)
+	consumer, err := sarama.NewConsumer([]string{fmt.Sprintf("%s:%s", ip, kafkaOutPort)}, nil)
 	if err != nil {
 		t.Errorf("No able to create the consumer: %v", err)
 	}
@@ -258,7 +258,7 @@ func verifyBlock(t *testing.T, height int64) {
 	// Check that the blocks table contains an entry for this height.
 	assert.Equal(t, []byte(fmt.Sprint(height)), msg.Value)
 
-	// Verify the first presence of begin_block
+	// Verify the first presence of begin_block.
 	topicBeginEvent := fmt.Sprintf("%s.begin_event", chainID)
 	partitionConsumer, err = consumer.ConsumePartition(topicBeginEvent, 0, 0)
 	if err != nil {
@@ -278,7 +278,7 @@ func verifyBlock(t *testing.T, height int64) {
 		t.Errorf("Not able to create the partitionConsumer-%s: %v", topicThingy, err)
 	}
 
-	// There are two messages for topic thingy, so we need to read twice
+	// There are two messages for topic thingy.
 	msg = <-partitionConsumer.Messages()
 	key, _ = orderedcode.Append(nil, "whatzit", height)
 	assert.Equal(t, key, msg.Key)
@@ -289,7 +289,7 @@ func verifyBlock(t *testing.T, height int64) {
 	assert.Equal(t, key, msg.Key)
 	assert.Equal(t, []byte("-.O"), msg.Value)
 
-	// Verify the first presence of end_block
+	// Verify the first presence of end_block.
 	topicEndEvent := fmt.Sprintf("%s.end_event", chainID)
 	partitionConsumer, err = consumer.ConsumePartition(topicEndEvent, 0, 0)
 	if err != nil {
@@ -304,8 +304,7 @@ func verifyBlock(t *testing.T, height int64) {
 }
 
 func verifyTx(t *testing.T, txResult *abci.TxResult) {
-
-	consumer, err := sarama.NewConsumer([]string{"localhost:9093"}, nil)
+	consumer, err := sarama.NewConsumer([]string{fmt.Sprintf("%s:%s", ip, kafkaOutPort)}, nil)
 	if err != nil {
 		t.Errorf("Not able to create the consumer: %v", err)
 	}

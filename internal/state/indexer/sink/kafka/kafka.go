@@ -64,7 +64,7 @@ func covertEventsToMessages(chainID string, height int64, txhash string, evts []
 
 			var key []byte
 			var err error
-			// composite the message key with event attribute key, and/or block height, and/or tx hash.
+			// Composite the message key with event attribute key, and/or block height, and/or tx hash.
 			if height == -1 {
 				key, err = orderedcode.Append(nil, attr.Key)
 			} else if len(txhash) == 0 {
