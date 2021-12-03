@@ -55,8 +55,8 @@ type PeerError struct {
 	Err    error
 }
 
-func (pe PeerError) Resolve() error { return fmt.Errorf("peer=%q: %w", pe.NodeID, pe.Err) }
-func (pe PeerError) Error() string  { return pe.Resolve().Error() }
+func (pe PeerError) Error() string { return fmt.Sprintf("peer=%q: %s", pe.Err.Error()) }
+func (pe PeerError) Unwrap() error { return pe.Err }
 
 // Channel is a bidirectional channel to exchange Protobuf messages with peers.
 // Each message is wrapped in an Envelope to specify its sender and receiver.
