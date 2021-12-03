@@ -687,7 +687,7 @@ func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int
 
 func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID, timeout time.Duration) {
 	t.Helper()
-	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
+	msg := ensureMessageBeforeTimeout(t, proposalCh, timeout)
 	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
 	if !ok {
 		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
