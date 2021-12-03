@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -34,7 +33,7 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(logger tmlog.Logger, protoAddr string, app types.Application) service.Service {
+func NewSocketServer(logger log.Logger, protoAddr string, app types.Application) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &SocketServer{
 		logger:   logger,
