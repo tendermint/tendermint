@@ -1192,7 +1192,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal

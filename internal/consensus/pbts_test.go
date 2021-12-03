@@ -162,7 +162,7 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 	b.Header.ProposerAddress = k.Address()
 	ps := b.MakePartSet(types.BlockPartSizeBytes)
 	bid := types.BlockID{Hash: b.Hash(), PartSetHeader: ps.Header()}
-	prop := types.NewProposal(p.currentHeight, 0, -1, bid)
+	prop := types.NewProposal(p.currentHeight, 0, -1, bid, proposedTime)
 	tp := prop.ToProto()
 
 	if err := proposer.SignProposal(context.Background(), p.observedState.state.ChainID, tp); err != nil {

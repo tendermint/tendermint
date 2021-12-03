@@ -246,7 +246,7 @@ func TestStateBadProposal(t *testing.T) {
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	proposal := types.NewProposal(vs2.Height, round, -1, blockID)
+	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
 	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -306,7 +306,7 @@ func TestStateOversizedBlock(t *testing.T) {
 
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	proposal := types.NewProposal(height, round, -1, blockID)
+	proposal := types.NewProposal(height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
 	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -856,7 +856,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
-	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID)
+	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID, theBlock.Header.Time)
 	p := propR1.ToProto()
 	if err := vs2.SignProposal(ctx, cs1.state.ChainID, p); err != nil {
 		t.Fatalf("error signing proposal: %s", err)
@@ -1588,7 +1588,7 @@ func TestStateLock_POLSafety2(t *testing.T) {
 
 	round++ // moving to the next round
 	// in round 2 we see the polkad block from round 0
-	newProp := types.NewProposal(height, round, 0, propBlockID0)
+	newProp := types.NewProposal(height, round, 0, propBlockID0, propBlock0.Header.Time)
 	p := newProp.ToProto()
 	if err := vs3.SignProposal(ctx, config.ChainID(), p); err != nil {
 		t.Fatal(err)
@@ -1730,7 +1730,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	t.Log("### Starting Round 2")
 	incrementRound(vs2, vs3, vs4)
 	round++
-	propR2 := types.NewProposal(height, round, 1, r1BlockID)
+	propR2 := types.NewProposal(height, round, 1, r1BlockID, propBlockR1.Header.Time)
 	p := propR2.ToProto()
 	if err := vs3.SignProposal(ctx, cs1.state.ChainID, p); err != nil {
 		t.Fatalf("error signing proposal: %s", err)

@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmtimemocks "github.com/tendermint/tendermint/libs/time/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -63,7 +64,7 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	prop := NewProposal(
 		4, 2, 2,
-		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
+		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}}, tmtime.Now())
 	p := prop.ToProto()
 	signBytes := ProposalSignBytes("test_chain_id", p)
 
@@ -154,7 +155,7 @@ func TestProposalValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			prop := NewProposal(
 				4, 2, 2,
-				blockID)
+				blockID, time.Now())
 			p := prop.ToProto()
 			err := privVal.SignProposal(context.Background(), "test_chain_id", p)
 			prop.Signature = p.Signature
@@ -166,9 +167,9 @@ func TestProposalValidateBasic(t *testing.T) {
 }
 
 func TestProposalProtoBuf(t *testing.T) {
-	proposal := NewProposal(1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
+	proposal := NewProposal(1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")), tmtime.Now())
 	proposal.Signature = []byte("sig")
-	proposal2 := NewProposal(1, 2, 3, BlockID{})
+	proposal2 := NewProposal(1, 2, 3, BlockID{}, tmtime.Now())
 
 	testCases := []struct {
 		msg     string
