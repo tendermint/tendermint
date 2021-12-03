@@ -170,13 +170,7 @@ func (s *Server) BufferCapacity() int { return cap(s.queue) }
 // If len(capacities) > 0, its first value is used as the queue capacity.
 //
 // Deprecated: Use SubscribeWithArgs. This method will be removed in v0.36.
-func (s *Server) Subscribe(
-	ctx context.Context,
-	clientID string,
-	query Query,
-	capacities ...int,
-) (*Subscription, error) {
-
+func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, capacities ...int) (*Subscription, error) {
 	args := SubscribeArgs{
 		ClientID: clientID,
 		Query:    query,

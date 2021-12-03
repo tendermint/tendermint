@@ -90,10 +90,6 @@ func OpenGroup(logger log.Logger, headPath string, groupOptions ...func(*Group))
 		return nil, err
 	}
 
-	if logger == nil {
-		logger = log.NewNopLogger()
-	}
-
 	g := &Group{
 		logger:             logger,
 		ID:                 "group:" + head.ID,
