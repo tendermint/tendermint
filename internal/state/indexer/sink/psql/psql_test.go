@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"testing"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/util"
 	"github.com/tendermint/tendermint/types"
 
 	// Register the Postgres database driver.
@@ -47,6 +47,8 @@ const (
 
 	viewBlockEvents = "block_events"
 	viewTxEvents    = "tx_events"
+
+	sinkType = "postgres"
 )
 
 func TestMain(m *testing.M) {
@@ -123,7 +125,7 @@ func TestMain(m *testing.M) {
 	// Clean up and shut down the database container.
 	if *doPauseAtExit {
 		log.Print("Testing complete, pausing for inspection. Send SIGINT to resume teardown")
-		waitForInterrupt()
+		util.WaitForInterrupt()
 		log.Print("(resuming)")
 	}
 	log.Print("Shutting down database")
@@ -153,10 +155,10 @@ func TestIndexing(t *testing.T) {
 		verifyBlock(t, 1)
 		verifyBlock(t, 2)
 
-		verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(1) })
-		verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(2) })
+		util.VerifyNotImplemented(t, "hasBlock", sinkType, func() (bool, error) { return indexer.HasBlock(1) })
+		util.VerifyNotImplemented(t, "hasBlock", sinkType, func() (bool, error) { return indexer.HasBlock(2) })
 
-		verifyNotImplemented(t, "block search", func() (bool, error) {
+		util.VerifyNotImplemented(t, "block search", sinkType, func() (bool, error) {
 			v, err := indexer.SearchBlockEvents(ctx, nil)
 			return v != nil, err
 		})
@@ -170,7 +172,7 @@ func TestIndexing(t *testing.T) {
 	t.Run("IndexTxEvents", func(t *testing.T) {
 		indexer := &EventSink{store: testDB(), chainID: chainID}
 
-		txResult := txResultWithEvents([]abci.Event{
+		txResult := util.TxResultWithEvents([]abci.Event{
 			makeIndexedEvent("account.number", "1"),
 			makeIndexedEvent("account.owner", "Ivan"),
 			makeIndexedEvent("account.owner", "Yulieta"),
@@ -186,11 +188,11 @@ func TestIndexing(t *testing.T) {
 		require.NoError(t, verifyTimeStamp(tableTxResults))
 		require.NoError(t, verifyTimeStamp(viewTxEvents))
 
-		verifyNotImplemented(t, "getTxByHash", func() (bool, error) {
+		util.VerifyNotImplemented(t, "getTxByHash", sinkType, func() (bool, error) {
 			txr, err := indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
 			return txr != nil, err
 		})
-		verifyNotImplemented(t, "tx search", func() (bool, error) {
+		util.VerifyNotImplemented(t, "tx search", sinkType, func() (bool, error) {
 			txr, err := indexer.SearchTxEvents(ctx, nil)
 			return txr != nil, err
 		})
@@ -253,22 +255,6 @@ func resetDatabase(db *sql.DB) error {
 	return nil
 }
 
-// txResultWithEvents constructs a fresh transaction result with fixed values
-// for testing, that includes the specified events.
-func txResultWithEvents(events []abci.Event) *abci.TxResult {
-	return &abci.TxResult{
-		Height: 1,
-		Index:  0,
-		Tx:     types.Tx("HELLO WORLD"),
-		Result: abci.ResponseDeliverTx{
-			Data:   []byte{0},
-			Code:   abci.CodeTypeOK,
-			Log:    "",
-			Events: events,
-		},
-	}
-}
-
 func loadTxResult(hash []byte) (*abci.TxResult, error) {
 	hashString := fmt.Sprintf("%X", hash)
 	var resultData []byte
@@ -322,25 +308,4 @@ SELECT type, height, chain_id FROM `+viewBlockEvents+`
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}
-}
-
-// verifyNotImplemented calls f and verifies that it returns both a
-// false-valued flag and a non-nil error whose string matching the expected
-// "not supported" message with label prefixed.
-func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
-	t.Helper()
-	t.Logf("Verifying that %q reports it is not implemented", label)
-
-	want := label + " is not supported via the postgres event sink"
-	ok, err := f()
-	assert.False(t, ok)
-	require.NotNil(t, err)
-	assert.Equal(t, want, err.Error())
-}
-
-// waitForInterrupt blocks until a SIGINT is received by the process.
-func waitForInterrupt() {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	<-ch
 }

@@ -1095,6 +1095,8 @@ type TxIndexConfig struct {
 	// The PostgreSQL connection configuration, the connection format:
 	// postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
 	PsqlConn string `mapstructure:"psql-conn"`
+
+	KafkaConn string `mapstructure:"kafka-conn"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.

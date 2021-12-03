@@ -11,9 +11,10 @@ import (
 type EventSinkType string
 
 const (
-	NULL EventSinkType = "null"
-	KV   EventSinkType = "kv"
-	PSQL EventSinkType = "psql"
+	NULL  EventSinkType = "null"
+	KV    EventSinkType = "kv"
+	PSQL  EventSinkType = "psql"
+	KAFKA EventSinkType = "kafka"
 )
 
 //go:generate ../../../scripts/mockery_generate.sh EventSink

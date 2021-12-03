@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/kafka"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/null"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
@@ -50,6 +51,14 @@ func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chai
 			}
 
 			es, err := psql.NewEventSink(conn, chainID)
+			if err != nil {
+				return nil, err
+			}
+			eventSinks = append(eventSinks, es)
+		case indexer.KAFKA:
+			conn := cfg.TxIndex.KafkaConn
+
+			es, err := kafka.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, err
 			}
