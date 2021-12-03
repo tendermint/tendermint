@@ -18,6 +18,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	// blockTimeIota is used in the test harness as the time between
+	// blocks when not otherwise specified.
+	blockTimeIota = time.Millisecond
+)
+
 // pbtsTestHarness constructs a Tendermint network that can be used for testing the
 // implementation of the Proposer-Based timestamps algorithm.
 // It runs a series of consensus heights and captures timing of votes and events.
@@ -75,6 +81,8 @@ type pbtsTestConfiguration struct {
 	height2ProposedBlockTime time.Time
 
 	// The timestamp of the block proposed at height 4.
+	// At height 4, the proposed block time and the deliver time are the same so
+	// that timely-ness does not affect height 4.
 	height4ProposedBlockTime time.Time
 }
 
@@ -84,7 +92,13 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	cfg := configSetup(t)
 	clock := new(tmtimemocks.Source)
 	if tc.height4ProposedBlockTime.IsZero() {
-		tc.height4ProposedBlockTime = tc.height2ProposalDeliverTime.Add(time.Millisecond * 2)
+
+		// Set a default height4ProposedBlockTime.
+		// Use a proposed block time that is greater than the time that the
+		// block at height 2 was delivered. Height 3 is not relevant for testing
+		// and always occurs blockTimeIota before height 4. If not otherwise specified,
+		// height 4 therefore occurs 2*blockTimeIota after height 2.
+		tc.height4ProposedBlockTime = tc.height2ProposalDeliverTime.Add(2 * blockTimeIota)
 	}
 	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
 	consensusParams := types.DefaultConsensusParams()
@@ -155,13 +169,13 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time
 
 func (p *pbtsTestHarness) height2() heightResult {
 	signer := p.otherValidators[0].PrivValidator
-	return p.nextHeight(signer, p.height2ProposalDeliverTime, p.height2ProposedBlockTime, p.height2ProposedBlockTime.Add(time.Millisecond))
+	return p.nextHeight(signer, p.height2ProposalDeliverTime, p.height2ProposedBlockTime, p.height4ProposedBlockTime.Add(-blockTimeIota))
 }
 
 func (p *pbtsTestHarness) intermediateHeights() {
 	signer := p.otherValidators[1].PrivValidator
-	blockTimeHeight3 := p.height2ProposedBlockTime.Add(time.Millisecond)
-	p.nextHeight(signer, p.height4ProposedBlockTime, blockTimeHeight3, p.height4ProposedBlockTime)
+	blockTimeHeight3 := p.height4ProposedBlockTime.Add(-blockTimeIota)
+	p.nextHeight(signer, blockTimeHeight3, blockTimeHeight3, p.height4ProposedBlockTime)
 
 	signer = p.otherValidators[2].PrivValidator
 	p.nextHeight(signer, p.height4ProposedBlockTime, p.height4ProposedBlockTime, time.Now())
