@@ -682,10 +682,16 @@ func ensureRelock(t *testing.T, relockCh <-chan tmpubsub.Message, height int64, 
 }
 
 func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
+	ensureProposalWithTimeout(t, proposalCh, height, round, propID, ensureTimeout)
+}
+
+func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID, timeout time.Duration) {
+	t.Helper()
 	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
 	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
 	if !ok {
-		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?", msg.Data())
+		t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
+			msg.Data())
 	}
 	if proposalEvent.Height != height {
 		t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
@@ -695,29 +701,6 @@ func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int
 	}
 	if !proposalEvent.BlockID.Equals(propID) {
 		t.Fatalf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
-	}
-}
-
-func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID, timeout time.Duration) {
-	t.Helper()
-	select {
-	case <-time.After(timeout):
-		t.Fatalf("Timeout expired while waiting for NewProposal event")
-	case msg := <-proposalCh:
-		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
-		if !ok {
-			t.Fatalf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-				msg.Data())
-		}
-		if proposalEvent.Height != height {
-			t.Fatalf("expected height %v, got %v", height, proposalEvent.Height)
-		}
-		if proposalEvent.Round != round {
-			t.Fatalf("expected round %v, got %v", round, proposalEvent.Round)
-		}
-		if !proposalEvent.BlockID.Equals(propID) {
-			t.Fatalf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
-		}
 	}
 }
 func ensurePrecommit(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
