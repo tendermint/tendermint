@@ -32,6 +32,7 @@ func TestRollbackIntegration(t *testing.T) {
 
 		time.Sleep(3 * time.Second)
 		cancel()
+		node.Stop()
 		node.Wait()
 		require.False(t, node.IsRunning())
 	})
@@ -46,7 +47,8 @@ func TestRollbackIntegration(t *testing.T) {
 	t.Run("Restart", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
-		node2, _, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
+		node2, closer, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
+		defer closer(ctx) 
 		require.NoError(t, err2)
 
 		client, err := local.New(node2.(local.NodeService))
