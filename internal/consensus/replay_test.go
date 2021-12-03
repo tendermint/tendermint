@@ -384,7 +384,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
+	proposal := types.NewProposal(vss[1].Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
 	if err := vss[1].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -416,7 +416,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	propBlockParts = propBlock.MakePartSet(partSize)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
+	proposal = types.NewProposal(vss[2].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if err := vss[2].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -475,7 +475,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	selfIndex := valIndexFn(0)
 
-	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
+	proposal = types.NewProposal(vss[3].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if err := vss[3].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -540,7 +540,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	sort.Sort(ValidatorStubsByPower(newVss))
 
 	selfIndex = valIndexFn(0)
-	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
+	proposal = types.NewProposal(vss[1].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if err := vss[1].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)

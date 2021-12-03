@@ -248,7 +248,7 @@ func decideProposal(
 
 	// Make proposal
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal = types.NewProposal(height, round, polRound, propBlockID)
+	proposal = types.NewProposal(height, round, polRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 	if err := vs.SignProposal(ctx, chainID, p); err != nil {
 		t.Fatalf("error signing proposal: %s", err)
