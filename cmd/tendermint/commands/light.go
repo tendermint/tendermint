@@ -189,7 +189,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
+	tmos.TrapSignal(cmd.Context(), logger, func() {
 		p.Listener.Close()
 	})
 

@@ -40,7 +40,7 @@ func getHTTPClient(t *testing.T, conf *config.Config) *rpchttp.HTTP {
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
-	c.SetLogger(log.TestingLogger())
+	c.Logger = log.TestingLogger()
 	t.Cleanup(func() {
 		if c.IsRunning() {
 			require.NoError(t, c.Stop())
@@ -59,7 +59,7 @@ func getHTTPClientWithTimeout(t *testing.T, conf *config.Config, timeout time.Du
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
-	c.SetLogger(log.TestingLogger())
+	c.Logger = log.TestingLogger()
 	t.Cleanup(func() {
 		http.DefaultClient.Timeout = 0
 		if c.IsRunning() {
@@ -471,16 +471,13 @@ func TestClientMethodCalls(t *testing.T) {
 			t.Run("Events", func(t *testing.T) {
 				// start for this test it if it wasn't already running
 				if !c.IsRunning() {
+					ctx, cancel := context.WithCancel(ctx)
+					defer cancel()
+
 					// if so, then we start it, listen, and stop it.
 					err := c.Start(ctx)
 					require.Nil(t, err)
-					t.Cleanup(func() {
-						if err := c.Stop(); err != nil {
-							t.Error(err)
-						}
-					})
 				}
-
 				t.Run("Header", func(t *testing.T) {
 					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
 					require.Nil(t, err, "%d: %+v", i, err)

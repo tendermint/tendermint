@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sync"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
@@ -64,25 +65,26 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
-	var wg sync.WaitGroup
+	t.Cleanup(leaktest.Check(t))
 
 	// start server
 	h := &myHandler{}
 	s := httptest.NewServer(h)
 	defer s.Close()
 
-	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop() // nolint:errcheck // ignore for tests
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	wg.Add(1)
-	go callWgDoneOnResult(t, c, &wg)
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
+
+	go handleResponses(ctx, t, c)
 
 	h.mtx.Lock()
 	h.closeConnAfterRead = true
 	h.mtx.Unlock()
 
 	// results in WS read error, no send retry because write succeeded
-	call(t, "a", c)
+	call(ctx, t, "a", c)
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)
@@ -91,23 +93,23 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	h.mtx.Unlock()
 
 	// should succeed
-	call(t, "b", c)
-
-	wg.Wait()
+	call(ctx, t, "b", c)
 }
 
 func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
-	var wg sync.WaitGroup
+	t.Cleanup(leaktest.Check(t))
 
 	// start server
 	h := &myHandler{}
 	s := httptest.NewServer(h)
+	defer s.Close()
 
-	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop() // nolint:errcheck // ignore for tests
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	wg.Add(2)
-	go callWgDoneOnResult(t, c, &wg)
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
+
+	go handleResponses(ctx, t, c)
 
 	// hacky way to abort the connection before write
 	if err := c.conn.Close(); err != nil {
@@ -115,30 +117,32 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	}
 
 	// results in WS write error, the client should resend on reconnect
-	call(t, "a", c)
+	call(ctx, t, "a", c)
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)
 
 	// should succeed
-	call(t, "b", c)
-
-	wg.Wait()
+	call(ctx, t, "b", c)
 }
 
 func TestWSClientReconnectFailure(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	// start server
 	h := &myHandler{}
 	s := httptest.NewServer(h)
 
-	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop() // nolint:errcheck // ignore for tests
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
 
 	go func() {
 		for {
 			select {
 			case <-c.ResponsesCh:
-			case <-c.Quit():
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -152,9 +156,9 @@ func TestWSClientReconnectFailure(t *testing.T) {
 
 	// results in WS write error
 	// provide timeout to avoid blocking
-	ctx, cancel := context.WithTimeout(context.Background(), wsCallTimeout)
+	cctx, cancel := context.WithTimeout(ctx, wsCallTimeout)
 	defer cancel()
-	if err := c.Call(ctx, "a", make(map[string]interface{})); err != nil {
+	if err := c.Call(cctx, "a", make(map[string]interface{})); err != nil {
 		t.Error(err)
 	}
 
@@ -164,7 +168,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		// client should block on this
-		call(t, "b", c)
+		call(ctx, t, "b", c)
 		close(done)
 	}()
 
@@ -178,44 +182,68 @@ func TestWSClientReconnectFailure(t *testing.T) {
 }
 
 func TestNotBlockingOnStop(t *testing.T) {
-	timeout := 2 * time.Second
+	t.Cleanup(leaktest.Check(t))
+
+	timeout := 3 * time.Second
 	s := httptest.NewServer(&myHandler{})
-	c := startClient(t, "//"+s.Listener.Addr().String())
-	c.Call(context.Background(), "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
+	defer s.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
+	c.Call(ctx, "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)
 	passCh := make(chan struct{})
 	go func() {
 		// Unless we have a non-blocking write to ResponsesCh from readRoutine
 		// this blocks forever ont the waitgroup
-		err := c.Stop()
-		require.NoError(t, err)
-		passCh <- struct{}{}
+		cancel()
+		require.NoError(t, c.Stop())
+		select {
+		case <-ctx.Done():
+		case passCh <- struct{}{}:
+		}
 	}()
+
+	runtime.Gosched() // hacks: force context switch
+
 	select {
 	case <-passCh:
 		// Pass
 	case <-time.After(timeout):
-		t.Fatalf("WSClient did failed to stop within %v seconds - is one of the read/write routines blocking?",
-			timeout.Seconds())
+		if c.IsRunning() {
+			t.Fatalf("WSClient did failed to stop within %v seconds - is one of the read/write routines blocking?",
+				timeout.Seconds())
+		}
 	}
 }
 
-func startClient(t *testing.T, addr string) *WSClient {
-	c, err := NewWS(addr, "/websocket")
+func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
+	t.Helper()
+	opts := DefaultWSOptions()
+	opts.SkipMetrics = true
+	c, err := NewWSWithOptions(addr, "/websocket", opts)
+
 	require.Nil(t, err)
-	err = c.Start()
+	err = c.Start(ctx)
 	require.Nil(t, err)
-	c.SetLogger(log.TestingLogger())
+	c.Logger = log.TestingLogger()
 	return c
 }
 
-func call(t *testing.T, method string, c *WSClient) {
-	err := c.Call(context.Background(), method, make(map[string]interface{}))
-	require.NoError(t, err)
+func call(ctx context.Context, t *testing.T, method string, c *WSClient) {
+	t.Helper()
+
+	err := c.Call(ctx, method, make(map[string]interface{}))
+	if ctx.Err() == nil {
+		require.NoError(t, err)
+	}
 }
 
-func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
+func handleResponses(ctx context.Context, t *testing.T, c *WSClient) {
+	t.Helper()
+
 	for {
 		select {
 		case resp := <-c.ResponsesCh:
@@ -224,9 +252,9 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 				return
 			}
 			if resp.Result != nil {
-				wg.Done()
+				return
 			}
-		case <-c.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}

@@ -153,17 +153,12 @@ func (r *Reactor) OnStop() {
 	// p2p Channels should execute Close().
 	close(r.closeCh)
 
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
-	<-r.pexCh.Done()
 	<-r.peerUpdates.Done()
 }
 
 // processPexCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the pexCh.
 func (r *Reactor) processPexCh(ctx context.Context) {
-	defer r.pexCh.Close()
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	for {

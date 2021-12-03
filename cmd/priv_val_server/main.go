@@ -50,6 +50,9 @@ func main() {
 	)
 	flag.Parse()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	logger.Info(
 		"Starting private validator",
 		"addr", *addr,
@@ -131,7 +134,7 @@ func main() {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
+	tmos.TrapSignal(ctx, logger, func() {
 		logger.Debug("SignerServer: calling Close")
 		if *prometheusAddr != "" {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

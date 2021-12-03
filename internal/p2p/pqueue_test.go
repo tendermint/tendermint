@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,7 +25,10 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 		}
 	}
 
-	go pqueue.process()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go pqueue.process(ctx)
 
 	// sleep to allow context switch for process() to run
 	time.Sleep(10 * time.Millisecond)

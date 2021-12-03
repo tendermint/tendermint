@@ -104,7 +104,6 @@ type RunState struct {
 	mu        sync.Mutex
 	name      string
 	isRunning bool
-	quit      chan struct{}
 }
 
 // NewRunState returns a new unstarted run state tracker with the given logging
@@ -120,7 +119,7 @@ func NewRunState(name string, logger log.Logger) *RunState {
 }
 
 // Start sets the state to running, or reports an error.
-func (r *RunState) Start() error {
+func (r *RunState) Start(context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.isRunning {
@@ -129,7 +128,6 @@ func (r *RunState) Start() error {
 	}
 	r.Logger.Info("starting client", "client", r.name)
 	r.isRunning = true
-	r.quit = make(chan struct{})
 	return nil
 }
 
@@ -143,15 +141,7 @@ func (r *RunState) Stop() error {
 	}
 	r.Logger.Info("stopping client", "client", r.name)
 	r.isRunning = false
-	close(r.quit)
 	return nil
-}
-
-// SetLogger updates the log sink.
-func (r *RunState) SetLogger(logger log.Logger) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.Logger = logger
 }
 
 // IsRunning reports whether the state is running.
@@ -159,11 +149,4 @@ func (r *RunState) IsRunning() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.isRunning
-}
-
-// Quit returns a channel that is closed when a call to Stop succeeds.
-func (r *RunState) Quit() <-chan struct{} {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.quit
 }

@@ -76,10 +76,10 @@ func setup(
 		blocksyncSubs: make(map[types.NodeID]eventbus.Subscription, numNodes),
 	}
 
-	rts.stateChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(StateChannel, size))
-	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(DataChannel, size))
-	rts.voteChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteChannel, size))
-	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(t, chDesc(VoteSetBitsChannel, size))
+	rts.stateChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc(StateChannel, size))
+	rts.dataChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc(DataChannel, size))
+	rts.voteChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc(VoteChannel, size))
+	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc(VoteSetBitsChannel, size))
 
 	ctx, cancel := context.WithCancel(ctx)
 	// Canceled during cleanup (see below).
@@ -134,7 +134,7 @@ func setup(
 	require.Len(t, rts.reactors, numNodes)
 
 	// start the in-memory network and connect all peers with each other
-	rts.network.Start(t)
+	rts.network.Start(ctx, t)
 
 	t.Cleanup(func() {
 		cancel()

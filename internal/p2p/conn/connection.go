@@ -221,8 +221,8 @@ func (c *MConnection) OnStart(ctx context.Context) error {
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
 	c.quitRecvRoutine = make(chan struct{})
-	go c.sendRoutine()
-	go c.recvRoutine()
+	go c.sendRoutine(ctx)
+	go c.recvRoutine(ctx)
 	return nil
 }
 
@@ -332,7 +332,7 @@ func (c *MConnection) Send(chID ChannelID, msgBytes []byte) bool {
 }
 
 // sendRoutine polls for packets to send from channels.
-func (c *MConnection) sendRoutine() {
+func (c *MConnection) sendRoutine(ctx context.Context) {
 	defer c._recover()
 	protoWriter := protoio.NewDelimitedWriter(c.bufConnWriter)
 
@@ -382,6 +382,8 @@ FOR_LOOP:
 			}
 			c.sendMonitor.Update(_n)
 			c.flush()
+		case <-ctx.Done():
+			break FOR_LOOP
 		case <-c.quitSendRoutine:
 			break FOR_LOOP
 		case <-c.send:
@@ -469,7 +471,7 @@ func (c *MConnection) sendPacketMsg() bool {
 // After a whole message has been assembled, it's pushed to onReceive().
 // Blocks depending on how the connection is throttled.
 // Otherwise, it never blocks.
-func (c *MConnection) recvRoutine() {
+func (c *MConnection) recvRoutine(ctx context.Context) {
 	defer c._recover()
 
 	protoReader := protoio.NewDelimitedReader(c.bufConnReader, c._maxPacketMsgSize)
@@ -502,6 +504,7 @@ FOR_LOOP:
 			// stopServices was invoked and we are shutting down
 			// receiving is excpected to fail since we will close the connection
 			select {
+			case <-ctx.Done():
 			case <-c.quitRecvRoutine:
 				break FOR_LOOP
 			default:

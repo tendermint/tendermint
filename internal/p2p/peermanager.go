@@ -513,7 +513,7 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 // for dialing again when appropriate (possibly after a retry timeout).
 //
 // FIXME: This should probably delete or mark bad addresses/peers after some time.
-func (m *PeerManager) DialFailed(address NodeAddress) error {
+func (m *PeerManager) DialFailed(ctx context.Context, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -553,6 +553,7 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 			case <-timer.C:
 				m.dialWaker.Wake()
 			case <-m.closeCh:
+			case <-ctx.Done():
 			}
 		}()
 	} else {
@@ -835,7 +836,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 // Subscribe subscribes to peer updates. The caller must consume the peer
 // updates in a timely fashion and close the subscription when done, otherwise
 // the PeerManager will halt.
-func (m *PeerManager) Subscribe() *PeerUpdates {
+func (m *PeerManager) Subscribe(ctx context.Context) *PeerUpdates {
 	// FIXME: We use a size 1 buffer here. When we broadcast a peer update
 	// we have to loop over all of the subscriptions, and we want to avoid
 	// having to block and wait for a context switch before continuing on
@@ -843,7 +844,7 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 	// compounding. Limiting it to 1 means that the subscribers are still
 	// reasonably in sync. However, this should probably be benchmarked.
 	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1), 1)
-	m.Register(peerUpdates)
+	m.Register(ctx, peerUpdates)
 	return peerUpdates
 }
 
@@ -855,7 +856,7 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 // The caller must consume the peer updates from this PeerUpdates
 // instance in a timely fashion and close the subscription when done,
 // otherwise the PeerManager will halt.
-func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
+func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
 	m.subscriptions[peerUpdates] = peerUpdates
 	m.mtx.Unlock()
@@ -866,6 +867,8 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 			case <-peerUpdates.closeCh:
 				return
 			case <-m.closeCh:
+				return
+			case <-ctx.Done():
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
 				m.processPeerEvent(pu)
@@ -880,6 +883,7 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 			delete(m.subscriptions, peerUpdates)
 			m.mtx.Unlock()
 		case <-m.closeCh:
+		case <-ctx.Done():
 		}
 	}()
 }

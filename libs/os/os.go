@@ -1,6 +1,7 @@
 package os
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,13 +16,14 @@ type logger interface {
 
 // TrapSignal catches SIGTERM and SIGINT, executes the cleanup function,
 // and exits with code 0.
-func TrapSignal(logger logger, cb func()) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+func TrapSignal(ctx context.Context, logger logger, cb func()) {
+	opctx, opcancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		sig := <-c
-		logger.Info(fmt.Sprintf("captured %v, exiting...", sig))
+		defer opcancel()
+		defer opcancel()
+		<-opctx.Done()
+		logger.Info("captured signal, exiting...")
 		if cb != nil {
 			cb()
 		}

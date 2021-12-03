@@ -277,7 +277,12 @@ func (c *mConnConnection) Handshake(
 		}()
 		var err error
 		mconn, peerInfo, peerKey, err = c.handshake(ctx, nodeInfo, privKey)
-		errCh <- err
+
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
+		}
+
 	}()
 
 	select {
@@ -315,21 +320,39 @@ func (c *mConnConnection) handshake(
 		return nil, types.NodeInfo{}, nil, err
 	}
 
+	wg := &sync.WaitGroup{}
 	var pbPeerInfo p2pproto.NodeInfo
 	errCh := make(chan error, 2)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		_, err := protoio.NewDelimitedWriter(secretConn).WriteMsg(nodeInfo.ToProto())
-		errCh <- err
-	}()
-	go func() {
-		_, err := protoio.NewDelimitedReader(secretConn, types.MaxNodeInfoSize()).ReadMsg(&pbPeerInfo)
-		errCh <- err
-	}()
-	for i := 0; i < cap(errCh); i++ {
-		if err = <-errCh; err != nil {
-			return nil, types.NodeInfo{}, nil, err
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
 		}
+
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err := protoio.NewDelimitedReader(secretConn, types.MaxNodeInfoSize()).ReadMsg(&pbPeerInfo)
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
+		}
+	}()
+
+	wg.Wait()
+
+	if err, ok := <-errCh; ok && err != nil {
+		return nil, types.NodeInfo{}, nil, err
 	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, types.NodeInfo{}, nil, err
+	}
+
 	peerInfo, err := types.NodeInfoFromProto(&pbPeerInfo)
 	if err != nil {
 		return nil, types.NodeInfo{}, nil, err

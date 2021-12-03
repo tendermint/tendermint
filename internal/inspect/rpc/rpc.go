@@ -114,7 +114,8 @@ func (srv *Server) ListenAndServe(ctx context.Context) error {
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return server.Serve(listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
+
+	return server.Serve(ctx, listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 // ListenAndServeTLS listens on the address specified in srv.Addr. ListenAndServeTLS handles
@@ -128,7 +129,7 @@ func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile stri
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return server.ServeTLS(listener, srv.Handler, certFile, keyFile, srv.Logger, serverRPCConfig(srv.Config))
+	return server.ServeTLS(ctx, listener, srv.Handler, certFile, keyFile, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 func serverRPCConfig(r *config.RPCConfig) *server.Config {

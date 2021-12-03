@@ -183,17 +183,6 @@ func (pb *playback) replayReset(ctx context.Context, count int, newStepSub event
 
 func (cs *State) startForReplay() {
 	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
-	/* TODO:!
-	// since we replay tocks we just ignore ticks
-		go func() {
-			for {
-				select {
-				case <-cs.tickChan:
-				case <-cs.Quit:
-					return
-				}
-			}
-		}()*/
 }
 
 // console function for parsing input and running commands. The integer

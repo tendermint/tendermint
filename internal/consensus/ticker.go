@@ -122,7 +122,12 @@ func (t *timeoutTicker) timeoutRoutine(ctx context.Context) {
 			// Determinism comes from playback in the receiveRoutine.
 			// We can eliminate it by merging the timeoutRoutine into receiveRoutine
 			//  and managing the timeouts ourselves with a millisecond ticker
-			go func(toi timeoutInfo) { t.tockChan <- toi }(ti)
+			go func(toi timeoutInfo) {
+				select {
+				case t.tockChan <- toi:
+				case <-ctx.Done():
+				}
+			}(ti)
 		case <-ctx.Done():
 			return
 		}

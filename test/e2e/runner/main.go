@@ -319,8 +319,7 @@ Does not run any perbutations.
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(lctx, r, cli.testnet)
-				chLoadResult <- err
+				chLoadResult <- Load(lctx, r, cli.testnet)
 			}()
 
 			if err := Start(ctx, cli.testnet); err != nil {

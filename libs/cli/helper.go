@@ -69,7 +69,10 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 			var buf bytes.Buffer
 			// io.Copy will end when we call reader.Close() below
 			io.Copy(&buf, reader) //nolint:errcheck //ignore error
-			stdC <- buf.String()
+			select {
+			case <-cmd.Context().Done():
+			case stdC <- buf.String():
+			}
 		}()
 		return &stdC
 	}
