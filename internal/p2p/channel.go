@@ -55,7 +55,7 @@ type PeerError struct {
 	Err    error
 }
 
-func (pe PeerError) Error() string { return fmt.Sprintf("peer=%q: %s", pe.Err.Error()) }
+func (pe PeerError) Error() string { return fmt.Sprintf("peer=%q: %s", pe.NodeID, pe.Err.Error()) }
 func (pe PeerError) Unwrap() error { return pe.Err }
 
 // Channel is a bidirectional channel to exchange Protobuf messages with peers.
@@ -190,7 +190,7 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
 	}
-	wg := &sync.WaitGroup{}
+	wg := new(sync.WaitGroup)
 
 	done := make(chan struct{})
 	go func() { defer close(done); wg.Wait() }()

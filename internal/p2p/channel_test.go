@@ -168,6 +168,44 @@ func TestChannel(t *testing.T) {
 				require.Nil(t, iter.Envelope())
 			},
 		},
+		{
+			Name: "IteratorMultipleNextCalls",
+			Case: func(ctx context.Context, t *testing.T) {
+				ins, ch := testChannel(1)
+
+				ins.In <- Envelope{From: "kip", To: "merlin"}
+				iter := ch.Receive(ctx)
+				require.NotNil(t, iter)
+
+				require.True(t, iter.Next(ctx))
+
+				res := iter.Envelope()
+				require.EqualValues(t, "kip", res.From)
+				require.EqualValues(t, "merlin", res.To)
+
+				res1 := iter.Envelope()
+				require.Equal(t, res, res1)
+			},
+		},
+		{
+			Name: "IteratorProducesNilObjectBeforeNext",
+			Case: func(ctx context.Context, t *testing.T) {
+				ins, ch := testChannel(1)
+
+				iter := ch.Receive(ctx)
+				require.NotNil(t, iter)
+				require.Nil(t, iter.Envelope())
+
+				ins.In <- Envelope{From: "kip", To: "merlin"}
+				require.NotNil(t, iter)
+				require.True(t, iter.Next(ctx))
+
+				res := iter.Envelope()
+				require.NotNil(t, res)
+				require.EqualValues(t, "kip", res.From)
+				require.EqualValues(t, "merlin", res.To)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
