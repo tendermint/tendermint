@@ -17,6 +17,6 @@ require (
 // Breaking changes were released with the wrong tag (use v0.6.6 or later).
 retract v0.6.5
 
-// FIXME: gorocksdb bindings for OptimisticTransactionDB are not merged upstream, so we use a fork
+// Note: gorocksdb bindings for OptimisticTransactionDB are not merged upstream, so we use a fork
 // See https://github.com/tecbot/gorocksdb/pull/216
-replace github.com/tecbot/gorocksdb => github.com/roysc/gorocksdb v1.1.1
+replace github.com/tecbot/gorocksdb => github.com/cosmos/gorocksdb v1.1.1
