@@ -136,9 +136,7 @@ type Option func(*Server)
 // for a detailed description of how to configure buffering. If no options are
 // provided, the resulting server's queue is unbuffered.
 func NewServer(logger log.Logger, options ...Option) *Server {
-	s := &Server{
-		logger: logger,
-	}
+	s := &Server{logger: logger}
 
 	s.BaseService = *service.NewBaseService(logger, "PubSub", s)
 	for _, opt := range options {
