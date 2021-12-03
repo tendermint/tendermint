@@ -50,7 +50,9 @@ func TestRollbackIntegration(t *testing.T) {
 		defer cancel()
 		node2, closer, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err2)
-		defer closer(ctx)
+		defer func() {
+			_ = closer(ctx)
+		}()
 
 		client, err := local.New(node2.(local.NodeService))
 		require.NoError(t, err)
