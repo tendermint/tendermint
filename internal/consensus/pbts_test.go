@@ -74,7 +74,7 @@ type pbtsTestConfiguration struct {
 	// The timestamp of the block proposed at height 2.
 	height2ProposedBlockTime time.Time
 
-	// The timestamp of the block proposed at height 2.
+	// The timestamp of the block proposed at height 4.
 	height4ProposedBlockTime time.Time
 }
 
