@@ -33,6 +33,7 @@ type reqResWithContext struct {
 // general is not meant to be interfaced with concurrent callers.
 type socketClient struct {
 	service.BaseService
+	logger log.Logger
 
 	addr        string
 	mustConnect bool
@@ -53,12 +54,12 @@ var _ Client = (*socketClient)(nil)
 // if it fails to connect.
 func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &socketClient{
+		logger:      logger,
 		reqQueue:    make(chan *reqResWithContext, reqQueueSize),
 		mustConnect: mustConnect,
-
-		addr:    addr,
-		reqSent: list.New(),
-		resCb:   nil,
+		addr:        addr,
+		reqSent:     list.New(),
+		resCb:       nil,
 	}
 	cli.BaseService = *service.NewBaseService(logger, "socketClient", cli)
 	return cli
@@ -78,7 +79,7 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 			if cli.mustConnect {
 				return err
 			}
-			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
+			cli.logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
 				cli.addr, dialRetryIntervalSeconds), "err", err)
 			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue
@@ -132,7 +133,7 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 			}
 
 			if reqres.C.Err() != nil {
-				cli.Logger.Debug("Request's context is done", "req", reqres.R, "err", reqres.C.Err())
+				cli.logger.Debug("Request's context is done", "req", reqres.R, "err", reqres.C.Err())
 				continue
 			}
 			cli.willSendReq(reqres.R)
@@ -162,7 +163,7 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 			return
 		}
 
-		// cli.Logger.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
+		// cli.logger.Debug("Received response", "responseType", reflect.TypeOf(res), "response", res)
 
 		switch r := res.Value.(type) {
 		case *types.Response_Exception: // app responded with error
@@ -589,8 +590,8 @@ func (cli *socketClient) stopForError(err error) {
 	cli.err = err
 	cli.mtx.Unlock()
 
-	cli.Logger.Info("Stopping abci.socketClient", "reason", err)
+	cli.logger.Info("Stopping abci.socketClient", "reason", err)
 	if err := cli.Stop(); err != nil {
-		cli.Logger.Error("Error stopping abci.socketClient", "err", err)
+		cli.logger.Error("Error stopping abci.socketClient", "err", err)
 	}
 }

@@ -47,7 +47,7 @@ func (cs *State) readReplayMessage(ctx context.Context, msg *TimedWALMessage, ne
 	// for logging
 	switch m := msg.Msg.(type) {
 	case types.EventDataRoundState:
-		cs.Logger.Info("Replay: New Step", "height", m.Height, "round", m.Round, "step", m.Step)
+		cs.logger.Info("Replay: New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
 		if newStepSub != nil {
 			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -71,19 +71,19 @@ func (cs *State) readReplayMessage(ctx context.Context, msg *TimedWALMessage, ne
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
 			p := msg.Proposal
-			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
+			cs.logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
 				p.BlockID.PartSetHeader, "pol", p.POLRound, "peer", peerID)
 		case *BlockPartMessage:
-			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
+			cs.logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
 			v := msg.Vote
-			cs.Logger.Info("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
+			cs.logger.Info("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
 				"blockID", v.BlockID, "peer", peerID)
 		}
 
 		cs.handleMsg(ctx, m)
 	case timeoutInfo:
-		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
+		cs.logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
 		cs.handleTimeout(ctx, m, cs.RoundState)
 	default:
 		return fmt.Errorf("replay: Unknown TimedWALMessage type: %v", reflect.TypeOf(msg.Msg))
@@ -130,7 +130,7 @@ func (cs *State) catchupReplay(ctx context.Context, csHeight int64) error {
 	}
 	gr, found, err = cs.wal.SearchForEndHeight(endHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err == io.EOF {
-		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", endHeight)
+		cs.logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", endHeight)
 	} else if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (cs *State) catchupReplay(ctx context.Context, csHeight int64) error {
 	}
 	defer gr.Close()
 
-	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
+	cs.logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
 	var msg *TimedWALMessage
 	dec := WALDecoder{gr}
@@ -151,7 +151,7 @@ LOOP:
 		case err == io.EOF:
 			break LOOP
 		case IsDataCorruptionError(err):
-			cs.Logger.Error("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
+			cs.logger.Error("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
 			return err
 		case err != nil:
 			return err
@@ -164,7 +164,7 @@ LOOP:
 			return err
 		}
 	}
-	cs.Logger.Info("Replay: Done")
+	cs.logger.Info("Replay: Done")
 	return nil
 }
 

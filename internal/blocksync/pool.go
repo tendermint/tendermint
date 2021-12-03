@@ -69,6 +69,8 @@ type BlockRequest struct {
 // BlockPool keeps track of the block sync peers, block requests and block responses.
 type BlockPool struct {
 	service.BaseService
+	logger log.Logger
+
 	lastAdvance time.Time
 
 	mtx tmsync.RWMutex
@@ -101,8 +103,8 @@ func NewBlockPool(
 ) *BlockPool {
 
 	bp := &BlockPool{
-		peers: make(map[types.NodeID]*bpPeer),
-
+		logger:       logger,
+		peers:        make(map[types.NodeID]*bpPeer),
 		requesters:   make(map[int64]*bpRequester),
 		height:       start,
 		startHeight:  start,
@@ -171,7 +173,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 			if curRate != 0 && curRate < minRecvRate {
 				err := errors.New("peer is not sending us data fast enough")
 				pool.sendError(err, peer.id)
-				pool.Logger.Error("SendTimeout", "peer", peer.id,
+				pool.logger.Error("SendTimeout", "peer", peer.id,
 					"reason", err,
 					"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
 					"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
@@ -234,7 +236,7 @@ func (pool *BlockPool) PopRequest() {
 
 	if r := pool.requesters[pool.height]; r != nil {
 		if err := r.Stop(); err != nil {
-			pool.Logger.Error("Error stopping requester", "err", err)
+			pool.logger.Error("Error stopping requester", "err", err)
 		}
 		delete(pool.requesters, pool.height)
 		pool.height++
@@ -281,7 +283,7 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, blockSi
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
-		pool.Logger.Error("peer sent us a block we didn't expect",
+		pool.logger.Error("peer sent us a block we didn't expect",
 			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
@@ -301,7 +303,7 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, blockSi
 		}
 	} else {
 		err := errors.New("requester is different or block already exists")
-		pool.Logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
+		pool.logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
 		pool.sendError(err, peerID)
 	}
 }
@@ -332,7 +334,7 @@ func (pool *BlockPool) SetPeerRange(peerID types.NodeID, base int64, height int6
 		peer.height = height
 	} else {
 		peer = newBPPeer(pool, peerID, base, height)
-		peer.setLogger(pool.Logger.With("peer", peerID))
+		peer.logger = pool.logger.With("peer", peerID)
 		pool.peers[peerID] = peer
 	}
 
@@ -423,7 +425,7 @@ func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 
 	err := request.Start(ctx)
 	if err != nil {
-		request.Logger.Error("Error starting request", "err", err)
+		request.logger.Error("Error starting request", "err", err)
 	}
 }
 
@@ -506,10 +508,6 @@ func newBPPeer(pool *BlockPool, peerID types.NodeID, base int64, height int64) *
 	return peer
 }
 
-func (peer *bpPeer) setLogger(l log.Logger) {
-	peer.logger = l
-}
-
 func (peer *bpPeer) resetMonitor() {
 	peer.recvMonitor = flowrate.New(time.Second, time.Second*40)
 	initialValue := float64(minRecvRate) * math.E
@@ -556,6 +554,7 @@ func (peer *bpPeer) onTimeout() {
 
 type bpRequester struct {
 	service.BaseService
+	logger     log.Logger
 	pool       *BlockPool
 	height     int64
 	gotBlockCh chan struct{}
@@ -568,6 +567,7 @@ type bpRequester struct {
 
 func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 	bpr := &bpRequester{
+		logger:     pool.logger,
 		pool:       pool,
 		height:     height,
 		gotBlockCh: make(chan struct{}, 1),
@@ -677,7 +677,7 @@ OUTER_LOOP:
 				return
 			case <-bpr.pool.exitedCh:
 				if err := bpr.Stop(); err != nil {
-					bpr.Logger.Error("Error stopped requester", "err", err)
+					bpr.logger.Error("Error stopped requester", "err", err)
 				}
 				return
 			case peerID := <-bpr.redoCh:
