@@ -415,7 +415,7 @@ func TestBufferCapacity(t *testing.T) {
 	require.ErrorIs(t, s.Publish(ctx, "Ironclad"), context.DeadlineExceeded)
 }
 
-func newTestServer(ctx context.Context, logger log.Logger, t testing.TB) *pubsub.Server {
+func newTestServer(ctx context.Context, t testing.TB, logger log.Logger) *pubsub.Server {
 	t.Helper()
 
 	s := pubsub.NewServer(logger)
