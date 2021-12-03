@@ -378,9 +378,9 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 	// create a genesis time far (enough) in the future.
 	initialTime := time.Now().Add(800 * time.Millisecond)
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
-			Precision:    10 * time.Millisecond,
-			MessageDelay: 10 * time.Millisecond,
+		timestampParams: types.TimestampParams{
+			Precision: 10 * time.Millisecond,
+			MsgDelay:  10 * time.Millisecond,
 		},
 		timeoutPropose:             10 * time.Millisecond,
 		genesisTime:                initialTime,
@@ -406,9 +406,9 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 	defer cancel()
 	initialTime := time.Now().Add(time.Millisecond * 50)
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
-			Precision:    100 * time.Millisecond,
-			MessageDelay: 500 * time.Millisecond,
+		timestampParams: types.TimestampParams{
+			Precision: 100 * time.Millisecond,
+			MsgDelay:  500 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
 		genesisTime:                initialTime,
