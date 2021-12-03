@@ -32,7 +32,7 @@ func TestRollbackIntegration(t *testing.T) {
 
 		time.Sleep(3 * time.Second)
 		cancel()
-		node.Stop()
+		require.NoError(t, node.Stop())
 		node.Wait()
 		require.False(t, node.IsRunning())
 	})
@@ -41,6 +41,7 @@ func TestRollbackIntegration(t *testing.T) {
 		require.NoError(t, app.Rollback())
 		height, _, err = commands.RollbackState(cfg)
 		require.NoError(t, err)
+		require.Greater(t, height, int64(1))
 
 	})
 
@@ -48,8 +49,8 @@ func TestRollbackIntegration(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		node2, closer, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
-		defer closer(ctx) 
 		require.NoError(t, err2)
+		defer closer(ctx) 
 
 		client, err := local.New(node2.(local.NodeService))
 		require.NoError(t, err)
@@ -58,7 +59,7 @@ func TestRollbackIntegration(t *testing.T) {
 		for {
 			select {
 			case <-ctx.Done():
-				t.Fatalf("failed to make progress after 20 seconds. Min height: %d", height)
+				t.Fatalf("failed to make progress after 10 seconds. Min height: %d", height)
 			case <-ticker.C:
 				status, err := client.Status(ctx)
 				require.NoError(t, err)
