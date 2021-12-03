@@ -149,8 +149,9 @@ func iteratorWorker(ctx context.Context, ch *Channel, pipe chan Envelope) {
 }
 
 // Next returns true when the Envelope value has advanced, and false
-// when the context is canceled or iteration should stop, then Next
-// will return true. In general, use Next, as in:
+// when the context is canceled or iteration should stop. If an iterator has returned false,
+// it will never return true again.
+// in general, use Next, as in:
 //
 //     for iter.Next(ctx) {
 //          envelope := iter.Envelope()
