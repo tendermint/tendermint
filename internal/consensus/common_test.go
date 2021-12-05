@@ -685,6 +685,7 @@ func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int
 	ensureProposalWithTimeout(t, proposalCh, height, round, propID, ensureTimeout)
 }
 
+// nolint: lll
 func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID, timeout time.Duration) {
 	t.Helper()
 	msg := ensureMessageBeforeTimeout(t, proposalCh, timeout)
