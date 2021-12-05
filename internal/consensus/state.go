@@ -1105,8 +1105,9 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 
-	ourAddress := cs.privValidatorPubKey.Address()
-	if cs.isProposer(ourAddress) {
+	// If this validator is the proposer of this round, and the previous block time is later than
+	// our local clock time, wait to propose until our local clock time has passed the block time.
+	if cs.privValidatorPubKey != nil && cs.isProposer(cs.privValidatorPubKey.Address()) {
 		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
 		if proposerWaitTime > 0 {
 			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
@@ -1142,8 +1143,6 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 
-	logger.Debug("node is a validator")
-
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
@@ -1151,16 +1150,20 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 
+	addr := cs.privValidatorPubKey.Address()
+
 	// if not a validator, we're done
-	if !cs.Validators.HasAddress(ourAddress) {
-		logger.Debug("node is not a validator", "addr", ourAddress, "vals", cs.Validators)
+	if !cs.Validators.HasAddress(addr) {
+		logger.Debug("node is not a validator", "addr", addr, "vals", cs.Validators)
 		return
 	}
 
-	if cs.isProposer(ourAddress) {
+	logger.Debug("node is a validator")
+
+	if cs.isProposer(addr) {
 		logger.Debug(
 			"propose step; our turn to propose",
-			"proposer", ourAddress,
+			"proposer", addr,
 		)
 
 		cs.decideProposal(height, round)
