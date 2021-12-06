@@ -59,6 +59,7 @@ func NewSignerDialerEndpoint(
 		retryWait:      defaultRetryWaitMilliseconds * time.Millisecond,
 		maxConnRetries: defaultMaxDialRetries,
 	}
+	sd.signerEndpoint.logger = logger
 
 	sd.BaseService = *service.NewBaseService(logger, "SignerDialerEndpoint", sd)
 	sd.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second

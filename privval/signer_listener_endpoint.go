@@ -53,6 +53,7 @@ func NewSignerListenerEndpoint(
 		timeoutAccept: defaultTimeoutAcceptSeconds * time.Second,
 	}
 
+	sl.signerEndpoint.logger = logger
 	sl.BaseService = *service.NewBaseService(logger, "SignerListenerEndpoint", sl)
 	sl.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
 
