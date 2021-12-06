@@ -5,7 +5,7 @@ queue_rules:
       - label=S:automerge
 
 pull_request_rules:
-  - name: Automerge to master
+  - name: Automerge to v0.34.x
     conditions:
       - base=v0.34.x
       - label=S:automerge
