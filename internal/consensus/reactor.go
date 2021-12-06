@@ -152,6 +152,7 @@ func NewReactor(
 ) *Reactor {
 
 	r := &Reactor{
+		logger:        logger,
 		state:         cs,
 		waitSync:      waitSync,
 		peers:         make(map[types.NodeID]*PeerState),

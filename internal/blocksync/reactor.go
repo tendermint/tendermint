@@ -126,6 +126,7 @@ func NewReactor(
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
 
 	r := &Reactor{
+		logger:               logger,
 		initialState:         state,
 		blockExec:            blockExec,
 		store:                store,
