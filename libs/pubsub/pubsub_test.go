@@ -22,7 +22,8 @@ func TestSubscribeWithArgs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	t.Run("DefaultLimit", func(t *testing.T) {
 		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
@@ -50,8 +51,9 @@ func TestSubscribeWithArgs(t *testing.T) {
 func TestObserver(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logger := log.TestingLogger()
 
-	s := newTestServer(ctx, t)
+	s := newTestServer(ctx, t, logger)
 
 	done := make(chan struct{})
 	var got interface{}
@@ -71,7 +73,9 @@ func TestObserverErrors(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+
+	s := newTestServer(ctx, t, logger)
 
 	require.Error(t, s.Observe(ctx, nil, query.All))
 	require.NoError(t, s.Observe(ctx, func(pubsub.Message) error { return nil }))
@@ -82,7 +86,9 @@ func TestPublishDoesNotBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+
+	s := newTestServer(ctx, t, logger)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -110,7 +116,8 @@ func TestSubscribeErrors(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	t.Run("EmptyQueryErr", func(t *testing.T) {
 		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{ClientID: clientID})
@@ -130,7 +137,8 @@ func TestSlowSubscriber(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -151,7 +159,8 @@ func TestDifferentClients(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-1",
@@ -205,7 +214,8 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	testCases := []struct {
 		query    string
@@ -260,7 +270,8 @@ func TestClientSubscribesTwice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	q := query.MustCompile(`tm.events.type='NewBlock'`)
 	events := []abci.Event{{
@@ -295,7 +306,8 @@ func TestUnsubscribe(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -319,7 +331,8 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -340,7 +353,8 @@ func TestResubscribe(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	args := pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -363,7 +377,8 @@ func TestUnsubscribeAll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t)
+	logger := log.TestingLogger()
+	s := newTestServer(ctx, t, logger)
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -383,10 +398,8 @@ func TestUnsubscribeAll(t *testing.T) {
 }
 
 func TestBufferCapacity(t *testing.T) {
-	s := pubsub.NewServer(pubsub.BufferCapacity(2),
-		func(s *pubsub.Server) {
-			s.Logger = log.TestingLogger()
-		})
+	logger := log.TestingLogger()
+	s := pubsub.NewServer(logger, pubsub.BufferCapacity(2))
 
 	require.Equal(t, 2, s.BufferCapacity())
 
@@ -402,12 +415,10 @@ func TestBufferCapacity(t *testing.T) {
 	require.ErrorIs(t, s.Publish(ctx, "Ironclad"), context.DeadlineExceeded)
 }
 
-func newTestServer(ctx context.Context, t testing.TB) *pubsub.Server {
+func newTestServer(ctx context.Context, t testing.TB, logger log.Logger) *pubsub.Server {
 	t.Helper()
 
-	s := pubsub.NewServer(func(s *pubsub.Server) {
-		s.Logger = log.TestingLogger()
-	})
+	s := pubsub.NewServer(logger)
 
 	require.NoError(t, s.Start(ctx))
 	t.Cleanup(s.Wait)

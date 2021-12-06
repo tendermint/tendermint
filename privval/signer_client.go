@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -15,6 +16,7 @@ import (
 // SignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
+	logger   log.Logger
 	endpoint *SignerListenerEndpoint
 	chainID  string
 }
@@ -30,7 +32,11 @@ func NewSignerClient(ctx context.Context, endpoint *SignerListenerEndpoint, chai
 		}
 	}
 
-	return &SignerClient{endpoint: endpoint, chainID: chainID}, nil
+	return &SignerClient{
+		logger:   endpoint.logger,
+		endpoint: endpoint,
+		chainID:  chainID,
+	}, nil
 }
 
 // Close closes the underlying connection
@@ -55,7 +61,7 @@ func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
 func (sc *SignerClient) Ping() error {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PingRequest{}))
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::Ping", "err", err)
+		sc.logger.Error("SignerClient::Ping", "err", err)
 		return nil
 	}
 

@@ -78,6 +78,7 @@ func ChannelDescriptor() *conn.ChannelDescriptor {
 // adding it to the back of the list once a response is received.
 type Reactor struct {
 	service.BaseService
+	logger log.Logger
 
 	peerManager *p2p.PeerManager
 	pexCh       *p2p.Channel
@@ -123,6 +124,7 @@ func NewReactor(
 ) *Reactor {
 
 	r := &Reactor{
+		logger:               logger,
 		peerManager:          peerManager,
 		pexCh:                pexCh,
 		peerUpdates:          peerUpdates,
@@ -168,7 +170,7 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on PEX channel; closing...")
+			r.logger.Debug("stopped listening on PEX channel; closing...")
 			return
 
 		// outbound requests for new peers
@@ -179,7 +181,7 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 		// reactor
 		case envelope := <-r.pexCh.In:
 			if err := r.handleMessage(r.pexCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
+				r.logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
 				r.pexCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -203,7 +205,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 			r.processPeerUpdate(peerUpdate)
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}
@@ -211,7 +213,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 
 // handlePexMessage handles envelopes sent from peers on the PexChannel.
 func (r *Reactor) handlePexMessage(envelope p2p.Envelope) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
 	case *protop2p.PexRequest:
@@ -279,7 +281,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error(
+			r.logger.Error(
 				"recovering from processing message panic",
 				"err", err,
 				"stack", string(debug.Stack()),
@@ -287,7 +289,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received PEX message", "peer", envelope.From)
+	r.logger.Debug("received PEX message", "peer", envelope.From)
 
 	switch chID {
 	case p2p.ChannelID(PexChannel):
@@ -303,7 +305,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // processPeerUpdate processes a PeerUpdate. For added peers, PeerStatusUp, we
 // send a request for addresses.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received PEX peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.logger.Debug("received PEX peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -328,7 +330,7 @@ func (r *Reactor) sendRequestForPeers() {
 	defer r.mtx.Unlock()
 	if len(r.availablePeers) == 0 {
 		// no peers are available
-		r.Logger.Debug("no available peers to send request to, waiting...")
+		r.logger.Debug("no available peers to send request to, waiting...")
 		r.nextRequestTime = time.Now().Add(noAvailablePeersWaitPeriod)
 
 		return
@@ -351,7 +353,7 @@ func (r *Reactor) sendRequestForPeers() {
 	r.requestsSent[peerID] = struct{}{}
 
 	r.calculateNextRequestTime()
-	r.Logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
+	r.logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
 }
 
 // calculateNextRequestTime implements something of a proportional controller
@@ -368,7 +370,7 @@ func (r *Reactor) calculateNextRequestTime() {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
 	if ratio := r.peerManager.PeerRatio(); ratio >= 0.95 {
-		r.Logger.Debug("peer manager near full ratio, sleeping...",
+		r.logger.Debug("peer manager near full ratio, sleeping...",
 			"sleep_period", fullCapacityInterval, "ratio", ratio)
 		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
 		return

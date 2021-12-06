@@ -146,8 +146,8 @@ func (o *RouterOptions) Validate() error {
 // quality of service.
 type Router struct {
 	*service.BaseService
+	logger log.Logger
 
-	logger             log.Logger
 	metrics            *Metrics
 	options            RouterOptions
 	nodeInfo           types.NodeInfo
@@ -336,7 +336,7 @@ func (r *Router) routeChannel(
 			if wrapper != nil {
 				msg := proto.Clone(wrapper)
 				if err := msg.(Wrapper).Wrap(envelope.Message); err != nil {
-					r.Logger.Error("failed to wrap message", "channel", chID, "err", err)
+					r.logger.Error("failed to wrap message", "channel", chID, "err", err)
 					continue
 				}
 
@@ -958,7 +958,7 @@ func (r *Router) OnStart(ctx context.Context) error {
 		}
 	}
 
-	r.Logger.Info(
+	r.logger.Info(
 		"starting router",
 		"node_id", r.nodeInfo.NodeID,
 		"channels", r.nodeInfo.Channels,

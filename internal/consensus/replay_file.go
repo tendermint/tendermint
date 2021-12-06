@@ -74,7 +74,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 	defer func() {
 		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
 		if err := cs.eventBus.Unsubscribe(ctx, args); err != nil {
-			cs.Logger.Error("Error unsubscribing to event bus", "err", err)
+			cs.logger.Error("Error unsubscribing to event bus", "err", err)
 		}
 	}()
 
@@ -147,7 +147,7 @@ func (pb *playback) replayReset(ctx context.Context, count int, newStepSub event
 	}
 	pb.cs.Wait()
 
-	newCS := NewState(ctx, pb.cs.Logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(ctx, pb.cs.logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -182,7 +182,7 @@ func (pb *playback) replayReset(ctx context.Context, count int, newStepSub event
 }
 
 func (cs *State) startForReplay() {
-	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
+	cs.logger.Error("Replay commands are disabled until someone updates them and writes tests")
 }
 
 // console function for parsing input and running commands. The integer
@@ -238,13 +238,13 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 			defer func() {
 				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
 				if err := pb.cs.eventBus.Unsubscribe(ctx, args); err != nil {
-					pb.cs.Logger.Error("Error unsubscribing from eventBus", "err", err)
+					pb.cs.logger.Error("Error unsubscribing from eventBus", "err", err)
 				}
 			}()
 
 			if len(tokens) == 1 {
 				if err := pb.replayReset(ctx, 1, newStepSub); err != nil {
-					pb.cs.Logger.Error("Replay reset error", "err", err)
+					pb.cs.logger.Error("Replay reset error", "err", err)
 				}
 			} else {
 				i, err := strconv.Atoi(tokens[1])
@@ -253,7 +253,7 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
 				} else if err := pb.replayReset(ctx, i, newStepSub); err != nil {
-					pb.cs.Logger.Error("Replay reset error", "err", err)
+					pb.cs.logger.Error("Replay reset error", "err", err)
 				}
 			}
 

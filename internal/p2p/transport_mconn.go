@@ -295,7 +295,6 @@ func (c *mConnConnection) Handshake(
 			return types.NodeInfo{}, nil, err
 		}
 		c.mconn = mconn
-		c.logger = mconn.Logger
 		if err = c.mconn.Start(ctx); err != nil {
 			return types.NodeInfo{}, nil, err
 		}

@@ -36,7 +36,7 @@ func NewSignerServer(endpoint *SignerDialerEndpoint, chainID string, privVal typ
 		validationRequestHandler: DefaultValidationRequestHandler,
 	}
 
-	ss.BaseService = *service.NewBaseService(endpoint.Logger, "SignerServer", ss)
+	ss.BaseService = *service.NewBaseService(endpoint.logger, "SignerServer", ss)
 
 	return ss
 }
@@ -49,7 +49,7 @@ func (ss *SignerServer) OnStart(ctx context.Context) error {
 
 // OnStop implements service.Service.
 func (ss *SignerServer) OnStop() {
-	ss.endpoint.Logger.Debug("SignerServer: OnStop calling Close")
+	ss.endpoint.logger.Debug("SignerServer: OnStop calling Close")
 	_ = ss.endpoint.Close()
 }
 
@@ -68,7 +68,7 @@ func (ss *SignerServer) servicePendingRequest() {
 	req, err := ss.endpoint.ReadMessage()
 	if err != nil {
 		if err != io.EOF {
-			ss.Logger.Error("SignerServer: HandleMessage", "err", err)
+			ss.endpoint.logger.Error("SignerServer: HandleMessage", "err", err)
 		}
 		return
 	}
@@ -81,13 +81,13 @@ func (ss *SignerServer) servicePendingRequest() {
 		res, err = ss.validationRequestHandler(context.TODO(), ss.privVal, req, ss.chainID) // todo
 		if err != nil {
 			// only log the error; we'll reply with an error in res
-			ss.Logger.Error("SignerServer: handleMessage", "err", err)
+			ss.endpoint.logger.Error("SignerServer: handleMessage", "err", err)
 		}
 	}
 
 	err = ss.endpoint.WriteMessage(res)
 	if err != nil {
-		ss.Logger.Error("SignerServer: writeMessage", "err", err)
+		ss.endpoint.logger.Error("SignerServer: writeMessage", "err", err)
 	}
 }
 

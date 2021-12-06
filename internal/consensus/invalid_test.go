@@ -29,7 +29,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	for i := 0; i < 4; i++ {
-		ticker := NewTimeoutTicker(states[i].Logger)
+		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
@@ -123,7 +123,7 @@ func invalidDoPrevoteFunc(
 		cs.mtx.Unlock()
 
 		for _, ps := range r.peers {
-			cs.Logger.Info("sending bad vote", "block", blockHash, "peer", ps.peerID)
+			cs.logger.Info("sending bad vote", "block", blockHash, "peer", ps.peerID)
 
 			r.voteCh.Out <- p2p.Envelope{
 				To: ps.peerID,
