@@ -396,15 +396,15 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			if tc.ok {
 				// without the sleep after RequireUpdate this method isn't
 				// always called. Consider making this call optional.
-				mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
+				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF)
 			}
 
 			mockTransport := &mocks.Transport{}
 			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 			mockTransport.On("Close").Return(nil)
-			mockTransport.On("Accept").Once().Return(mockConnection, nil)
-			mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
+			mockTransport.On("Accept", mock.Anything).Once().Return(mockConnection, nil)
+			mockTransport.On("Accept", mock.Anything).Maybe().Return(nil, io.EOF)
 
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -462,7 +462,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-	mockTransport.On("Accept").Once().Return(nil, errors.New("boom"))
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, errors.New("boom"))
 	mockTransport.On("Close").Return(nil)
 
 	// Set up and start the router.
@@ -500,7 +500,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
 	mockTransport.On("Close").Return(nil)
 
 	// Set up and start the router.
@@ -550,10 +550,10 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
-	mockTransport.On("Accept").Times(3).Run(func(_ mock.Arguments) {
+	mockTransport.On("Accept", mock.Anything).Times(3).Run(func(_ mock.Arguments) {
 		acceptCh <- true
 	}).Return(mockConnection, nil)
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
 
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -575,7 +575,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		return len(acceptCh) == 3
-	}, time.Second, 10*time.Millisecond)
+	}, time.Second, 10*time.Millisecond, "num", len(acceptCh))
 	close(closeCh)
 	time.Sleep(100 * time.Millisecond)
 
@@ -636,14 +636,14 @@ func TestRouter_DialPeers(t *testing.T) {
 			if tc.ok {
 				// without the sleep after RequireUpdate this method isn't
 				// always called. Consider making this call optional.
-				mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
+				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF)
 			}
 
 			mockTransport := &mocks.Transport{}
 			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 			mockTransport.On("Close").Return(nil)
-			mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
+			mockTransport.On("Accept", mock.Anything).Maybe().Return(nil, io.EOF)
 			if tc.dialErr == nil {
 				mockTransport.On("Dial", mock.Anything, endpoint).Once().Return(mockConnection, nil)
 				// This handles the retry when a dialed connection gets closed after ReceiveMessage
@@ -728,7 +728,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
 	for _, address := range []p2p.NodeAddress{a, b, c} {
 		endpoint := p2p.Endpoint{Protocol: address.Protocol, Path: string(address.NodeID)}
 		mockTransport.On("Dial", mock.Anything, endpoint).Run(func(_ mock.Arguments) {
@@ -806,7 +806,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 		Return(peerInfo, peerKey.PubKey(), nil)
-	mockConnection.On("ReceiveMessage").WaitUntil(closeCh).Return(chID, nil, io.EOF)
+	mockConnection.On("ReceiveMessage", mock.Anything).WaitUntil(closeCh).Return(chID, nil, io.EOF)
 	mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 	mockConnection.On("Close").Run(func(_ mock.Arguments) {
 		closeOnce.Do(func() {
@@ -818,8 +818,8 @@ func TestRouter_EvictPeers(t *testing.T) {
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
-	mockTransport.On("Accept").Once().Return(mockConnection, nil)
-	mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(mockConnection, nil)
+	mockTransport.On("Accept", mock.Anything).Maybe().Return(nil, io.EOF)
 
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -885,8 +885,8 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
-	mockTransport.On("Accept").Once().Return(mockConnection, nil)
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(mockConnection, nil)
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
 
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
@@ -932,15 +932,15 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 		Return(peer, peerKey.PubKey(), nil)
 	mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 	mockConnection.On("Close").Return(nil)
-	mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
+	mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF)
 
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("AddChannelDescriptors", mock.Anything).Return()
 	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
-	mockTransport.On("Accept").Once().Return(mockConnection, nil)
-	mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(mockConnection, nil)
+	mockTransport.On("Accept", mock.Anything).Maybe().Return(nil, io.EOF)
 
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
