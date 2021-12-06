@@ -120,6 +120,7 @@ func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, pe
 		require.NoError(t, txmp.CheckTx(ctx, txs[i].tx, nil, txInfo))
 	}
 
+	require.Equal(t, numTxs, txmp.Size())
 	return txs
 }
 
