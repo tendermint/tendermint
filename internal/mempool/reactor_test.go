@@ -196,14 +196,13 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, numNodes, 0)
+	rts := setupReactors(ctx, t, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
 	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 
-	// run the router
 	rts.start(ctx, t)
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the

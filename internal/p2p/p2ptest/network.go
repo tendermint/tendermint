@@ -201,8 +201,9 @@ func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
 
 	require.NoError(t, node.Transport.Close())
 	if node.Router.IsRunning() {
-		node.cancel()
+		require.NoError(t, node.Router.Stop())
 	}
+	node.cancel()
 
 	for _, sub := range subs {
 		RequireUpdate(t, sub, p2p.PeerUpdate{
