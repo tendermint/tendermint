@@ -85,7 +85,7 @@ func (pu *PeerUpdates) Done() <-chan struct{} {
 func (pu *PeerUpdates) Close() {
 	pu.closeOnce.Do(func() {
 		// NOTE: We don't close updatesCh since multiple goroutines may be
-		// sending on it. The PeerManager senders will select on closeCh as well
+		// sending on it. The PeerManager senders will select on doneCh as well
 		// to avoid blocking on a closed subscription.
 		close(pu.doneCh)
 	})
@@ -904,7 +904,7 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 // maintaining order if this is a problem.
 func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
-		// We have to check closeCh separately first, otherwise there's a 50%
+		// We have to check doneCHan separately first, otherwise there's a 50%
 		// chance the second select will send on a closed subscription.
 		select {
 		case <-sub.doneCh:

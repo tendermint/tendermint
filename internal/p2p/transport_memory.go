@@ -95,8 +95,8 @@ type MemoryTransport struct {
 	bufferSize int
 
 	acceptCh  chan *MemoryConnection
-	closeCh   chan struct{}
 	closeOnce sync.Once
+	isClosed  bool
 }
 
 // newMemoryTransport creates a new MemoryTransport. This is for internal use by
@@ -108,7 +108,6 @@ func newMemoryTransport(network *MemoryNetwork, nodeID types.NodeID) *MemoryTran
 		nodeID:     nodeID,
 		bufferSize: network.bufferSize,
 		acceptCh:   make(chan *MemoryConnection),
-		closeCh:    make(chan struct{}),
 	}
 }
 
@@ -128,19 +127,18 @@ func (t *MemoryTransport) Protocols() []Protocol {
 
 // Endpoints implements Transport.
 func (t *MemoryTransport) Endpoints() []Endpoint {
-	select {
-	case <-t.closeCh:
+	if t.isClosed {
 		return []Endpoint{}
-	default:
-		return []Endpoint{{
-			Protocol: MemoryProtocol,
-			Path:     string(t.nodeID),
-			// An arbitrary IP and port is used in order for the pex
-			// reactor to be able to send addresses to one another.
-			IP:   net.IPv4zero,
-			Port: 0,
-		}}
 	}
+
+	return []Endpoint{{
+		Protocol: MemoryProtocol,
+		Path:     string(t.nodeID),
+		// An arbitrary IP and port is used in order for the pex
+		// reactor to be able to send addresses to one another.
+		IP:   net.IPv4zero,
+		Port: 0,
+	}}
 }
 
 // Accept implements Transport.
@@ -187,10 +185,8 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	select {
 	case peer.acceptCh <- inConn:
 		return outConn, nil
-	case <-peer.closeCh:
-		return nil, io.EOF
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, io.EOF
 	}
 }
 
@@ -198,7 +194,7 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)
 	t.closeOnce.Do(func() {
-		close(t.closeCh)
+		t.isClosed = true
 		t.logger.Info("closed transport")
 	})
 	return nil
