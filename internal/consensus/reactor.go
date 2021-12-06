@@ -976,8 +976,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 	case p2p.PeerStatusUp:
 		// Do not allow starting new broadcasting goroutines after reactor shutdown
 		// has been initiated. This can happen after we've manually closed all
-		// peer goroutines and closed r.closeCh, but the router still sends in-flight
-		// peer updates.
+		// peer goroutines, but the router still sends in-flight peer updates.
 		if !r.IsRunning() {
 			return
 		}

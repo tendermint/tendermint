@@ -81,7 +81,6 @@ func newSyncer(
 	stateProvider StateProvider,
 	snapshotCh chan<- p2p.Envelope,
 	chunkCh chan<- p2p.Envelope,
-	closeCh <-chan struct{},
 	tempDir string,
 	metrics *Metrics,
 ) *syncer {

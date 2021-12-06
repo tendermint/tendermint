@@ -85,10 +85,10 @@ type Connection interface {
 
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. Returns io.EOF if closed.
-	ReceiveMessage() (ChannelID, []byte, error)
+	ReceiveMessage(context.Context) (ChannelID, []byte, error)
 
 	// SendMessage sends a message on the connection. Returns io.EOF if closed.
-	SendMessage(ChannelID, []byte) error
+	SendMessage(context.Context, ChannelID, []byte) error
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint

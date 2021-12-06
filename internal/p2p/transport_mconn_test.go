@@ -214,7 +214,7 @@ func TestMConnTransport_Listen(t *testing.T) {
 			require.NoError(t, peerConn.Close())
 
 			// try to read from the connection should error
-			_, _, err = peerConn.ReceiveMessage()
+			_, _, err = peerConn.ReceiveMessage(ctx)
 			require.Error(t, err)
 
 			// Trying to listen again should error.

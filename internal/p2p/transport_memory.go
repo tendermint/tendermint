@@ -295,11 +295,13 @@ func (c *MemoryConnection) Handshake(
 }
 
 // ReceiveMessage implements Connection.
-func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
+func (c *MemoryConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byte, error) {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
+		return 0, nil, io.EOF
+	case <-ctx.Done():
 		return 0, nil, io.EOF
 	default:
 	}
@@ -314,11 +316,13 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 }
 
 // SendMessage implements Connection.
-func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) error {
+func (c *MemoryConnection) SendMessage(ctx context.Context, chID ChannelID, msg []byte) error {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
+		return io.EOF
+	case <-ctx.Done():
 		return io.EOF
 	default:
 	}
@@ -327,6 +331,8 @@ func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) error {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
 		c.logger.Debug("sent message", "chID", chID, "msg", msg)
 		return nil
+	case <-ctx.Done():
+		return io.EOF
 	case <-c.closer.Done():
 		return io.EOF
 	}

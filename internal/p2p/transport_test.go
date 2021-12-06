@@ -351,11 +351,11 @@ func TestConnection_FlushClose(t *testing.T) {
 		err := ab.Close()
 		require.NoError(t, err)
 
-		_, _, err = ab.ReceiveMessage()
+		_, _, err = ab.ReceiveMessage(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		err = ab.SendMessage(chID, []byte("closed"))
+		err = ab.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 	})
@@ -388,19 +388,19 @@ func TestConnection_SendReceive(t *testing.T) {
 		ab, ba := dialAcceptHandshake(ctx, t, a, b)
 
 		// Can send and receive a to b.
-		err := ab.SendMessage(chID, []byte("foo"))
+		err := ab.SendMessage(ctx, chID, []byte("foo"))
 		require.NoError(t, err)
 
-		ch, msg, err := ba.ReceiveMessage()
+		ch, msg, err := ba.ReceiveMessage(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []byte("foo"), msg)
 		require.Equal(t, chID, ch)
 
 		// Can send and receive b to a.
-		err = ba.SendMessage(chID, []byte("bar"))
+		err = ba.SendMessage(ctx, chID, []byte("bar"))
 		require.NoError(t, err)
 
-		_, msg, err = ab.ReceiveMessage()
+		_, msg, err = ab.ReceiveMessage(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []byte("bar"), msg)
 
@@ -410,9 +410,9 @@ func TestConnection_SendReceive(t *testing.T) {
 		err = b.Close()
 		require.NoError(t, err)
 
-		err = ab.SendMessage(chID, []byte("still here"))
+		err = ab.SendMessage(ctx, chID, []byte("still here"))
 		require.NoError(t, err)
-		ch, msg, err = ba.ReceiveMessage()
+		ch, msg, err = ba.ReceiveMessage(ctx)
 		require.NoError(t, err)
 		require.Equal(t, chID, ch)
 		require.Equal(t, []byte("still here"), msg)
@@ -422,19 +422,19 @@ func TestConnection_SendReceive(t *testing.T) {
 		err = ba.Close()
 		require.NoError(t, err)
 
-		_, _, err = ab.ReceiveMessage()
+		_, _, err = ab.ReceiveMessage(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		err = ab.SendMessage(chID, []byte("closed"))
+		err = ab.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		_, _, err = ba.ReceiveMessage()
+		_, _, err = ba.ReceiveMessage(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		err = ba.SendMessage(chID, []byte("closed"))
+		err = ba.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 	})

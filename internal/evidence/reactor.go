@@ -217,8 +217,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 	case p2p.PeerStatusUp:
 		// Do not allow starting new evidence broadcast loops after reactor shutdown
 		// has been initiated. This can happen after we've manually closed all
-		// peer broadcast loops and closed r.closeCh, but the router still sends
-		// in-flight peer updates.
+		// peer broadcast loops, but the router still sends in-flight peer updates.
 		if !r.IsRunning() {
 			return
 		}

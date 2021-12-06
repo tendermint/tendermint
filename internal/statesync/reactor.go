@@ -225,8 +225,6 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 func (r *Reactor) OnStop() {
 	// tell the dispatcher to stop sending any more requests
 	r.dispatcher.Close()
-	// wait for any remaining requests to complete
-	<-r.dispatcher.Done()
 
 	<-r.peerUpdates.Done()
 }
@@ -262,7 +260,6 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
-		ctx.Done(),
 		r.tempDir,
 		r.metrics,
 	)

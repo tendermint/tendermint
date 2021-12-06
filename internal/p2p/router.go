@@ -827,7 +827,7 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 // passes them on to the appropriate channel.
 func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Connection) error {
 	for {
-		chID, bz, err := conn.ReceiveMessage()
+		chID, bz, err := conn.ReceiveMessage(ctx)
 		if err != nil {
 			return err
 		}
@@ -895,7 +895,7 @@ func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connect
 				continue
 			}
 
-			if err = conn.SendMessage(envelope.channelID, bz); err != nil {
+			if err = conn.SendMessage(ctx, envelope.channelID, bz); err != nil {
 				return err
 			}
 
