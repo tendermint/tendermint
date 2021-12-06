@@ -1119,8 +1119,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		}
 	}()
 
-	//nolint: lll
-	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timestamp)
+	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timing) // nolint: lll
 	proposalTimeout := maxDuration(cs.config.Propose(round), waitingTime)
 
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
@@ -2448,9 +2447,9 @@ func proposerWaitTime(lt tmtime.Source, bt time.Time) time.Duration {
 // The result of proposalStepWaitingTime is compared with the configured `timeout-propose` duration,
 // and the validator waits for whichever duration is larger before advancing to the next step
 // and prevoting nil.
-func proposalStepWaitingTime(lt tmtime.Source, bt time.Time, tp types.TimestampParams) time.Duration {
+func proposalStepWaitingTime(lt tmtime.Source, bt time.Time, tp types.TimingParams) time.Duration {
 	t := lt.Now()
-	wt := bt.Add(tp.Precision).Add(tp.MsgDelay)
+	wt := bt.Add(tp.Precision).Add(tp.MessageDelay)
 	if t.After(wt) {
 		return 0
 	}
