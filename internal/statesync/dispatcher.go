@@ -66,7 +66,7 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 		return resp, nil
 
 	case <-ctx.Done():
-		return nil, errDisconnected
+		return nil, ctx.Err()
 	}
 }
 
