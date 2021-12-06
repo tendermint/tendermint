@@ -23,7 +23,7 @@ func TestSubscribeWithArgs(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	t.Run("DefaultLimit", func(t *testing.T) {
 		sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
@@ -53,7 +53,7 @@ func TestObserver(t *testing.T) {
 	defer cancel()
 	logger := log.TestingLogger()
 
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	done := make(chan struct{})
 	var got interface{}
@@ -75,7 +75,7 @@ func TestObserverErrors(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	require.Error(t, s.Observe(ctx, nil, query.All))
 	require.NoError(t, s.Observe(ctx, func(pubsub.Message) error { return nil }))
@@ -88,7 +88,7 @@ func TestPublishDoesNotBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -117,7 +117,7 @@ func TestSubscribeErrors(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	t.Run("EmptyQueryErr", func(t *testing.T) {
 		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{ClientID: clientID})
@@ -138,7 +138,7 @@ func TestSlowSubscriber(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -160,7 +160,7 @@ func TestDifferentClients(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "client-1",
@@ -215,7 +215,7 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	testCases := []struct {
 		query    string
@@ -271,7 +271,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	q := query.MustCompile(`tm.events.type='NewBlock'`)
 	events := []abci.Event{{
@@ -307,7 +307,7 @@ func TestUnsubscribe(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -332,7 +332,7 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -354,7 +354,7 @@ func TestResubscribe(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	args := pubsub.SubscribeArgs{
 		ClientID: clientID,
@@ -378,7 +378,7 @@ func TestUnsubscribeAll(t *testing.T) {
 	defer cancel()
 
 	logger := log.TestingLogger()
-	s := newTestServer(ctx, logger, t)
+	s := newTestServer(ctx, t, logger)
 
 	sub1 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: clientID,
