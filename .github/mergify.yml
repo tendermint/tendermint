@@ -13,4 +13,7 @@ pull_request_rules:
       queue:
         method: squash
         name: default
-        commit_message: title+body
+        commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}
