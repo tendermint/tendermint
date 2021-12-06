@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -54,6 +55,7 @@ assuming that marker lines are written occasionally.
 */
 type Group struct {
 	service.BaseService
+	logger log.Logger
 
 	ID                 string
 	Head               *AutoFile // The head AutoFile to write to
@@ -78,7 +80,7 @@ type Group struct {
 
 // OpenGroup creates a new Group with head at headPath. It returns an error if
 // it fails to open head file.
-func OpenGroup(headPath string, groupOptions ...func(*Group)) (*Group, error) {
+func OpenGroup(logger log.Logger, headPath string, groupOptions ...func(*Group)) (*Group, error) {
 	dir, err := filepath.Abs(filepath.Dir(headPath))
 	if err != nil {
 		return nil, err
@@ -89,6 +91,7 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (*Group, error) {
 	}
 
 	g := &Group{
+		logger:             logger,
 		ID:                 "group:" + head.ID,
 		Head:               head,
 		headBuf:            bufio.NewWriterSize(head, 4096*10),
@@ -105,7 +108,7 @@ func OpenGroup(headPath string, groupOptions ...func(*Group)) (*Group, error) {
 		option(g)
 	}
 
-	g.BaseService = *service.NewBaseService(nil, "Group", g)
+	g.BaseService = *service.NewBaseService(logger, "Group", g)
 
 	gInfo := g.readGroupInfo()
 	g.minIndex = gInfo.MinIndex
@@ -147,7 +150,7 @@ func (g *Group) OnStart(ctx context.Context) error {
 func (g *Group) OnStop() {
 	g.ticker.Stop()
 	if err := g.FlushAndSync(); err != nil {
-		g.Logger.Error("Error flushing to disk", "err", err)
+		g.logger.Error("Error flushing to disk", "err", err)
 	}
 }
 
@@ -161,7 +164,7 @@ func (g *Group) Wait() {
 // Close closes the head file. The group must be stopped by this moment.
 func (g *Group) Close() {
 	if err := g.FlushAndSync(); err != nil {
-		g.Logger.Error("Error flushing to disk", "err", err)
+		g.logger.Error("Error flushing to disk", "err", err)
 	}
 
 	g.mtx.Lock()
@@ -259,7 +262,7 @@ func (g *Group) checkHeadSizeLimit() {
 	}
 	size, err := g.Head.Size()
 	if err != nil {
-		g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path, "err", err)
+		g.logger.Error("Group's head may grow without bound", "head", g.Head.Path, "err", err)
 		return
 	}
 	if size >= limit {
@@ -282,18 +285,18 @@ func (g *Group) checkTotalSizeLimit() {
 		}
 		if index == gInfo.MaxIndex {
 			// Special degenerate case, just do nothing.
-			g.Logger.Error("Group's head may grow without bound", "head", g.Head.Path)
+			g.logger.Error("Group's head may grow without bound", "head", g.Head.Path)
 			return
 		}
 		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
 		fInfo, err := os.Stat(pathToRemove)
 		if err != nil {
-			g.Logger.Error("Failed to fetch info for file", "file", pathToRemove)
+			g.logger.Error("Failed to fetch info for file", "file", pathToRemove)
 			continue
 		}
 		err = os.Remove(pathToRemove)
 		if err != nil {
-			g.Logger.Error("Failed to remove path", "path", pathToRemove)
+			g.logger.Error("Failed to remove path", "path", pathToRemove)
 			return
 		}
 		totalSize -= fInfo.Size()

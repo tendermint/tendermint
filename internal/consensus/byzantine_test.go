@@ -140,7 +140,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			i := 0
 			for _, ps := range bzReactor.peers {
 				if i < len(bzReactor.peers)/2 {
-					bzNodeState.Logger.Info("signed and pushed vote", "vote", prevote1, "peer", ps.peerID)
+					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote1, "peer", ps.peerID)
 					bzReactor.voteCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.Vote{
@@ -148,7 +148,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 						},
 					}
 				} else {
-					bzNodeState.Logger.Info("signed and pushed vote", "vote", prevote2, "peer", ps.peerID)
+					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote2, "peer", ps.peerID)
 					bzReactor.voteCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.Vote{
@@ -160,7 +160,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				i++
 			}
 		} else {
-			bzNodeState.Logger.Info("behaving normally")
+			bzNodeState.logger.Info("behaving normally")
 			bzNodeState.defaultDoPrevote(ctx, height, round)
 		}
 	}
@@ -172,7 +172,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	lazyNodeState := states[1]
 
 	lazyNodeState.decideProposal = func(height int64, round int32) {
-		lazyNodeState.Logger.Info("Lazy Proposer proposing condensed commit")
+		lazyNodeState.logger.Info("Lazy Proposer proposing condensed commit")
 		require.NotNil(t, lazyNodeState.privValidator)
 
 		var commit *types.Commit
@@ -185,7 +185,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			// Make the commit from LastCommit
 			commit = lazyNodeState.LastCommit.MakeCommit()
 		default: // This shouldn't happen.
-			lazyNodeState.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
+			lazyNodeState.logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
 		}
 
@@ -195,7 +195,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		if lazyNodeState.privValidatorPubKey == nil {
 			// If this node is a validator & proposer in the current round, it will
 			// miss the opportunity to create a block.
-			lazyNodeState.Logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+			lazyNodeState.logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
 			return
 		}
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
@@ -207,7 +207,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
 		// and the privValidator will refuse to sign anything.
 		if err := lazyNodeState.wal.FlushAndSync(); err != nil {
-			lazyNodeState.Logger.Error("Error flushing to disk")
+			lazyNodeState.logger.Error("Error flushing to disk")
 		}
 
 		// Make proposal
@@ -225,10 +225,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 					lazyNodeState.Height, lazyNodeState.Round, part,
 				}, ""})
 			}
-			lazyNodeState.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-			lazyNodeState.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+			lazyNodeState.logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+			lazyNodeState.logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
 		} else if !lazyNodeState.replayMode {
-			lazyNodeState.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
+			lazyNodeState.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}
 	}
 
@@ -303,7 +303,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 
 	// // give the byzantine validator a normal ticker
 	// ticker := NewTimeoutTicker()
-	// ticker.SetLogger(states[0].Logger)
+	// ticker.SetLogger(states[0].logger)
 	// states[0].SetTimeoutTicker(ticker)
 
 	// p2pLogger := logger.With("module", "p2p")
@@ -529,7 +529,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 // 	}
 
 // 	// Create peerState for peer
-// 	peerState := NewPeerState(peer).SetLogger(br.reactor.Logger)
+// 	peerState := NewPeerState(peer).SetLogger(br.reactor.logger)
 // 	peer.Set(types.PeerStateKey, peerState)
 
 // 	// Send our state to peer.

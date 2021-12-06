@@ -74,6 +74,7 @@ Inbound message bytes are handled with an onReceive callback function.
 */
 type MConnection struct {
 	service.BaseService
+	logger log.Logger
 
 	conn          net.Conn
 	bufConnReader *bufio.Reader
@@ -178,6 +179,7 @@ func NewMConnectionWithConfig(
 	}
 
 	mconn := &MConnection{
+		logger:        logger,
 		conn:          conn,
 		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
 		bufConnWriter: bufio.NewWriterSize(conn, minWriteBufferSize),
@@ -276,24 +278,24 @@ func (c *MConnection) String() string {
 }
 
 func (c *MConnection) flush() {
-	c.Logger.Debug("Flush", "conn", c)
+	c.logger.Debug("Flush", "conn", c)
 	err := c.bufConnWriter.Flush()
 	if err != nil {
-		c.Logger.Debug("MConnection flush failed", "err", err)
+		c.logger.Debug("MConnection flush failed", "err", err)
 	}
 }
 
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		c.Logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
+		c.logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
 		c.stopForError(fmt.Errorf("recovered from panic: %v", r))
 	}
 }
 
 func (c *MConnection) stopForError(r interface{}) {
 	if err := c.Stop(); err != nil {
-		c.Logger.Error("Error stopping connection", "err", err)
+		c.logger.Error("Error stopping connection", "err", err)
 	}
 
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
@@ -309,12 +311,12 @@ func (c *MConnection) Send(chID ChannelID, msgBytes []byte) bool {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", msgBytes)
+	c.logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", msgBytes)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		c.Logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
+		c.logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -326,7 +328,7 @@ func (c *MConnection) Send(chID ChannelID, msgBytes []byte) bool {
 		default:
 		}
 	} else {
-		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", msgBytes)
+		c.logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", msgBytes)
 	}
 	return success
 }
@@ -351,14 +353,14 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.C:
-			c.Logger.Debug("Send Ping")
+			c.logger.Debug("Send Ping")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 			if err != nil {
-				c.Logger.Error("Failed to send PacketPing", "err", err)
+				c.logger.Error("Failed to send PacketPing", "err", err)
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
-			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
+			c.logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
 			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
 				select {
 				case c.pongTimeoutCh <- true:
@@ -368,16 +370,16 @@ FOR_LOOP:
 			c.flush()
 		case timeout := <-c.pongTimeoutCh:
 			if timeout {
-				c.Logger.Debug("Pong timeout")
+				c.logger.Debug("Pong timeout")
 				err = errors.New("pong timeout")
 			} else {
 				c.stopPongTimer()
 			}
 		case <-c.pong:
-			c.Logger.Debug("Send Pong")
+			c.logger.Debug("Send Pong")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
-				c.Logger.Error("Failed to send PacketPong", "err", err)
+				c.logger.Error("Failed to send PacketPong", "err", err)
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
@@ -402,7 +404,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
+			c.logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
@@ -453,12 +455,12 @@ func (c *MConnection) sendPacketMsg() bool {
 	if leastChannel == nil {
 		return true
 	}
-	// c.Logger.Info("Found a msgPacket to send")
+	// c.logger.Info("Found a msgPacket to send")
 
 	// Make & send a PacketMsg from this channel
 	_n, err := leastChannel.writePacketMsgTo(c.bufConnWriter)
 	if err != nil {
-		c.Logger.Error("Failed to write PacketMsg", "err", err)
+		c.logger.Error("Failed to write PacketMsg", "err", err)
 		c.stopForError(err)
 		return true
 	}
@@ -488,10 +490,10 @@ FOR_LOOP:
 				if err == nil {
 					// return
 				} else {
-					c.Logger.Debug("Error peeking connection buffer", "err", err)
+					c.logger.Debug("Error peeking connection buffer", "err", err)
 					// return nil
 				}
-				c.Logger.Info("Peek connection buffer", "numBytes", numBytes, "bz", bz)
+				c.logger.Info("Peek connection buffer", "numBytes", numBytes, "bz", bz)
 			}
 		*/
 
@@ -512,9 +514,9 @@ FOR_LOOP:
 
 			if c.IsRunning() {
 				if err == io.EOF {
-					c.Logger.Info("Connection is closed @ recvRoutine (likely by the other side)", "conn", c)
+					c.logger.Info("Connection is closed @ recvRoutine (likely by the other side)", "conn", c)
 				} else {
-					c.Logger.Debug("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+					c.logger.Debug("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
 				}
 				c.stopForError(err)
 			}
@@ -526,14 +528,14 @@ FOR_LOOP:
 		case *tmp2p.Packet_PacketPing:
 			// TODO: prevent abuse, as they cause flush()'s.
 			// https://github.com/tendermint/tendermint/issues/1190
-			c.Logger.Debug("Receive Ping")
+			c.logger.Debug("Receive Ping")
 			select {
 			case c.pong <- struct{}{}:
 			default:
 				// never block
 			}
 		case *tmp2p.Packet_PacketPong:
-			c.Logger.Debug("Receive Pong")
+			c.logger.Debug("Receive Pong")
 			select {
 			case c.pongTimeoutCh <- false:
 			default:
@@ -544,7 +546,7 @@ FOR_LOOP:
 			channel, ok := c.channelsIdx[channelID]
 			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
-				c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
+				c.logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
 				break FOR_LOOP
 			}
@@ -552,19 +554,19 @@ FOR_LOOP:
 			msgBytes, err := channel.recvPacketMsg(*pkt.PacketMsg)
 			if err != nil {
 				if c.IsRunning() {
-					c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
+					c.logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 					c.stopForError(err)
 				}
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
+				c.logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(channelID, msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
-			c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
+			c.logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
@@ -656,7 +658,7 @@ type channel struct {
 
 	maxPacketMsgPayloadSize int
 
-	Logger log.Logger
+	logger log.Logger
 }
 
 func newChannel(conn *MConnection, desc ChannelDescriptor) *channel {
@@ -670,7 +672,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *channel {
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
 		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
-		Logger:                  conn.Logger,
+		logger:                  conn.logger,
 	}
 }
 
@@ -730,7 +732,7 @@ func (ch *channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 // complete, which is owned by the caller and will not be modified.
 // Not goroutine-safe
 func (ch *channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
-	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
+	ch.logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
 	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
 	if recvCap < recvReceived {
 		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)

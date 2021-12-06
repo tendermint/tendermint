@@ -65,6 +65,7 @@ func (e peerError) Error() string {
 // Reactor handles long-term catchup syncing.
 type Reactor struct {
 	service.BaseService
+	logger log.Logger
 
 	// immutable
 	initialState sm.State
@@ -124,6 +125,7 @@ func NewReactor(
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
 
 	r := &Reactor{
+		logger:               logger,
 		initialState:         state,
 		blockExec:            blockExec,
 		store:                store,
@@ -173,7 +175,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 func (r *Reactor) OnStop() {
 	if r.blockSync.IsSet() {
 		if err := r.pool.Stop(); err != nil {
-			r.Logger.Error("failed to stop pool", "err", err)
+			r.logger.Error("failed to stop pool", "err", err)
 		}
 	}
 
@@ -190,7 +192,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) 
 	if block != nil {
 		blockProto, err := block.ToProto()
 		if err != nil {
-			r.Logger.Error("failed to convert msg to protobuf", "err", err)
+			r.logger.Error("failed to convert msg to protobuf", "err", err)
 			return
 		}
 
@@ -202,7 +204,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) 
 		return
 	}
 
-	r.Logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
+	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
 	r.blockSyncCh.Out <- p2p.Envelope{
 		To:      peerID,
 		Message: &bcproto.NoBlockResponse{Height: msg.Height},
@@ -213,7 +215,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) 
 // BlockSyncChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
 func (r *Reactor) handleBlockSyncMessage(envelope p2p.Envelope) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
 	case *bcproto.BlockRequest:
@@ -257,7 +259,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error(
+			r.logger.Error(
 				"recovering from processing message panic",
 				"err", err,
 				"stack", string(debug.Stack()),
@@ -265,7 +267,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+	r.logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
 	switch chID {
 	case BlockSyncChannel:
@@ -287,11 +289,11 @@ func (r *Reactor) processBlockSyncCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			r.Logger.Debug("stopped listening on block sync channel; closing...")
+			r.logger.Debug("stopped listening on block sync channel; closing...")
 			return
 		case envelope := <-r.blockSyncCh.In:
 			if err := r.handleMessage(r.blockSyncCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
+				r.logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
 				r.blockSyncCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -305,7 +307,7 @@ func (r *Reactor) processBlockSyncCh(ctx context.Context) {
 
 // processPeerUpdate processes a PeerUpdate.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	// XXX: Pool#RedoRequest can sometimes give us an empty peer.
 	if len(peerUpdate.NodeID) == 0 {
@@ -337,7 +339,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
@@ -439,7 +441,7 @@ FOR_LOOP:
 				lastAdvance                       = r.pool.LastAdvance()
 			)
 
-			r.Logger.Debug(
+			r.logger.Debug(
 				"consensus ticker",
 				"num_pending", numPending,
 				"total", lenRequesters,
@@ -448,13 +450,13 @@ FOR_LOOP:
 
 			switch {
 			case r.pool.IsCaughtUp():
-				r.Logger.Info("switching to consensus reactor", "height", height)
+				r.logger.Info("switching to consensus reactor", "height", height)
 
 			case time.Since(lastAdvance) > syncTimeout:
-				r.Logger.Error("no progress since last advance", "last_advance", lastAdvance)
+				r.logger.Error("no progress since last advance", "last_advance", lastAdvance)
 
 			default:
-				r.Logger.Info(
+				r.logger.Info(
 					"not caught up yet",
 					"height", height,
 					"max_peer_height", r.pool.MaxPeerHeight(),
@@ -464,7 +466,7 @@ FOR_LOOP:
 			}
 
 			if err := r.pool.Stop(); err != nil {
-				r.Logger.Error("failed to stop pool", "err", err)
+				r.logger.Error("failed to stop pool", "err", err)
 			}
 
 			r.blockSync.UnSet()
@@ -515,7 +517,7 @@ FOR_LOOP:
 			err := state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
 			if err != nil {
 				err = fmt.Errorf("invalid last commit: %w", err)
-				r.Logger.Error(
+				r.logger.Error(
 					err.Error(),
 					"last_commit", second.LastCommit,
 					"block_id", firstID,
@@ -561,7 +563,7 @@ FOR_LOOP:
 
 				if blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-					r.Logger.Info(
+					r.logger.Info(
 						"block sync rate",
 						"height", r.pool.height,
 						"max_peer_height", r.pool.MaxPeerHeight(),

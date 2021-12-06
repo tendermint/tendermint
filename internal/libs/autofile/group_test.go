@@ -9,18 +9,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
-func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group {
+func createTestGroupWithHeadSizeLimit(t *testing.T, logger log.Logger, headSizeLimit int64) *Group {
 	testID := tmrand.Str(12)
 	testDir := "_test_" + testID
 	err := tmos.EnsureDir(testDir, 0700)
 	require.NoError(t, err, "Error creating dir")
 
 	headPath := testDir + "/myfile"
-	g, err := OpenGroup(headPath, GroupHeadSizeLimit(headSizeLimit))
+	g, err := OpenGroup(logger, headPath, GroupHeadSizeLimit(headSizeLimit))
 	require.NoError(t, err, "Error opening Group")
 	require.NotEqual(t, nil, g, "Failed to create Group")
 
@@ -42,7 +43,9 @@ func assertGroupInfo(t *testing.T, gInfo GroupInfo, minIndex, maxIndex int, tota
 }
 
 func TestCheckHeadSizeLimit(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 1000*1000)
+	logger := log.TestingLogger()
+
+	g := createTestGroupWithHeadSizeLimit(t, logger, 1000*1000)
 
 	// At first, there are no files.
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 0, 0)
@@ -109,7 +112,9 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 }
 
 func TestRotateFile(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 0)
+	logger := log.TestingLogger()
+
+	g := createTestGroupWithHeadSizeLimit(t, logger, 0)
 
 	// Create a different temporary directory and move into it, to make sure
 	// relative paths are resolved at Group creation
@@ -173,7 +178,9 @@ func TestRotateFile(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 0)
+	logger := log.TestingLogger()
+
+	g := createTestGroupWithHeadSizeLimit(t, logger, 0)
 
 	written := []byte("Medusa")
 	_, err := g.Write(written)
@@ -196,7 +203,9 @@ func TestWrite(t *testing.T) {
 // test that Read reads the required amount of bytes from all the files in the
 // group and returns no error if n == size of the given slice.
 func TestGroupReaderRead(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 0)
+	logger := log.TestingLogger()
+
+	g := createTestGroupWithHeadSizeLimit(t, logger, 0)
 
 	professor := []byte("Professor Monster")
 	_, err := g.Write(professor)
@@ -229,7 +238,9 @@ func TestGroupReaderRead(t *testing.T) {
 // test that Read returns an error if number of bytes read < size of
 // the given slice. Subsequent call should return 0, io.EOF.
 func TestGroupReaderRead2(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 0)
+	logger := log.TestingLogger()
+
+	g := createTestGroupWithHeadSizeLimit(t, logger, 0)
 
 	professor := []byte("Professor Monster")
 	_, err := g.Write(professor)
@@ -264,7 +275,8 @@ func TestGroupReaderRead2(t *testing.T) {
 }
 
 func TestMinIndex(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 0)
+	logger := log.TestingLogger()
+	g := createTestGroupWithHeadSizeLimit(t, logger, 0)
 
 	assert.Zero(t, g.MinIndex(), "MinIndex should be zero at the beginning")
 
@@ -273,7 +285,8 @@ func TestMinIndex(t *testing.T) {
 }
 
 func TestMaxIndex(t *testing.T) {
-	g := createTestGroupWithHeadSizeLimit(t, 0)
+	logger := log.TestingLogger()
+	g := createTestGroupWithHeadSizeLimit(t, logger, 0)
 
 	assert.Zero(t, g.MaxIndex(), "MaxIndex should be zero at the beginning")
 

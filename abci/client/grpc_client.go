@@ -19,6 +19,8 @@ import (
 // A gRPC client.
 type grpcClient struct {
 	service.BaseService
+	logger log.Logger
+
 	mustConnect bool
 
 	client   types.ABCIApplicationClient
@@ -45,6 +47,7 @@ var _ Client = (*grpcClient)(nil)
 // hopefully not :D
 func NewGRPCClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &grpcClient{
+		logger:      logger,
 		addr:        addr,
 		mustConnect: mustConnect,
 		// Buffering the channel is needed to make calls appear asynchronous,
@@ -92,7 +95,7 @@ func (cli *grpcClient) OnStart(ctx context.Context) error {
 				if reqres != nil {
 					callCb(reqres)
 				} else {
-					cli.Logger.Error("Received nil reqres")
+					cli.logger.Error("Received nil reqres")
 				}
 			case <-ctx.Done():
 				return
@@ -108,12 +111,12 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
+			cli.logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
 			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue RETRY_LOOP
 		}
 
-		cli.Logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)
+		cli.logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)
 		client := types.NewABCIApplicationClient(conn)
 		cli.conn = conn
 
@@ -123,7 +126,7 @@ RETRY_LOOP:
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
-			cli.Logger.Error("Echo failed", "err", err)
+			cli.logger.Error("Echo failed", "err", err)
 			time.Sleep(time.Second * echoRetryIntervalSeconds)
 		}
 
@@ -150,9 +153,9 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	cli.Logger.Error(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
+	cli.logger.Error(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
 	if err := cli.Stop(); err != nil {
-		cli.Logger.Error("Error stopping abci.grpcClient", "err", err)
+		cli.logger.Error("Error stopping abci.grpcClient", "err", err)
 	}
 }
 

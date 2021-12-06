@@ -92,7 +92,7 @@ Typical usage:
 	}
 */
 type BaseService struct {
-	Logger  log.Logger
+	logger  log.Logger
 	name    string
 	started uint32 // atomic
 	stopped uint32 // atomic
@@ -109,7 +109,7 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 	}
 
 	return &BaseService{
-		Logger: logger,
+		logger: logger,
 		name:   name,
 		quit:   make(chan struct{}),
 		impl:   impl,
@@ -122,12 +122,12 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 func (bs *BaseService) Start(ctx context.Context) error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
-			bs.Logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
+			bs.logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
 			atomic.StoreUint32(&bs.started, 0)
 			return ErrAlreadyStopped
 		}
 
-		bs.Logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
+		bs.logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
 
 		if err := bs.impl.OnStart(ctx); err != nil {
 			// revert flag
@@ -151,13 +151,13 @@ func (bs *BaseService) Start(ctx context.Context) error {
 				// the context was cancel and we
 				// should stop.
 				if err := bs.Stop(); err != nil {
-					bs.Logger.Error("stopped service",
+					bs.logger.Error("stopped service",
 						"err", err.Error(),
 						"service", bs.name,
 						"impl", bs.impl.String())
 				}
 
-				bs.Logger.Info("stopped service",
+				bs.logger.Info("stopped service",
 					"service", bs.name,
 					"impl", bs.impl.String())
 			}
@@ -166,7 +166,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 		return nil
 	}
 
-	bs.Logger.Debug("not starting service; already started", "service", bs.name, "impl", bs.impl.String())
+	bs.logger.Debug("not starting service; already started", "service", bs.name, "impl", bs.impl.String())
 	return ErrAlreadyStarted
 }
 
@@ -175,19 +175,19 @@ func (bs *BaseService) Start(ctx context.Context) error {
 func (bs *BaseService) Stop() error {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
 		if atomic.LoadUint32(&bs.started) == 0 {
-			bs.Logger.Error("not stopping service; not started yet", "service", bs.name, "impl", bs.impl.String())
+			bs.logger.Error("not stopping service; not started yet", "service", bs.name, "impl", bs.impl.String())
 			atomic.StoreUint32(&bs.stopped, 0)
 			return ErrNotStarted
 		}
 
-		bs.Logger.Info("stopping service", "service", bs.name, "impl", bs.impl.String())
+		bs.logger.Info("stopping service", "service", bs.name, "impl", bs.impl.String())
 		bs.impl.OnStop()
 		close(bs.quit)
 
 		return nil
 	}
 
-	bs.Logger.Debug("not stopping service; already stopped", "service", bs.name, "impl", bs.impl.String())
+	bs.logger.Debug("not stopping service; already stopped", "service", bs.name, "impl", bs.impl.String())
 	return ErrAlreadyStopped
 }
 

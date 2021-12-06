@@ -14,6 +14,7 @@ import (
 
 type GRPCServer struct {
 	service.BaseService
+	logger log.Logger
 
 	proto    string
 	addr     string
@@ -27,6 +28,7 @@ type GRPCServer struct {
 func NewGRPCServer(logger log.Logger, protoAddr string, app types.ABCIApplicationServer) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &GRPCServer{
+		logger:   logger,
 		proto:    proto,
 		addr:     addr,
 		listener: nil,
@@ -48,7 +50,7 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 	s.server = grpc.NewServer()
 	types.RegisterABCIApplicationServer(s.server, s.app)
 
-	s.Logger.Info("Listening", "proto", s.proto, "addr", s.addr)
+	s.logger.Info("Listening", "proto", s.proto, "addr", s.addr)
 	go func() {
 		go func() {
 			<-ctx.Done()
@@ -56,7 +58,7 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 		}()
 
 		if err := s.server.Serve(s.listener); err != nil {
-			s.Logger.Error("Error serving gRPC server", "err", err)
+			s.logger.Error("Error serving gRPC server", "err", err)
 		}
 	}()
 	return nil
