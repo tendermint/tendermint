@@ -830,14 +830,15 @@ func testHandshakeReplay(
 	}
 
 	// now start the app using the handshake - it should sync
-	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
 	t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
-	err := handshaker.Handshake(ctx, proxyApp)
+	err = handshaker.Handshake(ctx, proxyApp)
 	if expectError {
 		require.Error(t, err)
 		return
@@ -1018,7 +1019,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(t, cfg, pubKey, appVersion)
 	stateStore := sm.NewStore(stateDB)
-	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
 	blocks := sf.MakeBlocks(ctx, t, 3, &state, privVal)
