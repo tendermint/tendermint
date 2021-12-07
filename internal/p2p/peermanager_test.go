@@ -1729,12 +1729,12 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	// We now close s2. Disconnecting the peer should only send updates
 	// on s1 and s3.
 	s2cancel()
+	time.Sleep(250 * time.Millisecond) // give the thread a chance to exit
 	peerManager.Disconnected(ctx, a.NodeID)
 
 	expectDown := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}
 	require.NotEmpty(t, s1)
 	require.Equal(t, expectDown, <-s1.Updates())
-	require.Equal(t, expectDown, <-s2.Updates())
 	require.Empty(t, s2.Updates())
 	require.NotEmpty(t, s3)
 	require.Equal(t, expectDown, <-s3.Updates())
