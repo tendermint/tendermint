@@ -109,8 +109,6 @@ func RequireError(ctx context.Context, t *testing.T, channel *p2p.Channel, peerE
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		require.Fail(t, "timed out reporting error", "%v on %v", peerError, channel.ID)
-	case err == nil:
-		return
 	default:
 		require.NoError(t, err, "unexpected error")
 	}
