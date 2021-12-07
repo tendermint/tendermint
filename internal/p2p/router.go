@@ -1002,6 +1002,7 @@ func (r *Router) OnStop() {
 	r.peerMtx.RUnlock()
 
 	for _, q := range queues {
+		q.close()
 		<-q.closed()
 	}
 }

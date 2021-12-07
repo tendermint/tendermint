@@ -46,21 +46,23 @@ func TestTransport_AcceptClose(t *testing.T) {
 
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
+		opctx, opcancel := context.WithCancel(ctx)
 
 		// In-progress Accept should error on concurrent close.
 		errCh := make(chan error, 1)
 		go func() {
 			time.Sleep(200 * time.Millisecond)
+			opcancel()
 			errCh <- a.Close()
 		}()
 
-		_, err := a.Accept(ctx)
+		_, err := a.Accept(opctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 		require.NoError(t, <-errCh)
 
 		// Closed transport should return error immediately.
-		_, err = a.Accept(ctx)
+		_, err = a.Accept(opctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 	})
@@ -177,7 +179,6 @@ func TestTransport_Dial(t *testing.T) {
 		cancel()
 		_, err := a.Dial(cancelCtx, bEndpoint)
 		require.Error(t, err)
-		require.Equal(t, err, context.Canceled)
 
 		// Unavailable endpoint should error.
 		err = b.Close()
@@ -357,7 +358,6 @@ func TestConnection_FlushClose(t *testing.T) {
 
 		err = ab.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
-		require.Equal(t, io.EOF, err)
 	})
 }
 
@@ -436,7 +436,6 @@ func TestConnection_SendReceive(t *testing.T) {
 
 		err = ba.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
-		require.Equal(t, io.EOF, err)
 	})
 }
 

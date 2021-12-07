@@ -83,6 +83,11 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 	if m.listener == nil {
 		return []Endpoint{}
 	}
+	select {
+	case <-m.doneCh:
+		return []Endpoint{}
+	default:
+	}
 
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
@@ -220,6 +225,7 @@ type mConnConnection struct {
 	channelDescs []*ChannelDescriptor
 	receiveCh    chan mConnMessage
 	errorCh      chan error
+	doneCh       chan struct{}
 	closeOnce    sync.Once
 
 	mconn *conn.MConnection // set during Handshake()
@@ -245,6 +251,7 @@ func newMConnConnection(
 		channelDescs: channelDescs,
 		receiveCh:    make(chan mConnMessage),
 		errorCh:      make(chan error, 1), // buffered to avoid onError leak
+		doneCh:       make(chan struct{}),
 	}
 }
 
@@ -418,6 +425,8 @@ func (c *mConnConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byte
 	select {
 	case err := <-c.errorCh:
 		return 0, nil, err
+	case <-c.doneCh:
+		return 0, nil, io.EOF
 	case <-ctx.Done():
 		return 0, nil, io.EOF
 	case msg := <-c.receiveCh:
@@ -458,6 +467,7 @@ func (c *mConnConnection) Close() error {
 		} else {
 			err = c.conn.Close()
 		}
+		close(c.doneCh)
 	})
 	return err
 }

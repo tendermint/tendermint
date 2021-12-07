@@ -24,6 +24,7 @@ type Network struct {
 
 	logger        log.Logger
 	memoryNetwork *p2p.MemoryNetwork
+	cancel        context.CancelFunc
 }
 
 // NetworkOptions is an argument structure to parameterize the
@@ -68,6 +69,9 @@ func MakeNetwork(ctx context.Context, t *testing.T, opts NetworkOptions) *Networ
 // addition to creating a peer update subscription for each node. Finally, all
 // nodes are connected to each other.
 func (n *Network) Start(ctx context.Context, t *testing.T) {
+	ctx, n.cancel = context.WithCancel(ctx)
+	t.Cleanup(n.cancel)
+
 	// Set up a list of node addresses to dial, and a peer update subscription
 	// for each node.
 	dialQueue := []p2p.NodeAddress{}
@@ -200,10 +204,10 @@ func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
 	}
 
 	require.NoError(t, node.Transport.Close())
+	node.cancel()
 	if node.Router.IsRunning() {
 		require.NoError(t, node.Router.Stop())
 	}
-	node.cancel()
 
 	for _, sub := range subs {
 		RequireUpdate(t, sub, p2p.PeerUpdate{

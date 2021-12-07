@@ -391,18 +391,16 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			mockConnection.On("String").Maybe().Return("mock")
 			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 				Return(tc.peerInfo, tc.peerKey, nil)
-			mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
+			mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil).Maybe()
 			mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 			if tc.ok {
-				// without the sleep after RequireUpdate this method isn't
-				// always called. Consider making this call optional.
-				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF)
+				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF).Maybe()
 			}
 
 			mockTransport := &mocks.Transport{}
 			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-			mockTransport.On("Close").Return(nil)
+			mockTransport.On("Close").Return(nil).Maybe()
 			mockTransport.On("Accept", mock.Anything).Once().Return(mockConnection, nil)
 			mockTransport.On("Accept", mock.Anything).Maybe().Return(nil, io.EOF)
 
@@ -631,18 +629,16 @@ func TestRouter_DialPeers(t *testing.T) {
 			if tc.dialErr == nil {
 				mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 					Return(tc.peerInfo, tc.peerKey, nil)
-				mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
+				mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil).Maybe()
 			}
 			if tc.ok {
-				// without the sleep after RequireUpdate this method isn't
-				// always called. Consider making this call optional.
-				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF)
+				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF).Maybe()
 			}
 
 			mockTransport := &mocks.Transport{}
 			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-			mockTransport.On("Close").Return(nil)
+			mockTransport.On("Close").Return(nil).Maybe()
 			mockTransport.On("Accept", mock.Anything).Maybe().Return(nil, io.EOF)
 			if tc.dialErr == nil {
 				mockTransport.On("Dial", mock.Anything, endpoint).Once().Return(mockConnection, nil)
