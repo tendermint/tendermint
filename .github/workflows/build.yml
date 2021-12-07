@@ -74,7 +74,7 @@ jobs:
             go.mod
             go.sum
       - name: install
-        run: make install
+        run: make install install_abci
         if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh
