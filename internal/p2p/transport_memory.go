@@ -94,9 +94,7 @@ type MemoryTransport struct {
 	nodeID     types.NodeID
 	bufferSize int
 
-	acceptCh  chan *MemoryConnection
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	acceptCh chan *MemoryConnection
 }
 
 // newMemoryTransport creates a new MemoryTransport. This is for internal use by
@@ -108,7 +106,6 @@ func newMemoryTransport(network *MemoryNetwork, nodeID types.NodeID) *MemoryTran
 		nodeID:     nodeID,
 		bufferSize: network.bufferSize,
 		acceptCh:   make(chan *MemoryConnection),
-		closeCh:    make(chan struct{}),
 	}
 }
 
@@ -128,28 +125,27 @@ func (t *MemoryTransport) Protocols() []Protocol {
 
 // Endpoints implements Transport.
 func (t *MemoryTransport) Endpoints() []Endpoint {
-	select {
-	case <-t.closeCh:
+	if n := t.network.GetTransport(t.nodeID); n == nil {
 		return []Endpoint{}
-	default:
-		return []Endpoint{{
-			Protocol: MemoryProtocol,
-			Path:     string(t.nodeID),
-			// An arbitrary IP and port is used in order for the pex
-			// reactor to be able to send addresses to one another.
-			IP:   net.IPv4zero,
-			Port: 0,
-		}}
 	}
+
+	return []Endpoint{{
+		Protocol: MemoryProtocol,
+		Path:     string(t.nodeID),
+		// An arbitrary IP and port is used in order for the pex
+		// reactor to be able to send addresses to one another.
+		IP:   net.IPv4zero,
+		Port: 0,
+	}}
 }
 
 // Accept implements Transport.
-func (t *MemoryTransport) Accept() (Connection, error) {
+func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
 	select {
 	case conn := <-t.acceptCh:
 		t.logger.Info("accepted connection", "remote", conn.RemoteEndpoint().Path)
 		return conn, nil
-	case <-t.closeCh:
+	case <-ctx.Done():
 		return nil, io.EOF
 	}
 }
@@ -187,20 +183,14 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	select {
 	case peer.acceptCh <- inConn:
 		return outConn, nil
-	case <-peer.closeCh:
-		return nil, io.EOF
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, io.EOF
 	}
 }
 
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)
-	t.closeOnce.Do(func() {
-		close(t.closeCh)
-		t.logger.Info("closed transport")
-	})
 	return nil
 }
 
@@ -295,11 +285,13 @@ func (c *MemoryConnection) Handshake(
 }
 
 // ReceiveMessage implements Connection.
-func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
+func (c *MemoryConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byte, error) {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
+		return 0, nil, io.EOF
+	case <-ctx.Done():
 		return 0, nil, io.EOF
 	default:
 	}
@@ -314,11 +306,13 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 }
 
 // SendMessage implements Connection.
-func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) error {
+func (c *MemoryConnection) SendMessage(ctx context.Context, chID ChannelID, msg []byte) error {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
+		return io.EOF
+	case <-ctx.Done():
 		return io.EOF
 	default:
 	}
@@ -327,6 +321,8 @@ func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) error {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
 		c.logger.Debug("sent message", "chID", chID, "msg", msg)
 		return nil
+	case <-ctx.Done():
+		return io.EOF
 	case <-c.closer.Done():
 		return io.EOF
 	}

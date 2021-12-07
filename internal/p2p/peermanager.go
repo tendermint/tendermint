@@ -56,8 +56,8 @@ type PeerUpdate struct {
 type PeerUpdates struct {
 	routerUpdatesCh  chan PeerUpdate
 	reactorUpdatesCh chan PeerUpdate
-	closeCh          chan struct{}
 	closeOnce        sync.Once
+	doneCh           chan struct{}
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
@@ -67,7 +67,7 @@ func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
 		reactorUpdatesCh: updatesCh,
 		routerUpdatesCh:  make(chan PeerUpdate, buf),
-		closeCh:          make(chan struct{}),
+		doneCh:           make(chan struct{}),
 	}
 }
 
@@ -76,28 +76,28 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
 	return pu.reactorUpdatesCh
 }
 
-// SendUpdate pushes information about a peer into the routing layer,
-// presumably from a peer.
-func (pu *PeerUpdates) SendUpdate(update PeerUpdate) {
-	select {
-	case <-pu.closeCh:
-	case pu.routerUpdatesCh <- update:
-	}
+// Done returns a channel that is closed when the subscription is closed.
+func (pu *PeerUpdates) Done() <-chan struct{} {
+	return pu.doneCh
 }
 
 // Close closes the peer updates subscription.
 func (pu *PeerUpdates) Close() {
 	pu.closeOnce.Do(func() {
 		// NOTE: We don't close updatesCh since multiple goroutines may be
-		// sending on it. The PeerManager senders will select on closeCh as well
+		// sending on it. The PeerManager senders will select on doneCh as well
 		// to avoid blocking on a closed subscription.
-		close(pu.closeCh)
+		close(pu.doneCh)
 	})
 }
 
-// Done returns a channel that is closed when the subscription is closed.
-func (pu *PeerUpdates) Done() <-chan struct{} {
-	return pu.closeCh
+// SendUpdate pushes information about a peer into the routing layer,
+// presumably from a peer.
+func (pu *PeerUpdates) SendUpdate(ctx context.Context, update PeerUpdate) {
+	select {
+	case <-ctx.Done():
+	case pu.routerUpdatesCh <- update:
+	}
 }
 
 // PeerManagerOptions specifies options for a PeerManager.
@@ -276,8 +276,6 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
-	closeCh    chan struct{} // signal channel for Close()
-	closeOnce  sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -312,7 +310,6 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
-		closeCh:    make(chan struct{}),
 
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
@@ -552,7 +549,6 @@ func (m *PeerManager) DialFailed(ctx context.Context, address NodeAddress) error
 			select {
 			case <-timer.C:
 				m.dialWaker.Wake()
-			case <-m.closeCh:
 			case <-ctx.Done():
 			}
 		}()
@@ -864,10 +860,6 @@ func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	go func() {
 		for {
 			select {
-			case <-peerUpdates.closeCh:
-				return
-			case <-m.closeCh:
-				return
 			case <-ctx.Done():
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
@@ -882,7 +874,6 @@ func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 			m.mtx.Lock()
 			delete(m.subscriptions, peerUpdates)
 			m.mtx.Unlock()
-		case <-m.closeCh:
 		case <-ctx.Done():
 		}
 	}()
@@ -913,25 +904,18 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 // maintaining order if this is a problem.
 func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
-		// We have to check closeCh separately first, otherwise there's a 50%
+		// We have to check doneChan separately first, otherwise there's a 50%
 		// chance the second select will send on a closed subscription.
 		select {
-		case <-sub.closeCh:
+		case <-sub.doneCh:
 			continue
 		default:
 		}
 		select {
 		case sub.reactorUpdatesCh <- peerUpdate:
-		case <-sub.closeCh:
+		case <-sub.doneCh:
 		}
 	}
-}
-
-// Close closes the peer manager, releasing resources (i.e. goroutines).
-func (m *PeerManager) Close() {
-	m.closeOnce.Do(func() {
-		close(m.closeCh)
-	})
 }
 
 // Addresses returns all known addresses for a peer, primarily for testing.

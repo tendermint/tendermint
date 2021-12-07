@@ -49,8 +49,8 @@ const (
 	defaultPongTimeout         = 45 * time.Second
 )
 
-type receiveCbFunc func(chID ChannelID, msgBytes []byte)
-type errorCbFunc func(interface{})
+type receiveCbFunc func(ctx context.Context, chID ChannelID, msgBytes []byte)
+type errorCbFunc func(context.Context, interface{})
 
 /*
 Each peer has one `MConnection` (multiplex connection) instance.
@@ -286,21 +286,21 @@ func (c *MConnection) flush() {
 }
 
 // Catch panics, usually caused by remote disconnects.
-func (c *MConnection) _recover() {
+func (c *MConnection) _recover(ctx context.Context) {
 	if r := recover(); r != nil {
 		c.logger.Error("MConnection panicked", "err", r, "stack", string(debug.Stack()))
-		c.stopForError(fmt.Errorf("recovered from panic: %v", r))
+		c.stopForError(ctx, fmt.Errorf("recovered from panic: %v", r))
 	}
 }
 
-func (c *MConnection) stopForError(r interface{}) {
+func (c *MConnection) stopForError(ctx context.Context, r interface{}) {
 	if err := c.Stop(); err != nil {
 		c.logger.Error("Error stopping connection", "err", err)
 	}
 
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {
-			c.onError(r)
+			c.onError(ctx, r)
 		}
 	}
 }
@@ -335,7 +335,7 @@ func (c *MConnection) Send(chID ChannelID, msgBytes []byte) bool {
 
 // sendRoutine polls for packets to send from channels.
 func (c *MConnection) sendRoutine(ctx context.Context) {
-	defer c._recover()
+	defer c._recover(ctx)
 	protoWriter := protoio.NewDelimitedWriter(c.bufConnWriter)
 
 FOR_LOOP:
@@ -390,7 +390,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs
-			eof := c.sendSomePacketMsgs()
+			eof := c.sendSomePacketMsgs(ctx)
 			if !eof {
 				// Keep sendRoutine awake.
 				select {
@@ -405,7 +405,7 @@ FOR_LOOP:
 		}
 		if err != nil {
 			c.logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
-			c.stopForError(err)
+			c.stopForError(ctx, err)
 			break FOR_LOOP
 		}
 	}
@@ -417,7 +417,7 @@ FOR_LOOP:
 
 // Returns true if messages from channels were exhausted.
 // Blocks in accordance to .sendMonitor throttling.
-func (c *MConnection) sendSomePacketMsgs() bool {
+func (c *MConnection) sendSomePacketMsgs(ctx context.Context) bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
@@ -425,7 +425,7 @@ func (c *MConnection) sendSomePacketMsgs() bool {
 
 	// Now send some PacketMsgs.
 	for i := 0; i < numBatchPacketMsgs; i++ {
-		if c.sendPacketMsg() {
+		if c.sendPacketMsg(ctx) {
 			return true
 		}
 	}
@@ -433,7 +433,7 @@ func (c *MConnection) sendSomePacketMsgs() bool {
 }
 
 // Returns true if messages from channels were exhausted.
-func (c *MConnection) sendPacketMsg() bool {
+func (c *MConnection) sendPacketMsg(ctx context.Context) bool {
 	// Choose a channel to create a PacketMsg from.
 	// The chosen channel will be the one whose recentlySent/priority is the least.
 	var leastRatio float32 = math.MaxFloat32
@@ -461,7 +461,7 @@ func (c *MConnection) sendPacketMsg() bool {
 	_n, err := leastChannel.writePacketMsgTo(c.bufConnWriter)
 	if err != nil {
 		c.logger.Error("Failed to write PacketMsg", "err", err)
-		c.stopForError(err)
+		c.stopForError(ctx, err)
 		return true
 	}
 	c.sendMonitor.Update(_n)
@@ -474,7 +474,7 @@ func (c *MConnection) sendPacketMsg() bool {
 // Blocks depending on how the connection is throttled.
 // Otherwise, it never blocks.
 func (c *MConnection) recvRoutine(ctx context.Context) {
-	defer c._recover()
+	defer c._recover(ctx)
 
 	protoReader := protoio.NewDelimitedReader(c.bufConnReader, c._maxPacketMsgSize)
 
@@ -518,7 +518,7 @@ FOR_LOOP:
 				} else {
 					c.logger.Debug("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
 				}
-				c.stopForError(err)
+				c.stopForError(ctx, err)
 			}
 			break FOR_LOOP
 		}
@@ -547,7 +547,7 @@ FOR_LOOP:
 			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
 				c.logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
-				c.stopForError(err)
+				c.stopForError(ctx, err)
 				break FOR_LOOP
 			}
 
@@ -555,19 +555,19 @@ FOR_LOOP:
 			if err != nil {
 				if c.IsRunning() {
 					c.logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
-					c.stopForError(err)
+					c.stopForError(ctx, err)
 				}
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
 				c.logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
-				c.onReceive(channelID, msgBytes)
+				c.onReceive(ctx, channelID, msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
 			c.logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
-			c.stopForError(err)
+			c.stopForError(ctx, err)
 			break FOR_LOOP
 		}
 	}
