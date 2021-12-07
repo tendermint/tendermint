@@ -61,10 +61,10 @@ func (pe PeerError) Unwrap() error { return pe.Err }
 // Channel is a bidirectional channel to exchange Protobuf messages with peers.
 // Each message is wrapped in an Envelope to specify its sender and receiver.
 type Channel struct {
-	ID  ChannelID
-	In  <-chan Envelope  // inbound messages (peers to reactors)
-	Out chan<- Envelope  // outbound messages (reactors to peers)
-	err chan<- PeerError // peer error reporting
+	ID    ChannelID
+	In    <-chan Envelope  // inbound messages (peers to reactors)
+	Out   chan<- Envelope  // outbound messages (reactors to peers)
+	errCh chan<- PeerError // peer error reporting
 
 	messageType proto.Message // the channel's message type, used for unmarshaling
 }
@@ -83,7 +83,7 @@ func NewChannel(
 		messageType: messageType,
 		In:          inCh,
 		Out:         outCh,
-		err:         errCh,
+		errCh:       errCh,
 	}
 }
 
@@ -104,7 +104,7 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case ch.err <- pe:
+	case ch.errCh <- pe:
 		return nil
 	}
 }
