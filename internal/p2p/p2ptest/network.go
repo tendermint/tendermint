@@ -77,10 +77,10 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 	dialQueue := []p2p.NodeAddress{}
 	subs := map[types.NodeID]*p2p.PeerUpdates{}
 	subctx, subcancel := context.WithCancel(ctx)
+	defer subcancel()
 	for _, node := range n.Nodes {
 		dialQueue = append(dialQueue, node.NodeAddress)
 		subs[node.NodeID] = node.PeerManager.Subscribe(subctx)
-		defer subcancel()
 	}
 
 	// For each node, dial the nodes that it still doesn't have a connection to

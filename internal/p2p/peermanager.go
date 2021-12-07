@@ -851,12 +851,10 @@ func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	}()
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			m.mtx.Lock()
-			delete(m.subscriptions, peerUpdates)
-			m.mtx.Unlock()
-		}
+		<-ctx.Done()
+		m.mtx.Lock()
+		delete(m.subscriptions, peerUpdates)
+		m.mtx.Unlock()
 	}()
 }
 
