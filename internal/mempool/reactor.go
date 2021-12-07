@@ -134,8 +134,6 @@ func (r *Reactor) OnStop() {
 
 	// wait for all spawned peer tx broadcasting goroutines to gracefully exit
 	r.peerWG.Wait()
-
-	<-r.peerUpdates.Done()
 }
 
 // handleMempoolMessage handles envelopes sent from peers on the MempoolChannel.
