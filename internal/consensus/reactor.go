@@ -1470,7 +1470,7 @@ func (r *Reactor) peerStatsRoutine(ctx context.Context) {
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
-					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
+					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
@@ -1478,7 +1478,7 @@ func (r *Reactor) peerStatsRoutine(ctx context.Context) {
 
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
-					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
+					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
