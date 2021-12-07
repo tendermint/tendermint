@@ -70,7 +70,6 @@ type syncer struct {
 	avgChunkTime             int64
 	lastSyncedSnapshotHeight int64
 	processingSnapshot       *snapshot
-	closeCh                  <-chan struct{}
 }
 
 // newSyncer creates a new syncer.
@@ -82,7 +81,6 @@ func newSyncer(
 	stateProvider StateProvider,
 	snapshotCh chan<- p2p.Envelope,
 	chunkCh chan<- p2p.Envelope,
-	closeCh <-chan struct{},
 	tempDir string,
 	metrics *Metrics,
 ) *syncer {
@@ -98,7 +96,6 @@ func newSyncer(
 		fetchers:      cfg.Fetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
 		metrics:       metrics,
-		closeCh:       closeCh,
 	}
 }
 
@@ -141,7 +138,7 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peerID types.NodeID) (err error) {
+func (s *syncer) AddPeer(ctx context.Context, peerID types.NodeID) (err error) {
 	defer func() {
 		// TODO: remove panic recover once AddPeer can no longer accientally send on
 		// closed channel.
@@ -160,7 +157,7 @@ func (s *syncer) AddPeer(peerID types.NodeID) (err error) {
 	}
 
 	select {
-	case <-s.closeCh:
+	case <-ctx.Done():
 	case s.snapshotCh <- msg:
 	}
 	return err
@@ -494,8 +491,6 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 				select {
 				case <-ctx.Done():
 					return
-				case <-s.closeCh:
-					return
 				case <-time.After(2 * time.Second):
 					continue
 				}
@@ -511,7 +506,7 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		ticker := time.NewTicker(s.retryTimeout)
 		defer ticker.Stop()
 
-		s.requestChunk(snapshot, index)
+		s.requestChunk(ctx, snapshot, index)
 
 		select {
 		case <-chunks.WaitFor(index):
@@ -522,8 +517,6 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 
 		case <-ctx.Done():
 			return
-		case <-s.closeCh:
-			return
 		}
 
 		ticker.Stop()
@@ -531,7 +524,7 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 }
 
 // requestChunk requests a chunk from a peer.
-func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
+func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uint32) {
 	peer := s.snapshots.GetPeer(snapshot)
 	if peer == "" {
 		s.logger.Error("No valid peers found for snapshot", "height", snapshot.Height,
@@ -558,7 +551,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 
 	select {
 	case s.chunkCh <- msg:
-	case <-s.closeCh:
+	case <-ctx.Done():
 	}
 }
 
