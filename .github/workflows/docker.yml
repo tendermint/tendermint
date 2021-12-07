@@ -1,4 +1,4 @@
-name: Build & Push
+name: Docker
 #  Build & Push rebuilds the tendermint docker image on every push to master and creation of tags
 # and pushes the image to https://hub.docker.com/r/interchainio/simapp/tags
 on:
