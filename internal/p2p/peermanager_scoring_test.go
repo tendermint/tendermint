@@ -57,7 +57,6 @@ func TestPeerScoring(t *testing.T) {
 	t.Run("AsynchronousIncrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
 		pu := peerManager.Subscribe(ctx)
-		defer pu.Close()
 		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusGood,
@@ -71,7 +70,6 @@ func TestPeerScoring(t *testing.T) {
 	t.Run("AsynchronousDecrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
 		pu := peerManager.Subscribe(ctx)
-		defer pu.Close()
 		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusBad,

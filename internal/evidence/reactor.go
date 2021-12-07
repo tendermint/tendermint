@@ -102,11 +102,6 @@ func (r *Reactor) OnStop() {
 	// exit.
 	r.peerWG.Wait()
 
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
-	<-r.peerUpdates.Done()
-
 	// Close the evidence db
 	r.evpool.Close()
 }
@@ -251,8 +246,6 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():

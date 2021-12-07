@@ -220,8 +220,6 @@ func (r *Reactor) OnStop() {
 		state.broadcastWG.Wait()
 	}
 	r.mtx.Unlock()
-
-	<-r.peerUpdates.Done()
 }
 
 // SetEventBus sets the reactor's event bus.
@@ -1406,8 +1404,6 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case <-ctx.Done():

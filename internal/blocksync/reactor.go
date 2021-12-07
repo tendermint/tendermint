@@ -181,8 +181,6 @@ func (r *Reactor) OnStop() {
 
 	// wait for the poolRoutine and requestRoutine goroutines to gracefully exit
 	r.poolWG.Wait()
-
-	<-r.peerUpdates.Done()
 }
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
@@ -334,8 +332,6 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case <-ctx.Done():

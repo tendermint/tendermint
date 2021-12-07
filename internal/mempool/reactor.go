@@ -317,6 +317,8 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		// start from the beginning.
 		if nextGossipTx == nil {
 			select {
+			case <-ctx.Done():
+				return
 			case <-r.mempool.WaitForNextTx(): // wait until a tx is available
 				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
@@ -325,9 +327,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 			case <-closer.Done():
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
-				return
-
-			case <-ctx.Done():
 				return
 			}
 		}
