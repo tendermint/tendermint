@@ -22,7 +22,6 @@ func TestPeerScoring(t *testing.T) {
 	db := dbm.NewMemDB()
 	peerManager, err := NewPeerManager(selfID, db, PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	// create a fake node
 	id := types.NodeID(strings.Repeat("a1", 20))
@@ -59,7 +58,7 @@ func TestPeerScoring(t *testing.T) {
 		start := peerManager.Scores()[id]
 		pu := peerManager.Subscribe(ctx)
 		defer pu.Close()
-		pu.SendUpdate(PeerUpdate{
+		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusGood,
 		})
@@ -73,7 +72,7 @@ func TestPeerScoring(t *testing.T) {
 		start := peerManager.Scores()[id]
 		pu := peerManager.Subscribe(ctx)
 		defer pu.Close()
-		pu.SendUpdate(PeerUpdate{
+		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusBad,
 		})

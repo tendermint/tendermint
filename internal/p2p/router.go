@@ -158,7 +158,6 @@ type Router struct {
 	endpoints          []Endpoint
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
-	stopCh             chan struct{} // signals Router shutdown
 
 	peerMtx    sync.RWMutex
 	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
@@ -208,7 +207,6 @@ func NewRouter(
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
 		options:            options,
-		stopCh:             make(chan struct{}),
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[types.NodeID]queue{},
@@ -399,7 +397,7 @@ func (r *Router) routeChannel(
 				case <-q.closed():
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 
-				case <-r.stopCh:
+				case <-ctx.Done():
 					return
 				}
 			}
@@ -413,8 +411,6 @@ func (r *Router) routeChannel(
 
 			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 		case <-ctx.Done():
-			return
-		case <-r.stopCh:
 			return
 		}
 	}
@@ -474,7 +470,7 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 
 	for {
-		conn, err := transport.Accept()
+		conn, err := transport.Accept(ctx)
 		switch err {
 		case nil:
 		case io.EOF:
@@ -783,14 +779,14 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 
 	go func() {
 		select {
-		case errCh <- r.receivePeer(peerID, conn):
+		case errCh <- r.receivePeer(ctx, peerID, conn):
 		case <-ctx.Done():
 		}
 	}()
 
 	go func() {
 		select {
-		case errCh <- r.sendPeer(peerID, conn, sendQueue):
+		case errCh <- r.sendPeer(ctx, peerID, conn, sendQueue):
 		case <-ctx.Done():
 		}
 	}()
@@ -829,9 +825,9 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 
 // receivePeer receives inbound messages from a peer, deserializes them and
 // passes them on to the appropriate channel.
-func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
+func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Connection) error {
 	for {
-		chID, bz, err := conn.ReceiveMessage()
+		chID, bz, err := conn.ReceiveMessage(ctx)
 		if err != nil {
 			return err
 		}
@@ -874,14 +870,14 @@ func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
 		case <-queue.closed():
 			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
 
-		case <-r.stopCh:
+		case <-ctx.Done():
 			return nil
 		}
 	}
 }
 
 // sendPeer sends queued messages to a peer.
-func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue) error {
+func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connection, peerQueue queue) error {
 	for {
 		start := time.Now().UTC()
 
@@ -899,7 +895,7 @@ func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue)
 				continue
 			}
 
-			if err = conn.SendMessage(envelope.channelID, bz); err != nil {
+			if err = conn.SendMessage(ctx, envelope.channelID, bz); err != nil {
 				return err
 			}
 
@@ -908,7 +904,7 @@ func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue)
 		case <-peerQueue.closed():
 			return nil
 
-		case <-r.stopCh:
+		case <-ctx.Done():
 			return nil
 		}
 	}
@@ -983,9 +979,6 @@ func (r *Router) OnStart(ctx context.Context) error {
 // here, since that would cause any reactor senders to panic, so it is the
 // sender's responsibility.
 func (r *Router) OnStop() {
-	// Signal router shutdown.
-	close(r.stopCh)
-
 	// Close transport listeners (unblocks Accept calls).
 	for _, transport := range r.transports {
 		if err := transport.Close(); err != nil {
@@ -1009,6 +1002,7 @@ func (r *Router) OnStop() {
 	r.peerMtx.RUnlock()
 
 	for _, q := range queues {
+		q.close()
 		<-q.closed()
 	}
 }

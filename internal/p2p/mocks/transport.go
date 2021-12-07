@@ -17,13 +17,13 @@ type Transport struct {
 	mock.Mock
 }
 
-// Accept provides a mock function with given fields:
-func (_m *Transport) Accept() (p2p.Connection, error) {
-	ret := _m.Called()
+// Accept provides a mock function with given fields: _a0
+func (_m *Transport) Accept(_a0 context.Context) (p2p.Connection, error) {
+	ret := _m.Called(_a0)
 
 	var r0 p2p.Connection
-	if rf, ok := ret.Get(0).(func() p2p.Connection); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) p2p.Connection); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(p2p.Connection)
@@ -31,8 +31,8 @@ func (_m *Transport) Accept() (p2p.Connection, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}

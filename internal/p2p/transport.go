@@ -39,7 +39,7 @@ type Transport interface {
 	// Accept waits for the next inbound connection on a listening endpoint, blocking
 	// until either a connection is available or the transport is closed. On closure,
 	// io.EOF is returned and further Accept calls are futile.
-	Accept() (Connection, error)
+	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
 	Dial(context.Context, Endpoint) (Connection, error)
@@ -85,10 +85,10 @@ type Connection interface {
 
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. Returns io.EOF if closed.
-	ReceiveMessage() (ChannelID, []byte, error)
+	ReceiveMessage(context.Context) (ChannelID, []byte, error)
 
 	// SendMessage sends a message on the connection. Returns io.EOF if closed.
-	SendMessage(ChannelID, []byte) error
+	SendMessage(context.Context, ChannelID, []byte) error
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint
