@@ -46,6 +46,7 @@ import (
 // It includes all configuration information and running services.
 type nodeImpl struct {
 	service.BaseService
+	logger log.Logger
 
 	// config
 	config        *config.Config
@@ -388,6 +389,7 @@ func makeNode(
 
 	node := &nodeImpl{
 		config:        cfg,
+		logger:        logger,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
@@ -495,6 +497,7 @@ func makeSeedNode(
 
 	node := &nodeImpl{
 		config:     cfg,
+		logger:     logger,
 		genesisDoc: genDoc,
 
 		nodeInfo:    nodeInfo,
@@ -527,10 +530,10 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}()
 
 		go func() {
-			n.Logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
+			n.logger.Info("Starting pprof server", "laddr", n.config.RPC.PprofListenAddress)
 
 			if err := srv.ListenAndServe(); err != nil {
-				n.Logger.Error("pprof server error", "err", err)
+				n.logger.Error("pprof server error", "err", err)
 				rpcCancel()
 			}
 		}()
@@ -539,7 +542,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
-		n.Logger.Info("Genesis time is in the future. Sleeping until then...", "genTime", genTime)
+		n.logger.Info("Genesis time is in the future. Sleeping until then...", "genTime", genTime)
 		time.Sleep(genTime.Sub(now))
 	}
 
@@ -617,19 +620,19 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
 		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
 		if err := n.eventBus.PublishEventStateSyncStatus(ctx, d); err != nil {
-			n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
+			n.logger.Error("failed to emit the statesync start event", "err", err)
 		}
 
 		// FIXME: We shouldn't allow state sync to silently error out without
 		// bubbling up the error and gracefully shutting down the rest of the node
 		go func() {
-			n.Logger.Info("starting state sync")
+			n.logger.Info("starting state sync")
 			state, err := n.stateSyncReactor.Sync(ctx)
 			if err != nil {
-				n.Logger.Error("state sync failed; shutting down this node", "err", err)
+				n.logger.Error("state sync failed; shutting down this node", "err", err)
 				// stop the node
 				if err := n.Stop(); err != nil {
-					n.Logger.Error("failed to shut down node", "err", err)
+					n.logger.Error("failed to shut down node", "err", err)
 				}
 				return
 			}
@@ -642,7 +645,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 					Height:   state.LastBlockHeight,
 				}); err != nil {
 
-				n.eventBus.Logger.Error("failed to emit the statesync start event", "err", err)
+				n.logger.Error("failed to emit the statesync start event", "err", err)
 			}
 
 			// TODO: Some form of orchestrator is needed here between the state
@@ -651,7 +654,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			// FIXME Very ugly to have these metrics bleed through here.
 			n.consensusReactor.SetBlockSyncingMetrics(1)
 			if err := bcR.SwitchToBlockSync(ctx, state); err != nil {
-				n.Logger.Error("failed to switch to block sync", "err", err)
+				n.logger.Error("failed to switch to block sync", "err", err)
 				return
 			}
 
@@ -661,7 +664,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 					Height:   state.LastBlockHeight,
 				}); err != nil {
 
-				n.eventBus.Logger.Error("failed to emit the block sync starting event", "err", err)
+				n.logger.Error("failed to emit the block sync starting event", "err", err)
 			}
 		}()
 	}
@@ -671,7 +674,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 // OnStop stops the Node. It implements service.Service.
 func (n *nodeImpl) OnStop() {
-	n.Logger.Info("Stopping Node")
+	n.logger.Info("Stopping Node")
 
 	if n.eventBus != nil {
 		n.eventBus.Wait()
@@ -682,7 +685,7 @@ func (n *nodeImpl) OnStop() {
 
 	for _, es := range n.eventSinks {
 		if err := es.Stop(); err != nil {
-			n.Logger.Error("failed to stop event sink", "err", err)
+			n.logger.Error("failed to stop event sink", "err", err)
 		}
 	}
 
@@ -699,9 +702,9 @@ func (n *nodeImpl) OnStop() {
 
 	// finally stop the listeners / external services
 	for _, l := range n.rpcListeners {
-		n.Logger.Info("Closing rpc listener", "listener", l)
+		n.logger.Info("Closing rpc listener", "listener", l)
 		if err := l.Close(); err != nil {
-			n.Logger.Error("Error closing listener", "listener", l, "err", err)
+			n.logger.Error("Error closing listener", "listener", l, "err", err)
 		}
 	}
 
@@ -712,23 +715,23 @@ func (n *nodeImpl) OnStop() {
 	if n.prometheusSrv != nil {
 		if err := n.prometheusSrv.Shutdown(context.Background()); err != nil {
 			// Error from closing listeners, or context timeout:
-			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
+			n.logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
 
 	}
 	if err := n.shutdownOps(); err != nil {
 		if strings.TrimSpace(err.Error()) != "" {
-			n.Logger.Error("problem shutting down additional services", "err", err)
+			n.logger.Error("problem shutting down additional services", "err", err)
 		}
 	}
 	if n.blockStore != nil {
 		if err := n.blockStore.Close(); err != nil {
-			n.Logger.Error("problem closing blockstore", "err", err)
+			n.logger.Error("problem closing blockstore", "err", err)
 		}
 	}
 	if n.stateStore != nil {
 		if err := n.stateStore.Close(); err != nil {
-			n.Logger.Error("problem closing statestore", "err", err)
+			n.logger.Error("problem closing statestore", "err", err)
 		}
 	}
 }
@@ -767,7 +770,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
-		rpcLogger := n.Logger.With("module", "rpc-server")
+		rpcLogger := n.logger.With("module", "rpc-server")
 		wmLogger := rpcLogger.With("protocol", "websocket")
 		wm := rpcserver.NewWebsocketManager(routes,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
@@ -809,7 +812,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 					rpcLogger,
 					cfg,
 				); err != nil {
-					n.Logger.Error("Error serving server with TLS", "err", err)
+					n.logger.Error("Error serving server with TLS", "err", err)
 				}
 			}()
 		} else {
@@ -821,7 +824,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 					rpcLogger,
 					cfg,
 				); err != nil {
-					n.Logger.Error("Error serving server", "err", err)
+					n.logger.Error("Error serving server", "err", err)
 				}
 			}()
 		}
@@ -858,7 +861,7 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+			n.logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
 			promCancel()
 		}
 	}()

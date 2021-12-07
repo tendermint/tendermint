@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -14,7 +15,8 @@ import (
 func TestExample(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s := newTestServer(ctx, t)
+
+	s := newTestServer(ctx, t, log.TestingLogger())
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "example-client",

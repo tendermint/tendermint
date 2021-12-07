@@ -35,6 +35,7 @@ type PeerManager interface {
 // txs to the peers you received it from.
 type Reactor struct {
 	service.BaseService
+	logger log.Logger
 
 	cfg     *config.MempoolConfig
 	mempool *TxMempool
@@ -72,6 +73,7 @@ func NewReactor(
 ) *Reactor {
 
 	r := &Reactor{
+		logger:       logger,
 		cfg:          cfg,
 		peerMgr:      peerMgr,
 		mempool:      txmp,
@@ -114,7 +116,7 @@ func GetChannelDescriptor(cfg *config.MempoolConfig) *p2p.ChannelDescriptor {
 // OnStop to ensure the outbound p2p Channels are closed.
 func (r *Reactor) OnStart(ctx context.Context) error {
 	if !r.cfg.Broadcast {
-		r.Logger.Info("tx broadcasting is disabled")
+		r.logger.Info("tx broadcasting is disabled")
 	}
 
 	go r.processMempoolCh(ctx)
@@ -147,7 +149,7 @@ func (r *Reactor) OnStop() {
 // empty set of txs are sent in an envelope or if we receive an unexpected
 // message type.
 func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
 	case *protomem.Txs:
@@ -182,7 +184,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		if e := recover(); e != nil {
 			r.observePanic(e)
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error(
+			r.logger.Error(
 				"recovering from processing message panic",
 				"err", err,
 				"stack", string(debug.Stack()),
@@ -190,7 +192,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "peer", envelope.From)
+	r.logger.Debug("received message", "peer", envelope.From)
 
 	switch chID {
 	case MempoolChannel:
@@ -210,7 +212,7 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 		select {
 		case envelope := <-r.mempoolCh.In:
 			if err := r.handleMessage(r.mempoolCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
+				r.logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
 				r.mempoolCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -219,7 +221,7 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on mempool channel; closing...")
+			r.logger.Debug("stopped listening on mempool channel; closing...")
 			return
 		}
 	}
@@ -231,7 +233,7 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 // removed peers, we remove the peer from the mempool peer ID set and signal to
 // stop the tx broadcasting goroutine.
 func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -293,7 +295,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 			r.processPeerUpdate(ctx, peerUpdate)
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}
@@ -313,7 +315,7 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 
 		if e := recover(); e != nil {
 			r.observePanic(e)
-			r.Logger.Error(
+			r.logger.Error(
 				"recovering from broadcasting mempool loop",
 				"err", e,
 				"stack", string(debug.Stack()),
@@ -376,7 +378,7 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 			}:
 			case <-ctx.Done():
 			}
-			r.Logger.Debug(
+			r.logger.Debug(
 				"gossiped tx to peer",
 				"tx", fmt.Sprintf("%X", memTx.tx.Hash()),
 				"peer", peerID,

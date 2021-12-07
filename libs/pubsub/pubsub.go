@@ -41,6 +41,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -103,6 +104,7 @@ func (args UnsubscribeArgs) Validate() error {
 // messages with or without events, and manages internal state.
 type Server struct {
 	service.BaseService
+	logger log.Logger
 
 	queue  chan item
 	done   <-chan struct{} // closed when server should exit
@@ -133,9 +135,10 @@ type Option func(*Server)
 // NewServer returns a new server. See the commentary on the Option functions
 // for a detailed description of how to configure buffering. If no options are
 // provided, the resulting server's queue is unbuffered.
-func NewServer(options ...Option) *Server {
-	s := new(Server)
-	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
+func NewServer(logger log.Logger, options ...Option) *Server {
+	s := &Server{logger: logger}
+
+	s.BaseService = *service.NewBaseService(logger, "PubSub", s)
 	for _, opt := range options {
 		opt(s)
 	}
@@ -167,9 +170,7 @@ func (s *Server) BufferCapacity() int { return cap(s.queue) }
 // If len(capacities) > 0, its first value is used as the queue capacity.
 //
 // Deprecated: Use SubscribeWithArgs. This method will be removed in v0.36.
-func (s *Server) Subscribe(ctx context.Context,
-	clientID string, query Query, capacities ...int) (*Subscription, error) {
-
+func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, capacities ...int) (*Subscription, error) {
 	args := SubscribeArgs{
 		ClientID: clientID,
 		Query:    query,
@@ -384,7 +385,7 @@ func (s *Server) run(ctx context.Context) {
 		// Sender: Service the queue and forward messages to subscribers.
 		for it := range queue {
 			if err := s.send(it.Data, it.Events); err != nil {
-				s.Logger.Error("Error sending event", "err", err)
+				s.logger.Error("Error sending event", "err", err)
 			}
 		}
 		// Terminate all subscribers before exit.

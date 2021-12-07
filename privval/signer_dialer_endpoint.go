@@ -59,6 +59,7 @@ func NewSignerDialerEndpoint(
 		retryWait:      defaultRetryWaitMilliseconds * time.Millisecond,
 		maxConnRetries: defaultMaxDialRetries,
 	}
+	sd.signerEndpoint.logger = logger
 
 	sd.BaseService = *service.NewBaseService(logger, "SignerDialerEndpoint", sd)
 	sd.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
@@ -84,17 +85,17 @@ func (sd *SignerDialerEndpoint) ensureConnection() error {
 
 		if err != nil {
 			retries++
-			sd.Logger.Debug("SignerDialer: Reconnection failed", "retries", retries, "max", sd.maxConnRetries, "err", err)
+			sd.logger.Debug("SignerDialer: Reconnection failed", "retries", retries, "max", sd.maxConnRetries, "err", err)
 			// Wait between retries
 			time.Sleep(sd.retryWait)
 		} else {
 			sd.SetConnection(conn)
-			sd.Logger.Debug("SignerDialer: Connection Ready")
+			sd.logger.Debug("SignerDialer: Connection Ready")
 			return nil
 		}
 	}
 
-	sd.Logger.Debug("SignerDialer: Max retries exceeded", "retries", retries, "max", sd.maxConnRetries)
+	sd.logger.Debug("SignerDialer: Max retries exceeded", "retries", retries, "max", sd.maxConnRetries)
 
 	return ErrNoConnection
 }

@@ -21,81 +21,6 @@ import (
 
 const queueBufferDefault = 32
 
-// Envelope contains a message with sender/receiver routing info.
-type Envelope struct {
-	From      types.NodeID  // sender (empty if outbound)
-	To        types.NodeID  // receiver (empty if inbound)
-	Broadcast bool          // send to all connected peers (ignores To)
-	Message   proto.Message // message payload
-
-	// channelID is for internal Router use, set on outbound messages to inform
-	// the sendPeer() goroutine which transport channel to use.
-	//
-	// FIXME: If we migrate the Transport API to a byte-oriented multi-stream
-	// API, this will no longer be necessary since each channel will be mapped
-	// onto a stream during channel/peer setup. See:
-	// https://github.com/tendermint/spec/pull/227
-	channelID ChannelID
-}
-
-// PeerError is a peer error reported via Channel.Error.
-//
-// FIXME: This currently just disconnects the peer, which is too simplistic.
-// For example, some errors should be logged, some should cause disconnects,
-// and some should ban the peer.
-//
-// FIXME: This should probably be replaced by a more general PeerBehavior
-// concept that can mark good and bad behavior and contributes to peer scoring.
-// It should possibly also allow reactors to request explicit actions, e.g.
-// disconnection or banning, in addition to doing this based on aggregates.
-type PeerError struct {
-	NodeID types.NodeID
-	Err    error
-}
-
-// Channel is a bidirectional channel to exchange Protobuf messages with peers,
-// wrapped in Envelope to specify routing info (i.e. sender/receiver).
-type Channel struct {
-	ID    ChannelID
-	In    <-chan Envelope  // inbound messages (peers to reactors)
-	Out   chan<- Envelope  // outbound messages (reactors to peers)
-	Error chan<- PeerError // peer error reporting
-
-	messageType proto.Message // the channel's message type, used for unmarshaling
-}
-
-// NewChannel creates a new channel. It is primarily for internal and test
-// use, reactors should use Router.OpenChannel().
-func NewChannel(
-	id ChannelID,
-	messageType proto.Message,
-	inCh <-chan Envelope,
-	outCh chan<- Envelope,
-	errCh chan<- PeerError,
-) *Channel {
-	return &Channel{
-		ID:          id,
-		messageType: messageType,
-		In:          inCh,
-		Out:         outCh,
-		Error:       errCh,
-	}
-}
-
-// Wrapper is a Protobuf message that can contain a variety of inner messages
-// (e.g. via oneof fields). If a Channel's message type implements Wrapper, the
-// Router will automatically wrap outbound messages and unwrap inbound messages,
-// such that reactors do not have to do this themselves.
-type Wrapper interface {
-	proto.Message
-
-	// Wrap will take a message and wrap it in this one if possible.
-	Wrap(proto.Message) error
-
-	// Unwrap will unwrap the inner message contained in this message.
-	Unwrap() (proto.Message, error)
-}
-
 // RouterOptions specifies options for a Router.
 type RouterOptions struct {
 	// ResolveTimeout is the timeout for resolving NodeAddress URLs.
@@ -221,8 +146,8 @@ func (o *RouterOptions) Validate() error {
 // quality of service.
 type Router struct {
 	*service.BaseService
+	logger log.Logger
 
-	logger             log.Logger
 	metrics            *Metrics
 	options            RouterOptions
 	nodeInfo           types.NodeInfo
@@ -233,7 +158,6 @@ type Router struct {
 	endpoints          []Endpoint
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
-	stopCh             chan struct{} // signals Router shutdown
 
 	peerMtx    sync.RWMutex
 	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
@@ -283,7 +207,6 @@ func NewRouter(
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
 		options:            options,
-		stopCh:             make(chan struct{}),
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[types.NodeID]queue{},
@@ -411,7 +334,7 @@ func (r *Router) routeChannel(
 			if wrapper != nil {
 				msg := proto.Clone(wrapper)
 				if err := msg.(Wrapper).Wrap(envelope.Message); err != nil {
-					r.Logger.Error("failed to wrap message", "channel", chID, "err", err)
+					r.logger.Error("failed to wrap message", "channel", chID, "err", err)
 					continue
 				}
 
@@ -474,7 +397,7 @@ func (r *Router) routeChannel(
 				case <-q.closed():
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 
-				case <-r.stopCh:
+				case <-ctx.Done():
 					return
 				}
 			}
@@ -488,8 +411,6 @@ func (r *Router) routeChannel(
 
 			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 		case <-ctx.Done():
-			return
-		case <-r.stopCh:
 			return
 		}
 	}
@@ -549,7 +470,7 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 
 	for {
-		conn, err := transport.Accept()
+		conn, err := transport.Accept(ctx)
 		switch err {
 		case nil:
 		case io.EOF:
@@ -858,14 +779,14 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 
 	go func() {
 		select {
-		case errCh <- r.receivePeer(peerID, conn):
+		case errCh <- r.receivePeer(ctx, peerID, conn):
 		case <-ctx.Done():
 		}
 	}()
 
 	go func() {
 		select {
-		case errCh <- r.sendPeer(peerID, conn, sendQueue):
+		case errCh <- r.sendPeer(ctx, peerID, conn, sendQueue):
 		case <-ctx.Done():
 		}
 	}()
@@ -904,9 +825,9 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 
 // receivePeer receives inbound messages from a peer, deserializes them and
 // passes them on to the appropriate channel.
-func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
+func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Connection) error {
 	for {
-		chID, bz, err := conn.ReceiveMessage()
+		chID, bz, err := conn.ReceiveMessage(ctx)
 		if err != nil {
 			return err
 		}
@@ -949,14 +870,14 @@ func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
 		case <-queue.closed():
 			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
 
-		case <-r.stopCh:
+		case <-ctx.Done():
 			return nil
 		}
 	}
 }
 
 // sendPeer sends queued messages to a peer.
-func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue) error {
+func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connection, peerQueue queue) error {
 	for {
 		start := time.Now().UTC()
 
@@ -974,7 +895,7 @@ func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue)
 				continue
 			}
 
-			if err = conn.SendMessage(envelope.channelID, bz); err != nil {
+			if err = conn.SendMessage(ctx, envelope.channelID, bz); err != nil {
 				return err
 			}
 
@@ -983,7 +904,7 @@ func (r *Router) sendPeer(peerID types.NodeID, conn Connection, peerQueue queue)
 		case <-peerQueue.closed():
 			return nil
 
-		case <-r.stopCh:
+		case <-ctx.Done():
 			return nil
 		}
 	}
@@ -1033,7 +954,7 @@ func (r *Router) OnStart(ctx context.Context) error {
 		}
 	}
 
-	r.Logger.Info(
+	r.logger.Info(
 		"starting router",
 		"node_id", r.nodeInfo.NodeID,
 		"channels", r.nodeInfo.Channels,
@@ -1058,9 +979,6 @@ func (r *Router) OnStart(ctx context.Context) error {
 // here, since that would cause any reactor senders to panic, so it is the
 // sender's responsibility.
 func (r *Router) OnStop() {
-	// Signal router shutdown.
-	close(r.stopCh)
-
 	// Close transport listeners (unblocks Accept calls).
 	for _, transport := range r.transports {
 		if err := transport.Close(); err != nil {
@@ -1084,6 +1002,7 @@ func (r *Router) OnStop() {
 	r.peerMtx.RUnlock()
 
 	for _, q := range queues {
+		q.close()
 		<-q.closed()
 	}
 }

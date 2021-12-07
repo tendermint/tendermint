@@ -89,7 +89,7 @@ func setup(
 		state := states[i]
 
 		reactor := NewReactor(
-			state.Logger.With("node", nodeID),
+			state.logger.With("node", nodeID),
 			state,
 			rts.stateChannels[nodeID],
 			rts.dataChannels[nodeID],

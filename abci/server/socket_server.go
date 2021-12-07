@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	tmlog "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -19,6 +19,7 @@ import (
 
 type SocketServer struct {
 	service.BaseService
+	logger log.Logger
 
 	proto    string
 	addr     string
@@ -32,9 +33,10 @@ type SocketServer struct {
 	app    types.Application
 }
 
-func NewSocketServer(logger tmlog.Logger, protoAddr string, app types.Application) service.Service {
+func NewSocketServer(logger log.Logger, protoAddr string, app types.Application) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &SocketServer{
+		logger:   logger,
 		proto:    proto,
 		addr:     addr,
 		listener: nil,
@@ -59,7 +61,7 @@ func (s *SocketServer) OnStart(ctx context.Context) error {
 
 func (s *SocketServer) OnStop() {
 	if err := s.listener.Close(); err != nil {
-		s.Logger.Error("Error closing listener", "err", err)
+		s.logger.Error("Error closing listener", "err", err)
 	}
 
 	s.connsMtx.Lock()
@@ -68,7 +70,7 @@ func (s *SocketServer) OnStop() {
 	for id, conn := range s.conns {
 		delete(s.conns, id)
 		if err := conn.Close(); err != nil {
-			s.Logger.Error("Error closing connection", "id", id, "conn", conn, "err", err)
+			s.logger.Error("Error closing connection", "id", id, "conn", conn, "err", err)
 		}
 	}
 }
@@ -106,17 +108,17 @@ func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 		}
 
 		// Accept a connection
-		s.Logger.Info("Waiting for new connection...")
+		s.logger.Info("Waiting for new connection...")
 		conn, err := s.listener.Accept()
 		if err != nil {
 			if !s.IsRunning() {
 				return // Ignore error from listener closing.
 			}
-			s.Logger.Error("Failed to accept connection", "err", err)
+			s.logger.Error("Failed to accept connection", "err", err)
 			continue
 		}
 
-		s.Logger.Info("Accepted a new connection")
+		s.logger.Info("Accepted a new connection")
 
 		connID := s.addConn(conn)
 
@@ -137,7 +139,7 @@ func (s *SocketServer) waitForClose(ctx context.Context, closeConn chan error, c
 	defer func() {
 		// Close the connection
 		if err := s.rmConn(connID); err != nil {
-			s.Logger.Error("Error closing connection", "err", err)
+			s.logger.Error("Error closing connection", "err", err)
 		}
 	}()
 
@@ -147,12 +149,12 @@ func (s *SocketServer) waitForClose(ctx context.Context, closeConn chan error, c
 	case err := <-closeConn:
 		switch {
 		case err == io.EOF:
-			s.Logger.Error("Connection was closed by client")
+			s.logger.Error("Connection was closed by client")
 		case err != nil:
-			s.Logger.Error("Connection error", "err", err)
+			s.logger.Error("Connection error", "err", err)
 		default:
 			// never happens
-			s.Logger.Error("Connection was closed")
+			s.logger.Error("Connection was closed")
 		}
 	}
 }

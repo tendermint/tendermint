@@ -45,11 +45,11 @@ func GetChannelDescriptor() *p2p.ChannelDescriptor {
 // Reactor handles evpool evidence broadcasting amongst peers.
 type Reactor struct {
 	service.BaseService
+	logger log.Logger
 
 	evpool      *Pool
 	evidenceCh  *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	peerWG sync.WaitGroup
 
@@ -67,10 +67,10 @@ func NewReactor(
 	evpool *Pool,
 ) *Reactor {
 	r := &Reactor{
+		logger:       logger,
 		evpool:       evpool,
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
-		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 	}
 
@@ -102,10 +102,6 @@ func (r *Reactor) OnStop() {
 	// exit.
 	r.peerWG.Wait()
 
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
-
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
@@ -120,7 +116,7 @@ func (r *Reactor) OnStop() {
 // or if the given evidence is invalid. This should never be called outside of
 // handleMessage.
 func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
 	case *tmproto.EvidenceList:
@@ -159,7 +155,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error(
+			r.logger.Error(
 				"recovering from processing message panic",
 				"err", err,
 				"stack", string(debug.Stack()),
@@ -167,7 +163,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+	r.logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
 	switch chID {
 	case EvidenceChannel:
@@ -186,19 +182,16 @@ func (r *Reactor) processEvidenceCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("stopped listening on evidence channel; closing...")
 			return
 		case envelope := <-r.evidenceCh.In:
 			if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
+				r.logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
 				r.evidenceCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on evidence channel; closing...")
-			return
 		}
 	}
 }
@@ -215,7 +208,7 @@ func (r *Reactor) processEvidenceCh(ctx context.Context) {
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
 func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -224,8 +217,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 	case p2p.PeerStatusUp:
 		// Do not allow starting new evidence broadcast loops after reactor shutdown
 		// has been initiated. This can happen after we've manually closed all
-		// peer broadcast loops and closed r.closeCh, but the router still sends
-		// in-flight peer updates.
+		// peer broadcast loops, but the router still sends in-flight peer updates.
 		if !r.IsRunning() {
 			return
 		}
@@ -266,9 +258,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}
@@ -296,7 +286,7 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		r.peerWG.Done()
 
 		if e := recover(); e != nil {
-			r.Logger.Error(
+			r.logger.Error(
 				"recovering from broadcasting evidence loop",
 				"err", e,
 				"stack", string(debug.Stack()),
@@ -321,11 +311,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
 				return
-
-			case <-r.closeCh:
-				// The reactor has signaled that we are stopped and thus we should
-				// implicitly exit this peer's goroutine.
-				return
 			}
 		}
 
@@ -349,7 +334,7 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 			},
 		}:
 		}
-		r.Logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
+		r.logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 
 		select {
 		case <-time.After(time.Second * broadcastEvidenceIntervalS):
@@ -364,9 +349,7 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 			// explicitly closed to signal we should exit.
 			return
 
-		case <-r.closeCh:
-			// The reactor has signaled that we are stopped and thus we should
-			// implicitly exit this peer's goroutine.
+		case <-ctx.Done():
 			return
 		}
 	}
