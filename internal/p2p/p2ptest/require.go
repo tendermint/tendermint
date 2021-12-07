@@ -102,7 +102,7 @@ func RequireNoUpdates(ctx context.Context, t *testing.T, peerUpdates *p2p.PeerUp
 
 // RequireError requires that the given peer error is submitted for a peer.
 func RequireError(ctx context.Context, t *testing.T, channel *p2p.Channel, peerError p2p.PeerError) {
-	tctx, tcancel := context.WithCancel(ctx)
+	tctx, tcancel := context.WithTimeout(ctx, time.Second)
 	defer tcancel()
 
 	err := channel.SendError(tctx, peerError)
