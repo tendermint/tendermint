@@ -892,7 +892,7 @@ func (m *PeerManager) broadcast(ctx context.Context, peerUpdate PeerUpdate) {
 		}
 		select {
 		case <-ctx.Done():
-			continue
+			return
 		case sub.reactorUpdatesCh <- peerUpdate:
 		}
 	}
