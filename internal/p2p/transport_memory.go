@@ -94,9 +94,7 @@ type MemoryTransport struct {
 	nodeID     types.NodeID
 	bufferSize int
 
-	acceptCh  chan *MemoryConnection
-	closeOnce sync.Once
-	isClosed  bool
+	acceptCh chan *MemoryConnection
 }
 
 // newMemoryTransport creates a new MemoryTransport. This is for internal use by
@@ -127,7 +125,7 @@ func (t *MemoryTransport) Protocols() []Protocol {
 
 // Endpoints implements Transport.
 func (t *MemoryTransport) Endpoints() []Endpoint {
-	if t.isClosed {
+	if n := t.network.GetTransport(t.nodeID); n == nil {
 		return []Endpoint{}
 	}
 
@@ -193,10 +191,6 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)
-	t.closeOnce.Do(func() {
-		t.isClosed = true
-		t.logger.Info("closed transport")
-	})
 	return nil
 }
 

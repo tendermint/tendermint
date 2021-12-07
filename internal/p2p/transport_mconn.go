@@ -45,9 +45,9 @@ type MConnTransport struct {
 	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
 
-	closeOnce   sync.Once
-	hasFinished bool
-	listener    net.Listener
+	closeOnce sync.Once
+	doneCh    chan struct{}
+	listener  net.Listener
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -63,6 +63,7 @@ func NewMConnTransport(
 		logger:       logger,
 		options:      options,
 		mConnConfig:  mConnConfig,
+		doneCh:       make(chan struct{}),
 		channelDescs: channelDescs,
 	}
 }
@@ -80,9 +81,6 @@ func (m *MConnTransport) Protocols() []Protocol {
 // Endpoints implements Transport.
 func (m *MConnTransport) Endpoints() []Endpoint {
 	if m.listener == nil {
-		return []Endpoint{}
-	}
-	if m.hasFinished {
 		return []Endpoint{}
 	}
 
@@ -140,10 +138,9 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 		select {
 		case <-ctx.Done():
 			return nil, io.EOF
+		case <-m.doneCh:
+			return nil, io.EOF
 		default:
-			if m.hasFinished {
-				return nil, io.EOF
-			}
 			return nil, err
 		}
 	}
@@ -179,7 +176,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 func (m *MConnTransport) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
-		m.hasFinished = true
+		close(m.doneCh)
 		if m.listener != nil {
 			err = m.listener.Close()
 		}

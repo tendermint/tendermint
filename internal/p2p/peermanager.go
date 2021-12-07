@@ -904,7 +904,7 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 // maintaining order if this is a problem.
 func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
-		// We have to check doneCHan separately first, otherwise there's a 50%
+		// We have to check doneChan separately first, otherwise there's a 50%
 		// chance the second select will send on a closed subscription.
 		select {
 		case <-sub.doneCh:
