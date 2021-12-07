@@ -461,9 +461,11 @@ func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, dial)
 
+	dctx, dcancel := context.WithTimeout(ctx, 300*time.Millisecond)
+	defer dcancel()
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		peerManager.Disconnected(ctx, a.NodeID)
+		peerManager.Disconnected(dctx, a.NodeID)
 	}()
 
 	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
@@ -1732,6 +1734,7 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	expectDown := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}
 	require.NotEmpty(t, s1)
 	require.Equal(t, expectDown, <-s1.Updates())
+	require.Equal(t, expectDown, <-s2.Updates())
 	require.Empty(t, s2.Updates())
 	require.NotEmpty(t, s3)
 	require.Equal(t, expectDown, <-s3.Updates())

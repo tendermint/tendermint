@@ -38,7 +38,7 @@ func TestPeerScoring(t *testing.T) {
 
 		// add a bunch of good status updates and watch things increase.
 		for i := 1; i < 10; i++ {
-			peerManager.processPeerEvent(PeerUpdate{
+			peerManager.processPeerEvent(ctx, PeerUpdate{
 				NodeID: id,
 				Status: PeerStatusGood,
 			})
@@ -47,7 +47,7 @@ func TestPeerScoring(t *testing.T) {
 
 		// watch the corresponding decreases respond to update
 		for i := 10; i == 0; i-- {
-			peerManager.processPeerEvent(PeerUpdate{
+			peerManager.processPeerEvent(ctx, PeerUpdate{
 				NodeID: id,
 				Status: PeerStatusBad,
 			})

@@ -836,8 +836,8 @@ func (m *PeerManager) Subscribe(ctx context.Context) *PeerUpdates {
 // otherwise the PeerManager will halt.
 func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.subscriptions[peerUpdates] = peerUpdates
-	m.mtx.Unlock()
 
 	go func() {
 		for {
@@ -845,7 +845,7 @@ func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 			case <-ctx.Done():
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
-				m.processPeerEvent(pu)
+				m.processPeerEvent(ctx, pu)
 			}
 		}
 	}()
@@ -853,14 +853,18 @@ func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	go func() {
 		<-ctx.Done()
 		m.mtx.Lock()
+		defer m.mtx.Unlock()
 		delete(m.subscriptions, peerUpdates)
-		m.mtx.Unlock()
 	}()
 }
 
-func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
+func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	if ctx.Err() != nil {
+		return
+	}
 
 	if _, ok := m.store.peers[pu.NodeID]; !ok {
 		m.store.peers[pu.NodeID] = &peerInfo{}
@@ -883,6 +887,9 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 // maintaining order if this is a problem.
 func (m *PeerManager) broadcast(ctx context.Context, peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
+		if ctx.Err() != nil {
+			return
+		}
 		select {
 		case <-ctx.Done():
 			continue
