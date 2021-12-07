@@ -155,7 +155,7 @@ func TestProposalValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			prop := NewProposal(
 				4, 2, 2,
-				blockID, time.Now())
+				blockID, tmtime.Now())
 			p := prop.ToProto()
 			err := privVal.SignProposal(context.Background(), "test_chain_id", p)
 			prop.Signature = p.Signature
