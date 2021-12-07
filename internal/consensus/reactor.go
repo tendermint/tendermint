@@ -1324,9 +1324,11 @@ func (r *Reactor) processStateCh(ctx context.Context) {
 		case envelope := <-r.stateCh.In:
 			if err := r.handleMessage(r.stateCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.stateCh.ID, "envelope", envelope, "err", err)
-				r.stateCh.Error <- p2p.PeerError{
+				if serr := r.stateCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}
@@ -1347,9 +1349,11 @@ func (r *Reactor) processDataCh(ctx context.Context) {
 		case envelope := <-r.dataCh.In:
 			if err := r.handleMessage(r.dataCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.dataCh.ID, "envelope", envelope, "err", err)
-				r.dataCh.Error <- p2p.PeerError{
+				if serr := r.dataCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}
@@ -1370,9 +1374,11 @@ func (r *Reactor) processVoteCh(ctx context.Context) {
 		case envelope := <-r.voteCh.In:
 			if err := r.handleMessage(r.voteCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.voteCh.ID, "envelope", envelope, "err", err)
-				r.voteCh.Error <- p2p.PeerError{
+				if serr := r.voteCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}
@@ -1393,9 +1399,11 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
 		case envelope := <-r.voteSetBitsCh.In:
 			if err := r.handleMessage(r.voteSetBitsCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.voteSetBitsCh.ID, "envelope", envelope, "err", err)
-				r.voteSetBitsCh.Error <- p2p.PeerError{
+				if serr := r.voteSetBitsCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}

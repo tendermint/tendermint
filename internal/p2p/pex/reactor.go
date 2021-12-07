@@ -172,9 +172,11 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 		case envelope := <-r.pexCh.In:
 			if err := r.handleMessage(r.pexCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
-				r.pexCh.Error <- p2p.PeerError{
+				if serr := r.pexCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}
