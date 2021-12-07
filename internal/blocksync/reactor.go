@@ -86,7 +86,6 @@ type Reactor struct {
 	// blockSyncCh.Out.
 	blockSyncOutBridgeCh chan p2p.Envelope
 	peerUpdates          *p2p.PeerUpdates
-	closeCh              chan struct{}
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
@@ -138,7 +137,6 @@ func NewReactor(
 		blockSyncCh:          blockSyncCh,
 		blockSyncOutBridgeCh: make(chan p2p.Envelope),
 		peerUpdates:          peerUpdates,
-		closeCh:              make(chan struct{}),
 		metrics:              metrics,
 		syncStartTime:        time.Time{},
 	}
@@ -183,10 +181,6 @@ func (r *Reactor) OnStop() {
 
 	// wait for the poolRoutine and requestRoutine goroutines to gracefully exit
 	r.poolWG.Wait()
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
 
 	<-r.peerUpdates.Done()
 }
@@ -295,6 +289,7 @@ func (r *Reactor) processBlockSyncCh(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("stopped listening on block sync channel; closing...")
 			return
 		case envelope := <-r.blockSyncCh.In:
 			if err := r.handleMessage(r.blockSyncCh.ID, envelope); err != nil {
@@ -304,14 +299,8 @@ func (r *Reactor) processBlockSyncCh(ctx context.Context) {
 					Err:    err,
 				}
 			}
-
 		case envelope := <-r.blockSyncOutBridgeCh:
 			r.blockSyncCh.Out <- envelope
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on block sync channel; closing...")
-			return
-
 		}
 	}
 }
@@ -350,13 +339,10 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
@@ -391,24 +377,18 @@ func (r *Reactor) requestRoutine(ctx context.Context) {
 
 	for {
 		select {
-		case <-r.closeCh:
-			return
-
 		case <-ctx.Done():
 			return
-
 		case request := <-r.requestsCh:
 			r.blockSyncOutBridgeCh <- p2p.Envelope{
 				To:      request.PeerID,
 				Message: &bcproto.BlockRequest{Height: request.Height},
 			}
-
 		case pErr := <-r.errorsCh:
 			r.blockSyncCh.Error <- p2p.PeerError{
 				NodeID: pErr.peerID,
 				Err:    pErr.err,
 			}
-
 		case <-statusUpdateTicker.C:
 			r.poolWG.Add(1)
 
@@ -597,8 +577,6 @@ FOR_LOOP:
 			continue FOR_LOOP
 
 		case <-ctx.Done():
-			break FOR_LOOP
-		case <-r.closeCh:
 			break FOR_LOOP
 		case <-r.pool.exitedCh:
 			break FOR_LOOP

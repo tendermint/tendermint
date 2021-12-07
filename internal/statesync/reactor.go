@@ -142,7 +142,6 @@ type Reactor struct {
 	blockCh     *p2p.Channel
 	paramsCh    *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	// Dispatcher is used to multiplex light block requests and responses over multiple
 	// peers used by the p2p state provider and in reverse sync.
@@ -192,7 +191,6 @@ func NewReactor(
 		blockCh:       blockCh,
 		paramsCh:      paramsCh,
 		peerUpdates:   peerUpdates,
-		closeCh:       make(chan struct{}),
 		tempDir:       tempDir,
 		stateStore:    stateStore,
 		blockStore:    blockStore,
@@ -227,12 +225,6 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 func (r *Reactor) OnStop() {
 	// tell the dispatcher to stop sending any more requests
 	r.dispatcher.Close()
-	// wait for any remaining requests to complete
-	<-r.dispatcher.Done()
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
 
 	<-r.peerUpdates.Done()
 }
@@ -268,7 +260,6 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.stateProvider,
 		r.snapshotCh.Out,
 		r.chunkCh.Out,
-		ctx.Done(),
 		r.tempDir,
 		r.metrics,
 	)
@@ -290,7 +281,6 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 
 		select {
 		case <-ctx.Done():
-		case <-r.closeCh:
 		case r.snapshotCh.Out <- msg:
 		}
 	}
@@ -446,9 +436,6 @@ func (r *Reactor) backfill(
 	// verify all light blocks
 	for {
 		select {
-		case <-r.closeCh:
-			queue.close()
-			return nil
 		case <-ctx.Done():
 			queue.close()
 			return nil
@@ -816,6 +803,7 @@ func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string)
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("channel closed", "channel", chName)
 			return
 		case envelope := <-ch.In:
 			if err := r.handleMessage(ch.ID, envelope); err != nil {
@@ -829,17 +817,13 @@ func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string)
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.logger.Debug("channel closed", "channel", chName)
-			return
 		}
 	}
 }
 
 // processPeerUpdate processes a PeerUpdate, returning an error upon failing to
 // handle the PeerUpdate or if a panic is recovered.
-func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
+func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate) {
 	r.logger.Info("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	switch peerUpdate.Status {
@@ -859,7 +843,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	case p2p.PeerStatusUp:
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
-		err := r.syncer.AddPeer(peerUpdate.NodeID)
+		err := r.syncer.AddPeer(ctx, peerUpdate.NodeID)
 		if err != nil {
 			r.logger.Error("error adding peer to syncer", "error", err)
 			return
@@ -886,13 +870,10 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
-		case peerUpdate := <-r.peerUpdates.Updates():
-			r.processPeerUpdate(peerUpdate)
-
-		case <-r.closeCh:
 			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
+		case peerUpdate := <-r.peerUpdates.Updates():
+			r.processPeerUpdate(ctx, peerUpdate)
 		}
 	}
 }
@@ -980,9 +961,6 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("operation canceled while waiting for peers after %.2fs [%d/%d]",
-				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
-		case <-r.closeCh:
-			return fmt.Errorf("shutdown while waiting for peers after %.2fs [%d/%d]",
 				time.Since(startAt).Seconds(), r.peers.Len(), numPeers)
 		case <-t.C:
 			continue
