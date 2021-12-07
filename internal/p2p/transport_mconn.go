@@ -44,10 +44,10 @@ type MConnTransport struct {
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
-	closeCh      chan struct{}
-	closeOnce    sync.Once
 
-	listener net.Listener
+	closeOnce   sync.Once
+	hasFinished bool
+	listener    net.Listener
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -63,7 +63,6 @@ func NewMConnTransport(
 		logger:       logger,
 		options:      options,
 		mConnConfig:  mConnConfig,
-		closeCh:      make(chan struct{}),
 		channelDescs: channelDescs,
 	}
 }
@@ -83,11 +82,10 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 	if m.listener == nil {
 		return []Endpoint{}
 	}
-	select {
-	case <-m.closeCh:
+	if m.hasFinished {
 		return []Endpoint{}
-	default:
 	}
+
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
 	}
@@ -132,7 +130,7 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 }
 
 // Accept implements Transport.
-func (m *MConnTransport) Accept() (Connection, error) {
+func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	if m.listener == nil {
 		return nil, errors.New("transport is not listening")
 	}
@@ -140,9 +138,12 @@ func (m *MConnTransport) Accept() (Connection, error) {
 	tcpConn, err := m.listener.Accept()
 	if err != nil {
 		select {
-		case <-m.closeCh:
+		case <-ctx.Done():
 			return nil, io.EOF
 		default:
+			if m.hasFinished {
+				return nil, io.EOF
+			}
 			return nil, err
 		}
 	}
@@ -178,7 +179,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 func (m *MConnTransport) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
-		close(m.closeCh) // must be closed first, to handle error in Accept()
+		m.hasFinished = true
 		if m.listener != nil {
 			err = m.listener.Close()
 		}
@@ -222,7 +223,6 @@ type mConnConnection struct {
 	channelDescs []*ChannelDescriptor
 	receiveCh    chan mConnMessage
 	errorCh      chan error
-	closeCh      chan struct{}
 	closeOnce    sync.Once
 
 	mconn *conn.MConnection // set during Handshake()
@@ -248,7 +248,6 @@ func newMConnConnection(
 		channelDescs: channelDescs,
 		receiveCh:    make(chan mConnMessage),
 		errorCh:      make(chan error, 1), // buffered to avoid onError leak
-		closeCh:      make(chan struct{}),
 	}
 }
 
@@ -370,16 +369,16 @@ func (c *mConnConnection) handshake(
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID ChannelID, payload []byte) {
+func (c *mConnConnection) onReceive(ctx context.Context, chID ChannelID, payload []byte) {
 	select {
 	case c.receiveCh <- mConnMessage{channelID: chID, payload: payload}:
-	case <-c.closeCh:
+	case <-ctx.Done():
 	}
 }
 
 // onError is a callback for MConnection errors. The error is passed via errorCh
 // to ReceiveMessage (but not SendMessage, for legacy P2P stack behavior).
-func (c *mConnConnection) onError(e interface{}) {
+func (c *mConnConnection) onError(ctx context.Context, e interface{}) {
 	err, ok := e.(error)
 	if !ok {
 		err = fmt.Errorf("%v", err)
@@ -389,7 +388,7 @@ func (c *mConnConnection) onError(e interface{}) {
 	_ = c.Close()
 	select {
 	case c.errorCh <- err:
-	case <-c.closeCh:
+	case <-ctx.Done():
 	}
 }
 
@@ -399,14 +398,14 @@ func (c *mConnConnection) String() string {
 }
 
 // SendMessage implements Connection.
-func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) error {
+func (c *mConnConnection) SendMessage(ctx context.Context, chID ChannelID, msg []byte) error {
 	if chID > math.MaxUint8 {
 		return fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
 	}
 	select {
 	case err := <-c.errorCh:
 		return err
-	case <-c.closeCh:
+	case <-ctx.Done():
 		return io.EOF
 	default:
 		if ok := c.mconn.Send(chID, msg); !ok {
@@ -418,11 +417,11 @@ func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) error {
 }
 
 // ReceiveMessage implements Connection.
-func (c *mConnConnection) ReceiveMessage() (ChannelID, []byte, error) {
+func (c *mConnConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byte, error) {
 	select {
 	case err := <-c.errorCh:
 		return 0, nil, err
-	case <-c.closeCh:
+	case <-ctx.Done():
 		return 0, nil, io.EOF
 	case msg := <-c.receiveCh:
 		return msg.channelID, msg.payload, nil
@@ -462,7 +461,6 @@ func (c *mConnConnection) Close() error {
 		} else {
 			err = c.conn.Close()
 		}
-		close(c.closeCh)
 	})
 	return err
 }

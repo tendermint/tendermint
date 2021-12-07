@@ -203,7 +203,7 @@ func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
 	if node.Router.IsRunning() {
 		require.NoError(t, node.Router.Stop())
 	}
-	node.PeerManager.Close()
+	node.cancel()
 
 	for _, sub := range subs {
 		RequireUpdate(t, sub, p2p.PeerUpdate{
@@ -222,12 +222,16 @@ type Node struct {
 	Router      *p2p.Router
 	PeerManager *p2p.PeerManager
 	Transport   *p2p.MemoryTransport
+
+	cancel context.CancelFunc
 }
 
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
 func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) *Node {
+	ctx, cancel := context.WithCancel(ctx)
+
 	privKey := ed25519.GenPrivKey()
 	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := types.NodeInfo{
@@ -267,8 +271,8 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		if router.IsRunning() {
 			require.NoError(t, router.Stop())
 		}
-		peerManager.Close()
 		require.NoError(t, transport.Close())
+		cancel()
 	})
 
 	return &Node{
@@ -279,6 +283,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		Router:      router,
 		PeerManager: peerManager,
 		Transport:   transport,
+		cancel:      cancel,
 	}
 }
 

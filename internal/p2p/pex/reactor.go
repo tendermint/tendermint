@@ -83,7 +83,6 @@ type Reactor struct {
 	peerManager *p2p.PeerManager
 	pexCh       *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	// list of available peers to loop through and send peer requests to
 	availablePeers map[types.NodeID]struct{}
@@ -128,7 +127,6 @@ func NewReactor(
 		peerManager:          peerManager,
 		pexCh:                pexCh,
 		peerUpdates:          peerUpdates,
-		closeCh:              make(chan struct{}),
 		availablePeers:       make(map[types.NodeID]struct{}),
 		requestsSent:         make(map[types.NodeID]struct{}),
 		lastReceivedRequests: make(map[types.NodeID]time.Time),
@@ -150,13 +148,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
-func (r *Reactor) OnStop() {
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
-
-	<-r.peerUpdates.Done()
-}
+func (r *Reactor) OnStop() {}
 
 // processPexCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the pexCh.
@@ -168,8 +160,6 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
 			r.logger.Debug("stopped listening on PEX channel; closing...")
 			return
 
@@ -196,17 +186,13 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
