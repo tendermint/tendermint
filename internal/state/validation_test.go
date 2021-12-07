@@ -2,10 +2,11 @@ package state_test
 
 import (
 	"context"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
