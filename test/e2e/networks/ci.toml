@@ -16,15 +16,14 @@ validator03 = 30
 validator04 = 40
 
 [validator_update.1010]
-validator05 = 50
+validator04 = 50
 
 # validator03 gets killed and validator05 has lots of perturbations, so weight them low.
 [validator_update.1020]
 validator01 = 100
 validator02 = 100
 validator03 = 50
-validator04 = 100
-validator05 = 50
+validator04 = 50
 
 [node.seed01]
 mode = "seed"
@@ -38,7 +37,7 @@ block_sync = "v0"
 
 [node.validator02]
 abci_protocol = "tcp"
-database = "boltdb"
+database = "rocksdb"
 persist_interval = 0
 perturb = ["restart"]
 privval_protocol = "tcp"
@@ -56,28 +55,19 @@ block_sync = "v0"
 retain_blocks = 10
 
 [node.validator04]
-abci_protocol = "builtin"
-snapshot_interval = 5
-database = "rocksdb"
-persistent_peers = ["validator01"]
-perturb = ["pause"]
-block_sync = "v0"
-
-[node.validator05]
 database = "cleveldb"
 block_sync = "v0"
 state_sync = "p2p"
 seeds = ["seed01"]
 start_at = 1005 # Becomes part of the validator set at 1010
 abci_protocol = "grpc"
-perturb = ["pause", "disconnect", "restart"]
+perturb = ["pause"]
 privval_protocol = "tcp"
 
 [node.full01]
 mode = "full"
 start_at = 1010
 block_sync = "v0"
-persistent_peers = ["validator01", "validator02", "validator03", "validator04"]
 perturb = ["restart"]
 retain_blocks = 10
 state_sync = "rpc"
