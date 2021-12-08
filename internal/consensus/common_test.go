@@ -40,7 +40,7 @@ const (
 	testSubscriber = "test-client"
 
 	// genesis, chain_id, priv_val
-	ensureTimeout = time.Millisecond * 200
+	ensureTimeout = time.Millisecond * 500
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular
@@ -656,8 +656,13 @@ func ensureRelock(t *testing.T, relockCh <-chan tmpubsub.Message, height int64, 
 }
 
 func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
+	ensureProposalWithTimeout(t, proposalCh, height, round, propID, ensureTimeout)
+}
+
+// nolint: lll
+func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID, timeout time.Duration) {
 	t.Helper()
-	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
+	msg := ensureMessageBeforeTimeout(t, proposalCh, timeout)
 	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
 	require.True(t, ok, "expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
 		msg.Data())
@@ -666,7 +671,6 @@ func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int
 	require.True(t, proposalEvent.BlockID.Equals(propID),
 		"Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
 }
-
 func ensurePrecommit(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
 	t.Helper()
 	ensureVote(t, voteCh, height, round, tmproto.PrecommitType)

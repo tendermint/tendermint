@@ -1116,9 +1116,10 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
-	} else {
-		cs.enterPropose(ctx, height, round)
+		return
 	}
+
+	cs.enterPropose(ctx, height, round)
 }
 
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
@@ -1151,6 +1152,16 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 		return
 	}
 
+	// If this validator is the proposer of this round, and the previous block time is later than
+	// our local clock time, wait to propose until our local clock time has passed the block time.
+	if cs.privValidatorPubKey != nil && cs.isProposer(cs.privValidatorPubKey.Address()) {
+		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
+		if proposerWaitTime > 0 {
+			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
+			return
+		}
+	}
+
 	logger.Debug("entering propose step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -1178,8 +1189,6 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 		return
 	}
 
-	logger.Debug("node is a validator")
-
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
@@ -1187,18 +1196,20 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 		return
 	}
 
-	address := cs.privValidatorPubKey.Address()
+	addr := cs.privValidatorPubKey.Address()
 
 	// if not a validator, we're done
-	if !cs.Validators.HasAddress(address) {
-		logger.Debug("node is not a validator", "addr", address, "vals", cs.Validators)
+	if !cs.Validators.HasAddress(addr) {
+		logger.Debug("node is not a validator", "addr", addr, "vals", cs.Validators)
 		return
 	}
 
-	if cs.isProposer(address) {
+	logger.Debug("node is a validator")
+
+	if cs.isProposer(addr) {
 		logger.Debug(
 			"propose step; our turn to propose",
-			"proposer", address,
+			"proposer", addr,
 		)
 
 		cs.decideProposal(ctx, height, round)
