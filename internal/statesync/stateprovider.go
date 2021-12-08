@@ -200,7 +200,7 @@ type stateProviderP2P struct {
 	tmsync.Mutex  // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
-	paramsSendCh  chan<- p2p.Envelope
+	paramsSendCh  *p2p.Channel
 	paramsRecvCh  chan types.ConsensusParams
 }
 
@@ -212,7 +212,7 @@ func NewP2PStateProvider(
 	initialHeight int64,
 	providers []lightprovider.Provider,
 	trustOptions light.TrustOptions,
-	paramsSendCh chan<- p2p.Envelope,
+	paramsSendCh *p2p.Channel,
 	logger log.Logger,
 ) (StateProvider, error) {
 	if len(providers) < 2 {
@@ -382,15 +382,13 @@ func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
 			return nil, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
 		}
 
-		select {
-		case s.paramsSendCh <- p2p.Envelope{
+		if err := s.paramsSendCh.Send(ctx, p2p.Envelope{
 			To: peer,
 			Message: &ssproto.ParamsRequest{
 				Height: uint64(height),
 			},
-		}:
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		}); err != nil {
+			return nil, err
 		}
 
 		select {

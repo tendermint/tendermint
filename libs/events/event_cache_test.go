@@ -16,23 +16,25 @@ func TestEventCache_Flush(t *testing.T) {
 	err := evsw.Start(ctx)
 	require.NoError(t, err)
 
-	err = evsw.AddListenerForEvent("nothingness", "", func(data EventData) {
+	err = evsw.AddListenerForEvent("nothingness", "", func(_ context.Context, data EventData) error {
 		// Check we are not initializing an empty buffer full of zeroed eventInfos in the EventCache
 		require.FailNow(t, "We should never receive a message on this switch since none are fired")
+		return nil
 	})
 	require.NoError(t, err)
 
 	evc := NewEventCache(evsw)
-	evc.Flush()
+	evc.Flush(ctx)
 	// Check after reset
-	evc.Flush()
+	evc.Flush(ctx)
 	fail := true
 	pass := false
-	err = evsw.AddListenerForEvent("somethingness", "something", func(data EventData) {
+	err = evsw.AddListenerForEvent("somethingness", "something", func(_ context.Context, data EventData) error {
 		if fail {
 			require.FailNow(t, "Shouldn't see a message until flushed")
 		}
 		pass = true
+		return nil
 	})
 	require.NoError(t, err)
 
@@ -40,6 +42,6 @@ func TestEventCache_Flush(t *testing.T) {
 	evc.FireEvent("something", struct{ int }{2})
 	evc.FireEvent("something", struct{ int }{3})
 	fail = false
-	evc.Flush()
+	evc.Flush(ctx)
 	assert.True(t, pass)
 }

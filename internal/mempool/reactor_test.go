@@ -109,14 +109,6 @@ func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 		"network does not have expected number of nodes")
 }
 
-func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
-	t.Helper()
-
-	for _, mch := range rts.mempoolChannels {
-		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
-	}
-}
-
 func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...types.NodeID) {
 	t.Helper()
 
@@ -296,8 +288,6 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return rts.mempools[secondary].Size() == 0
 	}, time.Minute, 100*time.Millisecond)
-
-	rts.assertMempoolChannelsDrained(t)
 }
 
 func TestReactor_MaxTxBytes(t *testing.T) {
@@ -334,8 +324,6 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	tx2 := tmrand.Bytes(cfg.Mempool.MaxTxBytes + 1)
 	err = rts.mempools[primary].CheckTx(ctx, tx2, nil, TxInfo{SenderID: UnknownPeerID})
 	require.Error(t, err)
-
-	rts.assertMempoolChannelsDrained(t)
 }
 
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
@@ -359,30 +347,13 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 			NodeID: peerID,
 		}
 
-		rts.mempoolChannels[nodeID].Out <- p2p.Envelope{
+		require.NoError(t, rts.mempoolChannels[nodeID].Send(ctx, p2p.Envelope{
 			To: peerID,
 			Message: &protomem.Txs{
 				Txs: [][]byte{},
 			},
-		}
+		}))
 	}
-
-	require.Eventually(
-		t,
-		func() bool {
-			for _, mch := range rts.mempoolChannels {
-				if len(mch.Out) > 0 {
-					return false
-				}
-			}
-
-			return true
-		},
-		time.Minute,
-		10*time.Millisecond,
-	)
-
-	rts.assertMempoolChannelsDrained(t)
 }
 
 func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
