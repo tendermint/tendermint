@@ -274,7 +274,7 @@ func (txmp *TxMempool) CheckTx(
 		return nil
 	}
 
-	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	reqRes, err := txmp.proxyAppConn.CheckTx(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		txmp.cache.Remove(tx)
 		return err
@@ -728,7 +728,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
 		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+			_, err := txmp.proxyAppConn.CheckTxSync(ctx, abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
 			})
