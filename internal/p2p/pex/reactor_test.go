@@ -296,10 +296,7 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 
 	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
 	require.NoError(t, reactor.Start(ctx))
-	t.Cleanup(func() {
-		peerUpdates.Close()
-		reactor.Wait()
-	})
+	t.Cleanup(reactor.Wait)
 
 	return &singleTestReactor{
 		reactor:  reactor,
@@ -396,15 +393,11 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 	require.Len(t, rts.reactors, realNodes)
 
 	t.Cleanup(func() {
-		for nodeID, reactor := range rts.reactors {
+		for _, reactor := range rts.reactors {
 			if reactor.IsRunning() {
 				reactor.Wait()
 				require.False(t, reactor.IsRunning())
 			}
-			rts.peerUpdates[nodeID].Close()
-		}
-		for _, nodeID := range rts.mocks {
-			rts.peerUpdates[nodeID].Close()
 		}
 	})
 
@@ -542,7 +535,6 @@ func (r *reactorTestSuite) listenForPeerUpdate(
 ) {
 	on, with := r.checkNodePair(t, onNode, withNode)
 	sub := r.network.Nodes[on].PeerManager.Subscribe(ctx)
-	defer sub.Close()
 	timesUp := time.After(waitPeriod)
 	for {
 		select {
@@ -649,9 +641,7 @@ func (r *reactorTestSuite) connectPeers(ctx context.Context, t *testing.T, sourc
 	}
 
 	sourceSub := n1.PeerManager.Subscribe(ctx)
-	defer sourceSub.Close()
 	targetSub := n2.PeerManager.Subscribe(ctx)
-	defer targetSub.Close()
 
 	sourceAddress := n1.NodeAddress
 	r.logger.Debug("source address", "address", sourceAddress)

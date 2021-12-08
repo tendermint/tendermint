@@ -26,7 +26,7 @@ application.
 			return fmt.Errorf("failed to rollback state: %w", err)
 		}
 
-		fmt.Printf("Rolled back state to height %d and hash %v", height, hash)
+		fmt.Printf("Rolled back state to height %d and hash %X", height, hash)
 		return nil
 	},
 }

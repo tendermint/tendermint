@@ -48,7 +48,6 @@ type Reactor struct {
 
 	mempoolCh   *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	// peerWG is used to coordinate graceful termination of all peer broadcasting
 	// goroutines.
@@ -80,7 +79,6 @@ func NewReactor(
 		ids:          NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
-		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 		observePanic: defaultObservePanic,
 	}
@@ -136,19 +134,13 @@ func (r *Reactor) OnStop() {
 
 	// wait for all spawned peer tx broadcasting goroutines to gracefully exit
 	r.peerWG.Wait()
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
-
-	<-r.peerUpdates.Done()
 }
 
 // handleMempoolMessage handles envelopes sent from peers on the MempoolChannel.
 // For every tx in the message, we execute CheckTx. It returns an error if an
 // empty set of txs are sent in an envelope or if we receive an unexpected
 // message type.
-func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -164,7 +156,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, tx := range protoTxs {
-			if err := r.mempool.CheckTx(context.Background(), types.Tx(tx), nil, txInfo); err != nil {
+			if err := r.mempool.CheckTx(ctx, types.Tx(tx), nil, txInfo); err != nil {
 				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "err", err)
 			}
 		}
@@ -179,7 +171,7 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			r.observePanic(e)
@@ -196,7 +188,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 
 	switch chID {
 	case MempoolChannel:
-		err = r.handleMempoolMessage(envelope)
+		err = r.handleMempoolMessage(ctx, envelope)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%T)", chID, envelope.Message)
@@ -211,7 +203,7 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 	for {
 		select {
 		case envelope := <-r.mempoolCh.In:
-			if err := r.handleMessage(r.mempoolCh.ID, envelope); err != nil {
+			if err := r.handleMessage(ctx, r.mempoolCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
 				r.mempoolCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
@@ -219,8 +211,6 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 				}
 			}
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
 			r.logger.Debug("stopped listening on mempool channel; closing...")
 			return
 		}
@@ -242,8 +232,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 	case p2p.PeerStatusUp:
 		// Do not allow starting new tx broadcast loops after reactor shutdown
 		// has been initiated. This can happen after we've manually closed all
-		// peer broadcast loops and closed r.closeCh, but the router still sends
-		// in-flight peer updates.
+		// peer broadcast, but the router still sends in-flight peer updates.
 		if !r.IsRunning() {
 			return
 		}
@@ -285,18 +274,13 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
@@ -333,6 +317,8 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		// start from the beginning.
 		if nextGossipTx == nil {
 			select {
+			case <-ctx.Done():
+				return
 			case <-r.mempool.WaitForNextTx(): // wait until a tx is available
 				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
@@ -341,14 +327,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 			case <-closer.Done():
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
-				return
-
-			case <-ctx.Done():
-				return
-
-			case <-r.closeCh:
-				// The reactor has signaled that we are stopped and thus we should
-				// implicitly exit this peer's goroutine.
 				return
 			}
 		}
@@ -388,18 +366,11 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		select {
 		case <-nextGossipTx.NextWaitChan():
 			nextGossipTx = nextGossipTx.Next()
-
 		case <-closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
 			return
-
 		case <-ctx.Done():
-			return
-
-		case <-r.closeCh:
-			// The reactor has signaled that we are stopped and thus we should
-			// implicitly exit this peer's goroutine.
 			return
 		}
 	}

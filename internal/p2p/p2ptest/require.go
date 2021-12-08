@@ -119,9 +119,6 @@ func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUp
 	case update := <-peerUpdates.Updates():
 		require.Equal(t, expect, update, "peer update did not match")
 
-	case <-peerUpdates.Done():
-		require.Fail(t, "peer updates subscription is closed")
-
 	case <-timer.C:
 		require.Fail(t, "timed out waiting for peer update", "expected %v", expect)
 	}
@@ -142,9 +139,6 @@ func RequireUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates, expect []p2p.Pee
 				require.Equal(t, expect, actual)
 				return
 			}
-
-		case <-peerUpdates.Done():
-			require.Fail(t, "peer updates subscription is closed")
 
 		case <-timer.C:
 			require.Equal(t, expect, actual, "did not receive expected peer updates")
