@@ -409,7 +409,6 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			require.NoError(t, err)
 
 			sub := peerManager.Subscribe(ctx)
-			defer sub.Close()
 
 			router, err := p2p.NewRouter(
 				ctx,
@@ -433,7 +432,6 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				// force a context switch so that the
 				// connection is handled.
 				time.Sleep(time.Millisecond)
-				sub.Close()
 			} else {
 				select {
 				case <-closer.Done():
@@ -659,7 +657,6 @@ func TestRouter_DialPeers(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, added)
 			sub := peerManager.Subscribe(ctx)
-			defer sub.Close()
 
 			router, err := p2p.NewRouter(
 				ctx,
@@ -683,7 +680,6 @@ func TestRouter_DialPeers(t *testing.T) {
 				// force a context switch so that the
 				// connection is handled.
 				time.Sleep(time.Millisecond)
-				sub.Close()
 			} else {
 				select {
 				case <-closer.Done():
@@ -822,7 +818,6 @@ func TestRouter_EvictPeers(t *testing.T) {
 	require.NoError(t, err)
 
 	sub := peerManager.Subscribe(ctx)
-	defer sub.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,
@@ -850,7 +845,6 @@ func TestRouter_EvictPeers(t *testing.T) {
 		NodeID: peerInfo.NodeID,
 		Status: p2p.PeerStatusDown,
 	})
-	sub.Close()
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
@@ -943,7 +937,6 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	require.NoError(t, err)
 
 	sub := peerManager.Subscribe(ctx)
-	defer sub.Close()
 
 	router, err := p2p.NewRouter(
 		ctx,

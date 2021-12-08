@@ -64,7 +64,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		mempool := setup(ctx, t, 0)
 		rts.mempools[nodeID] = mempool
 
-		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
+		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
@@ -102,6 +102,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 	t.Helper()
 	rts.network.Start(ctx, t)
+
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
 		len(rts.nodes)-1,
@@ -126,13 +127,17 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...ty
 		if !p2ptest.NodeInSlice(name, ids) {
 			continue
 		}
+		if len(txs) == pool.Size() {
+			continue
+		}
 
 		wg.Add(1)
 		go func(pool *TxMempool) {
 			defer wg.Done()
 			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
 				time.Minute,
-				100*time.Millisecond,
+				250*time.Millisecond,
+				"ntx=%d, size=%d", len(txs), pool.Size(),
 			)
 		}(pool)
 	}
@@ -191,14 +196,15 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, numNodes, 0)
+	rts := setupReactors(ctx, t, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
 	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 
-	// run the router
+	require.Equal(t, numTxs, rts.reactors[primary].mempool.Size())
+
 	rts.start(ctx, t)
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the
@@ -407,7 +413,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, 2, 0)
+	rts := setupReactors(ctx, t, 2, 2)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]

@@ -56,8 +56,6 @@ type PeerUpdate struct {
 type PeerUpdates struct {
 	routerUpdatesCh  chan PeerUpdate
 	reactorUpdatesCh chan PeerUpdate
-	closeOnce        sync.Once
-	doneCh           chan struct{}
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
@@ -67,28 +65,12 @@ func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
 		reactorUpdatesCh: updatesCh,
 		routerUpdatesCh:  make(chan PeerUpdate, buf),
-		doneCh:           make(chan struct{}),
 	}
 }
 
 // Updates returns a channel for consuming peer updates.
 func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
 	return pu.reactorUpdatesCh
-}
-
-// Done returns a channel that is closed when the subscription is closed.
-func (pu *PeerUpdates) Done() <-chan struct{} {
-	return pu.doneCh
-}
-
-// Close closes the peer updates subscription.
-func (pu *PeerUpdates) Close() {
-	pu.closeOnce.Do(func() {
-		// NOTE: We don't close updatesCh since multiple goroutines may be
-		// sending on it. The PeerManager senders will select on doneCh as well
-		// to avoid blocking on a closed subscription.
-		close(pu.doneCh)
-	})
 }
 
 // SendUpdate pushes information about a peer into the routing layer,
@@ -692,13 +674,13 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages.
-func (m *PeerManager) Ready(peerID types.NodeID) {
+func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	if m.connected[peerID] {
 		m.ready[peerID] = true
-		m.broadcast(PeerUpdate{
+		m.broadcast(ctx, PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusUp,
 		})
@@ -759,7 +741,7 @@ func (m *PeerManager) TryEvictNext() (types.NodeID, error) {
 
 // Disconnected unmarks a peer as connected, allowing it to be dialed or
 // accepted again as appropriate.
-func (m *PeerManager) Disconnected(peerID types.NodeID) {
+func (m *PeerManager) Disconnected(ctx context.Context, peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -772,7 +754,7 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	delete(m.ready, peerID)
 
 	if ready {
-		m.broadcast(PeerUpdate{
+		m.broadcast(ctx, PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusDown,
 		})
@@ -854,8 +836,8 @@ func (m *PeerManager) Subscribe(ctx context.Context) *PeerUpdates {
 // otherwise the PeerManager will halt.
 func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.subscriptions[peerUpdates] = peerUpdates
-	m.mtx.Unlock()
 
 	go func() {
 		for {
@@ -863,25 +845,26 @@ func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 			case <-ctx.Done():
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
-				m.processPeerEvent(pu)
+				m.processPeerEvent(ctx, pu)
 			}
 		}
 	}()
 
 	go func() {
-		select {
-		case <-peerUpdates.Done():
-			m.mtx.Lock()
-			delete(m.subscriptions, peerUpdates)
-			m.mtx.Unlock()
-		case <-ctx.Done():
-		}
+		<-ctx.Done()
+		m.mtx.Lock()
+		defer m.mtx.Unlock()
+		delete(m.subscriptions, peerUpdates)
 	}()
 }
 
-func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
+func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	if ctx.Err() != nil {
+		return
+	}
 
 	if _, ok := m.store.peers[pu.NodeID]; !ok {
 		m.store.peers[pu.NodeID] = &peerInfo{}
@@ -902,18 +885,15 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 //
 // FIXME: Consider using an internal channel to buffer updates while also
 // maintaining order if this is a problem.
-func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
+func (m *PeerManager) broadcast(ctx context.Context, peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
-		// We have to check doneChan separately first, otherwise there's a 50%
-		// chance the second select will send on a closed subscription.
-		select {
-		case <-sub.doneCh:
-			continue
-		default:
+		if ctx.Err() != nil {
+			return
 		}
 		select {
+		case <-ctx.Done():
+			return
 		case sub.reactorUpdatesCh <- peerUpdate:
-		case <-sub.doneCh:
 		}
 	}
 }

@@ -76,10 +76,11 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 	// for each node.
 	dialQueue := []p2p.NodeAddress{}
 	subs := map[types.NodeID]*p2p.PeerUpdates{}
+	subctx, subcancel := context.WithCancel(ctx)
+	defer subcancel()
 	for _, node := range n.Nodes {
 		dialQueue = append(dialQueue, node.NodeAddress)
-		subs[node.NodeID] = node.PeerManager.Subscribe(ctx)
-		defer subs[node.NodeID].Close()
+		subs[node.NodeID] = node.PeerManager.Subscribe(subctx)
 	}
 
 	// For each node, dial the nodes that it still doesn't have a connection to
@@ -197,9 +198,10 @@ func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
 	delete(n.Nodes, id)
 
 	subs := []*p2p.PeerUpdates{}
+	subctx, subcancel := context.WithCancel(ctx)
+	defer subcancel()
 	for _, peer := range n.Nodes {
-		sub := peer.PeerManager.Subscribe(ctx)
-		defer sub.Close()
+		sub := peer.PeerManager.Subscribe(subctx)
 		subs = append(subs, sub)
 	}
 
@@ -329,7 +331,6 @@ func (n *Node) MakePeerUpdates(ctx context.Context, t *testing.T) *p2p.PeerUpdat
 	sub := n.PeerManager.Subscribe(ctx)
 	t.Cleanup(func() {
 		RequireNoUpdates(ctx, t, sub)
-		sub.Close()
 	})
 
 	return sub
@@ -339,11 +340,7 @@ func (n *Node) MakePeerUpdates(ctx context.Context, t *testing.T) *p2p.PeerUpdat
 // It does *not* check that all updates have been consumed, but will
 // close the update channel.
 func (n *Node) MakePeerUpdatesNoRequireEmpty(ctx context.Context, t *testing.T) *p2p.PeerUpdates {
-	sub := n.PeerManager.Subscribe(ctx)
-
-	t.Cleanup(sub.Close)
-
-	return sub
+	return n.PeerManager.Subscribe(ctx)
 }
 
 func MakeChannelDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
