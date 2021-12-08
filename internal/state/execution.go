@@ -264,7 +264,7 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.CommitSync(context.Background())
+	res, err := blockExec.proxyApp.CommitSync(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during proxyAppConn.CommitSync", "err", err)
 		return nil, 0, err
@@ -609,7 +609,7 @@ func ExecCommitBlock(
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync(context.Background())
+	res, err := appConnConsensus.CommitSync(ctx)
 	if err != nil {
 		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err
