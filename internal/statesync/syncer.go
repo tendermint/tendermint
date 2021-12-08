@@ -57,8 +57,8 @@ type syncer struct {
 	conn          proxy.AppConnSnapshot
 	connQuery     proxy.AppConnQuery
 	snapshots     *snapshotPool
-	snapshotCh    chan<- p2p.Envelope
-	chunkCh       chan<- p2p.Envelope
+	snapshotCh    *p2p.Channel
+	chunkCh       *p2p.Channel
 	tempDir       string
 	fetchers      int32
 	retryTimeout  time.Duration
@@ -79,8 +79,8 @@ func newSyncer(
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	stateProvider StateProvider,
-	snapshotCh chan<- p2p.Envelope,
-	chunkCh chan<- p2p.Envelope,
+	snapshotCh *p2p.Channel,
+	chunkCh *p2p.Channel,
 	tempDir string,
 	metrics *Metrics,
 ) *syncer {

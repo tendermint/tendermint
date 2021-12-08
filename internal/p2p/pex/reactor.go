@@ -165,12 +165,12 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 
 		// outbound requests for new peers
 		case <-timer.C:
-			r.sendRequestForPeers()
+			r.sendRequestForPeers(ctx)
 
 		// inbound requests for new peers or responses to requests sent by this
 		// reactor
 		case envelope := <-r.pexCh.In:
-			if err := r.handleMessage(r.pexCh.ID, envelope); err != nil {
+			if err := r.handleMessage(ctx, r.pexCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
 				if serr := r.pexCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
@@ -199,7 +199,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 }
 
 // handlePexMessage handles envelopes sent from peers on the PexChannel.
-func (r *Reactor) handlePexMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handlePexMessage(ctx context.Context, envelope p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -219,9 +219,11 @@ func (r *Reactor) handlePexMessage(envelope p2p.Envelope) error {
 				URL: addr.String(),
 			}
 		}
-		r.pexCh.Out <- p2p.Envelope{
+		if err := r.pexCh.Send(ctx, p2p.Envelope{
 			To:      envelope.From,
 			Message: &protop2p.PexResponse{Addresses: pexAddresses},
+		}); err != nil {
+			return err
 		}
 
 	case *protop2p.PexResponse:
@@ -264,7 +266,7 @@ func (r *Reactor) handlePexMessage(envelope p2p.Envelope) error {
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -280,7 +282,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 
 	switch chID {
 	case p2p.ChannelID(PexChannel):
-		err = r.handlePexMessage(envelope)
+		err = r.handlePexMessage(ctx, envelope)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
@@ -312,7 +314,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // peer a request for more peer addresses. The function then moves the
 // peer into the requestsSent bucket and calculates when the next request
 // time should be
-func (r *Reactor) sendRequestForPeers() {
+func (r *Reactor) sendRequestForPeers(ctx context.Context) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if len(r.availablePeers) == 0 {
@@ -330,9 +332,11 @@ func (r *Reactor) sendRequestForPeers() {
 	}
 
 	// send out the pex request
-	r.pexCh.Out <- p2p.Envelope{
+	if err := r.pexCh.Send(ctx, p2p.Envelope{
 		To:      peerID,
 		Message: &protop2p.PexRequest{},
+	}); err != nil {
+		return
 	}
 
 	// remove the peer from the abvailable peers list and mark it in the requestsSent map

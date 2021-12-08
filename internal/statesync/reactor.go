@@ -195,7 +195,7 @@ func NewReactor(
 		stateStore:    stateStore,
 		blockStore:    blockStore,
 		peers:         newPeerList(),
-		dispatcher:    NewDispatcher(blockCh.Out),
+		dispatcher:    NewDispatcher(blockCh),
 		providers:     make(map[types.NodeID]*BlockProvider),
 		metrics:       ssMetrics,
 	}
