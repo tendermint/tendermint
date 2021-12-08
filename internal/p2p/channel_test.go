@@ -25,7 +25,7 @@ func testChannel(size int) (*channelInternal, *Channel) {
 	ch := &Channel{
 		In:    in.In,
 		Out:   in.Out,
-		Error: in.Error,
+		errCh: in.Error,
 	}
 	return in, ch
 }
