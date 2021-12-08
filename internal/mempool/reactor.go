@@ -205,9 +205,11 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 		case envelope := <-r.mempoolCh.In:
 			if err := r.handleMessage(ctx, r.mempoolCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
-				r.mempoolCh.Error <- p2p.PeerError{
+				if serr := r.mempoolCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		case <-ctx.Done():
