@@ -1315,7 +1315,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
-		logger.Debug("proposal timestamp not equal")
+		logger.Debug("proposal timestamp not equal, prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
