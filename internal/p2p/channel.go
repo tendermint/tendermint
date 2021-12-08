@@ -64,7 +64,7 @@ type Channel struct {
 	ID    ChannelID
 	In    <-chan Envelope  // inbound messages (peers to reactors)
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
-	Error chan<- PeerError // peer error reporting
+	errCh chan<- PeerError // peer error reporting
 
 	messageType proto.Message // the channel's message type, used for unmarshaling
 }
@@ -83,7 +83,7 @@ func NewChannel(
 		messageType: messageType,
 		In:          inCh,
 		Out:         outCh,
-		Error:       errCh,
+		errCh:       errCh,
 	}
 }
 
@@ -104,7 +104,7 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case ch.Error <- pe:
+	case ch.errCh <- pe:
 		return nil
 	}
 }

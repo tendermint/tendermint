@@ -2,6 +2,7 @@ package p2ptest
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -100,13 +101,16 @@ func RequireNoUpdates(ctx context.Context, t *testing.T, peerUpdates *p2p.PeerUp
 }
 
 // RequireError requires that the given peer error is submitted for a peer.
-func RequireError(t *testing.T, channel *p2p.Channel, peerError p2p.PeerError) {
-	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
-	defer timer.Stop()
-	select {
-	case channel.Error <- peerError:
-	case <-timer.C:
+func RequireError(ctx context.Context, t *testing.T, channel *p2p.Channel, peerError p2p.PeerError) {
+	tctx, tcancel := context.WithTimeout(ctx, time.Second)
+	defer tcancel()
+
+	err := channel.SendError(tctx, peerError)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
 		require.Fail(t, "timed out reporting error", "%v on %v", peerError, channel.ID)
+	default:
+		require.NoError(t, err, "unexpected error")
 	}
 }
 

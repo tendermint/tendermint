@@ -410,9 +410,11 @@ func (r *Reactor) backfill(
 						r.logger.Info("backfill: fetched light block failed validate basic, removing peer...",
 							"err", err, "height", height)
 						queue.retry(height)
-						r.blockCh.Error <- p2p.PeerError{
+						if serr := r.blockCh.SendError(ctx, p2p.PeerError{
 							NodeID: peer,
 							Err:    fmt.Errorf("received invalid light block: %w", err),
+						}); serr != nil {
+							return
 						}
 						continue
 					}
@@ -445,25 +447,25 @@ func (r *Reactor) backfill(
 			if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
 				r.logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
 					"trustedHash", w, "receivedHash", g, "height", resp.block.Height)
-				r.blockCh.Error <- p2p.PeerError{
+				if err := r.blockCh.SendError(ctx, p2p.PeerError{
 					NodeID: resp.peer,
 					Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
+				}); err != nil {
+					return nil
 				}
 				queue.retry(resp.block.Height)
 				continue
 			}
 
 			// save the signed headers
-			err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID)
-			if err != nil {
+			if err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID); err != nil {
 				return err
 			}
 
 			// check if there has been a change in the validator set
 			if lastValidatorSet != nil && !bytes.Equal(resp.block.Header.ValidatorsHash, resp.block.Header.NextValidatorsHash) {
 				// save all the heights that the last validator set was the same
-				err = r.stateStore.SaveValidatorSets(resp.block.Height+1, lastChangeHeight, lastValidatorSet)
-				if err != nil {
+				if err := r.stateStore.SaveValidatorSets(resp.block.Height+1, lastChangeHeight, lastValidatorSet); err != nil {
 					return err
 				}
 
@@ -810,9 +812,11 @@ func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string)
 					"channel", chName,
 					"ch_id", ch.ID,
 					"envelope", envelope)
-				ch.Error <- p2p.PeerError{
+				if serr := ch.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}

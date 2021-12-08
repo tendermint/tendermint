@@ -292,9 +292,11 @@ func (r *Reactor) processBlockSyncCh(ctx context.Context) {
 		case envelope := <-r.blockSyncCh.In:
 			if err := r.handleMessage(r.blockSyncCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
-				r.blockSyncCh.Error <- p2p.PeerError{
+				if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		case envelope := <-r.blockSyncOutBridgeCh:
@@ -381,9 +383,11 @@ func (r *Reactor) requestRoutine(ctx context.Context) {
 				Message: &bcproto.BlockRequest{Height: request.Height},
 			}
 		case pErr := <-r.errorsCh:
-			r.blockSyncCh.Error <- p2p.PeerError{
+			if err := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 				NodeID: pErr.peerID,
 				Err:    pErr.err,
+			}); err != nil {
+				return
 			}
 		case <-statusUpdateTicker.C:
 			r.poolWG.Add(1)
@@ -523,16 +527,20 @@ FOR_LOOP:
 				// NOTE: We've already removed the peer's request, but we still need
 				// to clean up the rest.
 				peerID := r.pool.RedoRequest(first.Height)
-				r.blockSyncCh.Error <- p2p.PeerError{
+				if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 					NodeID: peerID,
 					Err:    err,
+				}); serr != nil {
+					break FOR_LOOP
 				}
 
 				peerID2 := r.pool.RedoRequest(second.Height)
 				if peerID2 != peerID {
-					r.blockSyncCh.Error <- p2p.PeerError{
+					if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 						NodeID: peerID2,
 						Err:    err,
+					}); serr != nil {
+						break FOR_LOOP
 					}
 				}
 

@@ -182,9 +182,11 @@ func (r *Reactor) processEvidenceCh(ctx context.Context) {
 		case envelope := <-r.evidenceCh.In:
 			if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
-				r.evidenceCh.Error <- p2p.PeerError{
+				if serr := r.evidenceCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
+				}); serr != nil {
+					return
 				}
 			}
 		}
