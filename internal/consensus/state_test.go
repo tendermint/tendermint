@@ -2721,7 +2721,7 @@ func TestStateTimestamp_ProposalMatch(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
-	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
 		t.Fatal(err)
 	}
 
