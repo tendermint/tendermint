@@ -113,7 +113,7 @@ func TestLoadBlockStore(t *testing.T) {
 	testCfg, err := tmcfg.ResetTestRoot(t.Name())
 	require.NoError(t, err)
 	testCfg.DBBackend = "goleveldb"
-	bs, ss, err := loadStateAndBlockStore(testCfg)
+	_, _, err = loadStateAndBlockStore(testCfg)
 	// we should return an error because the state store and block store
 	// don't yet exist
 	require.Error(t, err)
@@ -127,7 +127,7 @@ func TestLoadBlockStore(t *testing.T) {
 	require.NoError(t, err)
 	ssdb.Close()
 
-	bs, ss, err = loadStateAndBlockStore(testCfg)
+	bs, ss, err := loadStateAndBlockStore(testCfg)
 	require.NoError(t, err)
 	require.NotNil(t, bs)
 	require.NotNil(t, ss)
