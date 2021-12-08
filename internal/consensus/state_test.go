@@ -2680,9 +2680,7 @@ func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
-	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
 
 	startTestRound(ctx, cs1, height, round)
 	ensureProposal(t, proposalCh, height, round, blockID)
