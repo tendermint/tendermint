@@ -179,7 +179,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 
 	// commit half the transactions and ensure we fire an event
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
 	ensureTxFire()
 	ensureNoTxFire()
@@ -210,7 +210,7 @@ func TestTxMempool_Size(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
 
 	require.Equal(t, len(rawTxs)/2, txmp.Size())
@@ -237,7 +237,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
 
 	txmp.Flush()
@@ -460,7 +460,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 				}
 
 				txmp.Lock()
-				require.NoError(t, txmp.Update(height, reapedTxs, responses, nil, nil))
+				require.NoError(t, txmp.Update(ctx, height, reapedTxs, responses, nil, nil))
 				txmp.Unlock()
 
 				height++
@@ -500,7 +500,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(txmp.height+1, reapedTxs, responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, txmp.height+1, reapedTxs, responses, nil, nil))
 	txmp.Unlock()
 
 	require.Equal(t, 95, txmp.Size())
@@ -526,7 +526,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(txmp.height+10, reapedTxs, responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, txmp.height+10, reapedTxs, responses, nil, nil))
 	txmp.Unlock()
 
 	require.GreaterOrEqual(t, txmp.Size(), 45)

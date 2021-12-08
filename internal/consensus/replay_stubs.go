@@ -29,6 +29,7 @@ func (emptyMempool) RemoveTxByKey(txKey types.TxKey) error   { return nil }
 func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
 func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
 func (emptyMempool) Update(
+	_ context.Context,
 	_ int64,
 	_ types.Txs,
 	_ []*abci.ResponseDeliverTx,
@@ -37,11 +38,11 @@ func (emptyMempool) Update(
 ) error {
 	return nil
 }
-func (emptyMempool) Flush()                        {}
-func (emptyMempool) FlushAppConn() error           { return nil }
-func (emptyMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
-func (emptyMempool) EnableTxsAvailable()           {}
-func (emptyMempool) SizeBytes() int64              { return 0 }
+func (emptyMempool) Flush()                                 {}
+func (emptyMempool) FlushAppConn(ctx context.Context) error { return nil }
+func (emptyMempool) TxsAvailable() <-chan struct{}          { return make(chan struct{}) }
+func (emptyMempool) EnableTxsAvailable()                    {}
+func (emptyMempool) SizeBytes() int64                       { return 0 }
 
 func (emptyMempool) TxsFront() *clist.CElement    { return nil }
 func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }

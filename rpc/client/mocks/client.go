@@ -637,20 +637,6 @@ func (_m *Client) Status(_a0 context.Context) (*coretypes.ResultStatus, error) {
 	return r0, r1
 }
 
-// Stop provides a mock function with given fields:
-func (_m *Client) Stop() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Subscribe provides a mock function with given fields: ctx, subscriber, query, outCapacity
 func (_m *Client) Subscribe(ctx context.Context, subscriber string, query string, outCapacity ...int) (<-chan coretypes.ResultEvent, error) {
 	_va := make([]interface{}, len(outCapacity))
