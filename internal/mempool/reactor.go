@@ -156,7 +156,7 @@ func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope p2p.Envelop
 		}
 
 		for _, tx := range protoTxs {
-			if err := r.mempool.CheckTx(ctx, types.Tx(tx), nil, txInfo); err != nil {
+			if err := r.mempool.CheckTx(ctx, types.Tx(tx), txInfo); err != nil {
 				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "err", err)
 			}
 		}

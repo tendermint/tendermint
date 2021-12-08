@@ -30,7 +30,7 @@ const (
 type Mempool interface {
 	// CheckTx executes a new transaction against the application to determine
 	// its validity and whether it should be added to the mempool.
-	CheckTx(ctx context.Context, tx types.Tx, callback func(*abci.Response), txInfo TxInfo) error
+	CheckTx(ctx context.Context, tx types.Tx, txInfo TxInfo) error
 
 	// RemoveTxByKey removes a transaction, identified by its key,
 	// from the mempool.

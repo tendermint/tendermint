@@ -117,7 +117,7 @@ func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, pe
 			tx:       []byte(fmt.Sprintf("sender-%d-%d=%X=%d", i, peerID, prefix, priority)),
 			priority: priority,
 		}
-		require.NoError(t, txmp.CheckTx(ctx, txs[i].tx, nil, txInfo))
+		require.NoError(t, txmp.CheckTx(ctx, txs[i].tx, txInfo))
 	}
 
 	return txs
@@ -140,8 +140,9 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	txmp := setup(ctx, t, 0)
 	txmp.EnableTxsAvailable()
 
-	ensureNoTxFire := func() {
+	ensureNoTxFire := func(t *testing.T) {
 		timer := time.NewTimer(500 * time.Millisecond)
+		defer timer.Stop()
 		select {
 		case <-txmp.TxsAvailable():
 			require.Fail(t, "unexpected transactions event")
@@ -149,8 +150,10 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 		}
 	}
 
-	ensureTxFire := func() {
+	ensureTxFire := func(t *testing.T) {
+		t.Helper()
 		timer := time.NewTimer(500 * time.Millisecond)
+		defer timer.Stop()
 		select {
 		case <-txmp.TxsAvailable():
 		case <-timer.C:
@@ -159,13 +162,13 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	}
 
 	// ensure no event as we have not executed any transactions yet
-	ensureNoTxFire()
+	ensureNoTxFire(t)
 
 	// Execute CheckTx for some transactions and ensure TxsAvailable only fires
 	// once.
 	txs := checkTxs(ctx, t, txmp, 100, 0)
-	ensureTxFire()
-	ensureNoTxFire()
+	ensureTxFire(t)
+	ensureNoTxFire(t)
 
 	rawTxs := make([]types.Tx, len(txs))
 	for i, tx := range txs {
@@ -181,13 +184,13 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	txmp.Lock()
 	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
 	txmp.Unlock()
-	ensureTxFire()
-	ensureNoTxFire()
+	ensureTxFire(t)
+	ensureNoTxFire(t)
 
 	// Execute CheckTx for more transactions and ensure we do not fire another
 	// event as we're still on the same height (1).
 	_ = checkTxs(ctx, t, txmp, 100, 0)
-	ensureNoTxFire()
+	ensureNoTxFire(t)
 }
 
 func TestTxMempool_Size(t *testing.T) {
@@ -361,13 +364,13 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	_, err := rng.Read(tx)
 	require.NoError(t, err)
 
-	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: 0}))
+	require.Error(t, txmp.CheckTx(ctx, tx, TxInfo{SenderID: 0}))
 
 	tx = make([]byte, txmp.config.MaxTxBytes-1)
 	_, err = rng.Read(tx)
 	require.NoError(t, err)
 
-	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: 0}))
+	require.NoError(t, txmp.CheckTx(ctx, tx, TxInfo{SenderID: 0}))
 }
 
 func TestTxMempool_CheckTxSamePeer(t *testing.T) {
@@ -384,8 +387,8 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 
 	tx := []byte(fmt.Sprintf("sender-0=%X=%d", prefix, 50))
 
-	require.NoError(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: peerID}))
-	require.Error(t, txmp.CheckTx(context.Background(), tx, nil, TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(ctx, tx, TxInfo{SenderID: peerID}))
+	require.Error(t, txmp.CheckTx(ctx, tx, TxInfo{SenderID: peerID}))
 }
 
 func TestTxMempool_CheckTxSameSender(t *testing.T) {
@@ -407,9 +410,9 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 	tx1 := []byte(fmt.Sprintf("sender-0=%X=%d", prefix1, 50))
 	tx2 := []byte(fmt.Sprintf("sender-0=%X=%d", prefix2, 50))
 
-	require.NoError(t, txmp.CheckTx(context.Background(), tx1, nil, TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(ctx, tx1, TxInfo{SenderID: peerID}))
 	require.Equal(t, 1, txmp.Size())
-	require.NoError(t, txmp.CheckTx(context.Background(), tx2, nil, TxInfo{SenderID: peerID}))
+	require.NoError(t, txmp.CheckTx(ctx, tx2, TxInfo{SenderID: peerID}))
 	require.Equal(t, 1, txmp.Size())
 }
 
@@ -559,22 +562,21 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 			postCheckFn := func(_ types.Tx, _ *abci.ResponseCheckTx) error {
 				return testCase.err
 			}
+
 			txmp := setup(ctx, t, 0, WithPostCheck(postCheckFn))
 			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 			tx := make([]byte, txmp.config.MaxTxBytes-1)
 			_, err := rng.Read(tx)
 			require.NoError(t, err)
 
-			callback := func(res *abci.Response) {
-				checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-				require.True(t, ok)
-				expectedErrString := ""
-				if testCase.err != nil {
-					expectedErrString = testCase.err.Error()
-				}
-				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
+			err = txmp.CheckTx(ctx, tx, TxInfo{SenderID: 0})
+			if testCase.err == nil {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Equal(t, testCase.err.Error(), err.Error())
 			}
-			require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
+
 		})
 	}
 }
