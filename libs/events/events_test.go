@@ -68,7 +68,6 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	go sumReceivedNumbers(numbers, doneSum)
 	// go fire events
 	go fireEvents(ctx, evsw, "event", doneSending, uint64(1))
-	require.NotEmpty(t, doneSending)
 	checkSum := <-doneSending
 	close(numbers)
 	eventSum := <-doneSum
@@ -128,11 +127,8 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1))
 	go fireEvents(ctx, evsw, "event3", doneSending3, uint64(1))
 	var checkSum uint64
-	require.NotEmpty(t, doneSending1)
 	checkSum += <-doneSending1
-	require.NotEmpty(t, doneSending2)
 	checkSum += <-doneSending2
-	require.NotEmpty(t, doneSending3)
 	checkSum += <-doneSending3
 	close(numbers)
 	eventSum := <-doneSum
@@ -496,11 +492,8 @@ func TestRemoveListenersAsync(t *testing.T) {
 	removeListenersStress()
 	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
 	go fireEvents(ctx, evsw, "event3", doneSending3, uint64(2001))
-	require.NotEmpty(t, doneSending1)
 	checkSumEvent1 := <-doneSending1
-	require.NotEmpty(t, doneSending2)
 	checkSumEvent2 := <-doneSending2
-	require.NotEmpty(t, doneSending3)
 	checkSumEvent3 := <-doneSending3
 	checkSum := checkSumEvent1 + checkSumEvent2 + checkSumEvent3
 	close(numbers1)
@@ -538,14 +531,20 @@ func sumReceivedNumbers(numbers, doneSum chan uint64) {
 // sent on `doneChan` for assertion that all events have been sent, and enabling
 // the test to assert all events have also been received.
 func fireEvents(ctx context.Context, evsw Fireable, event string, doneChan chan uint64, offset uint64) {
+	defer close(doneChan)
+
 	var sentSum uint64
 	for i := offset; i <= offset+uint64(999); i++ {
-		sentSum += i
+		if ctx.Err() != nil {
+			break
+		}
+
 		evsw.FireEvent(ctx, event, i)
+		sentSum += i
 	}
+
 	select {
-	case doneChan <- sentSum:
-		close(doneChan)
 	case <-ctx.Done():
+	case doneChan <- sentSum:
 	}
 }
