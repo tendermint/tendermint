@@ -48,7 +48,8 @@ According to [Cosmos-SDK ADR-27](cosmos-sdk-adr-27), when message types obey a s
 set of rules, gogoproto produces a consistent byte representation of serialized messages.
 This seems promising, although more research is needed to guarantee gogoproto always
 produces a consistent set of bytes on serialized messages. This would solve the problem 
-within Tendermint as written in Go, but would require ensuring that there are 
+within Tendermint as written in Go, but would require ensuring that there are similar
+serializers written in other languages that produce the same output as gogoproto.
 
 ### Reorder serialized bytes to ensure determinism.
 
