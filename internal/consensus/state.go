@@ -36,6 +36,7 @@ import (
 var (
 	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
+	ErrInvalidProposalNotTimely   = errors.New("error invalid proposal un-timely block timestamp ")
 	ErrAddingVote                 = errors.New("error adding vote")
 	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
@@ -1884,6 +1885,15 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	if proposal.POLRound < -1 ||
 		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
 		return ErrInvalidProposalPOLRound
+	}
+
+	// Verify timely
+	tp := types.TimingParams{
+		Precision:    cs.state.ConsensusParams.Timing.Precision,
+		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
+	}
+	if proposal.POLRound == -1 && !proposal.IsTimely(tmtime.DefaultSource{}, tp) {
+		return ErrInvalidProposalNotTimely
 	}
 
 	p := proposal.ToProto()
