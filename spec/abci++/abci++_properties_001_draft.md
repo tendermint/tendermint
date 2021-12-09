@@ -14,18 +14,15 @@ title: New Methods
 >**TODO**: Hyperlinks for ConsensusParams, LastCommitInfo, Evidence, Event, and ValidatorUpdate are
 broken because they are defined in abci.md (and not copied over for the moment).
 
->**TODO**: don't forget to extend the Header structure with "bool problem" when including the parts
-common with the existing ABCI spec.
-
 * **Request**:
 
     | Name                    | Type                                        | Description                                                                                                | Field Number |
     |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                    | bytes                                       | The hash of the block to propose. This can be derived from the block header.                               | 1            |
+    | hash                    | bytes                                       | The hash of the block to propose. Present for convenience (can be derived from the block header).          | 1            |
     | header                  | [Header](../core/data_structures.md#header) | The header of the block to propose.                                                                        | 2            |
-    | last_commit_info        | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, the validator list, and which ones signed the last block. | 3            |
+    | tx                      | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                    | 3            |
     | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                     | 4            |
-    | tx                      | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                    | 5            |
+    | last_commit_info        | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, the validator list, and which ones signed the last block. | 5            |
 
 >**TODO**: DISCUSS: We need to make clear whether a proposer is also running the logic of a non-proposer node (in particular "ProcessProposal")
 From the App's perspective, they'll probably skip ProcessProposal
@@ -41,15 +38,15 @@ From the App's perspective, they'll probably skip ProcessProposal
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 5            |
 
 * **Usage**:
+    * Contains a prelimiary block to be proposed, which the Application can modify.
     * The Application can modify the parameters received in `RequestPrepareProposal` before sending
     them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified` is set to true.
     * In same-block execution mode, the Application can (and should) modify `ResponsePrepareProposal.data`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * In next-block execution mode, the Application can only modify `ResponsePrepareProposal.tx`, Tendermint
       will ignore any modification to the other fields.
-    * If `ResponsePrepareProposal.modified` is false, then Tendermint should ignore the rest of
+    * If `ResponsePrepareProposal.modified` is false, then Tendermint will ignore the rest of
       parameters in `ResponsePrepareProposal`.
-    * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
     * As a result of executing the block to propose, the Application may produce header events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
       `ResponseFinalizeBlock`.
@@ -57,52 +54,59 @@ From the App's perspective, they'll probably skip ProcessProposal
     * Application can change the transaction list via `ResponsePrepareProposal.tx`.
       See [TransactionRecord](#transactionrecord) for further information on how to use it. Some notes:
         * To remove a transaction from the proposed block the Application _marks_ the transaction as
-          invalid. It does not remove it from the list.
+          "REMOVE". It does not remove it from the list.
         * Removing a transaction from the list means it is too early to propose that transaction,
-          so it will stay in the mempool.
+          so it will stay in the mempool for later proposals.
           The Application should be extra-careful with this feature to avoid leaks in the mempool.
-        * The `old_hash` field, besides helping with mempool maintenance, helps Tendermint handle
-          queries such as "what happened with this Tx?", by answering "it was modified into this one".
+        * The `new_hashes` field, besides helping with mempool maintenance, helps Tendermint handle
+          queries such as "what happened with this Tx?", by answering "it was modified into these ones".
         * The Application _can_ reorder the transactions in the list.
+    * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
+      In particular, `ResponsePrepareProposal.tx` will be deemed invalid if
+        * There is a duplicate transaction in the list.
+        * The `new_hashes` field contains a dangling reference to a non-existing transaction.
+        * A new or modified transaction is marked as "UNMODIFIED" or "REMOVED".
+        * An unmodified transaction is marked as "ADDED".
+        * A transaction is marked as "UNKNOWN".
     * The implementation of `PrepareProposal` can be non-deterministic.
 
 #### When does Tendermint call it?
 
-When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer:
+When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer,
+and _p_'s _validValue_ is `nil`:
 
-1. If _p_'s _validValue_
-    * is not `nil`
-      * _p_'s Tendermint uses the block stored in _validValue_ as block _v_
-    * is `nil`
-      * _p_'s Tendermint collects outstanding transactions from the mempool
-        * The transactions will be collected in order of priority
-        * Let $C$ the list of currently collected transactions
-        * The collection stops when any of the following conditions no longer holds
-          * the mempool is not empty
-          * the total size of transactions $\in C$ is less than `consensusParams.block.max_bytes`
-          * the sum of `GasWanted` field of transactions $\in C$ is less than `consensusParams.block.max_gas`
-      * _p_'s Tendermint creates a block header.
-      * _p_'s Tendermint uses the newly generated block as block _v_
-2. _p_'s Tendermint calls `RequestPrepareProposal` with block _v_.
+1. _p_'s Tendermint collects outstanding transactions from the mempool
+    * The transactions will be collected in order of priority
+    * Let $C$ the list of currently collected transactions
+    * The collection stops when any of the following conditions are met
+        * the mempool is empty
+        * the total size of transactions $\in C$ is greater than or equal to `consensusParams.block.max_bytes`
+        * the sum of `GasWanted` field of transactions $\in C$ is greater than or equal to
+          `consensusParams.block.max_gas`
+    * _p_'s Tendermint creates a block header.
+2. _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block.
    The call is synchronous: Tendermint's execution will block until the Application returns from the call.
 3. The Application checks the block (header, transactions, commit info, evidences). Besides,
-   * in "same-block execution" mode, the Application can (and should) provide `ResponsePrepareProposal.data`,
-     `ResponsePrepareProposal.validator_updates`, or
-     `ResponsePrepareProposal.consensus_param_updates`.
-   * in "next-block execution" mode, _p_'s Tendermint will ignore the values for `ResponsePrepareProposal.data`,
-     `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
-   * in both modes, the Application can manipulate transactions
-      * leave transaction untouched
-      * add new transactions (not previously in the mempool)
-      * mark transactions is invalid (remove)
-      * remove transactions (effectively _delaying_ them)
-      * modify transactions (e.g. aggregate them)
-      * reorder transactions
-   * **TODO**: include logic of `VerifyVoteExtension` here?
+    * in "same-block execution" mode, the Application can (and should) provide `ResponsePrepareProposal.data`,
+      `ResponsePrepareProposal.validator_updates`, or
+      `ResponsePrepareProposal.consensus_param_updates`.
+    * in "next-block execution" mode, _p_'s Tendermint will ignore the values for `ResponsePrepareProposal.data`,
+      `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
+    * in both modes, the Application can manipulate transactions
+        * leave transaction untouched - `TxAction = UNMODIFIED`
+        * add new transactions (not previously in the mempool) - `TxAction = ADDED`
+        * removed transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
+        * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
+          Application removes the transaction from the list
+        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`
+        * reorder transactions - the Application reorders transactions in the list
+    * **TODO**: include logic of `VerifyVoteExtension` here?
 4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
    and includes the modified block in the return parameters (see the rules in section _Usage_).
    The Application returns from the call.
 5. _p_'s Tendermint uses the (possibly) modified block as _p_'s proposal in round _r_, height _h_.
+
+Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as proposal and will not call `RequestPrepareProposal`.
 
 ### ProcessProposal
 
@@ -112,36 +116,32 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 
     | Name                 | Type                                        | Description                                                                                                 | Field Number |
     |----------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                 | bytes                                       | The proposed block's hash. This can be derived from the block header.                                       | 1            |
+    | hash                 | bytes                                       | The proposed block's hash. Present for convenience (can be derived from the block header).                  | 1            |
     | header               | [Header](../core/data_structures.md#header) | The proposed block's header.                                                                                | 2            |
-    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round , the validator list, and which ones signed the last block. | 3            |
+    | tx                   | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                   | 3            |
     | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                      | 4            |
-    | tx                   | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                   | 5            |
+    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round , the validator list, and which ones signed the last block. | 5            |
 
 * **Response**:
 
-    | Name   | Type | Description                                                      | Field Number |
-    |--------|------|------------------------------------------------------------------|--------------|
-    | accept | bool | If false, instruct Tendermint to prevote $\bot$ for this proposal | 1            |
+    | Name   | Type | Description                                      | Field Number |
+    |--------|------|--------------------------------------------------|--------------|
+    | accept | bool | If false, the received block failed verification | 1            |
 
 * **Usage**:
     * Contains a full proposed block.
-        * The parameters and types of `RequestProcessProposal` are the same as `RequestFinalizeBlock`
-          (**TODO**: We'll see...).
+        * The parameters and types of `RequestProcessProposal` are the same as `RequestFinalizeBlock`.
         * In "same-block execution" mode, the Application will fully execute the block
           as though it was handling `RequestFinalizeBlock`.
           However, any resulting state changes must be kept as _canditade state_,
           and the Application should be ready to
           backtrack/discard it in case the decided block is different.
-    * If `ResponseProcessProposal.accept` is true, Tendermint should prevote according to
-      the normal procedure; else, it should prevote $\bot$.
-    * The [Header](../core/data_structures.md#header) contains a boolan `problem` that indicates
-      if the block is the result of an Application rejection (i.e., $\bot$). This allows the
-      users to distinguish empty blocks because of lack of activity and empty blocks representing
-      $\bot$, i.e., a problem in the code of `PrepareProposal` and/or `ProcessProposal`.
+    * If `ResponseProcessProposal.accept` is false, Tendermint should assume the proposal received
+      is not valid.
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
       `ResponseProcessProposal.accept` MUST *exclusively* depend on the parameters passed in
-      the call to `RequestProcessProposal`, and the last committed Application state.
+      the call to `RequestProcessProposal`, and the last committed Application state
+      (see [Properties](#properties) section below).
 
 >**TODO**: should `ResponseProcessProposal.accept` be of type `Result` rather than `bool`? (so we are able to extend the possible values in the future?)
 
@@ -152,18 +152,21 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 1. _p_ sets up timer `ProposeTimeout`.
 2. If _p_ is the proposer, _p_ executes steps 1-6 in _PrepareProposal_ (see above).
 3. Upon reception of Proposal message (which contains the header) for round _r_, height _h_ from _q_, _p_'s Tendermint verifies the block header.
-4. Upon reception of Proposal message , along with all the block parts, for round _r_, height _h_ from _q_, _p_'s Tendermint calls `RequestProcessProposal`
-   with the newly received proposal. The call is synchronous.
-5. The Application checks/processes the proposed block, which is read-only, and returns true (_accept_) or false (_reject_) in `ResponseProcessProposal.accept`.
-   * The Application, depending on its needs, may call `ResponseProcessProposal`
-     * either after it has completely processed the block (the simpler case),
-     * or immediately (after doing some basic checks), and process the block asynchronously. In this case the Application will
-       not be able to reject the block, or force prevote/precommit $\bot$ afterwards.
-6. If the returned value is
-     * _accept_, Tendermint will follow the normal algorithm to prevote on this proposal for round _r_, height _h_.
-     * _reject_, Tendermint will prevote $\bot$ for the proposal in round _r_, height _h_, which is a special value that processes can provote and precommit for,
-       and also decide. Processes can still vote `nil` according to the Tendermint algorithm. The role of $\bot$ is to protect Tendermint's liveness in cases
-       where the Application has a problem in its implementation of _ProcessProposal_ that, albeit deterministically, rejects too many proposals.
+4. Upon reception of Proposal message, along with all the block parts, for round _r_, height _h_ from _q_, _p_'s Tendermint follows its algorithm
+   to check whether it should prevote for the block just received, or `nil`
+5. If Tendermint should prevote for the block just received
+    1. Tendermint calls `RequestProcessProposal` with the block. The call is synchronous.
+    2. The Application checks/processes the proposed block, which is read-only, and returns true (_accept_) or false (_reject_) in `ResponseProcessProposal.accept`.
+       * The Application, depending on its needs, may call `ResponseProcessProposal`
+         * either after it has completely processed the block (the simpler case),
+         * or immediately (after doing some basic checks), and process the block asynchronously. In this case the Application will
+           not be able to reject the block, or force prevote/precommit `nil` afterwards.
+    3. If the returned value is
+         * _accept_, Tendermint prevotes on this proposal for round _r_, height _h_.
+         * _reject_, Tendermint will prevote $\bot$ for the proposal in round _r_, height _h_, which is a special value that processes can provote and precommit for,
+           and also decide. Processes can still vote `nil` according to the Tendermint algorithm. The role of $\bot$ is to protect Tendermint's liveness in cases
+           where the Application has a problem in its implementation of _ProcessProposal_ that, albeit deterministically, rejects too many proposals.
+           **TODO** Reword this when the "failure mode" discussion is settled.
 
 ### ExtendVote
 
@@ -174,7 +177,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
     | Name   | Type  | Description                                                           | Field Number |
     |--------|-------|-----------------------------------------------------------------------|--------------|
     | hash   | bytes | The hash of the proposed block that the vote extension is to refer to | 1            |
-    | height | int64 | Height of the block just proposed (for sanity check).                 | 2            |
+    | height | int64 | Height of the proposed block (for sanity check).                      | 2            |
 
 * **Response**:
 
@@ -210,13 +213,11 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
 
 #### Parameters and Types
 
->**TODO** (still controversial). Current status of discussions:
-
 * **Request**:
 
     | Name      | Type  | Description                                                                              | Field Number |
     |-----------|-------|------------------------------------------------------------------------------------------|--------------|
-    | extension | bytes | Sender Application's vote information to be validated                                    | 1            |
+    | extension | bytes | Sender Application's vote extension to be validated                                      | 1            |
     | hash      | bytes | The hash of the propsed block that the vote extension refers to                          | 2            |
     | address   | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension | 3            |
     | height    | int64 | Height of the block  (for sanity check).                                                 | 4            |
@@ -230,9 +231,11 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
 * **Usage**:
     * If `ResponseVerifyVoteExtension.accept` is false, Tendermint will flag the extension as _invalid_ but the
       validity of the received Precommit message will not be influenced by this.
+      **TODO**: reword after deciding on failure mode
     * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
       `VerifyVoteExtension.accept` MUST *exclusively* depend on the parameters passed in
-      the call to `RequestVerifyVoteExtension`, and the last committed Application state.
+      the call to `RequestVerifyVoteExtension`, and the last committed Application state
+      (see [Properties](#properties) section below).
 
 #### When does Tendermint call it?
 
@@ -241,13 +244,13 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 1. _p_'s Tendermint calls `RequestVerifyVoteExtension`.
 2. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.accept`.
-3. If the Application returns _reject_, _p_'s Tendermint flag the extension as _invalid_.
+3. If the Application returns _reject_, _p_'s Tendermint flag the extension as _invalid_. **TODO** Reword after the "failure mode" discussion
 4. _p_'s Tendermint keeps all received votes, together with their corresponding vote extensions
    (and possibly _invalid_ flags) in its internal data structures. These will be used to:
    * calculate field _LastCommitHash_ in the header of the block proposed for height _h + 1_
      (in the rounds where _p_ will be proposer).
-   * populate _LastCommitInfo_ in calls to `RequestPrepareProposal`and `RequestProcessProposal`
-     in height _h + 1_.
+   * populate _LastCommitInfo_ in calls to `RequestPrepareProposal`, `RequestProcessProposal`,
+     and `FinalizeBlock` in height _h + 1_.
 
 ### FinalizeBlock
 
@@ -259,9 +262,9 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     |----------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
     | hash                 | bytes                                       | The block's hash. This can be derived from the block header.                                                      | 1            |
     | header               | [Header](../core/data_structures.md#header) | The block header.                                                                                                 | 2            |
-    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, and the list of validators and which ones signed the last block. | 3            |
+    | tx                   | repeated bytes                              | List of transactions committed as part of the block.                                                              | 3            |
     | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                            | 4            |
-    | tx                   | repeated bytes                              | List of transactions committed as part of the block.                                                              | 5            |
+    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, and the list of validators and which ones signed the last block. | 5            |
 
 * **Response**:
 
@@ -284,7 +287,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     * The Application can use `RequestFinalizeBlock.last_commit_info` and `RequestFinalizeBlock.byzantine_validators`
       to determine rewards and punishments for the validators.
     * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.tx`,
-      before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the block
+      before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
       previously executed via `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_result[i].Code == 0` only if the _i_-th transaction is fully valid.
     * Optional `ResponseFinalizeBlock.validator_updates` triggered by block `H`. These updates affect validation
@@ -297,7 +300,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
       see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
     * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
     * `ResponseFinalizeBlock.app_data` contains an (optional) Merkle root hash of the application state.
-    * `ResponseFinalizeBlock.app_data` is included as the `Header.AppHash` in the next block. It may be empty.
+    * `ResponseFinalizeBlock.app_data` is included as the `Header.AppHash` in the next block. It may be empty or hard-coded.
     * Later calls to `Query` can return proofs about the application state anchored
       in this Merkle root hash.
     * Note developers can return whatever they want here (could be nothing, or a
@@ -322,8 +325,10 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 When a validator _p_ is in Tendermint consensus height _h_, and _p_ receives
 
-* the Proposal message with block _v_ for a round _r_, along with all its block parts, from _q_, which is the proposer of round _r_, height _h_,
-* `Precommit` messages from _2f + 1_ validators' voting power for round _r_, height _h_, precommitting the same block _id(v)_,
+* the Proposal message with block _v_ for a round _r_, along with all its block parts, from _q_,
+  which is the proposer of round _r_, height _h_,
+* `Precommit` messages from _2f + 1_ validators' voting power for round _r_, height _h_,
+  precommitting the same block _id(v)_,
 
 then _p_'s Tendermint decides block _v_ and finalizes consensus for height _h_ in the following way
 
@@ -427,30 +432,47 @@ I think we are OK since Tendermint builds on a Byzantine failure model.
 ```proto
   enum TxAction {
     UNKNOWN       = 0;  // Unknown action
-    UNMODIFIED    = 1;  // The Application did not modify this transaction. Ignore old_hash field
-    ADDED         = 2;  // The Application added this transaction. Ignore old_hash field
-    REMOVED       = 3;  // The Application wants this transaction removed from the proposal and the mempool. Ignore old_hash field
-    MODIFIED      = 4;  // The Application modified this transaction. Tendermint uses field old_hash to link the old and the new transaction
+    UNMODIFIED    = 1;  // The Application did not modify this transaction. Ignore new_hashes field
+    ADDED         = 2;  // The Application added this transaction. Ignore new_hashes field
+    REMOVED       = 3;  // The Application wants this transaction removed from the proposal and the mempool. Use new_hashes field if the transaction was modified
   }
 ```
 
 * **Usage**:
     * If `Action` is UNKNOWN, a problem happened in the Application. Tendermint will ignore this transaction. **TODO** should we panic?
-    * If `Action` is UNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool. Field `old_hash` is ignored.
-    * If `Action` is ADDED, Tendermint includes the transaction in the proposal. The transaction is added to the mempool and gossipped. Field `old_hash` is ignored.
-    * If `Action` is REMOVED, Tendermint excludes the transaction from the proposal. The transaction is removed from the mempool if it exists. Field `old_hash` is ignored.
-    * If `Action` is MODIFIED, Tendermint excludes the old transaction from the proposal, and includes the new one. The old transaction handled as REMOVED,
-      the new transaction is handled as ADDED. Tendermint uses field `old_hash` to link the old and the new transaction for tracing purposes.
+    * If `Action` is UNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool. Field `new_hashes` is ignored.
+    * If `Action` is ADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped. Field `new_hashes` is ignored.
+    * If `Action` is REMOVED, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
+      similar to `CheckTx` returning _false_. Tendermint can use field `new_hashes` to help client trace transactions that have been modified into other transactions.
 
 ### TransactionRecord
 
 * **Fields**:
 
-    | Name     | Type                  | Description                                                      | Field Number |
-    |----------|-----------------------|------------------------------------------------------------------|--------------|
-    | action   | [TxAction](#txaction) | What should Tendermint do with this transaction?                 | 1            |
-    | tx       | bytes                 | Transaction contents                                             | 2            |
-    | old_hash | bytes                 | Hash of an existing transaction that has been modified into `tx` | 3            |
+    | Name       | Type                  | Description                                                      | Field Number |
+    |------------|-----------------------|------------------------------------------------------------------|--------------|
+    | action     | [TxAction](#txaction) | What should Tendermint do with this transaction?                 | 1            |
+    | tx         | bytes                 | Transaction contents                                             | 2            |
+    | new_hashes | repeated bytes        | List of hashes of successor transactions                         | 3            |
+
+* **Usage**:
+    * As `new_hashes` is a list, `TransactionRecord` allows to trace many-to-many modifications. Some examples:
+        * Transaction $t1$ modified into $t2$ is represented with these records
+            * $t2$ "ADDED"
+            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$]
+        * Transaction $t1$ modified into $t2$ and $t3$ is represented with these `TransactionRecord` records
+            * $t2$ "ADDED"
+            * $t3$ "ADDED"
+            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$, $id(t3)$] 
+        * Transactions $t1$ and $t2$ aggregated into $t3$ is represented with these `TransactionRecord` records
+            * $t3$ "ADDED"
+            * $t1$ "REMOVED"; `new_hashes` contains [$id(t3)$]
+            * $t2$ "REMOVED"; `new_hashes` contains [$id(t3)$]
+        * Transactions $t1$ and $t2$ combined into $t3$ and $t4$ is represented with these `TransactionRecord` records
+            * $t3$ "ADDED"
+            * $t4$ "ADDED"
+            * $t1$ "REMOVED" and `new_hashes` containing [$id(t3)$, $id(t4)$]
+            * $t2$ "REMOVED" and `new_hashes` containing [$id(t3)$, $id(t4)$]
 
 ## Properties
 
@@ -462,9 +484,7 @@ Let $v_p$ (resp. $v_q$) be the block that $p$'s (resp. $q$'s) Tendermint passes 
 as proposer of round $r_p$ (resp $r_q$), height $h$.
 Let $v'_p$ (resp. $v'_q$) the possibly modified block $p$'s (resp. $q$'s) Application returns via `ResponsePrepareProposal` to Tendermint.
 
-> **TODO** Should we add a restriction so that $v'_p$ should be the same in all rounds, in height $h$, for which $p$ is proposer?
-This would help the App manage the number of candidate states, although it is not a total solution,
-as Byzantine could still send different proposals for different rounds (well, it can get caught and slashed)
+The value $p$ proposes can differ in two different rounds where $p$ is the proposer.
 
 * Property 1 [`PrepareProposal`, header-changes] When the blockchain is in "same-block execution" mode,
   $p$'s Application can change the following parameters in `ResponsePrepareProposal`:
@@ -490,15 +510,6 @@ this makes all processes that hit the bug byzantine. This is a problem in practi
 the validators are running the Application from the same codebase, so potencially _all_ would likely hit
 the bug at the same time. This would result in most (or all) processes prevoting `nil`, with the
 serious consequences on Tendermint's liveness that this entails.
-
-In order to address this problem, we introduce a new mechanism: the $\bot$ block, which is an _empty_ block
-which, if decided at a height, means too many processes are rejecting proposed values.
-Operators, upon seeing $\bot$ blocks being committed, know instantly that there is a problem in the Application's
-software and they can tackle it, while keeping Tendermint from getting stuck at a particular height
-with high rounds and long timeouts.
-
-The $\bot$ block is used as follows. A correct process $p$ will prevote $\bot$ (rather than `nil`)
-if $p$'s `ProcessProposal` implementation rejects the block passed in `RequestProcessProposal`.
 
 * Property 4 [`ProcessProposal`, determinism-1]: For any correct process $p$, and any arbitrary block $v'$,
   if $p$'s Tendermint calls `RequestProcessProposal` on $v'$ at height $h$,
@@ -544,6 +555,7 @@ Properties 7 and 8 ensure that the validation of vote extensions will be determi
 They depend on $w$, since a Byzantine process could send identical extended votes for
 different proposed blocks.
 
+>**TODO** Re-work this paragraph once "Failure Modes" discussion is over.
 If $p$'s Application rejects a vote extension $e$, $p$'s Tendermint will flag $e$ as incorrect,
 but will still consider the vote itself as valid, as long as all other checks at Tendermint level pass.
 Therefore, a bug in `ExtendVote` or `VerifyVoteExtension`, causing processes hitting it to
@@ -581,35 +593,42 @@ The following sections use these definitions:
 * We define the _common case_ as a run in which (a) the system behaves synchronously, and (b) there are no Byzantine processes.
   The common case captures the conditions that hold most of the time, but not always.
 * We define the _suboptimal case_ as a run in which (a) the system behaves asynchronously in round 0, height h -- messages may be delayed,
-  timeouts may be triggered --, (b) it behaves synchronously in all subsequent rounds (_r>=1_), and (c) there are no Byzantine processes.
+  timeouts may be triggered --, (b) it behaves synchronously in all subsequent rounds (_r>0_), and (c) there are no Byzantine processes.
   The _suboptimal case_ captures a possible glitch in the network, or some sudden, sporadic performance issue in some validator
   (network card glitch, thrashing peak, etc.).
 * We define the _general case_ as a run in which (a) the system behaves asynchronously for a number of rounds,
   (b) it behaves synchronously after some time, denoted _GST_, which is unknown to the processes,
   and (c) there may be up to _f_ Byzantine processes.
 
-#### `ProcessProposal`:  expectations from the Application
+#### `PrepareProposal` and `ProcessProposal`:  expectations from the Application
 
-Given a block height _h_, process _p_'s Tendermint calls `RequestProcessProposal` every time it receives a proposed block from the
-proposer in round _r_, for _r_ in 0, 1, 2, ...
+Given a block height _h_, process _p_'s Tendermint calls `RequestProcessProposal` depending on the case:
 
 * In the common case, all Tendermint processes decide in round _r=0_. Let's call _v_ the block proposed by the proposer of round _r=0_, height _h_.
-  Process _p_'s Application will receive exactly one call to `RequestProcessProposal` for block height _h_ containing _v_.
-  The Application may execute _v_ as part of handling the `RequestProcessProposal` call, keep the resulting state as a candidate state,
+  Process _p_'s Application will receive
+      * exactly one call to `RequestPrepareProposal` if _p_ is the proposer of round 0. If that is the case, _p_ will return _v_ in its call to
+        `ResponsePrepareProposal`
+      * exactly one call to `RequestProcessProposal` for block height _h_ containing _v_.
+
+  In addition, the Application may execute _v_ as part of handling the `RequestProcessProposal` call, keep the resulting state as a candidate state,
   and apply it when the call to `RequestFinalizeBlock` for _h_ confirms that _v_ is indeed the block decided in height _h_.
 * In the suboptimal case, Tendermint processes may decide in round _r=0_ or in round _r=1_.
-  Therefore, the Application of a process _q_ may receive one or two calls to `RequestProcessProposal`,
+  Therefore, the Application of a process _q_ may receive zero, one or two calls to `RequestProcessProposal`, depending on
+  whether _q_ is the proposer of round 0 or 1 of height _h_.
+  Likewise, the Application of a process _q_ may receive one or two calls to `RequestProcessProposal`
   with two different values _v0_ and _v1_ while in height _h_.
-  * There is no way for the Application to "guess" whether proposed block _v0_ or _v1_ will be decided before `RequestFinalizeBlock` is called.
+  * There is no way for the Application to predict whether proposed block _v0_ or _v1_ will be decided before `RequestFinalizeBlock` is called.
   * The Application may choose to execute either (or both) proposed block as part of handling the `RequestProcessProposal`
-    call and keep the resulting state as candidate state.
-    At decision time, if the block decided corresponds to one of the candidate states, it can be committed,
-    otherwise the Application will have to execute the block at this point.
-* In the general case, the round in which a Tendermint processes _p_ will decide cannot be forecast. _p_'s Tendermint may call `RequestProcessProposal` in each round,
-  and each call may convey a different proposal. As a result, the Application may need to deal with an unbounded number of different proposals for a given height,
-  and also an unbounded number of candidate states if it is executing the proposed blocks optimistically (a.k.a. immediate execution).
-  * **TODO** Discuss: if we restrict `PrepareProposal` to one value per _p_ per height, at least we get a bounded number of proposed blocks
-    in the worst case (assuming we detect and filter out Byzantine equivocation).
+    call and keep the resulting state as a _candidate state_.
+    At decision time (i.e. when Tendermint calls `RequestFinalizeBlock`), if the block decided corresponds to one of the candidate states,
+    it can be committed, otherwise the Application will have to execute the block at this point.
+* In the general case, the round in which a Tendermint processes _p_ will decide cannot be forecast.
+  The number of time _p_'s Tendermint may call `RequestProcessProposal` with different proposed blocks for a given height is *unbounded*.
+  As a result, the Application may need to deal with an unbounded number of different proposals for a given height,
+  and also an unbounded number of candidate states if it is fully executing the proposed blocks upon `PrepareProposal` or `ProcessProposal`.
+  In order protects the processes' stability (memory, CPU), the Application has to:
+    * Be ready to discard candidate states if they become too many. In other words, the set of candidate states should be managed like a cache.
+    * Be able to execute the blocks upon `FinalizeBlock` if the block decided was one whose candidate state was discarded.
 
 #### `ExtendVote`:  expectations from the Application
 
@@ -625,6 +644,29 @@ The validity of every transaction in a block (from the App's point of view), as 
 
 * `ProcessProposal` *synchronously* handles every proposed block as though Tendermint had already decided on it.
 * All the properties of `ProcessProposal` and `FinalizeBlock` mentioned above hold.
+
+## Failure modes
+
+>**TODO**: this section is just holding parts we have moved from previous sections referring to the "continue" failure mode. This needs to be reworked.
+
+>**TODO**: don't forget to extend the Header structure with "bool problem" when including the parts
+common with the existing ABCI spec.
+
+
+* The [Header](../core/data_structures.md#header) contains a boolan `problem` that indicates
+      if the block is the result of an Application rejection (i.e., $\bot$). This allows the
+      users to distinguish empty blocks because of lack of activity and empty blocks representing
+      $\bot$, i.e., a problem in the code of `PrepareProposal` and/or `ProcessProposal`.
+
+
+In order to address this problem, we introduce a new mechanism: the $\bot$ block, which is an _empty_ block
+which, if decided at a height, means too many processes are rejecting proposed values.
+Operators, upon seeing $\bot$ blocks being committed, know instantly that there is a problem in the Application's
+software and they can tackle it, while keeping Tendermint from getting stuck at a particular height
+with high rounds and long timeouts.
+
+The $\bot$ block is used as follows. A correct process $p$ will prevote $\bot$ (rather than `nil`)
+if $p$'s `ProcessProposal` implementation rejects the block passed in `RequestProcessProposal`.
 
 ## Application modes
 
