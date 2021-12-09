@@ -29,7 +29,7 @@ see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/ab
 
 Please do not depend on master as your production branch. Use [releases](https://github.com/tendermint/tendermint/releases) instead.
 
-Tendermint has been in the production of private and public environments, most notably the blockchains of the Cosmos Network. we haven't released v1.0 yet since we are making breaking changes to the protocol and the APIs. 
+Tendermint has been in the production of private and public environments, most notably the blockchains of the Cosmos Network. we haven't released v1.0 yet since we are making breaking changes to the protocol and the APIs.
 See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production, we're happy to help. You can
@@ -40,7 +40,7 @@ More on how releases are conducted can be found [here](./RELEASES.md).
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/cosmos). 
+program](https://hackerone.com/cosmos).
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
@@ -64,7 +64,7 @@ See the [install instructions](/docs/introduction/install.md).
 
 - [Single node](/docs/introduction/quick-start.md)
 - [Local cluster using docker-compose](/docs/networks/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](/docs/networks/terraform-and-ansible.md)
+- [Remote cluster using Terraform and Ansible](/docs/tools/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
 ## Contributing
@@ -73,7 +73,7 @@ Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 
 Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
 and the [style guide](STYLE_GUIDE.md). You may also find it helpful to read the
-[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md), 
+[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md),
 and familiarize yourself with our
 [Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
@@ -97,7 +97,7 @@ In an effort to avoid accumulating technical debt prior to 1.0.0,
 we do not guarantee that breaking changes (ie. bumps in the MINOR version)
 will work with existing Tendermint blockchains. In these cases you will
 have to start a new blockchain, or write something custom to get the old
-data into the new chain. However, any bump in the PATCH version should be 
+data into the new chain. However, any bump in the PATCH version should be
 compatible with existing blockchain histories.
 
 
