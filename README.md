@@ -37,8 +37,7 @@ contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https
 
 ## Security
 
-To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint).
+To report a security vulnerability, see our [bug bounty program](https://hackerone.com/cosmos).
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
@@ -65,7 +64,7 @@ See the [install instructions](/docs/introduction/install.md).
 
 - [Single node](/docs/introduction/quick-start.md)
 - [Local cluster using docker-compose](/docs/networks/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](/docs/networks/terraform-and-ansible.md)
+- [Remote cluster using Terraform and Ansible](/docs/tools/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
 ## Contributing
