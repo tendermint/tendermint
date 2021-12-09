@@ -195,25 +195,18 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 			return err
 		}
 
-		if err := r.blockSyncCh.Send(ctx, p2p.Envelope{
+		return r.blockSyncCh.Send(ctx, p2p.Envelope{
 			To:      peerID,
 			Message: &bcproto.BlockResponse{Block: blockProto},
-		}); err != nil {
-			return err
-		}
-
-		return nil
+		})
 	}
 
 	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
-	if err := r.blockSyncCh.Send(ctx, p2p.Envelope{
+
+	return r.blockSyncCh.Send(ctx, p2p.Envelope{
 		To:      peerID,
 		Message: &bcproto.NoBlockResponse{Height: msg.Height},
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 // handleBlockSyncMessage handles envelopes sent from peers on the

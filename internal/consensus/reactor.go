@@ -648,22 +648,23 @@ OUTER_LOOP:
 // pickSendVote picks a vote and sends it to the peer. It will return true if
 // there is a vote to send and false otherwise.
 func (r *Reactor) pickSendVote(ctx context.Context, ps *PeerState, votes types.VoteSetReader) (bool, error) {
-	if vote, ok := ps.PickVoteToSend(votes); ok {
-		r.logger.Debug("sending vote message", "ps", ps, "vote", vote)
-		if err := r.voteCh.Send(ctx, p2p.Envelope{
-			To: ps.peerID,
-			Message: &tmcons.Vote{
-				Vote: vote.ToProto(),
-			},
-		}); err != nil {
-			return false, err
-		}
-
-		ps.SetHasVote(vote)
-		return true, nil
+	vote, ok := ps.PickVoteToSend(votes)
+	if !ok {
+		return false, nil
 	}
 
-	return false, nil
+	r.logger.Debug("sending vote message", "ps", ps, "vote", vote)
+	if err := r.voteCh.Send(ctx, p2p.Envelope{
+		To: ps.peerID,
+		Message: &tmcons.Vote{
+			Vote: vote.ToProto(),
+		},
+	}); err != nil {
+		return false, err
+	}
+
+	ps.SetHasVote(vote)
+	return true, nil
 }
 
 func (r *Reactor) gossipVotesForHeight(

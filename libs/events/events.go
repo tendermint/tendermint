@@ -200,7 +200,8 @@ func (cell *eventCell) FireEvent(ctx context.Context, data EventData) {
 
 	for _, cb := range eventCallbacks {
 		if err := cb(ctx, data); err != nil {
-			break
+			// should we log or abort here?
+			continue
 		}
 	}
 }
