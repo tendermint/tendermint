@@ -529,7 +529,6 @@ func (cs *State) AddVote(ctx context.Context, vote *types.Vote, peerID types.Nod
 	}
 
 	// TODO: wait for event?!
-	return nil
 }
 
 // SetProposal inputs a proposal.
@@ -552,7 +551,6 @@ func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peer
 	}
 
 	// TODO: wait for event?!
-	return nil
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
@@ -574,7 +572,6 @@ func (cs *State) AddProposalBlockPart(ctx context.Context, height int64, round i
 	}
 
 	// TODO: wait for event?!
-	return nil
 }
 
 // SetProposalAndBlock inputs the proposal and all block parts.

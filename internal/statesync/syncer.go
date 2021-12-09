@@ -166,7 +166,9 @@ func (s *syncer) SyncAny(
 	}
 
 	if discoveryTime > 0 {
-		requestSnapshots()
+		if err := requestSnapshots(); err != nil {
+			return sm.State{}, nil, err
+		}
 		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 	}

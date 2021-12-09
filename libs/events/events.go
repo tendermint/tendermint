@@ -199,7 +199,9 @@ func (cell *eventCell) FireEvent(ctx context.Context, data EventData) {
 	cell.mtx.RUnlock()
 
 	for _, cb := range eventCallbacks {
-		cb(ctx, data)
+		if err := cb(ctx, data); err != nil {
+			break
+		}
 	}
 }
 

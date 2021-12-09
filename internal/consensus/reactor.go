@@ -1039,7 +1039,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// Send our state to the peer. If we're block-syncing, broadcast a
 			// RoundStepMessage later upon SwitchToConsensus().
 			if !r.waitSync {
-				go r.sendNewRoundStepMessage(ctx, ps.peerID)
+				go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID) }()
 			}
 		}
 
