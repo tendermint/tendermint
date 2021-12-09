@@ -511,58 +511,85 @@ func (cs *State) OpenWAL(ctx context.Context, walFile string) (WAL, error) {
 // TODO: should these return anything or let callers just use events?
 
 // AddVote inputs a vote.
-func (cs *State) AddVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
+func (cs *State) AddVote(ctx context.Context, vote *types.Vote, peerID types.NodeID) error {
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}:
+			return nil
+		}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID}:
+			return nil
+		}
 	}
 
 	// TODO: wait for event?!
-	return false, nil
 }
 
 // SetProposal inputs a proposal.
-func (cs *State) SetProposal(proposal *types.Proposal, peerID types.NodeID) error {
+func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peerID types.NodeID) error {
 
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}:
+			return nil
+		}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID}:
+			return nil
+		}
 	}
 
 	// TODO: wait for event?!
-	return nil
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID types.NodeID) error {
-
+func (cs *State) AddProposalBlockPart(ctx context.Context, height int64, round int32, part *types.Part, peerID types.NodeID) error {
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}:
+			return nil
+		}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID}:
+			return nil
+		}
 	}
 
 	// TODO: wait for event?!
-	return nil
 }
 
 // SetProposalAndBlock inputs the proposal and all block parts.
 func (cs *State) SetProposalAndBlock(
+	ctx context.Context,
 	proposal *types.Proposal,
 	block *types.Block,
 	parts *types.PartSet,
 	peerID types.NodeID,
 ) error {
 
-	if err := cs.SetProposal(proposal, peerID); err != nil {
+	if err := cs.SetProposal(ctx, proposal, peerID); err != nil {
 		return err
 	}
 
 	for i := 0; i < int(parts.Total()); i++ {
 		part := parts.GetPart(i)
-		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerID); err != nil {
+		if err := cs.AddProposalBlockPart(ctx, proposal.Height, proposal.Round, part, peerID); err != nil {
 			return err
 		}
 	}
@@ -761,7 +788,7 @@ func (cs *State) newStep(ctx context.Context) {
 			cs.logger.Error("failed publishing new round step", "err", err)
 		}
 
-		cs.evsw.FireEvent(types.EventNewRoundStepValue, &cs.RoundState)
+		cs.evsw.FireEvent(ctx, types.EventNewRoundStepValue, &cs.RoundState)
 	}
 }
 
@@ -1607,7 +1634,7 @@ func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int3
 				logger.Error("failed publishing valid block", "err", err)
 			}
 
-			cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
+			cs.evsw.FireEvent(ctx, types.EventValidBlockValue, &cs.RoundState)
 		}
 	}
 }
@@ -2075,7 +2102,7 @@ func (cs *State) addVote(
 			return added, err
 		}
 
-		cs.evsw.FireEvent(types.EventVoteValue, vote)
+		cs.evsw.FireEvent(ctx, types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
 		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -2104,7 +2131,7 @@ func (cs *State) addVote(
 	if err := cs.eventBus.PublishEventVote(ctx, types.EventDataVote{Vote: vote}); err != nil {
 		return added, err
 	}
-	cs.evsw.FireEvent(types.EventVoteValue, vote)
+	cs.evsw.FireEvent(ctx, types.EventVoteValue, vote)
 
 	switch vote.Type {
 	case tmproto.PrevoteType:
@@ -2158,7 +2185,7 @@ func (cs *State) addVote(
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 
-				cs.evsw.FireEvent(types.EventValidBlockValue, &cs.RoundState)
+				cs.evsw.FireEvent(ctx, types.EventValidBlockValue, &cs.RoundState)
 				if err := cs.eventBus.PublishEventValidBlock(ctx, cs.RoundStateEvent()); err != nil {
 					return added, err
 				}

@@ -195,7 +195,7 @@ func NewReactor(
 		stateStore:    stateStore,
 		blockStore:    blockStore,
 		peers:         newPeerList(),
-		dispatcher:    NewDispatcher(blockCh.Out),
+		dispatcher:    NewDispatcher(blockCh),
 		providers:     make(map[types.NodeID]*BlockProvider),
 		metrics:       ssMetrics,
 	}
@@ -256,8 +256,8 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.conn,
 		r.connQuery,
 		r.stateProvider,
-		r.snapshotCh.Out,
-		r.chunkCh.Out,
+		r.snapshotCh,
+		r.chunkCh,
 		r.tempDir,
 		r.metrics,
 	)
@@ -270,17 +270,12 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.mtx.Unlock()
 	}()
 
-	requestSnapshotsHook := func() {
+	requestSnapshotsHook := func() error {
 		// request snapshots from all currently connected peers
-		msg := p2p.Envelope{
+		return r.snapshotCh.Send(ctx, p2p.Envelope{
 			Broadcast: true,
 			Message:   &ssproto.SnapshotsRequest{},
-		}
-
-		select {
-		case <-ctx.Done():
-		case r.snapshotCh.Out <- msg:
-		}
+		})
 	}
 
 	state, commit, err := r.syncer.SyncAny(ctx, r.cfg.DiscoveryTime, requestSnapshotsHook)
@@ -508,7 +503,7 @@ func (r *Reactor) backfill(
 // handleSnapshotMessage handles envelopes sent from peers on the
 // SnapshotChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -526,7 +521,8 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 				"format", snapshot.Format,
 				"peer", envelope.From,
 			)
-			r.snapshotCh.Out <- p2p.Envelope{
+
+			if err := r.snapshotCh.Send(ctx, p2p.Envelope{
 				To: envelope.From,
 				Message: &ssproto.SnapshotsResponse{
 					Height:   snapshot.Height,
@@ -535,6 +531,8 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 					Hash:     snapshot.Hash,
 					Metadata: snapshot.Metadata,
 				},
+			}); err != nil {
+				return err
 			}
 		}
 
@@ -577,7 +575,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 // handleChunkMessage handles envelopes sent from peers on the ChunkChannel.
 // It returns an error only if the Envelope.Message is unknown for this channel.
 // This should never be called outside of handleMessage.
-func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleChunkMessage(ctx context.Context, envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ChunkRequest:
 		r.logger.Debug(
@@ -611,7 +609,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		r.chunkCh.Out <- p2p.Envelope{
+		if err := r.chunkCh.Send(ctx, p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.ChunkResponse{
 				Height:  msg.Height,
@@ -620,6 +618,8 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 				Chunk:   resp.Chunk,
 				Missing: resp.Chunk == nil,
 			},
+		}); err != nil {
+			return err
 		}
 
 	case *ssproto.ChunkResponse:
@@ -664,7 +664,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 	return nil
 }
 
-func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.LightBlockRequest:
 		r.logger.Info("received light block request", "height", msg.Height)
@@ -674,11 +674,13 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 			return err
 		}
 		if lb == nil {
-			r.blockCh.Out <- p2p.Envelope{
+			if err := r.blockCh.Send(ctx, p2p.Envelope{
 				To: envelope.From,
 				Message: &ssproto.LightBlockResponse{
 					LightBlock: nil,
 				},
+			}); err != nil {
+				return err
 			}
 			return nil
 		}
@@ -691,13 +693,14 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 
 		// NOTE: If we don't have the light block we will send a nil light block
 		// back to the requested node, indicating that we don't have it.
-		r.blockCh.Out <- p2p.Envelope{
+		if err := r.blockCh.Send(ctx, p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.LightBlockResponse{
 				LightBlock: lbproto,
 			},
+		}); err != nil {
+			return err
 		}
-
 	case *ssproto.LightBlockResponse:
 		var height int64
 		if msg.LightBlock != nil {
@@ -715,7 +718,7 @@ func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
 	return nil
 }
 
-func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleParamsMessage(ctx context.Context, envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ParamsRequest:
 		r.logger.Debug("received consensus params request", "height", msg.Height)
@@ -726,14 +729,15 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 		}
 
 		cpproto := cp.ToProto()
-		r.paramsCh.Out <- p2p.Envelope{
+		if err := r.paramsCh.Send(ctx, p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.ParamsResponse{
 				Height:          msg.Height,
 				ConsensusParams: cpproto,
 			},
+		}); err != nil {
+			return err
 		}
-
 	case *ssproto.ParamsResponse:
 		r.mtx.RLock()
 		defer r.mtx.RUnlock()
@@ -761,7 +765,7 @@ func (r *Reactor) handleParamsMessage(envelope p2p.Envelope) error {
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -777,17 +781,13 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 
 	switch chID {
 	case SnapshotChannel:
-		err = r.handleSnapshotMessage(envelope)
-
+		err = r.handleSnapshotMessage(ctx, envelope)
 	case ChunkChannel:
-		err = r.handleChunkMessage(envelope)
-
+		err = r.handleChunkMessage(ctx, envelope)
 	case LightBlockChannel:
-		err = r.handleLightBlockMessage(envelope)
-
+		err = r.handleLightBlockMessage(ctx, envelope)
 	case ParamsChannel:
-		err = r.handleParamsMessage(envelope)
-
+		err = r.handleParamsMessage(ctx, envelope)
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
 	}
@@ -806,7 +806,7 @@ func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string)
 			r.logger.Debug("channel closed", "channel", chName)
 			return
 		case envelope := <-ch.In:
-			if err := r.handleMessage(ch.ID, envelope); err != nil {
+			if err := r.handleMessage(ctx, ch.ID, envelope); err != nil {
 				r.logger.Error("failed to process message",
 					"err", err,
 					"channel", chName,
@@ -999,7 +999,7 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 			providers[idx] = NewBlockProvider(p, chainID, r.dispatcher)
 		}
 
-		r.stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, providers, to, r.paramsCh.Out, spLogger)
+		r.stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, providers, to, r.paramsCh, spLogger)
 		if err != nil {
 			return fmt.Errorf("failed to initialize P2P state provider: %w", err)
 		}

@@ -24,12 +24,17 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 
 	messages := make(chan EventData)
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
-		func(data EventData) {
+		func(ctx context.Context, data EventData) error {
 			// test there's no deadlock if we remove the listener inside a callback
 			evsw.RemoveListener("listener")
-			messages <- data
+			select {
+			case messages <- data:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
-	go evsw.FireEvent("event", "data")
+	go evsw.FireEvent(ctx, "event", "data")
 	received := <-messages
 	if received != "data" {
 		t.Errorf("message received does not match: %v", received)
@@ -51,13 +56,18 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	numbers := make(chan uint64, 4)
 	// subscribe one listener for one event
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
-		func(data EventData) {
-			numbers <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	// collect received events
 	go sumReceivedNumbers(numbers, doneSum)
 	// go fire events
-	go fireEvents(evsw, "event", doneSending, uint64(1))
+	go fireEvents(ctx, evsw, "event", doneSending, uint64(1))
 	checkSum := <-doneSending
 	close(numbers)
 	eventSum := <-doneSum
@@ -84,23 +94,38 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	numbers := make(chan uint64, 4)
 	// subscribe one listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(data EventData) {
-			numbers <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(data EventData) {
-			numbers <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event3",
-		func(data EventData) {
-			numbers <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	// collect received events
 	go sumReceivedNumbers(numbers, doneSum)
 	// go fire events
-	go fireEvents(evsw, "event1", doneSending1, uint64(1))
-	go fireEvents(evsw, "event2", doneSending2, uint64(1))
-	go fireEvents(evsw, "event3", doneSending3, uint64(1))
+	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
+	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1))
+	go fireEvents(ctx, evsw, "event3", doneSending3, uint64(1))
 	var checkSum uint64
 	checkSum += <-doneSending1
 	checkSum += <-doneSending2
@@ -134,33 +159,58 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event1",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event2",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event3",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event2",
-		func(data EventData) {
-			numbers2 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers2 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event3",
-		func(data EventData) {
-			numbers2 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers2 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	// collect received events for listener1
 	go sumReceivedNumbers(numbers1, doneSum1)
 	// collect received events for listener2
 	go sumReceivedNumbers(numbers2, doneSum2)
 	// go fire events
-	go fireEvents(evsw, "event1", doneSending1, uint64(1))
-	go fireEvents(evsw, "event2", doneSending2, uint64(1001))
-	go fireEvents(evsw, "event3", doneSending3, uint64(2001))
+	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
+	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
+	go fireEvents(ctx, evsw, "event3", doneSending3, uint64(2001))
 	checkSumEvent1 := <-doneSending1
 	checkSumEvent2 := <-doneSending2
 	checkSumEvent3 := <-doneSending3
@@ -209,9 +259,10 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 			// we explicitly ignore errors here, since the listener will sometimes be removed
 			// (that's what we're testing)
 			_ = evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
-				func(data EventData) {
+				func(ctx context.Context, data EventData) error {
 					t.Errorf("should not run callback for %d.\n", index)
 					stopInputEvent = true
+					return nil
 				})
 		}
 	}()
@@ -222,7 +273,7 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	evsw.RemoveListener("listener") // remove the last listener
 
 	for i := 0; i < roundCount && !stopInputEvent; i++ {
-		evsw.FireEvent(fmt.Sprintf("event%d", i), uint64(1001))
+		evsw.FireEvent(ctx, fmt.Sprintf("event%d", i), uint64(1001))
 	}
 }
 
@@ -245,23 +296,33 @@ func TestAddAndRemoveListener(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(data EventData) {
-			numbers2 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers2 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	// collect received events for event1
 	go sumReceivedNumbers(numbers1, doneSum1)
 	// collect received events for event2
 	go sumReceivedNumbers(numbers2, doneSum2)
 	// go fire events
-	go fireEvents(evsw, "event1", doneSending1, uint64(1))
+	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
 	checkSumEvent1 := <-doneSending1
 	// after sending all event1, unsubscribe for all events
 	evsw.RemoveListener("listener")
-	go fireEvents(evsw, "event2", doneSending2, uint64(1001))
+	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
 	checkSumEvent2 := <-doneSending2
 	close(numbers1)
 	close(numbers2)
@@ -287,17 +348,19 @@ func TestRemoveListener(t *testing.T) {
 	sum1, sum2 := 0, 0
 	// add some listeners and make sure they work
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(data EventData) {
+		func(ctx context.Context, data EventData) error {
 			sum1++
+			return nil
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(data EventData) {
+		func(ctx context.Context, data EventData) error {
 			sum2++
+			return nil
 		}))
 
 	for i := 0; i < count; i++ {
-		evsw.FireEvent("event1", true)
-		evsw.FireEvent("event2", true)
+		evsw.FireEvent(ctx, "event1", true)
+		evsw.FireEvent(ctx, "event2", true)
 	}
 	assert.Equal(t, count, sum1)
 	assert.Equal(t, count, sum2)
@@ -305,8 +368,8 @@ func TestRemoveListener(t *testing.T) {
 	// remove one by event and make sure it is gone
 	evsw.RemoveListenerForEvent("event2", "listener")
 	for i := 0; i < count; i++ {
-		evsw.FireEvent("event1", true)
-		evsw.FireEvent("event2", true)
+		evsw.FireEvent(ctx, "event1", true)
+		evsw.FireEvent(ctx, "event2", true)
 	}
 	assert.Equal(t, count*2, sum1)
 	assert.Equal(t, count, sum2)
@@ -314,8 +377,8 @@ func TestRemoveListener(t *testing.T) {
 	// remove the listener entirely and make sure both gone
 	evsw.RemoveListener("listener")
 	for i := 0; i < count; i++ {
-		evsw.FireEvent("event1", true)
-		evsw.FireEvent("event2", true)
+		evsw.FireEvent(ctx, "event1", true)
+		evsw.FireEvent(ctx, "event2", true)
 	}
 	assert.Equal(t, count*2, sum1)
 	assert.Equal(t, count, sum2)
@@ -347,28 +410,58 @@ func TestRemoveListenersAsync(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event1",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event2",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event3",
-		func(data EventData) {
-			numbers1 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers1 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event1",
-		func(data EventData) {
-			numbers2 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers2 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event2",
-		func(data EventData) {
-			numbers2 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers2 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event3",
-		func(data EventData) {
-			numbers2 <- data.(uint64)
+		func(ctx context.Context, data EventData) error {
+			select {
+			case numbers2 <- data.(uint64):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}))
 	// collect received events for event1
 	go sumReceivedNumbers(numbers1, doneSum1)
@@ -382,7 +475,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 			eventNumber := r1.Intn(3) + 1
 			go evsw.AddListenerForEvent(fmt.Sprintf("listener%v", listenerNumber), //nolint:errcheck // ignore for tests
 				fmt.Sprintf("event%v", eventNumber),
-				func(_ EventData) {})
+				func(context.Context, EventData) error { return nil })
 		}
 	}
 	removeListenersStress := func() {
@@ -395,10 +488,10 @@ func TestRemoveListenersAsync(t *testing.T) {
 	}
 	addListenersStress()
 	// go fire events
-	go fireEvents(evsw, "event1", doneSending1, uint64(1))
+	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
 	removeListenersStress()
-	go fireEvents(evsw, "event2", doneSending2, uint64(1001))
-	go fireEvents(evsw, "event3", doneSending3, uint64(2001))
+	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
+	go fireEvents(ctx, evsw, "event3", doneSending3, uint64(2001))
 	checkSumEvent1 := <-doneSending1
 	checkSumEvent2 := <-doneSending2
 	checkSumEvent3 := <-doneSending3
@@ -437,13 +530,21 @@ func sumReceivedNumbers(numbers, doneSum chan uint64) {
 // to `offset` + 999.  It additionally returns the addition of all integers
 // sent on `doneChan` for assertion that all events have been sent, and enabling
 // the test to assert all events have also been received.
-func fireEvents(evsw Fireable, event string, doneChan chan uint64,
-	offset uint64) {
+func fireEvents(ctx context.Context, evsw Fireable, event string, doneChan chan uint64, offset uint64) {
+	defer close(doneChan)
+
 	var sentSum uint64
 	for i := offset; i <= offset+uint64(999); i++ {
+		if ctx.Err() != nil {
+			break
+		}
+
+		evsw.FireEvent(ctx, event, i)
 		sentSum += i
-		evsw.FireEvent(event, i)
 	}
-	doneChan <- sentSum
-	close(doneChan)
+
+	select {
+	case <-ctx.Done():
+	case doneChan <- sentSum:
+	}
 }

@@ -45,7 +45,7 @@ func TestReactorBasic(t *testing.T) {
 
 	// assert that when a mock node sends a request it receives a response (and
 	// the correct one)
-	testNet.sendRequest(t, firstNode, secondNode)
+	testNet.sendRequest(ctx, t, firstNode, secondNode)
 	testNet.listenForResponse(t, secondNode, firstNode, shortWait, []p2pproto.PexAddress(nil))
 }
 
@@ -112,8 +112,8 @@ func TestReactorSendsResponseWithoutRequest(t *testing.T) {
 	// firstNode sends the secondNode an unrequested response
 	// NOTE: secondNode will send a request by default during startup so we send
 	// two responses to counter that.
-	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode})
-	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode})
+	testNet.sendResponse(ctx, t, firstNode, secondNode, []int{thirdNode})
+	testNet.sendResponse(ctx, t, firstNode, secondNode, []int{thirdNode})
 
 	// secondNode should evict the firstNode
 	testNet.listenForPeerUpdate(ctx, t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
@@ -139,7 +139,7 @@ func TestReactorNeverSendsTooManyPeers(t *testing.T) {
 
 	// first we check that even although we have 110 peers, honest pex reactors
 	// only send 100 (test if secondNode sends firstNode 100 addresses)
-	testNet.pingAndlistenForNAddresses(t, secondNode, firstNode, shortWait, 100)
+	testNet.pingAndlistenForNAddresses(ctx, t, secondNode, firstNode, shortWait, 100)
 }
 
 func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
@@ -475,11 +475,13 @@ func (r *reactorTestSuite) listenForRequest(t *testing.T, fromNode, toNode int, 
 }
 
 func (r *reactorTestSuite) pingAndlistenForNAddresses(
+	ctx context.Context,
 	t *testing.T,
 	fromNode, toNode int,
 	waitPeriod time.Duration,
 	addresses int,
 ) {
+	t.Helper()
 	r.logger.Info("Listening for addresses", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
 	conditional := func(msg p2p.Envelope) bool {
@@ -499,10 +501,10 @@ func (r *reactorTestSuite) pingAndlistenForNAddresses(
 		// if we didn't get the right length, we wait and send the
 		// request again
 		time.Sleep(300 * time.Millisecond)
-		r.sendRequest(t, toNode, fromNode)
+		r.sendRequest(ctx, t, toNode, fromNode)
 		return false
 	}
-	r.sendRequest(t, toNode, fromNode)
+	r.sendRequest(ctx, t, toNode, fromNode)
 	r.listenFor(t, to, conditional, assertion, waitPeriod)
 }
 
@@ -566,27 +568,30 @@ func (r *reactorTestSuite) getAddressesFor(nodes []int) []p2pproto.PexAddress {
 	return addresses
 }
 
-func (r *reactorTestSuite) sendRequest(t *testing.T, fromNode, toNode int) {
+func (r *reactorTestSuite) sendRequest(ctx context.Context, t *testing.T, fromNode, toNode int) {
+	t.Helper()
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	r.pexChannels[from].Out <- p2p.Envelope{
+	require.NoError(t, r.pexChannels[from].Send(ctx, p2p.Envelope{
 		To:      to,
 		Message: &p2pproto.PexRequest{},
-	}
+	}))
 }
 
 func (r *reactorTestSuite) sendResponse(
+	ctx context.Context,
 	t *testing.T,
 	fromNode, toNode int,
 	withNodes []int,
 ) {
+	t.Helper()
 	from, to := r.checkNodePair(t, fromNode, toNode)
 	addrs := r.getAddressesFor(withNodes)
-	r.pexChannels[from].Out <- p2p.Envelope{
+	require.NoError(t, r.pexChannels[from].Send(ctx, p2p.Envelope{
 		To: to,
 		Message: &p2pproto.PexResponse{
 			Addresses: addrs,
 		},
-	}
+	}))
 }
 
 func (r *reactorTestSuite) requireNumberOfPeers(

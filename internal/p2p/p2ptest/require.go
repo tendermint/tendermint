@@ -64,26 +64,30 @@ func RequireReceiveUnordered(t *testing.T, channel *p2p.Channel, expect []p2p.En
 }
 
 // RequireSend requires that the given envelope is sent on the channel.
-func RequireSend(t *testing.T, channel *p2p.Channel, envelope p2p.Envelope) {
-	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
-	defer timer.Stop()
-	select {
-	case channel.Out <- envelope:
-	case <-timer.C:
-		require.Fail(t, "timed out sending message", "%v on channel %v", envelope, channel.ID)
+func RequireSend(ctx context.Context, t *testing.T, channel *p2p.Channel, envelope p2p.Envelope) {
+	tctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	err := channel.Send(tctx, envelope)
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		require.Fail(t, "timed out sending message to %q", envelope.To)
+	default:
+		require.NoError(t, err, "unexpected error")
 	}
 }
 
 // RequireSendReceive requires that a given Protobuf message is sent to the
 // given peer, and then that the given response is received back.
 func RequireSendReceive(
+	ctx context.Context,
 	t *testing.T,
 	channel *p2p.Channel,
 	peerID types.NodeID,
 	send proto.Message,
 	receive proto.Message,
 ) {
-	RequireSend(t, channel, p2p.Envelope{To: peerID, Message: send})
+	RequireSend(ctx, t, channel, p2p.Envelope{To: peerID, Message: send})
 	RequireReceive(t, channel, p2p.Envelope{From: peerID, Message: send})
 }
 

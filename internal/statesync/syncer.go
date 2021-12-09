@@ -57,8 +57,8 @@ type syncer struct {
 	conn          proxy.AppConnSnapshot
 	connQuery     proxy.AppConnQuery
 	snapshots     *snapshotPool
-	snapshotCh    chan<- p2p.Envelope
-	chunkCh       chan<- p2p.Envelope
+	snapshotCh    *p2p.Channel
+	chunkCh       *p2p.Channel
 	tempDir       string
 	fetchers      int32
 	retryTimeout  time.Duration
@@ -79,8 +79,8 @@ func newSyncer(
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	stateProvider StateProvider,
-	snapshotCh chan<- p2p.Envelope,
-	chunkCh chan<- p2p.Envelope,
+	snapshotCh *p2p.Channel,
+	chunkCh *p2p.Channel,
 	tempDir string,
 	metrics *Metrics,
 ) *syncer {
@@ -138,29 +138,13 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(ctx context.Context, peerID types.NodeID) (err error) {
-	defer func() {
-		// TODO: remove panic recover once AddPeer can no longer accientally send on
-		// closed channel.
-		// This recover was added to protect against the p2p message being sent
-		// to the snapshot channel after the snapshot channel was closed.
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic sending peer snapshot request: %v", r)
-		}
-	}()
-
+func (s *syncer) AddPeer(ctx context.Context, peerID types.NodeID) error {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peerID)
 
-	msg := p2p.Envelope{
+	return s.snapshotCh.Send(ctx, p2p.Envelope{
 		To:      peerID,
 		Message: &ssproto.SnapshotsRequest{},
-	}
-
-	select {
-	case <-ctx.Done():
-	case s.snapshotCh <- msg:
-	}
-	return err
+	})
 }
 
 // RemovePeer removes a peer from the pool.
@@ -175,14 +159,16 @@ func (s *syncer) RemovePeer(peerID types.NodeID) {
 func (s *syncer) SyncAny(
 	ctx context.Context,
 	discoveryTime time.Duration,
-	requestSnapshots func(),
+	requestSnapshots func() error,
 ) (sm.State, *types.Commit, error) {
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
 	}
 
 	if discoveryTime > 0 {
-		requestSnapshots()
+		if err := requestSnapshots(); err != nil {
+			return sm.State{}, nil, err
+		}
 		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 	}
@@ -506,7 +492,9 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		ticker := time.NewTicker(s.retryTimeout)
 		defer ticker.Stop()
 
-		s.requestChunk(ctx, snapshot, index)
+		if err := s.requestChunk(ctx, snapshot, index); err != nil {
+			return
+		}
 
 		select {
 		case <-chunks.WaitFor(index):
@@ -524,12 +512,16 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 }
 
 // requestChunk requests a chunk from a peer.
-func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uint32) {
+//
+// returns nil if there are no peers for the given snapshot or the
+// request is successfully made and an error if the request cannot be
+// completed
+func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uint32) error {
 	peer := s.snapshots.GetPeer(snapshot)
 	if peer == "" {
 		s.logger.Error("No valid peers found for snapshot", "height", snapshot.Height,
 			"format", snapshot.Format, "hash", snapshot.Hash)
-		return
+		return nil
 	}
 
 	s.logger.Debug(
@@ -549,10 +541,10 @@ func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uin
 		},
 	}
 
-	select {
-	case s.chunkCh <- msg:
-	case <-ctx.Done():
+	if err := s.chunkCh.Send(ctx, msg); err != nil {
+		return err
 	}
+	return nil
 }
 
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the

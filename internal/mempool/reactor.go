@@ -349,15 +349,15 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		if ok := r.mempool.txStore.TxHasPeer(memTx.hash, peerMempoolID); !ok {
 			// Send the mempool tx to the corresponding peer. Note, the peer may be
 			// behind and thus would not be able to process the mempool tx correctly.
-			select {
-			case r.mempoolCh.Out <- p2p.Envelope{
+			if err := r.mempoolCh.Send(ctx, p2p.Envelope{
 				To: peerID,
 				Message: &protomem.Txs{
 					Txs: [][]byte{memTx.tx},
 				},
-			}:
-			case <-ctx.Done():
+			}); err != nil {
+				return
 			}
+
 			r.logger.Debug(
 				"gossiped tx to peer",
 				"tx", fmt.Sprintf("%X", memTx.tx.Hash()),

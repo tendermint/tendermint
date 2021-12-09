@@ -319,15 +319,13 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
-		select {
-		case <-ctx.Done():
-			return
-		case r.evidenceCh.Out <- p2p.Envelope{
+		if err := r.evidenceCh.Send(ctx, p2p.Envelope{
 			To: peerID,
 			Message: &tmproto.EvidenceList{
 				Evidence: []tmproto.Evidence{*evProto},
 			},
-		}:
+		}); err != nil {
+			return
 		}
 		r.logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 

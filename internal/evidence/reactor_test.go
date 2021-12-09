@@ -108,8 +108,8 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 			}
 		}
 
-		leaktest.Check(t)
 	})
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }
@@ -189,21 +189,6 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 		go func(id types.NodeID) { defer wg.Done(); fn(rts.pools[id]) }(id)
 	}
 	wg.Wait()
-}
-
-func (rts *reactorTestSuite) assertEvidenceChannelsEmpty(t *testing.T) {
-	t.Helper()
-
-	for id, r := range rts.reactors {
-		require.NoError(t, r.Stop(), "stopping reactor #%s", id)
-		r.Wait()
-		require.False(t, r.IsRunning(), "reactor #%d did not stop", id)
-
-	}
-
-	for id, ech := range rts.evidenceChannels {
-		require.Empty(t, ech.Out, "checking channel #%q", id)
-	}
 }
 
 func createEvidenceList(
@@ -325,8 +310,6 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, pool := range rts.pools {
 		require.Equal(t, numEvidence, int(pool.Size()))
 	}
-
-	rts.assertEvidenceChannelsEmpty(t)
 }
 
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
@@ -367,8 +350,6 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 
 	require.Equal(t, numEvidence, int(rts.pools[primary.NodeID].Size()))
 	require.Equal(t, int(height2), int(rts.pools[secondary.NodeID].Size()))
-
-	rts.assertEvidenceChannelsEmpty(t)
 }
 
 func TestReactorBroadcastEvidence_Pending(t *testing.T) {

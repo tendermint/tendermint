@@ -251,7 +251,7 @@ func TestStateBadProposal(t *testing.T) {
 	proposal.Signature = p.Signature
 
 	// set the proposal block
-	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -314,7 +314,7 @@ func TestStateOversizedBlock(t *testing.T) {
 		totalBytes += len(part.Bytes)
 	}
 
-	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -621,7 +621,7 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and not the proposer
 	// so set the proposal block
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlock.MakePartSet(partSize), ""); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlock.MakePartSet(partSize), ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -723,7 +723,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 	round++ // moving to the next round
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -828,7 +828,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 		cs1 unlocks!
 	*/
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -940,7 +940,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	// we should have unlocked and locked on the new block, sending a precommit for this new block
 	validatePrecommit(ctx, t, cs1, round, -1, vss[0], nil, nil)
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, secondBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, secondBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -971,7 +971,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 		Round2 (vs3, C) // C C C C // C nil nil nil)
 	*/
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, thirdPropBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, thirdPropBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1048,7 +1048,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round)
 
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	/*Round2
@@ -1160,7 +1160,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	startTestRound(ctx, cs1, height, round)
 	ensureNewRound(newRoundCh, height, round)
 
-	if err := cs1.SetProposalAndBlock(prop1, propBlock1, propBlockParts1, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop1, propBlock1, propBlockParts1, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -1193,7 +1193,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 
 	newProp.Signature = p.Signature
 
-	if err := cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1428,7 +1428,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(ctx, t, cs1, round, -1, vss[0], nil, nil)
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1658,7 +1658,7 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	assert.True(t, rs.ProposalBlock == nil)
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(propBlockParts.Header()))
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1797,7 +1797,7 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	prop, propBlock := decideProposal(ctx, cs1, vs2, height+1, 0)
 	propBlockParts := propBlock.MakePartSet(partSize)
 
-	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height+1, 0)

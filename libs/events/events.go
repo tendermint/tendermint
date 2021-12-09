@@ -33,7 +33,7 @@ type Eventable interface {
 //
 // FireEvent fires an event with the given name and data.
 type Fireable interface {
-	FireEvent(eventValue string, data EventData)
+	FireEvent(ctx context.Context, eventValue string, data EventData)
 }
 
 // EventSwitch is the interface for synchronous pubsub, where listeners
@@ -148,7 +148,7 @@ func (evsw *eventSwitch) RemoveListenerForEvent(event string, listenerID string)
 	}
 }
 
-func (evsw *eventSwitch) FireEvent(event string, data EventData) {
+func (evsw *eventSwitch) FireEvent(ctx context.Context, event string, data EventData) {
 	// Get the eventCell
 	evsw.mtx.RLock()
 	eventCell := evsw.eventCells[event]
@@ -159,7 +159,7 @@ func (evsw *eventSwitch) FireEvent(event string, data EventData) {
 	}
 
 	// Fire event for all listeners in eventCell
-	eventCell.FireEvent(data)
+	eventCell.FireEvent(ctx, data)
 }
 
 //-----------------------------------------------------------------------------
@@ -190,7 +190,7 @@ func (cell *eventCell) RemoveListener(listenerID string) int {
 	return numListeners
 }
 
-func (cell *eventCell) FireEvent(data EventData) {
+func (cell *eventCell) FireEvent(ctx context.Context, data EventData) {
 	cell.mtx.RLock()
 	eventCallbacks := make([]EventCallback, 0, len(cell.listeners))
 	for _, cb := range cell.listeners {
@@ -199,13 +199,16 @@ func (cell *eventCell) FireEvent(data EventData) {
 	cell.mtx.RUnlock()
 
 	for _, cb := range eventCallbacks {
-		cb(data)
+		if err := cb(ctx, data); err != nil {
+			// should we log or abort here?
+			continue
+		}
 	}
 }
 
 //-----------------------------------------------------------------------------
 
-type EventCallback func(data EventData)
+type EventCallback func(ctx context.Context, data EventData) error
 
 type eventListener struct {
 	id string

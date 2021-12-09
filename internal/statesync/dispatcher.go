@@ -26,16 +26,16 @@ var (
 // NOTE: It is not the responsibility of the dispatcher to verify the light blocks.
 type Dispatcher struct {
 	// the channel with which to send light block requests on
-	requestCh chan<- p2p.Envelope
+	requestCh *p2p.Channel
 
 	mtx sync.Mutex
 	// all pending calls that have been dispatched and are awaiting an answer
 	calls map[types.NodeID]chan *types.LightBlock
 }
 
-func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
+func NewDispatcher(requestChannel *p2p.Channel) *Dispatcher {
 	return &Dispatcher{
-		requestCh: requestCh,
+		requestCh: requestChannel,
 		calls:     make(map[types.NodeID]chan *types.LightBlock),
 	}
 }
@@ -91,11 +91,14 @@ func (d *Dispatcher) dispatch(ctx context.Context, peer types.NodeID, height int
 	d.calls[peer] = ch
 
 	// send request
-	d.requestCh <- p2p.Envelope{
+	if err := d.requestCh.Send(ctx, p2p.Envelope{
 		To: peer,
 		Message: &ssproto.LightBlockRequest{
 			Height: uint64(height),
 		},
+	}); err != nil {
+		close(ch)
+		return ch, err
 	}
 
 	return ch, nil
