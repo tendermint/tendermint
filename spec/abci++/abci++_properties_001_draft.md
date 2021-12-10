@@ -16,13 +16,13 @@ broken because they are defined in abci.md (and not copied over for the moment).
 
 * **Request**:
 
-    | Name                    | Type                                        | Description                                                                                                | Field Number |
-    |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                    | bytes                                       | The hash of the block to propose. Present for convenience (can be derived from the block header).          | 1            |
-    | header                  | [Header](../core/data_structures.md#header) | The header of the block to propose.                                                                        | 2            |
-    | tx                      | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                    | 3            |
-    | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                     | 4            |
-    | last_commit_info        | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, the validator list, and which ones signed the last block. | 5            |
+    | Name                    | Type                                        | Description                                                                                                      | Field Number |
+    |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|
+    | hash                    | bytes                                       | The block header's hash of the block to propose. Present for convenience (can be derived from the block header). | 1            |
+    | header                  | [Header](../core/data_structures.md#header) | The header of the block to propose.                                                                              | 2            |
+    | tx                      | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 3            |
+    | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 4            |
+    | last_commit_info        | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, the validator list, and which ones signed the last block.       | 5            |
 
 >**TODO**: DISCUSS: We need to make clear whether a proposer is also running the logic of a non-proposer node (in particular "ProcessProposal")
 From the App's perspective, they'll probably skip ProcessProposal
@@ -68,6 +68,9 @@ From the App's perspective, they'll probably skip ProcessProposal
         * A new or modified transaction is marked as "UNMODIFIED" or "REMOVED".
         * An unmodified transaction is marked as "ADDED".
         * A transaction is marked as "UNKNOWN".
+    * If Tendermint's sanity checks on the parameters of `ResponsePrepareProposal` fails, then it will drop the proposal
+      and proceed to the next round (thus simulating a network loss/delay of the proposal).
+        * **TODO**: [From discussion with William] Another possibility is to panic. What do folks think we should do here?
     * The implementation of `PrepareProposal` can be non-deterministic.
 
 #### When does Tendermint call it?
@@ -114,13 +117,13 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
 
 * **Request**:
 
-    | Name                 | Type                                        | Description                                                                                                 | Field Number |
-    |----------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                 | bytes                                       | The proposed block's hash. Present for convenience (can be derived from the block header).                  | 1            |
-    | header               | [Header](../core/data_structures.md#header) | The proposed block's header.                                                                                | 2            |
-    | tx                   | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                   | 3            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                      | 4            |
-    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round , the validator list, and which ones signed the last block. | 5            |
+    | Name                 | Type                                        | Description                                                                                                      | Field Number |
+    |----------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|
+    | hash                 | bytes                                       | The block header's hash of the proposed block. Present for convenience (can be derived from the block header).   | 1            |
+    | header               | [Header](../core/data_structures.md#header) | The proposed block's header.                                                                                     | 2            |
+    | tx                   | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                        | 3            |
+    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 4            |
+    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round , the validator list, and which ones signed the last block.      | 5            |
 
 * **Response**:
 
@@ -142,6 +145,8 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
       `ResponseProcessProposal.accept` MUST *exclusively* depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
       (see [Properties](#properties) section below).
+    * Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_
+      unless they _really_ know what the potential liveness implications of returning _false_ are.
 
 >**TODO**: should `ResponseProcessProposal.accept` be of type `Result` rather than `bool`? (so we are able to extend the possible values in the future?)
 
@@ -233,9 +238,12 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
       validity of the received Precommit message will not be influenced by this.
       **TODO**: reword after deciding on failure mode
     * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
-      `VerifyVoteExtension.accept` MUST *exclusively* depend on the parameters passed in
+      `ResponseVerifyVoteExtension.accept` MUST *exclusively* depend on the parameters passed in
       the call to `RequestVerifyVoteExtension`, and the last committed Application state
       (see [Properties](#properties) section below).
+    * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_
+      unless they _really_ know what the potential liveness implications of returning _false_ are.
+
 
 #### When does Tendermint call it?
 
@@ -260,7 +268,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
     | Name                 | Type                                        | Description                                                                                                       | Field Number |
     |----------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                 | bytes                                       | The block's hash. This can be derived from the block header.                                                      | 1            |
+    | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header).                          | 1            |
     | header               | [Header](../core/data_structures.md#header) | The block header.                                                                                                 | 2            |
     | tx                   | repeated bytes                              | List of transactions committed as part of the block.                                                              | 3            |
     | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                            | 4            |
