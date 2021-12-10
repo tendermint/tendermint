@@ -100,7 +100,6 @@ have to start a new blockchain, or write something custom to get the old
 data into the new chain. However, any bump in the PATCH version should be
 compatible with existing blockchain histories.
 
-
 For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
 
 ### Supported Versions
@@ -139,7 +138,7 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 - [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
 - [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
 
-## Join us!
+## Join us
 
 Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
 If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
