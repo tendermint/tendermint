@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -21,10 +22,13 @@ func RequireEmpty(ctx context.Context, t *testing.T, channels ...*p2p.Channel) {
 	defer cancel()
 
 	iter := p2p.MergedChannelIterator(ctx, channels...)
+	count := 0
 	for iter.Next(ctx) {
+		count++
 		require.Nil(t, iter.Envelope())
 	}
-	require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+	require.Zero(t, count)
+	require.Error(t, ctx.Err())
 }
 
 // RequireReceive requires that the given envelope is received on the channel.
@@ -35,25 +39,32 @@ func RequireReceive(ctx context.Context, t *testing.T, channel *p2p.Channel, exp
 	defer cancel()
 
 	iter := channel.Receive(ctx)
+	count := 0
 	for iter.Next(ctx) {
-		require.Equal(t, expect, iter.Envelope())
+		count++
+		envelope := iter.Envelope()
+		require.Equal(t, expect.From, envelope.From)
+		require.Equal(t, expect.Message, envelope.Message)
 	}
-	require.NoError(t, ctx.Err(), "timed out waiting for message %v", expect)
+
+	if !assert.True(t, count >= 1) {
+		require.NoError(t, ctx.Err(), "timed out waiting for message %v", expect)
+	}
 }
 
 // RequireReceiveUnordered requires that the given envelopes are all received on
 // the channel, ignoring order.
-func RequireReceiveUnordered(ctx context.Context, t *testing.T, channel *p2p.Channel, expect []p2p.Envelope) {
+func RequireReceiveUnordered(ctx context.Context, t *testing.T, channel *p2p.Channel, expect []*p2p.Envelope) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	actual := []p2p.Envelope{}
+	actual := []*p2p.Envelope{}
 
 	iter := channel.Receive(ctx)
 	for iter.Next(ctx) {
-		actual = append(actual, *iter.Envelope())
+		actual = append(actual, iter.Envelope())
 		if len(actual) == len(expect) {
-			require.ElementsMatch(t, expect, actual)
+			require.ElementsMatch(t, expect, actual, "len=%d", len(actual))
 			return
 		}
 	}
