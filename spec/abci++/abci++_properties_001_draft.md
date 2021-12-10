@@ -38,7 +38,11 @@ From the App's perspective, they'll probably skip ProcessProposal
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 5            |
 
 * **Usage**:
-    * Contains a prelimiary block to be proposed, which the Application can modify.
+    * Contains a preliminary block to be proposed, which the Application can modify.
+    * The parameters and types of `RequestPrepareProposal` are the same as `RequestProcessProposal`
+      and `RequestFinalizeBlock`.
+    * The header contains the height, timestamp, and more - it exactly matches the
+      Tendermint block header.
     * The Application can modify the parameters received in `RequestPrepareProposal` before sending
     them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified` is set to true.
     * In same-block execution mode, the Application can (and should) modify `ResponsePrepareProposal.data`,
@@ -51,12 +55,12 @@ From the App's perspective, they'll probably skip ProcessProposal
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
       `ResponseFinalizeBlock`.
     * Likewise, the Application must keep all responses to executing transactions until it can call `ResponseFinalizeBlock`.
-    * Application can change the transaction list via `ResponsePrepareProposal.tx`.
+    * The Application can change the transaction list via `ResponsePrepareProposal.tx`.
       See [TransactionRecord](#transactionrecord) for further information on how to use it. Some notes:
         * To remove a transaction from the proposed block the Application _marks_ the transaction as
           "REMOVE". It does not remove it from the list.
         * Removing a transaction from the list means it is too early to propose that transaction,
-          so it will stay in the mempool for later proposals.
+          so it will be excluded from the proposal but will stay in the mempool for later proposals.
           The Application should be extra-careful with this feature to avoid leaks in the mempool.
         * The `new_hashes` field, besides helping with mempool maintenance, helps Tendermint handle
           queries such as "what happened with this Tx?", by answering "it was modified into these ones".
@@ -70,7 +74,7 @@ From the App's perspective, they'll probably skip ProcessProposal
         * A transaction is marked as "UNKNOWN".
     * If Tendermint's sanity checks on the parameters of `ResponsePrepareProposal` fails, then it will drop the proposal
       and proceed to the next round (thus simulating a network loss/delay of the proposal).
-        * **TODO**: [From discussion with William] Another possibility is to panic. What do folks think we should do here?
+        * **TODO**: [From discussion with William] Another possibility here is to panic. What do folks think we should do here?
     * The implementation of `PrepareProposal` can be non-deterministic.
 
 #### When does Tendermint call it?
@@ -96,14 +100,13 @@ and _p_'s _validValue_ is `nil`:
     * in "next-block execution" mode, _p_'s Tendermint will ignore the values for `ResponsePrepareProposal.data`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * in both modes, the Application can manipulate transactions
-        * leave transaction untouched - `TxAction = UNMODIFIED`
+        * leave transactions untouched - `TxAction = UNMODIFIED`
         * add new transactions (not previously in the mempool) - `TxAction = ADDED`
         * removed transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
         * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`
         * reorder transactions - the Application reorders transactions in the list
-    * **TODO**: include logic of `VerifyVoteExtension` here?
 4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
    and includes the modified block in the return parameters (see the rules in section _Usage_).
    The Application returns from the call.
@@ -133,19 +136,22 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
 
 * **Usage**:
     * Contains a full proposed block.
-        * The parameters and types of `RequestProcessProposal` are the same as `RequestFinalizeBlock`.
+        * The parameters and types of `RequestProcessProposal` are the same as `RequestPrepareProposal`
+          and `RequestFinalizeBlock`.
         * In "same-block execution" mode, the Application will fully execute the block
           as though it was handling `RequestFinalizeBlock`.
           However, any resulting state changes must be kept as _canditade state_,
           and the Application should be ready to
           backtrack/discard it in case the decided block is different.
-    * If `ResponseProcessProposal.accept` is false, Tendermint should assume the proposal received
+    * The header contains the height, timestamp, and more - it exactly matches the
+      Tendermint block header.
+    * If `ResponseProcessProposal.accept` is _false_, Tendermint assumes the proposal received
       is not valid.
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
       `ResponseProcessProposal.accept` MUST *exclusively* depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
       (see [Properties](#properties) section below).
-    * Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_
+    * Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_,
       unless they _really_ know what the potential liveness implications of returning _false_ are.
 
 >**TODO**: should `ResponseProcessProposal.accept` be of type `Result` rather than `bool`? (so we are able to extend the possible values in the future?)
@@ -168,10 +174,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
            not be able to reject the block, or force prevote/precommit `nil` afterwards.
     3. If the returned value is
          * _accept_, Tendermint prevotes on this proposal for round _r_, height _h_.
-         * _reject_, Tendermint will prevote $\bot$ for the proposal in round _r_, height _h_, which is a special value that processes can provote and precommit for,
-           and also decide. Processes can still vote `nil` according to the Tendermint algorithm. The role of $\bot$ is to protect Tendermint's liveness in cases
-           where the Application has a problem in its implementation of _ProcessProposal_ that, albeit deterministically, rejects too many proposals.
-           **TODO** Reword this when the "failure mode" discussion is settled.
+         * _reject_, Tendermint prevotes `nil`.
 
 ### ExtendVote
 
@@ -234,14 +237,13 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
     | accept | bool | If false, Application is rejecting the vote extension | 1            |
 
 * **Usage**:
-    * If `ResponseVerifyVoteExtension.accept` is false, Tendermint will flag the extension as _invalid_ but the
-      validity of the received Precommit message will not be influenced by this.
-      **TODO**: reword after deciding on failure mode
+    * If `ResponseVerifyVoteExtension.accept` is _false_, Tendermint will reject the whole received vote.
+      See the [Properties](#properties) section to understand the potential liveness implications of this.
     * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
       `ResponseVerifyVoteExtension.accept` MUST *exclusively* depend on the parameters passed in
       the call to `RequestVerifyVoteExtension`, and the last committed Application state
       (see [Properties](#properties) section below).
-    * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_
+    * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_,
       unless they _really_ know what the potential liveness implications of returning _false_ are.
 
 
@@ -252,13 +254,14 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 1. _p_'s Tendermint calls `RequestVerifyVoteExtension`.
 2. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.accept`.
-3. If the Application returns _reject_, _p_'s Tendermint flag the extension as _invalid_. **TODO** Reword after the "failure mode" discussion
-4. _p_'s Tendermint keeps all received votes, together with their corresponding vote extensions
-   (and possibly _invalid_ flags) in its internal data structures. These will be used to:
-   * calculate field _LastCommitHash_ in the header of the block proposed for height _h + 1_
-     (in the rounds where _p_ will be proposer).
-   * populate _LastCommitInfo_ in calls to `RequestPrepareProposal`, `RequestProcessProposal`,
-     and `FinalizeBlock` in height _h + 1_.
+3. If the Application returns
+   * _accept_, _p_'s Tendermint will keep the received vote, together with its corresponding
+     vote extension in its internal data structures. It will be used to:
+       * calculate field _LastCommitHash_ in the header of the block proposed for height _h + 1_
+         (in the rounds where _p_ will be proposer).
+       * populate _LastCommitInfo_ in calls to `RequestPrepareProposal`, `RequestProcessProposal`,
+         and `RequestFinalizeBlock` in height _h + 1_.
+   * _reject_, _p_'s Tendermint will deem the Precommit message invalid and discard it.
 
 ### FinalizeBlock
 
@@ -287,7 +290,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | retain_height           | int64                                        | Blocks below this height may be removed. Defaults to `0` (retain all).          | 7            |
 
 * **Usage**:
-    * Contains a new block.
+    * Contains a newly decided block.
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
       `EndBlock`, `Commit` in the previous version of ABCI.
     * The header contains the height, timestamp, and more - it exactly matches the
@@ -296,7 +299,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
       to determine rewards and punishments for the validators.
     * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.tx`,
       before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
-      previously executed via `ProcessProposal`.
+      previously executed via `PrepareProposal` or `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_result[i].Code == 0` only if the _i_-th transaction is fully valid.
     * Optional `ResponseFinalizeBlock.validator_updates` triggered by block `H`. These updates affect validation
       for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
@@ -308,26 +311,28 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
       see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
     * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
     * `ResponseFinalizeBlock.app_data` contains an (optional) Merkle root hash of the application state.
-    * `ResponseFinalizeBlock.app_data` is included as the `Header.AppHash` in the next block. It may be empty or hard-coded.
+    * `ResponseFinalizeBlock.app_data` is included
+        * [in next-block execution mode] as the `Header.AppHash` in the next block.
+        * [in same-block execution mode] as the `Header.AppHash` in the current block. In this case,
+          `PrepareProposal` is required to fully execute the block and set the App hash before
+          returning the proposed block to Tendermint.
+        * `ResponseFinalizeBlock.app_data` may also be empty or hard-coded, but MUST be
+          **deterministic** - it must not be a function of anything that did not come from the parameters
+          of `RequestFinalizeBlock` and the previous committed state.
     * Later calls to `Query` can return proofs about the application state anchored
       in this Merkle root hash.
-    * Note developers can return whatever they want here (could be nothing, or a
-      constant string, etc.), so long as it is **deterministic** - it must not be a
-      function of anything that did not come from the parameters of `RequestFinalizeBlock`
-      and the previous committed state.
     * Use `retain_height` with caution! If all nodes in the network remove historical
       blocks then this data is permanently lost, and no new nodes will be able to
       join the network and bootstrap. Historical blocks may also be required for
       other purposes, e.g. auditing, replay of non-persisted heights, light client
       verification, and so on.
-    * Just as `ProcessProposal` the implementation of `FinalizeBlock` MUST be deterministic, since it is
+    * Just as `ProcessProposal`, the implementation of `FinalizeBlock` MUST be deterministic, since it is
       making the Application's state evolve in the context of state machine replication.
-    * Currenlty, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
-      already passed on to the Application in the form of `RequestPrepareProposal` or `RequestProcessProposal`.
-      If the Application is in "same-block execution" mode, it applies the right candidate state here
+    * Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
+      already passed on to the Application via `RequestPrepareProposal` or `RequestProcessProposal`.
+      If the Application is in same-block execution mode, it applies the right candidate state here
       (rather than executing the whole block). In this case the Application disregards all parameters in
-      `RequestFinalizeBlock` except `RequestFinalizeBlock.hash`. In the future, Tendermint might even not
-      fill up the unused fields if the Application declared to be in "same-block execution" mode.
+      `RequestFinalizeBlock` except `RequestFinalizeBlock.hash`.
 
 #### When is it called?
 
@@ -340,75 +345,38 @@ When a validator _p_ is in Tendermint consensus height _h_, and _p_ receives
 
 then _p_'s Tendermint decides block _v_ and finalizes consensus for height _h_ in the following way
 
-1. _p_ panics if the following does not hold
-    * _p_ has prevoted or precommitted for $\bot$ in round _r_, height _h_, if and only if $v = \bot$
-2. _p_'s Tendermint persists _v_ as decision for height _h_.
-3. _p_'s Tendermint locks the mempool -- no calls to checkTx on new transactions.
-4. _p_'s Tendermint calls `RequestFinalizeBlock` with _id(v)_. The call is synchronous.
-5. _p_'s Application processes block _v_, received in a previous call to `RequestProcessProposal`.
-6. _p_'s Application commits and persists the state resulting from processing the block.
-7. _p_'s Application calculates and returns the _AppHash_, along with an array of arrays of bytes representing the output of each of the transactions
-8. _p_'s Tendermint hashes the array of transaction outputs and stores it in _ResultHash_
-9. _p_'s Tendermint persists _AppHash_ and _ResultHash_
-10. _p_'s Tendermint unlocks the mempool -- newly received transactions can now be checked.
-11. _p_'s starts consensus for a new height _h+1_, round 0
+1. _p_'s Tendermint persists _v_ as decision for height _h_.
+2. _p_'s Tendermint locks the mempool -- no calls to checkTx on new transactions.
+3. _p_'s Tendermint calls `RequestFinalizeBlock` with _id(v)_. The call is synchronous.
+4. _p_'s Application processes block _v_, received in a previous call to `RequestProcessProposal`.
+5. _p_'s Application commits and persists the state resulting from processing the block.
+6. _p_'s Application calculates and returns the _AppHash_, along with an array of arrays of bytes representing the output of each of the transactions
+7. _p_'s Tendermint hashes the array of transaction outputs and stores it in _ResultHash_
+8. _p_'s Tendermint persists _AppHash_ and _ResultHash_
+9. _p_'s Tendermint unlocks the mempool -- newly received transactions can now be checked.
+10. _p_'s starts consensus for a new height _h+1_, round 0
 
-Step 1 above helps protect agains non-deterministic implementations of _ProcessPropoasl_ and _VerifyVoteExtension_.
-
-### [Points unclear/to discuss further]
-
-#### Dev's v4 changes (a.k.a. _multithreaded ABCI++_)
-
->**BEGIN TODO**
->Comments on the "fork-join" mechanism
->
->* So far, the operation mode for ABCI has been mainly synchronous. The most notable exception is: checkTx (deliverTx is not really async).
->  Calls to checkTx can afford to be async because checkTx provides no strong properties: checkTx returning Accept does not guarantee the Tx's validity when it makes it into a block.
->* AFAIU: The "join" part has two aims in the pseudocode (v4):
->   * early collection and treatment of evidences. See comments above
->   * influencing the precommit to be sent (whether _id(v)_ or `nil`)
->
->* Several issues we need to fully understand
->   * Changing ABCI from sync to async may have unintended side effects on both sides. We are introducing concurrency in the API that affects the logic of consensus
->   * If App is late in providing the result, Tendermint may advance to r=1, thus forking a new ProcessProposal in parallel --> even more time to complete --> vicious circle
->   * But, the main issue we'd need to overcome is the possibility that the value rejected by _ProcessProposal_ gets locked by $f + 1$ correct processes in that round
->     * In this case (according to Tendermint algorithm's proof) no other value can be decided. Liveness breaks down!
->     * About introducing $\bot$ here to fix liveness, I don't think it works (unlike at prevote step) as $\bot$ is considered "just another" value you can decide on,
->       so it must follow the same rules to get locked and then decided (but the rejected value is already locked!)
->
->**END TODO**
-
-#### Separation of `VerifyHeader` and `ProcessProposal`
-
->**TODO** My interpretation of Dev's pseudo code is that it only makes sense if using the "fork-join" mechanism. So this discussion should be carried out after the one above
+### [Points to discuss further]
 
 #### Byzantine proposer
 
-[From Josef] We should understand the influence of equivocation on proposals in ABCI++
-
-N.B.#1: If Byzantine proposer proposes both A and B in the same round, today we might only receive A (proposal) and not B
-
-Sergio: preliminary thoughts:
-
-[Thought 1] If Tendermint delivers all proposals from a Byzantine proposer _p_ in _h_ and _r_ to the App, we're vulnerable to DoS,
-as _p_ can send as many as it wishes
-
-* Assuming N.B.#1 above gets "fixed" (A and B get delivered by p2p)
-* Assuming here an App in "same-block execution" mode, i.e., it fully executes the proposed block at _ProcessProposal_ time
-
-So probably we are better off if we do not "fix" N.B.#1.
-
-* or, a way to fix it would be to only deliver the first proposal to arrive to the Application, and use the others just to submit evidence
-
-[Thought 2] _ProcessProposal_ is exposed to arbitrary input, yet it should still behave deterministically.
-
-* In ABCI, this is also the case upon (BeginBlock, [DeliverTx], EndBlock, Commit). The difference is that, at the end of the block
-  we have the "protection" of the AppHash, and ResultsHash to guard against non-determinism.
-* Here, arbitrary proposals that "uncover" non-determinism issues in the _ProcessProposal_ code compromise consensus's liveness
-* Any ideas what we can do here? (I have the impression $\bot$ helps here only partially)
-
-[Thought 3] In terms of the consensus's safety properties, as far as pure equivocation on proposals is concerned,
-I think we are OK since Tendermint builds on a Byzantine failure model.
+>**TODO** [From Josef] We should understand the influence of equivocation on proposals in ABCI++
+>
+>N.B.#1: If Byzantine proposer proposes both A and B in the same round, today we might only receive A (proposal) and not B (due to p2p implementation)
+>
+>Sergio: some thoughts:
+>
+>[Thought 1] If Tendermint delivers all proposals from a Byzantine proposer _p_ in _h_ and _r_ to the App, we're vulnerable to DoS attacks,
+>as _p_ can send as many as it wishes:
+>
+>* Assuming N.B.#1 above gets "fixed" (A and B get delivered by p2p)
+>* Assuming the App fully executes the proposed block at _ProcessProposal_ time
+>
+>So, whenever N.B.#1 is "fixed" at p2p level, we need to ensure that only the the first proposal in round _r_, height _h_
+>gets delivered to the Application. Any subsequent proposal for that round should just be used to submit evidence, but not given to the App.
+>
+>[Thought 2] In terms of the consensus's safety properties, as far as pure equivocation on proposals is concerned,
+>I think we are OK as long as _f<n/3_.
 
 #### `ProcessProposal`'s timeout (a.k.a. Zarko's Github comment)
 
@@ -471,7 +439,7 @@ I think we are OK since Tendermint builds on a Byzantine failure model.
         * Transaction $t1$ modified into $t2$ and $t3$ is represented with these `TransactionRecord` records
             * $t2$ "ADDED"
             * $t3$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$, $id(t3)$] 
+            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$, $id(t3)$]
         * Transactions $t1$ and $t2$ aggregated into $t3$ is represented with these `TransactionRecord` records
             * $t3$ "ADDED"
             * $t1$ "REMOVED"; `new_hashes` contains [$id(t3)$]
@@ -487,36 +455,36 @@ I think we are OK since Tendermint builds on a Byzantine failure model.
 ### What Tendermint expects from the Application
 
 Let $p$ and $q$ be two different correct proposers in rounds $r_p$ and $r_q$ respectively, in height $h$.
-Let $s_{p,h-1}$ (resp. $s_{q,h-1}$) be $p$'s (resp. $q$'s) Application's state committed for height $h-1$.
+Let $s_{p,h-1}$ be $p$'s Application's state committed for height $h-1$.
 Let $v_p$ (resp. $v_q$) be the block that $p$'s (resp. $q$'s) Tendermint passes on to the Application via `RequestPrepareProposal`
 as proposer of round $r_p$ (resp $r_q$), height $h$.
 Let $v'_p$ (resp. $v'_q$) the possibly modified block $p$'s (resp. $q$'s) Application returns via `ResponsePrepareProposal` to Tendermint.
 
-The value $p$ proposes can differ in two different rounds where $p$ is the proposer.
+The value proposed by $p$ can differ in two different rounds where $p$ is the proposer.
 
-* Property 1 [`PrepareProposal`, header-changes] When the blockchain is in "same-block execution" mode,
+* Property 1 [`PrepareProposal`, header-changes] When the blockchain is in same-block execution mode,
   $p$'s Application can change the following parameters in `ResponsePrepareProposal`:
   _AppHash_, _ConsensusParams_, _ValidatorUpdates_.
 
 Parameters _AppHash_, _ConsensusParams_, and _ValidatorUpdates_ are used by Tendermint to compute various hashes in
 the block header that will finally be part of the proposal.
 
-* Property 2 [`PrepareProposal`, no-header-changes] When the blockchain is in "next-block execution"
+* Property 2 [`PrepareProposal`, no-header-changes] When the blockchain is in next-block execution
   mode, $p$'s Application cannot make any changes to the following parameters in `ResponsePrepareProposal`:
   _AppHash_, _ConsensusParams_, _ValidatorUpdates_.
 
-In practical terms, Property 2 means that Tendermint will ignore those parameters in `ResponsePrepareProposal`.
+In practical terms, Property 2 implies that Tendermint will ignore those parameters in `ResponsePrepareProposal`.
 
 * Property 3 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes $p$ and $q$,
   if $q$'s Tendermint calls `RequestProcessProposal` on $v'_p$,
   $q$'s Application returns Accept in `ResponseProcessProposal`.
 
-Property 3 makes sure that blocks proposed by correct processes will always pass the receiving process's
+Property 3 makes sure that blocks proposed by correct processes _always_ pass the correct receiving process's
 `ProcessProposal` check.
-On the other hand, if there is a bug in `PrepareProposal` or `ProcessProposal` (or in both), strictly speaking,
-this makes all processes that hit the bug byzantine. This is a problem in practice, as very often (always?)
-the validators are running the Application from the same codebase, so potencially _all_ would likely hit
-the bug at the same time. This would result in most (or all) processes prevoting `nil`, with the
+On the other hand, if there is a deterministic bug in `PrepareProposal` or `ProcessProposal` (or in both),
+strictly speaking, this makes all processes that hit the bug byzantine. This is a problem in practice,
+as very often validators are running the Application from the same codebase, so potentially _all_ would
+likely hit the bug at the same time. This would result in most (or all) processes prevoting `nil`, with the
 serious consequences on Tendermint's liveness that this entails.
 
 * Property 4 [`ProcessProposal`, determinism-1]: For any correct process $p$, and any arbitrary block $v'$,
@@ -532,12 +500,11 @@ Properties 4 and 5 ensure that all correct processes will react in the same way 
 if the proposer is Byzantine. However, `ProcessProposal` may contain a bug that renders the
 acceptance or rejection of the block non-deterministic, and therefore prevents processes hitting
 the bug from fulfilling Properties 4 or 5 (effectively making those processes Byzantine).
-In such a scenario, Tendermint's liveness can no longer be guaranteed.
-
+In such a scenario, Tendermint's liveness cannot be guaranteed.
 Again, this is a problem in practice if most validators are running the same software, as they are likely
 to hit the bug at the same point. There is currently no clear solution to help with this situation, so
 the Application designers/implementors must proceed very carefully with the logic/implementation
-of `ProcessProposal`.
+of `ProcessProposal`. As a general rule `ProcessProposal` _should_ always accept the block.
 
 According to the Tendermint algorithm, a correct process can only broadcast one precommit message in round $r$, height $h$.
 Since, as stated in the [Description](#description) section, `ResponseExtendVote` is only called when Tendermint
@@ -547,6 +514,14 @@ Let $w^r_p$ the proposed block that $p$'s Tendermint passes to the Application v
 
 * Property 6 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two correct processes $p$ and $q$, if $q$ receives $e^r_p$
   from $p$ in height $h$, $q$'s Application returns Accept in `ResponseVerifyVoteExtension`.
+
+Property 6 constrains the creation and handling of vote extensions in a similar way as Property 3
+contrains the creation and handling of proposed blocks.
+Property 6 ensures that extensions created by correct processes _always_ pass the `VerifyVoteExtension`
+checks performed by correct processes receiving those extensions.
+However, if there is a (deterministic) bug in `ExtendVote` or `VerifyVoteExtension` (or in both),
+we will face the same liveness issues as described for Property 3, as Precommit messages with invalid vote
+extensions will be discarded.
 
 * Property 7 [`VerifyVoteExtension`, determinism-1]: For any correct process $p$,
   and any arbitrary vote extension $e$, and any arbitrary block $w$,
@@ -559,29 +534,37 @@ Let $w^r_p$ the proposed block that $p$'s Tendermint passes to the Application v
   then $p$'s Application accepts $e$ if and only if $q$'s Application accepts $e$.
   Note that this property follows from Property 7 and the Agreement property of consensus.
 
-Properties 7 and 8 ensure that the validation of vote extensions will be deterministic at all correct processes.
-They depend on $w$, since a Byzantine process could send identical extended votes for
-different proposed blocks.
+Properties 7 and 8 ensure that the validation of vote extensions will be deterministic at all
+correct processes.
+Properties 7 and 8 protect against arbitrary vote extension data from Byzantine processes
+similarly to Properties 4 and 5 and proposed blocks.
+Properties 7 and 8 can be violated by a bug inducing non-determinism in `ExtendVote` or
+`VerifyVoteExtension`. In this case liveness can be compromised.
+Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension` and,
+as a general rule, `VerifyVoteExtension` _should_ always accept the vote extension.
 
->**TODO** Re-work this paragraph once "Failure Modes" discussion is over.
-If $p$'s Application rejects a vote extension $e$, $p$'s Tendermint will flag $e$ as incorrect,
-but will still consider the vote itself as valid, as long as all other checks at Tendermint level pass.
-Therefore, a bug in `ExtendVote` or `VerifyVoteExtension`, causing processes hitting it to
-not be able to enforce Properties 7 or 8 (thus, their behavior being Byzantine) will not compromise,
-by itself Tendermint's liveness.
-However, the operators can quickly detect such a bug because the votes linked to a committed block
-will contain extensions flagged as invalid. They will be able to tackle the problem while Tendermint
-can still make progress, producing new blocks.
-
-* Property 9 [_all_, read-only]: $p$'s calls to `RequestPrepareProposal`, `RequestProcessProposal`, `RequestExtendVote`,
-  and `RequestVerifyVoteExtension` at height $h$ do not modify $s_{p,h-1}$.
+* Property 9 [_all_, read-only]: $p$'s calls to `RequestPrepareProposal`, `RequestProcessProposal`,
+  `RequestExtendVote`, and `RequestVerifyVoteExtension` at height $h$ do not modify $s_{p,h-1}$.
 
 * Property 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process $p$,
 and any vote extension $e$ that $q$ received at height $h$, the computation of
 $s{p,h}$ does not depend on $e$.
 
->**TODO** We need other properties for `FinalizeBlock`, but postponing ATM as they are well
-understood (basically, same a current ABCI).
+The call to correct process $p$'s `RequestFinalizeBlock` at height $h$, with block $v_{p,h}$
+passed as parameter, creates state $s_{p,h}$.
+Additionally, $p$'s `FinalizeBlock` creates a set of transaction results $T_{p,h}$.
+
+>**TODO** I have left out all the "events" as they don't have any impact in safety or liveness
+>(same for consensus params, and validator set)
+
+* Property 11 [`FinalizeBlock`, determinism-1]: For any correct process $p$,
+  the contents of $s_{p,h}$ exclusively depend on $s_{p,h}$ and $v_{p,h}$.
+
+* Property 12 [`FinalizeBlock`, determinism-2]: For any correct process $p$,
+  the contents of $T_{p,h}$ exclusively depend on $s_{p,h}$ and $v_{p,h}$.
+
+Note that Properties 11 and 12, combined with Agreement property of consensus ensure
+the Application state evolves consistently at all correct processes.
 
 Finally, notice that neither `PrepareProposal` nor `ExtendVote` have determinism-related properties associated.
 Indeed, `PrepareProposal` is not required to be deterministic:
@@ -598,8 +581,8 @@ Likewise, `ExtendVote` can also be non-deterministic:
 
 The following sections use these definitions:
 
-* We define the _common case_ as a run in which (a) the system behaves synchronously, and (b) there are no Byzantine processes.
-  The common case captures the conditions that hold most of the time, but not always.
+* We define the _optimal case_ as a run in which (a) the system behaves synchronously, and (b) there are no Byzantine processes.
+  The optimal case captures the conditions that hold most of the time, but not always.
 * We define the _suboptimal case_ as a run in which (a) the system behaves asynchronously in round 0, height h -- messages may be delayed,
   timeouts may be triggered --, (b) it behaves synchronously in all subsequent rounds (_r>0_), and (c) there are no Byzantine processes.
   The _suboptimal case_ captures a possible glitch in the network, or some sudden, sporadic performance issue in some validator
@@ -612,7 +595,7 @@ The following sections use these definitions:
 
 Given a block height _h_, process _p_'s Tendermint calls `RequestProcessProposal` depending on the case:
 
-* In the common case, all Tendermint processes decide in round _r=0_. Let's call _v_ the block proposed by the proposer of round _r=0_, height _h_.
+* In the optimal case, all Tendermint processes decide in round _r=0_. Let's call _v_ the block proposed by the proposer of round _r=0_, height _h_.
   Process _p_'s Application will receive
       * exactly one call to `RequestPrepareProposal` if _p_ is the proposer of round 0. If that is the case, _p_ will return _v_ in its call to
         `ResponsePrepareProposal`
@@ -655,26 +638,7 @@ The validity of every transaction in a block (from the App's point of view), as 
 
 ## Failure modes
 
->**TODO**: this section is just holding parts we have moved from previous sections referring to the "continue" failure mode. This needs to be reworked.
-
->**TODO**: don't forget to extend the Header structure with "bool problem" when including the parts
-common with the existing ABCI spec.
-
-
-* The [Header](../core/data_structures.md#header) contains a boolan `problem` that indicates
-      if the block is the result of an Application rejection (i.e., $\bot$). This allows the
-      users to distinguish empty blocks because of lack of activity and empty blocks representing
-      $\bot$, i.e., a problem in the code of `PrepareProposal` and/or `ProcessProposal`.
-
-
-In order to address this problem, we introduce a new mechanism: the $\bot$ block, which is an _empty_ block
-which, if decided at a height, means too many processes are rejecting proposed values.
-Operators, upon seeing $\bot$ blocks being committed, know instantly that there is a problem in the Application's
-software and they can tackle it, while keeping Tendermint from getting stuck at a particular height
-with high rounds and long timeouts.
-
-The $\bot$ block is used as follows. A correct process $p$ will prevote $\bot$ (rather than `nil`)
-if $p$'s `ProcessProposal` implementation rejects the block passed in `RequestProcessProposal`.
+>**TODO** Is it worth explaining the failure modes? Since we're going for halt, and can't configure them.
 
 ## Application modes
 
