@@ -15,7 +15,7 @@ We use the byte representations of wire-format proto messages to produce
 and verify hashes of data within the Tendermint codebase as well as for
 producing and verifying cryptographic signatures over these signed bytes.
 
-The protocol buffer encoding spec does not guarantee that the byte representation
+The protocol buffer [encoding spec][proto-spec-encoding] does not guarantee that the byte representation
 of a protocol buffer message will be the same between two calls to an encoder.
 While there is a mode to force the encoder to produce the same byte representation
 of messages within a single binary, these guarantees are not good enough for our
@@ -44,7 +44,7 @@ We have a few options to consider when producing this stable representation.
 
 ### Use only compliant serializers and constrain field usage
 
-According to [Cosmos-SDK ADR-27](cosmos-sdk-adr-27), when message types obey a simple 
+According to [Cosmos-SDK ADR-27][cosmos-sdk-adr-27], when message types obey a simple 
 set of rules, gogoproto produces a consistent byte representation of serialized messages.
 This seems promising, although more research is needed to guarantee gogoproto always
 produces a consistent set of bytes on serialized messages. This would solve the problem 
@@ -76,8 +76,8 @@ properly.
 
 ### References
 
-[proto-spec]()
-[spec-issue]()
-[cosmos-sdk-adr-27]()
-[cer-proto-3](https://github.com/regen-network/canonical-proto3)
+[proto-spec-encoding]: https://developers.google.com/protocol-buffers/docs/encoding
+[spec-issue]: https://github.com/tendermint/tendermint/issues/5005
+[cosmos-sdk-adr-27]: https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-027-deterministic-protobuf-serialization.md
+[cer-proto-3]: https://github.com/regen-network/canonical-proto3
 
