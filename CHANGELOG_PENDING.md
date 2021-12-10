@@ -44,6 +44,7 @@ Special thanks to external contributors on this release:
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
+- [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 
