@@ -17,9 +17,10 @@ import (
 
 // BitArray is a thread-safe implementation of a bit array.
 type BitArray struct {
-	mtx   sync.Mutex
-	Bits  int      `json:"bits"`  // NOTE: persisted via reflect, must be exported
-	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
+	mtx            sync.Mutex
+	Bits           int      `json:"bits"`  // NOTE: persisted via reflect, must be exported
+	Elems          []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
+	trueIndicesBuf []int
 }
 
 // NewBitArray returns a new bit array.
@@ -255,6 +256,13 @@ func (bA *BitArray) IsFull() bool {
 	return (lastElem+1)&((uint64(1)<<uint(lastElemBits))-1) == 0
 }
 
+func (bA *BitArray) getTrueIndicesBufferLocked() []int {
+	if cap(bA.trueIndicesBuf) != bA.Bits {
+		bA.trueIndicesBuf = make([]int, 0, bA.Bits)
+	}
+	return bA.trueIndicesBuf[:0]
+}
+
 // PickRandom returns a random index for a set bit in the bit array.
 // If there is no such value, it returns 0, false.
 // It uses math/rand's global randomness Source to get this index.
@@ -264,9 +272,11 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	}
 
 	bA.mtx.Lock()
-	trueIndices := bA.getTrueIndices()
-	bA.mtx.Unlock()
+	// Using defer here to ensure that until we exit this function
+	// that bA.trueIndicesBuf is under a lock too.
+	defer bA.mtx.Unlock()
 
+	trueIndices := bA.getTrueIndicesLocked()
 	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
@@ -274,8 +284,8 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	return trueIndices[mrand.Intn(len(trueIndices))], true
 }
 
-func (bA *BitArray) getTrueIndices() []int {
-	trueIndices := make([]int, 0, bA.Bits)
+func (bA *BitArray) getTrueIndicesLocked() []int {
+	trueIndices := bA.getTrueIndicesBufferLocked()
 	curBit := 0
 	numElems := len(bA.Elems)
 	// set all true indices

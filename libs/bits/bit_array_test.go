@@ -320,3 +320,45 @@ func TestBitArrayFromProto(t *testing.T) {
 		}
 	}
 }
+
+var sink interface{}
+
+func BenchmarkBitArrayPickRandom(b *testing.B) {
+	empty16Bits := "________________"
+	empty64Bits := empty16Bits + empty16Bits + empty16Bits + empty16Bits
+	testCases := []struct {
+		bA string
+		ok bool
+	}{
+		{`"x` + empty16Bits + `"`, true},
+		{`"` + empty16Bits + `x"`, true},
+		{`"x` + empty16Bits + `x"`, true},
+		{`"x` + empty64Bits + `"`, true},
+		{`"` + empty64Bits + `x"`, true},
+		{`"x` + empty64Bits + `x"`, true},
+	}
+
+	baL := make([]*BitArray, 0, len(testCases))
+	for _, tc := range testCases {
+		var ba *BitArray
+		err := json.Unmarshal([]byte(tc.bA), &ba)
+		require.NoError(b, err)
+		baL = append(baL, ba)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	var ok bool
+	for i := 0; i < b.N; i++ {
+		for _, ba := range baL {
+			sink, ok = ba.PickRandom()
+			require.Equal(b, true, ok, "PickRandom got an unexpected result on input %s", ba)
+		}
+	}
+
+	if sink == nil {
+		b.Fatal("Benchmark did not run")
+	}
+	sink = (interface{})(nil)
+}
