@@ -39,14 +39,6 @@ var (
 	dbName   = "postgres"
 )
 
-// NewIndexerService returns a new service instance.
-func NewIndexerService(es []indexer.EventSink, eventBus *eventbus.EventBus) *indexer.Service {
-	return indexer.NewService(indexer.ServiceArgs{
-		Sinks:    es,
-		EventBus: eventBus,
-	})
-}
-
 func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -70,7 +62,11 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.True(t, indexer.KVSinkEnabled(eventSinks))
 	assert.True(t, indexer.IndexingEnabled(eventSinks))
 
-	service := NewIndexerService(eventSinks, eventBus)
+	service := indexer.NewService(indexer.ServiceArgs{
+		Logger:   logger,
+		Sinks:    eventSinks,
+		EventBus: eventBus,
+	})
 	require.NoError(t, service.Start(ctx))
 	t.Cleanup(service.Wait)
 

@@ -32,7 +32,7 @@ Special thanks to external contributors on this release:
   - [blocksync] \#7046 Remove v2 implementation of the blocksync service and recactor, which was disabled in the previous release. (@tychoish)
   - [p2p] \#7064 Remove WDRR queue implementation. (@tychoish)
   - [config] \#7169 `WriteConfigFile` now returns an error. (@tychoish)
-  - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychosih)
+  - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychoish)
 
 
 - Blockchain Protocol
