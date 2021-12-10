@@ -108,7 +108,9 @@ func TestMain(m *testing.M) {
 	sm, err := readSchema()
 	if err != nil {
 		log.Fatalf("Reading schema: %v", err)
-	} else if err := schema.NewMigrator().Apply(db, sm); err != nil {
+	}
+	migrator := schema.NewMigrator()
+	if err := migrator.Apply(db, sm); err != nil {
 		log.Fatalf("Applying schema: %v", err)
 	}
 
