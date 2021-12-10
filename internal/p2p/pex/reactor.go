@@ -153,7 +153,7 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	var (
-		duration time.Duration = r.calculateNextRequestTime()
+		duration = r.calculateNextRequestTime()
 		err      error
 	)
 
