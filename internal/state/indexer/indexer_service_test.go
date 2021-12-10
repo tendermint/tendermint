@@ -180,7 +180,8 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	sm, err := readSchema()
 	assert.Nil(t, err)
 
-	err = schema.NewMigrator().Apply(psqldb, sm)
+	migrator := schema.NewMigrator()
+	err = migrator.Apply(psqldb, sm)
 	assert.Nil(t, err)
 
 	return pool, nil
