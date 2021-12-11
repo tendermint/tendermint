@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -44,19 +43,16 @@ const (
 //
 // This is useful for using a log file with the logrotate tool.
 type AutoFile struct {
-	// Putting this file nWrites at the beginning so that it is
-	// ALWAYS byte aligned to be safely used in atomics, given
-	// that we need it super fast and able to check
-	nWrites uint64
-	ID      string
-	Path    string
+	ID   string
+	Path string
 
 	closeTicker      *time.Ticker
 	closeTickerStopc chan struct{} // closed when closeTicker is stopped
 	hupc             chan os.Signal
 
-	mtx  sync.Mutex
-	file *os.File
+	mtx       sync.Mutex
+	file      *os.File
+	hasWrites bool
 }
 
 // OpenAutoFile creates an AutoFile in the path (with random ID). If there is
@@ -104,11 +100,18 @@ func (af *AutoFile) Close() error {
 	return af.closeFile()
 }
 
+func (af *AutoFile) needsFlushing() bool {
+	af.mtx.Lock()
+	defer af.mtx.Unlock()
+
+	return af.hasWrites
+}
+
 func (af *AutoFile) closeFileRoutine() {
 	for {
 		select {
 		case <-af.closeTicker.C:
-			if atomic.LoadUint64(&af.nWrites) != 0 {
+			if af.needsFlushing() {
 				// Only invoke .closeFile if we had some writes.
 				_ = af.closeFile()
 			}
@@ -124,9 +127,9 @@ func (af *AutoFile) closeFile() (err error) {
 	defer af.mtx.Unlock()
 
 	defer func() {
-		// Otherwise reset .nWrites if there was no error.
+		// Otherwise reset .hasWrites if there was no error.
 		if err == nil {
-			af.nWrites = 0
+			af.hasWrites = false
 		}
 	}()
 
@@ -147,7 +150,7 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 	af.mtx.Lock()
 	defer func() {
 		if n > 0 {
-			af.nWrites++
+			af.hasWrites = true
 		}
 		af.mtx.Unlock()
 	}()
@@ -191,8 +194,8 @@ func (af *AutoFile) openFile() error {
 	// 	return errors.NewErrPermissionsChanged(file.Name(), fileInfo.Mode(), autoFilePerms)
 	// }
 	af.file = file
-	// Reset .nWrites as this is a fresh file.
-	atomic.StoreUint64(&af.nWrites, 0)
+	// Reset .hasWrites as this is a fresh file.
+	af.hasWrites = false
 	return nil
 }
 
