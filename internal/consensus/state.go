@@ -1130,11 +1130,8 @@ func (cs *State) enterPropose(height int64, round int32) {
 		}
 	}()
 
-	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timing) // nolint: lll
-	proposalTimeout := maxDuration(cs.config.Propose(round), waitingTime)
-
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
-	cs.scheduleTimeout(proposalTimeout, height, round, cstypes.RoundStepPropose)
+	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -2443,33 +2440,4 @@ func proposerWaitTime(lt tmtime.Source, bt time.Time) time.Duration {
 		return bt.Sub(t)
 	}
 	return 0
-}
-
-// proposalStepWaitingTime is used along with the `timeout-propose` configuration
-// parameter to determines how long a validator will wait for a block to be sent from a proposer.
-// proposalStepWaitingTime ensures that the validator waits long enough for the proposer to
-// deliver a block with a monotically increasing timestamp.
-//
-// To ensure that the validator waits long enough, it must wait until the previous
-// block's timestamp. It also must account for the difference between its own clock and
-// the proposer's clock, i.e. the 'Precision', and the amount of time for the message to be transmitted,
-// i.e. the MsgDelay.
-//
-// The result of proposalStepWaitingTime is compared with the configured `timeout-propose` duration,
-// and the validator waits for whichever duration is larger before advancing to the next step
-// and prevoting nil.
-func proposalStepWaitingTime(lt tmtime.Source, bt time.Time, tp types.TimingParams) time.Duration {
-	t := lt.Now()
-	wt := bt.Add(tp.Precision).Add(tp.MessageDelay)
-	if t.After(wt) {
-		return 0
-	}
-	return wt.Sub(t)
-}
-
-func maxDuration(d1, d2 time.Duration) time.Duration {
-	if d1 >= d2 {
-		return d1
-	}
-	return d2
 }
