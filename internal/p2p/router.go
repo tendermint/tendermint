@@ -170,8 +170,8 @@ type Router struct {
 	// channels on router start. This depends on whether we want to allow
 	// dynamic channels in the future.
 	channelMtx          sync.RWMutex
-	channelQueues       map[ChannelID]queue              // inbound messages from all peers to a single channel
-	channelQueueClosers map[ChannelID]context.CancelFunc // inbound messages from all peers to a single channel
+	channelQueues       map[ChannelID]queue // inbound messages from all peers to a single channel
+	channelQueueClosers map[ChannelID]context.CancelFunc
 	channelMessages     map[ChannelID]proto.Message
 }
 
@@ -399,6 +399,9 @@ func (r *Router) routeChannel(
 				select {
 				case q.enqueue() <- envelope:
 					r.metrics.RouterPeerQueueSend.Observe(time.Since(start).Seconds())
+
+				case <-q.closed():
+					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 
 				case <-ctx.Done():
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
@@ -772,6 +775,10 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 		if closer, ok := r.peerQueueClosers[peerID]; ok {
 			closer()
 		}
+		if pq, ok := r.peerQueues[peerID]; ok {
+			pq.close()
+		}
+
 		delete(r.peerQueues, peerID)
 		delete(r.peerChannels, peerID)
 		delete(r.peerQueueClosers, peerID)
@@ -876,6 +883,7 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 
 		case <-ctx.Done():
 			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
+			return nil
 		}
 	}
 }
@@ -904,7 +912,8 @@ func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connect
 			}
 
 			r.logger.Debug("sent message", "peer", envelope.To, "message", envelope.Message)
-
+		case <-peerQueue.closed():
+			return nil
 		case <-ctx.Done():
 			return nil
 		}
@@ -931,12 +940,13 @@ func (r *Router) evictPeers(ctx context.Context) {
 		r.logger.Info("evicting peer", "peer", peerID)
 
 		r.peerMtx.RLock()
-		closer, ok := r.peerQueueClosers[peerID]
-		r.peerMtx.RUnlock()
-
-		if ok {
+		if closer, ok := r.peerQueueClosers[peerID]; ok {
 			closer()
 		}
+		if pq, ok := r.peerQueues[peerID]; ok {
+			pq.close()
+		}
+		r.peerMtx.RUnlock()
 	}
 }
 
@@ -990,6 +1000,9 @@ func (r *Router) OnStop() {
 	r.peerMtx.RLock()
 	for _, closer := range r.peerQueueClosers {
 		closer()
+	}
+	for _, pq := range r.peerQueues {
+		pq.close()
 	}
 	r.peerMtx.RUnlock()
 

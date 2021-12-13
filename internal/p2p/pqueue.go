@@ -77,6 +77,7 @@ type pqScheduler struct {
 
 	enqueueCh chan Envelope
 	dequeueCh chan Envelope
+	signalCh  chan struct{}
 }
 
 func newPQScheduler(
@@ -115,6 +116,7 @@ func newPQScheduler(
 		sizes:        sizes,
 		enqueueCh:    make(chan Envelope, enqueueBuf),
 		dequeueCh:    make(chan Envelope, dequeueBuf),
+		signalCh:     make(chan struct{}),
 	}
 }
 
@@ -272,3 +274,14 @@ func (s *pqScheduler) push(pqEnv *pqEnvelope) {
 		s.sizes[uint(s.chDescs[i].Priority)] += pqEnv.size
 	}
 }
+func (s *pqScheduler) close() {
+	select {
+	case <-s.signalCh:
+		return
+	default:
+		close(s.signalCh)
+	}
+
+}
+
+func (s *pqScheduler) closed() <-chan struct{} { return s.signalCh }

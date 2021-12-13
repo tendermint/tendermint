@@ -131,6 +131,8 @@ func RequireError(ctx context.Context, t *testing.T, channel *p2p.Channel, peerE
 
 // RequireUpdate requires that a PeerUpdates subscription yields the given update.
 func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUpdate) {
+	t.Helper()
+
 	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
 	defer timer.Stop()
 
@@ -146,6 +148,8 @@ func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUp
 // RequireUpdates requires that a PeerUpdates subscription yields the given updates
 // in the given order.
 func RequireUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates, expect []p2p.PeerUpdate) {
+	t.Helper()
+
 	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
 	defer timer.Stop()
 

@@ -383,11 +383,18 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
 
 			// Set up a mock transport that handshakes.
+			closer := make(chan struct{})
 			mockConnection := &mocks.Connection{}
 			mockConnection.On("String").Maybe().Return("mock")
 			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 				Return(tc.peerInfo, tc.peerKey, nil)
-			mockConnection.On("Close").Run(func(_ mock.Arguments) {}).Return(nil).Maybe()
+			mockConnection.On("Close").Run(func(_ mock.Arguments) {
+				select {
+				case <-closer:
+				default:
+					close(closer)
+				}
+			}).Return(nil).Maybe()
 			mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 			if tc.ok {
 				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF).Maybe()
@@ -429,7 +436,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				time.Sleep(time.Millisecond)
 			} else {
 				select {
-				case <-ctx.Done():
+				case <-closer:
 				case <-time.After(100 * time.Millisecond):
 					require.Fail(t, "connection not closed")
 				}
@@ -613,12 +620,13 @@ func TestRouter_DialPeers(t *testing.T) {
 			endpoint := p2p.Endpoint{Protocol: "mock", Path: string(tc.dialID)}
 
 			// Set up a mock transport that handshakes.
+			closer := make(chan struct{})
 			mockConnection := &mocks.Connection{}
 			mockConnection.On("String").Maybe().Return("mock")
 			if tc.dialErr == nil {
 				mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 					Return(tc.peerInfo, tc.peerKey, nil)
-				mockConnection.On("Close").Run(func(_ mock.Arguments) {}).Return(nil).Maybe()
+				mockConnection.On("Close").Run(func(_ mock.Arguments) { close(closer) }).Return(nil).Maybe()
 			}
 			if tc.ok {
 				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF).Maybe()
@@ -636,7 +644,7 @@ func TestRouter_DialPeers(t *testing.T) {
 				mockTransport.On("Dial", mock.Anything, endpoint).Maybe().Return(nil, io.EOF)
 			} else {
 				mockTransport.On("Dial", mock.Anything, endpoint).Once().
-					Run(func(_ mock.Arguments) {}).
+					Run(func(_ mock.Arguments) { close(closer) }).
 					Return(nil, tc.dialErr)
 			}
 
@@ -672,7 +680,7 @@ func TestRouter_DialPeers(t *testing.T) {
 				time.Sleep(time.Millisecond)
 			} else {
 				select {
-				case <-ctx.Done():
+				case <-closer:
 				case <-time.After(100 * time.Millisecond):
 					require.Fail(t, "connection not closed")
 				}

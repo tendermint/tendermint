@@ -16,17 +16,22 @@ type queue interface {
 
 	// dequeue returns a channel ordered according to some queueing policy.
 	dequeue() <-chan Envelope
+
+	close()
+	closed() <-chan struct{}
 }
 
 // fifoQueue is a simple unbuffered lossless queue that passes messages through
 // in the order they were received, and blocks until message is received.
 type fifoQueue struct {
 	queueCh chan Envelope
+	signal  chan struct{}
 }
 
 func newFIFOQueue(_ context.Context, size int) queue {
 	return &fifoQueue{
 		queueCh: make(chan Envelope, size),
+		signal:  make(chan struct{}),
 	}
 }
 
@@ -37,3 +42,14 @@ func (q *fifoQueue) enqueue() chan<- Envelope {
 func (q *fifoQueue) dequeue() <-chan Envelope {
 	return q.queueCh
 }
+
+func (q *fifoQueue) close() {
+	select {
+	case <-q.signal:
+		return
+	default:
+		close(q.signal)
+	}
+}
+
+func (q *fifoQueue) closed() <-chan struct{} { return q.signal }

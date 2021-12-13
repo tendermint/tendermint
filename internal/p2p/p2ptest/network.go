@@ -193,6 +193,8 @@ func (n *Network) Peers(id types.NodeID) []*Node {
 // Remove removes a node from the network, stopping it and waiting for all other
 // nodes to pick up the disconnection.
 func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
+	t.Helper()
+
 	require.Contains(t, n.Nodes, id)
 	node := n.Nodes[id]
 	delete(n.Nodes, id)
