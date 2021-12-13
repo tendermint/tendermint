@@ -53,12 +53,12 @@ type Reactor struct {
 	// goroutines.
 	peerWG sync.WaitGroup
 
-	mtx         tmsync.Mutex
-	peerClosers map[types.NodeID]context.CancelFunc
-
 	// observePanic is a function for observing panics that were recovered in methods on
 	// Reactor. observePanic is called with the recovered value.
 	observePanic func(interface{})
+
+	mtx         tmsync.Mutex
+	peerClosers map[types.NodeID]context.CancelFunc
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -188,7 +188,6 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 	switch chID {
 	case MempoolChannel:
 		err = r.handleMempoolMessage(ctx, envelope)
-
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%T)", chID, envelope.Message)
 	}
