@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -57,8 +56,8 @@ type Reactor struct {
 	// Reactor. observePanic is called with the recovered value.
 	observePanic func(interface{})
 
-	mtx          sync.Mutex
-	peerRoutines map[types.NodeID]*tmsync.Closer
+	mtx         sync.Mutex
+	peerClosers map[types.NodeID]context.CancelFunc
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -79,7 +78,6 @@ func NewReactor(
 		ids:          NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
-		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 		observePanic: defaultObservePanic,
 	}
 
@@ -127,8 +125,8 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
 	r.mtx.Lock()
-	for _, c := range r.peerRoutines {
-		c.Close()
+	for _, closer := range r.peerClosers {
+		closer()
 	}
 	r.mtx.Unlock()
 
@@ -189,7 +187,6 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 	switch chID {
 	case MempoolChannel:
 		err = r.handleMempoolMessage(ctx, envelope)
-
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%T)", chID, envelope.Message)
 	}
@@ -223,9 +220,6 @@ func (r *Reactor) processMempoolCh(ctx context.Context) {
 func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate) {
 	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		// Do not allow starting new tx broadcast loops after reactor shutdown
@@ -240,17 +234,16 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// a new done channel so we can explicitly close the goroutine if the peer
 			// is later removed, we increment the waitgroup so the reactor can stop
 			// safely, and finally start the goroutine to broadcast txs to that peer.
-			_, ok := r.peerRoutines[peerUpdate.NodeID]
+			_, ok := r.peerClosers[peerUpdate.NodeID]
 			if !ok {
-				closer := tmsync.NewCloser()
-
-				r.peerRoutines[peerUpdate.NodeID] = closer
+				bctx, bcancel := context.WithCancel(ctx)
+				r.peerClosers[peerUpdate.NodeID] = bcancel
 				r.peerWG.Add(1)
 
 				r.ids.ReserveForPeer(peerUpdate.NodeID)
 
 				// start a broadcast routine ensuring all txs are forwarded to the peer
-				go r.broadcastTxRoutine(ctx, peerUpdate.NodeID, closer)
+				go r.broadcastTxRoutine(bctx, peerUpdate.NodeID)
 			}
 		}
 
@@ -261,9 +254,8 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer
 		// from the map of peer tx broadcasting goroutines.
-		closer, ok := r.peerRoutines[peerUpdate.NodeID]
-		if ok {
-			closer.Close()
+		if closer, ok := r.peerClosers[peerUpdate.NodeID]; ok {
+			closer()
 		}
 	}
 }
@@ -283,14 +275,17 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	}
 }
 
-func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
 	var nextGossipTx *clist.CElement
 
 	// remove the peer ID from the map of routines and mark the waitgroup as done
 	defer func() {
 		r.mtx.Lock()
-		delete(r.peerRoutines, peerID)
+		if closer, ok := r.peerClosers[peerID]; ok {
+			closer()
+		}
+		delete(r.peerClosers, peerID)
 		r.mtx.Unlock()
 
 		r.peerWG.Done()
@@ -321,11 +316,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
 				}
-
-			case <-closer.Done():
-				// The peer is marked for removal via a PeerUpdate as the doneCh was
-				// explicitly closed to signal we should exit.
-				return
 			}
 		}
 
@@ -364,10 +354,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		select {
 		case <-nextGossipTx.NextWaitChan():
 			nextGossipTx = nextGossipTx.Next()
-		case <-closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
 		case <-ctx.Done():
 			return
 		}

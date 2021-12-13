@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -78,8 +77,6 @@ type pqScheduler struct {
 
 	enqueueCh chan Envelope
 	dequeueCh chan Envelope
-	closer    *tmsync.Closer
-	done      *tmsync.Closer
 }
 
 func newPQScheduler(
@@ -118,8 +115,6 @@ func newPQScheduler(
 		sizes:        sizes,
 		enqueueCh:    make(chan Envelope, enqueueBuf),
 		dequeueCh:    make(chan Envelope, dequeueBuf),
-		closer:       tmsync.NewCloser(),
-		done:         tmsync.NewCloser(),
 	}
 }
 
@@ -129,15 +124,6 @@ func (s *pqScheduler) enqueue() chan<- Envelope {
 
 func (s *pqScheduler) dequeue() <-chan Envelope {
 	return s.dequeueCh
-}
-
-func (s *pqScheduler) close() {
-	s.closer.Close()
-	<-s.done.Done()
-}
-
-func (s *pqScheduler) closed() <-chan struct{} {
-	return s.closer.Done()
 }
 
 // start starts non-blocking process that starts the priority queue scheduler.
@@ -155,8 +141,6 @@ func (s *pqScheduler) start(ctx context.Context) {
 // After we attempt to enqueue the incoming Envelope, if the priority queue is
 // non-empty, we pop the top Envelope and send it on the dequeueCh.
 func (s *pqScheduler) process(ctx context.Context) {
-	defer s.done.Close()
-
 	for {
 		select {
 		case e := <-s.enqueueCh:
@@ -264,13 +248,11 @@ func (s *pqScheduler) process(ctx context.Context) {
 					"peer_id", string(pqEnv.envelope.To)).Add(float64(-pqEnv.size))
 				select {
 				case s.dequeueCh <- pqEnv.envelope:
-				case <-s.closer.Done():
+				case <-ctx.Done():
 					return
 				}
 			}
 		case <-ctx.Done():
-			return
-		case <-s.closer.Done():
 			return
 		}
 	}

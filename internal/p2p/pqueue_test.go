@@ -34,7 +34,7 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	doneCh := make(chan struct{})
 	go func() {
-		pqueue.close()
+		cancel()
 		close(doneCh)
 	}()
 

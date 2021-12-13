@@ -159,25 +159,26 @@ type Router struct {
 	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
 
-	peerMtx    sync.RWMutex
-	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
+	peerMtx          sync.RWMutex
+	peerQueues       map[types.NodeID]queue // outbound messages per peer for all channels
+	peerQueueClosers map[types.NodeID]context.CancelFunc
 	// the channels that the peer queue has open
 	peerChannels map[types.NodeID]channelIDs
-	queueFactory func(int) queue
+	queueFactory func(context.Context, int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
 	// channels on router start. This depends on whether we want to allow
 	// dynamic channels in the future.
-	channelMtx      sync.RWMutex
-	channelQueues   map[ChannelID]queue // inbound messages from all peers to a single channel
-	channelMessages map[ChannelID]proto.Message
+	channelMtx          sync.RWMutex
+	channelQueues       map[ChannelID]queue // inbound messages from all peers to a single channel
+	channelQueueClosers map[ChannelID]context.CancelFunc
+	channelMessages     map[ChannelID]proto.Message
 }
 
 // NewRouter creates a new Router. The given Transports must already be
 // listening on appropriate interfaces, and will be closed by the Router when it
 // stops.
 func NewRouter(
-	ctx context.Context,
 	logger log.Logger,
 	metrics *Metrics,
 	nodeInfo types.NodeInfo,
@@ -201,21 +202,23 @@ func NewRouter(
 			options.MaxIncomingConnectionAttempts,
 			options.IncomingConnectionWindow,
 		),
-		chDescs:            make([]*ChannelDescriptor, 0),
-		transports:         transports,
-		endpoints:          endpoints,
-		protocolTransports: map[Protocol]Transport{},
-		peerManager:        peerManager,
-		options:            options,
-		channelQueues:      map[ChannelID]queue{},
-		channelMessages:    map[ChannelID]proto.Message{},
-		peerQueues:         map[types.NodeID]queue{},
-		peerChannels:       make(map[types.NodeID]channelIDs),
+		chDescs:             make([]*ChannelDescriptor, 0),
+		transports:          transports,
+		endpoints:           endpoints,
+		protocolTransports:  map[Protocol]Transport{},
+		peerManager:         peerManager,
+		options:             options,
+		channelQueues:       map[ChannelID]queue{},
+		channelQueueClosers: map[ChannelID]context.CancelFunc{},
+		channelMessages:     map[ChannelID]proto.Message{},
+		peerQueues:          map[types.NodeID]queue{},
+		peerQueueClosers:    map[types.NodeID]context.CancelFunc{},
+		peerChannels:        make(map[types.NodeID]channelIDs),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
-	qf, err := router.createQueueFactory(ctx)
+	qf, err := router.createQueueFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -233,13 +236,13 @@ func NewRouter(
 	return router, nil
 }
 
-func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error) {
+func (r *Router) createQueueFactory() (func(context.Context, int) queue, error) {
 	switch r.options.QueueType {
 	case queueTypeFifo:
 		return newFIFOQueue, nil
 
 	case queueTypePriority:
-		return func(size int) queue {
+		return func(ctx context.Context, size int) queue {
 			if size%2 != 0 {
 				size++
 			}
@@ -272,7 +275,9 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 
 	messageType := chDesc.MessageType
 
-	queue := r.queueFactory(chDesc.RecvBufferCapacity)
+	chctx, chcancel := context.WithCancel(ctx)
+	queue := r.queueFactory(chctx, chDesc.RecvBufferCapacity)
+	r.channelQueueClosers[chDesc.ID] = chcancel
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
 	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
@@ -291,17 +296,18 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	for _, t := range r.transports {
 		t.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
 	}
-
+	rctx, rcancel := context.WithCancel(ctx)
 	go func() {
 		defer func() {
 			r.channelMtx.Lock()
 			delete(r.channelQueues, id)
 			delete(r.channelMessages, id)
 			r.channelMtx.Unlock()
-			queue.close()
+			rcancel()
+			chcancel()
 		}()
 
-		r.routeChannel(ctx, id, outCh, errCh, wrapper)
+		r.routeChannel(rctx, id, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil
@@ -394,10 +400,8 @@ func (r *Router) routeChannel(
 				case q.enqueue() <- envelope:
 					r.metrics.RouterPeerQueueSend.Observe(time.Since(start).Seconds())
 
-				case <-q.closed():
-					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
-
 				case <-ctx.Done():
+					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 					return
 				}
 			}
@@ -644,7 +648,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	go r.routePeer(ctx, address.NodeID, conn, toChannelIDs(peerInfo.Channels))
 }
 
-func (r *Router) getOrMakeQueue(peerID types.NodeID, channels channelIDs) queue {
+func (r *Router) getOrMakeQueue(ctx context.Context, peerID types.NodeID, channels channelIDs) queue {
 	r.peerMtx.Lock()
 	defer r.peerMtx.Unlock()
 
@@ -652,9 +656,11 @@ func (r *Router) getOrMakeQueue(peerID types.NodeID, channels channelIDs) queue 
 		return peerQueue
 	}
 
-	peerQueue := r.queueFactory(queueBufferDefault)
+	pqctx, pqcancel := context.WithCancel(ctx)
+	peerQueue := r.queueFactory(pqctx, queueBufferDefault)
 	r.peerQueues[peerID] = peerQueue
 	r.peerChannels[peerID] = channels
+	r.peerQueueClosers[peerID] = pqcancel
 	return peerQueue
 }
 
@@ -760,14 +766,16 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(ctx, peerID)
 
-	sendQueue := r.getOrMakeQueue(peerID, channels)
+	sendQueue := r.getOrMakeQueue(ctx, peerID, channels)
 	defer func() {
 		r.peerMtx.Lock()
+		if closer, ok := r.peerQueueClosers[peerID]; ok {
+			closer()
+		}
 		delete(r.peerQueues, peerID)
 		delete(r.peerChannels, peerID)
+		delete(r.peerQueueClosers, peerID)
 		r.peerMtx.Unlock()
-
-		sendQueue.close()
 
 		r.peerManager.Disconnected(ctx, peerID)
 		r.metrics.Peers.Add(-1)
@@ -798,7 +806,6 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 	}
 
 	_ = conn.Close()
-	sendQueue.close()
 
 	select {
 	case <-ctx.Done():
@@ -867,10 +874,8 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 
-		case <-queue.closed():
-			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
-
 		case <-ctx.Done():
+			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
 			return nil
 		}
 	}
@@ -901,9 +906,6 @@ func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connect
 
 			r.logger.Debug("sent message", "peer", envelope.To, "message", envelope.Message)
 
-		case <-peerQueue.closed():
-			return nil
-
 		case <-ctx.Done():
 			return nil
 		}
@@ -930,11 +932,11 @@ func (r *Router) evictPeers(ctx context.Context) {
 		r.logger.Info("evicting peer", "peer", peerID)
 
 		r.peerMtx.RLock()
-		queue, ok := r.peerQueues[peerID]
+		closer, ok := r.peerQueueClosers[peerID]
 		r.peerMtx.RUnlock()
 
 		if ok {
-			queue.close()
+			closer()
 		}
 	}
 }
@@ -986,25 +988,17 @@ func (r *Router) OnStop() {
 		}
 	}
 
-	// Collect all remaining queues, and wait for them to close.
-	queues := []queue{}
-
-	r.channelMtx.RLock()
-	for _, q := range r.channelQueues {
-		queues = append(queues, q)
-	}
-	r.channelMtx.RUnlock()
-
 	r.peerMtx.RLock()
-	for _, q := range r.peerQueues {
-		queues = append(queues, q)
+	for _, closer := range r.peerQueueClosers {
+		closer()
 	}
 	r.peerMtx.RUnlock()
 
-	for _, q := range queues {
-		q.close()
-		<-q.closed()
+	r.channelMtx.RLock()
+	for _, closer := range r.channelQueueClosers {
+		closer()
 	}
+	r.channelMtx.RUnlock()
 }
 
 type channelIDs map[ChannelID]struct{}

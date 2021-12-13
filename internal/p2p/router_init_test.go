@@ -22,29 +22,28 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
 		require.Zero(t, os.Getenv("TM_P2P_QUEUE"))
 		opts := RouterOptions{}
-		r, err := NewRouter(ctx, log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
+		r, err := NewRouter(log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
 		require.NoError(t, err)
-		_, ok := r.queueFactory(1).(*fifoQueue)
+		_, ok := r.queueFactory(ctx, 1).(*fifoQueue)
 		require.True(t, ok)
 	})
 	t.Run("Fifo", func(t *testing.T) {
 		opts := RouterOptions{QueueType: queueTypeFifo}
-		r, err := NewRouter(ctx, log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
+		r, err := NewRouter(log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
 		require.NoError(t, err)
-		_, ok := r.queueFactory(1).(*fifoQueue)
+		_, ok := r.queueFactory(ctx, 1).(*fifoQueue)
 		require.True(t, ok)
 	})
 	t.Run("Priority", func(t *testing.T) {
 		opts := RouterOptions{QueueType: queueTypePriority}
-		r, err := NewRouter(ctx, log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
+		r, err := NewRouter(log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
 		require.NoError(t, err)
-		q, ok := r.queueFactory(1).(*pqScheduler)
+		_, ok := r.queueFactory(ctx, 1).(*pqScheduler)
 		require.True(t, ok)
-		defer q.close()
 	})
 	t.Run("NonExistant", func(t *testing.T) {
 		opts := RouterOptions{QueueType: "fast"}
-		_, err := NewRouter(ctx, log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
+		_, err := NewRouter(log.NewNopLogger(), nil, types.NodeInfo{}, nil, nil, nil, nil, opts)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "fast")
 	})
@@ -52,7 +51,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		r := &Router{}
 		require.Zero(t, r.options.QueueType)
 
-		fn, err := r.createQueueFactory(ctx)
+		fn, err := r.createQueueFactory()
 		require.Error(t, err)
 		require.Nil(t, fn)
 	})
