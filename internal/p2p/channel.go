@@ -184,6 +184,14 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 	}
 	wg := new(sync.WaitGroup)
 
+	for _, ch := range chs {
+		wg.Add(1)
+		go func(ch *Channel) {
+			defer wg.Done()
+			iteratorWorker(ctx, ch, iter.pipe)
+		}(ch)
+	}
+
 	done := make(chan struct{})
 	go func() { defer close(done); wg.Wait() }()
 
@@ -195,14 +203,6 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 		// should happen very quickly.
 		<-done
 	}()
-
-	for _, ch := range chs {
-		wg.Add(1)
-		go func(ch *Channel) {
-			defer wg.Done()
-			iteratorWorker(ctx, ch, iter.pipe)
-		}(ch)
-	}
 
 	return iter
 }
