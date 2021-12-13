@@ -140,7 +140,7 @@ func (r *Reactor) OnStop() {
 // For every tx in the message, we execute CheckTx. It returns an error if an
 // empty set of txs are sent in an envelope or if we receive an unexpected
 // message type.
-func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -171,7 +171,7 @@ func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope p2p.Envelop
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			r.observePanic(e)
@@ -200,21 +200,17 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 // processMempoolCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the mempoolCh.
 func (r *Reactor) processMempoolCh(ctx context.Context) {
-	for {
-		select {
-		case envelope := <-r.mempoolCh.In:
-			if err := r.handleMessage(ctx, r.mempoolCh.ID, envelope); err != nil {
-				r.logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
-				if serr := r.mempoolCh.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
+	iter := r.mempoolCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, r.mempoolCh.ID, envelope); err != nil {
+			r.logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
+			if serr := r.mempoolCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
-		case <-ctx.Done():
-			r.logger.Debug("stopped listening on mempool channel; closing...")
-			return
 		}
 	}
 }

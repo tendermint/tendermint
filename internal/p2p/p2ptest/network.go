@@ -306,7 +306,7 @@ func (n *Node) MakeChannel(
 	require.NoError(t, err)
 	require.Contains(t, n.Router.NodeInfo().Channels, byte(chDesc.ID))
 	t.Cleanup(func() {
-		RequireEmpty(t, channel)
+		RequireEmpty(ctx, t, channel)
 		cancel()
 	})
 	return channel

@@ -1070,7 +1070,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 // If we fail to find the peer state for the envelope sender, we perform a no-op
 // and return. This can happen when we process the envelope after the peer is
 // removed.
-func (r *Reactor) handleStateMessage(ctx context.Context, envelope p2p.Envelope, msgI Message) error {
+func (r *Reactor) handleStateMessage(ctx context.Context, envelope *p2p.Envelope, msgI Message) error {
 	ps, ok := r.GetPeerState(envelope.From)
 	if !ok || ps == nil {
 		r.logger.Debug("failed to find peer state", "peer", envelope.From, "ch_id", "StateChannel")
@@ -1156,7 +1156,7 @@ func (r *Reactor) handleStateMessage(ctx context.Context, envelope p2p.Envelope,
 // fail to find the peer state for the envelope sender, we perform a no-op and
 // return. This can happen when we process the envelope after the peer is
 // removed.
-func (r *Reactor) handleDataMessage(ctx context.Context, envelope p2p.Envelope, msgI Message) error {
+func (r *Reactor) handleDataMessage(ctx context.Context, envelope *p2p.Envelope, msgI Message) error {
 	logger := r.logger.With("peer", envelope.From, "ch_id", "DataChannel")
 
 	ps, ok := r.GetPeerState(envelope.From)
@@ -1205,7 +1205,7 @@ func (r *Reactor) handleDataMessage(ctx context.Context, envelope p2p.Envelope, 
 // fail to find the peer state for the envelope sender, we perform a no-op and
 // return. This can happen when we process the envelope after the peer is
 // removed.
-func (r *Reactor) handleVoteMessage(ctx context.Context, envelope p2p.Envelope, msgI Message) error {
+func (r *Reactor) handleVoteMessage(ctx context.Context, envelope *p2p.Envelope, msgI Message) error {
 	logger := r.logger.With("peer", envelope.From, "ch_id", "VoteChannel")
 
 	ps, ok := r.GetPeerState(envelope.From)
@@ -1246,7 +1246,7 @@ func (r *Reactor) handleVoteMessage(ctx context.Context, envelope p2p.Envelope, 
 // VoteSetBitsChannel. If we fail to find the peer state for the envelope sender,
 // we perform a no-op and return. This can happen when we process the envelope
 // after the peer is removed.
-func (r *Reactor) handleVoteSetBitsMessage(ctx context.Context, envelope p2p.Envelope, msgI Message) error {
+func (r *Reactor) handleVoteSetBitsMessage(ctx context.Context, envelope *p2p.Envelope, msgI Message) error {
 	logger := r.logger.With("peer", envelope.From, "ch_id", "VoteSetBitsChannel")
 
 	ps, ok := r.GetPeerState(envelope.From)
@@ -1304,7 +1304,7 @@ func (r *Reactor) handleVoteSetBitsMessage(ctx context.Context, envelope p2p.Env
 // the p2p channel.
 //
 // NOTE: We block on consensus state for proposals, block parts, and votes.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -1359,20 +1359,16 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processStateCh(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			r.logger.Debug("stopped listening on StateChannel; closing...")
-			return
-		case envelope := <-r.stateCh.In:
-			if err := r.handleMessage(ctx, r.stateCh.ID, envelope); err != nil {
-				r.logger.Error("failed to process message", "ch_id", r.stateCh.ID, "envelope", envelope, "err", err)
-				if serr := r.stateCh.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
+	iter := r.stateCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, r.stateCh.ID, envelope); err != nil {
+			r.logger.Error("failed to process message", "ch_id", r.stateCh.ID, "envelope", envelope, "err", err)
+			if serr := r.stateCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
 		}
 	}
@@ -1384,20 +1380,16 @@ func (r *Reactor) processStateCh(ctx context.Context) {
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processDataCh(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			r.logger.Debug("stopped listening on DataChannel; closing...")
-			return
-		case envelope := <-r.dataCh.In:
-			if err := r.handleMessage(ctx, r.dataCh.ID, envelope); err != nil {
-				r.logger.Error("failed to process message", "ch_id", r.dataCh.ID, "envelope", envelope, "err", err)
-				if serr := r.dataCh.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
+	iter := r.dataCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, r.dataCh.ID, envelope); err != nil {
+			r.logger.Error("failed to process message", "ch_id", r.dataCh.ID, "envelope", envelope, "err", err)
+			if serr := r.dataCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
 		}
 	}
@@ -1409,20 +1401,16 @@ func (r *Reactor) processDataCh(ctx context.Context) {
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processVoteCh(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			r.logger.Debug("stopped listening on VoteChannel; closing...")
-			return
-		case envelope := <-r.voteCh.In:
-			if err := r.handleMessage(ctx, r.voteCh.ID, envelope); err != nil {
-				r.logger.Error("failed to process message", "ch_id", r.voteCh.ID, "envelope", envelope, "err", err)
-				if serr := r.voteCh.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
+	iter := r.voteCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, r.voteCh.ID, envelope); err != nil {
+			r.logger.Error("failed to process message", "ch_id", r.voteCh.ID, "envelope", envelope, "err", err)
+			if serr := r.voteCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
 		}
 	}
@@ -1434,24 +1422,21 @@ func (r *Reactor) processVoteCh(ctx context.Context) {
 // When the reactor is stopped, we will catch the signal and close the p2p
 // Channel gracefully.
 func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			r.logger.Debug("stopped listening on VoteSetBitsChannel; closing...")
-			return
-		case envelope := <-r.voteSetBitsCh.In:
-			if err := r.handleMessage(ctx, r.voteSetBitsCh.ID, envelope); err != nil {
-				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					return
-				}
+	iter := r.voteSetBitsCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
 
-				r.logger.Error("failed to process message", "ch_id", r.voteSetBitsCh.ID, "envelope", envelope, "err", err)
-				if serr := r.voteSetBitsCh.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
+		if err := r.handleMessage(ctx, r.voteSetBitsCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
+			r.logger.Error("failed to process message", "ch_id", r.voteSetBitsCh.ID, "envelope", envelope, "err", err)
+			if serr := r.voteSetBitsCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package pex_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -41,12 +42,12 @@ func TestReactorBasic(t *testing.T) {
 	testNet.start(ctx, t)
 
 	// assert that the mock node receives a request from the real node
-	testNet.listenForRequest(t, secondNode, firstNode, shortWait)
+	testNet.listenForRequest(ctx, t, secondNode, firstNode, shortWait)
 
 	// assert that when a mock node sends a request it receives a response (and
 	// the correct one)
 	testNet.sendRequest(ctx, t, firstNode, secondNode)
-	testNet.listenForResponse(t, secondNode, firstNode, shortWait, []p2pproto.PexAddress(nil))
+	testNet.listenForResponse(ctx, t, secondNode, firstNode, shortWait, []p2pproto.PexAddress(nil))
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
@@ -440,38 +441,42 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 }
 
 func (r *reactorTestSuite) listenFor(
+	ctx context.Context,
 	t *testing.T,
 	node types.NodeID,
-	conditional func(msg p2p.Envelope) bool,
-	assertion func(t *testing.T, msg p2p.Envelope) bool,
+	conditional func(msg *p2p.Envelope) bool,
+	assertion func(t *testing.T, msg *p2p.Envelope) bool,
 	waitPeriod time.Duration,
 ) {
-	timesUp := time.After(waitPeriod)
-	for {
-		select {
-		case envelope := <-r.pexChannels[node].In:
-			if conditional(envelope) && assertion(t, envelope) {
-				return
-			}
-		case <-timesUp:
-			require.Fail(t, "timed out waiting for message",
-				"node=%v, waitPeriod=%s", node, waitPeriod)
+	ctx, cancel := context.WithTimeout(ctx, waitPeriod)
+	defer cancel()
+	iter := r.pexChannels[node].Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if conditional(envelope) && assertion(t, envelope) {
+			return
 		}
 	}
+
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		require.Fail(t, "timed out waiting for message",
+			"node=%v, waitPeriod=%s", node, waitPeriod)
+	}
+
 }
 
-func (r *reactorTestSuite) listenForRequest(t *testing.T, fromNode, toNode int, waitPeriod time.Duration) {
+func (r *reactorTestSuite) listenForRequest(ctx context.Context, t *testing.T, fromNode, toNode int, waitPeriod time.Duration) {
 	r.logger.Info("Listening for request", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
+	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexRequest)
 		return ok && msg.From == from
 	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
+	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
 		require.Equal(t, &p2pproto.PexRequest{}, msg.Message)
 		return true
 	}
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
+	r.listenFor(ctx, t, to, conditional, assertion, waitPeriod)
 }
 
 func (r *reactorTestSuite) pingAndlistenForNAddresses(
@@ -484,11 +489,11 @@ func (r *reactorTestSuite) pingAndlistenForNAddresses(
 	t.Helper()
 	r.logger.Info("Listening for addresses", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
+	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
 		return ok && msg.From == from
 	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
+	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
 		m, ok := msg.Message.(*p2pproto.PexResponse)
 		if !ok {
 			require.Fail(t, "expected pex response v2")
@@ -505,10 +510,11 @@ func (r *reactorTestSuite) pingAndlistenForNAddresses(
 		return false
 	}
 	r.sendRequest(ctx, t, toNode, fromNode)
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
+	r.listenFor(ctx, t, to, conditional, assertion, waitPeriod)
 }
 
 func (r *reactorTestSuite) listenForResponse(
+	ctx context.Context,
 	t *testing.T,
 	fromNode, toNode int,
 	waitPeriod time.Duration,
@@ -516,16 +522,16 @@ func (r *reactorTestSuite) listenForResponse(
 ) {
 	r.logger.Info("Listening for response", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
+	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
 		r.logger.Info("message", msg, "ok", ok)
 		return ok && msg.From == from
 	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
+	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
 		require.Equal(t, &p2pproto.PexResponse{Addresses: addresses}, msg.Message)
 		return true
 	}
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
+	r.listenFor(ctx, t, to, conditional, assertion, waitPeriod)
 }
 
 func (r *reactorTestSuite) listenForPeerUpdate(
