@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -46,7 +47,7 @@ type PeerState struct {
 	Stats   *peerStateStats        `json:"stats"`
 
 	broadcastWG sync.WaitGroup
-	closer      *tmsync.Closer
+	closer      context.CancelFunc
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
@@ -54,7 +55,6 @@ func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,
-		closer: tmsync.NewCloser(),
 		PRS: cstypes.PeerRoundState{
 			Round:              -1,
 			ProposalPOLRound:   -1,

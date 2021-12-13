@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
@@ -162,9 +161,8 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	// run the router
 	rts.start(ctx, t)
 
-	closer := tmsync.NewCloser()
 	primaryReactor.peerWG.Add(1)
-	go primaryReactor.broadcastTxRoutine(ctx, secondary, closer)
+	go primaryReactor.broadcastTxRoutine(ctx, secondary)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 50; i++ {

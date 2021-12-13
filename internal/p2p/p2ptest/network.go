@@ -259,7 +259,6 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		n.logger,
 		p2p.NopMetrics(),
 		nodeInfo,

@@ -53,8 +53,8 @@ type Reactor struct {
 
 	peerWG sync.WaitGroup
 
-	mtx          tmsync.Mutex
-	peerRoutines map[types.NodeID]*tmsync.Closer
+	mtx        tmsync.Mutex
+	peerCloser map[types.NodeID]context.CancelFunc
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -67,11 +67,11 @@ func NewReactor(
 	evpool *Pool,
 ) *Reactor {
 	r := &Reactor{
-		logger:       logger,
-		evpool:       evpool,
-		evidenceCh:   evidenceCh,
-		peerUpdates:  peerUpdates,
-		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		logger:      logger,
+		evpool:      evpool,
+		evidenceCh:  evidenceCh,
+		peerUpdates: peerUpdates,
+		peerCloser:  make(map[types.NodeID]context.CancelFunc),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -93,8 +93,8 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
 	r.mtx.Lock()
-	for _, c := range r.peerRoutines {
-		c.Close()
+	for _, closer := range r.peerCloser {
+		closer()
 	}
 	r.mtx.Unlock()
 
@@ -223,13 +223,12 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// a new done channel so we can explicitly close the goroutine if the peer
 		// is later removed, we increment the waitgroup so the reactor can stop
 		// safely, and finally start the goroutine to broadcast evidence to that peer.
-		_, ok := r.peerRoutines[peerUpdate.NodeID]
+		_, ok := r.peerCloser[peerUpdate.NodeID]
 		if !ok {
-			closer := tmsync.NewCloser()
-
-			r.peerRoutines[peerUpdate.NodeID] = closer
+			bctx, bcancel := context.WithCancel(ctx)
+			r.peerCloser[peerUpdate.NodeID] = bcancel
 			r.peerWG.Add(1)
-			go r.broadcastEvidenceLoop(ctx, peerUpdate.NodeID, closer)
+			go r.broadcastEvidenceLoop(bctx, peerUpdate.NodeID)
 		}
 
 	case p2p.PeerStatusDown:
@@ -237,9 +236,9 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer
 		// from the map of peer evidence broadcasting goroutines.
-		closer, ok := r.peerRoutines[peerUpdate.NodeID]
+		closer, ok := r.peerCloser[peerUpdate.NodeID]
 		if ok {
-			closer.Close()
+			closer()
 		}
 	}
 }
@@ -270,12 +269,15 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID) {
 	var next *clist.CElement
 
 	defer func() {
 		r.mtx.Lock()
-		delete(r.peerRoutines, peerID)
+		if closer, ok := r.peerCloser[peerID]; ok {
+			closer()
+		}
+		delete(r.peerCloser, peerID)
 		r.mtx.Unlock()
 
 		r.peerWG.Done()
@@ -301,10 +303,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 				}
 
 			case <-ctx.Done():
-				return
-			case <-closer.Done():
-				// The peer is marked for removal via a PeerUpdate as the doneCh was
-				// explicitly closed to signal we should exit.
 				return
 			}
 		}
@@ -336,11 +334,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 
 		case <-next.NextWaitChan():
 			next = next.Next()
-
-		case <-closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
 
 		case <-ctx.Done():
 			return

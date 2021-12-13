@@ -283,7 +283,7 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(ctx, logger, nodeMetrics.p2p, nodeInfo, nodeKey,
+	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey,
 		peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
@@ -482,7 +482,7 @@ func makeSeedNode(
 			closer)
 	}
 
-	router, err := createRouter(ctx, logger, p2pMetrics, nodeInfo, nodeKey,
+	router, err := createRouter(logger, p2pMetrics, nodeInfo, nodeKey,
 		peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
