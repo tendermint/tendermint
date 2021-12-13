@@ -269,7 +269,7 @@ func (c *MemoryConnection) Handshake(
 	case <-c.closer:
 		return types.NodeInfo{}, nil, io.EOF
 	case <-ctx.Done():
-		return types.NodeInfo{}, nil, io.EOF
+		return types.NodeInfo{}, nil, ctx.Err()
 	}
 
 	select {
@@ -282,7 +282,7 @@ func (c *MemoryConnection) Handshake(
 	case <-c.closer:
 		return types.NodeInfo{}, nil, io.EOF
 	case <-ctx.Done():
-		return types.NodeInfo{}, nil, io.EOF
+		return types.NodeInfo{}, nil, ctx.Err()
 	}
 }
 
@@ -302,8 +302,6 @@ func (c *MemoryConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byt
 	case msg := <-c.receiveCh:
 		c.logger.Debug("received message", "chID", msg.channelID, "msg", msg.message)
 		return msg.channelID, msg.message, nil
-	case <-ctx.Done():
-		return 0, nil, io.EOF
 	case <-c.closer:
 		return 0, nil, io.EOF
 	}
@@ -334,7 +332,6 @@ func (c *MemoryConnection) SendMessage(ctx context.Context, chID ChannelID, msg 
 
 // Close implements Connection.
 func (c *MemoryConnection) Close() error {
-	c.logger.Info("closed connection")
 	select {
 	case <-c.closer:
 		return nil
