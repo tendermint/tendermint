@@ -100,9 +100,6 @@ type Reactor struct {
 	// minReceiveRequestInterval).
 	lastReceivedRequests map[types.NodeID]time.Time
 
-	// the time when another request will be sent
-	nextRequestTime time.Time
-
 	// keep track of how many new peers to existing peers we have received to
 	// extrapolate the size of the network
 	newPeers   uint32
@@ -155,8 +152,26 @@ func (r *Reactor) OnStop() {}
 func (r *Reactor) processPexCh(ctx context.Context) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
+	var (
+		duration = r.calculateNextRequestTime()
+		err      error
+	)
+
+	incoming := make(chan *p2p.Envelope)
+	go func() {
+		defer close(incoming)
+		iter := r.pexCh.Receive(ctx)
+		for iter.Next(ctx) {
+			select {
+			case <-ctx.Done():
+				return
+			case incoming <- iter.Envelope():
+			}
+		}
+	}()
+
 	for {
-		timer.Reset(time.Until(r.nextRequestTime))
+		timer.Reset(duration)
 
 		select {
 		case <-ctx.Done():
@@ -165,12 +180,15 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 
 		// outbound requests for new peers
 		case <-timer.C:
-			r.sendRequestForPeers(ctx)
-
+			duration, err = r.sendRequestForPeers(ctx)
+			if err != nil {
+				return
+			}
 		// inbound requests for new peers or responses to requests sent by this
 		// reactor
-		case envelope := <-r.pexCh.In:
-			if err := r.handleMessage(ctx, r.pexCh.ID, envelope); err != nil {
+		case envelope := <-incoming:
+			duration, err = r.handleMessage(ctx, r.pexCh.ID, envelope)
+			if err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
 				if serr := r.pexCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
@@ -179,6 +197,7 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 					return
 				}
 			}
+
 		}
 	}
 }
@@ -199,7 +218,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 }
 
 // handlePexMessage handles envelopes sent from peers on the PexChannel.
-func (r *Reactor) handlePexMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handlePexMessage(ctx context.Context, envelope *p2p.Envelope) (time.Duration, error) {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -207,7 +226,7 @@ func (r *Reactor) handlePexMessage(ctx context.Context, envelope p2p.Envelope) e
 		// check if the peer hasn't sent a prior request too close to this one
 		// in time
 		if err := r.markPeerRequest(envelope.From); err != nil {
-			return err
+			return time.Minute, err
 		}
 
 		// request peers from the peer manager and parse the NodeAddresses into
@@ -223,18 +242,19 @@ func (r *Reactor) handlePexMessage(ctx context.Context, envelope p2p.Envelope) e
 			To:      envelope.From,
 			Message: &protop2p.PexResponse{Addresses: pexAddresses},
 		}); err != nil {
-			return err
+			return 0, err
 		}
 
+		return time.Second, nil
 	case *protop2p.PexResponse:
 		// check if the response matches a request that was made to that peer
 		if err := r.markPeerResponse(envelope.From); err != nil {
-			return err
+			return time.Minute, err
 		}
 
 		// check the size of the response
 		if len(msg.Addresses) > int(maxAddresses) {
-			return fmt.Errorf("peer sent too many addresses (max: %d, got: %d)",
+			return 10 * time.Minute, fmt.Errorf("peer sent too many addresses (max: %d, got: %d)",
 				maxAddresses,
 				len(msg.Addresses),
 			)
@@ -256,17 +276,16 @@ func (r *Reactor) handlePexMessage(ctx context.Context, envelope p2p.Envelope) e
 			r.totalPeers++
 		}
 
+		return 10 * time.Minute, nil
 	default:
-		return fmt.Errorf("received unknown message: %T", msg)
+		return time.Second, fmt.Errorf("received unknown message: %T", msg)
 	}
-
-	return nil
 }
 
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (duration time.Duration, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -282,13 +301,12 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 
 	switch chID {
 	case p2p.ChannelID(PexChannel):
-		err = r.handlePexMessage(ctx, envelope)
-
+		duration, err = r.handlePexMessage(ctx, envelope)
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
 	}
 
-	return err
+	return
 }
 
 // processPeerUpdate processes a PeerUpdate. For added peers, PeerStatusUp, we
@@ -314,15 +332,13 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // peer a request for more peer addresses. The function then moves the
 // peer into the requestsSent bucket and calculates when the next request
 // time should be
-func (r *Reactor) sendRequestForPeers(ctx context.Context) {
+func (r *Reactor) sendRequestForPeers(ctx context.Context) (time.Duration, error) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if len(r.availablePeers) == 0 {
 		// no peers are available
 		r.logger.Debug("no available peers to send request to, waiting...")
-		r.nextRequestTime = time.Now().Add(noAvailablePeersWaitPeriod)
-
-		return
+		return noAvailablePeersWaitPeriod, nil
 	}
 	var peerID types.NodeID
 
@@ -336,15 +352,16 @@ func (r *Reactor) sendRequestForPeers(ctx context.Context) {
 		To:      peerID,
 		Message: &protop2p.PexRequest{},
 	}); err != nil {
-		return
+		return 0, err
 	}
 
 	// remove the peer from the abvailable peers list and mark it in the requestsSent map
 	delete(r.availablePeers, peerID)
 	r.requestsSent[peerID] = struct{}{}
 
-	r.calculateNextRequestTime()
-	r.logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
+	dur := r.calculateNextRequestTime()
+	r.logger.Debug("peer request sent", "next_request_time", dur)
+	return dur, nil
 }
 
 // calculateNextRequestTime implements something of a proportional controller
@@ -357,14 +374,13 @@ func (r *Reactor) sendRequestForPeers(ctx context.Context) {
 // new nodes will plummet to a very small number, meaning the interval expands
 // to its upper bound.
 // CONTRACT: Must use a write lock as nextRequestTime is updated
-func (r *Reactor) calculateNextRequestTime() {
+func (r *Reactor) calculateNextRequestTime() time.Duration {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
 	if ratio := r.peerManager.PeerRatio(); ratio >= 0.95 {
 		r.logger.Debug("peer manager near full ratio, sleeping...",
 			"sleep_period", fullCapacityInterval, "ratio", ratio)
-		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
-		return
+		return fullCapacityInterval
 	}
 
 	// baseTime represents the shortest interval that we can send peer requests
@@ -390,7 +406,7 @@ func (r *Reactor) calculateNextRequestTime() {
 	}
 	// NOTE: As ratio is always >= 1, discovery ratio is >= 1. Therefore we don't need to worry
 	// about the next request time being less than the minimum time
-	r.nextRequestTime = time.Now().Add(baseTime * time.Duration(r.discoveryRatio))
+	return baseTime * time.Duration(r.discoveryRatio)
 }
 
 func (r *Reactor) markPeerRequest(peer types.NodeID) error {

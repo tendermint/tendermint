@@ -503,7 +503,7 @@ func (r *Reactor) backfill(
 // handleSnapshotMessage handles envelopes sent from peers on the
 // SnapshotChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -575,7 +575,7 @@ func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope p2p.Envelo
 // handleChunkMessage handles envelopes sent from peers on the ChunkChannel.
 // It returns an error only if the Envelope.Message is unknown for this channel.
 // This should never be called outside of handleMessage.
-func (r *Reactor) handleChunkMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ChunkRequest:
 		r.logger.Debug(
@@ -664,7 +664,7 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope p2p.Envelope)
 	return nil
 }
 
-func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.LightBlockRequest:
 		r.logger.Info("received light block request", "height", msg.Height)
@@ -718,7 +718,7 @@ func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope p2p.Enve
 	return nil
 }
 
-func (r *Reactor) handleParamsMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ParamsRequest:
 		r.logger.Debug("received consensus params request", "height", msg.Height)
@@ -765,7 +765,7 @@ func (r *Reactor) handleParamsMessage(ctx context.Context, envelope p2p.Envelope
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -800,24 +800,20 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
 func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string) {
-	for {
-		select {
-		case <-ctx.Done():
-			r.logger.Debug("channel closed", "channel", chName)
-			return
-		case envelope := <-ch.In:
-			if err := r.handleMessage(ctx, ch.ID, envelope); err != nil {
-				r.logger.Error("failed to process message",
-					"err", err,
-					"channel", chName,
-					"ch_id", ch.ID,
-					"envelope", envelope)
-				if serr := ch.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
+	iter := ch.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, ch.ID, envelope); err != nil {
+			r.logger.Error("failed to process message",
+				"err", err,
+				"channel", chName,
+				"ch_id", ch.ID,
+				"envelope", envelope)
+			if serr := ch.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
 		}
 	}

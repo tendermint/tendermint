@@ -166,6 +166,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processBlockSyncCh(ctx)
+	go r.processBlockSyncBridge(ctx)
 	go r.processPeerUpdates(ctx)
 
 	return nil
@@ -212,7 +213,7 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 // handleBlockSyncMessage handles envelopes sent from peers on the
 // BlockSyncChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleBlockSyncMessage(ctx context.Context, envelope p2p.Envelope) error {
+func (r *Reactor) handleBlockSyncMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -251,7 +252,7 @@ func (r *Reactor) handleBlockSyncMessage(ctx context.Context, envelope p2p.Envel
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -282,25 +283,30 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 // When the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processBlockSyncCh(ctx context.Context) {
+	iter := r.blockSyncCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, r.blockSyncCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
+			r.logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
+			if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
+			}
+		}
+	}
+}
+
+func (r *Reactor) processBlockSyncBridge(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on block sync channel; closing...")
 			return
-		case envelope := <-r.blockSyncCh.In:
-			if err := r.handleMessage(ctx, r.blockSyncCh.ID, envelope); err != nil {
-				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					return
-				}
-
-				r.logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
-				if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
-			}
 		case envelope := <-r.blockSyncOutBridgeCh:
 			if err := r.blockSyncCh.Send(ctx, envelope); err != nil {
 				return
