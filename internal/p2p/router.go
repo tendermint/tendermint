@@ -997,7 +997,7 @@ func (r *Router) OnStop() {
 	for _, closer := range r.channelQueueClosers {
 		closer()
 	}
-	r.channelMtx.Unlock()
+	r.channelMtx.RUnlock()
 }
 
 type channelIDs map[ChannelID]struct{}
