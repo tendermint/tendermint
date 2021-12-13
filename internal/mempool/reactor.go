@@ -125,6 +125,12 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
+	r.mtx.Lock()
+	for _, closer := range r.peerClosers {
+		closer()
+	}
+	r.mtx.Unlock()
+
 	// wait for all spawned peer tx broadcasting goroutines to gracefully exit
 	r.peerWG.Wait()
 }
