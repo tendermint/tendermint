@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -14,53 +15,63 @@ import (
 )
 
 // RequireEmpty requires that the given channel is empty.
-func RequireEmpty(t *testing.T, channels ...*p2p.Channel) {
-	for _, channel := range channels {
-		select {
-		case e := <-channel.In:
-			require.Fail(t, "unexpected message", "channel %v should be empty, got %v", channel.ID, e)
-		case <-time.After(10 * time.Millisecond):
-		}
+func RequireEmpty(ctx context.Context, t *testing.T, channels ...*p2p.Channel) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+
+	iter := p2p.MergedChannelIterator(ctx, channels...)
+	count := 0
+	for iter.Next(ctx) {
+		count++
+		require.Nil(t, iter.Envelope())
 	}
+	require.Zero(t, count)
+	require.Error(t, ctx.Err())
 }
 
 // RequireReceive requires that the given envelope is received on the channel.
-func RequireReceive(t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
+func RequireReceive(ctx context.Context, t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
 	t.Helper()
 
-	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
-	defer timer.Stop()
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 
-	select {
-	case e := <-channel.In:
-		require.Equal(t, expect, e)
-	case <-timer.C:
-		require.Fail(t, "timed out waiting for message", "%v on channel %v", expect, channel.ID)
+	iter := channel.Receive(ctx)
+	count := 0
+	for iter.Next(ctx) {
+		count++
+		envelope := iter.Envelope()
+		require.Equal(t, expect.From, envelope.From)
+		require.Equal(t, expect.Message, envelope.Message)
+	}
+
+	if !assert.True(t, count >= 1) {
+		require.NoError(t, ctx.Err(), "timed out waiting for message %v", expect)
 	}
 }
 
 // RequireReceiveUnordered requires that the given envelopes are all received on
 // the channel, ignoring order.
-func RequireReceiveUnordered(t *testing.T, channel *p2p.Channel, expect []p2p.Envelope) {
-	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
-	defer timer.Stop()
+func RequireReceiveUnordered(ctx context.Context, t *testing.T, channel *p2p.Channel, expect []*p2p.Envelope) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 
-	actual := []p2p.Envelope{}
-	for {
-		select {
-		case e := <-channel.In:
-			actual = append(actual, e)
-			if len(actual) == len(expect) {
-				require.ElementsMatch(t, expect, actual)
-				return
-			}
+	actual := []*p2p.Envelope{}
 
-		case <-timer.C:
-			require.ElementsMatch(t, expect, actual)
+	iter := channel.Receive(ctx)
+	for iter.Next(ctx) {
+		actual = append(actual, iter.Envelope())
+		if len(actual) == len(expect) {
+			require.ElementsMatch(t, expect, actual, "len=%d", len(actual))
 			return
 		}
 	}
 
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		require.ElementsMatch(t, expect, actual)
+	}
 }
 
 // RequireSend requires that the given envelope is sent on the channel.
@@ -88,7 +99,7 @@ func RequireSendReceive(
 	receive proto.Message,
 ) {
 	RequireSend(ctx, t, channel, p2p.Envelope{To: peerID, Message: send})
-	RequireReceive(t, channel, p2p.Envelope{From: peerID, Message: send})
+	RequireReceive(ctx, t, channel, p2p.Envelope{From: peerID, Message: send})
 }
 
 // RequireNoUpdates requires that a PeerUpdates subscription is empty.

@@ -144,11 +144,11 @@ func (s *pqScheduler) process(ctx context.Context) {
 	for {
 		select {
 		case e := <-s.enqueueCh:
-			chIDStr := strconv.Itoa(int(e.channelID))
+			chIDStr := strconv.Itoa(int(e.ChannelID))
 			pqEnv := &pqEnvelope{
 				envelope:  e,
 				size:      uint(proto.Size(e.Message)),
-				priority:  s.chPriorities[e.channelID],
+				priority:  s.chPriorities[e.ChannelID],
 				timestamp: time.Now().UTC(),
 			}
 
@@ -187,7 +187,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 							if tmpSize+pqEnv.size <= s.capacity {
 								canEnqueue = true
 							} else {
-								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.channelID))
+								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.ChannelID))
 								s.metrics.PeerQueueDroppedMsgs.With("ch_id", pqEnvTmpChIDStr).Add(1)
 								s.logger.Debug(
 									"dropped envelope",
@@ -259,7 +259,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 }
 
 func (s *pqScheduler) push(pqEnv *pqEnvelope) {
-	chIDStr := strconv.Itoa(int(pqEnv.envelope.channelID))
+	chIDStr := strconv.Itoa(int(pqEnv.envelope.ChannelID))
 
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)

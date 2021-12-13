@@ -334,7 +334,7 @@ func (r *Router) routeChannel(
 
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
-			envelope.channelID = chID
+			envelope.ChannelID = chID
 
 			// wrap the message in a wrapper message, if requested
 			if wrapper != nil {
@@ -866,7 +866,7 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 		start := time.Now().UTC()
 
 		select {
-		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
+		case queue.enqueue() <- Envelope{From: peerID, Message: msg, ChannelID: chID}:
 			r.metrics.PeerReceiveBytesTotal.With(
 				"chID", fmt.Sprint(chID),
 				"peer_id", string(peerID),
@@ -899,7 +899,7 @@ func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connect
 				continue
 			}
 
-			if err = conn.SendMessage(ctx, envelope.channelID, bz); err != nil {
+			if err = conn.SendMessage(ctx, envelope.ChannelID, bz); err != nil {
 				return err
 			}
 
