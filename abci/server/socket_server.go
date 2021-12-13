@@ -7,9 +7,9 @@ import (
 	"io"
 	"net"
 	"runtime"
+	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
@@ -25,11 +25,11 @@ type SocketServer struct {
 	addr     string
 	listener net.Listener
 
-	connsMtx   tmsync.Mutex
+	connsMtx   sync.Mutex
 	conns      map[int]net.Conn
 	nextConnID int
 
-	appMtx tmsync.Mutex
+	appMtx sync.Mutex
 	app    types.Application
 }
 

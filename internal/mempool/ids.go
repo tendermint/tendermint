@@ -2,13 +2,13 @@ package mempool
 
 import (
 	"fmt"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/types"
 )
 
 type IDs struct {
-	mtx       tmsync.RWMutex
+	mtx       sync.RWMutex
 	peerMap   map[types.NodeID]uint16
 	nextID    uint16              // assumes that a node will never have over 65536 active peers
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used

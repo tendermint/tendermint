@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
@@ -392,7 +391,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
+		mtx := new(sync.Mutex)
 		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
 		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
 

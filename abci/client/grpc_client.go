@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
@@ -27,7 +26,7 @@ type grpcClient struct {
 	conn     *grpc.ClientConn
 	chReqRes chan *ReqRes // dispatches "async" responses to callbacks *in order*, needed by mempool
 
-	mtx   tmsync.Mutex
+	mtx   sync.Mutex
 	addr  string
 	err   error
 	resCb func(*types.Request, *types.Response) // listens to all callbacks

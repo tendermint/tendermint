@@ -10,6 +10,7 @@ import (
 	"net"
 	"reflect"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 
 	"github.com/tendermint/tendermint/internal/libs/flowrate"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/libs/timer"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -100,7 +100,7 @@ type MConnection struct {
 
 	// used to ensure FlushStop and OnStop
 	// are safe to call concurrently.
-	stopMtx tmsync.Mutex
+	stopMtx sync.Mutex
 
 	cancel context.CancelFunc
 

@@ -53,7 +53,7 @@ type Reactor struct {
 
 	peerWG sync.WaitGroup
 
-	mtx          tmsync.Mutex
+	mtx          sync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
 }
 

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -117,7 +117,7 @@ type Reactor struct {
 	eventBus *eventbus.EventBus
 	Metrics  *Metrics
 
-	mtx      tmsync.RWMutex
+	mtx      sync.RWMutex
 	peers    map[types.NodeID]*PeerState
 	waitSync bool
 

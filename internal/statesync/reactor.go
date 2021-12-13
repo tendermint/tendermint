@@ -8,11 +8,11 @@ import (
 	"reflect"
 	"runtime/debug"
 	"sort"
+	"sync"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -151,7 +151,7 @@ type Reactor struct {
 	// These will only be set when a state sync is in progress. It is used to feed
 	// received snapshots and chunks into the syncer and manage incoming and outgoing
 	// providers.
-	mtx           tmsync.RWMutex
+	mtx           sync.RWMutex
 	syncer        *syncer
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
