@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -47,7 +46,6 @@ type PeerState struct {
 	Stats   *peerStateStats        `json:"stats"`
 
 	broadcastWG sync.WaitGroup
-	closer      context.CancelFunc
 }
 
 // NewPeerState returns a new PeerState for the given node ID.

@@ -117,9 +117,10 @@ type Reactor struct {
 	eventBus *eventbus.EventBus
 	Metrics  *Metrics
 
-	mtx      tmsync.RWMutex
-	peers    map[types.NodeID]*PeerState
-	waitSync bool
+	mtx         tmsync.RWMutex
+	peers       map[types.NodeID]*PeerState
+	peerClosers map[types.NodeID]context.CancelFunc
+	waitSync    bool
 
 	stateCh       *p2p.Channel
 	dataCh        *p2p.Channel
@@ -149,6 +150,7 @@ func NewReactor(
 		state:         cs,
 		waitSync:      waitSync,
 		peers:         make(map[types.NodeID]*PeerState),
+		peerClosers:   make(map[types.NodeID]context.CancelFunc),
 		Metrics:       NopMetrics(),
 		stateCh:       stateCh,
 		dataCh:        dataCh,
@@ -216,9 +218,12 @@ func (r *Reactor) OnStop() {
 	// This is safe to perform with the lock since none of the peers require the
 	// lock to complete any of the methods that the waitgroup is waiting on.
 	for _, state := range r.peers {
-		state.closer()
 		state.broadcastWG.Wait()
 	}
+	for _, closer := range r.peerClosers {
+		closer()
+	}
+
 	r.mtx.Unlock()
 }
 
@@ -1018,15 +1023,17 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			ps.broadcastWG.Add(3)
 			ps.SetRunning(true)
 
+			pctx, pcancel := context.WithCancel(ctx)
+			r.peerClosers[peerUpdate.NodeID] = pcancel
 			// start goroutines for this peer
-			go r.gossipDataRoutine(ctx, ps)
-			go r.gossipVotesRoutine(ctx, ps)
-			go r.queryMaj23Routine(ctx, ps)
+			go r.gossipDataRoutine(pctx, ps)
+			go r.gossipVotesRoutine(pctx, ps)
+			go r.queryMaj23Routine(pctx, ps)
 
 			// Send our state to the peer. If we're block-syncing, broadcast a
 			// RoundStepMessage later upon SwitchToConsensus().
 			if !r.waitSync {
-				go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID) }()
+				go func() { _ = r.sendNewRoundStepMessage(pctx, ps.peerID) }()
 			}
 		}
 
@@ -1034,7 +1041,11 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		ps, ok := r.peers[peerUpdate.NodeID]
 		if ok && ps.IsRunning() {
 			// signal to all spawned goroutines for the peer to gracefully exit
-			ps.closer()
+			if closer, ok := r.peerClosers[peerUpdate.NodeID]; ok {
+				closer()
+			}
+
+			delete(r.peerClosers, peerUpdate.NodeID)
 
 			go func() {
 				// Wait for all spawned broadcast goroutines to exit before marking the
