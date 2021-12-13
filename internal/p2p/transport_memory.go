@@ -175,8 +175,8 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	inCh := make(chan memoryMessage, t.bufferSize)
 	outCh := make(chan memoryMessage, t.bufferSize)
 
-	outConn := newMemoryConnection(ctx, t.logger, t.nodeID, peer.nodeID, inCh, outCh)
-	inConn := newMemoryConnection(ctx, peer.logger, peer.nodeID, t.nodeID, outCh, inCh)
+	outConn := newMemoryConnection(t.logger, t.nodeID, peer.nodeID, inCh, outCh)
+	inConn := newMemoryConnection(peer.logger, peer.nodeID, t.nodeID, outCh, inCh)
 
 	select {
 	case peer.acceptCh <- inConn:
@@ -201,8 +201,7 @@ type MemoryConnection struct {
 	receiveCh <-chan memoryMessage
 	sendCh    chan<- memoryMessage
 
-	closer  <-chan struct{}
-	doClose context.CancelFunc
+	closer chan struct{}
 }
 
 // memoryMessage is passed internally, containing either a message or handshake.
@@ -217,22 +216,19 @@ type memoryMessage struct {
 
 // newMemoryConnection creates a new MemoryConnection.
 func newMemoryConnection(
-	ctx context.Context,
 	logger log.Logger,
 	localID types.NodeID,
 	remoteID types.NodeID,
 	receiveCh <-chan memoryMessage,
 	sendCh chan<- memoryMessage,
 ) *MemoryConnection {
-	cctx, ccancel := context.WithCancel(ctx)
 	return &MemoryConnection{
 		logger:    logger.With("remote", remoteID),
 		localID:   localID,
 		remoteID:  remoteID,
 		receiveCh: receiveCh,
 		sendCh:    sendCh,
-		closer:    cctx.Done(),
-		doClose:   ccancel,
+		closer:    make(chan struct{}),
 	}
 }
 
@@ -336,7 +332,7 @@ func (c *MemoryConnection) Close() error {
 	case <-c.closer:
 		return nil
 	default:
-		c.doClose()
+		close(c.closer)
 		c.logger.Info("closed connection")
 	}
 	return nil

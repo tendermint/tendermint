@@ -28,6 +28,6 @@ func TestConnectionFiltering(t *testing.T) {
 		},
 	}
 	require.Equal(t, 0, filterByIPCount)
-	router.openConnection(ctx, &MemoryConnection{logger: logger, closer: ctx.Done(), doClose: cancel})
+	router.openConnection(ctx, &MemoryConnection{logger: logger, closer: make(chan struct{})})
 	require.Equal(t, 1, filterByIPCount)
 }

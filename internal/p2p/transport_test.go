@@ -599,7 +599,7 @@ func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Conn
 	endpoints := b.Endpoints()
 	require.NotEmpty(t, endpoints, "peer not listening on any endpoints")
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	acceptCh := make(chan p2p.Connection, 1)

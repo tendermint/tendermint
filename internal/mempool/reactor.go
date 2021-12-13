@@ -79,6 +79,7 @@ func NewReactor(
 		mempoolCh:    mempoolCh,
 		peerUpdates:  peerUpdates,
 		observePanic: defaultObservePanic,
+		peerClosers:  make(map[types.NodeID]context.CancelFunc),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
@@ -234,6 +235,9 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// a new done channel so we can explicitly close the goroutine if the peer
 			// is later removed, we increment the waitgroup so the reactor can stop
 			// safely, and finally start the goroutine to broadcast txs to that peer.
+			r.mtx.Lock()
+			defer r.mtx.Unlock()
+
 			_, ok := r.peerClosers[peerUpdate.NodeID]
 			if !ok {
 				bctx, bcancel := context.WithCancel(ctx)
@@ -254,7 +258,11 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer
 		// from the map of peer tx broadcasting goroutines.
+		r.mtx.Lock()
+		defer r.mtx.Unlock()
+
 		if closer, ok := r.peerClosers[peerUpdate.NodeID]; ok {
+
 			closer()
 		}
 	}
