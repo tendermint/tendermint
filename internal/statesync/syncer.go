@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -63,7 +63,7 @@ type syncer struct {
 	fetchers      int32
 	retryTimeout  time.Duration
 
-	mtx     tmsync.RWMutex
+	mtx     sync.RWMutex
 	chunks  *chunkQueue
 	metrics *Metrics
 

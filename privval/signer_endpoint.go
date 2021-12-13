@@ -3,10 +3,10 @@ package privval
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
@@ -20,7 +20,7 @@ type signerEndpoint struct {
 	service.BaseService
 	logger log.Logger
 
-	connMtx tmsync.Mutex
+	connMtx sync.Mutex
 	conn    net.Conn
 
 	timeoutReadWrite time.Duration

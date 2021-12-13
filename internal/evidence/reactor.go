@@ -8,7 +8,6 @@ import (
 	"time"
 
 	clist "github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -53,7 +52,7 @@ type Reactor struct {
 
 	peerWG sync.WaitGroup
 
-	mtx        tmsync.Mutex
+	mtx        sync.Mutex
 	peerCloser map[types.NodeID]context.CancelFunc
 }
 

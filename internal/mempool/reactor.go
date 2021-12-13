@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -57,7 +56,7 @@ type Reactor struct {
 	// Reactor. observePanic is called with the recovered value.
 	observePanic func(interface{})
 
-	mtx         tmsync.Mutex
+	mtx         sync.Mutex
 	peerClosers map[types.NodeID]context.CancelFunc
 }
 

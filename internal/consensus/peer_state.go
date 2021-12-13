@@ -40,7 +40,7 @@ type PeerState struct {
 	logger log.Logger
 
 	// NOTE: Modify below using setters, never directly.
-	mtx     tmsync.RWMutex
+	mtx     sync.RWMutex
 	running bool
 	PRS     cstypes.PeerRoundState `json:"round_state"`
 	Stats   *peerStateStats        `json:"stats"`

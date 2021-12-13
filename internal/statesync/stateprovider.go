@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
@@ -40,7 +40,7 @@ type StateProvider interface {
 }
 
 type stateProviderRPC struct {
-	tmsync.Mutex  // light.Client is not concurrency-safe
+	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
 	providers     map[lightprovider.Provider]string
@@ -197,7 +197,7 @@ func rpcClient(server string) (*rpchttp.HTTP, error) {
 }
 
 type stateProviderP2P struct {
-	tmsync.Mutex  // light.Client is not concurrency-safe
+	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
 	paramsSendCh  *p2p.Channel
