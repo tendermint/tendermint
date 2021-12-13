@@ -404,7 +404,6 @@ func (r *Router) routeChannel(
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 
 				case <-ctx.Done():
-					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 					return
 				}
 			}
@@ -784,6 +783,8 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 		delete(r.peerQueueClosers, peerID)
 		r.peerMtx.Unlock()
 
+		sendQueue.close()
+
 		r.peerManager.Disconnected(ctx, peerID)
 		r.metrics.Peers.Add(-1)
 	}()
@@ -813,6 +814,7 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 	}
 
 	_ = conn.Close()
+	sendQueue.close()
 
 	select {
 	case <-ctx.Done():
@@ -881,8 +883,9 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 
-		case <-ctx.Done():
+		case <-queue.closed():
 			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
+		case <-ctx.Done():
 			return nil
 		}
 	}
@@ -1009,6 +1012,9 @@ func (r *Router) OnStop() {
 	r.channelMtx.RLock()
 	for _, closer := range r.channelQueueClosers {
 		closer()
+	}
+	for _, chq := range r.channelQueues {
+		chq.close()
 	}
 	r.channelMtx.RUnlock()
 }

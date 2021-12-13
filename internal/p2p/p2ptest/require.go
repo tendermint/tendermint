@@ -133,7 +133,7 @@ func RequireError(ctx context.Context, t *testing.T, channel *p2p.Channel, peerE
 func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUpdate) {
 	t.Helper()
 
-	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	timer := time.NewTimer(10 * time.Second) // not time.After due to goroutine leaks
 	defer timer.Stop()
 
 	select {

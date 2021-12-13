@@ -67,7 +67,6 @@ func (n *MemoryNetwork) RemoveTransport(id types.NodeID) {
 	t, ok := n.transports[id]
 	delete(n.transports, id)
 	n.mtx.Unlock()
-
 	if ok {
 		// Close may recursively call RemoveTransport() again, but this is safe
 		// because we've already removed the transport from the map above.
