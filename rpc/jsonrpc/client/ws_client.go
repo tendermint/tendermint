@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmclient "github.com/tendermint/tendermint/rpc/client"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -70,7 +69,7 @@ type WSClient struct { // nolint: maligned
 
 	wg sync.WaitGroup
 
-	mtx            tmsync.RWMutex
+	mtx            sync.RWMutex
 	sentLastPingAt time.Time
 	reconnecting   bool
 	nextReqID      int

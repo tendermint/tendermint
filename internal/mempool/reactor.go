@@ -57,7 +57,7 @@ type Reactor struct {
 	// Reactor. observePanic is called with the recovered value.
 	observePanic func(interface{})
 
-	mtx          tmsync.Mutex
+	mtx          sync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
 }
 

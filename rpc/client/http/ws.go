@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -48,7 +48,7 @@ type wsEvents struct {
 	*rpcclient.RunState
 	ws *jsonrpcclient.WSClient
 
-	mtx           tmsync.RWMutex
+	mtx           sync.RWMutex
 	subscriptions map[string]*wsSubscription
 }
 
