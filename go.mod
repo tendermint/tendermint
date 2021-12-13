@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.4.1
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
 	github.com/Workiva/go-datastructures v1.0.53
-	github.com/adlio/schema v1.2.2
+	github.com/adlio/schema v1.2.3
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
