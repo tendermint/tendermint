@@ -44,5 +44,6 @@ sections.
 - [RFC-004: E2E Test Framework Enhancements](./rfc-004-e2e-framework.md)
 - [RFC-005: Event System](./rfc-005-event-system.rst)
 - [RFC-006: Event Subscription](./rfc-006-event-subscription.md)
+- [RFC-007: Deterministic Proto Byte Serialization](./rfc-007-deterministic-proto-bytes.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->

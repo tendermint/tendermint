@@ -69,15 +69,15 @@ serializers written in other languages that produce the same output as gogoproto
 
 The serialized form of a proto message can be transformed into a canonical representation
 by applying simple rules to the serialized bytes. Re-ordering the serialized bytes
-would allow Tendermint to produce a canonical byte representation without having to 
-simultaneously maintain a custom proto marshaller. 
+would allow Tendermint to produce a canonical byte representation without having to
+simultaneously maintain a custom proto marshaller.
 
 This could be implemented as a function in many languages that performed the following steps:
 
-1. Reordered all fields to be in tag-sorted order.
-2. Reordered all `repeated` sub-fields to be in lexicographically sorted order.
-3. Deleted all default values from the representation.
-4. Set our proto decoder package to remove unknown fields on deserialization.
+1. Set our proto decoder package to remove unknown fields on deserialization.
+2. Reordered all fields to be in tag-sorted order.
+3. Reordered all `repeated` sub-fields to be in lexicographically sorted order.
+4. Deleted all default values from the byte representation.
 
 This would still require that messages never unmarshal data structures with unknown fields.
 This can be accomplished by defining adding fields to a structure that needs canonicalization
