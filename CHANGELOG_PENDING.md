@@ -27,6 +27,7 @@ Special thanks to external contributors on this release:
 
 - Go API
 
+  - [libs/sync] \#7450 Internalize and remove the library. (@creachadair)
   - [libs/async] \#7449 Move library to internal. (@creachadair)
   - [pubsub] \#7231 Remove unbuffered subscriptions and rework the Subscription interface. (@creachadair)
   - [eventbus] \#7231 Move the EventBus type to the internal/eventbus package. (@creachadair)
