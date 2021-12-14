@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -88,14 +89,14 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 }
 
 // NewClient returns a new client.
-func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
+func NewClient(logger log.Logger, next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
 		next:   next,
 		lc:     lc,
 		prt:    merkle.DefaultProofRuntime(),
 		quitCh: make(chan struct{}),
 	}
-	c.BaseService = *service.NewBaseService(nil, "Client", c)
+	c.BaseService = *service.NewBaseService(logger, "Client", c)
 	for _, o := range opts {
 		o(c)
 	}

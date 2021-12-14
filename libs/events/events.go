@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -61,12 +62,12 @@ type eventSwitch struct {
 	listeners  map[string]*eventListener
 }
 
-func NewEventSwitch() EventSwitch {
+func NewEventSwitch(logger log.Logger) EventSwitch {
 	evsw := &eventSwitch{
 		eventCells: make(map[string]*eventCell),
 		listeners:  make(map[string]*eventListener),
 	}
-	evsw.BaseService = *service.NewBaseService(nil, "EventSwitch", evsw)
+	evsw.BaseService = *service.NewBaseService(logger, "EventSwitch", evsw)
 	return evsw
 }
 
