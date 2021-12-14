@@ -28,6 +28,7 @@ func main() {
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
 		cmd.RollbackStateCmd,
+		cmd.SetAppVersionCommand,
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
