@@ -41,7 +41,7 @@ func TestingLogger() Logger {
 }
 
 type testingWriter struct {
-	t *testing.T
+	t testing.TB
 }
 
 func (tw testingWriter) Write(in []byte) (int, error) {
@@ -57,7 +57,7 @@ func (tw testingWriter) Write(in []byte) (int, error) {
 //
 // By default it collects only ERROR messages, or DEBUG messages in
 // verbose mode, and relies on the underlying behavior of testing.T.Log()
-func NewTestingLogger(t *testing.T) Logger {
+func NewTestingLogger(t testing.TB) Logger {
 	level := LogLevelError
 	if testing.Verbose() {
 		level = LogLevelDebug
@@ -68,7 +68,7 @@ func NewTestingLogger(t *testing.T) Logger {
 
 // NewTestingLoggerWithLevel creates a testing logger instance at a
 // specific level that wraps the behavior of testing.T.Log().
-func NewTestingLoggerWithLevel(t *testing.T, level string) Logger {
+func NewTestingLoggerWithLevel(t testing.TB, level string) Logger {
 	logLevel, err := zerolog.ParseLevel(level)
 	if err != nil {
 		t.Fatalf("failed to parse log level (%s): %v", level, err)
