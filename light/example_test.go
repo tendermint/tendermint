@@ -26,7 +26,7 @@ func ExampleClient() {
 		stdlog.Fatal(err)
 	}
 
-	logger := log.TestingLogger()
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 	// Start a test application
 	app := kvstore.NewApplication()

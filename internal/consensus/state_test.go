@@ -60,7 +60,7 @@ func TestStateProposerSelection0(t *testing.T) {
 	defer cancel()
 	config := configSetup(t)
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 
 	height, round := cs1.Height, cs1.Round
@@ -115,7 +115,7 @@ func TestStateProposerSelection2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4) // test needs more work for more than 3 validators
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4) // test needs more work for more than 3 validators
 	require.NoError(t, err)
 
 	height := cs1.Height
@@ -158,7 +158,7 @@ func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, _, err := randState(ctx, config, log.TestingLogger(), 1)
+	cs, _, err := randState(ctx, config, log.NewTestingLogger(t), 1)
 	require.NoError(t, err)
 	cs.SetPrivValidator(nil)
 	height, round := cs.Height, cs.Round
@@ -182,7 +182,7 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, _, err := randState(ctx, config, log.TestingLogger(), 1)
+	cs, _, err := randState(ctx, config, log.NewTestingLogger(t), 1)
 	require.NoError(t, err)
 	height, round := cs.Height, cs.Round
 
@@ -217,7 +217,7 @@ func TestStateBadProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 2)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
@@ -280,7 +280,7 @@ func TestStateOversizedBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 2)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 	cs1.state.ConsensusParams.Block.MaxBytes = 2000
 	height, round := cs1.Height, cs1.Round
@@ -344,7 +344,7 @@ func TestStateOversizedBlock(t *testing.T) {
 // propose, prevote, and precommit a block
 func TestStateFullRound1(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -393,7 +393,7 @@ func TestStateFullRoundNil(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, vss, err := randState(ctx, config, log.TestingLogger(), 1)
+	cs, vss, err := randState(ctx, config, log.NewTestingLogger(t), 1)
 	require.NoError(t, err)
 	height, round := cs.Height, cs.Round
 
@@ -416,7 +416,7 @@ func TestStateFullRound2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 2)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
@@ -461,7 +461,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 2)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
@@ -602,7 +602,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
 	// needed so generated block is different than locked block
-	cs2, _, err := randState(ctx, config, log.TestingLogger(), 2)
+	cs2, _, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(ctx, cs2, vs2, vs2.Height, vs2.Round+1)
@@ -655,7 +655,7 @@ func TestStateLockNoPOL(t *testing.T) {
 // the others prevote a new block hence v1 changes lock and precommits the new block with the others
 func TestStateLockPOLRelock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -764,7 +764,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -858,7 +858,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 // prevote and now v1 can lock onto the third block and precommit that
 func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -995,7 +995,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1121,7 +1121,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1223,7 +1223,7 @@ func TestProposeValidBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1320,7 +1320,7 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1387,7 +1387,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1449,7 +1449,7 @@ func TestWaitingTimeoutOnNilPolka(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1475,7 +1475,7 @@ func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1516,7 +1516,7 @@ func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1557,7 +1557,7 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, int32(1)
@@ -1589,7 +1589,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, int32(1)
@@ -1628,7 +1628,7 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, int32(1)
@@ -1687,7 +1687,7 @@ func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 	defer cancel()
 
 	config.Consensus.SkipTimeoutCommit = false
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	cs1.txNotifier = &fakeTxNotifier{ch: make(chan struct{})}
 
@@ -1753,7 +1753,7 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	defer cancel()
 
 	config.Consensus.SkipTimeoutCommit = false
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -1899,7 +1899,7 @@ func TestStateHalt1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := randState(ctx, config, log.TestingLogger(), 4)
+	cs1, vss, err := randState(ctx, config, log.NewTestingLogger(t), 4)
 	require.NoError(t, err)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1972,7 +1972,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	defer cancel()
 
 	// create dummy peer
-	cs, _, err := randState(ctx, config, log.TestingLogger(), 1)
+	cs, _, err := randState(ctx, config, log.NewTestingLogger(t), 1)
 	require.NoError(t, err)
 	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	require.NoError(t, err)
@@ -2020,7 +2020,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, vss, err := randState(ctx, config, log.TestingLogger(), 2)
+	cs, vss, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 	// create dummy peer
 	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
@@ -2059,7 +2059,7 @@ func TestSignSameVoteTwice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, vss, err := randState(ctx, config, log.TestingLogger(), 2)
+	_, vss, err := randState(ctx, config, log.NewTestingLogger(t), 2)
 	require.NoError(t, err)
 
 	randBytes := tmrand.Bytes(tmhash.Size)

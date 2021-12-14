@@ -108,7 +108,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -411,7 +411,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 
 			router, err := p2p.NewRouter(
 				ctx,
-				log.TestingLogger(),
+				log.NewTestingLogger(t),
 				p2p.NopMetrics(),
 				selfInfo,
 				selfKey,
@@ -466,7 +466,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -504,7 +504,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -556,7 +556,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -659,7 +659,7 @@ func TestRouter_DialPeers(t *testing.T) {
 
 			router, err := p2p.NewRouter(
 				ctx,
-				log.TestingLogger(),
+				log.NewTestingLogger(t),
 				p2p.NopMetrics(),
 				selfInfo,
 				selfKey,
@@ -745,7 +745,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -820,7 +820,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -883,7 +883,7 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,
@@ -939,7 +939,7 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 
 	router, err := p2p.NewRouter(
 		ctx,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		p2p.NopMetrics(),
 		selfInfo,
 		selfKey,

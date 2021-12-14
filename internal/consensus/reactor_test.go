@@ -369,7 +369,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	genDoc, privVals := factory.RandGenesisDoc(cfg, n, false, 30)
 	states := make([]*State, n)
-	logger := consensusLogger()
+	logger := consensusLogger(t)
 
 	for i := 0; i < n; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -396,7 +396,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
 
 		mempool := mempool.NewTxMempool(
-			log.TestingLogger().With("module", "mempool"),
+			log.NewTestingLogger(t).With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
 			0,
@@ -419,12 +419,12 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		evpool2 := sm.EmptyEvidencePool{}
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
+		blockExec := sm.NewBlockExecutor(stateStore, log.NewTestingLogger(t), proxyAppConnCon, mempool, evpool, blockStore)
 		cs := NewState(ctx, logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
 		cs.SetPrivValidator(pv)
 
-		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+		eventBus := eventbus.NewDefault(log.NewTestingLogger(t).With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))
 		cs.SetEventBus(eventBus)
 
@@ -702,6 +702,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,

@@ -47,7 +47,7 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 
 	ctx := context.Background()
 	mockPV := types.NewMockPV()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
 
@@ -69,7 +69,7 @@ func TestSignerClient_SignVote(t *testing.T) {
 
 	ctx := context.Background()
 	mockPV := types.NewMockPV()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
 
@@ -122,7 +122,7 @@ func TestSignerClient_SignProposal(t *testing.T) {
 
 	ctx := context.Background()
 	mockPV := types.NewMockPV()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
 

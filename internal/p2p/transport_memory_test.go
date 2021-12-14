@@ -18,7 +18,7 @@ func init() {
 
 	testTransports["memory"] = func(t *testing.T) p2p.Transport {
 		if network == nil {
-			network = p2p.NewMemoryNetwork(log.TestingLogger(), 1)
+			network = p2p.NewMemoryNetwork(log.NewTestingLogger(t), 1)
 		}
 		i := byte(network.Size())
 		nodeID, err := types.NewNodeID(hex.EncodeToString(bytes.Repeat([]byte{i<<4 + i}, 20)))

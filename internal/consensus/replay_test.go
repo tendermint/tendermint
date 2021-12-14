@@ -58,7 +58,7 @@ import (
 
 func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
 	privValidator := loadPrivValidator(consensusReplayConfig)
@@ -335,6 +335,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	css, genDoc, cfg, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,
@@ -642,7 +643,7 @@ func TestMockProxyApp(t *testing.T) {
 	cfg := sim.Config
 	assert.NotNil(t, cfg)
 
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	var validTxs, invalidTxs = 0, 0
 	txIndex := 0
 
@@ -728,7 +729,7 @@ func testHandshakeReplay(
 
 	cfg := sim.Config
 
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	if testValidatorsChange {
 		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		require.NoError(t, err)
@@ -772,6 +773,7 @@ func testHandshakeReplay(
 	// run the chain through state.ApplyBlock to build up the tendermint state
 	state = buildTMStateFromChain(
 		ctx,
+		t,
 		cfg,
 		logger,
 		sim.Mempool,
@@ -799,7 +801,7 @@ func testHandshakeReplay(
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(ctx, proxyApp, stateStore, sim.Mempool, sim.Evpool, genesisState, chain, nBlocks, mode, store)
+		buildAppStateFromChain(ctx, t, proxyApp, stateStore, sim.Mempool, sim.Evpool, genesisState, chain, nBlocks, mode, store)
 	}
 
 	// Prune block store if requested
@@ -857,6 +859,7 @@ func testHandshakeReplay(
 
 func applyBlock(
 	ctx context.Context,
+	t *testing.T,
 	stateStore sm.Store,
 	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
@@ -866,7 +869,7 @@ func applyBlock(
 	blockStore *mockBlockStore,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewTestingLogger(t), proxyApp.Consensus(), mempool, evpool, blockStore)
 
 	blkID := types.BlockID{Hash: blk.Hash(), PartSetHeader: blk.MakePartSet(testPartSize).Header()}
 	newState, err := blockExec.ApplyBlock(ctx, st, blkID, blk)
@@ -878,6 +881,7 @@ func applyBlock(
 
 func buildAppStateFromChain(
 	ctx context.Context,
+	t *testing.T,
 	proxyApp proxy.AppConns,
 	stateStore sm.Store,
 	mempool mempool.Mempool,
@@ -907,18 +911,18 @@ func buildAppStateFromChain(
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(ctx, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(ctx, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(ctx, stateStore, mempool, evpool, state, chain[nBlocks-1], proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[nBlocks-1], proxyApp, blockStore)
 		}
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
@@ -928,6 +932,7 @@ func buildAppStateFromChain(
 
 func buildTMStateFromChain(
 	ctx context.Context,
+	t *testing.T,
 	cfg *config.Config,
 	logger log.Logger,
 	mempool mempool.Mempool,
@@ -964,19 +969,19 @@ func buildTMStateFromChain(
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			state = applyBlock(ctx, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
 		}
 
 	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			state = applyBlock(ctx, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		applyBlock(ctx, stateStore, mempool, evpool, state, chain[len(chain)-1], proxyApp, blockStore)
+		applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[len(chain)-1], proxyApp, blockStore)
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
 	}
@@ -1009,7 +1014,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	blocks := sf.MakeBlocks(3, &state, privVal)
 	store.chain = blocks
 
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	// 2. Tendermint must panic if app returns wrong hash for the first block
 	//		- RANDOM HASH
@@ -1299,7 +1304,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
 	if err := proxyApp.Start(ctx); err != nil {

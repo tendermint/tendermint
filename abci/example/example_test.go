@@ -58,7 +58,7 @@ func testStream(ctx context.Context, t *testing.T, app types.Application) {
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	// Start the listener
 	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
 	t.Cleanup(server.Wait)
@@ -66,7 +66,7 @@ func testStream(ctx context.Context, t *testing.T, app types.Application) {
 	require.NoError(t, err)
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(log.TestingLogger().With("module", "abci-client"), socket, false)
+	client := abciclient.NewSocketClient(log.NewTestingLogger(t).With("module", "abci-client"), socket, false)
 	t.Cleanup(client.Wait)
 
 	err = client.Start(ctx)
@@ -131,7 +131,7 @@ func testGRPCSync(ctx context.Context, t *testing.T, app types.ABCIApplicationSe
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	// Start the listener
 	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
 

@@ -67,7 +67,7 @@ func TestClientIntegration_Update(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -125,7 +125,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 

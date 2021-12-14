@@ -80,7 +80,7 @@ func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoo
 
 	app := &application{kvstore.NewApplication()}
 	cc := abciclient.NewLocalCreator(app)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)

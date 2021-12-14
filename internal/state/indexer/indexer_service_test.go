@@ -43,7 +43,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := tmlog.TestingLogger()
+	logger := tmlog.NewTestingLogger(t)
 	// event bus
 	eventBus := eventbus.NewDefault(logger)
 	err := eventBus.Start(ctx)

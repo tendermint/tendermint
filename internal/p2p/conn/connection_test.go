@@ -53,7 +53,7 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	clientConn := createTestMConnection(log.TestingLogger(), client)
+	clientConn := createTestMConnection(log.NewTestingLogger(t), client)
 	err := clientConn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(clientConn))
@@ -90,7 +90,7 @@ func TestMConnectionSend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createTestMConnection(log.TestingLogger(), client)
+	mconn := createTestMConnection(log.NewTestingLogger(t), client)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))
@@ -132,7 +132,7 @@ func TestMConnectionReceive(t *testing.T) {
 		case <-ctx.Done():
 		}
 	}
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -182,7 +182,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.NewTestingLogger(t), client, onReceive, onError)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))
@@ -230,7 +230,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.NewTestingLogger(t), client, onReceive, onError)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))
@@ -293,7 +293,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.NewTestingLogger(t), client, onReceive, onError)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))
@@ -350,7 +350,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.NewTestingLogger(t), client, onReceive, onError)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))
@@ -416,7 +416,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.NewTestingLogger(t), client, onReceive, onError)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))
@@ -451,7 +451,7 @@ func newClientAndServerConnsForReadErrors(
 		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
 		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
 	}
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
 	err := mconnClient.Start(ctx)
@@ -581,7 +581,7 @@ func TestMConnectionTrySend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createTestMConnection(log.TestingLogger(), client)
+	mconn := createTestMConnection(log.NewTestingLogger(t), client)
 	err := mconn.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(waitAll(mconn))

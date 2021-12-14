@@ -15,7 +15,7 @@ import (
 func TestConnectionFiltering(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	filterByIPCount := 0
 	router := &Router{

@@ -30,7 +30,7 @@ import (
 func TestInspectConstructor(t *testing.T) {
 	cfg, err := config.ResetTestRoot("test")
 	require.NoError(t, err)
-	testLogger := log.TestingLogger()
+	testLogger := log.NewTestingLogger(t)
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestInspectRun(t *testing.T) {
 	cfg, err := config.ResetTestRoot("test")
 	require.NoError(t, err)
 
-	testLogger := log.TestingLogger()
+	testLogger := log.NewTestingLogger(t)
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestBlock(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -131,7 +131,7 @@ func TestTxSearch(t *testing.T) {
 		Return([]*abcitypes.TxResult{testTxResult}, nil)
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -178,7 +178,7 @@ func TestTx(t *testing.T) {
 	}, nil)
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -226,7 +226,7 @@ func TestConsensusParams(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -279,7 +279,7 @@ func TestBlockResults(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -327,7 +327,7 @@ func TestCommit(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -381,7 +381,7 @@ func TestBlockByHash(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -434,7 +434,7 @@ func TestBlockchain(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -487,7 +487,7 @@ func TestValidators(t *testing.T) {
 	eventSinkMock.On("Type").Return(indexer.EventSinkType("Mock"))
 
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -546,7 +546,7 @@ func TestBlockSearch(t *testing.T) {
 		mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
 		Return([]int64{testHeight}, nil)
 	rpcConfig := config.TestRPCConfig()
-	l := log.TestingLogger()
+	l := log.NewTestingLogger(t)
 	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
 
 	ctx, cancel := context.WithCancel(context.Background())

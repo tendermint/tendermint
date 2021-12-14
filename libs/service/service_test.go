@@ -23,7 +23,7 @@ func TestBaseServiceWait(t *testing.T) {
 	defer cancel()
 
 	ts := &testService{}
-	ts.BaseService = *NewBaseService(log.TestingLogger(), "TestService", ts)
+	ts.BaseService = *NewBaseService(log.NewTestingLogger(t), "TestService", ts)
 	err := ts.Start(ctx)
 	require.NoError(t, err)
 

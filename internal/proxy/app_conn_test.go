@@ -48,7 +48,7 @@ var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -94,7 +94,7 @@ func TestEcho(t *testing.T) {
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(b)
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -145,7 +145,7 @@ func BenchmarkEcho(b *testing.B) {
 
 func TestInfo(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
 
 	ctx, cancel := context.WithCancel(context.Background())

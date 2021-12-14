@@ -19,7 +19,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -48,7 +48,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -84,7 +84,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -146,7 +146,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 
 	t.Cleanup(evsw.Wait)
@@ -236,7 +236,7 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -285,7 +285,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -341,7 +341,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 func TestRemoveListener(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -398,7 +398,7 @@ func TestRemoveListener(t *testing.T) {
 func TestRemoveListenersAsync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	evsw := NewEventSwitch(log.TestingLogger())
+	evsw := NewEventSwitch(log.NewTestingLogger(t))
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 

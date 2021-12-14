@@ -219,7 +219,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 				[]provider.Provider{mockNode},
 				dbs.New(dbm.NewMemDB()),
 				light.SequentialVerification(),
-				light.Logger(log.TestingLogger()),
+				light.Logger(log.NewTestingLogger(t)),
 			)
 
 			if testCase.initErr {
@@ -339,7 +339,7 @@ func TestClient_SkippingVerification(t *testing.T) {
 				[]provider.Provider{mockNode},
 				dbs.New(dbm.NewMemDB()),
 				light.SkippingVerification(light.DefaultTrustLevel),
-				light.Logger(log.TestingLogger()),
+				light.Logger(log.NewTestingLogger(t)),
 			)
 			if tc.initErr {
 				require.Error(t, err)
@@ -445,7 +445,7 @@ func TestClient_Cleanup(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 	_, err = c.TrustedLightBlock(1)
@@ -477,7 +477,7 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 			mockNode,
 			[]provider.Provider{mockNode},
 			trustedStore,
-			light.Logger(log.TestingLogger()),
+			light.Logger(log.NewTestingLogger(t)),
 		)
 		require.NoError(t, err)
 
@@ -511,7 +511,7 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 			mockNode,
 			[]provider.Provider{mockNode},
 			trustedStore,
-			light.Logger(log.TestingLogger()),
+			light.Logger(log.NewTestingLogger(t)),
 		)
 		require.NoError(t, err)
 
@@ -538,7 +538,7 @@ func TestClient_Update(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -563,7 +563,7 @@ func TestClient_Concurrency(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -609,7 +609,7 @@ func TestClient_AddProviders(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -645,7 +645,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 		mockDeadNode,
 		[]provider.Provider{mockDeadNode, mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 
 	require.NoError(t, err)
@@ -675,7 +675,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryDoesntHaveBlock(t *testing.T) 
 		mockDeadNode,
 		[]provider.Provider{mockDeadNode, mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 	_, err = c.Update(ctx, bTime.Add(2*time.Hour))
@@ -709,7 +709,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 			mockLargeFullNode,
 			[]provider.Provider{mockLargeFullNode},
 			dbs.New(dbm.NewMemDB()),
-			light.Logger(log.TestingLogger()),
+			light.Logger(log.NewTestingLogger(t)),
 		)
 		require.NoError(t, err)
 
@@ -768,7 +768,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 			mockNode,
 			[]provider.Provider{mockNode},
 			dbs.New(dbm.NewMemDB()),
-			light.Logger(log.TestingLogger()),
+			light.Logger(log.NewTestingLogger(t)),
 		)
 		require.NoError(t, err)
 
@@ -840,7 +840,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockBadNode1, mockBadNode2},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	// witness should have behaved properly -> no error
 	require.NoError(t, err)
@@ -896,7 +896,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockBadValSetNode, mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(c.Witnesses()))
@@ -928,7 +928,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 		mockFullNode,
 		[]provider.Provider{mockFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 		light.PruningSize(1),
 	)
 	require.NoError(t, err)

@@ -46,7 +46,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	l, err := Listen("tcp://127.0.0.1:0", max)
 	require.NoError(t, err)
 	defer l.Close()
-	go Serve(ctx, l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
+	go Serve(ctx, l, mux, log.NewTestingLogger(t), config) //nolint:errcheck // ignore for tests
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -89,7 +89,7 @@ func TestServeTLS(t *testing.T) {
 
 	chErr := make(chan error, 1)
 	go func() {
-		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", log.NewTestingLogger(t), DefaultConfig())
 	}()
 
 	select {

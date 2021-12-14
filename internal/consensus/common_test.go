@@ -748,8 +748,8 @@ func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
 
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
-func consensusLogger() log.Logger {
-	return log.TestingLogger().With("module", "consensus")
+func consensusLogger(t *testing.T) log.Logger {
+	return log.NewTestingLogger(t).With("module", "consensus")
 }
 
 func randConsensusState(
@@ -765,7 +765,7 @@ func randConsensusState(
 
 	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, false, 30)
 	css := make([]*State, nValidators)
-	logger := consensusLogger()
+	logger := consensusLogger(t)
 
 	closeFuncs := make([]func() error, 0, nValidators)
 
@@ -813,6 +813,7 @@ func randConsensusState(
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
 	ctx context.Context,
+	t *testing.T,
 	cfg *config.Config,
 	nValidators,
 	nPeers int,
@@ -822,7 +823,7 @@ func randConsensusNetWithPeers(
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
 	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
-	logger := consensusLogger()
+	logger := consensusLogger(t)
 
 	var peer0Config *config.Config
 	configRootDirs := make([]string, 0, nPeers)

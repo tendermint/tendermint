@@ -55,7 +55,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 	numStateStores := len(stateStores)
 	rts := &reactorTestSuite{
 		numStateStores: numStateStores,
-		logger:         log.TestingLogger().With("testCase", t.Name()),
+		logger:         log.NewTestingLogger(t).With("testCase", t.Name()),
 		network:        p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
 		reactors:       make(map[types.NodeID]*evidence.Reactor, numStateStores),
 		pools:          make(map[types.NodeID]*evidence.Pool, numStateStores),

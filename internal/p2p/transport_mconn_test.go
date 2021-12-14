@@ -20,7 +20,7 @@ import (
 func init() {
 	testTransports["mconn"] = func(t *testing.T) p2p.Transport {
 		transport := p2p.NewMConnTransport(
-			log.TestingLogger(),
+			log.NewTestingLogger(t),
 			conn.DefaultMConnConfig(),
 			[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 			p2p.MConnTransportOptions{},
@@ -42,7 +42,7 @@ func init() {
 
 func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 	transport := p2p.NewMConnTransport(
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		conn.DefaultMConnConfig(),
 		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
@@ -65,7 +65,7 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 	defer cancel()
 
 	transport := p2p.NewMConnTransport(
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		conn.DefaultMConnConfig(),
 		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
@@ -158,7 +158,7 @@ func TestMConnTransport_Listen(t *testing.T) {
 			defer cancel()
 
 			transport := p2p.NewMConnTransport(
-				log.TestingLogger(),
+				log.NewTestingLogger(t),
 				conn.DefaultMConnConfig(),
 				[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 				p2p.MConnTransportOptions{},

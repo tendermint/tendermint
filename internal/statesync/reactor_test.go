@@ -150,7 +150,7 @@ func setup(
 		factory.DefaultTestChainID,
 		1,
 		*cfg,
-		log.TestingLogger(),
+		log.NewTestingLogger(t),
 		conn,
 		connQuery,
 		rts.snapshotChannel,

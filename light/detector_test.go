@@ -88,7 +88,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 		mockPrimary,
 		[]provider.Provider{mockWitness},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -199,7 +199,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				mockPrimary,
 				[]provider.Provider{mockWitness},
 				dbs.New(dbm.NewMemDB()),
-				light.Logger(log.TestingLogger()),
+				light.Logger(log.NewTestingLogger(t)),
 				testCase.lightOption,
 			)
 			require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		mockPrimary,
 		[]provider.Provider{mockWitness, accomplice},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 		light.MaxClockDrift(1*time.Second),
 		light.MaxBlockLag(1*time.Second),
 	)
@@ -358,7 +358,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		mockPrimary,
 		[]provider.Provider{mockLaggingWitness, accomplice},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 		light.MaxClockDrift(1*time.Second),
 		light.MaxBlockLag(1*time.Second),
 	)
@@ -392,7 +392,7 @@ func TestClientDivergentTraces1(t *testing.T) {
 		mockPrimary,
 		[]provider.Provider{mockWitness},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match primary")
@@ -420,7 +420,7 @@ func TestClientDivergentTraces2(t *testing.T) {
 		mockPrimaryNode,
 		[]provider.Provider{mockDeadNode, mockDeadNode, mockPrimaryNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -458,7 +458,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 		mockPrimary,
 		[]provider.Provider{mockWitness},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 
@@ -496,7 +496,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 		mockPrimary,
 		[]provider.Provider{mockWitness},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 	require.NoError(t, err)
 

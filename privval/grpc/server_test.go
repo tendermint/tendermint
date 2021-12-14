@@ -34,7 +34,7 @@ func TestGetPubKey(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.NewTestingLogger(t))
 
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
 			resp, err := s.GetPubKey(context.Background(), req)
@@ -105,7 +105,7 @@ func TestSignVote(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.NewTestingLogger(t))
 
 			req := &privvalproto.SignVoteRequest{ChainId: ChainID, Vote: tc.have.ToProto()}
 			resp, err := s.SignVote(context.Background(), req)
@@ -172,7 +172,7 @@ func TestSignProposal(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.NewTestingLogger(t))
 
 			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
 			resp, err := s.SignProposal(context.Background(), req)

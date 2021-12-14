@@ -46,7 +46,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	for i := 0; i < nValidators; i++ {
 		func() {
-			logger := consensusLogger().With("test", "byzantine", "validator", i)
+			logger := consensusLogger(t).With("test", "byzantine", "validator", i)
 			stateDB := dbm.NewMemDB() // each state needs its own db
 			stateStore := sm.NewStore(stateDB)
 			state, err := sm.MakeGenesisState(genDoc)
@@ -73,7 +73,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make Mempool
 			mempool := mempool.NewTxMempool(
-				log.TestingLogger().With("module", "mempool"),
+				log.NewTestingLogger(t).With("module", "mempool"),
 				thisConfig.Mempool,
 				proxyAppConnMem,
 				0,
@@ -88,13 +88,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 
 			// Make State
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewTestingLogger(t), proxyAppConnCon, mempool, evpool, blockStore)
 			cs := NewState(ctx, logger, thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 			// set private validator
 			pv := privVals[i]
 			cs.SetPrivValidator(pv)
 
-			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+			eventBus := eventbus.NewDefault(log.NewTestingLogger(t).With("module", "events"))
 			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)

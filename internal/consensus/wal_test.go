@@ -24,7 +24,7 @@ const walTestFlushInterval = 100 * time.Millisecond
 func TestWALTruncate(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -103,7 +103,7 @@ func TestWALWrite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wal, err := NewWAL(log.TestingLogger(), walFile)
+	wal, err := NewWAL(log.NewTestingLogger(t), walFile)
 	require.NoError(t, err)
 	err = wal.Start(ctx)
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	}
 	walFile := tempWALWithData(walBody)
 
-	wal, err := NewWAL(log.TestingLogger(), walFile)
+	wal, err := NewWAL(log.NewTestingLogger(t), walFile)
 	require.NoError(t, err)
 
 	h := int64(3)
@@ -163,7 +163,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 func TestWALPeriodicSync(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
-	wal, err := NewWAL(log.TestingLogger(), walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+	wal, err := NewWAL(log.NewTestingLogger(t), walFile, autofile.GroupCheckDuration(1*time.Millisecond))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

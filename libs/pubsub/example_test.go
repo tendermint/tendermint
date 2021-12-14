@@ -16,7 +16,7 @@ func TestExample(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t, log.TestingLogger())
+	s := newTestServer(ctx, t, log.NewTestingLogger(t))
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "example-client",
