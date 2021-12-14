@@ -78,4 +78,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: run persistence tests
-        run: echo pwd 
+        run: ./test/persist/test_failure_indices.sh
+        shell: bash
