@@ -748,8 +748,17 @@ func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
 
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
-func consensusLogger(t *testing.T) log.Logger {
-	return log.NewTestingLogger(t).With("module", "consensus")
+func consensusLogger(_ *testing.T) log.Logger {
+	// TODO: Use log.NewTestingLogger. This is not currently possible because
+	// several tests do not clean up properly and log after the test exits,
+	// which irritates the race detector with the testing harness.
+	//
+	//return log.NewTestingLogger(t).With("module", "consensus")
+	if testing.Verbose() {
+		return log.MustNewDefaultLogger(log.LogFormatText, log.LogLevelInfo, true).
+			With("module", "consensus")
+	}
+	return log.NewNopLogger()
 }
 
 func randConsensusState(
