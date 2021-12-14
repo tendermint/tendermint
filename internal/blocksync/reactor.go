@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/consensus"
@@ -14,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/types"
 )
@@ -75,7 +75,7 @@ type Reactor struct {
 	store       *store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
-	blockSync   *tmsync.AtomicBool
+	blockSync   *atomicBool
 
 	blockSyncCh *p2p.Channel
 	// blockSyncOutBridgeCh defines a channel that acts as a bridge between sending Envelope
@@ -132,7 +132,7 @@ func NewReactor(
 		store:                store,
 		pool:                 NewBlockPool(logger, startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
-		blockSync:            tmsync.NewBool(blockSync),
+		blockSync:            newAtomicBool(blockSync),
 		requestsCh:           requestsCh,
 		errorsCh:             errorsCh,
 		blockSyncCh:          blockSyncCh,
@@ -625,3 +625,25 @@ func (r *Reactor) GetRemainingSyncTime() time.Duration {
 
 	return time.Duration(int64(remain * float64(time.Second)))
 }
+
+// atomicBool is an atomic Boolean, safe for concurrent use by multiple
+// goroutines.
+type atomicBool int32
+
+// newAtomicBool creates an atomicBool with given initial value.
+func newAtomicBool(ok bool) *atomicBool {
+	ab := new(atomicBool)
+	if ok {
+		ab.Set()
+	}
+	return ab
+}
+
+// Set sets the Boolean to true.
+func (ab *atomicBool) Set() { atomic.StoreInt32((*int32)(ab), 1) }
+
+// UnSet sets the Boolean to false.
+func (ab *atomicBool) UnSet() { atomic.StoreInt32((*int32)(ab), 0) }
+
+// IsSet returns whether the Boolean is true.
+func (ab *atomicBool) IsSet() bool { return atomic.LoadInt32((*int32)(ab))&1 == 1 }
