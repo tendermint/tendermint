@@ -171,17 +171,17 @@ func makeNode(
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp, err := createAndStartProxyAppConns(ctx, clientCreator, logger, nodeMetrics.proxy)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
+	if err := proxyApp.Start(ctx); err != nil {
+		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
 	}
 
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
 	// when the node stopped last time (i.e. the node stopped after it saved the block
 	// but before it indexed the txs, or, endblocker panicked)
-	eventBus, err := createAndStartEventBus(ctx, logger)
-	if err != nil {
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
+	if err := eventBus.Start(ctx); err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
@@ -556,8 +556,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		n.rpcListeners = listeners
 	}
 
-	if n.config.Instrumentation.Prometheus &&
-		n.config.Instrumentation.PrometheusListenAddr != "" {
+	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
 		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
 	}
 
@@ -623,50 +622,50 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			n.logger.Error("failed to emit the statesync start event", "err", err)
 		}
 
-		// FIXME: We shouldn't allow state sync to silently error out without
-		// bubbling up the error and gracefully shutting down the rest of the node
-		go func() {
-			n.logger.Info("starting state sync")
-			state, err := n.stateSyncReactor.Sync(ctx)
-			if err != nil {
-				n.logger.Error("state sync failed; shutting down this node", "err", err)
-				// stop the node
-				if err := n.Stop(); err != nil {
-					n.logger.Error("failed to shut down node", "err", err)
-				}
-				return
+		// RUN STATE SYNC NOW:
+		//
+		// TODO: Eventually this should run as part of some
+		// separate orchestrator
+		n.logger.Info("starting state sync")
+		ssState, err := n.stateSyncReactor.Sync(ctx)
+		if err != nil {
+			n.logger.Error("state sync failed; shutting down this node", "err", err)
+			// stop the node
+			if err := n.Stop(); err != nil {
+				n.logger.Error("failed to shut down node", "err", err)
 			}
+			return err
+		}
 
-			n.consensusReactor.SetStateSyncingMetrics(0)
+		n.consensusReactor.SetStateSyncingMetrics(0)
 
-			if err := n.eventBus.PublishEventStateSyncStatus(ctx,
-				types.EventDataStateSyncStatus{
-					Complete: true,
-					Height:   state.LastBlockHeight,
-				}); err != nil {
+		if err := n.eventBus.PublishEventStateSyncStatus(ctx,
+			types.EventDataStateSyncStatus{
+				Complete: true,
+				Height:   ssState.LastBlockHeight,
+			}); err != nil {
+			n.logger.Error("failed to emit the statesync start event", "err", err)
+			return err
+		}
 
-				n.logger.Error("failed to emit the statesync start event", "err", err)
-			}
+		// TODO: Some form of orchestrator is needed here between the state
+		// advancing reactors to be able to control which one of the three
+		// is running
+		// FIXME Very ugly to have these metrics bleed through here.
+		n.consensusReactor.SetBlockSyncingMetrics(1)
+		if err := bcR.SwitchToBlockSync(ctx, ssState); err != nil {
+			n.logger.Error("failed to switch to block sync", "err", err)
+			return err
+		}
 
-			// TODO: Some form of orchestrator is needed here between the state
-			// advancing reactors to be able to control which one of the three
-			// is running
-			// FIXME Very ugly to have these metrics bleed through here.
-			n.consensusReactor.SetBlockSyncingMetrics(1)
-			if err := bcR.SwitchToBlockSync(ctx, state); err != nil {
-				n.logger.Error("failed to switch to block sync", "err", err)
-				return
-			}
-
-			if err := n.eventBus.PublishEventBlockSyncStatus(ctx,
-				types.EventDataBlockSyncStatus{
-					Complete: false,
-					Height:   state.LastBlockHeight,
-				}); err != nil {
-
-				n.logger.Error("failed to emit the block sync starting event", "err", err)
-			}
-		}()
+		if err := n.eventBus.PublishEventBlockSyncStatus(ctx,
+			types.EventDataBlockSyncStatus{
+				Complete: false,
+				Height:   ssState.LastBlockHeight,
+			}); err != nil {
+			n.logger.Error("failed to emit the block sync starting event", "err", err)
+			return err
+		}
 	}
 
 	return nil

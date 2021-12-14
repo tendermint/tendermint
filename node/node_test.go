@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -562,8 +563,9 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	logger := log.TestingLogger()
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
-		eventBus, err := createAndStartEventBus(ctx, logger)
-		require.NoError(t, err)
+		eventBus := eventbus.NewDefault(logger.With("module", "events"))
+		require.NoError(t, eventBus.Start(ctx))
+
 		t.Cleanup(eventBus.Wait)
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
