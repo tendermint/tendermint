@@ -83,6 +83,9 @@ func (is *Service) publish(msg pubsub.Message) error {
 	if curr.Pending == 0 {
 		// INDEX: We have all the transactions we expect for the current block.
 		for _, sink := range is.eventSinks {
+			if sink.Type() == NULL {
+				return nil // if indexer is set to null return early
+			}
 			start := time.Now()
 			if err := sink.IndexBlockEvents(is.currentBlock.header); err != nil {
 				is.logger.Error("failed to index block header",
