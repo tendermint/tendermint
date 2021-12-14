@@ -558,10 +558,10 @@ Additionally, $p$'s `FinalizeBlock` creates a set of transaction results $T_{p,h
 >(same for consensus params, and validator set)
 
 * Property 11 [`FinalizeBlock`, determinism-1]: For any correct process $p$,
-  the contents of $s_{p,h}$ exclusively depend on $s_{p,h}$ and $v_{p,h}$.
+  the contents of $s_{p,h}$ exclusively depend on $s_{p,h-1}$ and $v_{p,h}$.
 
 * Property 12 [`FinalizeBlock`, determinism-2]: For any correct process $p$,
-  the contents of $T_{p,h}$ exclusively depend on $s_{p,h}$ and $v_{p,h}$.
+  the contents of $T_{p,h}$ exclusively depend on $s_{p,h-1}$ and $v_{p,h}$.
 
 Note that Properties 11 and 12, combined with Agreement property of consensus ensure
 the Application state evolves consistently at all correct processes.
@@ -579,7 +579,7 @@ Likewise, `ExtendVote` can also be non-deterministic:
 
 ### What the Application can expect from Tendermint
 
-The following sections use these definitions:
+The following section uses these definitions:
 
 * We define the _optimal case_ as a run in which (a) the system behaves synchronously, and (b) there are no Byzantine processes.
   The optimal case captures the conditions that hold most of the time, but not always.
@@ -591,7 +591,39 @@ The following sections use these definitions:
   (b) it behaves synchronously after some time, denoted _GST_, which is unknown to the processes,
   and (c) there may be up to _f_ Byzantine processes.
 
-#### `PrepareProposal` and `ProcessProposal`:  expectations from the Application
+#### `PrepareProposal`:  Application's expectations
+
+Given a block height _h_, process _p_'s Tendermint calls `RequestPrepareProposal` under
+the following conditions:
+
+* _p_'s Tendermint may decide at height _h_, without calling `RequestPrepareProposal`.
+  In the optimal case, this will happen often, as there will only be one proposer for height _h_
+  (the one for round 0).
+* _p_'s Tendermint may call `RequestPrepareProposal` with a block with no transactions, if
+  _ConsensusParams_ is configured to produce empty blocks when there are outstanding transactions.
+  If _ConsensusParams_ is configured to avoid empty blocks, any block passed with a call to
+  `RequestPrepareProposal` will contain at lesat one transaction.
+* In the optimal case, _p_'s Tendermint will call `RequestPrepareProposal` at most once,
+  as there is only one round.
+* In the suboptimal case, _p_'s Tendermint
+    * will not call `RequestPrepareProposal` for height _h_, if _p_ is neither the proposer
+      of round 0, nor round 1
+    * will call `RequestPrepareProposal` once for height _h_, if _p_ is either the proposer
+      of round 0, or round 1 (but not both).
+    * will call `RequestPrepareProposal` twice for height _h_, in the unlikely case that
+      _p_ is the proposer of round 0, and round 1.
+* In the general case, _p_'s Tendermint will potentially span many rounds. So, it will call
+  `RequestPrepareProposal` a number of times which is impossible to predict. Thus, the
+  Application will to return numerous _amended_ blocks via `ResponsePrepareProposal`.
+
+  If the application is fully executing the blocks it returns via `ResponsePrepareProposal`,
+  it should be careful about its usage of resources (memory, disk, etc.) as the number
+  of `PrepareProposal` for a particular height is not bounded.
+
+If `PrepareProposal` is called more than once for a height _h_, the Application _is_ allowed
+to return different blocks each time.
+
+#### `ProcessProposal`:  Application's expectations
 
 Given a block height _h_, process _p_'s Tendermint calls `RequestProcessProposal` depending on the case:
 
