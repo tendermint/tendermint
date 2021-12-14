@@ -6,13 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestEventCache_Flush(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	err := evsw.Start(ctx)
 	require.NoError(t, err)
 

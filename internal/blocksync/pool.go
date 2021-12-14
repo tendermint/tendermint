@@ -418,7 +418,7 @@ func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 		return
 	}
 
-	request := newBPRequester(pool, nextHeight)
+	request := newBPRequester(pool.logger, pool, nextHeight)
 
 	pool.requesters[nextHeight] = request
 	atomic.AddInt32(&pool.numPending, 1)
@@ -565,7 +565,7 @@ type bpRequester struct {
 	block  *types.Block
 }
 
-func newBPRequester(pool *BlockPool, height int64) *bpRequester {
+func newBPRequester(logger log.Logger, pool *BlockPool, height int64) *bpRequester {
 	bpr := &bpRequester{
 		logger:     pool.logger,
 		pool:       pool,
@@ -576,7 +576,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.BaseService = *service.NewBaseService(nil, "bpRequester", bpr)
+	bpr.BaseService = *service.NewBaseService(logger, "bpRequester", bpr)
 	return bpr
 }
 

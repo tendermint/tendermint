@@ -40,7 +40,7 @@ func NewProxy(
 	return &Proxy{
 		Addr:   listenAddr,
 		Config: config,
-		Client: lrpc.NewClient(rpcClient, lightClient, opts...),
+		Client: lrpc.NewClient(logger, rpcClient, lightClient, opts...),
 		Logger: logger,
 	}, nil
 }

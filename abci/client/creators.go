@@ -16,8 +16,8 @@ type Creator func(log.Logger) (Client, error)
 func NewLocalCreator(app types.Application) Creator {
 	mtx := new(sync.Mutex)
 
-	return func(_ log.Logger) (Client, error) {
-		return NewLocalClient(mtx, app), nil
+	return func(logger log.Logger) (Client, error) {
+		return NewLocalClient(logger, mtx, app), nil
 	}
 }
 

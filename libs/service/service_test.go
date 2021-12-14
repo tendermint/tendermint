@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type testService struct {
@@ -22,7 +23,7 @@ func TestBaseServiceWait(t *testing.T) {
 	defer cancel()
 
 	ts := &testService{}
-	ts.BaseService = *NewBaseService(nil, "TestService", ts)
+	ts.BaseService = *NewBaseService(log.TestingLogger(), "TestService", ts)
 	err := ts.Start(ctx)
 	require.NoError(t, err)
 
