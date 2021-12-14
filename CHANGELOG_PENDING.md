@@ -19,6 +19,7 @@ Special thanks to external contributors on this release:
 - Apps
 
   - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
+  - [internal/state] Rename `Software` to `TendermintVersion` within `state.Version`.
 
 - P2P Protocol
 

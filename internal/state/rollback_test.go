@@ -112,7 +112,7 @@ func setupStateStore(t *testing.T, height int64) state.Store {
 				Block: version.BlockProtocol,
 				App:   10,
 			},
-			Software: version.TMVersion,
+			TendermintVersion: version.TMVersion,
 		},
 		ChainID:                          factory.DefaultTestChainID,
 		InitialHeight:                    10,

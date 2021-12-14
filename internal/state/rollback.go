@@ -71,7 +71,7 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 				Block: version.BlockProtocol,
 				App:   previousParams.Version.AppVersion,
 			},
-			Software: version.TMVersion,
+			TendermintVersion: version.TMVersion,
 		},
 		// immutable fields
 		ChainID:       invalidState.ChainID,

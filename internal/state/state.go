@@ -18,8 +18,8 @@ import (
 //-----------------------------------------------------------------------------
 
 type Version struct {
-	Consensus version.Consensus ` json:"consensus"`
-	Software  string            ` json:"software"`
+	Consensus         version.Consensus ` json:"consensus"`
+	TendermintVersion string            ` json:"tendermint_version"`
 }
 
 // InitStateVersion sets the Consensus.Block and Software versions,
@@ -31,7 +31,7 @@ var InitStateVersion = Version{
 		Block: version.BlockProtocol,
 		App:   0,
 	},
-	Software: version.TMVersion,
+	TendermintVersion: version.TMVersion,
 }
 
 func (v *Version) ToProto() tmstate.Version {
@@ -40,7 +40,7 @@ func (v *Version) ToProto() tmstate.Version {
 			Block: v.Consensus.Block,
 			App:   v.Consensus.App,
 		},
-		Software: v.Software,
+		Software: v.TendermintVersion,
 	}
 }
 
@@ -50,7 +50,7 @@ func VersionFromProto(v tmstate.Version) Version {
 			Block: v.Consensus.Block,
 			App:   v.Consensus.App,
 		},
-		Software: v.Software,
+		TendermintVersion: v.Software,
 	}
 }
 
