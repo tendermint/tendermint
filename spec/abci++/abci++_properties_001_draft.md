@@ -31,7 +31,7 @@ From the App's perspective, they'll probably skip ProcessProposal
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
-    | modified                | bool                                             | The Application sets it to true to denote it did not make changes                           | 1            |
+    | modified                | bool                                             | The Application sets it to true to denote that it made changes                           | 1            |
     | tx                      | repeated [TransactionRecord](#transactionrecord) | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 4            |
@@ -102,7 +102,7 @@ and _p_'s _validValue_ is `nil`:
     * in both modes, the Application can manipulate transactions
         * leave transactions untouched - `TxAction = UNMODIFIED`
         * add new transactions (not previously in the mempool) - `TxAction = ADDED`
-        * removed transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
+        * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
         * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`
@@ -485,11 +485,11 @@ On the other hand, if there is a deterministic bug in `PrepareProposal` or `Proc
 strictly speaking, this makes all processes that hit the bug byzantine. This is a problem in practice,
 as very often validators are running the Application from the same codebase, so potentially _all_ would
 likely hit the bug at the same time. This would result in most (or all) processes prevoting `nil`, with the
-serious consequences on Tendermint's liveness that this entails.
+serious consequences on Tendermint's liveness that this entails. Due to its criticality, Property 3 is a target for extensive testing and automated verification.
 
-* Property 4 [`ProcessProposal`, determinism-1]: For any correct process $p$, and any arbitrary block $v'$,
+* Property 4 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current state and the block that is about to be applied. In other words, for any correct process $p$, and any arbitrary block $v'$,
   if $p$'s Tendermint calls `RequestProcessProposal` on $v'$ at height $h$,
-  then $p$'s Application's acceptance or rejection exclusively depends on $v'$ and $s_{p,h-1}$.
+  then $p$'s Application's acceptance or rejection **exclusively** depends on $v'$ and $s_{p,h-1}$.
 
 * Property 5 [`ProcessProposal`, determinism-2]: For any two correct processes $p$ and $q$, and any arbitrary block $v'$,
   if $p$'s (resp. $q$'s) Tendermint calls `RequestProcessProposal` on $v'$ at height $h$,
@@ -506,7 +506,7 @@ to hit the bug at the same point. There is currently no clear solution to help w
 the Application designers/implementors must proceed very carefully with the logic/implementation
 of `ProcessProposal`. As a general rule `ProcessProposal` _should_ always accept the block.
 
-According to the Tendermint algorithm, a correct process can only broadcast one precommit message in round $r$, height $h$.
+According to the Tendermint algorithm, a correct process can broadcast at most one precommit message in round $r$, height $h$.
 Since, as stated in the [Description](#description) section, `ResponseExtendVote` is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension in round $r$, height $h$.
 Let $e^r_p$ the vote extension that the Application of a correct process $p$ returns via `ResponseExtendVote` in round $r$, height $h$.
