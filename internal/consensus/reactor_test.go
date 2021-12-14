@@ -392,8 +392,8 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		// one for mempool, one for consensus
 		mtx := new(sync.Mutex)
-		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
-		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
+		proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
+		proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
 
 		mempool := mempool.NewTxMempool(
 			log.TestingLogger().With("module", "mempool"),

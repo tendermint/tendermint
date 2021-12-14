@@ -178,7 +178,7 @@ func NewState(
 		doWALCatchup:     true,
 		wal:              nilWAL{},
 		evpool:           evpool,
-		evsw:             tmevents.NewEventSwitch(),
+		evsw:             tmevents.NewEventSwitch(logger),
 		metrics:          NopMetrics(),
 		onStopCh:         make(chan *cstypes.RoundState),
 	}

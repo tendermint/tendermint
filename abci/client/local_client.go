@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -26,7 +27,7 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
+func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(sync.Mutex)
 	}
@@ -34,7 +35,7 @@ func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "localClient", cli)
 	return cli
 }
 
