@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
 // Reserved event types (alphabetically sorted).

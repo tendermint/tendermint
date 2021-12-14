@@ -6,8 +6,8 @@ import (
 	"net"
 	"net/http"
 
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
