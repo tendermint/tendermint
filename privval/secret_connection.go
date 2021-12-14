@@ -25,8 +25,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/libs/async"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	"github.com/tendermint/tendermint/libs/async"
 	tmprivval "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
