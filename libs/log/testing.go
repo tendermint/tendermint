@@ -1,44 +1,10 @@
 package log
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/rs/zerolog"
 )
-
-var (
-	// reuse the same logger across all tests
-	testingLoggerMtx = sync.Mutex{}
-	testingLogger    Logger
-)
-
-// TestingLogger returns a Logger which writes to STDOUT if test(s) are being
-// run with the verbose (-v) flag, NopLogger otherwise.
-//
-// NOTE:
-// - A call to NewTestingLogger() must be made inside a test (not in the init func)
-// because verbose flag only set at the time of testing.
-// - Repeated calls to this function within a single process will
-// produce a single test log instance, and while the logger is safe
-// for parallel use it it doesn't produce meaningful feedback for
-// parallel tests.
-func TestingLogger() Logger {
-	testingLoggerMtx.Lock()
-	defer testingLoggerMtx.Unlock()
-
-	if testingLogger != nil {
-		return testingLogger
-	}
-
-	if testing.Verbose() {
-		testingLogger = MustNewDefaultLogger(LogFormatText, LogLevelDebug, true)
-	} else {
-		testingLogger = NewNopLogger()
-	}
-
-	return testingLogger
-}
 
 type testingWriter struct {
 	t *testing.T
@@ -73,13 +39,8 @@ func NewTestingLoggerWithLevel(t *testing.T, level string) Logger {
 	if err != nil {
 		t.Fatalf("failed to parse log level (%s): %v", level, err)
 	}
-	trace := false
-	if testing.Verbose() {
-		trace = true
-	}
-
 	return defaultLogger{
 		Logger: zerolog.New(newSyncWriter(testingWriter{t})).Level(logLevel),
-		trace:  trace,
+		trace:  testing.Verbose(),
 	}
 }
