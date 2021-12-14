@@ -80,8 +80,8 @@ This could be implemented as a function in many languages that performed the fol
 4. Set our proto decoder package to remove unknown fields on deserialization.
 
 This would still require that messages never unmarshal data structures with unknown fields.
-This can be accomplished by defining adding fields to a structure that needs canonicalization
-as a breaking changes within our semantic versioning and disallowing it within a major version.
+This can be accomplished by defining the act of adding fields to a structure that needs canonicalization
+as a breaking change within our semantic versioning and disallowing it within a major version.
 I.e., two versions of Tendermint that have different fields in proto messages which require
 canonical byte representation will not be able to interoperate.
 
@@ -90,7 +90,7 @@ This could be implemented in multiple languages more simply than ensuring that t
 canonical proto serializers that match in each language.
 
 Finally, we should add clear documentation to the Tendermint codebase every time we
-compare hashes of proto messages or use proto serialized bytes to produces a
+compare hashes of proto messages or use proto serialized bytes to produce
 digital signatures that we have been careful to ensure that the hashes are performed
 properly.
 
