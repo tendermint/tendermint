@@ -2,8 +2,8 @@ package privval
 
 import (
 	"bytes"
-	"encoding/hex"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"

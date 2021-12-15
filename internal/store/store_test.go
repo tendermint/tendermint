@@ -91,7 +91,11 @@ var (
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
 	state, _, cleanup = makeStateAndBlockStore(log.NewNopLogger())
-	block = factory.MakeBlock(state, 1, new(types.Commit), 0)
+	var err error
+	block, err = factory.MakeBlock(state, 1, new(types.Commit), nil, 0)
+	if err != nil {
+		panic(err)
+	}
 	partSet = block.MakePartSet(2)
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)
@@ -117,7 +121,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), 0)
+	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	validPartSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
@@ -320,7 +325,8 @@ func TestLoadBaseMeta(t *testing.T) {
 	bs := NewBlockStore(dbm.NewMemDB())
 
 	for h := int64(1); h <= 10; h++ {
-		block := factory.MakeBlock(state, h, new(types.Commit), 0)
+		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
@@ -386,7 +392,8 @@ func TestPruneBlocks(t *testing.T) {
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
-		block := factory.MakeBlock(state, h, new(types.Commit), 0)
+		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
@@ -491,7 +498,8 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
 	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), 0)
+	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 
 	partSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
@@ -532,7 +540,8 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	// are persisted.
 	for h := int64(3); h <= 5; h++ {
 		blockCommit := makeTestCommit(h-1, tmtime.Now())
-		block := factory.MakeBlock(state, h, blockCommit, 0)
+		block, err := factory.MakeBlock(state, h, blockCommit, nil, 0)
+		require.NoError(t, err)
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)

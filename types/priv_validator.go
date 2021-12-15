@@ -2,17 +2,16 @@ package types
 
 import (
 	"bytes"
-	"encoding/hex"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -56,7 +55,7 @@ type PrivValidator interface {
 		ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
 		proposal *tmproto.Proposal) ([]byte, error)
 
-	ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator
+	ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *Validator
 }
 
 type PrivValidatorsByProTxHash []PrivValidator
@@ -94,7 +93,7 @@ type MockPV struct {
 	// quorumHash -> heightString
 	FirstHeightOfQuorums map[string]string
 	ProTxHash            crypto.ProTxHash
-	mtx                  tmsync.RWMutex
+	mtx                  sync.RWMutex
 	breakProposalSigning bool
 	breakVoteSigning     bool
 }
@@ -226,8 +225,13 @@ func (pv *MockPV) GetHeight(ctx context.Context, quorumHash crypto.QuorumHash) (
 
 // SignVote implements PrivValidator.
 func (pv *MockPV) SignVote(
-	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID StateID, logger log.Logger) error {
+	ctx context.Context,
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote,
+	stateID StateID,
+	logger log.Logger) error {
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
@@ -266,7 +270,8 @@ func (pv *MockPV) SignVote(
 
 // SignProposal Implements PrivValidator.
 func (pv *MockPV) SignProposal(
-	ctx context.Context, chainID string,
+	ctx context.Context,
+	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
@@ -296,6 +301,7 @@ func (pv *MockPV) SignProposal(
 }
 
 func (pv *MockPV) UpdatePrivateKey(
+	ctx context.Context,
 	privateKey crypto.PrivKey,
 	quorumHash crypto.QuorumHash,
 	thresholdPublicKey crypto.PubKey,
@@ -316,8 +322,8 @@ func (pv *MockPV) UpdatePrivateKey(
 	pv.mtx.RUnlock()
 }
 
-func (pv *MockPV) ExtractIntoValidator(quorumHash crypto.QuorumHash) *Validator {
-	pubKey, _ := pv.GetPubKey(context.Background(), quorumHash)
+func (pv *MockPV) ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *Validator {
+	pubKey, _ := pv.GetPubKey(ctx, quorumHash)
 	if len(pv.ProTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
@@ -356,7 +362,7 @@ type ErroringMockPV struct {
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
 // GetPubKey Implements PrivValidator.
-func (pv *ErroringMockPV) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
+func (pv *ErroringMockPV) GetPubKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	return nil, ErroringMockPVErr
 }
 
@@ -409,14 +415,8 @@ func (pvs MockPrivValidatorsByProTxHash) Len() int {
 }
 
 func (pvs MockPrivValidatorsByProTxHash) Less(i, j int) bool {
-	pvi, err := pvs[i].GetProTxHash()
-	if err != nil {
-		panic(err)
-	}
-	pvj, err := pvs[j].GetProTxHash()
-	if err != nil {
-		panic(err)
-	}
+	pvi := pvs[i].ProTxHash
+	pvj := pvs[j].ProTxHash
 
 	return bytes.Compare(pvi, pvj) == -1
 }

@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"github.com/tendermint/tendermint/types"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

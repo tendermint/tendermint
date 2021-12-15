@@ -150,7 +150,7 @@ func (b *EventBus) PublishEventVote(data EventDataVote) error {
 }
 
 func (b *EventBus) PublishEventCommit(data EventDataCommit) error {
-	return b.Publish(EventCommit, data)
+	return b.Publish(EventCommitValue, data)
 }
 
 func (b *EventBus) PublishEventValidBlock(data EventDataRoundState) error {
@@ -237,8 +237,8 @@ func (b *EventBus) PublishEventLock(data EventDataRoundState) error {
 	return b.Publish(EventLockValue, data)
 }
 
-func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdates) error {
-	return b.Publish(EventValidatorSetUpdatesValue, data)
+func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdate) error {
+	return b.Publish(EventValidatorSetUpdateValue, data)
 }
 
 //-----------------------------------------------------------------------------
@@ -317,7 +317,7 @@ func (NopEventBus) PublishEventLock(data EventDataRoundState) error {
 	return nil
 }
 
-func (NopEventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdates) error {
+func (NopEventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpdate) error {
 	return nil
 }
 

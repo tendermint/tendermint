@@ -11,12 +11,10 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
-	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -79,7 +77,7 @@ func NewBlockExecutor(
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
 	queryApp proxy.AppConnQuery,
-	mempool mempl.Mempool,
+	mempool mempool.Mempool,
 	evpool EvidencePool,
 	blockStore BlockStore,
 	nextCoreChainLock *types.CoreChainLock,
@@ -269,20 +267,21 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 		return state, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
 
-	validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err :=
-		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciValidatorSetUpdates)
+	// The quorum type should not even matter here
+	validatorUpdates, err :=
+		types.PB2TM.ValidatorSetFromProtoUpdate(state.Validators.QuorumType, abciValidatorSetUpdates)
 	if err != nil {
 		return state, fmt.Errorf("error when converting abci validator updates: %v", err)
 	}
-	if len(validatorUpdates) > 0 {
+	if len(validatorUpdates.Validators) > 0 {
 		blockExec.logger.Debug(
 			"updates to validators",
 			"quorumHash",
-			quorumHash,
+			validatorUpdates.QuorumHash,
 			"thresholdPublicKey",
-			thresholdPublicKeyUpdate,
+			validatorUpdates.ThresholdPublicKey,
 			"updates",
-			types.ValidatorListString(validatorUpdates),
+			types.ValidatorListString(validatorUpdates.Validators),
 		)
 	}
 
@@ -295,7 +294,7 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 	// Update the state with the block and responses.
 	state, err = updateState(
 		state, nodeProTxHash, blockID, &block.Header,
-		abciResponses, validatorUpdates, thresholdPublicKeyUpdate, quorumHash,
+		abciResponses, validatorUpdates.Validators, validatorUpdates.ThresholdPublicKey, validatorUpdates.QuorumHash,
 	)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %v", err)
@@ -452,11 +451,6 @@ func execBlockOnProxyApp(
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
 
-	byzVals := make([]abci.Evidence, 0)
-	for _, evidence := range block.Evidence.Evidence {
-		byzVals = append(byzVals, evidence.ABCI()...)
-	}
-
 	ctx := context.Background()
 
 	// Begin block
@@ -508,7 +502,7 @@ func execBlockOnProxyApp(
 
 func validateValidatorSetUpdate(
 	abciValidatorSetUpdate *abci.ValidatorSetUpdate,
-	params tmproto.ValidatorParams,
+	params types.ValidatorParams,
 ) error {
 	// if there was no update return no error
 	if abciValidatorSetUpdate == nil {
@@ -538,7 +532,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 			if err != nil {
 				return err
 			}
-			if !types.IsValidPubkeyType(params, pk.Type()) {
+			if !params.IsValidPubkeyType(pk.Type()) {
 				return fmt.Errorf(
 					"validator %v is using pubkey %s, which is unsupported for consensus",
 					valUpdate,
@@ -666,7 +660,7 @@ func fireEvents(
 	block *types.Block,
 	blockID types.BlockID,
 	abciResponses *tmstate.ABCIResponses,
-	validatorUpdates []*types.Validator,
+	validatorSetUpdate *types.ValidatorSet,
 ) {
 	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:            block,
@@ -708,9 +702,13 @@ func fireEvents(
 		}
 	}
 
-	if len(validatorUpdates) > 0 {
+	if validatorSetUpdate != nil {
 		if err := eventBus.PublishEventValidatorSetUpdates(
-			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
+			types.EventDataValidatorSetUpdate{
+				ValidatorSetUpdates: validatorSetUpdate.Validators,
+				ThresholdPublicKey: validatorSetUpdate.ThresholdPublicKey,
+				QuorumHash: validatorSetUpdate.QuorumHash,
+			}); err != nil {
 			logger.Error("failed publishing event", "err", err)
 		}
 	}
@@ -738,20 +736,20 @@ func ExecCommitBlock(
 
 	// the BlockExecutor condition is using for the final block replay process.
 	if be != nil {
-		abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-		err = validateValidatorUpdates(abciValUpdates, s.ConsensusParams.Validator)
+		abciValSetUpdate := abciResponses.EndBlock.ValidatorSetUpdate
+		err = validateValidatorSetUpdate(abciValSetUpdate, s.ConsensusParams.Validator)
 		if err != nil {
 			logger.Error("err", err)
 			return nil, err
 		}
-		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+		validatorSetUpdate, err := types.PB2TM.ValidatorSetFromProtoUpdate(s.Validators.QuorumType, abciValSetUpdate)
 		if err != nil {
 			logger.Error("err", err)
 			return nil, err
 		}
 
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
-		fireEvents(be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
+		fireEvents(be.logger, be.eventBus, block, blockID, abciResponses, validatorSetUpdate)
 	}
 
 	// Commit block, get hash back

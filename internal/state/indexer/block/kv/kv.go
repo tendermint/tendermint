@@ -12,8 +12,8 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -186,6 +186,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// fetch matching heights
 	results = make([]int64, 0, len(filteredHeights))
+heights:
 	for _, hBz := range filteredHeights {
 		h := int64FromBytes(hBz)
 
@@ -199,7 +200,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 		select {
 		case <-ctx.Done():
-			break
+			break heights
 
 		default:
 		}
@@ -240,7 +241,7 @@ func (idx *BlockerIndexer) matchRange(
 	}
 	defer it.Close()
 
-LOOP:
+iter:
 	for ; it.Valid(); it.Next() {
 		var (
 			eventValue string
@@ -260,7 +261,7 @@ LOOP:
 		if _, ok := qr.AnyBound().(int64); ok {
 			v, err := strconv.ParseInt(eventValue, 10, 64)
 			if err != nil {
-				continue LOOP
+				continue iter
 			}
 
 			include := true
@@ -279,7 +280,7 @@ LOOP:
 
 		select {
 		case <-ctx.Done():
-			break
+			break iter
 
 		default:
 		}
@@ -372,12 +373,13 @@ func (idx *BlockerIndexer) match(
 		}
 		defer it.Close()
 
+	iterExists:
 		for ; it.Valid(); it.Next() {
 			tmpHeights[string(it.Value())] = it.Value()
 
 			select {
 			case <-ctx.Done():
-				break
+				break iterExists
 
 			default:
 			}
@@ -399,6 +401,7 @@ func (idx *BlockerIndexer) match(
 		}
 		defer it.Close()
 
+	iterContains:
 		for ; it.Valid(); it.Next() {
 			eventValue, err := parseValueFromEventKey(it.Key())
 			if err != nil {
@@ -411,7 +414,7 @@ func (idx *BlockerIndexer) match(
 
 			select {
 			case <-ctx.Done():
-				break
+				break iterContains
 
 			default:
 			}
@@ -468,13 +471,13 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 			}
 
 			// index iff the event specified index:true and it's not a reserved event
-			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			compositeKey := fmt.Sprintf("%s.%s", event.Type, attr.Key)
 			if compositeKey == types.BlockHeightKey {
 				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
 			}
 
 			if attr.GetIndex() {
-				key, err := eventKey(compositeKey, typ, string(attr.Value), height)
+				key, err := eventKey(compositeKey, typ, attr.Value, height)
 				if err != nil {
 					return fmt.Errorf("failed to create block index key: %w", err)
 				}

@@ -370,7 +370,7 @@ func makeNode(cfg *config.Config,
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
-		logger, cfg, state, blockExec, blockStore, csReactor,
+		logger, cfg, state, blockExec, blockStore, proTxHashP, csReactor,
 		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
 	)
 	if err != nil {

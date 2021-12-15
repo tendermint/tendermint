@@ -28,7 +28,7 @@ func init() {
 
 	cfg := config.DefaultP2PConfig()
 	cfg.PexReactor = true
-	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", nil, func(i int, sw *p2p.Switch) *p2p.Switch {
 		return sw
 	}, logger)
 	pexR.SetSwitch(sw)

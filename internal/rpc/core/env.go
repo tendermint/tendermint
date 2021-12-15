@@ -92,7 +92,7 @@ type Environment struct {
 	PeerManager peerManager
 
 	// objects
-	PubKey            crypto.PubKey
+	ProTxHash         crypto.ProTxHash
 	GenDoc            *types.GenesisDoc // cache the genesis structure
 	EventSinks        []indexer.EventSink
 	EventBus          *types.EventBus // thread safe

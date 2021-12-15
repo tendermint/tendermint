@@ -20,7 +20,7 @@ import (
 func (env *Environment) Validators(
 	ctx *rpctypes.Context,
 	heightPtr *int64,
-	pagePtr, perPagePtr *int) (*coretypes.ResultValidators, error) {
+	pagePtr, perPagePtr *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error) {
 
 	// The latest validator that we know is the NextValidator of the last block.
 	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
@@ -44,11 +44,17 @@ func (env *Environment) Validators(
 
 	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
-	return &coretypes.ResultValidators{
-		BlockHeight: height,
-		Validators:  v,
-		Count:       len(v),
-		Total:       totalCount}, nil
+	result := &coretypes.ResultValidators{
+		BlockHeight:        height,
+		Validators:         v,
+		Count:              len(v),
+		Total:              totalCount}
+	if *requestQuorumInfo == true {
+		result.QuorumHash = &validators.QuorumHash
+		result.QuorumType = validators.QuorumType
+		result.ThresholdPublicKey = &validators.ThresholdPublicKey
+	}
+	return result, nil
 }
 
 // DumpConsensusState dumps consensus state.

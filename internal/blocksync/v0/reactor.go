@@ -2,6 +2,7 @@ package v0
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -118,6 +119,7 @@ func NewReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
+	nodeProTxHash *crypto.ProTxHash,
 	consReactor consensusReactor,
 	blockSyncCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"io/ioutil"
 	"time"
 
@@ -43,7 +44,7 @@ type GenesisDoc struct {
 	InitialHeight                int64                    `json:"initial_height"`
 	InitialCoreChainLockedHeight uint32                   `json:"initial_core_chain_locked_height"`
 	InitialProposalCoreChainLock *tmproto.CoreChainLock   `json:"initial_proposal_core_chain_lock"`
-	ConsensusParams              *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
+	ConsensusParams              *ConsensusParams         `json:"consensus_params,omitempty"`
 	Validators                   []GenesisValidator       `json:"validators,omitempty"`
 	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
 	QuorumType                   btcjson.LLMQType         `json:"quorum_type"`

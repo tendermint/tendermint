@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/internal/p2p"
 	"io/ioutil"
 	"os"
 	"runtime/debug"
@@ -170,7 +171,7 @@ func NewState(
 	evpool evidencePool,
 	options ...StateOption,
 ) *State {
-	return NewStateWithLogger(config, state, blockExec, blockStore, txNotifier, evpool, nil, 0, options...)
+	return NewStateWithLogger(cfg, state, blockExec, blockStore, txNotifier, evpool, nil, 0, options...)
 }
 
 // NewStateWithLogger returns a new State with the logger set.
@@ -326,7 +327,7 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 			cs.privValidatorType = types.SignerSocketClient
 		case *tmgrpc.SignerClient:
 			cs.privValidatorType = types.SignerGRPCClient
-		case types.MockPV:
+		case *types.MockPV:
 			cs.privValidatorType = types.MockSignerClient
 		case *types.ErroringMockPV:
 			cs.privValidatorType = types.ErrorMockSignerClient
@@ -482,7 +483,7 @@ func (cs *State) loadWalFile() error {
 func (cs *State) OnStop() {
 
 	// If the node is committing a new block, wait until it is finished!
-	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
+	if cs.GetRoundState().Step == cstypes.RoundStepApplyCommit {
 		select {
 		case <-cs.onStopCh:
 		case <-time.After(cs.config.TimeoutCommit):

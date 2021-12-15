@@ -1,5 +1,5 @@
 //nolint: goconst
-package main
+package app
 
 import (
 	"errors"
@@ -10,14 +10,41 @@ import (
 
 // Config is the application configuration.
 type Config struct {
-	ChainID                 string `toml:"chain_id"`
-	Listen                  string
-	Protocol                string
+	// The directory with which state.json will be persisted in. Usually $HOME/.tendermint/data
 	Dir                     string
-	Mode                    string                       `toml:"mode"`
+
+	// SnapshotInterval specifies the height interval at which the application
+	// will take state sync snapshots. Defaults to 0 (disabled).
+	SnapshotInterval        uint64 `toml:"snapshot_interval"`
+
+	// RetainBlocks specifies the number of recent blocks to retain. Defaults to
+	// 0, which retains all blocks. Must be greater that PersistInterval,
+	// SnapshotInterval and EvidenceAgeHeight.
+	RetainBlocks uint64 `toml:"retain_blocks"`
+
+	// KeyType sets the curve that will be used by validators.
+	// Options are bls12381
+	KeyType string `toml:"key_type"`
+
+	// PersistInterval specifies the height interval at which the application
+	// will persist state to disk. Defaults to 1 (every height), setting this to
+	// 0 disables state persistence.
 	PersistInterval         uint64                       `toml:"persist_interval"`
-	SnapshotInterval        uint64                       `toml:"snapshot_interval"`
-	RetainBlocks            uint64                       `toml:"retain_blocks"`
+
+	// ValidatorUpdates is a map of heights to validator names and their power,
+	// and will be returned by the ABCI application. For example, the following
+	// changes the power of validator01 and validator02 at height 1000:
+	//
+	// [validator_update.1000]
+	// validator01 = 20
+	// validator02 = 10
+	//
+	// Specifying height 0 returns the validator update during InitChain. The
+	// application returns the validator updates as-is, i.e. removing a
+	// validator must be done by returning it with power 0, and any validators
+	// not specified are not changed.
+	//
+	// height <-> pubkey <-> voting power
 	ValidatorUpdates        map[string]map[string]string `toml:"validator_update"`
 	ThesholdPublicKeyUpdate map[string]string            `toml:"threshold_public_key_update"`
 	QuorumHashUpdate        map[string]string            `toml:"quorum_hash_update"`
@@ -26,8 +53,6 @@ type Config struct {
 	PrivValServer           string                       `toml:"privval_server"`
 	PrivValKey              string                       `toml:"privval_key"`
 	PrivValState            string                       `toml:"privval_state"`
-	Misbehaviors            map[string]string            `toml:"misbehaviors"`
-	KeyType                 string                       `toml:"key_type"`
 }
 
 // LoadConfig loads the configuration from disk.

@@ -290,7 +290,8 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		}
 	})
 
-	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id", btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	ev, err := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id", btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	require.NoError(t, err)
 
 	query := "tm.event='NewEvidence'"
 	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
@@ -371,7 +372,7 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, err)
 	err = eventBus.PublishEventLock(EventDataRoundState{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates{})
+	err = eventBus.PublishEventValidatorSetUpdates(EventDataValidatorSetUpdate{})
 	require.NoError(t, err)
 	err = eventBus.PublishEventBlockSyncStatus(EventDataBlockSyncStatus{})
 	require.NoError(t, err)

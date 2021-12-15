@@ -112,6 +112,7 @@ type Symmetric interface {
 // HexStringer ...
 type HexStringer interface {
 	HexString() string
+}
 
 // If a new key type implements batch verification,
 // the key type must be registered in github.com/tendermint/tendermint/crypto/batch

@@ -1,7 +1,6 @@
 package state
 
 import (
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/types"
 )

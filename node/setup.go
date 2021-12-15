@@ -97,23 +97,27 @@ func doHandshake(
 	state sm.State,
 	blockStore sm.BlockStore,
 	genDoc *types.GenesisDoc,
+	nodeProTxHash *crypto.ProTxHash,
+	appHashSize int,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
-	consensusLogger log.Logger) error {
+	consensusLogger log.Logger) (uint64, error) {
 
-	handshaker := consensus.NewHandshaker(stateStore, state, blockStore, genDoc)
+	handshaker := consensus.NewHandshaker(stateStore, state, blockStore, genDoc, nodeProTxHash,
+		appHashSize)
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
-	if err := handshaker.Handshake(proxyApp); err != nil {
-		return fmt.Errorf("error during handshake: %v", err)
+	appVersion, err := handshaker.Handshake(proxyApp)
+	if err != nil {
+		return appVersion, fmt.Errorf("error during handshake: %v", err)
 	}
-	return nil
+	return appVersion, nil
 }
 
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
+func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, consensusLogger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
-		"tmVersion", version.TMVersion,
+		"tmVersion", version.TMCoreSemVer,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
 		"mode", mode,
@@ -130,23 +134,26 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	case mode == config.ModeFull:
 		consensusLogger.Info("This node is a fullnode")
 	case mode == config.ModeValidator:
-		addr := pubKey.Address()
 		// Log whether this node is a validator or an observer
-		if state.Validators.HasAddress(addr) {
-			consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey.Bytes())
+		if proTxHash != nil && state.Validators.HasProTxHash(*proTxHash) {
+			consensusLogger.Info("This node is a validator", "proTxHash", proTxHash)
 		} else {
-			consensusLogger.Info("This node is a validator (NOT in the active validator set)",
-				"addr", addr, "pubKey", pubKey.Bytes())
+			consensusLogger.Info("This node is not a validator", "proTxHash", proTxHash)
 		}
+	case mode == config.ModeSingle:
+		consensusLogger.Info("This node is a single validator", "proTxHash", proTxHash)
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
+func onlyValidatorIsUs(state sm.State, proTxHash *types.ProTxHash) bool {
+	if proTxHash == nil {
+		return false
+	}
 	if state.Validators.Size() > 1 {
 		return false
 	}
-	addr, _ := state.Validators.GetByIndex(0)
-	return pubKey != nil && bytes.Equal(pubKey.Address(), addr)
+	validatorProTxHash, _ := state.Validators.GetByIndex(0)
+	return bytes.Equal(validatorProTxHash, *proTxHash)
 }
 
 func createMempoolReactor(
@@ -286,6 +293,7 @@ func createBlockchainReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
+	nodeProTxHash *crypto.ProTxHash,
 	csReactor *consensus.Reactor,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -313,7 +321,7 @@ func createBlockchainReactor(
 		}
 
 		reactor, err := bcv0.NewReactor(
-			logger, state.Copy(), blockExec, blockStore, csReactor,
+			logger, state.Copy(), blockExec, blockStore, nodeProTxHash, csReactor,
 			channels[bcv0.BlockSyncChannel], peerUpdates, blockSync,
 			metrics,
 		)
@@ -344,20 +352,22 @@ func createConsensusReactor(
 	eventBus *types.EventBus,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
+	proposedAppVersion uint64,
 	logger log.Logger,
 ) (*p2p.ReactorShim, *consensus.Reactor, *consensus.State) {
 
-	consensusState := consensus.NewState(
+	consensusState := consensus.NewStateWithLogger(
 		cfg.Consensus,
 		state.Copy(),
 		blockExec,
 		blockStore,
 		mp,
 		evidencePool,
+		logger,
+		proposedAppVersion,
 		consensus.StateMetrics(csMetrics),
 	)
-	consensusState.SetLogger(logger)
-	if privValidator != nil && cfg.Mode == config.ModeValidator {
+	if privValidator != nil && (cfg.Mode == config.ModeValidator || cfg.Mode == config.ModeSingle) {
 		consensusState.SetPrivValidator(privValidator)
 	}
 
@@ -696,7 +706,7 @@ func makeNodeInfo(
 		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
-		Version: version.TMVersion,
+		Version: version.TMCoreSemVer,
 		Channels: []byte{
 			bcChannel,
 			byte(consensus.StateChannel),
@@ -747,7 +757,7 @@ func makeSeedNodeInfo(
 		},
 		NodeID:   nodeKey.ID,
 		Network:  genDoc.ChainID,
-		Version:  version.TMVersion,
+		Version:  version.TMCoreSemVer,
 		Channels: []byte{},
 		Moniker:  cfg.Moniker,
 		Other: types.NodeInfoOther{

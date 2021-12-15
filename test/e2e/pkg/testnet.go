@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/types"
 	"io"
 	"math/rand"
@@ -13,7 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"

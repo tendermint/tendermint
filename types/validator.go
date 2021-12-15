@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -225,24 +224,4 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	}
 
 	return v, nil
-}
-
-//----------------------------------------
-// RandValidator
-
-// RandValidator returns a randomized validator, useful for testing.
-// UNSTABLE
-func RandValidator() (*Validator, PrivValidator) {
-	quorumHash := crypto.RandQuorumHash()
-	privVal := NewMockPVForQuorum(quorumHash)
-	proTxHash, err := privVal.GetProTxHash(context.Background())
-	if err != nil {
-		panic(fmt.Errorf("could not retrieve proTxHash %w", err))
-	}
-	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
-	if err != nil {
-		panic(fmt.Errorf("could not retrieve pubkey %w", err))
-	}
-	val := NewValidatorDefaultVotingPower(pubKey, proTxHash)
-	return val, privVal
 }

@@ -718,7 +718,7 @@ func TestNodeSetEventSink(t *testing.T) {
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	vals, privVals, quorumHash, thresholdPublicKey := types.GenerateGenesisValidators(nVals)
+	vals, privVals, quorumHash, thresholdPublicKey := factory.GenerateGenesisValidators(nVals)
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 	}

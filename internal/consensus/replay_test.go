@@ -1525,7 +1525,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 				store,
 				genDoc,
 				&proTxHash,
-				config.Consensus.AppHashSize,
+				cfg.Consensus.AppHashSize,
 			)
 			if _, err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)

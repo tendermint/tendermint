@@ -30,6 +30,7 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
+	ModeSingle    = "single"
 
 	BlockSyncV0 = "v0"
 	BlockSyncV2 = "v2"
@@ -372,7 +373,7 @@ func (cfg BaseConfig) ValidateBasic() error {
 	}
 
 	switch cfg.Mode {
-	case ModeFull, ModeValidator, ModeSeed:
+	case ModeFull, ModeValidator, ModeSeed, ModeSingle:
 	case "":
 		return errors.New("no mode has been set")
 
@@ -1261,7 +1262,7 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 		return errors.New("timeout-commit can't be negative")
 	}
 	if cfg.ProposedBlockTimeWindow < 0 {
-		return errors.New("proposed_block_time can't be negative")
+		return errors.New("proposed-block-time can't be negative")
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
 		return errors.New("create-empty-blocks-interval can't be negative")

@@ -182,8 +182,8 @@ func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCom
 	return c.env.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestThresholdPublicKey *bool) (*coretypes.ResultValidators, error) { //nolint:lll
-	return c.env.Validators(c.ctx, height, page, perPage, requestThresholdPublicKey)
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error) { //nolint:lll
+	return c.env.Validators(c.ctx, height, page, perPage, requestQuorumInfo)
 }
 
 func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {

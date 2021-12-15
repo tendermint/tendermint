@@ -9,6 +9,8 @@ import "tendermint/privval/types.proto";
 
 service PrivValidatorAPI {
   rpc GetPubKey(PubKeyRequest) returns (PubKeyResponse);
+  rpc GetProTxHash(ProTxHashRequest) returns (ProTxHashResponse);
+  rpc GetThresholdPubKey(ThresholdPubKeyRequest) returns (ThresholdPubKeyResponse);
   rpc SignVote(SignVoteRequest) returns (SignedVoteResponse);
   rpc SignProposal(SignProposalRequest) returns (SignedProposalResponse);
 }

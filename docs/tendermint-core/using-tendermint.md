@@ -100,7 +100,7 @@ definition](https://github.com/tenderdash/tenderdash/blob/master/types/genesis.g
     "evidence": {
       "max_age_num_blocks": "100000",
       "max_age_duration": "172800000000000",
-      "max_num": 50,
+      "max_num": 50
     },
     "validator": {
       "pub_key_types": [

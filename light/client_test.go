@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	vals, privVals = types.GenerateMockValidatorSet(4)
+	vals, privVals = factory.GenerateMockValidatorSet(4)
 	keys           = exposeMockPVKeys(privVals, vals.QuorumHash)
 	ctx            = context.Background()
 	bTime, _       = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
@@ -453,7 +453,7 @@ func TestClient_NewClientFromTrustedStore(t *testing.T) {
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
 	setupDashCoreMockClient(t)
-	differentVals, _ := types.GenerateValidatorSet(10)
+	differentVals, _ := factory.RandValidatorSet(10)
 	badValSetNode := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{

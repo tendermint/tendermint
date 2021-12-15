@@ -100,17 +100,9 @@ func makeValidCommit(
 	return types.NewCommit(height, 0, blockID, stateID, vals.QuorumHash, thresholdBlockSig, thresholdStateSig), nil
 }
 
-// make some bogus txs
-func makeTxs(height int64) (txs []types.Tx) {
-	for i := 0; i < nTxsPerBlock; i++ {
-		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
-	}
-	return txs
-}
-
-func makeState(nVals, height int64) (sm.State, dbm.DB, map[string]types.PrivValidator) {
+func makeState(nVals int, height int64) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	privValsByProTxHash := make(map[string]types.PrivValidator, nVals)
-	vals, privVals, quorumHash, thresholdPublicKey := types.GenerateMockGenesisValidators(nVals)
+	vals, privVals, quorumHash, thresholdPublicKey := factory.GenerateMockGenesisValidators(nVals)
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 		proTxHash := vals[i].ProTxHash
@@ -141,13 +133,11 @@ func makeState(nVals, height int64) (sm.State, dbm.DB, map[string]types.PrivVali
 	return s, stateDB, privValsByProTxHash
 }
 
-func makeBlock(state sm.State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, nil, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().ProTxHash, 0)
-	return block
-}
-
-func makeHeaderPartsResponsesValKeysRegenerate(state sm.State, regenerate bool) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), 0)
+func makeHeaderPartsResponsesValKeysRegenerate(state sm.State, regenerate bool) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses, error) {
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	if err != nil {
+		return types.Header{}, nil, types.BlockID{}, nil, err
+	}
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
@@ -160,21 +150,21 @@ func makeHeaderPartsResponsesValKeysRegenerate(state sm.State, regenerate bool) 
 		}
 	}
 
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses, nil
 }
 
 func makeHeaderPartsResponsesParams(
 	state sm.State,
-	params tmproto.ConsensusParams,
-) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
+	params types.ConsensusParams,
+) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses, error) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), 0)
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &pbParams},
 	}
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses, err
 }
 
 func randomGenesisDoc() *types.GenesisDoc {
@@ -215,8 +205,7 @@ func makeRandomStateFromValidatorSet(
 
 func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
 	height, lastHeightConsensusParamsChanged int64) sm.State {
-	val, _ := factory.RandValidator(true, 10)
-	valSet := types.NewValidatorSet([]*types.Validator{val})
+	valSet, _ := factory.RandValidatorSet(1)
 	return sm.State{
 		LastBlockHeight:                  height - 1,
 		ConsensusParams:                  *consensusParams,

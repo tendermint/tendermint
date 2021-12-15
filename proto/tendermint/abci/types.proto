@@ -55,7 +55,7 @@ message RequestInitChain {
   google.protobuf.Timestamp time = 1
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string             chain_id            = 2;
-  ConsensusParams    consensus_params    = 3;
+  tendermint.types.ConsensusParams    consensus_params    = 3;
   ValidatorSetUpdate validator_set       = 4 [(gogoproto.nullable) = true];
   bytes              app_state_bytes     = 5;
   int64              initial_height      = 6;
@@ -166,7 +166,7 @@ message ResponseInfo {
 }
 
 message ResponseInitChain {
-  ConsensusParams consensus_params = 1;
+  tendermint.types.ConsensusParams consensus_params = 1;
   bytes                          app_hash                    = 3;
   ValidatorSetUpdate             validator_set_update        = 100 [(gogoproto.nullable) = false];
   tendermint.types.CoreChainLock next_core_chain_lock_update = 101;
@@ -219,7 +219,7 @@ message ResponseDeliverTx {
 }
 
 message ResponseEndBlock {
-  ConsensusParams consensus_param_updates = 2;
+  tendermint.types.ConsensusParams consensus_param_updates = 2;
   repeated Event  events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   tendermint.types.CoreChainLock next_core_chain_lock_update = 100;

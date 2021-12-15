@@ -26,7 +26,6 @@ import (
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -50,8 +49,9 @@ func TestBlockAddEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
 		valSet.QuorumHash)
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, coreChainLock.CoreBlockHeight, &coreChainLock, txs, commit, evList, 0)
@@ -73,8 +73,9 @@ func TestBlockValidateBasic(t *testing.T) {
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
 		valSet.QuorumHash)
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	testCases := []struct {
@@ -113,7 +114,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.LastCommit = nil
 		}, true},
 		{"Invalid LastCommit", func(blk *Block) {
-			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, nil)
+			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, StateID{}, nil, nil, nil )
 		}, true},
 		{"Invalid Evidence", func(blk *Block) {
 			emptyEv := &DuplicateVoteEvidence{}
@@ -158,8 +159,9 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
 		valSet.QuorumHash)
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList, 0)
@@ -181,8 +183,9 @@ func TestBlockHashesTo(t *testing.T) {
 	commit, err := MakeCommit(lastID, stateID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain", valSet.QuorumType,
 		valSet.QuorumHash)
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, 0, nil, []Tx{Tx("Hello World")}, commit, evList, 0)
@@ -350,7 +353,7 @@ func TestHeaderHash(t *testing.T) {
 		}, hexBytesFromString("74EEFDA2F09ACE19D46DE191EC2745CE14B42F7DE48AF86E6D65B17939B08D3E")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
-			Version:               tmversion.Consensus{Block: 1, App: 2},
+			Version:               version.Consensus{Block: 1, App: 2},
 			ChainID:               "chainId",
 			Height:                3,
 			CoreChainLockedHeight: 1,
@@ -431,7 +434,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	h := Header{
-		Version:               tmversion.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		Version:               version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:               maxChainID,
 		Height:                math.MaxInt64,
 		CoreChainLockedHeight: math.MaxUint32,
@@ -533,12 +536,12 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", tcRun.maxBytes), func(t *testing.T) {
 			if tcRun.panics {
 				assert.Panics(t, func() {
-					MaxDataBytesNoEvidence(tcRun.maxBytes, tcRun.keyType, tcRun.valsCount)
+					MaxDataBytesNoEvidence(tcRun.maxBytes)
 				}, "#%v", j)
 			} else {
 				assert.Equal(t,
 					tcRun.result,
-					MaxDataBytesNoEvidence(tcRun.maxBytes, tcRun.keyType, tcRun.valsCount),
+					MaxDataBytesNoEvidence(tcRun.maxBytes),
 					"#%v", j)
 			}
 		})
@@ -644,7 +647,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 }
 
 func TestBlockProtoBuf(t *testing.T) {
-	h := tmrand.Int63()
+	h := mrand.Int63()
 	stateID := RandStateID().WithHeight(h - 1)
 	c1 := randCommit(stateID)
 	b1 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, &Commit{}, []Evidence{}, 0)
@@ -653,13 +656,14 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2 := MakeBlock(h, 0, nil, []Tx{Tx([]byte{1})}, c1, []Evidence{}, 0)
 	b2.ProposerProTxHash = tmrand.Bytes(crypto.DefaultHashSize)
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	evi := NewMockDuplicateVoteEvidence(
+	evi, err := NewMockDuplicateVoteEvidence(
 		h,
 		evidenceTime,
 		"block-test-chain",
 		btcjson.LLMQType_5_60,
 		crypto.RandQuorumHash(),
 	)
+	require.NoError(t, err)
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
@@ -723,7 +727,8 @@ func TestDataProtoBuf(t *testing.T) {
 // TestEvidenceDataProtoBuf ensures parity in converting to and from proto.
 func TestEvidenceDataProtoBuf(t *testing.T) {
 	const chainID = "mychain"
-	ev := NewMockDuplicateVoteEvidence(math.MaxInt64, time.Now(), chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	ev, err := NewMockDuplicateVoteEvidence(math.MaxInt64, time.Now(), chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
+	require.NoError(t, err)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
 	_ = data.ByteSize()
 	testCases := []struct {
@@ -840,7 +845,7 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 	stateID := RandStateID()
 
 	commit := randCommit(stateID)
-	h := makeRandHeader()
+	h := MakeRandHeader()
 
 	sh := SignedHeader{Header: &h, Commit: commit}
 

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -16,19 +17,12 @@ import (
 
 // InitFilesCmd initialises a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
-	Use:       "init [full|validator|seed]",
-	Short:     "Initializes a Tendermint node",
-	ValidArgs: []string{"full", "validator", "seed"},
+	Use:       "init [full|validator|seed|single]",
+	Short:     "Initializes a Tenderdash node",
+	ValidArgs: []string{"full", "validator", "seed", "single"},
 	// We allow for zero args so we can throw a more informative error
 	Args: cobra.MaximumNArgs(1),
 	RunE: initFiles,
-}
-
-// LocalInitFilesCmd initialises a fresh Tendermint Core instance.
-var LocalInitFilesCmd = &cobra.Command{
-	Use:   "init-single",
-	Short: "Initialize Tenderdash for single node use",
-	RunE:  initFilesSingleNode,
 }
 
 func initFilesSingleNode(cmd *cobra.Command, args []string) error {
@@ -53,7 +47,7 @@ func AddInitFlags(cmd *cobra.Command) {
 
 func initFiles(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.New("must specify a node type: tendermint init [validator|full|seed]")
+		return errors.New("must specify a node type: tendermint init [validator|full|seed|single]")
 	}
 	config.Mode = args[0]
 	return initFilesWithConfig(config)

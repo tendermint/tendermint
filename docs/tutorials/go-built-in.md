@@ -616,7 +616,7 @@ major version.
 
 ```bash
 $ rm -rf /tmp/example
-$ TMHOME="/tmp/example" tendermint init validator
+$ TMHOME="/tmp/example" tenderdash init validator
 
 I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:40:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
@@ -681,5 +681,5 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
-Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
+Github](https://github.com/dashevo/tenderdash/issues/new/choose). To dig
 deeper, read [the docs](https://docs.tendermint.com/master/).

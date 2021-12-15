@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -311,7 +310,7 @@ func MaxDataBytes(maxBytes int64, keyType crypto.KeyType, evidenceBytes int64, v
 // of evidence.
 //
 // XXX: Panics on negative result.
-func MaxDataBytesNoEvidence(maxBytes int64, keyType crypto.KeyType, valsCount int) int64 {
+func MaxDataBytesNoEvidence(maxBytes int64) int64 {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
@@ -332,15 +331,19 @@ func MaxDataBytesNoEvidence(maxBytes int64, keyType crypto.KeyType, valsCount in
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
 // It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
+func MakeBlock(height int64, coreHeight uint32, coreChainLock *CoreChainLock, txs []Tx, lastCommit *Commit,
+	evidence []Evidence, proposedAppVersion uint64) *Block {
 	block := &Block{
 		Header: Header{
 			Version: version.Consensus{Block: version.BlockProtocol, App: 0},
 			Height:  height,
+			CoreChainLockedHeight: coreHeight,
+			ProposedAppVersion: proposedAppVersion,
 		},
 		Data: Data{
 			Txs: txs,
 		},
+		CoreChainLock: coreChainLock,
 		Evidence:   EvidenceData{Evidence: evidence},
 		LastCommit: lastCommit,
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -180,7 +179,7 @@ func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{
-		Version: tmversion.Consensus{Block: version.BlockProtocol, App: 0},
+		Version: version.Consensus{Block: version.BlockProtocol, App: 0},
 		ChainID: chainID,
 		Height:  height,
 		Time:    bTime,
@@ -240,12 +239,12 @@ func genMockNodeWithKeys(
 	var (
 		headers           = make(map[int64]*types.SignedHeader, blockSize)
 		valsets           = make(map[int64]*types.ValidatorSet, blockSize+1)
-		valset0, privVals = types.GenerateMockValidatorSet(valSize)
+		valset0, privVals = factory.GenerateMockValidatorSet(valSize)
 		keys              = exposeMockPVKeys(privVals, valset0.QuorumHash)
 		privValMap        = types.MapMockPVByProTxHashes(privVals)
 	)
 
-	nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
+	nextValSet, _ := factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
 		valset0.GetProTxHashes(),
 		privValMap,
 		0,
@@ -262,7 +261,7 @@ func genMockNodeWithKeys(
 
 	for height := int64(2); height <= blockSize; height++ {
 		keysAtHeight := exposeMockPVKeys(privVals, currentValset.QuorumHash)
-		nextValSet, _ := types.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
+		nextValSet, _ := factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
 			valset0.GetProTxHashes(), privValMap, height,
 		)
 		currentHeader = keysAtHeight.GenSignedHeaderLastBlockID(

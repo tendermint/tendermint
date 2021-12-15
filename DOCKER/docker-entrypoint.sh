@@ -2,8 +2,8 @@
 set -e
 
 if [ ! -d "$TMHOME/config" ]; then
-	echo "Running tenderdash init-single to create a single node (default) configuration for docker run."
-	tenderdash init-single
+	echo "Running tenderdash init single to create a single node (default) configuration for docker run."
+	tenderdash init single
 
 	sed -i \
 		-e "s/^proxy-app\s*=.*/proxy-app = \"$PROXY_APP\"/" \

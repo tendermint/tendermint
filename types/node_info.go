@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
@@ -48,7 +47,7 @@ type NodeInfo struct {
 	Network string `json:"network"` // network/chain ID
 	Version string `json:"version"` // major.minor.revision
 	// FIXME: This should be changed to uint16 to be consistent with the updated channel type
-	Channels bytes.HexBytes `json:"channels"` // channels this node knows about
+	Channels tmbytes.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
 	Moniker string        `json:"moniker"` // arbitrary moniker

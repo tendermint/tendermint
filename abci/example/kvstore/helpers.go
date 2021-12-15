@@ -2,7 +2,6 @@ package kvstore
 
 import (
 	types2 "github.com/tendermint/tendermint/types"
-	mrand "math/rand"
 
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"

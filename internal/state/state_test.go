@@ -3,12 +3,10 @@ package state_test
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math/big"
-	mrand "math/rand"
 	"os"
 	"testing"
 
@@ -16,11 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	sm "github.com/tendermint/tendermint/internal/state"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
@@ -113,7 +108,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	state.LastBlockHeight++
 
 	// Build mock responses.
-	block := statefactory.MakeBlock(state, 2, new(types.Commit))
+	block, err := statefactory.MakeBlock(state, 2, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, 2)
@@ -275,7 +271,6 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	// with the right validator set for each height.
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
-	var err error
 	var validatorUpdates []*types.Validator
 	var thresholdPublicKeyUpdate crypto.PubKey
 	var quorumHash crypto.QuorumHash
@@ -287,7 +282,8 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			changeIndex++
 			regenerate = true
 		}
-		header, _, blockID, responses := makeHeaderPartsResponsesValKeysRegenerate(state, regenerate)
+		header, _, blockID, responses, err := makeHeaderPartsResponsesValKeysRegenerate(state, regenerate)
+		require.NoError(t, err)
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err = types.PB2TM.ValidatorUpdatesFromValidatorSet(responses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 		// Any node pro tx hash should do
@@ -296,7 +292,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		require.NoError(t, err)
 		validator := state.Validators.Validators[0]
 		testCases[i-1] = validator.PubKey
-		err := stateStore.Save(state)
+		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
 
@@ -354,7 +350,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 //		// run each case 5 times to sample different
 //		// initial priorities
 //		for i := 0; i < 5; i++ {
-//			valSet := types.GenerateValidatorSetWithPowers(testCase.powers)
+//			valSet := factory.GenerateValidatorSetWithPowers(testCase.powers)
 //			testProposerFreq(t, caseNum, valSet)
 //		}
 //	}
@@ -386,7 +382,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 // }
 //
 // // new val set with given powers and random initial priorities
-// func types.GenerateValidatorSetWithPowers(powers []int64) *types.ValidatorSet {
+// func factory.GenerateValidatorSetWithPowers(powers []int64) *types.ValidatorSet {
 //	size := len(powers)
 //	vals := make([]*types.Validator, size)
 //	totalVotePower := int64(0)
@@ -460,7 +456,8 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
-	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block, err := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
@@ -590,7 +587,8 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// we only have one validator:
 	assert.Equal(t, val1ProTxHash, state.Validators.Proposer.ProTxHash)
 
-	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block, err := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	// no updates:
 	abciResponses := &tmstate.ABCIResponses{
@@ -764,7 +762,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
 
-	originalValidatorSet, _ := types.GenerateValidatorSet(4)
+	originalValidatorSet, _ := factory.RandValidatorSet(4)
 	// reset state validators to above validator
 	state.Validators = originalValidatorSet
 	state.NextValidators = originalValidatorSet
@@ -788,7 +786,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
-		block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+		block, err := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err := sm.UpdateState(oldState, &firstNodeProTxHash, blockID, &block.Header, abciResponses,
@@ -813,7 +812,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 
-	block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+	block, err := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	updatedState, err := sm.UpdateState(oldState, &firstNodeProTxHash, blockID, &block.Header, abciResponses, validatorUpdates,
 		thresholdPublicKey, quorumHash)
@@ -830,7 +830,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
-		block := statefactory.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
+		block, err := statefactory.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedStateInner, err := sm.UpdateState(lastState, &firstNodeProTxHash, blockID, &block.Header, abciResponses,
@@ -871,7 +872,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			BeginBlock: &abci.ResponseBeginBlock{},
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: &abciValidatorSetUpdate},
 		}
-		block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+		block, err := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 		state, err = sm.UpdateState(state, &firstNodeProTxHash, blockID, &block.Header, abciResponses,
 			validatorUpdates, thresholdPublicKey3, quorumHash)
@@ -906,7 +908,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: &abciValidatorSetUpdate},
 	}
-	block = statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+	block, err = statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	validatorUpdates, thresholdPublicKey, quorumHash, err =
 		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
@@ -930,7 +933,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 		validatorUpdates, thresholdPublicKey, quorumHash, err =
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
-		block = statefactory.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
+		block, err = statefactory.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 		curState, err = sm.UpdateState(curState, &firstNodeProTxHash, blockID, &block.Header,
 			abciResponses, validatorUpdates, thresholdPublicKey, quorumHash)
@@ -957,7 +961,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
-		block := statefactory.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
+		block, err := statefactory.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 
 		updatedState, err = sm.UpdateState(updatedState, &firstNodeProTxHash, blockID, &block.Header, abciResponses,
@@ -978,7 +983,7 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	t.Cleanup(func() { tearDown(t) })
 	stateStore := sm.NewStore(stateDB)
-	state.Validators, _ = types.GenerateValidatorSet(valSetSize)
+	state.Validators, _ = factory.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
@@ -1004,7 +1009,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
 	require.Equal(t, int64(0), state.LastBlockHeight)
-	state.Validators, _ = types.GenerateValidatorSet(valSetSize)
+	state.Validators, _ = factory.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
@@ -1014,7 +1019,8 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	oldPubkey := val0.PubKey
 
 	// Swap the first validator with a new one (validator set size stays the same).
-	header, _, blockID, responses := makeHeaderPartsResponsesValKeysRegenerate(state, true)
+	header, _, blockID, responses, err := makeHeaderPartsResponsesValKeysRegenerate(state, true)
+	require.NoError(t, err)
 
 	// Save state etc.
 	var validatorUpdates []*types.Validator
@@ -1064,7 +1070,8 @@ func TestStateMakeBlock(t *testing.T) {
 
 	proposerProTxHash := state.Validators.GetProposer().ProTxHash
 	stateVersion := state.Version.Consensus
-	block := statefactory.MakeBlock(state, 2, new(types.Commit))
+	block, err := statefactory.MakeBlock(state, 2, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 
 	// test we set some fields
 	assert.Equal(t, stateVersion, block.Version)
@@ -1097,7 +1104,6 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
 	cp := params[changeIndex]
-	var err error
 	var validatorUpdates []*types.Validator
 	var thresholdPublicKeyUpdate crypto.PubKey
 	var quorumHash crypto.QuorumHash
@@ -1107,7 +1113,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			changeIndex++
 			cp = params[changeIndex]
 		}
-		header, _, blockID, responses := makeHeaderPartsResponsesParams(state, cp)
+		header, _, blockID, responses, err := makeHeaderPartsResponsesParams(state, cp)
+		require.NoError(t, err)
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err = types.PB2TM.ValidatorUpdatesFromValidatorSet(responses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
@@ -1116,7 +1123,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		state, err = sm.UpdateState(state, &firstNodeProTxHash, blockID, &header, responses, validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
 
 		require.Nil(t, err)
-		err := stateStore.Save(state)
+		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
 

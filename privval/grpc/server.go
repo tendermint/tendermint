@@ -2,6 +2,7 @@ package grpc
 
 import (
 	context "context"
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,13 +34,13 @@ func NewSignerServer(chainID string,
 
 var _ privvalproto.PrivValidatorAPIServer = (*SignerServer)(nil)
 
-// PubKey receives a request for the pubkey
+// GetPubKey receives a request for the pubkey
 // returns the pubkey on success and error on failure
 func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyRequest) (
 	*privvalproto.PubKeyResponse, error) {
 	var pubKey crypto.PubKey
 
-	pubKey, err := ss.privVal.GetPubKey(ctx)
+	pubKey, err := ss.privVal.GetPubKey(ctx, req.QuorumHash)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "error getting pubkey: %v", err)
 	}
@@ -54,13 +55,54 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 	return &privvalproto.PubKeyResponse{PubKey: pk}, nil
 }
 
+// GetThresholdPubKey receives a request for the threshold pubkey
+// returns the pubkey on success and error on failure
+func (ss *SignerServer) GetThresholdPubKey(ctx context.Context, req *privvalproto.ThresholdPubKeyRequest) (
+	*privvalproto.ThresholdPubKeyResponse, error) {
+	var pubKey crypto.PubKey
+
+	pubKey, err := ss.privVal.GetThresholdPublicKey(ctx, req.QuorumHash)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "error getting pubkey: %v", err)
+	}
+
+	pk, err := encoding.PubKeyToProto(pubKey)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error transitioning pubkey to proto: %v", err)
+	}
+
+	ss.logger.Info("SignerServer: GetPubKey Success")
+
+	return &privvalproto.ThresholdPubKeyResponse{PubKey: pk}, nil
+}
+
+// GetProTxHash receives a request for the proTxHash
+// returns the proTxHash on success and error on failure
+func (ss *SignerServer) GetProTxHash(ctx context.Context, req *privvalproto.ProTxHashRequest) (
+	*privvalproto.ProTxHashResponse, error) {
+	var proTxHash crypto.ProTxHash
+
+	proTxHash, err := ss.privVal.GetProTxHash(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "error getting proTxHash: %v", err)
+	}
+
+	ss.logger.Info("SignerServer: GetProTxHash Success")
+
+	return &privvalproto.ProTxHashResponse{ProTxHash: proTxHash}, nil
+}
+
 // SignVote receives a vote sign requests, attempts to sign it
 // returns SignedVoteResponse on success and error on failure
 func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVoteRequest) (
 	*privvalproto.SignedVoteResponse, error) {
 	vote := req.Vote
 
-	err := ss.privVal.SignVote(ctx, req.ChainId, vote)
+	stateId, err := types.StateIDFromProto(req.StateId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "error converting stateId when signing vote: %v", err)
+	}
+	err = ss.privVal.SignVote(ctx, req.ChainId, btcjson.LLMQType(req.QuorumType), req.QuorumHash, vote, *stateId, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}
@@ -76,7 +118,7 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 	*privvalproto.SignedProposalResponse, error) {
 	proposal := req.Proposal
 
-	err := ss.privVal.SignProposal(ctx, req.ChainId, proposal)
+	_, err := ss.privVal.SignProposal(ctx, req.ChainId, btcjson.LLMQType(req.QuorumType), req.QuorumHash, proposal)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing proposal: %v", err)
 	}

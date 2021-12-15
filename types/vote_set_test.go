@@ -673,16 +673,6 @@ func randVoteSetWithLLMQType(
 	return voteSet, valSet, privValidators
 }
 
-func deterministicVoteSet(
-	height int64,
-	round int32,
-	signedMsgType tmproto.SignedMsgType,
-	stateID StateID,
-) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, privValidators := deterministicValidatorSet()
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, stateID), valSet, privValidators
-}
-
 // Convenience: Return new vote with different validator address/index
 func withValidator(vote *Vote, proTxHash []byte, idx int32) *Vote {
 	vote = vote.Copy()

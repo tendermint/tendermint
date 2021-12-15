@@ -202,11 +202,9 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	hashes := make([][]byte, len(evList))
 	for idx, ev := range evList {
 
-		_, isLightEv := ev.(*types.LightClientAttackEvidence)
-
 		// We must verify light client attack evidence regardless because there could be a
 		// different conflicting block with the same hash.
-		if isLightEv || !evpool.isPending(ev) {
+		if !evpool.isPending(ev) {
 			// check that the evidence isn't already committed
 			if evpool.isCommitted(ev) {
 				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("evidence was already committed")}

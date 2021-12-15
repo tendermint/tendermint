@@ -9,12 +9,12 @@ require (
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/dashevo/dashd-go v0.0.0-20210630125816-b417ad8eb165
-    github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201127091120-745324b80143
-    github.com/go-logfmt/logfmt v0.5.1
-    github.com/go-pkgz/jrpc v0.2.0
-    github.com/go-kit/log v0.2.0
+	github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201127091120-745324b80143
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
+	github.com/go-kit/log v0.2.0
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
+	github.com/go-pkgz/jrpc v0.2.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/golangci/golangci-lint v1.43.0
@@ -29,6 +29,7 @@ require (
 	github.com/mroth/weightedrand v0.4.1
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20210609091139-0a56a4bca00b
 	github.com/ory/dockertest v3.3.5+incompatible
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/rs/cors v1.8.0

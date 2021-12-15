@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -21,7 +22,7 @@ const (
 	EventNewBlockHeaderValue      = "NewBlockHeader"
 	EventNewEvidenceValue         = "NewEvidence"
 	EventTxValue                  = "Tx"
-	EventValidatorSetUpdatesValue = "ValidatorSetUpdates"
+	EventValidatorSetUpdateValue  = "ValidatorSetUpdate"
 
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
@@ -85,7 +86,6 @@ var (
 			},
 		},
 	}
->>>>>>> tendermintv35
 )
 
 // ENCODING / DECODING
@@ -104,7 +104,7 @@ func init() {
 	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
 	tmjson.RegisterType(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal")
 	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
-	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
+	tmjson.RegisterType(EventDataValidatorSetUpdate{}, "tendermint/event/ValidatorSetUpdate")
 	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
 	tmjson.RegisterType(EventDataBlockSyncStatus{}, "tendermint/event/FastSyncStatus")
 	tmjson.RegisterType(EventDataStateSyncStatus{}, "tendermint/event/StateSyncStatus")
@@ -178,8 +178,10 @@ type EventDataCommit struct {
 
 type EventDataString string
 
-type EventDataValidatorSetUpdates struct {
-	ValidatorUpdates []*Validator `json:"validator_updates"`
+type EventDataValidatorSetUpdate struct {
+	ValidatorSetUpdates []*Validator      `json:"validator_updates"`
+	ThresholdPublicKey  crypto.PubKey     `json:"threshold_public_key"`
+	QuorumHash          crypto.QuorumHash `json:"quorum_hash"`
 }
 
 
@@ -232,7 +234,7 @@ var (
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
 	EventQueryTx                  = QueryForEvent(EventTxValue)
 	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
-	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
+	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdateValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
 	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
@@ -253,7 +255,7 @@ type BlockEventPublisher interface {
 	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
 	PublishEventNewEvidence(evidence EventDataNewEvidence) error
 	PublishEventTx(EventDataTx) error
-	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
+	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdate) error
 }
 
 type TxEventPublisher interface {

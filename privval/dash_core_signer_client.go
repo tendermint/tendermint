@@ -2,6 +2,7 @@ package privval
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -69,9 +70,9 @@ func (sc *DashCoreSignerClient) ping() error {
 	return nil
 }
 
-func (sc *DashCoreSignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
-	pubKey, _ := sc.GetPubKey(quorumHash)
-	proTxHash, _ := sc.GetProTxHash()
+func (sc *DashCoreSignerClient) ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *types.Validator {
+	pubKey, _ := sc.GetPubKey(ctx, quorumHash)
+	proTxHash, _ := sc.GetProTxHash(ctx)
 	if len(proTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
@@ -84,7 +85,7 @@ func (sc *DashCoreSignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHas
 
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
-func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+func (sc *DashCoreSignerClient) GetPubKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	if len(quorumHash.Bytes()) != crypto.DefaultHashSize {
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
@@ -94,7 +95,7 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 		return nil, fmt.Errorf("getPubKey Quorum Info Error for (%d) %s : %w", sc.defaultQuorumType, quorumHash.String(), err)
 	}
 
-	proTxHash, err := sc.GetProTxHash()
+	proTxHash, err := sc.GetProTxHash(ctx)
 
 	if err != nil {
 		return nil, fmt.Errorf("getPubKey proTxHash error: %w", err)
@@ -145,11 +146,11 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 	return bls12381.PubKey(decodedPublicKeyShare), nil
 }
 
-func (sc *DashCoreSignerClient) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+func (sc *DashCoreSignerClient) GetFirstQuorumHash(ctx context.Context) (crypto.QuorumHash, error) {
 	return nil, errors.New("getFirstQuorumHash should not be called on a dash core signer client")
 }
 
-func (sc *DashCoreSignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+func (sc *DashCoreSignerClient) GetThresholdPublicKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	if len(quorumHash.Bytes()) != crypto.DefaultHashSize {
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
@@ -173,11 +174,11 @@ func (sc *DashCoreSignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHa
 	}
 	return bls12381.PubKey(decodedThresholdPublicKey), nil
 }
-func (sc *DashCoreSignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+func (sc *DashCoreSignerClient) GetHeight(ctx context.Context, quorumHash crypto.QuorumHash) (int64, error) {
 	return 0, fmt.Errorf("getHeight should not be called on a dash core signer client %s", quorumHash.String())
 }
 
-func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
+func (sc *DashCoreSignerClient) GetProTxHash(ctx context.Context) (crypto.ProTxHash, error) {
 	if sc.cachedProTxHash != nil {
 		return sc.cachedProTxHash, nil
 	}
@@ -224,7 +225,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *DashCoreSignerClient) SignVote(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
 	protoVote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
 	if len(quorumHash) != crypto.DefaultHashSize {
 		return fmt.Errorf("quorum hash is not the right length %s", quorumHash.String())
@@ -254,7 +255,7 @@ func (sc *DashCoreSignerClient) SignVote(
 	}
 
 	// No need to check the error as this is only used for logging
-	proTxHash, _ := sc.GetProTxHash()
+	proTxHash, _ := sc.GetProTxHash(ctx)
 
 	signID := crypto.SignID(
 		quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestID),
@@ -270,7 +271,7 @@ func (sc *DashCoreSignerClient) SignVote(
 		hex.EncodeToString(blockRequestID), "coreSignId", bls12381.ReverseBytes(coreSignID),
 		"signId", hex.EncodeToString(signID))
 
-	pubKey, err := sc.GetPubKey(quorumHash)
+	pubKey, err := sc.GetPubKey(ctx, quorumHash)
 	if err != nil {
 		return &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
@@ -335,7 +336,7 @@ func (sc *DashCoreSignerClient) SignVote(
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *DashCoreSignerClient) SignProposal(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal,
+	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal,
 ) ([]byte, error) {
 	messageBytes := types.ProposalBlockSignBytes(chainID, proposalProto)
 
@@ -397,7 +398,8 @@ func (sc *DashCoreSignerClient) SignProposal(
 }
 
 func (sc *DashCoreSignerClient) UpdatePrivateKey(
-	privateKey crypto.PrivKey,
+	ctx context.Context,
+    privateKey crypto.PrivKey,
 	quorumHash crypto.QuorumHash,
 	thresholdPublicKey crypto.PubKey,
 	height int64,
@@ -405,6 +407,6 @@ func (sc *DashCoreSignerClient) UpdatePrivateKey(
 
 }
 
-func (sc *DashCoreSignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+func (sc *DashCoreSignerClient) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return nil, nil
 }

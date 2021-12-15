@@ -205,15 +205,15 @@ func TestValidateValidatorUpdates(t *testing.T) {
 }
 
 func TestUpdateValidators(t *testing.T) {
-	validatorSet, _ := types.GenerateValidatorSet(4)
+	validatorSet, _ := factory.RandValidatorSet(4)
 	originalProTxHashes := validatorSet.GetProTxHashes()
 	addedProTxHashes := bls12381.CreateProTxHashes(4)
 	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...) // nolint:gocritic
-	combinedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
-	regeneratedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
+	combinedValidatorSet, _ := factory.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
+	regeneratedValidatorSet, _ := factory.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	abciRegeneratedValidatorUpdates := regeneratedValidatorSet.ABCIEquivalentValidatorUpdates()
 	removedProTxHashes := combinedValidatorSet.GetProTxHashes()[0 : len(combinedProTxHashes)-2] // these are sorted
-	removedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(
+	removedValidatorSet, _ := factory.GenerateValidatorSetUsingProTxHashes(
 		removedProTxHashes,
 	) // size 6
 	abciRemovalValidatorUpdates := removedValidatorSet.ABCIEquivalentValidatorUpdates()
@@ -355,7 +355,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	proTxHashes := vals.GetProTxHashes()
 	addProTxHash := crypto.RandProTxHash()
 	proTxHashes = append(proTxHashes, addProTxHash)
-	newVals, _ := types.GenerateValidatorSetUsingProTxHashes(proTxHashes)
+	newVals, _ := factory.GenerateValidatorSetUsingProTxHashes(proTxHashes)
 	var pos int
 	for i, proTxHash := range newVals.GetProTxHashes() {
 		if bytes.Equal(proTxHash.Bytes(), addProTxHash.Bytes()) {
@@ -378,19 +378,19 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	// test we threw an event
 	select {
 	case msg := <-updatesSub.Out():
-		event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
+		event, ok := msg.Data().(types.EventDataValidatorSetUpdate)
 		require.True(
 			t,
 			ok,
-			"Expected event of type EventDataValidatorSetUpdates, got %T",
+			"Expected event of type EventDataValidatorSetUpdate, got %T",
 			msg.Data(),
 		)
-		if assert.NotEmpty(t, event.ValidatorUpdates) {
-			assert.Equal(t, addProTxHash, event.ValidatorUpdates[pos].ProTxHash)
+		if assert.NotEmpty(t, event.ValidatorSetUpdates) {
+			assert.Equal(t, addProTxHash, event.ValidatorSetUpdates[pos].ProTxHash)
 			assert.EqualValues(
 				t,
 				types.DefaultDashVotingPower,
-				event.ValidatorUpdates[1].VotingPower,
+				event.ValidatorSetUpdates[1].VotingPower,
 			)
 		}
 	case <-updatesSub.Canceled():

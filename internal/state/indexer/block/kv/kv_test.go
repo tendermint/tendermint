@@ -6,15 +6,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
+	blockidxkv "github.com/tendermint/tendermint/internal/state/indexer/block/kv"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
 	"github.com/tendermint/tendermint/types"
-	db "github.com/tendermint/tm-db"
 )
 
 func TestBlockIndexer(t *testing.T) {
-	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	store := dbm.NewPrefixDB(dbm.NewMemDB(), []byte("block_events"))
 	indexer := blockidxkv.New(store)
 
 	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
@@ -25,8 +26,8 @@ func TestBlockIndexer(t *testing.T) {
 					Type: "begin_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("proposer"),
-							Value: []byte("FCAA001"),
+							Key:   "proposer",
+							Value: "FCAA001",
 							Index: true,
 						},
 					},
@@ -39,8 +40,8 @@ func TestBlockIndexer(t *testing.T) {
 					Type: "end_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
+							Key:   "foo",
+							Value: "100",
 							Index: true,
 						},
 					},
@@ -63,8 +64,8 @@ func TestBlockIndexer(t *testing.T) {
 						Type: "begin_event",
 						Attributes: []abci.EventAttribute{
 							{
-								Key:   []byte("proposer"),
-								Value: []byte("FCAA001"),
+								Key:   "proposer",
+								Value: "FCAA001",
 								Index: true,
 							},
 						},
@@ -77,8 +78,8 @@ func TestBlockIndexer(t *testing.T) {
 						Type: "end_event",
 						Attributes: []abci.EventAttribute{
 							{
-								Key:   []byte("foo"),
-								Value: []byte(fmt.Sprintf("%d", i)),
+								Key:   "foo",
+								Value: fmt.Sprintf("%d", i),
 								Index: index,
 							},
 						},
