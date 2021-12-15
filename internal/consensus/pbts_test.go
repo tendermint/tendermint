@@ -147,11 +147,13 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time
 	p.validatorClock.On("Now").Return(p.height2ProposedBlockTime).Times(6)
 
 	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
-	propBlock, partSet := p.observedState.createProposalBlock()
-	bid := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: partSet.Header()}
 
 	timeout := time.Until(previousBlockTime.Add(ensureTimeout))
-	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, bid, timeout)
+	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, types.BlockID{}, timeout)
+
+	rs := p.observedState.GetRoundState()
+	bid := types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}
+
 	ensurePrevote(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
 	signAddVotes(p.ctx, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
 
@@ -299,8 +301,6 @@ func (p *pbtsTestHarness) run() resultSet {
 	r2 := p.height2()
 	p.intermediateHeights()
 	r5 := p.height5()
-	err := p.observedState.Stop()
-	require.NoError(p.t, err)
 	return resultSet{
 		genesisHeight: r1,
 		height2:       r2,
