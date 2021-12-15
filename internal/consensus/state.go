@@ -1484,7 +1484,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// If the proposal time does not match the block time, precommit nil.
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
-		logger.Debug("proposal timestamp not equal, prevoting nil")
+		logger.Debug("proposal timestamp not equal, precommitting nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
