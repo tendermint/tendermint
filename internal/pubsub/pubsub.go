@@ -5,7 +5,7 @@
 // Clients register subscriptions with a query to select which messages they
 // wish to receive. When messages are published, they are broadcast to all
 // clients whose subscription query matches that message. Queries are
-// constructed using the github.com/tendermint/tendermint/libs/pubsub/query
+// constructed using the github.com/tendermint/tendermint/internal/pubsub/query
 // package.
 //
 // Example:
