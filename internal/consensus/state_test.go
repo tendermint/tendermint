@@ -246,7 +246,7 @@ func TestStateBadProposal(t *testing.T) {
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	proposal := types.NewProposal(vs2.Height, round, -1, blockID)
+	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
 	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -306,7 +306,7 @@ func TestStateOversizedBlock(t *testing.T) {
 
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	proposal := types.NewProposal(height, round, -1, blockID)
+	proposal := types.NewProposal(height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
 	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -856,7 +856,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
-	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID)
+	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID, theBlock.Header.Time)
 	p := propR1.ToProto()
 	if err := vs2.SignProposal(ctx, cs1.state.ChainID, p); err != nil {
 		t.Fatalf("error signing proposal: %s", err)
@@ -1588,7 +1588,7 @@ func TestStateLock_POLSafety2(t *testing.T) {
 
 	round++ // moving to the next round
 	// in round 2 we see the polkad block from round 0
-	newProp := types.NewProposal(height, round, 0, propBlockID0)
+	newProp := types.NewProposal(height, round, 0, propBlockID0, propBlock0.Header.Time)
 	p := newProp.ToProto()
 	if err := vs3.SignProposal(ctx, config.ChainID(), p); err != nil {
 		t.Fatal(err)
@@ -1730,7 +1730,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	t.Log("### Starting Round 2")
 	incrementRound(vs2, vs3, vs4)
 	round++
-	propR2 := types.NewProposal(height, round, 1, r1BlockID)
+	propR2 := types.NewProposal(height, round, 1, r1BlockID, propBlockR1.Header.Time)
 	p := propR2.ToProto()
 	if err := vs3.SignProposal(ctx, cs1.state.ChainID, p); err != nil {
 		t.Fatalf("error signing proposal: %s", err)
@@ -2647,6 +2647,104 @@ func TestSignSameVoteTwice(t *testing.T) {
 	)
 
 	require.Equal(t, vote, vote2)
+}
+
+// TestStateTimestamp_ProposalNotMatch tests that a validator does not prevote a
+// proposed block if the timestamp in the block does not matche the timestamp in the
+// corresponding proposal message.
+func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
+	config := configSetup(t)
+	logger := log.TestingLogger()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cs1, vss, err := makeState(ctx, config, logger, 4)
+	require.NoError(t, err)
+	height, round := cs1.Height, cs1.Round
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+
+	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+
+	propBlock, _ := cs1.createProposalBlock()
+	round++
+	incrementRound(vss[1:]...)
+
+	propBlockParts := propBlock.MakePartSet(types.BlockPartSizeBytes)
+	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+
+	// Create a proposal with a timestamp that does not match the timestamp of the block.
+	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time.Add(time.Millisecond))
+	p := proposal.ToProto()
+	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
+	proposal.Signature = p.Signature
+	require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
+
+	startTestRound(ctx, cs1, height, round)
+	ensureProposal(t, proposalCh, height, round, blockID)
+
+	signAddVotes(ctx, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vs2, vs3, vs4)
+
+	// ensure that the validator prevotes nil.
+	ensurePrevote(t, voteCh, height, round)
+	validatePrevote(ctx, t, cs1, round, vss[0], nil)
+
+	ensurePrecommit(t, voteCh, height, round)
+	validatePrecommit(ctx, t, cs1, round, -1, vss[0], nil, nil)
+}
+
+// TestStateTimestamp_ProposalMatch tests that a validator prevotes a
+// proposed block if the timestamp in the block matches the timestamp in the
+// corresponding proposal message.
+func TestStateTimestamp_ProposalMatch(t *testing.T) {
+	config := configSetup(t)
+	logger := log.TestingLogger()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cs1, vss, err := makeState(ctx, config, logger, 4)
+	require.NoError(t, err)
+	height, round := cs1.Height, cs1.Round
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+
+	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+
+	propBlock, _ := cs1.createProposalBlock()
+	round++
+	incrementRound(vss[1:]...)
+
+	propBlockParts := propBlock.MakePartSet(types.BlockPartSizeBytes)
+	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+
+	// Create a proposal with a timestamp that matches the timestamp of the block.
+	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time)
+	p := proposal.ToProto()
+	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
+	proposal.Signature = p.Signature
+	require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
+
+	startTestRound(ctx, cs1, height, round)
+	ensureProposal(t, proposalCh, height, round, blockID)
+
+	signAddVotes(ctx, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vs2, vs3, vs4)
+
+	// ensure that the validator prevotes the block.
+	ensurePrevote(t, voteCh, height, round)
+	validatePrevote(ctx, t, cs1, round, vss[0], propBlock.Hash())
+
+	ensurePrecommit(t, voteCh, height, round)
+	validatePrecommit(ctx, t, cs1, round, 1, vss[0], propBlock.Hash(), propBlock.Hash())
 }
 
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.
