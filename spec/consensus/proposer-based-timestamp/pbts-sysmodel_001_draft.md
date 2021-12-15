@@ -1,5 +1,7 @@
 # Proposer-Based Time - Part I
 
+This specification is **OUTDATED**. Please refer to the [new version][v2].
+
 ## System Model
 
 ### Time and Clocks
@@ -196,3 +198,5 @@ Back to [main document][main].
 [algorithm]: ./pbts-algorithm_001_draft.md
 
 [sysmodel]: ./pbts-sysmodel_001_draft.md
+
+[v2]: ./pbts-sysmodel_002_draft.md
