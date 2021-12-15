@@ -8,6 +8,8 @@
 
 11-07-2018: Initial Draft
 
+5-26-2021: Multisigs were moved into the Cosmos-sdk
+
 ## Context
 
 Multisignatures, or technically _Accountable Subgroup Multisignatures_ (ASM),
@@ -141,7 +143,7 @@ Aggregation of pubkeys / sigs in Schnorr sigs / BLS sigs is not backwards compat
 
 ## Status
 
-Proposed.
+Implemented (moved to cosmos-sdk)
 
 ## Consequences
 

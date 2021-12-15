@@ -3,6 +3,8 @@ package main
 import (
 	"math/rand"
 	"sort"
+
+	"github.com/mroth/weightedrand"
 )
 
 // combinations takes input in the form of a map of item lists, and returns a
@@ -56,28 +58,6 @@ func (uc uniformChoice) Choose(r *rand.Rand) interface{} {
 	return uc[r.Intn(len(uc))]
 }
 
-// weightedChoice chooses a single random key from a map of keys and weights.
-type weightedChoice map[interface{}]uint
-
-func (wc weightedChoice) Choose(r *rand.Rand) interface{} {
-	total := 0
-	choices := make([]interface{}, 0, len(wc))
-	for choice, weight := range wc {
-		total += int(weight)
-		choices = append(choices, choice)
-	}
-
-	rem := r.Intn(total)
-	for _, choice := range choices {
-		rem -= int(wc[choice])
-		if rem <= 0 {
-			return choice
-		}
-	}
-
-	return nil
-}
-
 // probSetChoice picks a set of strings based on each string's probability (0-1).
 type probSetChoice map[string]float64
 
@@ -94,14 +74,36 @@ func (pc probSetChoice) Choose(r *rand.Rand) []string {
 // uniformSetChoice picks a set of strings with uniform probability, picking at least one.
 type uniformSetChoice []string
 
-func (usc uniformSetChoice) Choose(r *rand.Rand) []string {
+func (usc uniformSetChoice) Choose(r *rand.Rand) []string { return usc.ChooseAtLeast(r, 1) }
+
+func (usc uniformSetChoice) ChooseAtLeast(r *rand.Rand, num int) []string {
 	choices := []string{}
 	indexes := r.Perm(len(usc))
-	if len(indexes) > 1 {
-		indexes = indexes[:1+r.Intn(len(indexes)-1)]
+	if num < len(indexes) {
+		indexes = indexes[:1+randomInRange(r, num, len(indexes)-1)]
 	}
+
 	for _, i := range indexes {
 		choices = append(choices, usc[i])
 	}
+
 	return choices
+}
+
+func randomInRange(r *rand.Rand, min, max int) int { return r.Intn(max-min+1) + min }
+
+type weightedChoice map[string]uint
+
+func (wc weightedChoice) Choose(r *rand.Rand) string {
+	choices := make([]weightedrand.Choice, 0, len(wc))
+	for k, v := range wc {
+		choices = append(choices, weightedrand.NewChoice(k, v))
+	}
+
+	chooser, err := weightedrand.NewChooser(choices...)
+	if err != nil {
+		panic(err)
+	}
+
+	return chooser.PickSource(r).(string)
 }

@@ -4,7 +4,8 @@
 
 - 04/09/2020: Initial Draft (Unabridged)
 - 07/09/2020: First Version
-- 13.03.21: Ammendment to accomodate forward lunatic attack
+- 13/03/2021: Ammendment to accomodate forward lunatic attack
+- 29/06/2021: Add information about ABCI specific fields
 
 ## Scope
 
@@ -111,6 +112,11 @@ We have two concrete types of evidence that fulfil this interface
 type LightClientAttackEvidence struct {
   ConflictingBlock *LightBlock
   CommonHeight int64 // the last height at which the primary provider and witness provider had the same header
+
+  // abci specific information
+	ByzantineValidators []*Validator // validators in the validator set that misbehaved in creating the conflicting block
+	TotalVotingPower    int64        // total voting power of the validator set at the common height
+	Timestamp           time.Time    // timestamp of the block at the common height
 }
 ```
 where the `Hash()` is the hash of the header and commonHeight.
@@ -121,6 +127,11 @@ Note: It was also discussed whether to include the commit hash which captures th
 type DuplicateVoteEvidence {
   VoteA *Vote
   VoteB *Vote
+
+  // abci specific information
+	TotalVotingPower int64
+	ValidatorPower   int64
+	Timestamp        time.Time
 }
 ```
 where the `Hash()` is the hash of the two votes
@@ -169,24 +180,23 @@ For `LightClientAttack`
   - If amnesia, return no validators (since we can't know which validators are malicious). This also means that we don't currently send amnesia evidence to the application, although we will introduce more robust amnesia evidence handling in future Tendermint Core releases
 
 - Check that the hashes of the conflicting header and the trusted header are different
+<<<<<<< HEAD
 
-- In the case of a forward lunatic attack, where the trusted header height is less than the conflicting header height, the node checks that the time of the trusted header is later than the time of conflicting header. This proves that the conflicting header breaks monotonically increasing time. If the node doesn't have a trusted header with a later time then it is unable to validate the evidence for now. 
+- In the case of a forward lunatic attack, where the trusted header height is less than the conflicting header height, the node checks that the time of the trusted header is later than the time of conflicting header. This proves that the conflicting header breaks monotonically increasing time. If the node doesn't have a trusted header with a later time then it is unable to validate the evidence for now.
+
+- Lastly, for each validator, check the look up table to make sure there already isn't evidence against this validator
+=======
+>>>>>>> tendermintv35
+
+- In the case of a forward lunatic attack, where the trusted header height is less than the conflicting header height, the node checks that the time of the trusted header is later than the time of conflicting header. This proves that the conflicting header breaks monotonically increasing time. If the node doesn't have a trusted header with a later time then it is unable to validate the evidence for now.
 
 - Lastly, for each validator, check the look up table to make sure there already isn't evidence against this validator
 
-After verification we persist the evidence with the key `height/hash` to the pending evidence database in the evidence pool with the following format:
+After verification we persist the evidence with the key `height/hash` to the pending evidence database in the evidence pool.
 
-```go
-type EvidenceInfo struct {
-  ev Evidence
-  time time.Time
-  validators []Validator
-  totalVotingPower int64
-}
-```
+#### ABCI Evidence
 
-`time`, `validators` and `totalVotingPower` are need to form the `abci.Evidence` that we send to the application layer. More in this to come later.
-
+Both evidence structures contain data (such as timestamp) that are necessary to be passed to the application but do not strictly constitute evidence of misbehaviour. As such, these fields are verified last. If any of these fields are invalid to a node i.e. they don't correspond with their state, nodes will reconstruct a new evidence struct from the existing fields and repopulate the abci specific fields with their own state data.
 
 #### Broadcasting and receiving evidence
 

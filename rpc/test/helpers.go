@@ -4,20 +4,17 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/proxy"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/rpc/coretypes"
+	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -25,24 +22,17 @@ import (
 // control.
 type Options struct {
 	suppressStdout bool
-	recreateConfig bool
 }
 
-var globalConfig *cfg.Config
-var defaultOptions = Options{
-	suppressStdout: false,
-	recreateConfig: false,
-}
-
-func waitForRPC() {
-	laddr := GetConfig().RPC.ListenAddress
+func waitForRPC(ctx context.Context, conf *config.Config) {
+	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.New(laddr)
 	if err != nil {
 		panic(err)
 	}
-	result := new(ctypes.ResultStatus)
+	result := new(coretypes.ResultStatus)
 	for {
-		_, err := client.Call(context.Background(), "status", map[string]interface{}{}, result)
+		_, err := client.Call(ctx, "status", map[string]interface{}{}, result)
 		if err == nil {
 			return
 		}
@@ -52,26 +42,14 @@ func waitForRPC() {
 	}
 }
 
-func waitForGRPC() {
-	client := GetGRPCClient()
+func waitForGRPC(ctx context.Context, conf *config.Config) {
+	client := GetGRPCClient(conf)
 	for {
-		_, err := client.Ping(context.Background(), &core_grpc.RequestPing{})
+		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
 		if err == nil {
 			return
 		}
 	}
-}
-
-// f**ing long, but unique for each test
-func makePathname() string {
-	// get path
-	p, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Println(p)
-	sep := string(filepath.Separator)
-	return strings.ReplaceAll(p, sep, "_")
 }
 
 func randPort() int {
@@ -88,9 +66,11 @@ func makeAddrs() (string, string, string) {
 		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
 }
 
-func createConfig() *cfg.Config {
-	pathname := makePathname()
-	c := cfg.ResetTestRoot(pathname)
+func CreateConfig(testName string) (*config.Config, error) {
+	c, err := config.ResetTestRoot(testName)
+	if err != nil {
+		return nil, err
+	}
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -98,96 +78,62 @@ func createConfig() *cfg.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	return c
+	return c, nil
 }
 
-// GetConfig returns a config for the test cases as a singleton
-func GetConfig(forceCreate ...bool) *cfg.Config {
-	if globalConfig == nil || (len(forceCreate) > 0 && forceCreate[0]) {
-		globalConfig = createConfig()
-	}
-	return globalConfig
+func GetGRPCClient(conf *config.Config) coregrpc.BroadcastAPIClient {
+	grpcAddr := conf.RPC.GRPCListenAddress
+	return coregrpc.StartGRPCClient(grpcAddr)
 }
 
-func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := globalConfig.RPC.GRPCListenAddress
-	return core_grpc.StartGRPCClient(grpcAddr)
-}
+type ServiceCloser func(context.Context) error
 
-// StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
-func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
-	nodeOpts := defaultOptions
+func StartTendermint(ctx context.Context,
+	conf *config.Config,
+	app abci.Application,
+	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
+
+	nodeOpts := &Options{}
 	for _, opt := range opts {
-		opt(&nodeOpts)
+		opt(nodeOpts)
 	}
-	node := NewTendermint(app, &nodeOpts)
-	err := node.Start()
+	var logger log.Logger
+	if nodeOpts.suppressStdout {
+		logger = log.NewNopLogger()
+	} else {
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	}
+	papp := abciclient.NewLocalCreator(app)
+	tmNode, err := node.New(conf, logger, papp, nil)
 	if err != nil {
-		panic(err)
+		return nil, func(_ context.Context) error { return nil }, err
+	}
+
+	err = tmNode.Start()
+	if err != nil {
+		return nil, func(_ context.Context) error { return nil }, err
 	}
 
 	// wait for rpc
-	waitForRPC()
-	waitForGRPC()
+	waitForRPC(ctx, conf)
+	waitForGRPC(ctx, conf)
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")
 	}
 
-	return node
-}
-
-// StopTendermint stops a test tendermint server, waits until it's stopped and
-// cleans up test/config files.
-func StopTendermint(node *nm.Node) {
-	if err := node.Stop(); err != nil {
-		node.Logger.Error("Error when trying to stop node", "err", err)
-	}
-	node.Wait()
-	os.RemoveAll(node.Config().RootDir)
-}
-
-// NewTendermint creates a new tendermint server and sleeps forever
-func NewTendermint(app abci.Application, opts *Options) *nm.Node {
-	// Create & start node
-	config := GetConfig(opts.recreateConfig)
-	var logger log.Logger
-	if opts.suppressStdout {
-		logger = log.NewNopLogger()
-	} else {
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-		logger = log.NewFilter(logger, log.AllowError())
-	}
-	papp := proxy.NewLocalClientCreator(app)
-	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
-	if err != nil {
-		panic(err)
-	}
-
-	node, err := nm.NewNode(
-		config,
-		nodeKey,
-		papp,
-		nm.DefaultGenesisDocProviderFunc(config),
-		nm.DefaultDBProvider,
-		nm.DefaultMetricsProvider(config.Instrumentation),
-		nil,
-		logger,
-	)
-	if err != nil {
-		panic(err)
-	}
-	return node
+	return tmNode, func(ctx context.Context) error {
+		if err := tmNode.Stop(); err != nil {
+			logger.Error("Error when trying to stop node", "err", err)
+		}
+		tmNode.Wait()
+		os.RemoveAll(conf.RootDir)
+		return nil
+	}, nil
 }
 
 // SuppressStdout is an option that tries to make sure the RPC test Tendermint
 // node doesn't log anything to stdout.
 func SuppressStdout(o *Options) {
 	o.suppressStdout = true
-}
-
-// RecreateConfig instructs the RPC test to recreate the configuration each
-// time, instead of treating it as a global singleton.
-func RecreateConfig(o *Options) {
-	o.recreateConfig = true
 }

@@ -1,7 +1,11 @@
 package types
 
 import (
+	"context"
+	"encoding/hex"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
+	mrand "math/rand"
 	"testing"
 	"time"
 
@@ -14,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -40,8 +43,8 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	stateID := RandStateID().WithHeight(height - 1)
 	return &DuplicateVoteEvidence{
 
-		VoteA:            makeVote(t, val, chainID, 0, height, quorumType, quorumHash, 2, 1, blockID, stateID),
-		VoteB:            makeVote(t, val, chainID, 0, height, quorumType, quorumHash, 2, 1, blockID2, stateID),
+		VoteA:            makeVote(t, val, chainID, 0, height, 2, 1, quorumType, quorumHash, blockID, stateID),
+		VoteB:            makeVote(t, val, chainID, 0, height, 2, 1, quorumType, quorumHash, blockID2, stateID),
 		TotalVotingPower: 3 * DefaultDashVotingPower,
 		ValidatorPower:   DefaultDashVotingPower,
 		Timestamp:        defaultVoteTime,
@@ -51,7 +54,8 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 func TestDuplicateVoteEvidence(t *testing.T) {
 	const height = int64(13)
 	quorumType := btcjson.LLMQType_5_60
-	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id", quorumType, crypto.RandQuorumHash())
+	ev, err := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id", quorumType, crypto.RandQuorumHash())
+	assert.NoError(t, err)
 	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
 	assert.NotNil(t, ev.String())
 	assert.Equal(t, ev.Height(), height)
@@ -79,8 +83,8 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
 			ev.VoteA = makeVote(
-				t, val, chainID, math.MaxInt32, math.MaxInt64, quorumType,
-				quorumHash, math.MaxInt32, 0, blockID2, RandStateID().WithHeight(math.MaxInt64-1),
+				t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0, quorumType,
+				quorumHash, blockID2, RandStateID().WithHeight(math.MaxInt64-1),
 			)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
@@ -94,15 +98,16 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			const height int64 = math.MaxInt64
 			stateID := RandStateID().WithHeight(height - 1)
-			vote1 := makeVote(t, val, chainID, math.MaxInt32, height, quorumType,
-				quorumHash, math.MaxInt32, 0x02, blockID, stateID)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, height, quorumType,
-				quorumHash, math.MaxInt32, 0x02, blockID2, stateID)
-			thresholdPublicKey, err := val.GetThresholdPublicKey(quorumHash)
+			vote1 := makeVote(t, val, chainID, math.MaxInt32, height, math.MaxInt32, 0x02, quorumType,
+				quorumHash, blockID, stateID)
+			vote2 := makeVote(t, val, chainID, math.MaxInt32, height, math.MaxInt32, 0x02, quorumType,
+				quorumHash, blockID2, stateID)
+			thresholdPublicKey, err := val.GetThresholdPublicKey(context.Background(), quorumHash)
 			assert.NoError(t, err)
 			valSet := NewValidatorSet(
-				[]*Validator{val.ExtractIntoValidator(quorumHash)}, thresholdPublicKey, quorumType, quorumHash, true)
-			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
+				[]*Validator{val.ExtractIntoValidator(context.Background(), quorumHash)}, thresholdPublicKey, quorumType, quorumHash, true)
+			ev, err := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
+			require.NoError(t, err)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -110,18 +115,18 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id", btcjson.LLMQType_5_60,
+	goodEvidence, err := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id", btcjson.LLMQType_5_60,
 		crypto.RandQuorumHash())
+	assert.NoError(t, err)
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
 func makeVote(
 	t *testing.T, val PrivValidator, chainID string,
-	valIndex int32, height int64, quorumType btcjson.LLMQType,
-	quorumHash crypto.QuorumHash, round int32,
-	step int, blockID BlockID, stateID StateID,
+	valIndex int32, height int64, round int32, step int, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, blockID BlockID, stateID StateID,
 ) *Vote {
-	proTxHash, err := val.GetProTxHash()
+	proTxHash, err := val.GetProTxHash(context.Background())
 	require.NoError(t, err)
 	v := &Vote{
 		ValidatorProTxHash: proTxHash,
@@ -133,7 +138,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, quorumType, quorumHash, vpb, stateID, nil)
+	err = val.SignVote(context.Background(), chainID, quorumType, quorumHash, vpb, stateID, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -144,9 +149,9 @@ func makeVote(
 
 func makeHeaderRandom() *Header {
 	return &Header{
-		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
+		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
-		Height:             int64(tmrand.Uint16()) + 1,
+		Height:             int64(mrand.Uint32() + 1),
 		Time:               time.Now(),
 		LastBlockID:        makeBlockIDRandom(),
 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
@@ -172,24 +177,8 @@ func TestEvidenceProto(t *testing.T) {
 	var height int64 = math.MaxInt64
 	stateID := RandStateID().WithHeight(height - 1)
 
-	v := makeVote(t, val, chainID, math.MaxInt32, height, quorumType, quorumHash, 1, 0x01, blockID, stateID)
-	v2 := makeVote(t, val, chainID, math.MaxInt32, height, quorumType, quorumHash, 2, 0x01, blockID2, stateID)
-
-	// -------- SignedHeaders --------
-	height = int64(37)
-
-	var (
-		header1 = makeHeaderRandom()
-		header2 = makeHeaderRandom()
-	)
-
-	header1.Height = height
-	header1.LastBlockID = blockID
-	header1.ChainID = chainID
-
-	header2.Height = height
-	header2.LastBlockID = blockID
-	header2.ChainID = chainID
+	v := makeVote(t, val, chainID, math.MaxInt32, height, 1, 0x01, quorumType, quorumHash, blockID, stateID)
+	v2 := makeVote(t, val, chainID, math.MaxInt32, height, 2, 0x01, quorumType, quorumHash, blockID2, stateID)
 
 	tests := []struct {
 		testName     string
@@ -220,5 +209,37 @@ func TestEvidenceProto(t *testing.T) {
 			}
 			require.Equal(t, tt.evidence, evi, tt.testName)
 		})
+	}
+}
+
+func TestEvidenceVectors(t *testing.T) {
+	// Votes for duplicateEvidence
+	quorumType := btcjson.LLMQType_5_60
+	quorumHash := crypto.RandQuorumHash()
+	val := NewMockPVForQuorum(quorumHash)
+	key := bls12381.GenPrivKeyFromSecret([]byte("it's a secret")) // deterministic key
+	val.UpdatePrivateKey(context.Background(), key, quorumHash, key.PubKey(), 10)
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	const chainID = "mychain"
+	stateID := RandStateID().WithHeight(100)
+	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, quorumType, quorumHash, blockID, stateID)
+	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, quorumType, quorumHash, blockID2, stateID)
+
+	testCases := []struct {
+		testName string
+		evList   EvidenceList
+		expBytes string
+	}{
+		{"duplicateVoteEvidence",
+			EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}},
+			"a9ce28d13bb31001fc3e5b7927051baf98f86abdbd64377643a304164c826923",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		hash := tc.evList.Hash()
+		require.Equal(t, tc.expBytes, hex.EncodeToString(hash), tc.testName)
 	}
 }

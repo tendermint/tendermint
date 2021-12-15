@@ -3,15 +3,13 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"runtime/debug"
-	"strings"
-
 	"github.com/tendermint/tendermint/crypto/bls12381"
-
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"runtime/debug"
+	"strings"
 )
 
 const (
@@ -598,7 +596,7 @@ func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 }
 
 // More human readable JSON of the vote set
-// NOTE: insufficient for unmarshalling from (compressed votes)
+// NOTE: insufficient for unmarshaling from (compressed votes)
 // TODO: make the peerMaj23s nicer to read (eg just the block hash)
 type VoteSetJSON struct {
 	Votes         []string          `json:"votes"`

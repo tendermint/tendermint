@@ -8,19 +8,30 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
 func ExampleHTTP_simple() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
-	defer rpctest.StopTendermint(node)
+	conf, err := rpctest.CreateConfig("ExampleHTTP_simple")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = closer(ctx) }()
 
 	// Create our RPC client
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	rpcAddr := conf.RPC.ListenAddress
+	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
 	}
@@ -66,18 +77,27 @@ func ExampleHTTP_simple() {
 }
 
 func ExampleHTTP_batching() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
-
-	// Create our RPC client
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	conf, err := rpctest.CreateConfig("ExampleHTTP_batching")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer rpctest.StopTendermint(node)
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = closer(ctx) }()
+
+	rpcAddr := conf.RPC.ListenAddress
+	c, err := rpchttp.New(rpcAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Create our two transactions
 	k1 := []byte("firstName")
@@ -124,7 +144,7 @@ func ExampleHTTP_batching() {
 	// Each result in the returned list is the deserialized result of each
 	// respective ABCIQuery response
 	for _, result := range results {
-		qr, ok := result.(*ctypes.ResultABCIQuery)
+		qr, ok := result.(*coretypes.ResultABCIQuery)
 		if !ok {
 			log.Fatal("invalid result type from ABCIQuery request")
 		}

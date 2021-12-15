@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"sort"
@@ -12,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
@@ -23,6 +24,8 @@ const (
 	testKey   = "abc"
 	testValue = "def"
 )
+
+var ctx = context.Background()
 
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestDeliverTx{Tx: tx}
@@ -220,7 +223,7 @@ func valSetEqualTest(t *testing.T, vals1, vals2 types.ValidatorSetUpdate) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeSocketClientServer(app types.Application, name string) (abciclient.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -232,7 +235,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	}
 
 	// Connect to the socket
-	client := abcicli.NewSocketClient(socket, false)
+	client := abciclient.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
 		if err = server.Stop(); err != nil {
@@ -244,7 +247,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	return client, server, nil
 }
 
-func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeGRPCClientServer(app types.Application, name string) (abciclient.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -256,7 +259,7 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, s
 		return nil, nil, err
 	}
 
-	client := abcicli.NewGRPCClient(socket, true)
+	client := abciclient.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
 		if err := server.Stop(); err != nil {
@@ -304,7 +307,7 @@ func TestClientServer(t *testing.T) {
 	runClientTests(t, gclient)
 }
 
-func runClientTests(t *testing.T, client abcicli.Client) {
+func runClientTests(t *testing.T, client abciclient.Client) {
 	// run some tests....
 	key := testKey
 	value := key
@@ -316,24 +319,24 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 	testClient(t, client, tx, key, value)
 }
 
-func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	ar, err := app.DeliverTxSync(types.RequestDeliverTx{Tx: tx})
+func testClient(t *testing.T, app abciclient.Client, tx []byte, key, value string) {
+	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar, err = app.DeliverTxSync(types.RequestDeliverTx{Tx: tx})
+	ar, err = app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// commit
-	_, err = app.CommitSync()
+	_, err = app.CommitSync(ctx)
 	require.NoError(t, err)
 
-	info, err := app.InfoSync(types.RequestInfo{})
+	info, err := app.InfoSync(ctx, types.RequestInfo{})
 	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery, err := app.QuerySync(types.RequestQuery{
+	resQuery, err := app.QuerySync(ctx, types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -344,7 +347,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery, err = app.QuerySync(types.RequestQuery{
+	resQuery, err = app.QuerySync(ctx, types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,

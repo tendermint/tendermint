@@ -179,7 +179,7 @@ This then ends the process and the verify function that was called at the start 
 the user.
 
 For a detailed overview of how each of these three attacks can be conducted please refer to the
-[fork accountability spec]((https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)).
+[fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md).
 
 ## Full Node Verification
 
@@ -189,7 +189,7 @@ it for itself before gossiping it to peers and trying to commit it on chain. Thi
 
 ## Status
 
-Implemented.
+Implemented
 
 ## Consequences
 
@@ -213,7 +213,7 @@ clear from the current information which nodes behaved maliciously.
 ## References
 
 * [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
-* [ADR 056: Proving amnesia attacks](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md)
+* [ADR 056: Light client amnesia attacks](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-light-client-amnesia-attacks.md)
 * [ADR-059: Evidence Composition and Lifecycle](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
 * [Informal's Light Client Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
 

@@ -2,13 +2,212 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## v0.35
+
+### ABCI Changes
+
+* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
+* Messages are written to a byte stream using uin64 length delimiters instead of int64.
+* When mempool `v1` is enabled, transactions broadcasted via `sync` mode may return a successful
+  response with a transaction hash indicating that the transaction was successfully inserted into
+  the mempool. While this is true for `v0`, the `v1` mempool reactor may at a later point in time
+  evict or even drop this transaction after a hash has been returned. Thus, the user or client must
+  query for that transaction to check if it is still in the mempool.
+
+### Config Changes
+
+* The configuration file field `[fastsync]` has been renamed to `[blocksync]`.
+
+* The top level configuration file field `fast-sync` has moved under the new `[blocksync]`
+  field as `blocksync.enable`.
+
+* `blocksync.version = "v1"` and `blocksync.version = "v2"` (previously `fastsync`)
+  are no longer supported. Please use `v0` instead. During the v0.35 release cycle, `v0` was
+  determined to suit the existing needs and the cost of maintaining the `v1` and `v2` modules
+  was determined to be greater than necessary.
+
+
+* All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
+  you have updated all the variables in your `config.toml` file.
+
+* Added `--mode` flag and `mode` config variable on `config.toml` for setting Mode of the Node: `full` | `validator` | `seed` (default: `full`)
+  [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
+
+* `BootstrapPeers` has been added as part of the new p2p stack. This will eventually replace
+  `Seeds`. Bootstrap peers are connected with on startup if needed for peer discovery. Unlike
+  persistent peers, there's no gaurantee that the node will remain connected with these peers.
+
+* configuration values starting with `priv-validator-` have moved to the new
+  `priv-validator` section, without the `priv-validator-` prefix.
+
+* The fast sync process as well as the blockchain package and service has all
+  been renamed to block sync
+
+### Database Key Format Changes
+
+The format of all tendermint on-disk database keys changes in
+0.35. Upgrading nodes must either re-sync all data or run a migration
+script provided in this release. The script located in
+`github.com/tendermint/tendermint/scripts/keymigrate/migrate.go`
+provides the function `Migrate(context.Context, db.DB)` which you can
+operationalize as makes sense for your deployment.
+
+For ease of use the `tendermint` command includes a CLI version of the
+migration script, which you can invoke, as in:
+
+	tendermint key-migrate
+
+This reads the configuration file as normal and allows the
+`--db-backend` and `--db-dir` flags to change database operations as
+needed.
+
+The migration operation is idempotent and can be run more than once,
+if needed.
+
+### CLI Changes
+
+* You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
+
+* The `--fast-sync` command line option has been renamed to `--blocksync.enable`
+
+* If you had previously used `tendermint gen_node_key` to generate a new node
+  key, keep in mind that it no longer saves the output to a file. You can use
+  `tendermint init validator` or pipe the output of `tendermint gen_node_key` to
+  `$TMHOME/config/node_key.json`:
+
+  ```
+  $ tendermint gen_node_key > $TMHOME/config/node_key.json
+  ```
+
+* CLI commands and flags are all now hyphen-case instead of snake_case.
+  Make sure to adjust any scripts that calls a cli command with snake_casing
+
+### API Changes
+
+The p2p layer was reimplemented as part of the 0.35 release cycle and
+all reactors were refactored to accomodate the change. As part of that work these
+implementations moved into the `internal` package and are no longer
+considered part of the public Go API of tendermint. These packages
+are:
+
+- `p2p`
+- `mempool`
+- `consensus`
+- `statesync`
+- `blockchain`
+- `evidence`
+
+Accordingly, the `node` package changed to reduce access to
+tendermint internals: applications that use tendermint as a library
+will need to change to accommodate these changes. Most notably:
+
+- The `Node` type has become internal, and all constructors return a
+  `service.Service` implementation.
+
+- The `node.DefaultNewNode` and `node.NewNode` constructors are no
+  longer exported and have been replaced with `node.New` and
+  `node.NewDefault` which provide more functional interfaces.
+
+To access any of the functionality previously available via the
+`node.Node` type, use the `*local.Local` "RPC" client, that exposes
+the full RPC interface provided as direct function calls. Import the
+`github.com/tendermint/tendermint/rpc/client/local` package and pass
+the node service as in the following:
+
+```go
+    node := node.NewDefault() //construct the node object
+    // start and set up the node service
+
+    client := local.New(node.(local.NodeService))
+    // use client object to interact with the node
+```
+
+### gRPC Support
+
+Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
+
+### Peer Management Interface
+
+When running with the new P2P Layer, the methods `UnsafeDialSeeds` and
+`UnsafeDialPeers` RPC methods will always return an error. They are
+deprecated and will be removed in 0.36 when the legacy peer stack is
+removed.
+
+Additionally the format of the Peer list returned in the `NetInfo`
+method changes in this release to accommodate the different way that
+the new stack tracks data about peers. This change affects users of
+both stacks.
+
+### Using the updated p2p library
+
+The P2P library was reimplemented in this release. The new implementation is
+enabled by default in this version of Tendermint. The legacy implementation is still
+included in this version of Tendermint as a backstop to work around unforeseen
+production issues. The new and legacy version are interoperable. If necessary,
+you can enable the legacy implementation in the server configuration file.
+
+To make use of the legacy P2P implemementation add or update the following field of
+your server's configuration file under the `[p2p]` section:
+
+```toml
+[p2p]
+...
+use-legacy = true
+...
+```
+
+If you need to do this, please consider filing an issue in the Tendermint repository
+to let us know why. We plan to remove the legacy P2P code in the next (v0.36) release.
+
+#### New p2p queue types
+
+The new p2p implementation enables selection of the queue type to be used for
+passing messages between peers.
+
+The following values may be used when selecting which queue type to use:
+
+* `fifo`: (**default**) An unbuffered and lossless queue that passes messages through
+in the order in which they were received.
+
+* `priority`: A priority queue of messages.
+
+* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A
+weighted deficit round robin queue is created per peer. Each queue contains a
+separate 'flow' for each of the channels of communication that exist between any two
+peers. Tendermint maintains a channel per message type between peers. Each WDRR
+queue maintains a shared buffered with a fixed capacity through which messages on different
+flows are passed.
+For more information on WDRR scheduling, see: https://en.wikipedia.org/wiki/Deficit_round_robin
+
+To select a queue type, add or update the following field under the `[p2p]`
+section of your server's configuration file.
+
+```toml
+[p2p]
+...
+queue-type = wdrr
+...
+```
+
+
+### Support for Custom Reactor and Mempool Implementations
+
+The changes to p2p layer removed existing support for custom
+reactors. Based on our understanding of how this functionality was
+used, the introduction of the prioritized mempool covers nearly all of
+the use cases for custom reactors. If you are currently running custom
+reactors and mempools and are having trouble seeing the migration path
+for your project please feel free to reach out to the Tendermint Core
+development team directly.
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher. 
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 
@@ -42,6 +241,8 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
 * The field `Proof`, on the ABCI type `ResponseQuery`, is now named `ProofOps`.
   For more, see "Crypto," below.
 
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
+
 ### P2P Protocol
 
 The default codec is now proto3, not amino. The schema files can be found in the `/proto`
@@ -49,12 +250,9 @@ directory. For more, see "Protobuf," below.
 
 ### Blockchain Protocol
 
-* `Header#LastResultsHash` previously was the root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data)` responses.
-  As of 0.34,`Header#LastResultsHash` is now the root hash of a Merkle tree built from:
-    * `BeginBlock#Events`
-    * Root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
-      GasWanted, GasUsed, Events)` responses
-    * `BeginBlock#Events`
+* `Header#LastResultsHash`, which is the root hash of a Merkle tree built from
+`ResponseDeliverTx(Code, Data)` as of v0.34 also includes `GasWanted` and `GasUsed`
+fields.
 
 * Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
   to conform with [RFC-6962](https://tools.ietf.org/html/rfc6962).
@@ -112,7 +310,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Evidence Parameters
 
-* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB). 
+* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB).
 
 ### Crypto
 
@@ -156,8 +354,9 @@ Other user-relevant changes include:
 
 * The old `lite` package was removed; the new light client uses the `light` package.
 * The `Verifier` was broken up into two pieces:
-    * Core verification logic (pure `VerifyX` functions)
-    * `Client` object, which represents the complete light client
+	* Core verification logic (pure `VerifyX` functions)
+	* `Client` object, which represents the complete light client
+* The new light clients stores headers & validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
 
@@ -188,7 +387,7 @@ blockchains, we recommend that you check the chain ID.
 
 ### Version
 
-Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time. 
+Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time.
 
 Example:
 
@@ -196,7 +395,7 @@ Example:
 go install -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(go list -m github.com/tendermint/tendermint | sed  's/ /\@/g') -s -w " -trimpath ./cmd
 ```
 
-Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`. 
+Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`.
 
 ## v0.33.4
 
@@ -288,12 +487,12 @@ Evidence Params has been changed to include duration.
 ### Go API
 
 * `libs/common` has been removed in favor of specific pkgs.
-    * `async`
-    * `service`
-    * `rand`
-    * `net`
-    * `strings`
-    * `cmap`
+	* `async`
+	* `service`
+	* `rand`
+	* `net`
+	* `strings`
+	* `cmap`
 * removal of `errors` pkg
 
 ### RPC Changes
@@ -362,9 +561,9 @@ Prior to the update, suppose your `ResponseDeliverTx` look like:
 ```go
 abci.ResponseDeliverTx{
   Tags: []kv.Pair{
-    {Key: []byte("sender"), Value: []byte("foo")},
-    {Key: []byte("recipient"), Value: []byte("bar")},
-    {Key: []byte("amount"), Value: []byte("35")},
+	{Key: []byte("sender"), Value: []byte("foo")},
+	{Key: []byte("recipient"), Value: []byte("bar")},
+	{Key: []byte("amount"), Value: []byte("35")},
   }
 }
 ```
@@ -383,14 +582,14 @@ the following `Events`:
 ```go
 abci.ResponseDeliverTx{
   Events: []abci.Event{
-    {
-      Type: "transfer",
-      Attributes: kv.Pairs{
-        {Key: []byte("sender"), Value: []byte("foo")},
-        {Key: []byte("recipient"), Value: []byte("bar")},
-        {Key: []byte("amount"), Value: []byte("35")},
-      },
-    }
+	{
+	  Type: "transfer",
+	  Attributes: kv.Pairs{
+		{Key: []byte("sender"), Value: []byte("foo")},
+		{Key: []byte("recipient"), Value: []byte("bar")},
+		{Key: []byte("amount"), Value: []byte("35")},
+	  },
+	}
 }
 ```
 
@@ -438,9 +637,9 @@ In this case, the WS client will receive an error with description:
   "jsonrpc": "2.0",
   "id": "{ID}#event",
   "error": {
-    "code": -32000,
-    "msg": "Server error",
-    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+	"code": -32000,
+	"msg": "Server error",
+	"data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 
@@ -646,9 +845,9 @@ just the `Data` field set:
 
 ```go
 []ProofOp{
-    ProofOp{
-        Data: <proof bytes>,
-    }
+	ProofOp{
+		Data: <proof bytes>,
+	}
 }
 ```
 

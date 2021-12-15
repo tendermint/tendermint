@@ -2,13 +2,14 @@ package types
 
 import (
 	"bytes"
+	mrand "math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ctest "github.com/tendermint/tendermint/internal/libs/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	ctest "github.com/tendermint/tendermint/libs/test"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -21,7 +22,7 @@ func makeTxs(cnt, size int) Txs {
 }
 
 func randInt(low, high int) int {
-	off := tmrand.Int() % (high - low)
+	off := mrand.Int() % (high - low)
 	return low + off
 }
 

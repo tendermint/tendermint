@@ -6,9 +6,9 @@ import (
 
 	cmd "github.com/tendermint/tendermint/cmd/tenderdash/commands"
 	"github.com/tendermint/tendermint/cmd/tenderdash/commands/debug"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
-	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/node"
 )
 
 func main() {
@@ -18,8 +18,8 @@ func main() {
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.GenValidatorCmd,
-		initFilesCommand,
-		cmd.LocalInitFilesCmd,
+		cmd.ReIndexEventCmd,
+		cmd.InitFilesCmd,
 		cmd.ProbeUpnpCmd,
 		cmd.LightCmd,
 		cmd.ReplayCmd,
@@ -31,6 +31,9 @@ func main() {
 		cmd.ShowNodeIDCmd,
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
+		cmd.InspectCmd,
+		cmd.RollbackStateCmd,
+		cmd.MakeKeyMigrateCommand(),
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
@@ -42,13 +45,13 @@ func main() {
 	//	* Supply a genesis doc file from another source
 	//	* Provide their own DB implementation
 	// can copy this file and use something other than the
-	// DefaultNewNode function
-	nodeFunc := nm.DefaultNewNode
+	// node.NewDefault function
+	nodeFunc := node.NewDefault
 
 	// Create & start node
 	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))
 
-	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)))
+	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", config.DefaultTendermintDir)))
 	if err := cmd.Execute(); err != nil {
 		panic(err)
 	}

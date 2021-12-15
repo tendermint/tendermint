@@ -16,9 +16,12 @@ import (
 
 // InitFilesCmd initialises a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize Tenderdash for network use",
-	RunE:  initFiles,
+	Use:       "init [full|validator|seed]",
+	Short:     "Initializes a Tendermint node",
+	ValidArgs: []string{"full", "validator", "seed"},
+	// We allow for zero args so we can throw a more informative error
+	Args: cobra.MaximumNArgs(1),
+	RunE: initFiles,
 }
 
 // LocalInitFilesCmd initialises a fresh Tendermint Core instance.
@@ -49,6 +52,10 @@ func AddInitFlags(cmd *cobra.Command) {
 }
 
 func initFiles(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return errors.New("must specify a node type: tendermint init [validator|full|seed]")
+	}
+	config.Mode = args[0]
 	return initFilesWithConfig(config)
 }
 
@@ -66,9 +73,42 @@ func initializeNodeKey(config *cfg.Config) error {
 }
 
 func initFilesWithConfig(config *cfg.Config) error {
-	// node key
-	if err := initializeNodeKey(config); err != nil {
-		return err
+	var (
+		pv  *privval.FilePV
+		err error
+	)
+
+	if config.Mode == cfg.ModeValidator {
+		// private validator
+		privValKeyFile := config.PrivValidator.KeyFile()
+		privValStateFile := config.PrivValidator.StateFile()
+		if tmos.FileExists(privValKeyFile) {
+			pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
+			if err != nil {
+				return err
+			}
+
+			logger.Info("Found private validator", "keyFile", privValKeyFile,
+				"stateFile", privValStateFile)
+		} else {
+			pv, err = privval.GenFilePV(privValKeyFile, privValStateFile)
+			if err != nil {
+				return err
+			}
+			pv.Save()
+			logger.Info("Generated private validator", "keyFile", privValKeyFile,
+				"stateFile", privValStateFile)
+		}
+	}
+
+	nodeKeyFile := config.NodeKeyFile()
+	if tmos.FileExists(nodeKeyFile) {
+		logger.Info("Found node key", "path", nodeKeyFile)
+	} else {
+		if _, err := types.LoadOrGenNodeKey(nodeKeyFile); err != nil {
+			return err
+		}
+		logger.Info("Generated node key", "path", nodeKeyFile)
 	}
 
 	// genesis file
@@ -76,14 +116,36 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
+
 		genDoc := types.GenesisDoc{
-			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:                  tmtime.Now(),
-			ConsensusParams:              types.DefaultConsensusParams(),
+			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:     tmtime.Now(),
+			ConsensusParams: types.DefaultConsensusParams(),
 			QuorumType:                   btcjson.LLMQType(quorumType),
 			InitialCoreChainLockedHeight: coreChainLockedHeight,
 			InitialHeight:                initChainInitialHeight,
 			AppHash:                      appHash,
+		}
+		if keyType == "secp256k1" {
+			genDoc.ConsensusParams.Validator = types.ValidatorParams{
+				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		// if this is a validator we add it to genesis
+		if pv != nil {
+			pubKey, err := pv.GetPubKey(ctx)
+			if err != nil {
+				return fmt.Errorf("can't get pubkey: %w", err)
+			}
+			genDoc.Validators = []types.GenesisValidator{{
+				Address: pubKey.Address(),
+				PubKey:  pubKey,
+				Power:   10,
+			}}
 		}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
@@ -91,6 +153,12 @@ func initFilesWithConfig(config *cfg.Config) error {
 		}
 		logger.Info("Generated genesis file", "path", genFile)
 	}
+
+	// write config file
+	if err := cfg.WriteConfigFile(config.RootDir, config); err != nil {
+		return err
+	}
+	logger.Info("Generated config", "mode", config.Mode)
 
 	return nil
 }

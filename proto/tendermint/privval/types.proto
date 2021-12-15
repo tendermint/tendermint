@@ -107,3 +107,11 @@ message Message {
     ThresholdPubKeyResponse threshold_pub_key_response = 12;
   }
 }
+
+// AuthSigMessage is duplicated from p2p prior to the P2P refactor.
+// It is used for the SecretConnection until we migrate privval to gRPC.
+// https://github.com/tendermint/tendermint/issues/4698
+message AuthSigMessage {
+  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  bytes                       sig     = 2;
+}

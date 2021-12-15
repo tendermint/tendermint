@@ -22,12 +22,9 @@ func TestDefaultConfig(t *testing.T) {
 	cfg.SetRoot("/foo")
 	cfg.Genesis = "bar"
 	cfg.DBPath = "/opt/data"
-	cfg.Mempool.WalPath = "wal/mem/"
 
 	assert.Equal("/foo/bar", cfg.GenesisFile())
 	assert.Equal("/opt/data", cfg.DBDir())
-	assert.Equal("/foo/wal/mem", cfg.Mempool.WalDir())
-
 }
 
 func TestConfigValidateBasic(t *testing.T) {
@@ -128,13 +125,13 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 	require.NoError(t, cfg.ValidateBasic())
 }
 
-func TestFastSyncConfigValidateBasic(t *testing.T) {
-	cfg := TestFastSyncConfig()
+func TestBlockSyncConfigValidateBasic(t *testing.T) {
+	cfg := TestBlockSyncConfig()
 	assert.NoError(t, cfg.ValidateBasic())
 
 	// tamper with version
-	cfg.Version = "v1"
-	assert.NoError(t, cfg.ValidateBasic())
+	cfg.Version = "v2"
+	assert.Error(t, cfg.ValidateBasic())
 
 	cfg.Version = "invalid"
 	assert.Error(t, cfg.ValidateBasic())

@@ -2,8 +2,8 @@ package xchacha20poly1305
 
 import (
 	"bytes"
-	cr "crypto/rand"
-	mr "math/rand"
+	crand "crypto/rand"
+	mrand "math/rand"
 	"testing"
 )
 
@@ -19,23 +19,23 @@ func TestRandom(t *testing.T) {
 		var nonce [24]byte
 		var key [32]byte
 
-		al := mr.Intn(128)
-		pl := mr.Intn(16384)
+		al := mrand.Intn(128)
+		pl := mrand.Intn(16384)
 		ad := make([]byte, al)
 		plaintext := make([]byte, pl)
-		_, err := cr.Read(key[:])
+		_, err := crand.Read(key[:])
 		if err != nil {
 			t.Errorf("error on read: %w", err)
 		}
-		_, err = cr.Read(nonce[:])
+		_, err = crand.Read(nonce[:])
 		if err != nil {
 			t.Errorf("error on read: %w", err)
 		}
-		_, err = cr.Read(ad)
+		_, err = crand.Read(ad)
 		if err != nil {
 			t.Errorf("error on read: %w", err)
 		}
-		_, err = cr.Read(plaintext)
+		_, err = crand.Read(plaintext)
 		if err != nil {
 			t.Errorf("error on read: %w", err)
 		}
@@ -59,7 +59,7 @@ func TestRandom(t *testing.T) {
 		}
 
 		if len(ad) > 0 {
-			alterAdIdx := mr.Intn(len(ad))
+			alterAdIdx := mrand.Intn(len(ad))
 			ad[alterAdIdx] ^= 0x80
 			if _, err := aead.Open(nil, nonce[:], ct, ad); err == nil {
 				t.Errorf("random #%d: Open was successful after altering additional data", i)
@@ -67,14 +67,14 @@ func TestRandom(t *testing.T) {
 			ad[alterAdIdx] ^= 0x80
 		}
 
-		alterNonceIdx := mr.Intn(aead.NonceSize())
+		alterNonceIdx := mrand.Intn(aead.NonceSize())
 		nonce[alterNonceIdx] ^= 0x80
 		if _, err := aead.Open(nil, nonce[:], ct, ad); err == nil {
 			t.Errorf("random #%d: Open was successful after altering nonce", i)
 		}
 		nonce[alterNonceIdx] ^= 0x80
 
-		alterCtIdx := mr.Intn(len(ct))
+		alterCtIdx := mrand.Intn(len(ct))
 		ct[alterCtIdx] ^= 0x80
 		if _, err := aead.Open(nil, nonce[:], ct, ad); err == nil {
 			t.Errorf("random #%d: Open was successful after altering ciphertext", i)
@@ -83,7 +83,7 @@ func TestRandom(t *testing.T) {
 	}
 }
 
-// AFOREMENTIONED LICENCE
+// AFOREMENTIONED LICENSE
 // Copyright (c) 2009 The Go Authors. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without

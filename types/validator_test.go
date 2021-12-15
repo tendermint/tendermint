@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val, _ := RandValidator()
+	val, _ := randValidatorInQuorum(crypto.RandQuorumHash())
 	testCases := []struct {
 		msg      string
 		v1       *Validator
@@ -43,7 +44,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 func TestValidatorValidateBasic(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 	priv := NewMockPVForQuorum(quorumHash)
-	pubKey, err := priv.GetPubKey(quorumHash)
+	pubKey, err := priv.GetPubKey(context.Background(), quorumHash)
 	require.NoError(t, err)
 
 	testCases := []struct {

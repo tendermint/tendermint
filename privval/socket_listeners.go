@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 const (
@@ -39,7 +38,7 @@ func TCPListenerTimeoutReadWrite(timeout time.Duration) TCPListenerOption {
 // tcpListener implements net.Listener.
 var _ net.Listener = (*TCPListener)(nil)
 
-// TCPListener wraps a *net.TCPListener to standardise protocol timeouts
+// TCPListener wraps a *net.TCPListener to standardize protocol timeouts
 // and potentially other tuning parameters. It also returns encrypted connections.
 type TCPListener struct {
 	*net.TCPListener
@@ -76,7 +75,7 @@ func (ln *TCPListener) Accept() (net.Conn, error) {
 
 	// Wrap the conn in our timeout and encryption wrappers
 	timeoutConn := newTimeoutConn(tc, ln.timeoutReadWrite)
-	secretConn, err := p2pconn.MakeSecretConnection(timeoutConn, ln.secretConnKey)
+	secretConn, err := MakeSecretConnection(timeoutConn, ln.secretConnKey)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +103,7 @@ func UnixListenerTimeoutReadWrite(timeout time.Duration) UnixListenerOption {
 	return func(ul *UnixListener) { ul.timeoutReadWrite = timeout }
 }
 
-// UnixListener wraps a *net.UnixListener to standardise protocol timeouts
+// UnixListener wraps a *net.UnixListener to standardize protocol timeouts
 // and potentially other tuning parameters. It returns unencrypted connections.
 type UnixListener struct {
 	*net.UnixListener
@@ -151,7 +150,7 @@ func (ln *UnixListener) Accept() (net.Conn, error) {
 // timeoutConn implements net.Conn.
 var _ net.Conn = (*timeoutConn)(nil)
 
-// timeoutConn wraps a net.Conn to standardise protocol timeouts / deadline resets.
+// timeoutConn wraps a net.Conn to standardize protocol timeouts / deadline resets.
 type timeoutConn struct {
 	net.Conn
 	timeout time.Duration

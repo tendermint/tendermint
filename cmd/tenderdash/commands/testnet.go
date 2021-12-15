@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -15,10 +16,9 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/p2p"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 var (
@@ -87,7 +87,7 @@ necessary files (private validator, genesis, config, etc.).
 
 Note, strict routability for addresses is turned off in the config file.
 
-Optionally, it will fill in persistent_peers list in config file using either hostnames or IPs.
+Optionally, it will fill in persistent-peers list in config file using either hostnames or IPs.
 
 Example:
 
@@ -104,7 +104,8 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		)
 	}
 
-	config := cfg.DefaultConfig()
+	// set mode to validator for testnet
+	config := cfg.DefaultValidatorConfig()
 
 	// overwrite default config if set and valid
 	if configFile != "" {
@@ -142,11 +143,17 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		pvKeyFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorKey)
-		pvStateFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorState)
-		pv := privval.LoadFilePV(pvKeyFile, pvStateFile)
+		pvKeyFile := filepath.Join(nodeDir, config.PrivValidator.Key)
+		pvStateFile := filepath.Join(nodeDir, config.PrivValidator.State)
+		pv, err := privval.LoadFilePV(pvKeyFile, pvStateFile)
+		if err != nil {
+			return err
+		}
 
-		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err := pv.GetPubKey(ctx, crypto.QuorumHash{})
 		if err != nil {
 			return fmt.Errorf("can't get pubkey in testnet files: %w", err)
 		}
@@ -181,10 +188,15 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 	// Generate genesis doc from generated validators
 	genDoc := &types.GenesisDoc{
 		ChainID:         "chain-" + tmrand.Str(6),
-		ConsensusParams: types.DefaultConsensusParams(),
 		GenesisTime:     tmtime.Now(),
 		InitialHeight:   initialHeight,
 		Validators:      genVals,
+		ConsensusParams: types.DefaultConsensusParams(),
+	}
+	if keyType == "secp256k1" {
+		genDoc.ConsensusParams.Validator = types.ValidatorParams{
+			PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+		}
 	}
 
 	// Write genesis file.
@@ -198,11 +210,11 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 	// Gather persistent peer addresses.
 	var (
-		persistentPeers string
+		persistentPeers = make([]string, 0)
 		err             error
 	)
 	if populatePersistentPeers {
-		persistentPeers, err = persistentPeersString(config)
+		persistentPeers, err = persistentPeersArray(config)
 		if err != nil {
 			_ = os.RemoveAll(outputDir)
 			return err
@@ -216,11 +228,20 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		config.P2P.AddrBookStrict = false
 		config.P2P.AllowDuplicateIP = true
 		if populatePersistentPeers {
-			config.P2P.PersistentPeers = persistentPeers
+			persistentPeersWithoutSelf := make([]string, 0)
+			for j := 0; j < len(persistentPeers); j++ {
+				if j == i {
+					continue
+				}
+				persistentPeersWithoutSelf = append(persistentPeersWithoutSelf, persistentPeers[j])
+			}
+			config.P2P.PersistentPeers = strings.Join(persistentPeersWithoutSelf, ",")
 		}
 		config.Moniker = moniker(i)
 
-		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
+		if err := cfg.WriteConfigFile(nodeDir, config); err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)
@@ -247,21 +268,19 @@ func hostnameOrIP(i int) string {
 	return ip.String()
 }
 
-func persistentPeersString(config *cfg.Config) (string, error) {
-	persistentPeers := make([]string, nValidators+nNonValidators)
+// get an array of persistent peers
+func persistentPeersArray(config *cfg.Config) ([]string, error) {
+	peers := make([]string, nValidators+nNonValidators)
 	for i := 0; i < nValidators+nNonValidators; i++ {
 		nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
-		nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+		nodeKey, err := config.LoadNodeKeyID()
 		if err != nil {
-			return "", err
+			return []string{}, err
 		}
-		persistentPeers[i] = p2p.IDAddressString(
-			nodeKey.ID(),
-			fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort),
-		)
+		peers[i] = nodeKey.AddressString(fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
-	return strings.Join(persistentPeers, ","), nil
+	return peers, nil
 }
 
 func moniker(i int) string {

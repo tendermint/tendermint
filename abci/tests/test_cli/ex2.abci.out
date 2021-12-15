@@ -1,7 +1,3 @@
-> set_option serial on
--> code: OK
--> log: OK (SetOption doesn't return anything.)
-
 > check_tx 0x00
 -> code: OK
 
@@ -12,18 +8,16 @@
 -> code: OK
 
 > check_tx 0x00
--> code: 2
--> log: Invalid nonce. Expected >= 1, got 0
+-> code: OK
 
 > deliver_tx 0x01
 -> code: OK
 
 > deliver_tx 0x04
--> code: 2
--> log: Invalid nonce. Expected 2, got 4
+-> code: OK
 
 > info 
 -> code: OK
--> data: {"hashes":0,"txs":2}
--> data.hex: 0x7B22686173686573223A302C22747873223A327D
+-> data: {"hashes":0,"txs":3}
+-> data.hex: 0x7B22686173686573223A302C22747873223A337D
 

@@ -33,6 +33,8 @@ Since a proof can treat various data type, `Run()` takes `[][]byte` as the argum
 
 ## Status
 
+Implemented
+
 ## Consequences
 
 ### Positive

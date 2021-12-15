@@ -13,7 +13,7 @@ var (
 // It typically removes signatures before serializing.
 // NOTE: chainIDs are part of the SignBytes but not
 // necessarily the object themselves.
-// NOTE: Expected to panic if there is an error marshalling.
+// NOTE: Expected to panic if there is an error marshaling.
 type Signable interface {
 	// SignBytes returns the bytes to be signed.
 	SignBytes(chainID string) []byte

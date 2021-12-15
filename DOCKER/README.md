@@ -31,7 +31,7 @@ To get started developing applications, see the [application developers guide](h
 A quick example of a built-in app and Tendermint core in one container.
 
 ```sh
-docker run -it --rm -v "/tmp:/tendermint" dashpay/tenderdash init
+docker run -it --rm -v "/tmp:/tendermint" dashpay/tenderdash init validator
 docker run -it --rm -v "/tmp:/tendermint" dashpay/tenderdash node --proxy_app=kvstore
 ```
 

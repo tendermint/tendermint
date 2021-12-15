@@ -30,12 +30,6 @@ const (
 
 // TODO: Make non-global by allowing for registration of more pubkey types
 
-var ABCIPubKeyTypesToNames = map[string]string{
-	ABCIPubKeyTypeEd25519:   ed25519.PubKeyName,
-	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyName,
-	ABCIPubKeyTypeBLS12381:  bls12381.PubKeyName,
-}
-
 //-------------------------------------------------------
 
 // TM2PB is used for converting Tendermint ABCI to protobuf ABCI.
@@ -44,47 +38,11 @@ var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) tmproto.Header {
-	return tmproto.Header{
-		Version: header.Version,
-		ChainID: header.ChainID,
-		Height:  header.Height,
-		Time:    header.Time,
-
-		LastBlockId: header.LastBlockID.ToProto(),
-
-		LastCommitHash: header.LastCommitHash,
-		DataHash:       header.DataHash,
-
-		ValidatorsHash:     header.ValidatorsHash,
-		NextValidatorsHash: header.NextValidatorsHash,
-		ConsensusHash:      header.ConsensusHash,
-		AppHash:            header.AppHash,
-		LastResultsHash:    header.LastResultsHash,
-
-		EvidenceHash:      header.EvidenceHash,
-		ProposerProTxHash: header.ProposerProTxHash,
-	}
-}
 
 func (tm2pb) Validator(val *Validator) abci.Validator {
 	return abci.Validator{
 		Power:     val.VotingPower,
 		ProTxHash: val.ProTxHash,
-	}
-}
-
-func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
-	return tmproto.BlockID{
-		Hash:          blockID.Hash,
-		PartSetHeader: TM2PB.PartSetHeader(blockID.PartSetHeader),
-	}
-}
-
-func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
-	return tmproto.PartSetHeader{
-		Total: header.Total,
-		Hash:  header.Hash,
 	}
 }
 
@@ -118,17 +76,6 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) abci.ValidatorSetUpdate {
 		ValidatorUpdates:   validators,
 		ThresholdPublicKey: abciThresholdPublicKey,
 		QuorumHash:         vals.QuorumHash,
-	}
-}
-
-func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
-	return &abci.ConsensusParams{
-		Block: &abci.BlockParams{
-			MaxBytes: params.Block.MaxBytes,
-			MaxGas:   params.Block.MaxGas,
-		},
-		Evidence:  &params.Evidence,
-		Validator: &params.Validator,
 	}
 }
 

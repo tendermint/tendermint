@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 func main() {
@@ -42,28 +44,28 @@ func initCorpus(rootDir string) {
 			privKey := ed25519.GenPrivKey()
 			addr := fmt.Sprintf(
 				"%s@%v.%v.%v.%v:26656",
-				p2p.PubKeyToID(privKey.PubKey()),
+				types.NodeIDFromPubKey(privKey.PubKey()),
 				rand.Int()%256,
 				rand.Int()%256,
 				rand.Int()%256,
 				rand.Int()%256,
 			)
-			netAddr, _ := p2p.NewNetAddressString(addr)
+			netAddr, _ := types.NewNetAddressString(addr)
 			addrs = append(addrs, netAddr)
 		}
 
 		// IPv6 addresses
 		privKey := ed25519.GenPrivKey()
-		ipv6a, err := p2p.NewNetAddressString(
-			fmt.Sprintf("%s@[ff02::1:114]:26656", p2p.PubKeyToID(privKey.PubKey())))
+		ipv6a, err := types.NewNetAddressString(
+			fmt.Sprintf("%s@[ff02::1:114]:26656", types.NodeIDFromPubKey(privKey.PubKey())))
 		if err != nil {
 			log.Fatalf("can't create a new netaddress: %v", err)
 		}
 		addrs = append(addrs, ipv6a)
 
-		msg := tmp2p.Message{
-			Sum: &tmp2p.Message_PexAddrs{
-				PexAddrs: &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(addrs)},
+		msg := tmp2p.PexMessage{
+			Sum: &tmp2p.PexMessage_PexResponse{
+				PexResponse: &tmp2p.PexResponse{Addresses: pex.NetAddressesToProto(addrs)},
 			},
 		}
 		bz, err := msg.Marshal()

@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -210,7 +211,6 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 	if vp == nil {
 		return nil, errors.New("nil validator")
 	}
-
 	v := new(Validator)
 	v.VotingPower = vp.GetVotingPower()
 	v.ProposerPriority = vp.GetProposerPriority()
@@ -235,11 +235,11 @@ func ValidatorFromProto(vp *tmproto.Validator) (*Validator, error) {
 func RandValidator() (*Validator, PrivValidator) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
-	proTxHash, err := privVal.GetProTxHash()
+	proTxHash, err := privVal.GetProTxHash(context.Background())
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve proTxHash %w", err))
 	}
-	pubKey, err := privVal.GetPubKey(quorumHash)
+	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}

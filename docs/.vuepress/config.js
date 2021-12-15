@@ -1,6 +1,6 @@
 module.exports = {
   theme: 'cosmos',
-  title: 'Tendermint Core',
+  title: 'Tenderdash',
   // locales: {
   //   "/": {
   //     lang: "en-US"
@@ -11,28 +11,24 @@ module.exports = {
   // },
   base: process.env.VUEPRESS_BASE,
   themeConfig: {
-    repo: 'tendermint/tenderdash',
-    docsRepo: 'tendermint/tenderdash',
+    repo: 'dashevo/tenderdash',
+    docsRepo: 'dashevo/tenderdash',
     docsDir: "docs",
     editLinks: true,
     label: 'core',
     algolia: {
       id: "BH4D9OD16A",
       key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
-      index: "tendermint"
+      index: "tenderdash"
     },
     versions: [
       {
-        "label": "v0.32",
-        "key": "v0.32"
+        "label": "v0.7",
+        "key": "v0.7"
       },
       {
-        "label": "v0.33",
-        "key": "v0.33"
-      },
-      {
-        "label": "v0.34",
-        "key": "v0.34"
+        "label": "v0.8",
+        "key": "v0.8"
       },
       {
         "label": "master",
@@ -65,11 +61,11 @@ module.exports = {
       title: 'Help & Support',
       editLink: true,
       forum: {
-        title: 'Tendermint Forum',
-        text: 'Join the Tendermint forum to learn more',
+        title: 'Tenderdash Forum',
+        text: 'Join the Tenderdash forum to learn more',
         url: 'https://forum.cosmos.network/c/tendermint',
         bg: '#0B7E0B',
-        logo: 'tendermint'
+        logo: 'tenderdash'
       },
       github: {
         title: 'Found an Issue?',
@@ -78,52 +74,52 @@ module.exports = {
     },
     footer: {
       question: {
-        text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/vcExX9T\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
+        text: 'Chat with Tenderdash developers in <a href=\'https://discord.gg/fqfCb4fX\' target=\'_blank\'>Discord</a>'
       },
       logo: '/logo-bw.svg',
       textLink: {
-        text: 'tendermint.com',
-        url: 'https://tendermint.com'
+        text: 'dash.org',
+        url: 'https://dash.org'
       },
       services: [
         {
           service: 'medium',
-          url: 'https://medium.com/@tendermint'
+          url: 'https://medium.com/@dashpay'
         },
         {
           service: 'twitter',
-          url: 'https://twitter.com/tendermint_team'
+          url: 'https://twitter.com/dashpay'
         },
         {
           service: 'linkedin',
-          url: 'https://www.linkedin.com/company/tendermint/'
+          url: 'https://www.linkedin.com/company/dash-core-group/'
         },
         {
           service: 'reddit',
-          url: 'https://reddit.com/r/cosmosnetwork'
+          url: 'https://reddit.com/r/dashpay'
         },
         {
           service: 'telegram',
-          url: 'https://t.me/cosmosproject'
+          url: 'https://t.me/dash_chat'
         },
         {
           service: 'youtube',
-          url: 'https://www.youtube.com/c/CosmosProject'
+          url: 'https://www.youtube.com/channel/UCAzD2v9Yx4a4iS2_-unODkA'
         }
       ],
       smallprint:
-        'The development of Tendermint Core is led primarily by [Interchain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit. The Tendermint trademark is owned by Tendermint Inc, the for-profit entity that also maintains this website.',
+        'The development of Tenderdash is led by [Dash Core Group](https://dash.org/). Funding for this development comes primarily from the Dash Governance system. The Tendermint trademark is owned by Tendermint Inc. The Tenderdash logo is owned by Dash Core Group Inc., the company that maintains this website.',
       links: [
         {
           title: 'Documentation',
           children: [
             {
-              title: 'Cosmos SDK',
-              url: 'https://docs.cosmos.network'
+              title: 'Dash developer docs',
+              url: 'https://dashplatform.readme.io/'
             },
             {
-              title: 'Cosmos Hub',
-              url: 'https://hub.cosmos.network'
+              title: 'Dash user docs',
+              url: 'https://docs.dash.org/en/stable/'
             }
           ]
         },
@@ -131,12 +127,12 @@ module.exports = {
           title: 'Community',
           children: [
             {
-              title: 'Tendermint blog',
-              url: 'https://medium.com/@tendermint'
+              title: 'Dash blog',
+              url: 'https://medium.com/@dashpay'
             },
             {
               title: 'Forum',
-              url: 'https://forum.cosmos.network/c/tendermint'
+              url: 'https://forum.dash.org'
             }
           ]
         },
@@ -152,8 +148,8 @@ module.exports = {
               url: 'https://github.com/dashevo/tenderdash'
             },
             {
-              title: 'Careers at Tendermint',
-              url: 'https://tendermint.com/careers'
+              title: 'Careers at Dash Core Group',
+              url: 'https://dash,org/dcg/jobs/'
             }
           ]
         }

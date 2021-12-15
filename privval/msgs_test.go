@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	privproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -60,7 +60,7 @@ func exampleProposal() *types.Proposal {
 // nolint:lll // ignore line length for tests
 func TestPrivvalVectors(t *testing.T) {
 	pk := bls12381.GenPrivKeyFromSecret([]byte("it's a secret")).PubKey()
-	ppk, err := cryptoenc.PubKeyToProto(pk)
+	ppk, err := encoding.PubKeyToProto(pk)
 	require.NoError(t, err)
 
 	// Generate a simple vote

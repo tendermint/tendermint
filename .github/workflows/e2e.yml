@@ -2,6 +2,7 @@ name: e2e
 # Runs the CI end-to-end test network on all pushes to master or release branches
 # and every pull request, but only if any Go files have been changed.
 on:
+  workflow_dispatch: # allow running workflow manually
   pull_request:
   push:
     branches:
@@ -15,7 +16,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "^1.15.5"
+          go-version: "1.17"
       - uses: actions/checkout@v2
         with:
           submodules: true
@@ -54,8 +55,8 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.5'
-      - uses: actions/checkout@v2
+          go-version: '1.17'
+      - uses: actions/checkout@v2.3.4
         with:
           submodules: true
       - name: Get BLS library revision
@@ -63,7 +64,7 @@ jobs:
         run: |
           echo "::set-output name=hash::$(git --git-dir=third_party/bls-signatures/src/.git rev-parse HEAD)"
         shell: bash
-      - uses: technote-space/get-diff-action@v5.0.2
+      - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
@@ -102,8 +103,8 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.5'
-      - uses: actions/checkout@v2
+          go-version: '1.17'
+      - uses: actions/checkout@v2.3.4
         with:
           submodules: true
       - name: Get BLS library revision
@@ -128,7 +129,7 @@ jobs:
       - name: Build
         working-directory: test/e2e
         # Run two make jobs in parallel, since we can't run steps in parallel.
-        run: make -j2 docker runner
+        run: make -j2 docker runner tests
         if: "env.GIT_DIFF != ''"
 
       - name: Run CI rotate testnet

@@ -8,12 +8,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/crypto"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
 )
 
 func TestLightBlockValidateBasic(t *testing.T) {
-	header := makeRandHeader()
+	header := MakeRandHeader()
 	stateID := RandStateID()
 	commit := randCommit(stateID)
 	vals, _ := GenerateValidatorSet(5)
@@ -59,7 +58,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 }
 
 func TestLightBlockProtobuf(t *testing.T) {
-	header := makeRandHeader()
+	header := MakeRandHeader()
 	commit := randCommit(RandStateID())
 	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
@@ -117,7 +116,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{
-		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: math.MaxInt64},
+		Version:            version.Consensus{Block: version.BlockProtocol, App: math.MaxInt64},
 		ChainID:            chainID,
 		Height:             commit.Height,
 		Time:               timestamp,

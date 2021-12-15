@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -15,6 +16,7 @@ import (
 )
 
 func DefaultValidationRequestHandler(
+	ctx context.Context,
 	privVal types.PrivValidator,
 	req privvalproto.Message,
 	chainID string,
@@ -42,7 +44,7 @@ func DefaultValidationRequestHandler(
 		}
 
 		var proTxHash crypto.ProTxHash
-		proTxHash, err = privVal.GetProTxHash()
+		proTxHash, err = privVal.GetProTxHash(context.Background())
 		if err != nil {
 			return res, err
 		}
@@ -82,7 +84,7 @@ func DefaultValidationRequestHandler(
 			break
 		}
 
-		err = privVal.SignVote(chainID, btcjson.LLMQType(voteQuorumType), voteQuorumHash, vote, *stateID, nil)
+		err = privVal.SignVote(ctx, chainID, btcjson.LLMQType(voteQuorumType), voteQuorumHash, vote, *stateID, nil)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
@@ -103,7 +105,7 @@ func DefaultValidationRequestHandler(
 
 		proposalQuorumHash := r.SignProposalRequest.QuorumHash
 		proposalQuorumType := r.SignProposalRequest.QuorumType
-		_, err = privVal.SignProposal(chainID, btcjson.LLMQType(proposalQuorumType), proposalQuorumHash, proposal)
+		_, err = privVal.SignProposal(ctx, chainID, btcjson.LLMQType(proposalQuorumType), proposalQuorumHash, proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
@@ -159,7 +161,7 @@ func handleKeyRequest(
 	}
 
 	var pubKey crypto.PubKey
-	pubKey, err = privVal.GetPubKey(quorumHash)
+	pubKey, err = privVal.GetPubKey(context.Background(), quorumHash)
 	if err != nil {
 		res = mustWrapMsg(keyResponseFn(
 			cryptoproto.PublicKey{},

@@ -1,6 +1,9 @@
 package kvstore
 
 import (
+	types2 "github.com/tendermint/tendermint/types"
+	mrand "math/rand"
+
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -8,7 +11,7 @@ import (
 )
 
 func ValUpdate(pubKey crypto.PubKey, proTxHash crypto.ProTxHash) types.ValidatorUpdate {
-	return types.UpdateValidator(proTxHash, pubKey.Bytes(), 100)
+	return types.UpdateValidator(proTxHash, pubKey.Bytes(), types2.DefaultDashVotingPower)
 }
 
 // RandValidatorSetUpdate returns a list of cnt validators for initializing

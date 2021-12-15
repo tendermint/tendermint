@@ -2,16 +2,15 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"time"
 
-	"github.com/dashevo/dashd-go/btcjson"
-
-	"github.com/tendermint/tendermint/crypto"
-
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -48,14 +47,17 @@ var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet) (*DuplicateVoteEvidence, error) {
 	var voteA, voteB *Vote
-	if vote1 == nil || vote2 == nil || valSet == nil {
-		return nil
+	if vote1 == nil || vote2 == nil {
+		return nil, errors.New("missing vote")
+	}
+	if valSet == nil {
+		return nil, errors.New("missing validator set")
 	}
 	idx, val := valSet.GetByProTxHash(vote1.ValidatorProTxHash)
 	if idx == -1 {
-		return nil
+		return nil, errors.New("validator not in validator set")
 	}
 
 	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
@@ -71,7 +73,7 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 		TotalVotingPower: valSet.TotalVotingPower(),
 		ValidatorPower:   val.VotingPower,
 		Timestamp:        blockTime,
-	}
+	}, nil
 }
 
 // ABCI returns the application relevant representation of the evidence
@@ -93,7 +95,7 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 	pbe := dve.ToProto()
 	bz, err := pbe.Marshal()
 	if err != nil {
-		panic(err)
+		panic("marshaling duplicate vote evidence to bytes: " + err.Error())
 	}
 
 	return bz
@@ -139,6 +141,44 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 		return errors.New("duplicate votes in invalid order")
 	}
 	return nil
+}
+
+// ValidateABCI validates the ABCI component of the evidence by checking the
+// timestamp, validator power and total voting power.
+func (dve *DuplicateVoteEvidence) ValidateABCI(
+	val *Validator,
+	valSet *ValidatorSet,
+	evidenceTime time.Time,
+) error {
+
+	if dve.Timestamp != evidenceTime {
+		return fmt.Errorf(
+			"evidence has a different time to the block it is associated with (%v != %v)",
+			dve.Timestamp, evidenceTime)
+	}
+
+	if val.VotingPower != dve.ValidatorPower {
+		return fmt.Errorf("validator power from evidence and our validator set does not match (%d != %d)",
+			dve.ValidatorPower, val.VotingPower)
+	}
+	if valSet.TotalVotingPower() != dve.TotalVotingPower {
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
+			dve.TotalVotingPower, valSet.TotalVotingPower())
+	}
+
+	return nil
+}
+
+// GenerateABCI populates the ABCI component of the evidence. This includes the
+// validator power, timestamp and total voting power.
+func (dve *DuplicateVoteEvidence) GenerateABCI(
+	val *Validator,
+	valSet *ValidatorSet,
+	evidenceTime time.Time,
+) {
+	dve.ValidatorPower = val.VotingPower
+	dve.TotalVotingPower = valSet.TotalVotingPower()
+	dve.Timestamp = evidenceTime
 }
 
 // ToProto encodes DuplicateVoteEvidence to protobuf
@@ -306,7 +346,7 @@ func NewMockDuplicateVoteEvidence(
 	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-) *DuplicateVoteEvidence {
+) (*DuplicateVoteEvidence, error) {
 	val := NewMockPVForQuorum(quorumHash)
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumType, quorumHash)
 }
@@ -321,25 +361,25 @@ func NewMockDuplicateVoteEvidenceWithValidator(
 	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-) *DuplicateVoteEvidence {
-	pubKey, err := pv.GetPubKey(quorumHash)
+) (*DuplicateVoteEvidence, error) {
+	pubKey, err := pv.GetPubKey(context.Background(), quorumHash)
 	if err != nil {
 		panic(err)
 	}
 
 	stateID := RandStateID().WithHeight(height - 1)
 
-	proTxHash, _ := pv.GetProTxHash()
+	proTxHash, _ := pv.GetProTxHash(context.Background())
 	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vA, stateID, nil)
+	_ = pv.SignVote(context.Background(), chainID, quorumType, quorumHash, vA, stateID, nil)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
 	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vB, stateID, nil)
+	_ = pv.SignVote(context.Background(), chainID, quorumType, quorumHash, vB, stateID, nil)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(
@@ -353,19 +393,19 @@ func NewMockDuplicateVoteEvidenceWithValidator(
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height int64, time time.Time,
 	pv PrivValidator, valSet *ValidatorSet, chainID string, quorumType btcjson.LLMQType,
-	quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
-	proTxHash, _ := pv.GetProTxHash()
+	quorumHash crypto.QuorumHash) (*DuplicateVoteEvidence, error) {
+	proTxHash, _ := pv.GetProTxHash(context.Background())
 
 	stateID := RandStateID().WithHeight(height - 1)
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vA, stateID, nil)
+	_ = pv.SignVote(context.Background(), chainID, quorumType, quorumHash, vA, stateID, nil)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
 	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, quorumType, quorumHash, vB, stateID, nil)
+	_ = pv.SignVote(context.Background(), chainID, quorumType, quorumHash, vB, stateID, nil)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, valSet)

@@ -3,7 +3,6 @@ package http_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -36,18 +35,24 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider(t *testing.T) {
-	app := kvstore.NewApplication()
-	app.RetainBlocks = 10
-	node := rpctest.StartTendermint(app)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cfg, err := rpctest.CreateConfig(t.Name())
+	require.NoError(t, err)
 
-	cfg := rpctest.GetConfig()
-	defer os.RemoveAll(cfg.RootDir)
+	// start a tendermint node in the background to test against
+	app := kvstore.NewApplication()
+	app.RetainBlocks = 9
+	_, closer, err := rpctest.StartTendermint(ctx, cfg, app)
+	require.NoError(t, err)
+
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
+
 	chainID := genDoc.ChainID
 
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr)
 	require.Nil(t, err)
 
 	p := lighthttp.NewWithClient(chainID, c)
@@ -61,8 +66,7 @@ func TestProvider(t *testing.T) {
 	// let's get the highest block
 	lb, err := p.LightBlock(context.Background(), 0)
 	require.NoError(t, err)
-	require.NotNil(t, lb)
-	assert.True(t, lb.Height < 1000)
+	assert.True(t, lb.Height < 9001, "height=%d", lb.Height)
 
 	// let's check this is valid somehow
 	assert.Nil(t, lb.ValidateBasic(chainID))
@@ -74,24 +78,33 @@ func TestProvider(t *testing.T) {
 	assert.Equal(t, lower, lb.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	lb, err = p.LightBlock(context.Background(), 1000)
+	lb, err = p.LightBlock(context.Background(), 9001)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrHeightTooHigh, err)
 
-	_, err = p.LightBlock(context.Background(), 1)
+	lb, err = p.LightBlock(context.Background(), 1)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
 
-	// stop the full node and check that a no response error is returned
-	rpctest.StopTendermint(node)
+	// if the provider is unable to provide four more blocks then we should return
+	// an unreliable peer error
+	for i := 0; i < 4; i++ {
+		_, err = p.LightBlock(context.Background(), 1)
+	}
+	assert.IsType(t, provider.ErrUnreliableProvider{}, err)
+
+	// shut down tendermint node
+	require.NoError(t, closer(ctx))
+	cancel()
+
 	time.Sleep(10 * time.Second)
 	lb, err = p.LightBlock(context.Background(), lower+2)
 	// we should see a connection refused
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "connection refused")
 	require.Nil(t, lb)
+	assert.Equal(t, provider.ErrConnectionClosed, err)
 }
 
 // TestLightClient_NilCommit ensures correct handling of a case where commit returned by http client is nil

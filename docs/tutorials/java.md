@@ -177,20 +177,20 @@ mkdir -p \
 
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/version.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/version.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/params.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/params.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/proof.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/proof.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/bits/types.proto
 cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
@@ -229,8 +229,8 @@ build/generated/
 |               |           `-- GoGoProtos.java
 |               |-- common
 |               |   `-- Types.java
-|               |-- merkle
-|               |   `-- Merkle.java
+|               |-- proof
+|               |   `-- Proof.java
 |               `-- types
 |                   `-- Types.java
 ```
@@ -550,11 +550,12 @@ Tendermint Core.
 $ rm -rf /tmp/example
 $ cd $GOPATH/src/github.com/tendermint/tendermint
 $ make install
-$ TMHOME="/tmp/example" tendermint init
+$ TMHOME="/tmp/example" tendermint init validator
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
 I[2019-07-16|18:20:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
+I[2019-07-16|18:20:36.483] Generated config                             module=main mode=validator
 ```
 
 Feel free to explore the generated files, which can be found at
@@ -573,7 +574,7 @@ Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
 ```bash
-$ TMHOME="/tmp/example" tendermint node --abci grpc --proxy_app tcp://127.0.0.1:26658
+$ TMHOME="/tmp/example" tendermint node --abci grpc --proxy-app tcp://127.0.0.1:26658
 
 I[2019-07-28|15:44:53.632] Version info                                 module=main software=0.32.1 block=10 p2p=7
 I[2019-07-28|15:44:53.677] Starting Node                                module=main impl=Node

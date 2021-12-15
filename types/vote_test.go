@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/protoio"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -163,7 +164,7 @@ func TestVoteProposalNotEq(t *testing.T) {
 func TestVoteVerifySignature(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
-	pubkey, err := privVal.GetPubKey(quorumHash)
+	pubkey, err := privVal.GetPubKey(context.Background(), quorumHash)
 	require.NoError(t, err)
 
 	vote := examplePrecommit()
@@ -174,7 +175,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	signStateID := stateID.SignID("test_chain_id", quorumType, quorumHash)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v, stateID, nil)
+	err = privVal.SignVote(context.Background(), "test_chain_id", quorumType, quorumHash, v, stateID, nil)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -227,12 +228,12 @@ func TestIsVoteTypeValid(t *testing.T) {
 func TestVoteVerify(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
-	proTxHash, err := privVal.GetProTxHash()
+	proTxHash, err := privVal.GetProTxHash(context.Background())
 	require.NoError(t, err)
 
 	quorumType := btcjson.LLMQType_5_60
 
-	pubkey, err := privVal.GetPubKey(quorumHash)
+	pubkey, err := privVal.GetPubKey(context.Background(), quorumHash)
 	require.NoError(t, err)
 
 	vote := examplePrevote()
@@ -294,7 +295,7 @@ func TestVoteValidateBasic(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
 			stateID := RandStateID().WithHeight(v.Height - 1)
-			err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID, nil)
+			err := privVal.SignVote(context.Background(), "test_chain_id", 0, quorumHash, v, stateID, nil)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -310,7 +311,7 @@ func TestVoteProtobuf(t *testing.T) {
 	vote := examplePrecommit()
 	v := vote.ToProto()
 	stateID := RandStateID().WithHeight(v.Height - 1)
-	err := privVal.SignVote("test_chain_id", 0, quorumHash, v, stateID, nil)
+	err := privVal.SignVote(context.Background(), "test_chain_id", 0, quorumHash, v, stateID, nil)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)

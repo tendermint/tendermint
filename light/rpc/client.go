@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"regexp"
 	"time"
 
@@ -18,18 +19,16 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
-
-var errNegOrZeroHeight = errors.New("negative or zero height")
 
 // KeyPathFunc builds a merkle path out of the given path and key.
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 
 // LightClient is an interface that contains functionality needed by Client from the light client.
-//go:generate mockery --case underscore --name LightClient
+//go:generate ../../scripts/mockery_generate.sh LightClient
 type LightClient interface {
 	ChainID() string
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
@@ -117,22 +116,25 @@ func (c *Client) OnStop() {
 	}
 }
 
-func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
+func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	return c.next.Status(ctx)
 }
 
-func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
+func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
 	return c.next.ABCIInfo(ctx)
 }
 
 // ABCIQuery requests proof by default.
-func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*coretypes.ResultABCIQuery, error) { //nolint:lll
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
 // ABCIQueryWithOptions returns an error if opts.Prove is false.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes,
-	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+
+	// always request the proof
+	opts.Prove = true
 
 	// always request the proof
 	opts.Prove = true
@@ -154,7 +156,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 		return nil, errors.New("no proof ops")
 	}
 	if resp.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, coretypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -189,57 +191,61 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 		}
 	}
 
-	return &ctypes.ResultABCIQuery{Response: resp}, nil
+	return &coretypes.ResultABCIQuery{Response: resp}, nil
 }
 
-func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
 	return c.next.BroadcastTxCommit(ctx, tx)
 }
 
-func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	return c.next.BroadcastTxAsync(ctx, tx)
 }
 
-func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	return c.next.BroadcastTxSync(ctx, tx)
 }
 
-func (c *Client) UnconfirmedTxs(ctx context.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
+func (c *Client) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
 	return c.next.UnconfirmedTxs(ctx, limit)
 }
 
-func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirmedTxs, error) {
+func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
 	return c.next.NumUnconfirmedTxs(ctx)
 }
 
-func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
 	return c.next.CheckTx(ctx, tx)
 }
 
-func (c *Client) NetInfo(ctx context.Context) (*ctypes.ResultNetInfo, error) {
+func (c *Client) RemoveTx(ctx context.Context, txKey types.TxKey) error {
+	return c.next.RemoveTx(ctx, txKey)
+}
+
+func (c *Client) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
 	return c.next.NetInfo(ctx)
 }
 
-func (c *Client) DumpConsensusState(ctx context.Context) (*ctypes.ResultDumpConsensusState, error) {
+func (c *Client) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error) {
 	return c.next.DumpConsensusState(ctx)
 }
 
-func (c *Client) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusState, error) {
+func (c *Client) ConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error) {
 	return c.next.ConsensusState(ctx)
 }
 
-func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
+func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
 	res, err := c.next.ConsensusParams(ctx, height)
 	if err != nil {
 		return nil, err
 	}
 
 	// Validate res.
-	if err := types.ValidateConsensusParams(res.ConsensusParams); err != nil {
+	if err := res.ConsensusParams.ValidateConsensusParams(); err != nil {
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, coretypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -249,7 +255,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	}
 
 	// Verify hash.
-	if cH, tH := types.HashConsensusParams(res.ConsensusParams), l.ConsensusHash; !bytes.Equal(cH, tH) {
+	if cH, tH := res.ConsensusParams.HashConsensusParams(), l.ConsensusHash; !bytes.Equal(cH, tH) {
 		return nil, fmt.Errorf("params hash %X does not match trusted hash %X",
 			cH, tH)
 	}
@@ -257,13 +263,13 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	return res, nil
 }
 
-func (c *Client) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
+func (c *Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.next.Health(ctx)
 }
 
 // BlockchainInfo calls rpcclient#BlockchainInfo and then verifies every header
 // returned.
-func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
 	res, err := c.next.BlockchainInfo(ctx, minHeight, maxHeight)
 	if err != nil {
 		return nil, err
@@ -302,16 +308,16 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	return res, nil
 }
 
-func (c *Client) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
+func (c *Client) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
 	return c.next.Genesis(ctx)
 }
 
-func (c *Client) GenesisChunked(ctx context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
+func (c *Client) GenesisChunked(ctx context.Context, id uint) (*coretypes.ResultGenesisChunk, error) {
 	return c.next.GenesisChunked(ctx, id)
 }
 
 // Block calls rpcclient#Block and then verifies the result.
-func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
+func (c *Client) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
 	res, err := c.next.Block(ctx, height)
 	if err != nil {
 		return nil, err
@@ -345,7 +351,7 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 }
 
 // BlockByHash calls rpcclient#BlockByHash and then verifies the result.
-func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
+func (c *Client) BlockByHash(ctx context.Context, hash tmbytes.HexBytes) (*coretypes.ResultBlock, error) {
 	res, err := c.next.BlockByHash(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -380,7 +386,7 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 
 // BlockResults returns the block results for the given height. If no height is
 // provided, the results of the block preceding the latest are returned.
-func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error) {
+func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error) {
 	var h int64
 	if height == nil {
 		res, err := c.next.Status(ctx)
@@ -401,7 +407,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, coretypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -442,7 +448,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	return res, nil
 }
 
-func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
+func (c *Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height
 	// or at the latest height if no height is provided.
 	l, err := c.updateLightClientIfNeededTo(ctx, height)
@@ -450,7 +456,7 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 		return nil, err
 	}
 
-	return &ctypes.ResultCommit{
+	return &coretypes.ResultCommit{
 		SignedHeader:    *l.SignedHeader,
 		CanonicalCommit: true,
 	}, nil
@@ -458,7 +464,7 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 
 // Tx calls rpcclient#Tx method and then verifies the proof if such was
 // requested.
-func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
+func (c *Client) Tx(ctx context.Context, hash tmbytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
 	res, err := c.next.Tx(ctx, hash, prove)
 	if err != nil || !prove {
 		return res, err
@@ -466,7 +472,7 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, coretypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -485,7 +491,7 @@ func (c *Client) TxSearch(
 	prove bool,
 	page, perPage *int,
 	orderBy string,
-) (*ctypes.ResultTxSearch, error) {
+) (*coretypes.ResultTxSearch, error) {
 	return c.next.TxSearch(ctx, query, prove, page, perPage, orderBy)
 }
 
@@ -494,16 +500,20 @@ func (c *Client) BlockSearch(
 	query string,
 	page, perPage *int,
 	orderBy string,
-) (*ctypes.ResultBlockSearch, error) {
+) (*coretypes.ResultBlockSearch, error) {
 	return c.next.BlockSearch(ctx, query, page, perPage, orderBy)
 }
 
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int,
-	requestThresholdPublicKey *bool) (*ctypes.ResultValidators,
-	error) {
-	// Update the light client if we're behind and retrieve the light block at the requested height
-	// or at the latest height if no height is provided.
+func (c *Client) Validators(
+	ctx context.Context,
+	height *int64,
+	pagePtr, perPagePtr *int,
+	requestQuorumInfo *bool,
+) (*coretypes.ResultValidators, error) {
+
+	// Update the light client if we're behind and retrieve the light block at the
+	// requested height or at the latest height if no height is provided.
 	l, err := c.updateLightClientIfNeededTo(ctx, height)
 	if err != nil {
 		return nil, err
@@ -519,24 +529,30 @@ func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPage
 	skipCount := validateSkipCount(page, perPage)
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	var thresholdPublicKey crypto.PubKey = nil
-	if *requestThresholdPublicKey {
+	var quorumHash crypto.QuorumHash = nil
+	var quorumType btcjson.LLMQType
+	if *requestQuorumInfo {
 		thresholdPublicKey = l.ValidatorSet.ThresholdPublicKey
+		quorumHash = l.ValidatorSet.QuorumHash
+		quorumType = l.ValidatorSet.QuorumType
 	}
 
-	return &ctypes.ResultValidators{
+	return &coretypes.ResultValidators{
 		BlockHeight:        l.Height,
 		Validators:         v,
 		ThresholdPublicKey: &thresholdPublicKey,
+		QuorumHash:         &quorumHash,
+		QuorumType:         quorumType,
 		Count:              len(v),
 		Total:              totalCount}, nil
 }
 
-func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
 	return c.next.BroadcastEvidence(ctx, ev)
 }
 
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
+	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
 	return c.next.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
@@ -559,7 +575,7 @@ func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64)
 		l, err = c.lc.VerifyLightBlockAtHeight(ctx, *height, time.Now())
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)
+		return nil, fmt.Errorf("failed to update light client: %w", err)
 	}
 	return l, nil
 }
@@ -571,7 +587,7 @@ func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (UNSAFE)!
 // TODO: verify data
-func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
+func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultSubscribe, error) {
 	out, err := c.next.Subscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
@@ -594,27 +610,27 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 		}
 	}()
 
-	return &ctypes.ResultSubscribe{}, nil
+	return &coretypes.ResultSubscribe{}, nil
 }
 
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
-func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
+func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultUnsubscribe, error) {
 	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultUnsubscribe{}, nil
+	return &coretypes.ResultUnsubscribe{}, nil
 }
 
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
-func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
+func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*coretypes.ResultUnsubscribe, error) {
 	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultUnsubscribe{}, nil
+	return &coretypes.ResultUnsubscribe{}, nil
 }
 
 // XXX: Copied from rpc/core/env.go
@@ -626,7 +642,7 @@ const (
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
-		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+		panic(fmt.Errorf("%w (%d)", coretypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -639,7 +655,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", coretypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil

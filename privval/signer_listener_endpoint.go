@@ -5,9 +5,9 @@ import (
 	"net"
 	"time"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
@@ -142,12 +142,7 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 	// block until connected or timeout
 	sl.Logger.Info("SignerListener: Blocking for connection")
 	sl.triggerConnect()
-	err := sl.WaitConnection(sl.connectionAvailableCh, maxWait)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return sl.WaitConnection(sl.connectionAvailableCh, maxWait)
 }
 
 func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {

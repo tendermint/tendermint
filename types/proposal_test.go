@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/protoio"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -62,7 +63,7 @@ func TestProposalString(t *testing.T) {
 func TestProposalVerifySignature(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
-	pubKey, err := privVal.GetPubKey(quorumHash)
+	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
 	require.NoError(t, err)
 
 	prop := NewProposal(
@@ -72,7 +73,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	signID := ProposalBlockSignID("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
-	_, err = privVal.SignProposal("test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
+	_, err = privVal.SignProposal(context.Background(), "test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
 	require.NoError(t, err)
 	prop.Signature = p.Signature
 
@@ -110,7 +111,7 @@ func BenchmarkProposalSign(b *testing.B) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
 	for i := 0; i < b.N; i++ {
-		_, err := privVal.SignProposal("test_chain_id", 0, quorumHash, pbp)
+		_, err := privVal.SignProposal(context.Background(), "test_chain_id", 0, quorumHash, pbp)
 		if err != nil {
 			b.Error(err)
 		}
@@ -120,9 +121,9 @@ func BenchmarkProposalSign(b *testing.B) {
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
-	_, err := privVal.SignProposal("test_chain_id", 0, quorumHash, pbp)
+	_, err := privVal.SignProposal(context.Background(), "test_chain_id", 0, quorumHash, pbp)
 	require.NoError(b, err)
-	pubKey, err := privVal.GetPubKey(quorumHash)
+	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
@@ -162,7 +163,7 @@ func TestProposalValidateBasic(t *testing.T) {
 				4, 1, 2, 2,
 				blockID)
 			p := prop.ToProto()
-			_, err := privVal.SignProposal("test_chain_id", 0, quorumHash, p)
+			_, err := privVal.SignProposal(context.Background(), "test_chain_id", 0, quorumHash, p)
 			prop.Signature = p.Signature
 			require.NoError(t, err)
 			tc.malleateProposal(prop)

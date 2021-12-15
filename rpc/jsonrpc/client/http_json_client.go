@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
@@ -149,12 +150,12 @@ func New(remote string) (*Client, error) {
 	return NewWithHTTPClient(remote, httpClient)
 }
 
-// NewWithHTTPClient returns a Client pointed at the given
-// address using a custom http client. An error is returned on invalid remote.
-// The function panics when remote is nil.
-func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
-	if client == nil {
-		panic("nil http.Client provided")
+// NewWithHTTPClient returns a Client pointed at the given address using a
+// custom http client. An error is returned on invalid remote. The function
+// panics when client is nil.
+func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
+	if c == nil {
+		panic("nil http.Client")
 	}
 
 	parsedURL, err := newParsedURL(remote)
@@ -172,7 +173,7 @@ func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 		address:  address,
 		username: username,
 		password: password,
-		client:   client,
+		client:   c,
 	}
 
 	return rpcClient, nil
@@ -188,7 +189,7 @@ func (c *Client) Call(
 ) (interface{}, error) {
 	id := c.nextRequestID()
 
-	request, err := types.MapToRequest(id, method, params)
+	request, err := rpctypes.MapToRequest(id, method, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
@@ -201,7 +202,7 @@ func (c *Client) Call(
 	requestBuf := bytes.NewBuffer(requestBytes)
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, requestBuf)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("request setup failed: %w", err)
 	}
 
 	httpRequest.Header.Set("Content-Type", "application/json")
@@ -212,7 +213,7 @@ func (c *Client) Call(
 
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, fmt.Errorf("post failed: %w", err)
+		return nil, err
 	}
 
 	defer httpResponse.Body.Close()
@@ -234,7 +235,7 @@ func (c *Client) NewRequestBatch() *RequestBatch {
 }
 
 func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
-	reqs := make([]types.RPCRequest, 0, len(requests))
+	reqs := make([]rpctypes.RPCRequest, 0, len(requests))
 	results := make([]interface{}, 0, len(requests))
 	for _, req := range requests {
 		reqs = append(reqs, req.request)
@@ -271,20 +272,20 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 	}
 
 	// collect ids to check responses IDs in unmarshalResponseBytesArray
-	ids := make([]types.JSONRPCIntID, len(requests))
+	ids := make([]rpctypes.JSONRPCIntID, len(requests))
 	for i, req := range requests {
-		ids[i] = req.request.ID.(types.JSONRPCIntID)
+		ids[i] = req.request.ID.(rpctypes.JSONRPCIntID)
 	}
 
 	return unmarshalResponseBytesArray(responseBytes, ids, results)
 }
 
-func (c *Client) nextRequestID() types.JSONRPCIntID {
+func (c *Client) nextRequestID() rpctypes.JSONRPCIntID {
 	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
 	c.mtx.Unlock()
-	return types.JSONRPCIntID(id)
+	return rpctypes.JSONRPCIntID(id)
 }
 
 //------------------------------------------------------------------------------------
@@ -292,7 +293,7 @@ func (c *Client) nextRequestID() types.JSONRPCIntID {
 // jsonRPCBufferedRequest encapsulates a single buffered request, as well as its
 // anticipated response structure.
 type jsonRPCBufferedRequest struct {
-	request types.RPCRequest
+	request rpctypes.RPCRequest
 	result  interface{} // The result will be deserialized into this object.
 }
 
@@ -353,7 +354,7 @@ func (b *RequestBatch) Call(
 	result interface{},
 ) (interface{}, error) {
 	id := b.client.nextRequestID()
-	request, err := types.MapToRequest(id, method, params)
+	request, err := rpctypes.MapToRequest(id, method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -370,6 +371,7 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	protocol := u.Scheme
+	padding := u.Scheme
 
 	// accept http(s) as an alias for tcp
 	switch protocol {
@@ -378,7 +380,13 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	dialFn := func(proto, addr string) (net.Conn, error) {
-		return net.Dial(protocol, u.GetDialAddress())
+		var timeout = 10 * time.Second
+		if !u.isUnixSocket && strings.LastIndex(u.Host, ":") == -1 {
+			u.Host = fmt.Sprintf("%s:%s", u.Host, padding)
+			return net.DialTimeout(protocol, u.GetDialAddress(), timeout)
+		}
+
+		return net.DialTimeout(protocol, u.GetDialAddress(), timeout)
 	}
 
 	return dialFn, nil

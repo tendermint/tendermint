@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 )
 
 func TestGenesisBad(t *testing.T) {
@@ -131,7 +131,7 @@ func TestGenesisGood(t *testing.T) {
 		QuorumHash:         crypto.RandQuorumHash(),
 	}
 	genDocBytes, err = tmjson.Marshal(baseGenDoc)
-	assert.NoError(t, err, "error marshalling genDoc")
+	assert.NoError(t, err, "error marshaling genDoc")
 
 	// test base gendoc and check consensus params were filled
 	genDoc, err := GenesisDocFromJSON(genDocBytes)
@@ -143,14 +143,14 @@ func TestGenesisGood(t *testing.T) {
 
 	// create json with consensus params filled
 	genDocBytes, err = tmjson.Marshal(genDoc)
-	assert.NoError(t, err, "error marshalling genDoc")
+	assert.NoError(t, err, "error marshaling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for valid genDoc json")
 
 	// test with invalid consensus params
 	genDoc.ConsensusParams.Block.MaxBytes = 0
 	genDocBytes, err = tmjson.Marshal(genDoc)
-	assert.NoError(t, err, "error marshalling genDoc")
+	assert.NoError(t, err, "error marshaling genDoc")
 	_, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
 

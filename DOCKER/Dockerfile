@@ -1,4 +1,5 @@
-FROM golang:1.15-alpine AS builder
+# stage 1 Generate Tenderdash Binary
+FROM golang:1.16-alpine AS builder
 
 RUN apk update && \
     apk upgrade && \
@@ -11,6 +12,7 @@ WORKDIR /go/src/github.com/dashevo/tenderdash
 RUN make install-bls
 RUN make build-linux
 
+# stage 2
 FROM alpine:3.9
 LABEL maintainer="developers@dash.org"
 
@@ -52,7 +54,7 @@ ENV PROXY_APP=kvstore MONIKER=dockernode CHAIN_ID=dockerchain
 COPY ./DOCKER/docker-entrypoint.sh /usr/local/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["node"]
+CMD ["start"]
 
 # Expose the data directory as a volume since there's mutable state in there
 VOLUME [ "$TMHOME" ]

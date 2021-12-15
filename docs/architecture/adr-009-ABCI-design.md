@@ -235,7 +235,7 @@ identically in ABCI and in Tendermint Core.
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Consequences
 

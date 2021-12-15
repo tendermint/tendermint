@@ -4,10 +4,10 @@
   "description": "Tenderdash Core Documentation",
   "main": "index.js",
   "dependencies": {
-    "vuepress-theme-cosmos": "^1.0.180"
+    "vuepress-theme-cosmos": "^1.0.182"
   },
   "devDependencies": {
-    "watchpack": "^2.1.1"
+    "watchpack": "^2.2.0"
   },
   "scripts": {
     "preserve": "./pre.sh",

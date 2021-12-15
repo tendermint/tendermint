@@ -84,3 +84,31 @@ func Test_parsedURL(t *testing.T) {
 		})
 	}
 }
+
+func TestMakeHTTPDialerURL(t *testing.T) {
+	remotes := []string{"https://foo-bar.com", "http://foo-bar.com"}
+
+	for _, remote := range remotes {
+		u, err := newParsedURL(remote)
+		require.NoError(t, err)
+		dialFn, err := makeHTTPDialer(remote)
+		require.Nil(t, err)
+
+		addr, err := dialFn(u.Scheme, u.GetHostWithPath())
+		require.NoError(t, err)
+		require.NotNil(t, addr)
+	}
+
+	errorURLs := []string{"tcp://foo-bar.com", "ftp://foo-bar.com"}
+
+	for _, errorURL := range errorURLs {
+		u, err := newParsedURL(errorURL)
+		require.NoError(t, err)
+		dialFn, err := makeHTTPDialer(errorURL)
+		require.Nil(t, err)
+
+		addr, err := dialFn(u.Scheme, u.GetHostWithPath())
+		require.Error(t, err)
+		require.Nil(t, addr)
+	}
+}

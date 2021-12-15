@@ -32,7 +32,7 @@ func NewProxy(
 	logger log.Logger,
 	opts ...lrpc.Option,
 ) (*Proxy, error) {
-	rpcClient, err := rpchttp.NewWithTimeout(providerAddr, "/websocket", uint(config.WriteTimeout.Seconds()))
+	rpcClient, err := rpchttp.NewWithTimeout(providerAddr, config.WriteTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http client for %s: %w", providerAddr, err)
 	}
@@ -113,7 +113,7 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 	}
 
 	// 4) Start listening for new connections.
-	listener, err := rpcserver.Listen(p.Addr, p.Config)
+	listener, err := rpcserver.Listen(p.Addr, p.Config.MaxOpenConnections)
 	if err != nil {
 		return nil, mux, err
 	}

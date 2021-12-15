@@ -1,9 +1,13 @@
+<<<<<<< HEAD
 ROOT_PATH := $(abspath $(lastword $(MAKEFILE_LIST)/../../../))
 
-all: docker generator runner
+all: docker generator runner tests
 
 docker:
 	docker build --tag tenderdash/e2e-node -f docker/Dockerfile ../..
+
+node:
+	go build -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
 
 e2e/app/compile:
 	docker run --rm -it --entrypoint "/src/tenderdash/test/e2e/entrypoint.sh" -w "/src/tenderdash/test/e2e" -v $(ROOT_PATH):/src/tenderdash tenderdash/e2e-node
@@ -20,21 +24,13 @@ runner/dashcore: runner e2e/app/compile
 runner/rotate: runner e2e/app/compile
 	./build/runner -f networks/rotate.toml
 
-# We need to build support for database backends into the app in
-# order to build a binary with a Tenderdash node in it (for built-in
-# ABCI testing).
-app:
-	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
-
-# To be used primarily by the e2e docker instance. If you want to produce this binary
-# elsewhere, then run go build in the maverick directory.
-maverick:
-	go build -o build/maverick -tags badgerdb,boltdb,cleveldb,rocksdb ../maverick
-
 generator:
 	go build -o build/generator ./generator
 
 runner:
 	go build -o build/runner ./runner
 
-.PHONY: all app docker generator maverick runner
+tests:
+	go test -o build/tests ./tests
+
+.PHONY: all docker generator runner tests node

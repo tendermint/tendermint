@@ -1,10 +1,12 @@
 # Unreleased Changes
 
-## v0.34.12
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
+
+## vX.X
+
+Month, DD, YYYY
 
 Special thanks to external contributors on this release:
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -46,9 +48,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   `/genesis_chunked` rpc endpoint for handling large genesis files by chunking them
 
 ### BUG FIXES
-
-- [light] [\#6685](https://github.com/tendermint/tendermint/pull/6685) fix bug
-  with incorrectly handling contexts that would occasionally freeze state sync. (@cmwaters)
-- [statesync] #6881 improvements to stateprovider logic (@cmwaters)
-- [ABCI] #6873 change client to use multi-reader mutexes (@tychoish)
-- [indexing] #6906 enable the PostgreSQL indexer sink (@creachadair)

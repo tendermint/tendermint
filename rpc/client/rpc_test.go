@@ -15,67 +15,80 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/mempool"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpclocal "github.com/tendermint/tendermint/rpc/client/local"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
-	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	ctx = context.Background()
-)
+func getHTTPClient(t *testing.T, conf *config.Config) *rpchttp.HTTP {
+	t.Helper()
 
-func getHTTPClient() *rpchttp.HTTP {
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr, "/websocket")
-	if err != nil {
-		panic(err)
-	}
+	rpcAddr := conf.RPC.ListenAddress
+	c, err := rpchttp.New(rpcAddr)
+	require.NoError(t, err)
+
 	c.SetLogger(log.TestingLogger())
 	return c
 }
 
-func getHTTPClientWithTimeout(timeout uint) *rpchttp.HTTP {
-	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewWithTimeout(rpcAddr, "/websocket", timeout)
-	if err != nil {
-		panic(err)
-	}
-	c.SetLogger(log.TestingLogger())
-	return c
-}
+func getHTTPClientWithTimeout(t *testing.T, conf *config.Config, timeout time.Duration) *rpchttp.HTTP {
+	t.Helper()
 
-func getLocalClient() *rpclocal.Local {
-	return rpclocal.New(node)
+	rpcAddr := conf.RPC.ListenAddress
+	c, err := rpchttp.NewWithTimeout(rpcAddr, timeout)
+	require.NoError(t, err)
+
+	c.SetLogger(log.TestingLogger())
+
+	return c
 }
 
 // GetClients returns a slice of clients for table-driven tests
-func GetClients() []client.Client {
+func GetClients(t *testing.T, ns service.Service, conf *config.Config) []client.Client {
+	t.Helper()
+
+	node, ok := ns.(rpclocal.NodeService)
+	require.True(t, ok)
+
+	ncl, err := rpclocal.New(node)
+	require.NoError(t, err)
+
 	return []client.Client{
-		getHTTPClient(),
-		getLocalClient(),
+		getHTTPClient(t, conf),
+		ncl,
 	}
 }
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
+		_, _ = rpchttp.NewWithClient("http://example.com", nil)
 	})
 	require.Panics(t, func() {
 		_, _ = rpcclient.NewWithHTTPClient("http://example.com", nil)
 	})
 }
 
+func TestParseInvalidAddress(t *testing.T) {
+	_, conf := NodeSuite(t)
+	// should remove trailing /
+	invalidRemote := conf.RPC.ListenAddress + "/"
+	_, err := rpchttp.New(invalidRemote)
+	require.NoError(t, err)
+}
+
 func TestCustomHTTPClient(t *testing.T) {
-	remote := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewWithClient(remote, "/websocket", http.DefaultClient)
+	_, conf := NodeSuite(t)
+	remote := conf.RPC.ListenAddress
+	c, err := rpchttp.NewWithClient(remote, http.DefaultClient)
 	require.Nil(t, err)
 	status, err := c.Status(context.Background())
 	require.NoError(t, err)
@@ -83,8 +96,9 @@ func TestCustomHTTPClient(t *testing.T) {
 }
 
 func TestCorsEnabled(t *testing.T) {
-	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
-	remote := strings.ReplaceAll(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http")
+	_, conf := NodeSuite(t)
+	origin := conf.RPC.CORSAllowedOrigins[0]
+	remote := strings.ReplaceAll(conf.RPC.ListenAddress, "tcp", "http")
 
 	req, err := http.NewRequest("GET", remote, nil)
 	require.Nil(t, err, "%+v", err)
@@ -99,9 +113,13 @@ func TestCorsEnabled(t *testing.T) {
 
 // Make sure status is correct (we connect properly)
 func TestStatus(t *testing.T) {
-	for i, c := range GetClients() {
-		moniker := rpctest.GetConfig().Moniker
-		status, err := c.Status(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+	for i, c := range GetClients(t, n, conf) {
+		moniker := conf.Moniker
+		status, err := c.Status(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.Equal(t, moniker, status.NodeInfo.Moniker)
 	}
@@ -109,10 +127,14 @@ func TestStatus(t *testing.T) {
 
 // Make sure info is correct (we connect properly)
 func TestInfo(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	n, conf := NodeSuite(t)
+
+	for i, c := range GetClients(t, n, conf) {
 		// status, err := c.Status()
 		// require.Nil(t, err, "%+v", err)
-		info, err := c.ABCIInfo(context.Background())
+		info, err := c.ABCIInfo(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		// TODO: this is not correct - fix merkleeyes!
 		// assert.EqualValues(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
@@ -121,10 +143,14 @@ func TestInfo(t *testing.T) {
 }
 
 func TestNetInfo(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+	for i, c := range GetClients(t, n, conf) {
 		nc, ok := c.(client.NetworkClient)
 		require.True(t, ok, "%d", i)
-		netinfo, err := nc.NetInfo(context.Background())
+		netinfo, err := nc.NetInfo(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.True(t, netinfo.Listening)
 		assert.Equal(t, 0, len(netinfo.Peers))
@@ -132,11 +158,15 @@ func TestNetInfo(t *testing.T) {
 }
 
 func TestDumpConsensusState(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+	for i, c := range GetClients(t, n, conf) {
 		// FIXME: fix server so it doesn't panic on invalid input
 		nc, ok := c.(client.NetworkClient)
 		require.True(t, ok, "%d", i)
-		cons, err := nc.DumpConsensusState(context.Background())
+		cons, err := nc.DumpConsensusState(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.NotEmpty(t, cons.RoundState)
 		assert.Empty(t, cons.Peers)
@@ -144,30 +174,44 @@ func TestDumpConsensusState(t *testing.T) {
 }
 
 func TestConsensusState(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+
+	for i, c := range GetClients(t, n, conf) {
 		// FIXME: fix server so it doesn't panic on invalid input
 		nc, ok := c.(client.NetworkClient)
 		require.True(t, ok, "%d", i)
-		cons, err := nc.ConsensusState(context.Background())
+		cons, err := nc.ConsensusState(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.NotEmpty(t, cons.RoundState)
 	}
 }
 
 func TestHealth(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+
+	for i, c := range GetClients(t, n, conf) {
 		nc, ok := c.(client.NetworkClient)
 		require.True(t, ok, "%d", i)
-		_, err := nc.Health(context.Background())
+		_, err := nc.Health(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 	}
 }
 
 func TestGenesisAndValidators(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+	for i, c := range GetClients(t, n, conf) {
 
 		// make sure this is the right genesis file
-		gen, err := c.Genesis(context.Background())
+		gen, err := c.Genesis(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		// get the genesis validator
 		require.Equal(t, 1, len(gen.Genesis.Validators))
@@ -175,7 +219,7 @@ func TestGenesisAndValidators(t *testing.T) {
 
 		// get the current validators
 		h := int64(1)
-		vals, err := c.Validators(context.Background(), &h, nil, nil, nil)
+		vals, err := c.Validators(ctx, &h, nil, nil, nil)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
 		require.Equal(t, 1, vals.Count)
@@ -192,7 +236,9 @@ func TestGenesisChunked(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, c := range GetClients() {
+	n, conf := NodeSuite(t)
+
+	for _, c := range GetClients(t, n, conf) {
 		first, err := c.GenesisChunked(ctx, 0)
 		require.NoError(t, err)
 
@@ -214,17 +260,22 @@ func TestGenesisChunked(t *testing.T) {
 }
 
 func TestABCIQuery(t *testing.T) {
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+
+	for i, c := range GetClients(t, n, conf) {
 		// write something
 		k, v, tx := MakeTxKV()
-		bres, err := c.BroadcastTxCommit(context.Background(), tx)
+		bres, err := c.BroadcastTxCommit(ctx, tx)
 		require.Nil(t, err, "%d: %+v", i, err)
 		apph := bres.Height + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
 		err = client.WaitForHeight(c, apph, nil)
 		require.NoError(t, err)
-		res, err := c.ABCIQuery(context.Background(), "/key", k)
+		res, err := c.ABCIQuery(ctx, "/key", k)
 		qres := res.Response
 		if assert.Nil(t, err) && assert.True(t, qres.IsOK()) {
 			assert.EqualValues(t, v, qres.Value)
@@ -234,143 +285,200 @@ func TestABCIQuery(t *testing.T) {
 
 // Make some app checks
 func TestAppCalls(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	for i, c := range GetClients() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+
+	for i, c := range GetClients(t, n, conf) {
 
 		// get an offset of height to avoid racing and guessing
-		s, err := c.Status(context.Background())
-		require.NoError(err)
+		s, err := c.Status(ctx)
+		require.NoError(t, err)
 		// sh is start height or status height
 		sh := s.SyncInfo.LatestBlockHeight
 
 		// look for the future
 		h := sh + 20
-		_, err = c.Block(context.Background(), &h)
-		require.Error(err) // no block yet
+		_, err = c.Block(ctx, &h)
+		require.Error(t, err) // no block yet
 
 		// write something
 		k, v, tx := MakeTxKV()
-		bres, err := c.BroadcastTxCommit(context.Background(), tx)
-		require.NoError(err)
-		require.True(bres.DeliverTx.IsOK())
+		bres, err := c.BroadcastTxCommit(ctx, tx)
+		require.NoError(t, err)
+		require.True(t, bres.DeliverTx.IsOK())
 		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
 		err = client.WaitForHeight(c, apph, nil)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		_qres, err := c.ABCIQueryWithOptions(context.Background(), "/key", k, client.ABCIQueryOptions{Prove: false})
-		require.NoError(err)
+		_qres, err := c.ABCIQueryWithOptions(ctx, "/key", k, client.ABCIQueryOptions{Prove: false})
+		require.NoError(t, err)
 		qres := _qres.Response
-		if assert.True(qres.IsOK()) {
-			assert.Equal(k, qres.Key)
-			assert.EqualValues(v, qres.Value)
+		if assert.True(t, qres.IsOK()) {
+			assert.Equal(t, k, qres.Key)
+			assert.EqualValues(t, v, qres.Value)
 		}
 
 		// make sure we can lookup the tx with proof
-		ptx, err := c.Tx(context.Background(), bres.Hash, true)
-		require.NoError(err)
-		assert.EqualValues(txh, ptx.Height)
-		assert.EqualValues(tx, ptx.Tx)
+		ptx, err := c.Tx(ctx, bres.Hash, true)
+		require.NoError(t, err)
+		assert.EqualValues(t, txh, ptx.Height)
+		assert.EqualValues(t, tx, ptx.Tx)
 
 		// and we can even check the block is added
-		block, err := c.Block(context.Background(), &apph)
-		require.NoError(err)
+		block, err := c.Block(ctx, &apph)
+		require.NoError(t, err)
 		appHash := block.Block.Header.AppHash
-		assert.True(len(appHash) > 0)
-		assert.EqualValues(apph, block.Block.Header.Height)
+		assert.True(t, len(appHash) > 0)
+		assert.EqualValues(t, apph, block.Block.Header.Height)
 
-		blockByHash, err := c.BlockByHash(context.Background(), block.BlockID.Hash)
-		require.NoError(err)
-		require.Equal(block, blockByHash)
+		blockByHash, err := c.BlockByHash(ctx, block.BlockID.Hash)
+		require.NoError(t, err)
+		require.Equal(t, block, blockByHash)
 
 		// now check the results
-		blockResults, err := c.BlockResults(context.Background(), &txh)
-		require.Nil(err, "%d: %+v", i, err)
-		assert.Equal(txh, blockResults.Height)
-		if assert.Equal(1, len(blockResults.TxsResults)) {
+		blockResults, err := c.BlockResults(ctx, &txh)
+		require.NoError(t, err, "%d: %+v", i, err)
+		assert.Equal(t, txh, blockResults.Height)
+		if assert.Equal(t, 1, len(blockResults.TxsResults)) {
 			// check success code
-			assert.EqualValues(0, blockResults.TxsResults[0].Code)
+			assert.EqualValues(t, 0, blockResults.TxsResults[0].Code)
 		}
 
 		// check blockchain info, now that we know there is info
-		info, err := c.BlockchainInfo(context.Background(), apph, apph)
-		require.NoError(err)
-		assert.True(info.LastHeight >= apph)
-		if assert.Equal(1, len(info.BlockMetas)) {
+		info, err := c.BlockchainInfo(ctx, apph, apph)
+		require.NoError(t, err)
+		assert.True(t, info.LastHeight >= apph)
+		if assert.Equal(t, 1, len(info.BlockMetas)) {
 			lastMeta := info.BlockMetas[0]
-			assert.EqualValues(apph, lastMeta.Header.Height)
+			assert.EqualValues(t, apph, lastMeta.Header.Height)
 			blockData := block.Block
-			assert.Equal(blockData.Header.AppHash, lastMeta.Header.AppHash)
-			assert.Equal(block.BlockID, lastMeta.BlockID)
+			assert.Equal(t, blockData.Header.AppHash, lastMeta.Header.AppHash)
+			assert.Equal(t, block.BlockID, lastMeta.BlockID)
 		}
 
 		// and get the corresponding commit with the same apphash
-		commit, err := c.Commit(context.Background(), &apph)
-		require.NoError(err)
+		commit, err := c.Commit(ctx, &apph)
+		require.NoError(t, err)
 		cappHash := commit.Header.AppHash
-		assert.Equal(appHash, cappHash)
-		assert.NotNil(commit.Commit)
+		assert.Equal(t, appHash, cappHash)
+		assert.NotNil(t, commit.Commit)
 
 		// compare the commits (note Commit(2) has commit from Block(3))
 		h = apph - 1
-		commit2, err := c.Commit(context.Background(), &h)
-		require.NoError(err)
-		assert.Equal(block.Block.LastCommitHash, commit2.Commit.Hash())
-
+		commit2, err := c.Commit(ctx, &h)
+		require.NoError(t, err)
+		assert.Equal(t, block.Block.LastCommitHash, commit2.Commit.Hash())
 		// and we got a proof that works!
-		_pres, err := c.ABCIQueryWithOptions(context.Background(), "/key", k, client.ABCIQueryOptions{Prove: true})
-		require.NoError(err)
+		_pres, err := c.ABCIQueryWithOptions(ctx, "/key", k, client.ABCIQueryOptions{Prove: true})
+		require.NoError(t, err)
 		pres := _pres.Response
-		assert.True(pres.IsOK())
+		assert.True(t, pres.IsOK())
 
 		// XXX Test proof
 	}
 }
 
-func TestBroadcastTxSync(t *testing.T) {
-	require := require.New(t)
+func TestBlockchainInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// TODO (melekes): use mempool which is set on RPC rather than getting it from node
-	mempool := node.Mempool()
-	initMempoolSize := mempool.Size()
+	n, conf := NodeSuite(t)
 
-	for i, c := range GetClients() {
-		_, _, tx := MakeTxKV()
-		bres, err := c.BroadcastTxSync(context.Background(), tx)
-		require.Nil(err, "%d: %+v", i, err)
-		require.Equal(bres.Code, abci.CodeTypeOK) // FIXME
+	for i, c := range GetClients(t, n, conf) {
+		err := client.WaitForHeight(c, 10, nil)
+		require.NoError(t, err)
 
-		require.Equal(initMempoolSize+1, mempool.Size())
+		res, err := c.BlockchainInfo(ctx, 0, 0)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.True(t, res.LastHeight > 0)
+		assert.True(t, len(res.BlockMetas) > 0)
 
-		txs := mempool.ReapMaxTxs(len(tx))
-		require.EqualValues(tx, txs[0])
-		mempool.Flush()
+		res, err = c.BlockchainInfo(ctx, 1, 1)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.True(t, res.LastHeight > 0)
+		assert.True(t, len(res.BlockMetas) == 1)
+
+		res, err = c.BlockchainInfo(ctx, 1, 10000)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.True(t, res.LastHeight > 0)
+		assert.True(t, len(res.BlockMetas) < 100)
+		for _, m := range res.BlockMetas {
+			assert.NotNil(t, m)
+		}
+
+		res, err = c.BlockchainInfo(ctx, 10000, 1)
+		require.NotNil(t, err)
+		assert.Nil(t, res)
+		assert.Contains(t, err.Error(), "can't be greater than max")
 	}
 }
 
-func TestBroadcastTxCommit(t *testing.T) {
-	require := require.New(t)
+func TestBroadcastTxSync(t *testing.T) {
+	n, conf := NodeSuite(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	mempool := node.Mempool()
-	for i, c := range GetClients() {
+	// TODO (melekes): use mempool which is set on RPC rather than getting it from node
+	pool := getMempool(t, n)
+	initMempoolSize := pool.Size()
+
+	for i, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
-		bres, err := c.BroadcastTxCommit(context.Background(), tx)
-		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.CheckTx.IsOK())
-		require.True(bres.DeliverTx.IsOK())
+		bres, err := c.BroadcastTxSync(ctx, tx)
+		require.Nil(t, err, "%d: %+v", i, err)
+		require.Equal(t, bres.Code, abci.CodeTypeOK) // FIXME
 
-		require.Equal(0, mempool.Size())
+		require.Equal(t, initMempoolSize+1, pool.Size())
+
+		txs := pool.ReapMaxTxs(len(tx))
+		require.EqualValues(t, tx, txs[0])
+		pool.Flush()
+	}
+}
+
+func getMempool(t *testing.T, srv service.Service) mempool.Mempool {
+	t.Helper()
+	n, ok := srv.(interface {
+		Mempool() mempool.Mempool
+	})
+	require.True(t, ok)
+	return n.Mempool()
+}
+
+func TestBroadcastTxCommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, conf := NodeSuite(t)
+
+	pool := getMempool(t, n)
+	for i, c := range GetClients(t, n, conf) {
+		_, _, tx := MakeTxKV()
+		bres, err := c.BroadcastTxCommit(ctx, tx)
+		require.Nil(t, err, "%d: %+v", i, err)
+		require.True(t, bres.CheckTx.IsOK())
+		require.True(t, bres.DeliverTx.IsOK())
+
+		require.Equal(t, 0, pool.Size())
 	}
 }
 
 func TestUnconfirmedTxs(t *testing.T) {
-	_, _, tx := MakeTxKV()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	_, _, tx := MakeTxKV()
 	ch := make(chan *abci.Response, 1)
-	mempool := node.Mempool()
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+
+	n, conf := NodeSuite(t)
+	pool := getMempool(t, n)
+	err := pool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempool.TxInfo{})
+
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.
@@ -380,27 +488,32 @@ func TestUnconfirmedTxs(t *testing.T) {
 		t.Error("Timed out waiting for CheckTx callback")
 	}
 
-	for _, c := range GetClients() {
+	for _, c := range GetClients(t, n, conf) {
 		mc := c.(client.MempoolClient)
 		limit := 1
-		res, err := mc.UnconfirmedTxs(context.Background(), &limit)
+		res, err := mc.UnconfirmedTxs(ctx, &limit)
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, res.Count)
 		assert.Equal(t, 1, res.Total)
-		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
+		assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
 		assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
 	}
 
-	mempool.Flush()
+	pool.Flush()
 }
 
 func TestNumUnconfirmedTxs(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	_, _, tx := MakeTxKV()
 
+	n, conf := NodeSuite(t)
 	ch := make(chan *abci.Response, 1)
-	mempool := node.Mempool()
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	pool := getMempool(t, n)
+
+	err := pool.CheckTx(ctx, tx, func(resp *abci.Response) { ch <- resp }, mempool.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.
@@ -410,40 +523,49 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 		t.Error("Timed out waiting for CheckTx callback")
 	}
 
-	mempoolSize := mempool.Size()
-	for i, c := range GetClients() {
+	mempoolSize := pool.Size()
+	for i, c := range GetClients(t, n, conf) {
 		mc, ok := c.(client.MempoolClient)
 		require.True(t, ok, "%d", i)
-		res, err := mc.NumUnconfirmedTxs(context.Background())
+		res, err := mc.NumUnconfirmedTxs(ctx)
 		require.Nil(t, err, "%d: %+v", i, err)
 
 		assert.Equal(t, mempoolSize, res.Count)
 		assert.Equal(t, mempoolSize, res.Total)
-		assert.Equal(t, mempool.TxsBytes(), res.TotalBytes)
+		assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
 	}
 
-	mempool.Flush()
+	pool.Flush()
 }
 
 func TestCheckTx(t *testing.T) {
-	mempool := node.Mempool()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	for _, c := range GetClients() {
+	n, conf := NodeSuite(t)
+	pool := getMempool(t, n)
+
+	for _, c := range GetClients(t, n, conf) {
 		_, _, tx := MakeTxKV()
 
-		res, err := c.CheckTx(context.Background(), tx)
+		res, err := c.CheckTx(ctx, tx)
 		require.NoError(t, err)
 		assert.Equal(t, abci.CodeTypeOK, res.Code)
 
-		assert.Equal(t, 0, mempool.Size(), "mempool must be empty")
+		assert.Equal(t, 0, pool.Size(), "mempool must be empty")
 	}
 }
 
 func TestTx(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	n, conf := NodeSuite(t)
+
+	c := getHTTPClient(t, conf)
+
 	// first we broadcast a tx
-	c := getHTTPClient()
 	_, _, tx := MakeTxKV()
-	bres, err := c.BroadcastTxCommit(context.Background(), tx)
+	bres, err := c.BroadcastTxCommit(ctx, tx)
 	require.Nil(t, err, "%+v", err)
 
 	txHeight := bres.Height
@@ -465,13 +587,13 @@ func TestTx(t *testing.T) {
 		{false, true, nil},
 	}
 
-	for i, c := range GetClients() {
+	for i, c := range GetClients(t, n, conf) {
 		for j, tc := range cases {
 			t.Logf("client %d, case %d", i, j)
 
 			// now we query for the tx.
 			// since there's only one tx, we know index=0.
-			ptx, err := c.Tx(context.Background(), tc.hash, tc.prove)
+			ptx, err := c.Tx(ctx, tc.hash, tc.prove)
 
 			if !tc.valid {
 				require.NotNil(t, err)
@@ -494,21 +616,25 @@ func TestTx(t *testing.T) {
 }
 
 func TestTxSearchWithTimeout(t *testing.T) {
-	// Get a client with a time-out of 10 secs.
-	timeoutClient := getHTTPClientWithTimeout(10)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, conf := NodeSuite(t)
+	timeoutClient := getHTTPClientWithTimeout(t, conf, 10*time.Second)
 
 	_, _, tx := MakeTxKV()
-	_, err := timeoutClient.BroadcastTxCommit(context.Background(), tx)
+	_, err := timeoutClient.BroadcastTxCommit(ctx, tx)
 	require.NoError(t, err)
 
 	// query using a compositeKey (see kvstore application)
-	result, err := timeoutClient.TxSearch(context.Background(), "app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
+	result, err := timeoutClient.TxSearch(ctx, "app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 	require.Nil(t, err)
 	require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 }
 
 func TestTxSearch(t *testing.T) {
-	c := getHTTPClient()
+	n, conf := NodeSuite(t)
+	c := getHTTPClient(t, conf)
 
 	// first we broadcast a few txs
 	for i := 0; i < 10; i++ {
@@ -527,7 +653,7 @@ func TestTxSearch(t *testing.T) {
 	find := result.Txs[len(result.Txs)-1]
 	anotherTxHash := types.Tx("a different tx").Hash()
 
-	for i, c := range GetClients() {
+	for i, c := range GetClients(t, n, conf) {
 		t.Logf("client %d", i)
 
 		// now we query for the tx.
@@ -631,18 +757,22 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestBatchedJSONRPCCalls(t *testing.T) {
-	c := getHTTPClient()
-	testBatchedJSONRPCCalls(t, c)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, conf := NodeSuite(t)
+	c := getHTTPClient(t, conf)
+	testBatchedJSONRPCCalls(ctx, t, c)
 }
 
-func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
+func testBatchedJSONRPCCalls(ctx context.Context, t *testing.T, c *rpchttp.HTTP) {
 	k1, v1, tx1 := MakeTxKV()
 	k2, v2, tx2 := MakeTxKV()
 
 	batch := c.NewBatch()
-	r1, err := batch.BroadcastTxCommit(context.Background(), tx1)
+	r1, err := batch.BroadcastTxCommit(ctx, tx1)
 	require.NoError(t, err)
-	r2, err := batch.BroadcastTxCommit(context.Background(), tx2)
+	r2, err := batch.BroadcastTxCommit(ctx, tx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, batch.Count())
 	bresults, err := batch.Send(ctx)
@@ -650,10 +780,10 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	require.Len(t, bresults, 2)
 	require.Equal(t, 0, batch.Count())
 
-	bresult1, ok := bresults[0].(*ctypes.ResultBroadcastTxCommit)
+	bresult1, ok := bresults[0].(*coretypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
 	require.Equal(t, *bresult1, *r1)
-	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
+	bresult2, ok := bresults[1].(*coretypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
 	require.Equal(t, *bresult2, *r2)
 	apph := tmmath.MaxInt64(bresult1.Height, bresult2.Height) + 1
@@ -661,9 +791,9 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	err = client.WaitForHeight(c, apph, nil)
 	require.NoError(t, err)
 
-	q1, err := batch.ABCIQuery(context.Background(), "/key", k1)
+	q1, err := batch.ABCIQuery(ctx, "/key", k1)
 	require.NoError(t, err)
-	q2, err := batch.ABCIQuery(context.Background(), "/key", k2)
+	q2, err := batch.ABCIQuery(ctx, "/key", k2)
 	require.NoError(t, err)
 	require.Equal(t, 2, batch.Count())
 	qresults, err := batch.Send(ctx)
@@ -671,10 +801,10 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	require.Len(t, qresults, 2)
 	require.Equal(t, 0, batch.Count())
 
-	qresult1, ok := qresults[0].(*ctypes.ResultABCIQuery)
+	qresult1, ok := qresults[0].(*coretypes.ResultABCIQuery)
 	require.True(t, ok)
 	require.Equal(t, *qresult1, *q1)
-	qresult2, ok := qresults[1].(*ctypes.ResultABCIQuery)
+	qresult2, ok := qresults[1].(*coretypes.ResultABCIQuery)
 	require.True(t, ok)
 	require.Equal(t, *qresult2, *q2)
 
@@ -685,14 +815,18 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 }
 
 func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
-	c := getHTTPClient()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, conf := NodeSuite(t)
+	c := getHTTPClient(t, conf)
 	_, _, tx1 := MakeTxKV()
 	_, _, tx2 := MakeTxKV()
 
 	batch := c.NewBatch()
-	_, err := batch.BroadcastTxCommit(context.Background(), tx1)
+	_, err := batch.BroadcastTxCommit(ctx, tx1)
 	require.NoError(t, err)
-	_, err = batch.BroadcastTxCommit(context.Background(), tx2)
+	_, err = batch.BroadcastTxCommit(ctx, tx2)
 	require.NoError(t, err)
 	// we should have 2 requests waiting
 	require.Equal(t, 2, batch.Count())
@@ -703,26 +837,35 @@ func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
 }
 
 func TestSendingEmptyRequestBatch(t *testing.T) {
-	c := getHTTPClient()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, conf := NodeSuite(t)
+	c := getHTTPClient(t, conf)
 	batch := c.NewBatch()
 	_, err := batch.Send(ctx)
 	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 }
 
 func TestClearingEmptyRequestBatch(t *testing.T) {
-	c := getHTTPClient()
+	_, conf := NodeSuite(t)
+	c := getHTTPClient(t, conf)
 	batch := c.NewBatch()
 	require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
 }
 
 func TestConcurrentJSONRPCBatching(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, conf := NodeSuite(t)
 	var wg sync.WaitGroup
-	c := getHTTPClient()
+	c := getHTTPClient(t, conf)
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			testBatchedJSONRPCCalls(t, c)
+			testBatchedJSONRPCCalls(ctx, t, c)
 		}()
 	}
 	wg.Wait()

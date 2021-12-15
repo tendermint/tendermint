@@ -1,13 +1,13 @@
 package types
 
 import (
+	"context"
 	"fmt"
+	"math/rand"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	"github.com/tendermint/tendermint/version"
 )
 
 func MakeCommit(blockID BlockID, stateID StateID, height int64, round int32,
@@ -15,7 +15,7 @@ func MakeCommit(blockID BlockID, stateID StateID, height int64, round int32,
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		proTxHash, err := validators[i].GetProTxHash()
+		proTxHash, err := validators[i].GetProTxHash(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("can't get proTxHash: %w", err)
 		}
@@ -46,8 +46,7 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 func signAddVoteForStateID(privVal PrivValidator, vote *Vote, voteSet *VoteSet,
 	stateID StateID) (signed bool, err error) {
 	v := vote.ToProto()
-
-	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash,
+	err = privVal.SignVote(context.Background(), voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash,
 		v, stateID, nil)
 	if err != nil {
 		return false, err
@@ -68,7 +67,7 @@ func MakeVote(
 	if privVal == nil {
 		return nil, fmt.Errorf("privVal must be set")
 	}
-	proTxHash, err := privVal.GetProTxHash()
+	proTxHash, err := privVal.GetProTxHash(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("can't get proTxHash: %w", err)
 	}
@@ -83,7 +82,8 @@ func MakeVote(
 	}
 	v := vote.ToProto()
 
-	if err := privVal.SignVote(chainID, valSet.QuorumType, valSet.QuorumHash, v, stateID, nil); err != nil {
+	if err := privVal.SignVote(context.Background(), chainID, valSet.QuorumType, valSet.QuorumHash,
+		v, stateID, nil); err != nil {
 		return nil, err
 	}
 
@@ -93,39 +93,9 @@ func MakeVote(
 	return vote, nil
 }
 
-// MakeBlock returns a new block with an empty header, except what can be
-// computed from itself.
-// It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(
-	height int64,
-	coreChainLockedHeight uint32,
-	coreChainLock *CoreChainLock,
-	txs []Tx,
-	lastCommit *Commit,
-	evidence []Evidence,
-	proposedAppVersion uint64,
-) *Block {
-	block := &Block{
-		Header: Header{
-			Version:               tmversion.Consensus{Block: version.BlockProtocol, App: 0},
-			Height:                height,
-			CoreChainLockedHeight: coreChainLockedHeight,
-			ProposedAppVersion:    proposedAppVersion,
-		},
-		CoreChainLock: coreChainLock,
-		Data: Data{
-			Txs: txs,
-		},
-		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: lastCommit,
-	}
-	block.fillHeader()
-	return block
-}
-
 func RandStateID() StateID {
 	return StateID{
-		Height:      tmrand.Int63(),
+		Height:      rand.Int63(),
 		LastAppHash: tmrand.Bytes(tmhash.Size),
 	}
 }

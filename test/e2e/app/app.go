@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -37,6 +36,14 @@ type Application struct {
 	restoreChunks   [][]byte
 }
 
+func DefaultConfig(dir string) *Config {
+	return &Config{
+		PersistInterval:  1,
+		SnapshotInterval: 100,
+		Dir:              dir,
+	}
+}
+
 // NewApplication creates the application.
 func NewApplication(cfg *Config) (*Application, error) {
 	state, err := NewState(filepath.Join(cfg.Dir, "state.json"), cfg.PersistInterval)
@@ -48,7 +55,7 @@ func NewApplication(cfg *Config) (*Application, error) {
 		return nil, err
 	}
 	return &Application{
-		logger:    log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
+		logger:    log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false),
 		state:     state,
 		snapshots: snapshots,
 		cfg:       cfg,
@@ -78,6 +85,11 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 	}
 	resp := abci.ResponseInitChain{
 		AppHash: app.state.Hash,
+		ConsensusParams: &types1.ConsensusParams{
+			Version: &types1.VersionParams{
+				AppVersion: 1,
+			},
+		},
 	}
 
 	validatorSetUpdate, err := app.validatorSetUpdates(0)
@@ -131,12 +143,12 @@ func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock
 			Type: "val_updates",
 			Attributes: []abci.EventAttribute{
 				{
-					Key:   []byte("size"),
-					Value: []byte(strconv.Itoa(len(resp.ValidatorSetUpdate.ValidatorUpdates))),
+					Key:   "size",
+					Value: strconv.Itoa(len(resp.ValidatorSetUpdate.ValidatorUpdates)),
 				},
 				{
-					Key:   []byte("height"),
-					Value: []byte(strconv.Itoa(int(req.Height))),
+					Key:   "height",
+					Value: strconv.Itoa(int(req.Height)),
 				},
 			},
 		},
@@ -156,6 +168,10 @@ func (app *Application) Commit() abci.ResponseCommit {
 			panic(err)
 		}
 		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		err = app.snapshots.Prune(maxSnapshotCount)
+		if err != nil {
+			app.logger.Error("Failed to prune snapshots", "err", err)
+		}
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {
@@ -241,7 +257,7 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 		return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", thresholdPublicKeyUpdateString, err)
 	}
 	thresholdPublicKeyUpdate := bls12381.PubKey(thresholdPublicKeyUpdateBytes)
-	abciThresholdPublicKeyUpdate, err := cryptoenc.PubKeyToProto(thresholdPublicKeyUpdate)
+	abciThresholdPublicKeyUpdate, err := encoding.PubKeyToProto(thresholdPublicKeyUpdate)
 	if err != nil {
 		panic(err)
 	}

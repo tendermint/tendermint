@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
-	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
+	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 const (
@@ -35,7 +35,8 @@ type PersistentKVStoreApplication struct {
 
 	ValidatorSetUpdates types.ValidatorSetUpdate
 
-	valProTxHashToPubKeyMap map[string]*pc.PublicKey
+
+	valProTxHashToPubKeyMap map[string]*cryptoproto.PublicKey
 
 	logger log.Logger
 }
@@ -51,7 +52,7 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 
 	return &PersistentKVStoreApplication{
 		app:                     &Application{state: state},
-		valProTxHashToPubKeyMap: make(map[string]*pc.PublicKey),
+		valProTxHashToPubKeyMap: make(map[string]*cryptoproto.PublicKey),
 		logger:                  log.NewNopLogger(),
 	}
 }
@@ -71,11 +72,7 @@ func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.Respo
 	return res
 }
 
-func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
-	return app.app.SetOption(req)
-}
-
-// tx is either "val:proTxHash!pubkey!power" or "key=value" or just arbitrary bytes
+// DeliverTx will deliver a tx which is either "val:proTxHash!pubkey!power" or "key=value" or just arbitrary bytes
 func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "vals:", update the validator set
 	// format is "val:proTxHash!pubkey!power"
@@ -237,7 +234,7 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	return validatorSet
 }
 
-func MakeValSetChangeTx(proTxHash []byte, pubkey *pc.PublicKey, power int64) []byte {
+func MakeValSetChangeTx(proTxHash []byte, pubkey *cryptoproto.PublicKey, power int64) []byte {
 	pubStr := ""
 	if pubkey != nil {
 		pk, err := cryptoenc.PubKeyFromProto(*pubkey)
@@ -255,7 +252,7 @@ func MakeValSetRemovalTx(proTxHash []byte) []byte {
 	return []byte(fmt.Sprintf("val:%s!!%d", proTxHashStr, 0))
 }
 
-func MakeThresholdPublicKeyChangeTx(thresholdPublicKey pc.PublicKey) []byte {
+func MakeThresholdPublicKeyChangeTx(thresholdPublicKey cryptoproto.PublicKey) []byte {
 	pk, err := cryptoenc.PubKeyFromProto(thresholdPublicKey)
 	if err != nil {
 		panic(err)
@@ -321,7 +318,6 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
 	}
-
 	return app.updateValidatorSet(types.UpdateValidator(proTxHash, pubkey, power))
 }
 
@@ -337,6 +333,7 @@ func (app *PersistentKVStoreApplication) execThresholdPublicKeyTx(tx []byte) typ
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Threshold Pubkey (%s) is invalid base64", string(tx))}
 	}
+	key := []byte("val:" + string(pubkey.Bytes()))
 
 	return app.updateThresholdPublicKey(types.UpdateThresholdPublicKey(pubkey))
 }

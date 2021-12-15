@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -28,7 +28,7 @@ go-routine state, and the node's WAL and config information. This aggregated dat
 is packaged into a compressed archive.
 
 Example:
-$ tendermint debug 34255 /path/to/tm-debug.zip`,
+$ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 	Args: cobra.ExactArgs(2),
 	RunE: killCmdHandler,
 }
@@ -44,15 +44,15 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create new http client: %w", err)
 	}
 
 	home := viper.GetString(cli.HomeFlag)
-	conf := cfg.DefaultConfig()
+	conf := config.DefaultConfig()
 	conf = conf.SetRoot(home)
-	cfg.EnsureRoot(conf.RootDir)
+	config.EnsureRoot(conf.RootDir)
 
 	// Create a temporary directory which will contain all the state dumps and
 	// relevant files and directories that will be compressed into a file.
@@ -79,7 +79,11 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 
 	logger.Info("copying node WAL...")
 	if err := copyWAL(conf, tmpDir); err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return err
+		}
+
+		logger.Info("node WAL does not exist; continuing...")
 	}
 
 	logger.Info("copying node configuration...")

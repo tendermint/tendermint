@@ -126,10 +126,10 @@ message Commit {
   int64   height                    = 1;
   int32   round                     = 2;
   BlockID block_id                  = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
-  StateID state_id                  = 4 [(gogoproto.nullable) = false, (gogoproto.customname) = "StateID"];
-  bytes   quorum_hash               = 6;
-  bytes   threshold_block_signature = 7;
-  bytes   threshold_state_signature = 8;
+  StateID state_id                  = 100 [(gogoproto.nullable) = false, (gogoproto.customname) = "StateID"];
+  bytes   quorum_hash               = 101;
+  bytes   threshold_block_signature = 102;
+  bytes   threshold_state_signature = 103;
 }
 
 message Proposal {

@@ -108,7 +108,19 @@ type Symmetric interface {
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
 }
 
+
 // HexStringer ...
 type HexStringer interface {
 	HexString() string
+
+// If a new key type implements batch verification,
+// the key type must be registered in github.com/tendermint/tendermint/crypto/batch
+type BatchVerifier interface {
+	// Add appends an entry into the BatchVerifier.
+	Add(key PubKey, message, signature []byte) error
+	// Verify verifies all the entries in the BatchVerifier, and returns
+	// if every signature in the batch is valid, and a vector of bools
+	// indicating the verification status of each signature (in the order
+	// that signatures were added to the batch).
+	Verify() (bool, []bool)
 }

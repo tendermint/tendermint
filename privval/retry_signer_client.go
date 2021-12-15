@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -49,9 +50,9 @@ func (sc *RetrySignerClient) Ping() error {
 	return sc.next.Ping()
 }
 
-func (sc *RetrySignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) *types.Validator {
-	pubKey, _ := sc.GetPubKey(quorumHash)
-	proTxHash, _ := sc.GetProTxHash()
+func (sc *RetrySignerClient) ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *types.Validator {
+	pubKey, _ := sc.GetPubKey(ctx, quorumHash)
+	proTxHash, _ := sc.GetProTxHash(ctx)
 	if len(proTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
@@ -62,13 +63,13 @@ func (sc *RetrySignerClient) ExtractIntoValidator(quorumHash crypto.QuorumHash) 
 	}
 }
 
-func (sc *RetrySignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+func (sc *RetrySignerClient) GetPubKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	var (
 		pk  crypto.PubKey
 		err error
 	)
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		pk, err = sc.next.GetPubKey(quorumHash)
+		pk, err = sc.next.GetPubKey(ctx, quorumHash)
 		if err == nil {
 			return pk, nil
 		}
@@ -81,13 +82,13 @@ func (sc *RetrySignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.Pub
 	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
 }
 
-func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
+func (sc *RetrySignerClient) GetProTxHash(ctx context.Context) (crypto.ProTxHash, error) {
 	var (
 		proTxHash crypto.ProTxHash
 		err       error
 	)
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		proTxHash, err = sc.next.GetProTxHash()
+		proTxHash, err = sc.next.GetProTxHash(ctx)
 		if len(proTxHash) != crypto.ProTxHashSize {
 			return nil, fmt.Errorf("retrySignerClient proTxHash is invalid size")
 		}
@@ -103,17 +104,19 @@ func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	return nil, fmt.Errorf("exhausted all attempts to get protxhash: %w", err)
 }
 
-func (sc *RetrySignerClient) GetFirstQuorumHash() (crypto.QuorumHash, error) {
+func (sc *RetrySignerClient) GetFirstQuorumHash(context context.Context) (crypto.QuorumHash, error) {
 	return nil, errors.New("getFirstQuorumHash should not be called on a signer client")
 }
 
-func (sc *RetrySignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+func (sc *RetrySignerClient) GetThresholdPublicKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	var (
 		pk  crypto.PubKey
 		err error
 	)
+
+	t := time.NewTimer(sc.timeout)
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		pk, err = sc.next.GetThresholdPublicKey(quorumHash)
+		pk, err = sc.next.GetThresholdPublicKey(ctx, quorumHash)
 		if err == nil {
 			return pk, nil
 		}
@@ -121,20 +124,25 @@ func (sc *RetrySignerClient) GetThresholdPublicKey(quorumHash crypto.QuorumHash)
 		if _, ok := err.(*RemoteSignerError); ok {
 			return nil, err
 		}
-		time.Sleep(sc.timeout)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-t.C:
+			t.Reset(sc.timeout)
+		}
 	}
 	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
 }
-func (sc *RetrySignerClient) GetHeight(quorumHash crypto.QuorumHash) (int64, error) {
+func (sc *RetrySignerClient) GetHeight(ctx context.Context, quorumHash crypto.QuorumHash) (int64, error) {
 	return 0, fmt.Errorf("getHeight should not be called on asigner client %s", quorumHash.String())
 }
 
 func (sc *RetrySignerClient) SignVote(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
 	vote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignVote(chainID, quorumType, quorumHash, vote, stateID, nil)
+		err = sc.next.SignVote(ctx, chainID, quorumType, quorumHash, vote, stateID, nil)
 		if err == nil {
 			return nil
 		}
@@ -148,12 +156,12 @@ func (sc *RetrySignerClient) SignVote(
 }
 
 func (sc *RetrySignerClient) SignProposal(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal,
+	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal,
 ) ([]byte, error) {
 	var signID []byte
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		signID, err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
+		signID, err = sc.next.SignProposal(ctx, chainID, quorumType, quorumHash, proposal)
 		if err == nil {
 			return signID, nil
 		}
@@ -167,11 +175,11 @@ func (sc *RetrySignerClient) SignProposal(
 }
 
 func (sc *RetrySignerClient) UpdatePrivateKey(
-	privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64,
+	ctx context.Context, privateKey crypto.PrivKey, quorumHash crypto.QuorumHash, thresholdPublicKey crypto.PubKey, height int64,
 ) {
 
 }
 
-func (sc *RetrySignerClient) GetPrivateKey(quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+func (sc *RetrySignerClient) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return nil, nil
 }

@@ -8,50 +8,46 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 // ResetAllCmd removes the database of this Tendermint core
 // instance.
 var ResetAllCmd = &cobra.Command{
-	Use:     "unsafe-reset-all",
-	Aliases: []string{"unsafe_reset_all"},
-	Short:   "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
-	Run:     resetAll,
-	PreRun:  deprecateSnakeCase,
+	Use:   "unsafe-reset-all",
+	Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
+	RunE:  resetAll,
 }
 
 var keepAddrBook bool
 
 func init() {
-	ResetAllCmd.Flags().
-		BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
+	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
 }
 
 // ResetPrivValidatorCmd resets the private validator files.
 var ResetPrivValidatorCmd = &cobra.Command{
-	Use:     "unsafe-reset-priv-validator",
-	Aliases: []string{"unsafe_reset_priv_validator"},
-	Short:   "(unsafe) Reset this node's validator to genesis state",
-	Run:     resetPrivValidator,
-	PreRun:  deprecateSnakeCase,
+	Use:   "unsafe-reset-priv-validator",
+	Short: "(unsafe) Reset this node's validator to genesis state",
+	RunE:  resetPrivValidator,
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
-		config.PrivValidatorStateFile(), logger)
+func resetAll(cmd *cobra.Command, args []string) error {
+	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
+		config.PrivValidator.StateFile(), logger)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
+func resetPrivValidator(cmd *cobra.Command, args []string) error {
+	return resetFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile(), logger)
 }
 
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
-func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) {
+func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if keepAddrBook {
 		logger.Info("The address book remains intact")
 	} else {
@@ -66,21 +62,28 @@ func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logg
 	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
 		logger.Error("unable to recreate dbDir", "err", err)
 	}
-	resetFilePV(privValKeyFile, privValStateFile, logger)
+	return resetFilePV(privValKeyFile, privValStateFile, logger)
 }
 
-func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
+func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if _, err := os.Stat(privValKeyFile); err == nil {
-		pv := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
+		pv, err := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
+		if err != nil {
+			return err
+		}
 		pv.Reset()
 		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
 		pv := privval.GenFilePV(privValKeyFile, privValStateFile)
+		if err != nil {
+			return err
+		}
 		pv.Save()
 		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	}
+	return nil
 }
 
 func removeAddrBook(addrBookFile string, logger log.Logger) {
