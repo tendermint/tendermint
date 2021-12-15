@@ -96,4 +96,5 @@ jobs:
             go.sum
       - run: make install
       - run: test/persist/test_failure_indices.sh
+        shell: bash
         # if: "env.GIT_DIFF != ''"
