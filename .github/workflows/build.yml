@@ -84,4 +84,13 @@ jobs:
   test_persistence:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2.4.0
+      - uses: technote-space/get-diff-action@v5
+        with:
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
+      - run: make install
       - run: test/persist/test_failure_indices.sh
+        # if: "env.GIT_DIFF != ''"
