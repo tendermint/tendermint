@@ -1,4 +1,4 @@
-# RFC 008 : Deterministic Proto Byte Serialization
+# RFC 007 : Deterministic Proto Byte Serialization
 
 ## Changelog
 
@@ -72,18 +72,27 @@ by applying simple rules to the serialized bytes. Re-ordering the serialized byt
 would allow Tendermint to produce a canonical byte representation without having to
 simultaneously maintain a custom proto marshaller.
 
-This could be implemented as a function in many languages that performed the following steps:
+This could be implemented as a function in many languages that performed the following when hashing:
 
-1. Set our proto decoder package to remove unknown fields on deserialization.
-2. Reordered all fields to be in tag-sorted order.
-3. Reordered all `repeated` sub-fields to be in lexicographically sorted order.
+1. Reordered all fields to be in tag-sorted order.
+2. Does not add any of the data from unknown fields into the type to hash.
+3. Reordered all non-scalar `repeated` sub-fields to be in lexicographically sorted order.
 4. Deleted all default values from the byte representation.
 
-This would still require that messages never unmarshal data structures with unknown fields.
-This can be accomplished by defining adding fields to a structure that needs canonicalization
-as a breaking changes within our semantic versioning and disallowing it within a major version.
-I.e., two versions of Tendermint that have different fields in proto messages which require
-canonical byte representation will not be able to interoperate.
+Tendermint should not run into a case where it needs to verify the integrity of 
+data with unknown fields for the following reasons:
+
+When a process is checking hash equality, it knows the concrete data that it is trying to
+compare to the hash. The purpose of checking hash equality within Tendermint is to ensure that
+the data that process knows about matches the data that the network agreed on. There should
+therefore not be a case where a process is checking hash equality using data that it did not expect
+to receive. What the data represent may be opaque to the process, such as when checking the
+hashes of transactions in a block, _but the validator still expected to receive this data_,
+despite not understanding what their internal structure is. 
+
+The same reasoning applies for signature verification within Tendermint. Processes
+verify that a digital signature signed over a set of bytes by locally reconstructing the 
+data structure that the digital signature signed.
 
 A prototype implementation by @creachadair of this can be found in [the wirepb repo][wire-pb].
 This could be implemented in multiple languages more simply than ensuring that there are
