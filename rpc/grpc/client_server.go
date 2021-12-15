@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/tendermint/tendermint/internal/rpc/core"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -28,7 +29,10 @@ func StartGRPCServer(env *core.Environment, ln net.Listener) error {
 // StartGRPCClient dials the gRPC server using protoAddr and returns a new
 // BroadcastAPIClient.
 func StartGRPCClient(protoAddr string) BroadcastAPIClient {
-	conn, err := grpc.Dial(protoAddr, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
+	conn, err := grpc.Dial(protoAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(dialerFunc),
+	)
 	if err != nil {
 		panic(err)
 	}

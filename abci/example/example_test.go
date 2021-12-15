@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -147,7 +148,10 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 	})
 
 	// Connect to the socket
-	conn, err := grpc.Dial(socket, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
+	conn, err := grpc.Dial(socket,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(dialerFunc),
+	)
 	if err != nil {
 		t.Fatalf("Error dialing GRPC server: %v", err.Error())
 	}
