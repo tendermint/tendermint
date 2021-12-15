@@ -328,7 +328,6 @@ func (hr heightResult) isComplete() bool {
 // until after the genesis time has passed. The test sets the genesis time in the
 // future and then ensures that the observed validator waits to propose a block.
 func TestProposerWaitsForGenesisTime(t *testing.T) {
-	t.Skip()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -359,7 +358,6 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 // and then verifies that the observed validator waits until after the block time
 // of height 4 to propose a block at height 5.
 func TestProposerWaitsForPreviousBlock(t *testing.T) {
-	t.Skip()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	initialTime := time.Now().Add(time.Millisecond * 50)

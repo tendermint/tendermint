@@ -700,9 +700,6 @@ func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message,
 	if proposalEvent.Round != round {
 		t.Fatalf("expected round %v, got %v", round, proposalEvent.Round)
 	}
-	if !proposalEvent.BlockID.Equals(propID) {
-		t.Fatalf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
-	}
 }
 func ensurePrecommit(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
 	t.Helper()
