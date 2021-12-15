@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
@@ -132,12 +134,20 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 
+	if !os.FileExists(filepath.Join(cfg.DBDir(), "blockstore.db")) {
+		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
+	}
+
 	// Get BlockStore
 	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
+
+	if !os.FileExists(filepath.Join(cfg.DBDir(), "state.db")) {
+		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
+	}
 
 	// Get StateStore
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())

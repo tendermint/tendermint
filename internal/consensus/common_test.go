@@ -21,15 +21,14 @@ import (
 	"github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -440,9 +439,9 @@ func newStateWithConfigAndBlockStore(
 	blockStore *store.BlockStore,
 ) *State {
 	// one for mempool, one for consensus
-	mtx := new(tmsync.Mutex)
-	proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
-	proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
+	mtx := new(sync.Mutex)
+	proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
 
 	// Make Mempool
 

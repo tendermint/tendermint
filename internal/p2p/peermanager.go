@@ -56,8 +56,6 @@ type PeerUpdate struct {
 type PeerUpdates struct {
 	routerUpdatesCh  chan PeerUpdate
 	reactorUpdatesCh chan PeerUpdate
-	closeCh          chan struct{}
-	closeOnce        sync.Once
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
@@ -67,7 +65,6 @@ func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
 		reactorUpdatesCh: updatesCh,
 		routerUpdatesCh:  make(chan PeerUpdate, buf),
-		closeCh:          make(chan struct{}),
 	}
 }
 
@@ -78,26 +75,11 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
 
 // SendUpdate pushes information about a peer into the routing layer,
 // presumably from a peer.
-func (pu *PeerUpdates) SendUpdate(update PeerUpdate) {
+func (pu *PeerUpdates) SendUpdate(ctx context.Context, update PeerUpdate) {
 	select {
-	case <-pu.closeCh:
+	case <-ctx.Done():
 	case pu.routerUpdatesCh <- update:
 	}
-}
-
-// Close closes the peer updates subscription.
-func (pu *PeerUpdates) Close() {
-	pu.closeOnce.Do(func() {
-		// NOTE: We don't close updatesCh since multiple goroutines may be
-		// sending on it. The PeerManager senders will select on closeCh as well
-		// to avoid blocking on a closed subscription.
-		close(pu.closeCh)
-	})
-}
-
-// Done returns a channel that is closed when the subscription is closed.
-func (pu *PeerUpdates) Done() <-chan struct{} {
-	return pu.closeCh
 }
 
 // PeerManagerOptions specifies options for a PeerManager.
@@ -276,8 +258,6 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
-	closeCh    chan struct{} // signal channel for Close()
-	closeOnce  sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -312,7 +292,6 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
-		closeCh:    make(chan struct{}),
 
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
@@ -552,7 +531,6 @@ func (m *PeerManager) DialFailed(ctx context.Context, address NodeAddress) error
 			select {
 			case <-timer.C:
 				m.dialWaker.Wake()
-			case <-m.closeCh:
 			case <-ctx.Done():
 			}
 		}()
@@ -696,13 +674,13 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages.
-func (m *PeerManager) Ready(peerID types.NodeID) {
+func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	if m.connected[peerID] {
 		m.ready[peerID] = true
-		m.broadcast(PeerUpdate{
+		m.broadcast(ctx, PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusUp,
 		})
@@ -763,7 +741,7 @@ func (m *PeerManager) TryEvictNext() (types.NodeID, error) {
 
 // Disconnected unmarks a peer as connected, allowing it to be dialed or
 // accepted again as appropriate.
-func (m *PeerManager) Disconnected(peerID types.NodeID) {
+func (m *PeerManager) Disconnected(ctx context.Context, peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -776,7 +754,7 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	delete(m.ready, peerID)
 
 	if ready {
-		m.broadcast(PeerUpdate{
+		m.broadcast(ctx, PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusDown,
 		})
@@ -858,39 +836,35 @@ func (m *PeerManager) Subscribe(ctx context.Context) *PeerUpdates {
 // otherwise the PeerManager will halt.
 func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.subscriptions[peerUpdates] = peerUpdates
-	m.mtx.Unlock()
 
 	go func() {
 		for {
 			select {
-			case <-peerUpdates.closeCh:
-				return
-			case <-m.closeCh:
-				return
 			case <-ctx.Done():
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
-				m.processPeerEvent(pu)
+				m.processPeerEvent(ctx, pu)
 			}
 		}
 	}()
 
 	go func() {
-		select {
-		case <-peerUpdates.Done():
-			m.mtx.Lock()
-			delete(m.subscriptions, peerUpdates)
-			m.mtx.Unlock()
-		case <-m.closeCh:
-		case <-ctx.Done():
-		}
+		<-ctx.Done()
+		m.mtx.Lock()
+		defer m.mtx.Unlock()
+		delete(m.subscriptions, peerUpdates)
 	}()
 }
 
-func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
+func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	if ctx.Err() != nil {
+		return
+	}
 
 	if _, ok := m.store.peers[pu.NodeID]; !ok {
 		m.store.peers[pu.NodeID] = &peerInfo{}
@@ -911,27 +885,17 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 //
 // FIXME: Consider using an internal channel to buffer updates while also
 // maintaining order if this is a problem.
-func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
+func (m *PeerManager) broadcast(ctx context.Context, peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
-		// We have to check closeCh separately first, otherwise there's a 50%
-		// chance the second select will send on a closed subscription.
-		select {
-		case <-sub.closeCh:
-			continue
-		default:
+		if ctx.Err() != nil {
+			return
 		}
 		select {
+		case <-ctx.Done():
+			return
 		case sub.reactorUpdatesCh <- peerUpdate:
-		case <-sub.closeCh:
 		}
 	}
-}
-
-// Close closes the peer manager, releasing resources (i.e. goroutines).
-func (m *PeerManager) Close() {
-	m.closeOnce.Do(func() {
-		close(m.closeCh)
-	})
 }
 
 // Addresses returns all known addresses for a peer, primarily for testing.

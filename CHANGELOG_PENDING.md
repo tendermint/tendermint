@@ -27,12 +27,15 @@ Special thanks to external contributors on this release:
 
 - Go API
 
+  - [libs/pubsub] \#7451 Internalize the pubsub packages. (@creachadair)
+  - [libs/sync] \#7450 Internalize and remove the library. (@creachadair)
+  - [libs/async] \#7449 Move library to internal. (@creachadair)
   - [pubsub] \#7231 Remove unbuffered subscriptions and rework the Subscription interface. (@creachadair)
   - [eventbus] \#7231 Move the EventBus type to the internal/eventbus package. (@creachadair)
   - [blocksync] \#7046 Remove v2 implementation of the blocksync service and recactor, which was disabled in the previous release. (@tychoish)
   - [p2p] \#7064 Remove WDRR queue implementation. (@tychoish)
   - [config] \#7169 `WriteConfigFile` now returns an error. (@tychoish)
-  - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychosih)
+  - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychoish)
 
 
 - Blockchain Protocol
@@ -44,6 +47,7 @@ Special thanks to external contributors on this release:
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 
 ### IMPROVEMENTS
+- [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 

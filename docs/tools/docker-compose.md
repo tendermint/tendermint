@@ -169,7 +169,7 @@ Override the [command](https://github.com/tendermint/tendermint/blob/master/netw
         ipv4_address: 192.167.10.2
 ```
 
-Similarly do for node1, node2 and node3 then [run testnet](https://github.com/tendermint/tendermint/blob/master/docs/networks/docker-compose.md#run-a-testnet)
+Similarly do for node1, node2 and node3 then [run testnet](#run-a-testnet).
 
 ## Logging
 

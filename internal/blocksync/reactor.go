@@ -2,9 +2,11 @@ package blocksync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/consensus"
@@ -13,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/types"
 )
@@ -74,7 +75,7 @@ type Reactor struct {
 	store       *store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
-	blockSync   *tmsync.AtomicBool
+	blockSync   *atomicBool
 
 	blockSyncCh *p2p.Channel
 	// blockSyncOutBridgeCh defines a channel that acts as a bridge between sending Envelope
@@ -86,7 +87,6 @@ type Reactor struct {
 	// blockSyncCh.Out.
 	blockSyncOutBridgeCh chan p2p.Envelope
 	peerUpdates          *p2p.PeerUpdates
-	closeCh              chan struct{}
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
@@ -132,13 +132,12 @@ func NewReactor(
 		store:                store,
 		pool:                 NewBlockPool(logger, startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
-		blockSync:            tmsync.NewBool(blockSync),
+		blockSync:            newAtomicBool(blockSync),
 		requestsCh:           requestsCh,
 		errorsCh:             errorsCh,
 		blockSyncCh:          blockSyncCh,
 		blockSyncOutBridgeCh: make(chan p2p.Envelope),
 		peerUpdates:          peerUpdates,
-		closeCh:              make(chan struct{}),
 		metrics:              metrics,
 		syncStartTime:        time.Time{},
 	}
@@ -167,6 +166,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processBlockSyncCh(ctx)
+	go r.processBlockSyncBridge(ctx)
 	go r.processPeerUpdates(ctx)
 
 	return nil
@@ -183,50 +183,42 @@ func (r *Reactor) OnStop() {
 
 	// wait for the poolRoutine and requestRoutine goroutines to gracefully exit
 	r.poolWG.Wait()
-
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
-
-	<-r.peerUpdates.Done()
 }
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
 // Otherwise, we'll respond saying we do not have it.
-func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID types.NodeID) {
+func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID) error {
 	block := r.store.LoadBlock(msg.Height)
 	if block != nil {
 		blockProto, err := block.ToProto()
 		if err != nil {
 			r.logger.Error("failed to convert msg to protobuf", "err", err)
-			return
+			return err
 		}
 
-		r.blockSyncCh.Out <- p2p.Envelope{
+		return r.blockSyncCh.Send(ctx, p2p.Envelope{
 			To:      peerID,
 			Message: &bcproto.BlockResponse{Block: blockProto},
-		}
-
-		return
+		})
 	}
 
 	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
-	r.blockSyncCh.Out <- p2p.Envelope{
+
+	return r.blockSyncCh.Send(ctx, p2p.Envelope{
 		To:      peerID,
 		Message: &bcproto.NoBlockResponse{Height: msg.Height},
-	}
+	})
 }
 
 // handleBlockSyncMessage handles envelopes sent from peers on the
 // BlockSyncChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleBlockSyncMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleBlockSyncMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
 	case *bcproto.BlockRequest:
-		r.respondToPeer(msg, envelope.From)
-
+		return r.respondToPeer(ctx, msg, envelope.From)
 	case *bcproto.BlockResponse:
 		block, err := types.BlockFromProto(msg.Block)
 		if err != nil {
@@ -237,14 +229,13 @@ func (r *Reactor) handleBlockSyncMessage(envelope p2p.Envelope) error {
 		r.pool.AddBlock(envelope.From, block, block.Size())
 
 	case *bcproto.StatusRequest:
-		r.blockSyncCh.Out <- p2p.Envelope{
+		return r.blockSyncCh.Send(ctx, p2p.Envelope{
 			To: envelope.From,
 			Message: &bcproto.StatusResponse{
 				Height: r.store.Height(),
 				Base:   r.store.Base(),
 			},
-		}
-
+		})
 	case *bcproto.StatusResponse:
 		r.pool.SetPeerRange(envelope.From, msg.Base, msg.Height)
 
@@ -261,7 +252,7 @@ func (r *Reactor) handleBlockSyncMessage(envelope p2p.Envelope) error {
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -277,7 +268,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 
 	switch chID {
 	case BlockSyncChannel:
-		err = r.handleBlockSyncMessage(envelope)
+		err = r.handleBlockSyncMessage(ctx, envelope)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
@@ -292,26 +283,34 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // When the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processBlockSyncCh(ctx context.Context) {
+	iter := r.blockSyncCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(ctx, r.blockSyncCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
+			r.logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
+			if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
+			}
+		}
+	}
+}
+
+func (r *Reactor) processBlockSyncBridge(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case envelope := <-r.blockSyncCh.In:
-			if err := r.handleMessage(r.blockSyncCh.ID, envelope); err != nil {
-				r.logger.Error("failed to process message", "ch_id", r.blockSyncCh.ID, "envelope", envelope, "err", err)
-				r.blockSyncCh.Error <- p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}
-			}
-
 		case envelope := <-r.blockSyncOutBridgeCh:
-			r.blockSyncCh.Out <- envelope
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on block sync channel; closing...")
-			return
-
+			if err := r.blockSyncCh.Send(ctx, envelope); err != nil {
+				return
+			}
 		}
 	}
 }
@@ -345,18 +344,13 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
+			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
@@ -391,24 +385,20 @@ func (r *Reactor) requestRoutine(ctx context.Context) {
 
 	for {
 		select {
-		case <-r.closeCh:
-			return
-
 		case <-ctx.Done():
 			return
-
 		case request := <-r.requestsCh:
 			r.blockSyncOutBridgeCh <- p2p.Envelope{
 				To:      request.PeerID,
 				Message: &bcproto.BlockRequest{Height: request.Height},
 			}
-
 		case pErr := <-r.errorsCh:
-			r.blockSyncCh.Error <- p2p.PeerError{
+			if err := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 				NodeID: pErr.peerID,
 				Err:    pErr.err,
+			}); err != nil {
+				return
 			}
-
 		case <-statusUpdateTicker.C:
 			r.poolWG.Add(1)
 
@@ -547,16 +537,20 @@ FOR_LOOP:
 				// NOTE: We've already removed the peer's request, but we still need
 				// to clean up the rest.
 				peerID := r.pool.RedoRequest(first.Height)
-				r.blockSyncCh.Error <- p2p.PeerError{
+				if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 					NodeID: peerID,
 					Err:    err,
+				}); serr != nil {
+					break FOR_LOOP
 				}
 
 				peerID2 := r.pool.RedoRequest(second.Height)
 				if peerID2 != peerID {
-					r.blockSyncCh.Error <- p2p.PeerError{
+					if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 						NodeID: peerID2,
 						Err:    err,
+					}); serr != nil {
+						break FOR_LOOP
 					}
 				}
 
@@ -598,8 +592,6 @@ FOR_LOOP:
 
 		case <-ctx.Done():
 			break FOR_LOOP
-		case <-r.closeCh:
-			break FOR_LOOP
 		case <-r.pool.exitedCh:
 			break FOR_LOOP
 		}
@@ -633,3 +625,25 @@ func (r *Reactor) GetRemainingSyncTime() time.Duration {
 
 	return time.Duration(int64(remain * float64(time.Second)))
 }
+
+// atomicBool is an atomic Boolean, safe for concurrent use by multiple
+// goroutines.
+type atomicBool int32
+
+// newAtomicBool creates an atomicBool with given initial value.
+func newAtomicBool(ok bool) *atomicBool {
+	ab := new(atomicBool)
+	if ok {
+		ab.Set()
+	}
+	return ab
+}
+
+// Set sets the Boolean to true.
+func (ab *atomicBool) Set() { atomic.StoreInt32((*int32)(ab), 1) }
+
+// UnSet sets the Boolean to false.
+func (ab *atomicBool) UnSet() { atomic.StoreInt32((*int32)(ab), 0) }
+
+// IsSet returns whether the Boolean is true.
+func (ab *atomicBool) IsSet() bool { return atomic.LoadInt32((*int32)(ab))&1 == 1 }

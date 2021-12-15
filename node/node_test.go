@@ -20,15 +20,16 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -562,8 +563,9 @@ func TestNodeSetEventSink(t *testing.T) {
 
 	logger := log.TestingLogger()
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
-		eventBus, err := createAndStartEventBus(ctx, logger)
-		require.NoError(t, err)
+		eventBus := eventbus.NewDefault(logger.With("module", "events"))
+		require.NoError(t, eventBus.Start(ctx))
+
 		t.Cleanup(eventBus.Wait)
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)

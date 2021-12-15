@@ -18,16 +18,32 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+type channelInternal struct {
+	In    chan p2p.Envelope
+	Out   chan p2p.Envelope
+	Error chan p2p.PeerError
+}
+
+func testChannel(size int) (*channelInternal, *p2p.Channel) {
+	in := &channelInternal{
+		In:    make(chan p2p.Envelope, size),
+		Out:   make(chan p2p.Envelope, size),
+		Error: make(chan p2p.PeerError, size),
+	}
+	return in, p2p.NewChannel(0, nil, in.In, in.Out, in.Error)
+}
+
 func TestDispatcherBasic(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 	const numPeers = 5
 
-	ch := make(chan p2p.Envelope, 100)
-	closeCh := make(chan struct{})
-	defer close(closeCh)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	chans, ch := testChannel(100)
 
 	d := NewDispatcher(ch)
-	go handleRequests(t, d, ch, closeCh)
+	go handleRequests(ctx, t, d, chans.Out)
 
 	peers := createPeerSet(numPeers)
 	wg := sync.WaitGroup{}
@@ -52,19 +68,24 @@ func TestDispatcherBasic(t *testing.T) {
 
 func TestDispatcherReturnsNoBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
-	ch := make(chan p2p.Envelope, 100)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	chans, ch := testChannel(100)
+
 	d := NewDispatcher(ch)
-	doneCh := make(chan struct{})
+
 	peer := factory.NodeID("a")
 
 	go func() {
-		<-ch
+		<-chans.Out
 		require.NoError(t, d.Respond(nil, peer))
-		close(doneCh)
+		cancel()
 	}()
 
-	lb, err := d.LightBlock(context.Background(), 1, peer)
-	<-doneCh
+	lb, err := d.LightBlock(ctx, 1, peer)
+	<-ctx.Done()
 
 	require.Nil(t, lb)
 	require.Nil(t, err)
@@ -72,11 +93,15 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 
 func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
-	ch := make(chan p2p.Envelope, 100)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, ch := testChannel(100)
 	d := NewDispatcher(ch)
 	peer := factory.NodeID("a")
 
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Millisecond)
 	defer cancelFunc()
 
 	lb, err := d.LightBlock(ctx, 1, peer)
@@ -89,13 +114,15 @@ func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 func TestDispatcherProviders(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	ch := make(chan p2p.Envelope, 100)
 	chainID := "test-chain"
-	closeCh := make(chan struct{})
-	defer close(closeCh)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	chans, ch := testChannel(100)
 
 	d := NewDispatcher(ch)
-	go handleRequests(t, d, ch, closeCh)
+	go handleRequests(ctx, t, d, chans.Out)
 
 	peers := createPeerSet(5)
 	providers := make([]*BlockProvider, len(peers))
@@ -270,7 +297,7 @@ func TestPeerListRemove(t *testing.T) {
 
 // handleRequests is a helper function usually run in a separate go routine to
 // imitate the expected responses of the reactor wired to the dispatcher
-func handleRequests(t *testing.T, d *Dispatcher, ch chan p2p.Envelope, closeCh chan struct{}) {
+func handleRequests(ctx context.Context, t *testing.T, d *Dispatcher, ch chan p2p.Envelope) {
 	t.Helper()
 	for {
 		select {
@@ -280,7 +307,7 @@ func handleRequests(t *testing.T, d *Dispatcher, ch chan p2p.Envelope, closeCh c
 			resp := mockLBResp(t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
 			require.NoError(t, d.Respond(block, resp.peer))
-		case <-closeCh:
+		case <-ctx.Done():
 			return
 		}
 	}

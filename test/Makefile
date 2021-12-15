@@ -3,6 +3,8 @@
 ########################################
 ### Testing
 
+PACKAGES=$(shell go list ./...)
+
 BINDIR ?= $(GOPATH)/bin
 
 ## required to be run first by most tests

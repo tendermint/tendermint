@@ -79,20 +79,20 @@ func (_m *Connection) LocalEndpoint() p2p.Endpoint {
 	return r0
 }
 
-// ReceiveMessage provides a mock function with given fields:
-func (_m *Connection) ReceiveMessage() (conn.ChannelID, []byte, error) {
-	ret := _m.Called()
+// ReceiveMessage provides a mock function with given fields: _a0
+func (_m *Connection) ReceiveMessage(_a0 context.Context) (conn.ChannelID, []byte, error) {
+	ret := _m.Called(_a0)
 
 	var r0 conn.ChannelID
-	if rf, ok := ret.Get(0).(func() conn.ChannelID); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) conn.ChannelID); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(conn.ChannelID)
 	}
 
 	var r1 []byte
-	if rf, ok := ret.Get(1).(func() []byte); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) []byte); ok {
+		r1 = rf(_a0)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).([]byte)
@@ -100,8 +100,8 @@ func (_m *Connection) ReceiveMessage() (conn.ChannelID, []byte, error) {
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func() error); ok {
-		r2 = rf()
+	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
+		r2 = rf(_a0)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -123,13 +123,13 @@ func (_m *Connection) RemoteEndpoint() p2p.Endpoint {
 	return r0
 }
 
-// SendMessage provides a mock function with given fields: _a0, _a1
-func (_m *Connection) SendMessage(_a0 conn.ChannelID, _a1 []byte) error {
-	ret := _m.Called(_a0, _a1)
+// SendMessage provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Connection) SendMessage(_a0 context.Context, _a1 conn.ChannelID, _a2 []byte) error {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(conn.ChannelID, []byte) error); ok {
-		r0 = rf(_a0, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, conn.ChannelID, []byte) error); ok {
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -20,7 +20,7 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 
 	for i := 0; i < enqueueLength; i++ {
 		pqueue.enqueue() <- Envelope{
-			channelID: 0x01,
+			ChannelID: 0x01,
 			Message:   &testMessage{Value: "foo"}, // 5 bytes
 		}
 	}

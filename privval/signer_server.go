@@ -3,8 +3,8 @@ package privval
 import (
 	"context"
 	"io"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/service"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -24,7 +24,7 @@ type SignerServer struct {
 	chainID  string
 	privVal  types.PrivValidator
 
-	handlerMtx               tmsync.Mutex
+	handlerMtx               sync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc
 }
 

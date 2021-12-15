@@ -22,7 +22,6 @@ func TestPeerScoring(t *testing.T) {
 	db := dbm.NewMemDB()
 	peerManager, err := NewPeerManager(selfID, db, PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	// create a fake node
 	id := types.NodeID(strings.Repeat("a1", 20))
@@ -39,7 +38,7 @@ func TestPeerScoring(t *testing.T) {
 
 		// add a bunch of good status updates and watch things increase.
 		for i := 1; i < 10; i++ {
-			peerManager.processPeerEvent(PeerUpdate{
+			peerManager.processPeerEvent(ctx, PeerUpdate{
 				NodeID: id,
 				Status: PeerStatusGood,
 			})
@@ -48,7 +47,7 @@ func TestPeerScoring(t *testing.T) {
 
 		// watch the corresponding decreases respond to update
 		for i := 10; i == 0; i-- {
-			peerManager.processPeerEvent(PeerUpdate{
+			peerManager.processPeerEvent(ctx, PeerUpdate{
 				NodeID: id,
 				Status: PeerStatusBad,
 			})
@@ -58,8 +57,7 @@ func TestPeerScoring(t *testing.T) {
 	t.Run("AsynchronousIncrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
 		pu := peerManager.Subscribe(ctx)
-		defer pu.Close()
-		pu.SendUpdate(PeerUpdate{
+		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusGood,
 		})
@@ -72,8 +70,7 @@ func TestPeerScoring(t *testing.T) {
 	t.Run("AsynchronousDecrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
 		pu := peerManager.Subscribe(ctx)
-		defer pu.Close()
-		pu.SendUpdate(PeerUpdate{
+		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusBad,
 		})

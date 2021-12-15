@@ -2,9 +2,10 @@ package abciclient
 
 import (
 	"context"
+	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -15,7 +16,7 @@ import (
 type localClient struct {
 	service.BaseService
 
-	mtx *tmsync.Mutex
+	mtx *sync.Mutex
 	types.Application
 	Callback
 }
@@ -26,15 +27,15 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
+func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = new(tmsync.Mutex)
+		mtx = new(sync.Mutex)
 	}
 	cli := &localClient{
 		mtx:         mtx,
 		Application: app,
 	}
-	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "localClient", cli)
 	return cli
 }
 

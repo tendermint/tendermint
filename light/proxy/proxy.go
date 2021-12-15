@@ -6,8 +6,8 @@ import (
 	"net"
 	"net/http"
 
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -40,7 +40,7 @@ func NewProxy(
 	return &Proxy{
 		Addr:   listenAddr,
 		Config: config,
-		Client: lrpc.NewClient(rpcClient, lightClient, opts...),
+		Client: lrpc.NewClient(logger, rpcClient, lightClient, opts...),
 		Logger: logger,
 	}, nil
 }

@@ -16,7 +16,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -68,9 +67,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			blockStore := store.NewBlockStore(blockDB)
 
 			// one for mempool, one for consensus
-			mtx := new(tmsync.Mutex)
-			proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
-			proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
+			mtx := new(sync.Mutex)
+			proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
+			proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
 
 			// Make Mempool
 			mempool := mempool.NewTxMempool(
@@ -141,20 +140,22 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for _, ps := range bzReactor.peers {
 				if i < len(bzReactor.peers)/2 {
 					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote1, "peer", ps.peerID)
-					bzReactor.voteCh.Out <- p2p.Envelope{
-						To: ps.peerID,
-						Message: &tmcons.Vote{
-							Vote: prevote1.ToProto(),
-						},
-					}
+					require.NoError(t, bzReactor.voteCh.Send(ctx,
+						p2p.Envelope{
+							To: ps.peerID,
+							Message: &tmcons.Vote{
+								Vote: prevote1.ToProto(),
+							},
+						}))
 				} else {
 					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote2, "peer", ps.peerID)
-					bzReactor.voteCh.Out <- p2p.Envelope{
-						To: ps.peerID,
-						Message: &tmcons.Vote{
-							Vote: prevote2.ToProto(),
-						},
-					}
+					require.NoError(t, bzReactor.voteCh.Send(ctx,
+						p2p.Envelope{
+							To: ps.peerID,
+							Message: &tmcons.Vote{
+								Vote: prevote2.ToProto(),
+							},
+						}))
 				}
 
 				i++

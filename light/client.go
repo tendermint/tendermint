@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
@@ -134,7 +133,7 @@ type Client struct {
 	providerTimeout  time.Duration
 
 	// Mutex for locking during changes of the light clients providers
-	providerMutex tmsync.Mutex
+	providerMutex sync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
 	// Providers used to "witness" new headers.

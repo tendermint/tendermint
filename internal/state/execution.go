@@ -202,7 +202,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(state, block, abciResponses.DeliverTxs)
+	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, abciResponses.DeliverTxs)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -247,6 +247,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 // typically reset on Commit and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
 func (blockExec *BlockExecutor) Commit(
+	ctx context.Context,
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
@@ -256,14 +257,14 @@ func (blockExec *BlockExecutor) Commit(
 
 	// while mempool is Locked, flush to ensure all async requests have completed
 	// in the ABCI app before Commit.
-	err := blockExec.mempool.FlushAppConn()
+	err := blockExec.mempool.FlushAppConn(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
 		return nil, 0, err
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.CommitSync(context.Background())
+	res, err := blockExec.proxyApp.CommitSync(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during proxyAppConn.CommitSync", "err", err)
 		return nil, 0, err
@@ -279,6 +280,7 @@ func (blockExec *BlockExecutor) Commit(
 
 	// Update mempool.
 	err = blockExec.mempool.Update(
+		ctx,
 		block.Height,
 		block.Txs,
 		deliverTxResponses,
@@ -607,7 +609,7 @@ func ExecCommitBlock(
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync(context.Background())
+	res, err := appConnConsensus.CommitSync(ctx)
 	if err != nil {
 		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err

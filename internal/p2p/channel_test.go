@@ -23,9 +23,9 @@ func testChannel(size int) (*channelInternal, *Channel) {
 		Error: make(chan PeerError, size),
 	}
 	ch := &Channel{
-		In:    in.In,
-		Out:   in.Out,
-		Error: in.Error,
+		inCh:  in.In,
+		outCh: in.Out,
+		errCh: in.Error,
 	}
 	return in, ch
 }
