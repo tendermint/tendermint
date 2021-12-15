@@ -2658,13 +2658,16 @@ func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := makeState(ctx, config, logger, 2)
+	cs1, vss, err := makeState(ctx, config, logger, 4)
 	require.NoError(t, err)
 	height, round := cs1.Height, cs1.Round
-	vs2 := vss[1]
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
 	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	voteCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryVote)
+	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(ctx, t, cs1, addr)
 
 	propBlock, _ := cs1.createProposalBlock()
 	round++
@@ -2680,14 +2683,19 @@ func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
-require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
+	require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
 
 	startTestRound(ctx, cs1, height, round)
 	ensureProposal(t, proposalCh, height, round, blockID)
 
+	signAddVotes(ctx, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vs2, vs3, vs4)
+
 	// ensure that the validator prevotes nil.
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(ctx, t, cs1, round, vss[0], nil)
+
+	ensurePrecommit(t, voteCh, height, round)
+	validatePrecommit(ctx, t, cs1, round, -1, vss[0], nil, nil)
 }
 
 // TestStateTimestamp_ProposalMatch tests that a validator prevotes a
@@ -2699,13 +2707,16 @@ func TestStateTimestamp_ProposalMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss, err := makeState(ctx, config, logger, 2)
+	cs1, vss, err := makeState(ctx, config, logger, 4)
 	require.NoError(t, err)
 	height, round := cs1.Height, cs1.Round
-	vs2 := vss[1]
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
 	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	voteCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryVote)
+	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(ctx, t, cs1, addr)
 
 	propBlock, _ := cs1.createProposalBlock()
 	round++
@@ -2722,15 +2733,18 @@ func TestStateTimestamp_ProposalMatch(t *testing.T) {
 	}
 	proposal.Signature = p.Signature
 	require.NoError(t, cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"))
-		t.Fatal(err)
-	}
 
 	startTestRound(ctx, cs1, height, round)
 	ensureProposal(t, proposalCh, height, round, blockID)
 
+	signAddVotes(ctx, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vs2, vs3, vs4)
+
 	// ensure that the validator prevotes the block.
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(ctx, t, cs1, round, vss[0], propBlock.Hash())
+
+	ensurePrecommit(t, voteCh, height, round)
+	validatePrecommit(ctx, t, cs1, round, 1, vss[0], propBlock.Hash(), propBlock.Hash())
 }
 
 // subscribe subscribes test client to the given query and returns a channel with cap = 1.

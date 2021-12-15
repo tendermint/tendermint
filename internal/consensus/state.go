@@ -1480,8 +1480,14 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
-
 	// At this point, +2/3 prevoted for a particular block.
+
+	// If the proposal time does not match the block time, precommit nil.
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("proposal timestamp not equal, prevoting nil")
+		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
