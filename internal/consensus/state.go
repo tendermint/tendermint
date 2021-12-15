@@ -1199,7 +1199,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
@@ -1321,6 +1321,12 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("proposal timestamp not equal, prevoting nil")
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
 	// Validate proposal block
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
@@ -1345,6 +1351,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
+			// TODO(@wbanfield) add check for timely here as well
 			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
 			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
@@ -1480,8 +1487,14 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
-
 	// At this point, +2/3 prevoted for a particular block.
+
+	// If the proposal time does not match the block time, precommit nil.
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("proposal timestamp not equal, precommitting nil")
+		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
