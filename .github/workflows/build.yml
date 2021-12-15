@@ -80,3 +80,10 @@ jobs:
         run: test/app/test.sh
         shell: bash
         if: "env.GIT_DIFF != ''"
+
+  test_persistence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: run persistence tests
+        run: test.persist/test_failure_indices.sh
+        shell: bash
