@@ -21,16 +21,15 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	statemocks "github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	"github.com/tendermint/tendermint/types"
 )
@@ -392,9 +391,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
-		proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
-		proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
+		mtx := new(sync.Mutex)
+		proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
+		proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
 
 		mempool := mempool.NewTxMempool(
 			log.TestingLogger().With("module", "mempool"),

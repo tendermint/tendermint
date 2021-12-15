@@ -21,7 +21,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/sr25519"
-	"github.com/tendermint/tendermint/libs/async"
+	"github.com/tendermint/tendermint/internal/libs/async"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 

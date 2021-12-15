@@ -50,11 +50,10 @@ type Reactor struct {
 	evpool      *Pool
 	evidenceCh  *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
-	closeCh     chan struct{}
 
 	peerWG sync.WaitGroup
 
-	mtx          tmsync.Mutex
+	mtx          sync.Mutex
 	peerRoutines map[types.NodeID]*tmsync.Closer
 }
 
@@ -72,7 +71,6 @@ func NewReactor(
 		evpool:       evpool,
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
-		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 	}
 
@@ -104,15 +102,6 @@ func (r *Reactor) OnStop() {
 	// exit.
 	r.peerWG.Wait()
 
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
-
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
-	<-r.peerUpdates.Done()
-
 	// Close the evidence db
 	r.evpool.Close()
 }
@@ -121,7 +110,7 @@ func (r *Reactor) OnStop() {
 // It returns an error only if the Envelope.Message is unknown for this channel
 // or if the given evidence is invalid. This should never be called outside of
 // handleMessage.
-func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
+func (r *Reactor) handleEvidenceMessage(envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -157,7 +146,7 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -185,22 +174,17 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // processEvidenceCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the evidenceCh.
 func (r *Reactor) processEvidenceCh(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case envelope := <-r.evidenceCh.In:
-			if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
-				r.logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
-				r.evidenceCh.Error <- p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}
+	iter := r.evidenceCh.Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
+			r.logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
+			if serr := r.evidenceCh.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
-
-		case <-r.closeCh:
-			r.logger.Debug("stopped listening on evidence channel; closing...")
-			return
 		}
 	}
 }
@@ -226,8 +210,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 	case p2p.PeerStatusUp:
 		// Do not allow starting new evidence broadcast loops after reactor shutdown
 		// has been initiated. This can happen after we've manually closed all
-		// peer broadcast loops and closed r.closeCh, but the router still sends
-		// in-flight peer updates.
+		// peer broadcast loops, but the router still sends in-flight peer updates.
 		if !r.IsRunning() {
 			return
 		}
@@ -261,15 +244,11 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates(ctx context.Context) {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
 		case <-ctx.Done():
-			return
-		case <-r.closeCh:
 			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
@@ -323,11 +302,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
 				return
-
-			case <-r.closeCh:
-				// The reactor has signaled that we are stopped and thus we should
-				// implicitly exit this peer's goroutine.
-				return
 			}
 		}
 
@@ -341,15 +315,13 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
-		select {
-		case <-ctx.Done():
-			return
-		case r.evidenceCh.Out <- p2p.Envelope{
+		if err := r.evidenceCh.Send(ctx, p2p.Envelope{
 			To: peerID,
 			Message: &tmproto.EvidenceList{
 				Evidence: []tmproto.Evidence{*evProto},
 			},
-		}:
+		}); err != nil {
+			return
 		}
 		r.logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 
@@ -366,9 +338,7 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 			// explicitly closed to signal we should exit.
 			return
 
-		case <-r.closeCh:
-			// The reactor has signaled that we are stopped and thus we should
-			// implicitly exit this peer's goroutine.
+		case <-ctx.Done():
 			return
 		}
 	}

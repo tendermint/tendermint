@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
@@ -27,7 +27,7 @@ type grpcClient struct {
 	conn     *grpc.ClientConn
 	chReqRes chan *ReqRes // dispatches "async" responses to callbacks *in order*, needed by mempool
 
-	mtx   tmsync.Mutex
+	mtx   sync.Mutex
 	addr  string
 	err   error
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
@@ -106,7 +106,10 @@ func (cli *grpcClient) OnStart(ctx context.Context) error {
 
 RETRY_LOOP:
 	for {
-		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
+		conn, err := grpc.Dial(cli.addr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithContextDialer(dialerFunc),
+		)
 		if err != nil {
 			if cli.mustConnect {
 				return err

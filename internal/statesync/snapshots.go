@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -41,7 +41,7 @@ func (s *snapshot) Key() snapshotKey {
 
 // snapshotPool discovers and aggregates snapshots across peers.
 type snapshotPool struct {
-	tmsync.Mutex
+	sync.Mutex
 	snapshots     map[snapshotKey]*snapshot
 	snapshotPeers map[snapshotKey]map[types.NodeID]types.NodeID
 

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
+	"github.com/tendermint/tendermint/internal/pubsub"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query/syntax"
 )
 
 var _ pubsub.Query = (*query.Query)(nil)

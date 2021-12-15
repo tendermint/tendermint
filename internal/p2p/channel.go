@@ -15,15 +15,7 @@ type Envelope struct {
 	To        types.NodeID  // receiver (empty if inbound)
 	Broadcast bool          // send to all connected peers (ignores To)
 	Message   proto.Message // message payload
-
-	// channelID is for internal Router use, set on outbound messages to inform
-	// the sendPeer() goroutine which transport channel to use.
-	//
-	// FIXME: If we migrate the Transport API to a byte-oriented multi-stream
-	// API, this will no longer be necessary since each channel will be mapped
-	// onto a stream during channel/peer setup. See:
-	// https://github.com/tendermint/spec/pull/227
-	channelID ChannelID
+	ChannelID ChannelID
 }
 
 // Wrapper is a Protobuf message that can contain a variety of inner messages
@@ -62,9 +54,9 @@ func (pe PeerError) Unwrap() error { return pe.Err }
 // Each message is wrapped in an Envelope to specify its sender and receiver.
 type Channel struct {
 	ID    ChannelID
-	In    <-chan Envelope  // inbound messages (peers to reactors)
-	Out   chan<- Envelope  // outbound messages (reactors to peers)
-	Error chan<- PeerError // peer error reporting
+	inCh  <-chan Envelope  // inbound messages (peers to reactors)
+	outCh chan<- Envelope  // outbound messages (reactors to peers)
+	errCh chan<- PeerError // peer error reporting
 
 	messageType proto.Message // the channel's message type, used for unmarshaling
 }
@@ -81,9 +73,9 @@ func NewChannel(
 	return &Channel{
 		ID:          id,
 		messageType: messageType,
-		In:          inCh,
-		Out:         outCh,
-		Error:       errCh,
+		inCh:        inCh,
+		outCh:       outCh,
+		errCh:       errCh,
 	}
 }
 
@@ -93,7 +85,7 @@ func (ch *Channel) Send(ctx context.Context, envelope Envelope) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case ch.Out <- envelope:
+	case ch.outCh <- envelope:
 		return nil
 	}
 }
@@ -104,7 +96,7 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case ch.Error <- pe:
+	case ch.errCh <- pe:
 		return nil
 	}
 }
@@ -138,7 +130,7 @@ func iteratorWorker(ctx context.Context, ch *Channel, pipe chan Envelope) {
 		select {
 		case <-ctx.Done():
 			return
-		case envelope := <-ch.In:
+		case envelope := <-ch.inCh:
 			select {
 			case <-ctx.Done():
 				return
@@ -192,6 +184,14 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 	}
 	wg := new(sync.WaitGroup)
 
+	for _, ch := range chs {
+		wg.Add(1)
+		go func(ch *Channel) {
+			defer wg.Done()
+			iteratorWorker(ctx, ch, iter.pipe)
+		}(ch)
+	}
+
 	done := make(chan struct{})
 	go func() { defer close(done); wg.Wait() }()
 
@@ -203,14 +203,6 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 		// should happen very quickly.
 		<-done
 	}()
-
-	for _, ch := range chs {
-		wg.Add(1)
-		go func(ch *Channel) {
-			defer wg.Done()
-			iteratorWorker(ctx, ch, iter.pipe)
-		}(ch)
-	}
 
 	return iter
 }

@@ -2,9 +2,9 @@ package abciclient
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -14,10 +14,10 @@ type Creator func(log.Logger) (Client, error)
 // NewLocalCreator returns a Creator for the given app,
 // which will be running locally.
 func NewLocalCreator(app types.Application) Creator {
-	mtx := new(tmsync.Mutex)
+	mtx := new(sync.Mutex)
 
-	return func(_ log.Logger) (Client, error) {
-		return NewLocalClient(mtx, app), nil
+	return func(logger log.Logger) (Client, error) {
+		return NewLocalClient(logger, mtx, app), nil
 	}
 }
 

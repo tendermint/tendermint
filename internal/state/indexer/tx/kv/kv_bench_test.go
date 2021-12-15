@@ -10,7 +10,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 

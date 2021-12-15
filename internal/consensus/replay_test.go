@@ -28,12 +28,12 @@ import (
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -391,7 +391,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	proposal.Signature = p.Signature
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -423,7 +423,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	proposal.Signature = p.Signature
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -482,7 +482,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	proposal.Signature = p.Signature
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)
@@ -545,7 +545,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	proposal.Signature = p.Signature
 
 	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+	if err := css[0].SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 	ensureNewProposal(proposalCh, height, round)

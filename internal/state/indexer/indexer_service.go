@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )

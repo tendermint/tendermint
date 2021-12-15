@@ -170,9 +170,8 @@ func setup(
 		conn,
 		connQuery,
 		stateProvider,
-		rts.snapshotOutCh,
-		rts.chunkOutCh,
-		ctx.Done(),
+		rts.snapshotChannel,
+		rts.chunkChannel,
 		"",
 		rts.reactor.metrics,
 	)

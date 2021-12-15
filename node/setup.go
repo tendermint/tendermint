@@ -10,7 +10,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
@@ -91,29 +90,6 @@ func initDBs(
 	closers = append(closers, stateDB.Close)
 
 	return blockStore, stateDB, makeCloser(closers), nil
-}
-
-func createAndStartProxyAppConns(
-	ctx context.Context,
-	clientCreator abciclient.Creator,
-	logger log.Logger,
-	metrics *proxy.Metrics,
-) (proxy.AppConns, error) {
-	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), metrics)
-
-	if err := proxyApp.Start(ctx); err != nil {
-		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
-	}
-
-	return proxyApp, nil
-}
-
-func createAndStartEventBus(ctx context.Context, logger log.Logger) (*eventbus.EventBus, error) {
-	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	if err := eventBus.Start(ctx); err != nil {
-		return nil, err
-	}
-	return eventBus, nil
 }
 
 func createAndStartIndexerService(
@@ -368,21 +344,6 @@ func createConsensusReactor(
 	return reactor, consensusState, nil
 }
 
-func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
-	conf := conn.DefaultMConnConfig()
-	conf.FlushThrottle = cfg.P2P.FlushThrottleTimeout
-	conf.SendRate = cfg.P2P.SendRate
-	conf.RecvRate = cfg.P2P.RecvRate
-	conf.MaxPacketMsgPayloadSize = cfg.P2P.MaxPacketMsgPayloadSize
-
-	return p2p.NewMConnTransport(
-		logger, conf, []*p2p.ChannelDescriptor{},
-		p2p.MConnTransportOptions{
-			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
-		},
-	)
-}
-
 func createPeerManager(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
@@ -459,14 +420,25 @@ func createRouter(
 	nodeInfo types.NodeInfo,
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
-	conf *config.Config,
+	cfg *config.Config,
 	proxyApp proxy.AppConns,
 ) (*p2p.Router, error) {
 
 	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, conf)
 
-	ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(conf.P2P.ListenAddress))
+	transportConf := conn.DefaultMConnConfig()
+	transportConf.FlushThrottle = cfg.P2P.FlushThrottleTimeout
+	transportConf.SendRate = cfg.P2P.SendRate
+	transportConf.RecvRate = cfg.P2P.RecvRate
+	transportConf.MaxPacketMsgPayloadSize = cfg.P2P.MaxPacketMsgPayloadSize
+	transport := p2p.NewMConnTransport(
+		p2pLogger, transportConf, []*p2p.ChannelDescriptor{},
+		p2p.MConnTransportOptions{
+			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
+		},
+	)
+
+	ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(cfg.P2P.ListenAddress))
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +452,7 @@ func createRouter(
 		peerManager,
 		[]p2p.Transport{transport},
 		[]p2p.Endpoint{ep},
-		getRouterConfig(conf, proxyApp),
+		getRouterConfig(cfg, proxyApp),
 	)
 }
 
@@ -506,13 +478,12 @@ func makeNodeInfo(
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (types.NodeInfo, error) {
+
 	txIndexerStatus := "off"
 
 	if indexer.IndexingEnabled(eventSinks) {
 		txIndexerStatus = "on"
 	}
-
-	bcChannel := byte(blocksync.BlockSyncChannel)
 
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{
@@ -524,7 +495,7 @@ func makeNodeInfo(
 		Network: genDoc.ChainID,
 		Version: version.TMVersion,
 		Channels: []byte{
-			bcChannel,
+			byte(blocksync.BlockSyncChannel),
 			byte(consensus.StateChannel),
 			byte(consensus.DataChannel),
 			byte(consensus.VoteChannel),
@@ -547,16 +518,12 @@ func makeNodeInfo(
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
 
-	lAddr := cfg.P2P.ExternalAddress
-
-	if lAddr == "" {
-		lAddr = cfg.P2P.ListenAddress
+	nodeInfo.ListenAddr = cfg.P2P.ExternalAddress
+	if nodeInfo.ListenAddr == "" {
+		nodeInfo.ListenAddr = cfg.P2P.ListenAddress
 	}
 
-	nodeInfo.ListenAddr = lAddr
-
-	err := nodeInfo.Validate()
-	return nodeInfo, err
+	return nodeInfo, nodeInfo.Validate()
 }
 
 func makeSeedNodeInfo(
@@ -586,14 +553,10 @@ func makeSeedNodeInfo(
 		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
 
-	lAddr := cfg.P2P.ExternalAddress
-
-	if lAddr == "" {
-		lAddr = cfg.P2P.ListenAddress
+	nodeInfo.ListenAddr = cfg.P2P.ExternalAddress
+	if nodeInfo.ListenAddr == "" {
+		nodeInfo.ListenAddr = cfg.P2P.ListenAddress
 	}
 
-	nodeInfo.ListenAddr = lAddr
-
-	err := nodeInfo.Validate()
-	return nodeInfo, err
+	return nodeInfo, nodeInfo.Validate()
 }

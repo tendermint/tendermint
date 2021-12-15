@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -22,7 +22,7 @@ var wsCallTimeout = 5 * time.Second
 
 type myHandler struct {
 	closeConnAfterRead bool
-	mtx                tmsync.RWMutex
+	mtx                sync.RWMutex
 }
 
 var upgrader = websocket.Upgrader{

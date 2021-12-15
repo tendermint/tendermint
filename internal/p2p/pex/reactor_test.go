@@ -2,6 +2,7 @@ package pex_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -41,12 +42,12 @@ func TestReactorBasic(t *testing.T) {
 	testNet.start(ctx, t)
 
 	// assert that the mock node receives a request from the real node
-	testNet.listenForRequest(t, secondNode, firstNode, shortWait)
+	testNet.listenForRequest(ctx, t, secondNode, firstNode, shortWait)
 
 	// assert that when a mock node sends a request it receives a response (and
 	// the correct one)
-	testNet.sendRequest(t, firstNode, secondNode)
-	testNet.listenForResponse(t, secondNode, firstNode, shortWait, []p2pproto.PexAddress(nil))
+	testNet.sendRequest(ctx, t, firstNode, secondNode)
+	testNet.listenForResponse(ctx, t, secondNode, firstNode, shortWait, []p2pproto.PexAddress(nil))
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
@@ -112,8 +113,8 @@ func TestReactorSendsResponseWithoutRequest(t *testing.T) {
 	// firstNode sends the secondNode an unrequested response
 	// NOTE: secondNode will send a request by default during startup so we send
 	// two responses to counter that.
-	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode})
-	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode})
+	testNet.sendResponse(ctx, t, firstNode, secondNode, []int{thirdNode})
+	testNet.sendResponse(ctx, t, firstNode, secondNode, []int{thirdNode})
 
 	// secondNode should evict the firstNode
 	testNet.listenForPeerUpdate(ctx, t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
@@ -139,7 +140,7 @@ func TestReactorNeverSendsTooManyPeers(t *testing.T) {
 
 	// first we check that even although we have 110 peers, honest pex reactors
 	// only send 100 (test if secondNode sends firstNode 100 addresses)
-	testNet.pingAndlistenForNAddresses(t, secondNode, firstNode, shortWait, 100)
+	testNet.pingAndlistenForNAddresses(ctx, t, secondNode, firstNode, shortWait, 100)
 }
 
 func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
@@ -296,10 +297,7 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 
 	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
 	require.NoError(t, reactor.Start(ctx))
-	t.Cleanup(func() {
-		peerUpdates.Close()
-		reactor.Wait()
-	})
+	t.Cleanup(reactor.Wait)
 
 	return &singleTestReactor{
 		reactor:  reactor,
@@ -396,15 +394,11 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 	require.Len(t, rts.reactors, realNodes)
 
 	t.Cleanup(func() {
-		for nodeID, reactor := range rts.reactors {
+		for _, reactor := range rts.reactors {
 			if reactor.IsRunning() {
 				reactor.Wait()
 				require.False(t, reactor.IsRunning())
 			}
-			rts.peerUpdates[nodeID].Close()
-		}
-		for _, nodeID := range rts.mocks {
-			rts.peerUpdates[nodeID].Close()
 		}
 	})
 
@@ -447,53 +441,59 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 }
 
 func (r *reactorTestSuite) listenFor(
+	ctx context.Context,
 	t *testing.T,
 	node types.NodeID,
-	conditional func(msg p2p.Envelope) bool,
-	assertion func(t *testing.T, msg p2p.Envelope) bool,
+	conditional func(msg *p2p.Envelope) bool,
+	assertion func(t *testing.T, msg *p2p.Envelope) bool,
 	waitPeriod time.Duration,
 ) {
-	timesUp := time.After(waitPeriod)
-	for {
-		select {
-		case envelope := <-r.pexChannels[node].In:
-			if conditional(envelope) && assertion(t, envelope) {
-				return
-			}
-		case <-timesUp:
-			require.Fail(t, "timed out waiting for message",
-				"node=%v, waitPeriod=%s", node, waitPeriod)
+	ctx, cancel := context.WithTimeout(ctx, waitPeriod)
+	defer cancel()
+	iter := r.pexChannels[node].Receive(ctx)
+	for iter.Next(ctx) {
+		envelope := iter.Envelope()
+		if conditional(envelope) && assertion(t, envelope) {
+			return
 		}
 	}
+
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		require.Fail(t, "timed out waiting for message",
+			"node=%v, waitPeriod=%s", node, waitPeriod)
+	}
+
 }
 
-func (r *reactorTestSuite) listenForRequest(t *testing.T, fromNode, toNode int, waitPeriod time.Duration) {
+func (r *reactorTestSuite) listenForRequest(ctx context.Context, t *testing.T, fromNode, toNode int, waitPeriod time.Duration) {
 	r.logger.Info("Listening for request", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
+	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexRequest)
 		return ok && msg.From == from
 	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
+	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
 		require.Equal(t, &p2pproto.PexRequest{}, msg.Message)
 		return true
 	}
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
+	r.listenFor(ctx, t, to, conditional, assertion, waitPeriod)
 }
 
 func (r *reactorTestSuite) pingAndlistenForNAddresses(
+	ctx context.Context,
 	t *testing.T,
 	fromNode, toNode int,
 	waitPeriod time.Duration,
 	addresses int,
 ) {
+	t.Helper()
 	r.logger.Info("Listening for addresses", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
+	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
 		return ok && msg.From == from
 	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
+	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
 		m, ok := msg.Message.(*p2pproto.PexResponse)
 		if !ok {
 			require.Fail(t, "expected pex response v2")
@@ -506,14 +506,15 @@ func (r *reactorTestSuite) pingAndlistenForNAddresses(
 		// if we didn't get the right length, we wait and send the
 		// request again
 		time.Sleep(300 * time.Millisecond)
-		r.sendRequest(t, toNode, fromNode)
+		r.sendRequest(ctx, t, toNode, fromNode)
 		return false
 	}
-	r.sendRequest(t, toNode, fromNode)
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
+	r.sendRequest(ctx, t, toNode, fromNode)
+	r.listenFor(ctx, t, to, conditional, assertion, waitPeriod)
 }
 
 func (r *reactorTestSuite) listenForResponse(
+	ctx context.Context,
 	t *testing.T,
 	fromNode, toNode int,
 	waitPeriod time.Duration,
@@ -521,16 +522,16 @@ func (r *reactorTestSuite) listenForResponse(
 ) {
 	r.logger.Info("Listening for response", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	conditional := func(msg p2p.Envelope) bool {
+	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
 		r.logger.Info("message", msg, "ok", ok)
 		return ok && msg.From == from
 	}
-	assertion := func(t *testing.T, msg p2p.Envelope) bool {
+	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
 		require.Equal(t, &p2pproto.PexResponse{Addresses: addresses}, msg.Message)
 		return true
 	}
-	r.listenFor(t, to, conditional, assertion, waitPeriod)
+	r.listenFor(ctx, t, to, conditional, assertion, waitPeriod)
 }
 
 func (r *reactorTestSuite) listenForPeerUpdate(
@@ -542,7 +543,6 @@ func (r *reactorTestSuite) listenForPeerUpdate(
 ) {
 	on, with := r.checkNodePair(t, onNode, withNode)
 	sub := r.network.Nodes[on].PeerManager.Subscribe(ctx)
-	defer sub.Close()
 	timesUp := time.After(waitPeriod)
 	for {
 		select {
@@ -574,27 +574,30 @@ func (r *reactorTestSuite) getAddressesFor(nodes []int) []p2pproto.PexAddress {
 	return addresses
 }
 
-func (r *reactorTestSuite) sendRequest(t *testing.T, fromNode, toNode int) {
+func (r *reactorTestSuite) sendRequest(ctx context.Context, t *testing.T, fromNode, toNode int) {
+	t.Helper()
 	to, from := r.checkNodePair(t, toNode, fromNode)
-	r.pexChannels[from].Out <- p2p.Envelope{
+	require.NoError(t, r.pexChannels[from].Send(ctx, p2p.Envelope{
 		To:      to,
 		Message: &p2pproto.PexRequest{},
-	}
+	}))
 }
 
 func (r *reactorTestSuite) sendResponse(
+	ctx context.Context,
 	t *testing.T,
 	fromNode, toNode int,
 	withNodes []int,
 ) {
+	t.Helper()
 	from, to := r.checkNodePair(t, fromNode, toNode)
 	addrs := r.getAddressesFor(withNodes)
-	r.pexChannels[from].Out <- p2p.Envelope{
+	require.NoError(t, r.pexChannels[from].Send(ctx, p2p.Envelope{
 		To: to,
 		Message: &p2pproto.PexResponse{
 			Addresses: addrs,
 		},
-	}
+	}))
 }
 
 func (r *reactorTestSuite) requireNumberOfPeers(
@@ -649,9 +652,7 @@ func (r *reactorTestSuite) connectPeers(ctx context.Context, t *testing.T, sourc
 	}
 
 	sourceSub := n1.PeerManager.Subscribe(ctx)
-	defer sourceSub.Close()
 	targetSub := n2.PeerManager.Subscribe(ctx)
-	defer targetSub.Close()
 
 	sourceAddress := n1.NodeAddress
 	r.logger.Debug("source address", "address", sourceAddress)

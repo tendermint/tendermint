@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -86,7 +86,7 @@ type TxMempool struct {
 	// from the mempool. A read-lock is implicitly acquired when executing CheckTx,
 	// however, a caller must explicitly grab a write-lock via Lock when updating
 	// the mempool via Update().
-	mtx       tmsync.RWMutex
+	mtx       sync.RWMutex
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 }
@@ -175,8 +175,8 @@ func (txmp *TxMempool) SizeBytes() int64 {
 // FlushAppConn executes FlushSync on the mempool's proxyAppConn.
 //
 // NOTE: The caller must obtain a write-lock prior to execution.
-func (txmp *TxMempool) FlushAppConn() error {
-	return txmp.proxyAppConn.FlushSync(context.Background())
+func (txmp *TxMempool) FlushAppConn(ctx context.Context) error {
+	return txmp.proxyAppConn.FlushSync(ctx)
 }
 
 // WaitForNextTx returns a blocking channel that will be closed when the next
@@ -428,6 +428,7 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 // NOTE:
 // - The caller must explicitly acquire a write-lock.
 func (txmp *TxMempool) Update(
+	ctx context.Context,
 	blockHeight int64,
 	blockTxs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
@@ -472,7 +473,7 @@ func (txmp *TxMempool) Update(
 				"num_txs", txmp.Size(),
 				"height", blockHeight,
 			)
-			txmp.updateReCheckTxs()
+			txmp.updateReCheckTxs(ctx)
 		} else {
 			txmp.notifyTxsAvailable()
 		}
@@ -713,14 +714,13 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 //
 // NOTE:
 // - The caller must have a write-lock when executing updateReCheckTxs.
-func (txmp *TxMempool) updateReCheckTxs() {
+func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 	if txmp.Size() == 0 {
 		panic("attempted to update re-CheckTx txs when mempool is empty")
 	}
 
 	txmp.recheckCursor = txmp.gossipIndex.Front()
 	txmp.recheckEnd = txmp.gossipIndex.Back()
-	ctx := context.Background()
 
 	for e := txmp.gossipIndex.Front(); e != nil; e = e.Next() {
 		wtx := e.Value.(*WrappedTx)

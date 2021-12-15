@@ -2,10 +2,10 @@ package mempool
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -76,7 +76,7 @@ func (wtx *WrappedTx) Size() int {
 //   access is not allowed. Regardless, it is not expected for the mempool to
 //   need mutative access.
 type TxStore struct {
-	mtx       tmsync.RWMutex
+	mtx       sync.RWMutex
 	hashTxs   map[types.TxKey]*WrappedTx // primary index
 	senderTxs map[string]*WrappedTx      // sender is defined by the ABCI application
 }
@@ -217,7 +217,7 @@ func (txs *TxStore) GetOrSetPeerByTxHash(hash types.TxKey, peerID uint16) (*Wrap
 // references which is used during Insert in order to determine sorted order. If
 // less returns true, a <= b.
 type WrappedTxList struct {
-	mtx  tmsync.RWMutex
+	mtx  sync.RWMutex
 	txs  []*WrappedTx
 	less func(*WrappedTx, *WrappedTx) bool
 }

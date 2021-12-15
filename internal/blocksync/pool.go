@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/flowrate"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -73,7 +73,7 @@ type BlockPool struct {
 
 	lastAdvance time.Time
 
-	mtx tmsync.RWMutex
+	mtx sync.RWMutex
 	// block requests
 	requesters map[int64]*bpRequester
 	height     int64 // the lowest key in requesters.
@@ -418,7 +418,7 @@ func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 		return
 	}
 
-	request := newBPRequester(pool, nextHeight)
+	request := newBPRequester(pool.logger, pool, nextHeight)
 
 	pool.requesters[nextHeight] = request
 	atomic.AddInt32(&pool.numPending, 1)
@@ -560,12 +560,12 @@ type bpRequester struct {
 	gotBlockCh chan struct{}
 	redoCh     chan types.NodeID // redo may send multitime, add peerId to identify repeat
 
-	mtx    tmsync.Mutex
+	mtx    sync.Mutex
 	peerID types.NodeID
 	block  *types.Block
 }
 
-func newBPRequester(pool *BlockPool, height int64) *bpRequester {
+func newBPRequester(logger log.Logger, pool *BlockPool, height int64) *bpRequester {
 	bpr := &bpRequester{
 		logger:     pool.logger,
 		pool:       pool,
@@ -576,7 +576,7 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.BaseService = *service.NewBaseService(nil, "bpRequester", bpr)
+	bpr.BaseService = *service.NewBaseService(logger, "bpRequester", bpr)
 	return bpr
 }
 

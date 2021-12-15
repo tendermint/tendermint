@@ -294,3 +294,52 @@ func TestVoteProtobuf(t *testing.T) {
 		}
 	}
 }
+
+var sink interface{}
+
+var protoVote *tmproto.Vote
+var sampleCommit *Commit
+
+func init() {
+	protoVote = examplePrecommit().ToProto()
+
+	lastID := makeBlockIDRandom()
+	voteSet, _, vals := randVoteSet(2, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := makeCommit(lastID, 2, 1, voteSet, vals, time.Now())
+	if err != nil {
+		panic(err)
+	}
+	sampleCommit = commit
+}
+
+func BenchmarkVoteSignBytes(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		sink = VoteSignBytes("test_chain_id", protoVote)
+	}
+
+	if sink == nil {
+		b.Fatal("Benchmark did not run")
+	}
+
+	// Reset the sink.
+	sink = (interface{})(nil)
+}
+
+func BenchmarkCommitVoteSignBytes(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		for index := range sampleCommit.Signatures {
+			sink = sampleCommit.VoteSignBytes("test_chain_id", int32(index))
+		}
+	}
+
+	if sink == nil {
+		b.Fatal("Benchmark did not run")
+	}
+
+	// Reset the sink.
+	sink = (interface{})(nil)
+}
