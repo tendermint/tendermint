@@ -237,11 +237,11 @@ func (sc *DashCoreSignerClient) SignVote(
 
 	blockResponse, err := sc.dashCoreRPCClient.QuorumSign(quorumType, blockRequestID, blockMessageHash, quorumHash)
 
-	if blockResponse == nil {
-		return ErrUnexpectedResponse
-	}
 	if err != nil {
 		return &RemoteSignerError{Code: 500, Description: err.Error()}
+	}
+	if blockResponse == nil {
+		return ErrUnexpectedResponse
 	}
 
 	// fmt.Printf("blockResponse %v", blockResponse)
@@ -293,11 +293,11 @@ func (sc *DashCoreSignerClient) SignVote(
 		stateResponse, err := sc.dashCoreRPCClient.QuorumSign(
 			sc.defaultQuorumType, stateRequestID, stateMessageHash, quorumHash)
 
-		if stateResponse == nil {
-			return ErrUnexpectedResponse
-		}
 		if err != nil {
 			return &RemoteSignerError{Code: 500, Description: err.Error()}
+		}
+		if stateResponse == nil {
+			return ErrUnexpectedResponse
 		}
 
 		stateDecodedSignature, err := hex.DecodeString(stateResponse.Signature)
@@ -350,11 +350,11 @@ func (sc *DashCoreSignerClient) SignProposal(
 
 	response, err := sc.dashCoreRPCClient.QuorumSign(quorumType, requestIDHash, messageHash, quorumHash)
 
-	if response == nil {
-		return nil, ErrUnexpectedResponse
-	}
 	if err != nil {
 		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}
+	}
+	if response == nil {
+		return nil, ErrUnexpectedResponse
 	}
 
 	decodedSignature, err := hex.DecodeString(response.Signature)
