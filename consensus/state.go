@@ -2378,9 +2378,9 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 	cs.Logger.Debug(
 		"adding vote",
-		"vote_height", vote.Height,
-		"vote_round", vote.Round,
-		"vote_type", vote.Type,
+		"height", vote.Height,
+		"round", vote.Round,
+		"type", vote.Type,
 		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
 		"vote_block_key", vote.BlockID.Key(),
 		"vote_block_signature", vote.BlockSignature,

@@ -443,14 +443,14 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.C:
-			c.Logger.Debug("Send Ping")
+			c.Logger.P2PDebug("Send Ping")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 			if err != nil {
 				c.Logger.Error("Failed to send PacketPing", "err", err)
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
-			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
+			c.Logger.P2PDebug("Starting pong timer", "dur", c.config.PongTimeout)
 			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
 				select {
 				case c.pongTimeoutCh <- true:
@@ -460,13 +460,13 @@ FOR_LOOP:
 			c.flush()
 		case timeout := <-c.pongTimeoutCh:
 			if timeout {
-				c.Logger.Debug("Pong timeout")
+				c.Logger.P2PDebug("Pong timeout")
 				err = errors.New("pong timeout")
 			} else {
 				c.stopPongTimer()
 			}
 		case <-c.pong:
-			c.Logger.Debug("Send Pong")
+			c.Logger.P2PDebug("Send Pong")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
 				c.Logger.Error("Failed to send PacketPong", "err", err)
@@ -615,14 +615,14 @@ FOR_LOOP:
 		case *tmp2p.Packet_PacketPing:
 			// TODO: prevent abuse, as they cause flush()'s.
 			// https://github.com/tendermint/tendermint/issues/1190
-			c.Logger.Debug("Receive Ping")
+			c.Logger.P2PDebug("Receive Ping")
 			select {
 			case c.pong <- struct{}{}:
 			default:
 				// never block
 			}
 		case *tmp2p.Packet_PacketPong:
-			c.Logger.Debug("Receive Pong")
+			c.Logger.P2PDebug("Receive Pong")
 			select {
 			case c.pongTimeoutCh <- false:
 			default:
