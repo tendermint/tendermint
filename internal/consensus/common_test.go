@@ -803,7 +803,7 @@ func randConsensusState(
 func randConsensusNetWithPeers(
 	ctx context.Context,
 	cfg *config.Config,
-	nValidators,
+	nValidators int,
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
