@@ -45,7 +45,7 @@ func New(conf *config.Config,
 	}
 
 	switch conf.Mode {
-	case config.ModeFull, config.ModeValidator, config.ModeSingle:
+	case config.ModeFull, config.ModeValidator:
 		pval, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
 		if err != nil {
 			return nil, err

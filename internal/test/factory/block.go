@@ -24,10 +24,6 @@ func MakeVersion() version.Consensus {
 	}
 }
 
-func RandomAddress() []byte {
-	return crypto.CRandBytes(crypto.AddressSize)
-}
-
 func RandomHash() []byte {
 	return crypto.CRandBytes(tmhash.Size)
 }
@@ -85,8 +81,8 @@ func MakeHeader(h *types.Header) (*types.Header, error) {
 	if len(h.EvidenceHash) == 0 {
 		h.EvidenceHash = RandomHash()
 	}
-	if len(h.ProposerAddress) == 0 {
-		h.ProposerAddress = RandomAddress()
+	if len(h.ProposerProTxHash) == 0 {
+		h.ProposerProTxHash = crypto.RandProTxHash()
 	}
 
 	return h, h.ValidateBasic()

@@ -133,7 +133,7 @@ func (p *peer) String() string {
 	}
 
 	proTxHash := p.NodeInfo().GetProTxHash()
-	mConnString := fmt.Sprintf("%v", p.mconn)
+	mConnString := fmt.Sprintf("%v", p.conn)
 	if mConnString == "MConn{pipe}" {
 		mConnString = ""
 	} else {

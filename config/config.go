@@ -30,7 +30,6 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
-	ModeSingle    = "single"
 
 	BlockSyncV0 = "v0"
 	BlockSyncV2 = "v2"
@@ -373,7 +372,7 @@ func (cfg BaseConfig) ValidateBasic() error {
 	}
 
 	switch cfg.Mode {
-	case ModeFull, ModeValidator, ModeSeed, ModeSingle:
+	case ModeFull, ModeValidator, ModeSeed:
 	case "":
 		return errors.New("no mode has been set")
 

@@ -333,7 +333,6 @@ func (app *PersistentKVStoreApplication) execThresholdPublicKeyTx(tx []byte) typ
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Threshold Pubkey (%s) is invalid base64", string(tx))}
 	}
-	key := []byte("val:" + string(pubkey.Bytes()))
 
 	return app.updateThresholdPublicKey(types.UpdateThresholdPublicKey(pubkey))
 }

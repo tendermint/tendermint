@@ -140,8 +140,6 @@ func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, con
 		} else {
 			consensusLogger.Info("This node is not a validator", "proTxHash", proTxHash)
 		}
-	case mode == config.ModeSingle:
-		consensusLogger.Info("This node is a single validator", "proTxHash", proTxHash)
 	}
 }
 
@@ -367,7 +365,7 @@ func createConsensusReactor(
 		proposedAppVersion,
 		consensus.StateMetrics(csMetrics),
 	)
-	if privValidator != nil && (cfg.Mode == config.ModeValidator || cfg.Mode == config.ModeSingle) {
+	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(privValidator)
 	}
 

@@ -30,7 +30,7 @@ func InitChain(client abcicli.Client) error {
 		return err
 	}
 	validatorSet := types.UpdateValidatorSet(vals, abciThresholdPublicKey)
-	_, err = client.InitChainSync(types.RequestInitChain{
+	_, err = client.InitChainSync(context.Background(), types.RequestInitChain{
 		ValidatorSet: &validatorSet,
 	})
 	if err != nil {

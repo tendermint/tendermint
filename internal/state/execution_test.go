@@ -3,6 +3,7 @@ package state_test
 import (
 	"bytes"
 	"context"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"testing"
 	"time"
 

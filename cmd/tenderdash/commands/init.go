@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/cobra"
@@ -53,19 +55,6 @@ func initFiles(cmd *cobra.Command, args []string) error {
 	return initFilesWithConfig(config)
 }
 
-func initializeNodeKey(config *cfg.Config) error {
-	nodeKeyFile := config.NodeKeyFile()
-	if tmos.FileExists(nodeKeyFile) {
-		logger.Info("Found node key", "path", nodeKeyFile)
-	} else {
-		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
-			return err
-		}
-		logger.Info("Generated node key", "path", nodeKeyFile)
-	}
-	return nil
-}
-
 func initFilesWithConfig(config *cfg.Config) error {
 	var (
 		pv  *privval.FilePV
@@ -85,7 +74,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			logger.Info("Found private validator", "keyFile", privValKeyFile,
 				"stateFile", privValStateFile)
 		} else {
-			pv, err = privval.GenFilePV(privValKeyFile, privValStateFile)
+			pv = privval.GenFilePV(privValKeyFile, privValStateFile)
 			if err != nil {
 				return err
 			}
@@ -113,17 +102,12 @@ func initFilesWithConfig(config *cfg.Config) error {
 
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     tmtime.Now(),
+			GenesisTime:     time.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 			QuorumType:                   btcjson.LLMQType(quorumType),
 			InitialCoreChainLockedHeight: coreChainLockedHeight,
 			InitialHeight:                initChainInitialHeight,
 			AppHash:                      appHash,
-		}
-		if keyType == "secp256k1" {
-			genDoc.ConsensusParams.Validator = types.ValidatorParams{
-				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
-			}
 		}
 
 		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
@@ -131,15 +115,27 @@ func initFilesWithConfig(config *cfg.Config) error {
 
 		// if this is a validator we add it to genesis
 		if pv != nil {
-			pubKey, err := pv.GetPubKey(ctx)
+			proTxHash, err := pv.GetProTxHash(ctx)
 			if err != nil {
-				return fmt.Errorf("can't get pubkey: %w", err)
+				return fmt.Errorf("can't get proTxHash: %w", err)
 			}
-			genDoc.Validators = []types.GenesisValidator{{
-				Address: pubKey.Address(),
-				PubKey:  pubKey,
-				Power:   10,
-			}}
+			genesisValidator := types.GenesisValidator{
+				ProTxHash: proTxHash,
+				Power:     types.DefaultDashVotingPower,
+			}
+			quorumHash, _ := pv.GetFirstQuorumHash(ctx)
+			if quorumHash != nil {
+				pubKey, err := pv.GetPubKey(ctx, quorumHash)
+				if err != nil {
+					return fmt.Errorf("can't get pubkey: %w", err)
+				}
+				genesisValidator.PubKey = pubKey
+
+				genDoc.QuorumHash = quorumHash
+				genDoc.ThresholdPublicKey = pubKey
+			}
+
+			genDoc.Validators = []types.GenesisValidator{genesisValidator}
 		}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
@@ -153,72 +149,6 @@ func initFilesWithConfig(config *cfg.Config) error {
 		return err
 	}
 	logger.Info("Generated config", "mode", config.Mode)
-
-	return nil
-}
-
-func initFilesSingleNodeWithConfig(config *cfg.Config) error {
-	// private validator
-	privValKeyFile := config.PrivValidatorKeyFile()
-	privValStateFile := config.PrivValidatorStateFile()
-	var pv *privval.FilePV
-	if tmos.FileExists(privValKeyFile) {
-		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
-		logger.Info("Found private validator", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
-	} else {
-		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
-		pv.Save()
-		logger.Info("Generated private validator", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
-	}
-
-	// node key
-	if err := initializeNodeKey(config); err != nil {
-		return err
-	}
-
-	// genesis file
-	genFile := config.GenesisFile()
-	if tmos.FileExists(genFile) {
-		logger.Info("Found genesis file", "path", genFile)
-	} else {
-		quorumHash, err := pv.GetFirstQuorumHash()
-		if err != nil {
-			return fmt.Errorf("there is no quorum hash: %w", err)
-		}
-		pubKey, err := pv.GetPubKey(quorumHash)
-		if err != nil {
-			return fmt.Errorf("can't get pubkey in init files with config: %w", err)
-		}
-
-		proTxHash, err := pv.GetProTxHash()
-		if err != nil {
-			return fmt.Errorf("can't get proTxHash: %w", err)
-		}
-
-		logger.Info("Found proTxHash", "proTxHash", proTxHash)
-
-		genDoc := types.GenesisDoc{
-			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:                  tmtime.Now(),
-			ConsensusParams:              types.DefaultConsensusParams(),
-			ThresholdPublicKey:           pubKey,
-			QuorumHash:                   quorumHash,
-			InitialCoreChainLockedHeight: 1,
-		}
-
-		genDoc.Validators = []types.GenesisValidator{{
-			PubKey:    pubKey,
-			ProTxHash: proTxHash,
-			Power:     types.DefaultDashVotingPower,
-		}}
-
-		if err := genDoc.SaveAs(genFile); err != nil {
-			return err
-		}
-		logger.Info("Generated genesis file", "path", genFile)
-	}
 
 	return nil
 }

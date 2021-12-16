@@ -11,11 +11,11 @@ export TMHOME=$HOME/.tenderdash_app
 
 function kvstore_over_socket(){
     rm -rf $TMHOME
-    tenderdash init single-validator
+    tenderdash init validator
     echo "Starting kvstore_over_socket"
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!
-    tendermint start --mode single-validator > tendermint.log &
+    tendermint start --mode validator > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
@@ -28,9 +28,9 @@ function kvstore_over_socket(){
 # start tenderdash first
 function kvstore_over_socket_reorder(){
     rm -rf $TMHOME
-    tenderdash init single-validator
+    tenderdash init validator
     echo "Starting kvstore_over_socket_reorder (ie. start tenderdash first)"
-    tenderdash start --mode single-validator > tendermint.log &
+    tenderdash start --mode validator > tendermint.log &
     pid_tendermint=$!
     sleep 2
     abci-cli kvstore > /dev/null &
@@ -45,11 +45,11 @@ function kvstore_over_socket_reorder(){
 
 function counter_over_socket() {
     rm -rf $TMHOME
-    tenderdash init single-validator
+    tenderdash init validator
     echo "Starting counter_over_socket"
     abci-cli counter --serial > /dev/null &
     pid_counter=$!
-    tenderdash start --mode single-validator > tendermint.log &
+    tenderdash start --mode validator > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
@@ -61,11 +61,11 @@ function counter_over_socket() {
 
 function counter_over_grpc() {
     rm -rf $TMHOME
-    tenderdash init single-validator
+    tenderdash init validator
     echo "Starting counter_over_grpc"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
-    tenderdash start --mode single-validator --abci grpc > tenderdash.log &
+    tenderdash start --mode validator --abci grpc > tenderdash.log &
     pid_tendermint=$!
     sleep 5
 
@@ -77,13 +77,13 @@ function counter_over_grpc() {
 
 function counter_over_grpc_grpc() {
     rm -rf $TMHOME
-    tenderdash init single-validator
+    tenderdash init validator
     echo "Starting counter_over_grpc_grpc (ie. with grpc broadcast_tx)"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
     sleep 1
     GRPC_PORT=36656
-    tenderdash start --mode single-validator --abci grpc --rpc.grpc_laddr tcp://localhost:$GRPC_PORT > tenderdash.log &
+    tenderdash start --mode validator --abci grpc --rpc.grpc_laddr tcp://localhost:$GRPC_PORT > tenderdash.log &
     pid_tenderdash=$!
     sleep 5
 
