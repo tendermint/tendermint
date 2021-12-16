@@ -50,9 +50,9 @@ func (cs *State) readReplayMessage(ctx context.Context, msg *TimedWALMessage, ne
 		cs.logger.Info("Replay: New Step", "height", m.Height, "round", m.Round, "step", m.Step)
 		// these are playback checks
 		if newStepSub != nil {
-			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			ctxto, cancel := context.WithTimeout(ctx, 2*time.Second)
 			defer cancel()
-			stepMsg, err := newStepSub.Next(ctx)
+			stepMsg, err := newStepSub.Next(ctxto)
 			if errors.Is(err, context.DeadlineExceeded) {
 				return fmt.Errorf("subscription timed out: %w", err)
 			} else if err != nil {

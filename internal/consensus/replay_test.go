@@ -92,9 +92,9 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 		Query:    types.EventQueryNewBlock,
 	})
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctxto, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
-	_, err = newBlockSub.Next(ctx)
+	_, err = newBlockSub.Next(ctxto)
 	if errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("Timed out waiting for new block (see trace above)")
 	} else if err != nil {
@@ -147,7 +147,7 @@ func TestWALCrash(t *testing.T) {
 	}
 }
 
-func crashWALandCheckLiveness(ctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
+func crashWALandCheckLiveness(rctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
 	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
@@ -167,7 +167,7 @@ LOOP:
 		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		cs := newStateWithConfigAndBlockStore(
-			ctx,
+			rctx,
 			logger,
 			consensusReplayConfig,
 			state,
@@ -177,7 +177,7 @@ LOOP:
 		)
 
 		// start sending transactions
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(rctx)
 		initFn(stateDB, cs, ctx)
 
 		// clean up WAL file from the previous iteration
@@ -708,7 +708,7 @@ func tempWALWithData(data []byte) string {
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(
-	ctx context.Context,
+	rctx context.Context,
 	t *testing.T,
 	sim *simulatorTestSuite,
 	nBlocks int,
@@ -720,9 +720,8 @@ func testHandshakeReplay(
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genesisState sm.State
-	var cancel context.CancelFunc
 
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(rctx)
 	t.Cleanup(cancel)
 
 	cfg := sim.Config

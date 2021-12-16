@@ -1248,9 +1248,9 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
-	ctx, cancel := context.WithTimeout(ctx, cs.config.TimeoutPropose)
+	ctxto, cancel := context.WithTimeout(ctx, cs.config.TimeoutPropose)
 	defer cancel()
-	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
+	if err := cs.privValidator.SignProposal(ctxto, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -2293,10 +2293,10 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctxto, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
+	err := cs.privValidator.SignVote(ctxto, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
 
@@ -2359,7 +2359,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 // updatePrivValidatorPubKey get's the private validator public key and
 // memoizes it. This func returns an error if the private validator is not
 // responding or responds with an error.
-func (cs *State) updatePrivValidatorPubKey(ctx context.Context) error {
+func (cs *State) updatePrivValidatorPubKey(rctx context.Context) error {
 	if cs.privValidator == nil {
 		return nil
 	}
@@ -2378,9 +2378,9 @@ func (cs *State) updatePrivValidatorPubKey(ctx context.Context) error {
 
 	// set context timeout depending on the configuration and the State step,
 	// this helps in avoiding blocking of the remote signer connection.
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctxto, cancel := context.WithTimeout(rctx, timeout)
 	defer cancel()
-	pubKey, err := cs.privValidator.GetPubKey(ctx)
+	pubKey, err := cs.privValidator.GetPubKey(ctxto)
 	if err != nil {
 		return err
 	}
