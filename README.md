@@ -39,6 +39,11 @@ maintained by Informal Systems.
 - [ABCI](./spec/abci/README.md): Details about interactions between the
   application and consensus engine over ABCI
 
+### ABCI++
+
+- [ABCI++](./spec/abci++/README.md): Specification of interactions between the
+  application and consensus engine over ABCI++
+
 ### RFC
 
 - [RFC](./rfc/README.md): RFCs describe proposals to change the spec.

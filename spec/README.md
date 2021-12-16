@@ -50,6 +50,8 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 - [ABCI](./abci/README.md): Details about interactions between the
   application and consensus engine over ABCI
+- [ABCI++](./abci++/README.md): Specification of interactions between the
+  application and consensus engine over ABCI++
 - [Write-Ahead Log](./consensus/wal.md): Details about how the consensus
   engine preserves data and recovers from crash failures
 
