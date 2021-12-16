@@ -190,7 +190,7 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
-func sortVValidatorStubsByPower(ctx context.Context, vss []*validatorStub) {
+func sortVValidatorStubsByPower(ctx context.Context, vss []*validatorStub) []*validatorStub {
 	sort.Slice(vss, func(i, j int) bool {
 		vssi, err := vss[i].GetPubKey(ctx)
 		if err != nil {
@@ -206,6 +206,7 @@ func sortVValidatorStubsByPower(ctx context.Context, vss []*validatorStub) {
 		}
 		return vss[i].VotingPower > vss[j].VotingPower
 	})
+	return vss
 }
 
 //-------------------------------------------------------------------------------

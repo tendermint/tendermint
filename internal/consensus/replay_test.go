@@ -454,7 +454,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
-	sortVValidatorStubsByPower(ctx, newVss)
+	newVss = sortVValidatorStubsByPower(ctx, newVss)
 
 	valIndexFn := func(cssIdx int) int {
 		for i, vs := range newVss {
@@ -508,7 +508,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
 	newVssIdx := valIndexFn(nVals)
 	newVss[newVssIdx].VotingPower = 25
-	sortVValidatorStubsByPower(ctx, newVss)
+	newVss = sortVValidatorStubsByPower(ctx, newVss)
 	selfIndex = valIndexFn(0)
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
@@ -533,7 +533,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss = make([]*validatorStub, nVals+3)
 	copy(newVss, vss[:nVals+3])
-	sortVValidatorStubsByPower(ctx, newVss)
+	newVss = sortVValidatorStubsByPower(ctx, newVss)
 
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
