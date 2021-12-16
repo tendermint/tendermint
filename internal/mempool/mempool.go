@@ -233,10 +233,6 @@ func (txmp *TxMempool) CheckTx(
 	cb func(*abci.Response),
 	txInfo TxInfo,
 ) error {
-	if ctx == nil {
-		ctx = context.TODO()
-	}
-
 	txmp.mtx.RLock()
 	defer txmp.mtx.RUnlock()
 

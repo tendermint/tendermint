@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -189,34 +190,22 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
-type ValidatorStubsByPower []*validatorStub
+func sortVValidatorStubsByPower(ctx context.Context, vss []*validatorStub) {
+	sort.Slice(vss, func(i, j int) bool {
+		vssi, err := vss[i].GetPubKey(ctx)
+		if err != nil {
+			panic(err)
+		}
+		vssj, err := vss[j].GetPubKey(ctx)
+		if err != nil {
+			panic(err)
+		}
 
-func (vss ValidatorStubsByPower) Len() int {
-	return len(vss)
-}
-
-func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetPubKey(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-	vssj, err := vss[j].GetPubKey(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-
-	if vss[i].VotingPower == vss[j].VotingPower {
-		return bytes.Compare(vssi.Address(), vssj.Address()) == -1
-	}
-	return vss[i].VotingPower > vss[j].VotingPower
-}
-
-func (vss ValidatorStubsByPower) Swap(i, j int) {
-	it := vss[i]
-	vss[i] = vss[j]
-	vss[i].Index = int32(i)
-	vss[j] = it
-	vss[j].Index = int32(j)
+		if vss[i].VotingPower == vss[j].VotingPower {
+			return bytes.Compare(vssi.Address(), vssj.Address()) == -1
+		}
+		return vss[i].VotingPower > vss[j].VotingPower
+	})
 }
 
 //-------------------------------------------------------------------------------
@@ -475,7 +464,7 @@ func newStateWithConfigAndBlockStore(
 		mempool,
 		evpool,
 	)
-	cs.SetPrivValidator(pv)
+	cs.SetPrivValidator(ctx, pv)
 
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	err := eventBus.Start(ctx)

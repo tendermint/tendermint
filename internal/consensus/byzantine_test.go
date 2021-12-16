@@ -92,7 +92,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			cs := NewState(ctx, logger, thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 			// set private validator
 			pv := privVals[i]
-			cs.SetPrivValidator(pv)
+			cs.SetPrivValidator(ctx, pv)
 
 			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
 			err = eventBus.Start(ctx)
@@ -125,14 +125,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bzNodeState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
-			prevote1, err := bzNodeState.signVote(
+			prevote1, err := bzNodeState.signVote(ctx,
 				tmproto.PrevoteType,
 				bzNodeState.ProposalBlock.Hash(),
 				bzNodeState.ProposalBlockParts.Header(),
 			)
 			require.NoError(t, err)
 
-			prevote2, err := bzNodeState.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+			prevote2, err := bzNodeState.signVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 			require.NoError(t, err)
 
 			// send two votes to all peers (1st to one half, 2nd to another half)
@@ -172,7 +172,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// lazyProposer := states[1]
 	lazyNodeState := states[1]
 
-	lazyNodeState.decideProposal = func(height int64, round int32) {
+	lazyNodeState.decideProposal = func(ctx context.Context, height int64, round int32) {
 		lazyNodeState.logger.Info("Lazy Proposer proposing condensed commit")
 		require.NotNil(t, lazyNodeState.privValidator)
 

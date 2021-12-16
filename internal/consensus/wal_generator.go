@@ -83,7 +83,7 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, wr io.Writer, numBloc
 	consensusState := NewState(ctx, logger, cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
-		consensusState.SetPrivValidator(privValidator)
+		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 	// END OF COPY PASTE
 

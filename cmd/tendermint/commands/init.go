@@ -39,10 +39,10 @@ func initFiles(cmd *cobra.Command, args []string) error {
 		return errors.New("must specify a node type: tendermint init [validator|full|seed]")
 	}
 	config.Mode = args[0]
-	return initFilesWithConfig(config)
+	return initFilesWithConfig(cmd.Context(), config)
 }
 
-func initFilesWithConfig(config *cfg.Config) error {
+func initFilesWithConfig(ctx context.Context, config *cfg.Config) error {
 	var (
 		pv  *privval.FilePV
 		err error
@@ -98,7 +98,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			}
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 		defer cancel()
 
 		// if this is a validator we add it to genesis

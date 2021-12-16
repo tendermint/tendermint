@@ -749,7 +749,7 @@ func TestSyncer_verifyApp(t *testing.T) {
 			rts := setup(ctx, t, nil, nil, nil, 2)
 
 			rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
-			version, err := rts.syncer.verifyApp(s)
+			version, err := rts.syncer.verifyApp(ctx, s)
 			unwrapped := errors.Unwrap(err)
 			if unwrapped != nil {
 				err = unwrapped

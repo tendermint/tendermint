@@ -162,7 +162,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(
+	abciResponses, err := execBlockOnProxyApp(ctx,
 		blockExec.logger, blockExec.proxyApp, block, blockExec.store, state.InitialHeight,
 	)
 	endTime := time.Now().UnixNano()
@@ -297,6 +297,7 @@ func (blockExec *BlockExecutor) Commit(
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
 func execBlockOnProxyApp(
+	ctx context.Context,
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
@@ -336,8 +337,6 @@ func execBlockOnProxyApp(
 	for _, evidence := range block.Evidence.Evidence {
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
-
-	ctx := context.TODO()
 
 	// Begin block
 	var err error
@@ -584,7 +583,7 @@ func ExecCommitBlock(
 	initialHeight int64,
 	s State,
 ) ([]byte, error) {
-	abciResponses, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+	abciResponses, err := execBlockOnProxyApp(ctx, logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
 		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

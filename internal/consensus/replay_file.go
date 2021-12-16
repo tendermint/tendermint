@@ -91,7 +91,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 	var msg *TimedWALMessage
 	for {
 		if nextN == 0 && console {
-			nextN, err = pb.replayConsoleLoop()
+			nextN, err = pb.replayConsoleLoop(ctx)
 			if err != nil {
 				return err
 			}
@@ -187,7 +187,7 @@ func (cs *State) startForReplay() {
 
 // console function for parsing input and running commands. The integer
 // return value is invalid unless the error is nil.
-func (pb *playback) replayConsoleLoop() (int, error) {
+func (pb *playback) replayConsoleLoop(ctx context.Context) (int, error) {
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
@@ -225,7 +225,6 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 			// NOTE: "back" is not supported in the state machine design,
 			// so we restart and replay up to
 
-			ctx := context.TODO()
 			// ensure all new step events are regenerated as expected
 
 			newStepSub, err := pb.cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
