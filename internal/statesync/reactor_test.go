@@ -29,9 +29,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	m = PrometheusMetrics(config.TestConfig().Instrumentation.Namespace)
-)
+var m = PrometheusMetrics(config.TestConfig().Instrumentation.Namespace)
+
+const testAppVersion = 9
 
 type reactorTestSuite struct {
 	reactor *Reactor
@@ -204,7 +204,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	// app query returns valid state app hash
 	rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
-		AppVersion:       9,
+		AppVersion:       testAppVersion,
 		LastBlockHeight:  snapshotHeight,
 		LastBlockAppHash: chain[snapshotHeight+1].AppHash,
 	}, nil)
@@ -798,6 +798,7 @@ func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockI
 		LastBlockID: lastBlockID,
 		Time:        time,
 	})
+	header.Version.App = testAppVersion
 	require.NoError(t, err)
 	nextVals, nextPrivVals := factory.RandValidatorSet(3, 10)
 	header.ValidatorsHash = currentVals.Hash()
