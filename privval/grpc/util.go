@@ -88,6 +88,7 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 
 // DialRemoteSigner is  a generalized function to dial the gRPC server.
 func DialRemoteSigner(
+	ctx context.Context,
 	cfg *config.PrivValidatorConfig,
 	chainID string,
 	logger log.Logger,
@@ -110,7 +111,6 @@ func DialRemoteSigner(
 
 	dialOptions = append(dialOptions, transportSecurity)
 
-	ctx := context.TODO()
 	_, address := tmnet.ProtocolAndAddress(cfg.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {

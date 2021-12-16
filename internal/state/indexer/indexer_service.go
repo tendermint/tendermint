@@ -122,7 +122,7 @@ func (is *Service) OnStart(ctx context.Context) error {
 	// If the event sinks support indexing, register an observer to capture
 	// block header data for the indexer.
 	if IndexingEnabled(is.eventSinks) {
-		err := is.eventBus.Observe(context.TODO(), is.publish,
+		err := is.eventBus.Observe(ctx, is.publish,
 			types.EventQueryNewBlockHeader, types.EventQueryTx)
 		if err != nil {
 			return err

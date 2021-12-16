@@ -508,7 +508,7 @@ func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envel
 
 	switch msg := envelope.Message.(type) {
 	case *ssproto.SnapshotsRequest:
-		snapshots, err := r.recentSnapshots(recentSnapshots)
+		snapshots, err := r.recentSnapshots(ctx, recentSnapshots)
 		if err != nil {
 			logger.Error("failed to fetch snapshots", "err", err)
 			return nil
@@ -585,7 +585,7 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		resp, err := r.conn.LoadSnapshotChunkSync(context.TODO(), abci.RequestLoadSnapshotChunk{
+		resp, err := r.conn.LoadSnapshotChunkSync(ctx, abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
@@ -875,8 +875,8 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 }
 
 // recentSnapshots fetches the n most recent snapshots from the app
-func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshotsSync(context.TODO(), abci.RequestListSnapshots{})
+func (r *Reactor) recentSnapshots(ctx context.Context, n uint32) ([]*snapshot, error) {
+	resp, err := r.conn.ListSnapshotsSync(ctx, abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

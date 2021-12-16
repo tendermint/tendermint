@@ -1034,6 +1034,7 @@ func createAndStartPrivValidatorGRPCClient(
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pvsc, err := tmgrpc.DialRemoteSigner(
+		ctx,
 		cfg.PrivValidator,
 		chainID,
 		logger,

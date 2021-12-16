@@ -60,7 +60,7 @@ func (ss *SignerServer) SetRequestHandler(validationRequestHandler ValidationReq
 	ss.validationRequestHandler = validationRequestHandler
 }
 
-func (ss *SignerServer) servicePendingRequest() {
+func (ss *SignerServer) servicePendingRequest(ctx context.Context) {
 	if !ss.IsRunning() {
 		return // Ignore error from closing.
 	}
@@ -78,7 +78,7 @@ func (ss *SignerServer) servicePendingRequest() {
 		// limit the scope of the lock
 		ss.handlerMtx.Lock()
 		defer ss.handlerMtx.Unlock()
-		res, err = ss.validationRequestHandler(context.TODO(), ss.privVal, req, ss.chainID) // todo
+		res, err = ss.validationRequestHandler(ctx, ss.privVal, req, ss.chainID) // todo
 		if err != nil {
 			// only log the error; we'll reply with an error in res
 			ss.endpoint.logger.Error("SignerServer: handleMessage", "err", err)
@@ -100,7 +100,7 @@ func (ss *SignerServer) serviceLoop(ctx context.Context) {
 			if err := ss.endpoint.ensureConnection(); err != nil {
 				return
 			}
-			ss.servicePendingRequest()
+			ss.servicePendingRequest(ctx)
 		}
 	}
 }

@@ -489,12 +489,13 @@ func randVoteSet(
 }
 
 func deterministicVoteSet(
+	ctx context.Context,
 	height int64,
 	round int32,
 	signedMsgType tmproto.SignedMsgType,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, privValidators := deterministicValidatorSet()
+	valSet, privValidators := deterministicValidatorSet(ctx)
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 

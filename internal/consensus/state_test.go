@@ -160,7 +160,7 @@ func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 
 	cs, _, err := randState(ctx, config, log.TestingLogger(), 1)
 	require.NoError(t, err)
-	cs.SetPrivValidator(nil)
+	cs.SetPrivValidator(ctx, nil)
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event

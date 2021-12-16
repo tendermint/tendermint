@@ -310,7 +310,7 @@ func createConsensusReactor(
 	)
 
 	if privValidator != nil && cfg.Mode == config.ModeValidator {
-		consensusState.SetPrivValidator(privValidator)
+		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 
 	csChDesc := consensus.GetChannelDescriptors()

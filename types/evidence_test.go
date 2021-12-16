@@ -317,6 +317,9 @@ func TestEvidenceProto(t *testing.T) {
 }
 
 func TestEvidenceVectors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Votes for duplicateEvidence
 	val := NewMockPV()
 	val.PrivKey = ed25519.GenPrivKeyFromSecret([]byte("it's a secret")) // deterministic key
@@ -330,7 +333,7 @@ func TestEvidenceVectors(t *testing.T) {
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := deterministicVoteSet(height, 1, tmproto.PrecommitType, 1)
+	voteSet, valSet, privVals := deterministicVoteSet(ctx, height, 1, tmproto.PrecommitType, 1)
 	header := &Header{
 		Version:            version.Consensus{Block: 1, App: 1},
 		ChainID:            chainID,

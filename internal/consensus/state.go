@@ -131,7 +131,7 @@ type State struct {
 	nSteps int
 
 	// some functions can be overwritten for testing
-	decideProposal func(height int64, round int32)
+	decideProposal func(ctx context.Context, height int64, round int32)
 	doPrevote      func(ctx context.Context, height int64, round int32)
 	setProposal    func(proposal *types.Proposal) error
 
@@ -272,7 +272,7 @@ func (cs *State) GetValidators() (int64, []*types.Validator) {
 
 // SetPrivValidator sets the private validator account for signing votes. It
 // immediately requests pubkey and caches it.
-func (cs *State) SetPrivValidator(priv types.PrivValidator) {
+func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -298,7 +298,7 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 		}
 	}
 
-	if err := cs.updatePrivValidatorPubKey(); err != nil {
+	if err := cs.updatePrivValidatorPubKey(ctx); err != nil {
 		cs.logger.Error("failed to get private validator pubkey", "err", err)
 	}
 }
@@ -1207,7 +1207,7 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 			"proposer", address,
 		)
 
-		cs.decideProposal(height, round)
+		cs.decideProposal(ctx, height, round)
 	} else {
 		logger.Debug(
 			"propose step; not our turn to propose",
@@ -1220,7 +1220,7 @@ func (cs *State) isProposer(address []byte) bool {
 	return bytes.Equal(cs.Validators.GetProposer().Address, address)
 }
 
-func (cs *State) defaultDecideProposal(height int64, round int32) {
+func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round int32) {
 	var block *types.Block
 	var blockParts *types.PartSet
 
@@ -1248,9 +1248,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
-	ctx, cancel := context.WithTimeout(context.TODO(), cs.config.TimeoutPropose)
+	ctxto, cancel := context.WithTimeout(ctx, cs.config.TimeoutPropose)
 	defer cancel()
-	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
+	if err := cs.privValidator.SignProposal(ctxto, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -1772,7 +1772,7 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 	fail.Fail() // XXX
 
 	// Private validator might have changed it's key pair => refetch pubkey.
-	if err := cs.updatePrivValidatorPubKey(); err != nil {
+	if err := cs.updatePrivValidatorPubKey(ctx); err != nil {
 		logger.Error("failed to get private validator pubkey", "err", err)
 	}
 
@@ -2250,6 +2250,7 @@ func (cs *State) addVote(
 
 // CONTRACT: cs.privValidator is not nil.
 func (cs *State) signVote(
+	ctx context.Context,
 	msgType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
@@ -2292,10 +2293,10 @@ func (cs *State) signVote(
 		timeout = time.Second
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctxto, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
+	err := cs.privValidator.SignVote(ctxto, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
 
@@ -2344,7 +2345,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 	}
 
 	// TODO: pass pubKey to signVote
-	vote, err := cs.signVote(msgType, hash, header)
+	vote, err := cs.signVote(ctx, msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, ""})
 		cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
@@ -2358,7 +2359,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 // updatePrivValidatorPubKey get's the private validator public key and
 // memoizes it. This func returns an error if the private validator is not
 // responding or responds with an error.
-func (cs *State) updatePrivValidatorPubKey() error {
+func (cs *State) updatePrivValidatorPubKey(rctx context.Context) error {
 	if cs.privValidator == nil {
 		return nil
 	}
@@ -2377,9 +2378,9 @@ func (cs *State) updatePrivValidatorPubKey() error {
 
 	// set context timeout depending on the configuration and the State step,
 	// this helps in avoiding blocking of the remote signer connection.
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctxto, cancel := context.WithTimeout(rctx, timeout)
 	defer cancel()
-	pubKey, err := cs.privValidator.GetPubKey(ctx)
+	pubKey, err := cs.privValidator.GetPubKey(ctxto)
 	if err != nil {
 		return err
 	}

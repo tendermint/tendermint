@@ -1599,7 +1599,7 @@ func BenchmarkValidatorSet_VerifyCommitLightTrusting_Ed25519(b *testing.B) {
 // where each validator has a power of 50
 //
 // EXPOSED FOR TESTING.
-func deterministicValidatorSet() (*ValidatorSet, []PrivValidator) {
+func deterministicValidatorSet(ctx context.Context) (*ValidatorSet, []PrivValidator) {
 	var (
 		valz           = make([]*Validator, 10)
 		privValidators = make([]PrivValidator, 10)
@@ -1607,7 +1607,7 @@ func deterministicValidatorSet() (*ValidatorSet, []PrivValidator) {
 
 	for i := 0; i < 10; i++ {
 		// val, privValidator := DeterministicValidator(ed25519.PrivKey([]byte(deterministicKeys[i])))
-		val, privValidator := deterministicValidator(ed25519.GenPrivKeyFromSecret([]byte(fmt.Sprintf("key: %x", i))))
+		val, privValidator := deterministicValidator(ctx, ed25519.GenPrivKeyFromSecret([]byte(fmt.Sprintf("key: %x", i))))
 		valz[i] = val
 		privValidators[i] = privValidator
 	}
