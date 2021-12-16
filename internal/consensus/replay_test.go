@@ -341,7 +341,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath)
 	sim.Config = cfg
-	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
+
+	var err error
+	sim.GenesisState, err = sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 	sim.CleanupFunc = cleanup
 
 	partSize := types.BlockPartSizeBytes
@@ -499,7 +502,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
 			rs.ProposalBlockParts.Header(), newVss[i])
 	}
-
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 5
