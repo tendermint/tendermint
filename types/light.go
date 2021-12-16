@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/tendermint/tendermint/proto/tendermint/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -41,6 +43,21 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 	}
 
 	return nil
+}
+
+func (lb LightBlock) CalculateSynchronyVotingPower(t types.TimingParams) time.Duration {
+	// Synchrony calculated as a function of the amount of voting power that has been seen since
+	// since the beginning of the height exclusive of the round in which the proposal succeeded.
+	votingPowerSeen := lb.ValidatorSet.VotingPowerBeforeRound(lb.SignedHeader.Commit.Round)
+	nonFaultyThreshold := lb.ValidatorSet.TotalVotingPower()*1/3 + 1
+
+	thresholdsObserved := (votingPowerSeen / nonFaultyThreshold)
+	return t.Precision + t.MessageDelay + t.MessageDelay*time.Duration(thresholdsObserved)
+}
+
+func (lb LightBlock) CalculateSynchronyRounds(t types.TimingParams) time.Duration {
+	// hard coded value of '10' used in this example
+	return t.Precision + t.MessageDelay + t.MessageDelay*time.Duration(lb.Commit.Round/10)
 }
 
 // String returns a string representation of the LightBlock

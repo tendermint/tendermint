@@ -342,6 +342,17 @@ func (vals *ValidatorSet) findProposer() *Validator {
 	return proposer
 }
 
+// VotingPowerSeenBeforeRound calculates the amount of voting power seen on the network
+// from proposals before round r.
+func (vals *ValidatorSet) VotingPowerBeforeRound(r int32) int64 {
+	var votingPowerSeen int64
+	for i := int32(0); i < r; i++ {
+		vals.IncrementProposerPriority(1)
+		votingPowerSeen += vals.GetProposer().VotingPower
+	}
+	return votingPowerSeen
+}
+
 // Hash returns the Merkle root hash build using validators (as leaves) in the
 // set.
 func (vals *ValidatorSet) Hash() []byte {

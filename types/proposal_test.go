@@ -200,6 +200,7 @@ func TestIsTimely(t *testing.T) {
 	testCases := []struct {
 		name         string
 		proposalTime time.Time
+		round        int32
 		localTime    time.Time
 		precision    time.Duration
 		msgDelay     time.Duration
@@ -235,11 +236,30 @@ func TestIsTimely(t *testing.T) {
 			msgDelay:     time.Nanosecond,
 			expectTimely: false,
 		},
+		{
+			name:         "long proposal in later round",
+			proposalTime: genesisTime,
+			round:        2, // should see 1/3 +1 of the network power
+			localTime:    genesisTime.Add(3 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: true,
+		},
+		{
+			name:         "long proposal in earlier round",
+			proposalTime: genesisTime,
+			round:        1, // should see 1/3 +1 of the network power
+			localTime:    genesisTime.Add(3 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: false,
+		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			p := Proposal{
 				Timestamp: testCase.proposalTime,
+				Round:     testCase.round,
 			}
 
 			tp := TimingParams{
@@ -250,7 +270,8 @@ func TestIsTimely(t *testing.T) {
 			mockSource := new(tmtimemocks.Source)
 			mockSource.On("Now").Return(testCase.localTime)
 
-			ti := p.IsTimely(mockSource, tp)
+			vals, _ := randValidatorPrivValSet(5, 15)
+			ti := p.IsTimely(mockSource, tp, vals)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}

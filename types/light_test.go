@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -162,4 +164,46 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 			)
 		})
 	}
+}
+
+func TestCalculateSynchronyVotingPower(t *testing.T) {
+	vals, _ := randValidatorPrivValSet(5, 10)
+	sh := &SignedHeader{
+		Commit: &Commit{
+			Round: 4,
+		},
+	}
+	lb := LightBlock{
+		ValidatorSet: vals,
+		SignedHeader: sh,
+	}
+
+	tp := types.TimingParams{
+		MessageDelay: 100 * time.Millisecond,
+		Precision:    10 * time.Millisecond,
+	}
+
+	s := lb.CalculateSynchronyVotingPower(tp)
+	require.Equal(t, s, tp.Precision+tp.MessageDelay+tp.MessageDelay*2)
+}
+
+func TestCalculateSynchronyRound(t *testing.T) {
+	vals, _ := randValidatorPrivValSet(5, 10)
+	sh := &SignedHeader{
+		Commit: &Commit{
+			Round: 11,
+		},
+	}
+	lb := LightBlock{
+		ValidatorSet: vals,
+		SignedHeader: sh,
+	}
+
+	tp := types.TimingParams{
+		MessageDelay: 100 * time.Millisecond,
+		Precision:    10 * time.Millisecond,
+	}
+
+	s := lb.CalculateSynchronyRounds(tp)
+	require.Equal(t, s, tp.Precision+tp.MessageDelay+tp.MessageDelay*1)
 }
