@@ -21,20 +21,11 @@ func (e pcBlockVerificationFailure) String() string {
 		e.height, e.firstPeerID, e.secondPeerID)
 }
 
-func (e pcBlockVerificationFailure) String() string {
-	return fmt.Sprintf("pcBlockVerificationFailure{%d 1st peer: %v, 2nd peer: %v}",
-		e.height, e.firstPeerID, e.secondPeerID)
-}
-
 // successful block execution
 type pcBlockProcessed struct {
 	priorityNormal
 	height int64
 	peerID types.NodeID
-}
-
-func (e pcBlockProcessed) String() string {
-	return fmt.Sprintf("pcBlockProcessed{%d peer: %v}", e.height, e.peerID)
 }
 
 func (e pcBlockProcessed) String() string {

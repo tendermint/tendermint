@@ -12,9 +12,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
-	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
 	"github.com/tendermint/tendermint/types"
@@ -224,14 +223,6 @@ func NewClientFromTrustedStore(
 	// Validate the number of witnesses.
 	if len(c.witnesses) == 0 {
 		return nil, ErrNoWitnesses
-	}
-
-	// Verify witnesses are all on the same chain.
-	for i, w := range witnesses {
-		if w.ChainID() != chainID {
-			return nil, fmt.Errorf("witness #%d: %v is on another chain %s, expected %s",
-				i, w, w.ChainID(), chainID)
-		}
 	}
 
 	if err := c.restoreTrustedLightBlock(); err != nil {

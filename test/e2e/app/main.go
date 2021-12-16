@@ -31,7 +31,6 @@ import (
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/test/e2e/pkg/mockcoreserver"
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
@@ -230,42 +229,12 @@ func startLightClient(cfg *Config) error {
 	return nil
 }
 
-// FIXME: Temporarily disconnected maverick until it is redesigned
-// startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
-// configuration is in $TMHOME/config/tendermint.toml.
-func startMaverick(cfg *Config) error {
-	app, err := NewApplication(cfg)
-	if err != nil {
-		return err
-	}
-
-	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
-	for heightString, misbehaviorString := range cfg.Misbehaviors {
-		height, _ := strconv.ParseInt(heightString, 10, 64)
-		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
-	}
-
-	// TODO: What is a maverick node?
-	n, err := maverick.NewNode(tmcfg,
-		nodeKey,
-		proxy.NewLocalClientCreator(app),
-		maverick.DefaultGenesisDocProviderFunc(tmcfg),
-		maverick.DefaultDBProvider,
-		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
-		dashCoreRPCClient,
-		logger,
-		misbehaviors,
-	)
-	if err != nil {
-		return err
-	}
-
-	return n.Start()
-}
-
 // startSigner starts a signer server connecting to the given endpoint.
 func startSigner(cfg *Config) error {
-	filePV := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
+	filePV, err := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
+	if err != nil {
+		return err
+	}
 
 	protocol, address := tmnet.ProtocolAndAddress(cfg.PrivValServer)
 	var dialFn privval.SocketDialer
