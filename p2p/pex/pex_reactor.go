@@ -395,7 +395,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 					case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 						r.Logger.Debug(err.Error(), "addr", addr)
 					default:
-						r.Logger.Error(err.Error(), "addr", addr)
+						r.Logger.Debug(err.Error(), "addr", addr)
 					}
 				}
 			}(netAddr)
@@ -504,7 +504,7 @@ func (r *Reactor) ensurePeers() {
 				case errMaxAttemptsToDial, errTooEarlyToDial:
 					r.Logger.Debug(err.Error(), "addr", addr)
 				default:
-					r.Logger.Error(err.Error(), "addr", addr)
+					r.Logger.Debug(err.Error(), "addr", addr)
 				}
 			}
 		}(addr)
@@ -717,7 +717,7 @@ func (r *Reactor) crawlPeers(addrs []*p2p.NetAddress) {
 			case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
 				r.Logger.Debug(err.Error(), "addr", addr)
 			default:
-				r.Logger.Error(err.Error(), "addr", addr)
+				r.Logger.Debug(err.Error(), "addr", addr)
 			}
 			continue
 		}
