@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	mrand "math/rand"
+	"math/rand"
 	"regexp"
 	"strings"
 	"sync"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
@@ -25,8 +24,6 @@ type BitArray struct {
 // NewBitArray returns a new bit array.
 // It returns nil if the number of bits is zero.
 func NewBitArray(bits int) *BitArray {
-	// Reseed non-deterministically.
-	tmrand.Reseed()
 	if bits <= 0 {
 		return nil
 	}
@@ -271,7 +268,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 		return 0, false
 	}
 	// nolint:gosec // G404: Use of weak random number generator
-	return trueIndices[mrand.Intn(len(trueIndices))], true
+	return trueIndices[rand.Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {
