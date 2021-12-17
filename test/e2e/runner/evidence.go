@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -20,13 +19,9 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// 1 in 4 evidence is light client evidence, the rest is duplicate vote evidence
-const lightClientEvidenceRatio = 4
-
 // InjectEvidence takes a running testnet and generates an amount of valid
 // evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
-// Evidence is random and can be a mixture of LightClientAttackEvidence and
-// DuplicateVoteEvidence.
+// Evidence is random and can be a mixture of DuplicateVoteEvidence.
 func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amount int) error {
 	// select a random node
 	var targetNode *e2e.Node
@@ -62,18 +57,27 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	waitHeight := blockRes.Block.Height + 3
 
 	nValidators := 100
-	valRes, err := client.Validators(context.Background(), &evidenceHeight, nil, &nValidators)
+	requestQuorumInfo := true
+	valRes, err := client.Validators(context.Background(), &evidenceHeight, nil, &nValidators, &requestQuorumInfo)
 	if err != nil {
 		return err
 	}
 
-	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators)
+	if valRes.ThresholdPublicKey == nil {
+		return errors.New("threshold public key must be returned when requested")
+	}
+
+	if valRes.QuorumHash == nil {
+		return errors.New("quorum hash must be returned when requested")
+	}
+
+	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators, *valRes.ThresholdPublicKey, valRes.QuorumType, *valRes.QuorumHash)
 	if err != nil {
 		return err
 	}
 
 	// get the private keys of all the validators in the network
-	privVals, err := getPrivateValidatorKeys(testnet)
+	privVals, err := getPrivateValidatorKeys(testnet, *valRes.ThresholdPublicKey, *valRes.QuorumHash)
 	if err != nil {
 		return err
 	}
@@ -90,15 +94,9 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 
 	var ev types.Evidence
 	for i := 1; i <= amount; i++ {
-		if i%lightClientEvidenceRatio == 0 {
-			ev, err = generateLightClientAttackEvidence(
-				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
-			)
-		} else {
-			ev, err = generateDuplicateVoteEvidence(
-				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
-			)
-		}
+		ev, err = generateDuplicateVoteEvidence(
+			privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
+		)
 		if err != nil {
 			return err
 		}
@@ -124,13 +122,13 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	return nil
 }
 
-func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
+func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.PubKey, quorumHash crypto.QuorumHash) ([]types.MockPV, error) {
 	var privVals []types.MockPV
 
 	for _, node := range testnet.Nodes {
 		if node.Mode == e2e.ModeValidator {
 			privKeyPath := filepath.Join(testnet.Dir, node.Name, PrivvalKeyFile)
-			privKey, err := readPrivKey(privKeyPath)
+			privKey, err := readPrivKey(privKeyPath, quorumHash)
 			if err != nil {
 				return nil, err
 			}
@@ -141,8 +139,8 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 				*types.NewMockPVWithParams(
 					privKey,
 					node.ProTxHash,
-					testnet.QuorumHash,
-					testnet.ThresholdPublicKey,
+					quorumHash,
+					thresholdPublicKey,
 					false,
 					false,
 				),
@@ -166,11 +164,12 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	voteA, err := factory.MakeVote(privVal, nil, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	stateID := types.RandStateID()
+	voteA, err := factory.MakeVote(&privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := factory.MakeVote(privVal, nil, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteB, err := factory.MakeVote(&privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +186,7 @@ func generateDuplicateVoteEvidence(
 func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) (types.MockPV, int32, error) {
 	for _, idx := range rand.Perm(len(privVals)) {
 		pv := privVals[idx]
-		valIdx, _ := vals.GetByAddress(pv.PrivKey.PubKey().Address())
+		valIdx, _ := vals.GetByProTxHash(pv.ProTxHash)
 		if valIdx >= 0 {
 			return pv, valIdx, nil
 		}
@@ -195,7 +194,7 @@ func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) 
 	return types.MockPV{}, -1, errors.New("no private validator found in validator set")
 }
 
-func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {
+func readPrivKey(keyFilePath string, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
 		return nil, err
@@ -206,7 +205,7 @@ func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {
 		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
 
-	return pvKey.PrivKey, nil
+	return pvKey.PrivateKeyForQuorumHash(quorumHash)
 }
 
 func makeHeaderRandom(chainID string, height int64) *types.Header {
@@ -224,7 +223,7 @@ func makeHeaderRandom(chainID string, height int64) *types.Header {
 		AppHash:            crypto.CRandBytes(tmhash.Size),
 		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
+		ProposerProTxHash:  crypto.RandProTxHash(),
 	}
 }
 
@@ -246,34 +245,4 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 			Hash:  psH,
 		},
 	}
-}
-
-func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
-) ([]types.PrivValidator, *types.ValidatorSet, error) {
-	newVal, newPrivVal := factory.RandValidator(false, 10)
-
-	var newVals *types.ValidatorSet
-	if vals.Size() > 2 {
-		newVals = types.NewValidatorSet(append(vals.Copy().Validators[:vals.Size()-1], newVal))
-	} else {
-		newVals = types.NewValidatorSet(append(vals.Copy().Validators, newVal))
-	}
-
-	// we need to sort the priv validators with the same index as the validator set
-	pv := make([]types.PrivValidator, newVals.Size())
-	for idx, val := range newVals.Validators {
-		found := false
-		for _, p := range append(privVals, newPrivVal.(types.MockPV)) {
-			if bytes.Equal(p.PrivKey.PubKey().Address(), val.Address) {
-				pv[idx] = p
-				found = true
-				break
-			}
-		}
-		if !found {
-			return nil, nil, fmt.Errorf("missing priv validator for %v", val.Address)
-		}
-	}
-
-	return pv, newVals, nil
 }
