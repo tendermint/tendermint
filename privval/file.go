@@ -361,7 +361,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 				return err
 			}
 			if !ok {
-				return fmt.Errorf("conflicting data")
+				return errors.New("conflicting data")
 			}
 
 			vote.Timestamp = timestamp
