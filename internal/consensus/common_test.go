@@ -459,7 +459,7 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, blockStore, nil)
 
 	logger := log.TestingLogger().With("module", "consensus")
 	cs := NewStateWithLogger(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool, logger, 0)
@@ -838,14 +838,14 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 	validatorProTxHashesAsByteArray := make([][]byte, len(validatorProTxHashes))
 	for i := 0; i < len(validatorProTxHashes); i++ {
 		privVal = css[i].privValidator
-		privValProTxHash, err := privVal.GetProTxHash()
+		privValProTxHash, err := privVal.GetProTxHash(context.Background())
 		if err != nil {
 			panic(err)
 		}
 		for j, proTxHash := range validatorProTxHashes {
 			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
-				privVal.UpdatePrivateKey(privKeys[j], quorumHash, thresholdPublicKey, height+3)
-				updatedValidators[j] = privVal.ExtractIntoValidator(quorumHash)
+				privVal.UpdatePrivateKey(context.Background(), privKeys[j], quorumHash, thresholdPublicKey, height+3)
+				updatedValidators[j] = privVal.ExtractIntoValidator(context.Background(), quorumHash)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -935,15 +935,15 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 	validatorProTxHashesAsByteArray := make([][]byte, len(validatorProTxHashes))
 	for i, proTxHash := range validatorProTxHashes {
 		for _, state := range css {
-			stateProTxHash, err := state.privValidator.GetProTxHash()
+			stateProTxHash, err := state.privValidator.GetProTxHash(context.Background())
 			if err != nil {
 				panic(err)
 			}
 			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
 				// we found the prival
 				privVal = state.privValidator
-				privVal.UpdatePrivateKey(privKeys[i], quorumHash, thresholdPublicKey, height+3)
-				updatedValidators[i] = privVal.ExtractIntoValidator(quorumHash)
+				privVal.UpdatePrivateKey(context.Background(), privKeys[i], quorumHash, thresholdPublicKey, height+3)
+				updatedValidators[i] = privVal.ExtractIntoValidator(context.Background(), quorumHash)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -1014,7 +1014,7 @@ func randConsensusNetWithPeers(
 			state.NextValidators.HasPublicKeys = false
 		}
 
-		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
+		app := appFunc(path.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		if appCloser, ok := app.(io.Closer); ok {
 			closeFuncs = append(closeFuncs, appCloser.Close)
 		}
@@ -1028,7 +1028,7 @@ func randConsensusNetWithPeers(
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
-		proTxHash, _ := privVal.GetProTxHash()
+		proTxHash, _ := privVal.GetProTxHash(context.Background())
 		css[i].SetLogger(logger.With("validator", i, "proTxHash", proTxHash.ShortString(), "module", "consensus"))
 	}
 	return css, genDoc, peer0Config, func() {
