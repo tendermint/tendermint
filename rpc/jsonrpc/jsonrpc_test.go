@@ -273,11 +273,6 @@ func TestServersAndClientsBasic(t *testing.T) {
 			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
-			cl1, err := client.NewURI(addr)
-			require.Nil(t, err)
-			fmt.Printf("=== testing server on %s using URI client", addr)
-			testWithHTTPClient(ctx, t, cl1)
-
 			cl2, err := client.New(addr)
 			require.Nil(t, err)
 			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
@@ -293,31 +288,6 @@ func TestServersAndClientsBasic(t *testing.T) {
 			cancel()
 		})
 	}
-}
-
-func TestHexStringArg(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cl, err := client.NewURI(tcpAddr)
-	require.Nil(t, err)
-	// should NOT be handled as hex
-	val := "0xabc"
-	got, err := echoViaHTTP(ctx, cl, val)
-	require.Nil(t, err)
-	assert.Equal(t, got, val)
-}
-
-func TestQuotedStringArg(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	cl, err := client.NewURI(tcpAddr)
-	require.Nil(t, err)
-	// should NOT be unquoted
-	val := "\"abc\""
-	got, err := echoViaHTTP(ctx, cl, val)
-	require.Nil(t, err)
-	assert.Equal(t, got, val)
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
