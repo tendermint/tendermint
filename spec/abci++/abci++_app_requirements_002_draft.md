@@ -41,11 +41,13 @@ On the other hand, if there is a deterministic bug in `PrepareProposal` or `Proc
 strictly speaking, this makes all processes that hit the bug byzantine. This is a problem in practice,
 as very often validators are running the Application from the same codebase, so potentially _all_ would
 likely hit the bug at the same time. This would result in most (or all) processes prevoting `nil`, with the
-serious consequences on Tendermint's liveness that this entails.
+serious consequences on Tendermint's liveness that this entails. Due to its criticality, Requirement 3 is a
+target for extensive testing and automated verification.
 
-* Requirement 4 [`ProcessProposal`, determinism-1]: For any correct process $p$, and any arbitrary block $v'$,
+* Requirement 4 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current
+  state and the block that is about to be applied. In other words, for any correct process $p$, and any arbitrary block $v'$,
   if $p$'s Tendermint calls `RequestProcessProposal` on $v'$ at height $h$,
-  then $p$'s Application's acceptance or rejection exclusively depends on $v'$ and $s_{p,h-1}$.
+  then $p$'s Application's acceptance or rejection **exclusively** depends on $v'$ and $s_{p,h-1}$.
 
 * Requirement 5 [`ProcessProposal`, determinism-2]: For any two correct processes $p$ and $q$, and any arbitrary block $v'$,
   if $p$'s (resp. $q$'s) Tendermint calls `RequestProcessProposal` on $v'$ at height $h$,
@@ -62,7 +64,7 @@ to hit the bug at the same point. There is currently no clear solution to help w
 the Application designers/implementors must proceed very carefully with the logic/implementation
 of `ProcessProposal`. As a general rule `ProcessProposal` _should_ always accept the block.
 
-According to the Tendermint algorithm, a correct process can only broadcast one precommit message in round $r$, height $h$.
+According to the Tendermint algorithm, a correct process can broadcast at most one precommit message in round $r$, height $h$.
 Since, as stated in the [Description](#description) section, `ResponseExtendVote` is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension in round $r$, height $h$.
 Let $e^r_p$ the vote extension that the Application of a correct process $p$ returns via `ResponseExtendVote` in round $r$, height $h$.
@@ -79,10 +81,11 @@ However, if there is a (deterministic) bug in `ExtendVote` or `VerifyVoteExtensi
 we will face the same liveness issues as described for Requirement 3, as Precommit messages with invalid vote
 extensions will be discarded.
 
-* Requirement 7 [`VerifyVoteExtension`, determinism-1]: For any correct process $p$,
-  and any arbitrary vote extension $e$, and any arbitrary block $w$,
-  if $p$'s (resp. $q$'s) Tendermint calls `RequestVerifyVoteExtension` on $e$ and $w$ at height $h$,
-  then $p$'s Application's acceptance or rejection exclusively depends on $e$, $w$ and $s_{p,h-1}$.
+* Requirement 7 [`VerifyVoteExtension`, determinism-1]: `VerifyVoteExtension` is a (deterministic) function of 
+  the current state, the vote extension received, and the prepared proposal that the extension refers to.
+  In other words, for any correct process $p$, and any arbitrary vote extension $e$, and any arbitrary
+  block $w$, if $p$'s (resp. $q$'s) Tendermint calls `RequestVerifyVoteExtension` on $e$ and $w$ at height $h$,
+  then $p$'s Application's acceptance or rejection **exclusively** depends on $e$, $w$ and $s_{p,h-1}$.
 
 * Requirement 8 [`VerifyVoteExtension`, determinism-2]: For any two correct processes $p$ and $q$,
   and any arbitrary vote extension $e$, and any arbitrary block $w$,

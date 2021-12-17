@@ -302,7 +302,7 @@ From the App's perspective, they'll probably skip ProcessProposal
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
-    | modified_tx             | bool                                             | The Application sets it to false to denote it did not make changes to transactions          | 1            |
+    | modified_tx             | bool                                             | The Application sets it to true to denote it made changes to transactions                   | 1            |
     | tx                      | repeated [TransactionRecord](#transactionrecord) | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | same_block              | bool                                             | If true, Application is in same-block execution mode                                        | 3            |
     | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 4            |
@@ -379,7 +379,7 @@ and _p_'s _validValue_ is `nil`:
     * in both modes, the Application can manipulate transactions
         * leave transactions untouched - `TxAction = UNMODIFIED`
         * add new transactions (not previously in the mempool) - `TxAction = ADDED`
-        * removed transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
+        * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
         * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`
