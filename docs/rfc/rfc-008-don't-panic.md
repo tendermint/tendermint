@@ -66,7 +66,12 @@ detected after interacting with a trusted but external data source,
 and reflect situations where the author thinks its safer to terminate
 the process immediately rather than allow execution to continue.
 
-TODO: Add more and better examples here.
+#### Unrecoverable Consensus Failure
+
+In general, a panic should be used in the case of unrecoverable
+consensus failures. If a process detects that the network is
+behaving in an incoherent way and it does not have a clearly defined
+and mechanism for recovering, the process should panic.
 
 #### Static Validity
 
