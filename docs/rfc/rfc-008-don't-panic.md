@@ -121,8 +121,8 @@ The process for removing panics involve a few steps, and will be part
 of an ongoing process of code modernization:
 
 - converting existing explicit panics to errors in cases where it's
-  possible to return an error, the errors would not be ignored, and
-  not panicing would not lead to data corruption or cover up data
+  possible to return an error, the errors can and should be handled, and returning
+  an error would not lead to data corruption or cover up data
   corruption.
 
 - increase rigor around operations that can cause runtime errors, like
