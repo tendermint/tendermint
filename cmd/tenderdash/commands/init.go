@@ -11,10 +11,8 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // InitFilesCmd initialises a fresh Tendermint Core instance.
@@ -25,10 +23,6 @@ var InitFilesCmd = &cobra.Command{
 	// We allow for zero args so we can throw a more informative error
 	Args: cobra.MaximumNArgs(1),
 	RunE: initFiles,
-}
-
-func initFilesSingleNode(cmd *cobra.Command, args []string) error {
-	return initFilesSingleNodeWithConfig(config)
 }
 
 var (
@@ -101,9 +95,9 @@ func initFilesWithConfig(config *cfg.Config) error {
 	} else {
 
 		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     time.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
+			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:                  time.Now(),
+			ConsensusParams:              types.DefaultConsensusParams(),
 			QuorumType:                   btcjson.LLMQType(quorumType),
 			InitialCoreChainLockedHeight: coreChainLockedHeight,
 			InitialHeight:                initChainInitialHeight,

@@ -2,6 +2,7 @@ package mockcoreserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -65,10 +66,10 @@ func JSONContentType() HandlerOptionFunc {
 }
 
 // OnMethod ...
-func OnMethod(fn func(req btcjson.Request) (interface{}, error)) HandlerOptionFunc {
+func OnMethod(fn func(ctx context.Context, req btcjson.Request) (interface{}, error)) HandlerOptionFunc {
 	return func(opt *respOption, req *http.Request) error {
-		return JRPCRequest(func(btcReq btcjson.Request) error {
-			val, err := fn(btcReq)
+		return JRPCRequest(func(ctx context.Context, btcReq btcjson.Request) error {
+			val, err := fn(ctx, btcReq)
 			if err != nil {
 				return err
 			}

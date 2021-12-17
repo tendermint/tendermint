@@ -27,6 +27,20 @@ func (_m *BlockStore) Base() int64 {
 	return r0
 }
 
+// CoreChainLockedHeight provides a mock function with given fields:
+func (_m *BlockStore) CoreChainLockedHeight() uint32 {
+	ret := _m.Called()
+
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	return r0
+}
+
 // Height provides a mock function with given fields:
 func (_m *BlockStore) Height() int64 {
 	ret := _m.Called()

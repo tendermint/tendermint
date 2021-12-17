@@ -14,10 +14,12 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -32,9 +34,31 @@ import (
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/test/e2e/app"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/mockcoreserver"
+	"github.com/tendermint/tendermint/types"
 )
 
 var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+
+var (
+	tmhome            string
+	tmcfg             *config.Config
+	nodeLogger        log.Logger
+	nodeKey           *types.NodeKey
+	dashCoreRPCClient dashcore.Client
+)
+
+func init() {
+	tmhome = os.Getenv("TMHOME")
+	if tmhome == "" {
+		panic("TMHOME is missed")
+	}
+	var err error
+	tmcfg, nodeLogger, err = setupNode()
+	if err != nil {
+		panic("failed to setup config: " + err.Error())
+	}
+}
 
 // main is the binary entrypoint.
 func main() {
@@ -62,11 +86,32 @@ func run(configFile string) error {
 
 	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
-		if err = startSigner(cfg); err != nil {
-			return err
-		}
-		if cfg.Protocol == "builtin" {
-			time.Sleep(1 * time.Second)
+		if cfg.PrivValServerType == "dashcore" {
+			fmt.Printf("Starting mock core server at address %v\n", cfg.PrivValServer)
+			// Start mock core-server
+			coreSrv, err := setupCoreServer(cfg)
+			if err != nil {
+				return fmt.Errorf("unable to setup mock core server: %w", err)
+			}
+			go func() {
+				coreSrv.Start()
+			}()
+
+			dashCoreRPCClient, err = dashcore.NewRPCClient(
+				cfg.PrivValServer,
+				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
+				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+			)
+			if err != nil {
+				return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
+			}
+		} else {
+			if err = startSigner(cfg); err != nil {
+				return err
+			}
+			if cfg.Protocol == "builtin" {
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}
 
@@ -114,8 +159,8 @@ func startApp(cfg *Config) error {
 	return nil
 }
 
-// startNode starts a Tendermint node running the application directly. It assumes the Tendermint
-// configuration is in $TMHOME/config/tendermint.toml.
+// startNode starts a Tenderdash node running the application directly. It assumes the Tenderdash
+// configuration is in $TMHOME/config/tenderdash.toml.
 //
 // FIXME There is no way to simply load the configuration from a file, so we need to pull in Viper.
 func startNode(cfg *Config) error {
@@ -133,6 +178,7 @@ func startNode(cfg *Config) error {
 		nodeLogger,
 		abciclient.NewLocalCreator(app),
 		nil,
+		dashCoreRPCClient,
 	)
 	if err != nil {
 		return err
@@ -148,7 +194,7 @@ func startSeedNode(cfg *Config) error {
 
 	tmcfg.Mode = config.ModeSeed
 
-	n, err := node.New(tmcfg, nodeLogger, nil, nil)
+	n, err := node.New(tmcfg, nodeLogger, nil, nil, dashCoreRPCClient)
 	if err != nil {
 		return err
 	}
@@ -180,6 +226,7 @@ func startLightNode(cfg *Config) error {
 		providers[0],
 		providers[1:],
 		dbs.New(lightDB),
+		dashCoreRPCClient,
 		light.Logger(nodeLogger),
 	)
 	if err != nil {
@@ -317,4 +364,26 @@ func rpcEndpoints(peers string) []string {
 		endpoints[i] = rpcEndpoint
 	}
 	return endpoints
+}
+
+func setupCoreServer(cfg *Config) (*mockcoreserver.JRPCServer, error) {
+	srv := mockcoreserver.NewJRPCServer(cfg.PrivValServer, "/")
+	privValKeyPath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidator.Key)
+	privValStatePath := filepath.Clean(tmhome + "/" + tmcfg.PrivValidator.State)
+	filePV, _ := privval.LoadFilePV(privValKeyPath, privValStatePath)
+	coreServer := &mockcoreserver.MockCoreServer{
+		ChainID:  cfg.ChainID,
+		LLMQType: btcjson.LLMQType_5_60,
+		FilePV:   filePV,
+	}
+	srv = mockcoreserver.WithMethods(
+		srv,
+		mockcoreserver.WithQuorumInfoMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithQuorumSignMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithQuorumVerifyMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithMasternodeMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithGetNetworkInfoMethod(coreServer, mockcoreserver.Endless),
+		mockcoreserver.WithPingMethod(coreServer, mockcoreserver.Endless),
+	)
+	return srv, nil
 }
