@@ -267,6 +267,12 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
+
+	// NOTE: using the default math/rand might result in somewhat
+	// amount of determinism here. It would be possible to use
+	// rand.New(rand.NewSeed(time.Now().Unix())).Intn() to
+	// counteract this possibility if it proved to be material.
+	//
 	// nolint:gosec // G404: Use of weak random number generator
 	return trueIndices[rand.Intn(len(trueIndices))], true
 }
