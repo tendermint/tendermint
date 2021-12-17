@@ -65,7 +65,9 @@ func initFilesWithConfig(ctx context.Context, config *cfg.Config) error {
 			if err != nil {
 				return err
 			}
-			pv.Save()
+			if err := pv.Save(); err != nil {
+				return err
+			}
 			logger.Info("Generated private validator", "keyFile", privValKeyFile,
 				"stateFile", privValStateFile)
 		}

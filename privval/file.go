@@ -39,7 +39,7 @@ func voteToStep(vote *tmproto.Vote) (int8, error) {
 	case tmproto.PrecommitType:
 		return stepPrecommit, nil
 	default:
-		return 0, fmt.Errorf("Unknown vote type: %v", vote.Type)
+		return 0, fmt.Errorf("unknown vote type: %v", vote.Type)
 	}
 }
 
@@ -304,14 +304,14 @@ func (pv *FilePV) Save() error {
 
 // Reset resets all fields in the FilePV.
 // NOTE: Unsafe!
-func (pv *FilePV) Reset() {
+func (pv *FilePV) Reset() error {
 	var sig []byte
 	pv.LastSignState.Height = 0
 	pv.LastSignState.Round = 0
 	pv.LastSignState.Step = 0
 	pv.LastSignState.Signature = sig
 	pv.LastSignState.SignBytes = nil
-	pv.Save()
+	return pv.Save()
 }
 
 // String returns a string representation of the FilePV.
@@ -374,7 +374,9 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	if err != nil {
 		return err
 	}
-	pv.saveSigned(height, round, step, signBytes, sig)
+	if err := pv.saveSigned(height, round, step, signBytes, sig); err != nil {
+		return err
+	}
 	vote.Signature = sig
 	return nil
 }
@@ -420,21 +422,21 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	if err != nil {
 		return err
 	}
-	pv.saveSigned(height, round, step, signBytes, sig)
+	if err := pv.saveSigned(height, round, step, signBytes, sig); err != nil {
+		return err
+	}
 	proposal.Signature = sig
 	return nil
 }
 
 // Persist height/round/step and signature
-func (pv *FilePV) saveSigned(height int64, round int32, step int8,
-	signBytes []byte, sig []byte) {
-
+func (pv *FilePV) saveSigned(height int64, round int32, step int8, signBytes []byte, sig []byte) error {
 	pv.LastSignState.Height = height
 	pv.LastSignState.Round = round
 	pv.LastSignState.Step = step
 	pv.LastSignState.Signature = sig
 	pv.LastSignState.SignBytes = signBytes
-	pv.LastSignState.Save()
+	return pv.LastSignState.Save()
 }
 
 //-----------------------------------------------------------------------------------------

@@ -487,15 +487,13 @@ func newStateWithConfigAndBlockStore(
 	return cs
 }
 
-func loadPrivValidator(cfg *config.Config) *privval.FilePV {
+func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 	privValidatorKeyFile := cfg.PrivValidator.KeyFile()
 	ensureDir(filepath.Dir(privValidatorKeyFile), 0700)
 	privValidatorStateFile := cfg.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
-	if err != nil {
-		panic(err)
-	}
-	privValidator.Reset()
+	require.NoError(t, err)
+	require.NoError(t, privValidator.Reset())
 	return privValidator
 }
 

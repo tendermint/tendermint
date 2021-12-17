@@ -111,17 +111,21 @@ func Setup(testnet *e2e.Testnet) error {
 			return err
 		}
 
-		(privval.NewFilePV(node.PrivvalKey,
+		if err := (privval.NewFilePV(node.PrivvalKey,
 			filepath.Join(nodeDir, PrivvalKeyFile),
 			filepath.Join(nodeDir, PrivvalStateFile),
-		)).Save()
+		)).Save(); err != nil {
+			return err
+		}
 
 		// Set up a dummy validator. Tendermint requires a file PV even when not used, so we
 		// give it a dummy such that it will fail if it actually tries to use it.
-		(privval.NewFilePV(ed25519.GenPrivKey(),
+		if err := (privval.NewFilePV(ed25519.GenPrivKey(),
 			filepath.Join(nodeDir, PrivvalDummyKeyFile),
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
-		)).Save()
+		)).Save(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -171,7 +175,7 @@ services:
     - ./{{ .Name }}:/tendermint
     networks:
       {{ $.Name }}:
-        ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
+	 ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
 
 {{end}}`)
 	if err != nil {

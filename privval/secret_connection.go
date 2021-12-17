@@ -220,7 +220,10 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 
 			// encrypt the frame
 			sc.sendAead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
-			incrNonce(sc.sendNonce)
+			if err := incrNonce(sc.sendNonce); err != nil {
+				return err
+			}
+
 			// end encryption
 
 			_, err = sc.conn.Write(sealedFrame)
