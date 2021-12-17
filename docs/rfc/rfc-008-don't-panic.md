@@ -102,7 +102,7 @@ terminating a service.
 
 In **no** other situation is it acceptable for the code to panic:
 
-- there should be controlled **no** panics that callers are required
+- there should be **no** controlled panics that callers are required
   to handle across library/package boundaries.
 - callers of library functions should not expect panics.
 - ensuring that arbitrary go routines can't panic.
