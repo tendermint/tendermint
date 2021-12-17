@@ -98,7 +98,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			mockPV           = types.NewMockPV()
 			endpointIsOpenCh = make(chan struct{})
 			thisConnTimeout  = testTimeoutReadWrite
-			listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)
+			listenerEndpoint = newSignerListenerEndpoint(t, logger, tc.addr, thisConnTimeout)
 		)
 
 		dialerEndpoint := NewSignerDialerEndpoint(
@@ -138,14 +138,12 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 	}
 }
 
-func newSignerListenerEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
+func newSignerListenerEndpoint(t *testing.T, logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
 	proto, address := tmnet.ProtocolAndAddress(addr)
 
 	ln, err := net.Listen(proto, address)
 	logger.Info("SignerListener: Listening", "proto", proto, "address", address)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	var listener net.Listener
 
@@ -199,7 +197,7 @@ func getMockEndpoints(
 			socketDialer,
 		)
 
-		listenerEndpoint = newSignerListenerEndpoint(logger, addr, testTimeoutReadWrite)
+		listenerEndpoint = newSignerListenerEndpoint(t, logger, addr, testTimeoutReadWrite)
 	)
 
 	SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
