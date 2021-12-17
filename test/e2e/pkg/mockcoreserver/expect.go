@@ -2,6 +2,7 @@ package mockcoreserver
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -83,14 +84,14 @@ func And(fns ...ExpectFunc) ExpectFunc {
 }
 
 // JRPCRequest transforms http.Request into btcjson.Request and executes passed list of functions
-func JRPCRequest(fns ...func(req btcjson.Request) error) ExpectFunc {
+func JRPCRequest(fns ...func(ctx context.Context, req btcjson.Request) error) ExpectFunc {
 	return func(req *http.Request) error {
 		jReq, ok := req.Context().Value(jRPCRequestKey).(btcjson.Request)
 		if !ok {
 			return errors.New("missed btcjson.Request in a context")
 		}
 		for _, fn := range fns {
-			err := fn(jReq)
+			err := fn(req.Context(), jReq)
 			if err != nil {
 				return err
 			}
@@ -101,7 +102,7 @@ func JRPCRequest(fns ...func(req btcjson.Request) error) ExpectFunc {
 
 // JRPCParamsEmpty is a request expectation of empty JRPC params
 func JRPCParamsEmpty() ExpectFunc {
-	return JRPCRequest(func(req btcjson.Request) error {
+	return JRPCRequest(func(ctx context.Context, req btcjson.Request) error {
 		if req.Params != nil && len(req.Params) > 0 {
 			return errors.New("jRPC request params should be empty")
 		}

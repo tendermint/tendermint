@@ -131,7 +131,7 @@ func TestGetPubKey(t *testing.T) {
 	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
 	assert.NoError(t, err)
 	quorumHash := crypto.RandQuorumHash()
-	pubKey, err := client.GetPubKey(quorumHash)
+	pubKey, err := client.GetPubKey(context.Background(), quorumHash)
 	assert.NoError(t, err)
 	b, _ := hex.DecodeString(
 		"83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123",

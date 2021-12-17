@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/privval"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -126,7 +125,7 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 }
 
 func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
-	privVals := []types.MockPV{}
+	var privVals []types.MockPV
 
 	for _, node := range testnet.Nodes {
 		if node.Mode == e2e.ModeValidator {
@@ -137,61 +136,21 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 			}
 			// Create mock private validators from the validators private key. MockPV is
 			// stateless which means we can double vote and do other funky stuff
-			privVals = append(privVals, types.NewMockPVWithParams(privKey, false, false))
+			privVals = append(
+				privVals,
+				*types.NewMockPVWithParams(
+					privKey,
+					node.ProTxHash,
+					testnet.QuorumHash,
+					testnet.ThresholdPublicKey,
+					false,
+					false,
+				),
+			)
 		}
 	}
 
 	return privVals, nil
-}
-
-// creates evidence of a lunatic attack. The height provided is the common height.
-// The forged height happens 2 blocks later.
-func generateLightClientAttackEvidence(
-	privVals []types.MockPV,
-	height int64,
-	vals *types.ValidatorSet,
-	chainID string,
-	evTime time.Time,
-) (*types.LightClientAttackEvidence, error) {
-	// forge a random header
-	forgedHeight := height + 2
-	forgedTime := evTime.Add(1 * time.Second)
-	header := makeHeaderRandom(chainID, forgedHeight)
-	header.Time = forgedTime
-
-	// add a new bogus validator and remove an existing one to
-	// vary the validator set slightly
-	pv, conflictingVals, err := mutateValidatorSet(privVals, vals)
-	if err != nil {
-		return nil, err
-	}
-
-	header.ValidatorsHash = conflictingVals.Hash()
-
-	// create a commit for the forged header
-	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := factory.MakeCommit(blockID, forgedHeight, 0, voteSet, pv, forgedTime)
-	if err != nil {
-		return nil, err
-	}
-
-	ev := &types.LightClientAttackEvidence{
-		ConflictingBlock: &types.LightBlock{
-			SignedHeader: &types.SignedHeader{
-				Header: header,
-				Commit: commit,
-			},
-			ValidatorSet: conflictingVals,
-		},
-		CommonHeight:     height,
-		TotalVotingPower: vals.TotalVotingPower(),
-		Timestamp:        evTime,
-	}
-	ev.ByzantineValidators = ev.GetByzantineValidators(vals, &types.SignedHeader{
-		Header: makeHeaderRandom(chainID, forgedHeight),
-	})
-	return ev, nil
 }
 
 // generateDuplicateVoteEvidence picks a random validator from the val set and
@@ -207,11 +166,11 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	voteA, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteA, err := factory.MakeVote(privVal, nil, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteB, err := factory.MakeVote(privVal, nil, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
