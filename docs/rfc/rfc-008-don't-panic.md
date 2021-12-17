@@ -102,12 +102,13 @@ terminating a service.
 
 In **no** other situation is it acceptable for the code to panic:
 
-- there should be controlled panics that should be handled across
-  library/package boundaries.
+- there should be controlled **no** panics that callers are required
+  to handle across library/package boundaries.
 - callers of library functions should not expect panics.
 - ensuring that arbitrary go routines can't panic.
 - ensuring that there are no arbitrary panics in core production code,
-  espically code that can run at any time during the.
+  espically code that can run at any time during the lifetime of a
+  process.
 - all test code and fixture should report normal test assertions with
   a mechanism like testify's `require` assertion rather than calling
   panic directly.
