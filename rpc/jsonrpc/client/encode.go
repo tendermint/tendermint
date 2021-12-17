@@ -2,29 +2,10 @@ package client
 
 import (
 	"fmt"
-	"net/url"
 	"reflect"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 )
-
-func argsToURLValues(args map[string]interface{}) (url.Values, error) {
-	values := make(url.Values)
-	if len(args) == 0 {
-		return values, nil
-	}
-
-	err := argsToJSON(args)
-	if err != nil {
-		return nil, err
-	}
-
-	for key, val := range args {
-		values.Set(key, val.(string))
-	}
-
-	return values, nil
-}
 
 func argsToJSON(args map[string]interface{}) error {
 	for k, v := range args {
