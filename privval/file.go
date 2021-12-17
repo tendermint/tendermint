@@ -65,10 +65,7 @@ func (pvKey FilePVKey) Save() error {
 	if err != nil {
 		return err
 	}
-	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
-	if err != nil {
-		return err
-	}
+	return tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 	return nil
 }
 
@@ -136,11 +133,7 @@ func (lss *FilePVLastSignState) Save() error {
 	if err != nil {
 		return err
 	}
-	err = tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
-	if err != nil {
-		return err
-	}
-	return nil
+	return tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
 }
 
 //-------------------------------------------------------------------------------
@@ -295,11 +288,7 @@ func (pv *FilePV) Save() error {
 		return err
 	}
 
-	if err := pv.LastSignState.Save(); err != nil {
-		return err
-	}
-
-	return nil
+	return pv.LastSignState.Save()
 }
 
 // Reset resets all fields in the FilePV.
