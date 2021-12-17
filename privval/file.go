@@ -353,6 +353,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 
 			vote.Timestamp = timestamp
 			vote.Signature = lss.Signature
+			return nil
 		}
 	}
 
@@ -401,6 +402,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 			}
 			proposal.Timestamp = timestamp
 			proposal.Signature = lss.Signature
+			return nil
 		}
 	}
 
