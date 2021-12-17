@@ -10,12 +10,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	keyType string
+)
+
 // GenValidatorCmd allows the generation of a keypair for a
 // validator.
 var GenValidatorCmd = &cobra.Command{
-	Use:     "gen-validator",
-	Short:   "Generate new validator keypair",
-	RunE:     genValidator,
+	Use:   "gen-validator",
+	Short: "Generate new validator keypair",
+	RunE:  genValidator,
 }
 
 func init() {
@@ -24,10 +28,7 @@ func init() {
 }
 
 func genValidator(cmd *cobra.Command, args []string) error {
-	pv, err := privval.GenFilePV("", "", keyType)
-	if err != nil {
-		return err
-	}
+	pv := privval.GenFilePV("", "")
 
 	jsbz, err := tmjson.Marshal(pv)
 	if err != nil {
