@@ -66,7 +66,6 @@ func (pvKey FilePVKey) Save() error {
 		return err
 	}
 	return tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
-	return nil
 }
 
 //-------------------------------------------------------------------------------
@@ -287,7 +286,6 @@ func (pv *FilePV) Save() error {
 	if err := pv.Key.Save(); err != nil {
 		return err
 	}
-
 	return pv.LastSignState.Save()
 }
 
