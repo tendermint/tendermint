@@ -267,7 +267,9 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	if err != nil {
 		return n, fmt.Errorf("failed to decrypt SecretConnection: %w", err)
 	}
-	incrNonce(sc.recvNonce)
+	if err = incrNonce(sc.recvNonce); err != nil {
+		return
+	}
 	// end decryption
 
 	// copy checkLength worth into data,

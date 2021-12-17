@@ -33,7 +33,7 @@ func TestGenLoadValidator(t *testing.T) {
 
 	height := int64(100)
 	privVal.LastSignState.Height = height
-	privVal.Save()
+	require.NoError(t, privVal.Save())
 	addr := privVal.GetAddress()
 
 	privVal, err = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -68,7 +68,7 @@ func TestResetValidator(t *testing.T) {
 	assert.NotEqual(t, privVal.LastSignState, emptyState)
 
 	// priv val after AcceptNewConnection is same as empty
-	privVal.Reset()
+	require.NoError(t, privVal.Reset())
 	assert.Equal(t, privVal.LastSignState, emptyState)
 }
 
