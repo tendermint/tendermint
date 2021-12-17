@@ -246,6 +246,38 @@ func (m *HasVoteMessage) String() string {
 	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
 }
 
+// CommitMessage is sent when commit is constructed after having 2/3rds of approving precommit messages for a proposal.
+type CommitMessage struct {
+	Commit *types.Commit
+}
+
+// ValidateBasic performs basic validation.
+func (m *CommitMessage) ValidateBasic() error {
+	return m.Commit.ValidateBasic()
+}
+
+// HasCommitMessage is sent to indicate that a particular commit has been received.
+type HasCommitMessage struct {
+	Height int64
+	Round  int32
+}
+
+// ValidateBasic performs basic validation.
+func (m *HasCommitMessage) ValidateBasic() error {
+	if m.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
+	return nil
+}
+
+// String returns a string representation.
+func (m *HasCommitMessage) String() string {
+	return fmt.Sprintf("[HasCommit C:{%02d/%02d}]", m.Height, m.Round)
+}
+
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
 type VoteSetMaj23Message struct {
 	Height  int64
@@ -403,6 +435,24 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 				},
 			},
 		}
+	case *CommitMessage:
+		commit := msg.Commit.ToProto()
+		pb = tmcons.Message{
+			Sum: &tmcons.Message_Commit{
+				Commit: &tmcons.Commit{
+					Commit: commit,
+				},
+			},
+		}
+	case *HasCommitMessage:
+		pb = tmcons.Message{
+			Sum: &tmcons.Message_HasCommit{
+				HasCommit: &tmcons.HasCommit{
+					Height: msg.Height,
+					Round:  msg.Round,
+				},
+			},
+		}
 	case *VoteSetMaj23Message:
 		bi := msg.BlockID.ToProto()
 		pb = tmcons.Message{
@@ -528,6 +578,20 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Round:  msg.HasVote.Round,
 			Type:   msg.HasVote.Type,
 			Index:  msg.HasVote.Index,
+		}
+	case *tmcons.Message_Commit:
+		commit, err := types.CommitFromProto(msg.Commit.Commit)
+		if err != nil {
+			return nil, fmt.Errorf("commit msg to proto error: %w", err)
+		}
+
+		pb = &CommitMessage{
+			Commit: commit,
+		}
+	case *tmcons.Message_HasCommit:
+		pb = &HasCommitMessage{
+			Height: msg.HasCommit.Height,
+			Round:  msg.HasCommit.Round,
 		}
 	case *tmcons.Message_VoteSetMaj23:
 		bi, err := types.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)
