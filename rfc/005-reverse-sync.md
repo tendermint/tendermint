@@ -1,4 +1,4 @@
-# RFC 004: ReverseSync - fetching historical data
+# RFC 005: ReverseSync - fetching historical data
 
 ## Changelog
 

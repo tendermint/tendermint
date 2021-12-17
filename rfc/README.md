@@ -27,3 +27,4 @@ Some RFC's will be presented at a Tendermint Dev Session. If you are an outside 
 - [003-ed25519-verification](./003-ed25519-verification.md)
 - [004-abci++](./004-abci++.md)
 - [005-reverse-sync](./005-reverse-sync.md)
+- [006-semantic-versioning](./006-semantic-versioning.md)
