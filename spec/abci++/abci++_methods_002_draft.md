@@ -302,11 +302,13 @@ From the App's perspective, they'll probably skip ProcessProposal
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
-    | modified                | bool                                             | The Application sets it to true to denote it did not make changes                           | 1            |
+    | modified_tx             | bool                                             | The Application sets it to false to denote it did not make changes to transactions          | 1            |
     | tx                      | repeated [TransactionRecord](#transactionrecord) | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
-    | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 4            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 5            |
+    | same_block              | bool                                             | If true, Application is in same-block execution mode                                        | 3            |
+    | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 4            |
+    | tx_result               | repeated [DeliverTxResult](#delivertxresult)     | List of structures containing the data resulting from executing the transactions            | 5            |
+    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 6            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 7            |
 
 * **Usage**:
     * Contains a preliminary block to be proposed, which the Application can modify.
@@ -314,18 +316,21 @@ From the App's perspective, they'll probably skip ProcessProposal
       and `RequestFinalizeBlock`.
     * The header contains the height, timestamp, and more - it exactly matches the
       Tendermint block header.
-    * The Application can modify the parameters received in `RequestPrepareProposal` before sending
-    them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified` is set to true.
-    * In same-block execution mode, the Application can (and should) modify `ResponsePrepareProposal.data`,
+    * The Application can modify the transactions received in `RequestPrepareProposal` before sending
+      them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified_tx` is set to true.
+    * If `ResponsePrepareProposal.modified_tx` is false, then Tendermint will ignore the contents of
+      `ResponsePrepareProposal.tx`.
+    * In same-block execution mode, the Application must set `ResponsePrepareProposal.same_block` to true, and,
+      as a result of executing the block, provide values for `ResponsePrepareProposal.tx_result`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
-    * In next-block execution mode, the Application can only modify `ResponsePrepareProposal.tx`, Tendermint
-      will ignore any modification to the other fields.
-    * If `ResponsePrepareProposal.modified` is false, then Tendermint will ignore the rest of
-      parameters in `ResponsePrepareProposal`.
-    * As a result of executing the block to propose, the Application may produce header events or transaction events.
+    * In next-block execution mode, the Application must set `ResponsePrepareProposal.same_block` to false.
+      Tendermint will ignore parameters `ResponsePrepareProposal.tx_result`,
+      `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
+    * As a result of executing the prepared proposal, the Application may produce header events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
       `ResponseFinalizeBlock`.
-    * Likewise, the Application must keep all responses to executing transactions until it can call `ResponseFinalizeBlock`.
+    * Likewise, in next-block execution mode, the Application must keep all responses to executing transactions
+      until it can call `ResponseFinalizeBlock`.
     * The Application can change the transaction list via `ResponsePrepareProposal.tx`.
       See [TransactionRecord](#transactionrecord) for further information on how to use it. Some notes:
         * To remove a transaction from the proposed block the Application _marks_ the transaction as
@@ -549,14 +554,14 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 * **Response**:
 
-    | Name                    | Type                                                        | Description                                                                     | Field Number |
-    |-------------------------|-------------------------------------------------------------|---------------------------------------------------------------------------------|--------------|
-    | block_events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                            | 1            |
-    | tx_result               | repeated [DeliverTxResult](#delivertxresult)                | List of structures containing the data resulting from executing the transaction | 2            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                     | 3            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                  | 4            |
-    | app_data                | bytes                                                       | The Merkle root hash of the application state.                                  | 6            |
-    | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).          | 7            |
+    | Name                    | Type                                                        | Description                                                                      | Field Number |
+    |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
+    | block_events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | tx_result               | repeated [DeliverTxResult](#delivertxresult)                | List of structures containing the data resulting from executing the transactions | 2            |
+    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
+    | app_data                | bytes                                                       | The Merkle root hash of the application state.                                   | 6            |
+    | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 7            |
 
 * **Usage**:
     * Contains a newly decided block.
