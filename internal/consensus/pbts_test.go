@@ -149,7 +149,7 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time
 	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
 
 	timeout := time.Until(previousBlockTime.Add(ensureTimeout))
-	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, types.BlockID{}, timeout)
+	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, nil, timeout)
 
 	rs := p.observedState.GetRoundState()
 	bid := types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}
@@ -300,7 +300,7 @@ func (p *pbtsTestHarness) run() resultSet {
 	r2 := p.height2()
 	p.intermediateHeights()
 	r5 := p.height5()
-	p.observedState.Stop()
+	_ = p.observedState.Stop()
 	return resultSet{
 		genesisHeight: r1,
 		height2:       r2,
