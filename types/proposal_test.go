@@ -250,7 +250,7 @@ func TestIsTimely(t *testing.T) {
 			mockSource := new(tmtimemocks.Source)
 			mockSource.On("Now").Return(testCase.localTime)
 
-			ti := p.IsTimely(mockSource, tp)
+			ti := p.IsTimely(mockSource, tp, 1)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}
