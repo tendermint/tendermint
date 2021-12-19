@@ -88,11 +88,11 @@ func (p *Proposal) ValidateBasic() error {
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (p *Proposal) IsTimely(clock tmtime.Source, tp TimingParams) bool {
+func (p *Proposal) IsTimely(clock tmtime.Source, tp TimingParams, genesisHeight int64) bool {
 	lt := clock.Now()
 	lhs := lt.Add(-tp.Precision).Add(-tp.MessageDelay)
 	rhs := lt.Add(tp.Precision)
-	if lhs.Before(p.Timestamp) && rhs.After(p.Timestamp) {
+	if (p.Height == genesisHeight || lhs.Before(p.Timestamp)) && rhs.After(p.Timestamp) {
 		return true
 	}
 	return false

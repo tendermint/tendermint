@@ -1902,7 +1902,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		Precision:    cs.state.ConsensusParams.Timing.Precision,
 		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
 	}
-	if proposal.POLRound == -1 && !proposal.IsTimely(tmtime.DefaultSource{}, tp) {
+	if proposal.POLRound == -1 && !proposal.IsTimely(tmtime.DefaultSource{}, tp, cs.state.InitialHeight) {
 		return ErrInvalidProposalNotTimely
 	}
 
