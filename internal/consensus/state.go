@@ -1131,11 +1131,8 @@ func (cs *State) enterPropose(height int64, round int32) {
 		}
 	}()
 
-	waitingTime := proposalStepWaitingTime(tmtime.DefaultSource{}, cs.state.LastBlockTime, cs.state.ConsensusParams.Timing) // nolint: lll
-	proposalTimeout := maxDuration(cs.config.Propose(round), waitingTime)
-
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
-	cs.scheduleTimeout(proposalTimeout, height, round, cstypes.RoundStepPropose)
+	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -1203,7 +1200,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
@@ -1325,6 +1322,12 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("proposal timestamp not equal, prevoting nil")
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
 	// Validate proposal block
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
@@ -1349,6 +1352,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
+			// TODO(@wbanfield) add check for timely here as well
 			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
 			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
@@ -1484,8 +1488,14 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
-
 	// At this point, +2/3 prevoted for a particular block.
+
+	// If the proposal time does not match the block time, precommit nil.
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("proposal timestamp not equal, precommitting nil")
+		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
@@ -2453,33 +2463,4 @@ func proposerWaitTime(lt tmtime.Source, bt time.Time) time.Duration {
 		return bt.Sub(t)
 	}
 	return 0
-}
-
-// proposalStepWaitingTime is used along with the `timeout-propose` configuration
-// parameter to determines how long a validator will wait for a block to be sent from a proposer.
-// proposalStepWaitingTime ensures that the validator waits long enough for the proposer to
-// deliver a block with a monotically increasing timestamp.
-//
-// To ensure that the validator waits long enough, it must wait until the previous
-// block's timestamp. It also must account for the difference between its own clock and
-// the proposer's clock, i.e. the 'Precision', and the amount of time for the message to be transmitted,
-// i.e. the MsgDelay.
-//
-// The result of proposalStepWaitingTime is compared with the configured `timeout-propose` duration,
-// and the validator waits for whichever duration is larger before advancing to the next step
-// and prevoting nil.
-func proposalStepWaitingTime(lt tmtime.Source, bt time.Time, tp types.TimingParams) time.Duration {
-	t := lt.Now()
-	wt := bt.Add(tp.Precision).Add(tp.MessageDelay)
-	if t.After(wt) {
-		return 0
-	}
-	return wt.Sub(t)
-}
-
-func maxDuration(d1, d2 time.Duration) time.Duration {
-	if d1 >= d2 {
-		return d1
-	}
-	return d2
 }

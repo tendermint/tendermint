@@ -147,11 +147,12 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time
 	p.validatorClock.On("Now").Return(p.height2ProposedBlockTime).Times(6)
 
 	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
-	propBlock, partSet := p.observedState.createProposalBlock()
-	bid := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: partSet.Header()}
 
 	timeout := time.Until(previousBlockTime.Add(ensureTimeout))
-	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, bid, timeout)
+	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, nil, timeout)
+
+	rs := p.observedState.GetRoundState()
+	bid := types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}
 	ensurePrevote(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
 	signAddVotes(p.ctx, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
 
@@ -204,7 +205,7 @@ func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, 
 	b.Header.ProposerAddress = k.Address()
 	ps := b.MakePartSet(types.BlockPartSizeBytes)
 	bid := types.BlockID{Hash: b.Hash(), PartSetHeader: ps.Header()}
-	prop := types.NewProposal(p.currentHeight, 0, -1, bid)
+	prop := types.NewProposal(p.currentHeight, 0, -1, bid, proposedTime)
 	tp := prop.ToProto()
 
 	if err := proposer.SignProposal(context.Background(), p.observedState.state.ChainID, tp); err != nil {
@@ -299,8 +300,7 @@ func (p *pbtsTestHarness) run() resultSet {
 	r2 := p.height2()
 	p.intermediateHeights()
 	r5 := p.height5()
-	err := p.observedState.Stop()
-	require.NoError(p.t, err)
+	_ = p.observedState.Stop()
 	return resultSet{
 		genesisHeight: r1,
 		height2:       r2,
@@ -324,81 +324,10 @@ func (hr heightResult) isComplete() bool {
 	return !hr.proposalIssuedAt.IsZero() && !hr.prevoteIssuedAt.IsZero() && hr.prevote != nil
 }
 
-// TestReceiveProposalWaitsForPreviousBlockTime tests that a validator receiving
-// a proposal waits until the previous block time passes before issuing a prevote.
-// The test delivers the block to the validator after the configured `timeout-propose`,
-// but before the proposer-based timestamp bound on block delivery and checks that
-// the consensus algorithm correctly waits for the new block to be delivered
-// and issues a prevote for it.
-func TestReceiveProposalWaitsForPreviousBlockTime(t *testing.T) {
-	t.Skip()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	initialTime := time.Now().Add(50 * time.Millisecond)
-	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
-			Precision:    100 * time.Millisecond,
-			MessageDelay: 500 * time.Millisecond,
-		},
-		timeoutPropose:             50 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposalDeliverTime: initialTime.Add(450 * time.Millisecond),
-		height2ProposedBlockTime:   initialTime.Add(350 * time.Millisecond),
-	}
-
-	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
-
-	// Check that the validator waited until after the proposer-based timestamp
-	// waitingTime bound.
-	assert.True(t, results.height2.prevoteIssuedAt.After(cfg.height2ProposalDeliverTime))
-	maxWaitingTime := cfg.genesisTime.Add(cfg.timingParams.Precision).Add(cfg.timingParams.MessageDelay)
-	assert.True(t, results.height2.prevoteIssuedAt.Before(maxWaitingTime))
-
-	// Check that the validator did not prevote for nil.
-	assert.NotNil(t, results.height2.prevote.BlockID.Hash)
-}
-
-// TestReceiveProposalTimesOutOnSlowDelivery tests that a validator receiving
-// a proposal times out and prevotes nil if the block is not delivered by the
-// within the proposer-based timestamp algorithm's waitingTime bound.
-// The test delivers the block to the validator after the previous block's time
-// and after the proposer-based timestamp bound on block delivery.
-// The test then checks that the validator correctly waited for the new block
-// and prevoted nil after timing out.
-func TestReceiveProposalTimesOutOnSlowDelivery(t *testing.T) {
-	t.Skip()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	initialTime := time.Now()
-	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
-			Precision:    100 * time.Millisecond,
-			MessageDelay: 500 * time.Millisecond,
-		},
-		timeoutPropose:             50 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposalDeliverTime: initialTime.Add(660 * time.Millisecond),
-		height2ProposedBlockTime:   initialTime.Add(350 * time.Millisecond),
-	}
-
-	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
-
-	// Check that the validator waited until after the proposer-based timestamp
-	// waitinTime bound.
-	maxWaitingTime := initialTime.Add(cfg.timingParams.Precision).Add(cfg.timingParams.MessageDelay)
-	assert.True(t, results.height2.prevoteIssuedAt.After(maxWaitingTime))
-
-	// Ensure that the validator issued a prevote for nil.
-	assert.Nil(t, results.height2.prevote.BlockID.Hash)
-}
-
 // TestProposerWaitsForGenesisTime tests that a proposer will not propose a block
 // until after the genesis time has passed. The test sets the genesis time in the
 // future and then ensures that the observed validator waits to propose a block.
 func TestProposerWaitsForGenesisTime(t *testing.T) {
-	t.Skip()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -429,7 +358,6 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 // and then verifies that the observed validator waits until after the block time
 // of height 4 to propose a block at height 5.
 func TestProposerWaitsForPreviousBlock(t *testing.T) {
-	t.Skip()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	initialTime := time.Now().Add(time.Millisecond * 50)
@@ -492,59 +420,6 @@ func TestProposerWaitTime(t *testing.T) {
 
 			ti := proposerWaitTime(mockSource, testCase.previousBlockTime)
 			assert.Equal(t, testCase.expectedWait, ti)
-		})
-	}
-}
-
-func TestProposalTimeout(t *testing.T) {
-	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
-	require.NoError(t, err)
-	testCases := []struct {
-		name              string
-		localTime         time.Time
-		previousBlockTime time.Time
-		precision         time.Duration
-		msgDelay          time.Duration
-		expectedDuration  time.Duration
-	}{
-		{
-			name:              "MsgDelay + Precision has not quite elapsed",
-			localTime:         genesisTime.Add(525 * time.Millisecond),
-			previousBlockTime: genesisTime.Add(6 * time.Millisecond),
-			precision:         time.Millisecond * 20,
-			msgDelay:          time.Millisecond * 500,
-			expectedDuration:  1 * time.Millisecond,
-		},
-		{
-			name:              "MsgDelay + Precision equals current time",
-			localTime:         genesisTime.Add(525 * time.Millisecond),
-			previousBlockTime: genesisTime.Add(5 * time.Millisecond),
-			precision:         time.Millisecond * 20,
-			msgDelay:          time.Millisecond * 500,
-			expectedDuration:  0,
-		},
-		{
-			name:              "MsgDelay + Precision has elapsed",
-			localTime:         genesisTime.Add(725 * time.Millisecond),
-			previousBlockTime: genesisTime.Add(5 * time.Millisecond),
-			precision:         time.Millisecond * 20,
-			msgDelay:          time.Millisecond * 500,
-			expectedDuration:  0,
-		},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-
-			mockSource := new(tmtimemocks.Source)
-			mockSource.On("Now").Return(testCase.localTime)
-
-			tp := types.TimingParams{
-				Precision:    testCase.precision,
-				MessageDelay: testCase.msgDelay,
-			}
-
-			ti := proposalStepWaitingTime(mockSource, testCase.previousBlockTime, tp)
-			assert.Equal(t, testCase.expectedDuration, ti)
 		})
 	}
 }
