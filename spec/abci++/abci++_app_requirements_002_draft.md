@@ -20,13 +20,15 @@ Process $p$'s prepared proposal can differ in two different rounds where $p$ is 
 
 * Requirement 1 [`PrepareProposal`, header-changes] When the blockchain is in same-block execution mode,
   $p$'s Application provides values for the following parameters in `ResponsePrepareProposal`:
-  _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_.
+  _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_. Provided values for
+  _ConsensusParams_ and _ValidatorUpdates_ MAY be empty to denote that the Application
+  wishes to keep the current values.
 
 Parameters _AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorUpdates_ are used by Tendermint to
 compute various hashes in the block header that will finally be part of the proposal.
 
 * Requirement 2 [`PrepareProposal`, no-header-changes] When the blockchain is in next-block execution
-  mode, $p$'s Application does not provides values for the following parameters in `ResponsePrepareProposal`:
+  mode, $p$'s Application does not provide values for the following parameters in `ResponsePrepareProposal`:
   _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_.
 
 In practical terms, Requirement 2 implies that Tendermint will ignore those parameters in `ResponsePrepareProposal`.
@@ -97,7 +99,7 @@ Requirements 7 and 8 ensure that the validation of vote extensions will be deter
 correct processes.
 Requirements 7 and 8 protect against arbitrary vote extension data from Byzantine processes
 similarly to Requirements 4 and 5 and proposed blocks.
-Requirements 7 and 8 can be violated by a bug inducing non-determinism in `ExtendVote` or
+Requirements 7 and 8 can be violated by a bug inducing non-determinism in
 `VerifyVoteExtension`. In this case liveness can be compromised.
 Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension` and,
 as a general rule, `VerifyVoteExtension` _should_ always accept the vote extension.
@@ -107,12 +109,16 @@ as a general rule, `VerifyVoteExtension` _should_ always accept the vote extensi
   not modify $s_{p,h-1}$.
 
 * Requirement 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process $p$,
-and any vote extension $e$ that $q$ received at height $h$, the computation of
-$s{p,h}$ does not depend on $e$.
+and any vote extension $e$ that $p$ received at height $h$, the computation of
+$s_{p,h}$ does not depend on $e$.
 
 The call to correct process $p$'s `RequestFinalizeBlock` at height $h$, with block $v_{p,h}$
 passed as parameter, creates state $s_{p,h}$.
-Additionally, $p$'s `FinalizeBlock` creates a set of transaction results $T_{p,h}$.
+Additionally,
+
+* in next-block execution mode, $p$'s `FinalizeBlock` creates a set of transaction results $T_{p,h}$,
+* in same-block execution mode, $p$'s `PrepareProposal` creates a set of transaction results $T_{p,h}$
+  if $p$ was the proposer of $v_{p,h}$, otherwise `FinalizeBlock` creates $T_{p,h}$.
 
 >**TODO** I have left out all the "events" as they don't have any impact in safety or liveness
 >(same for consensus params, and validator set)

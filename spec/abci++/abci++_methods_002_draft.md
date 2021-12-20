@@ -321,8 +321,20 @@ From the App's perspective, they'll probably skip ProcessProposal
     * If `ResponsePrepareProposal.modified_tx` is false, then Tendermint will ignore the contents of
       `ResponsePrepareProposal.tx`.
     * In same-block execution mode, the Application must set `ResponsePrepareProposal.same_block` to true, and,
-      as a result of executing the block, provide values for `ResponsePrepareProposal.tx_result`,
-      `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
+      as a result of executing the block, provide values for `ResponsePrepareProposal.data`,
+      `ResponsePrepareProposal.tx_result`, `ResponsePrepareProposal.validator_updates`, and
+      `ResponsePrepareProposal.consensus_param_updates`.
+      * The values for `ResponsePrepareProposal.validator_updates`, or
+        `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
+        the current values.
+      * `ResponsePrepareProposal.validator_updates`, triggered by block `H`, affect validation
+        for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
+          * `H`: `NextValidatorsHash` includes the new `validator_updates` value.
+          * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
+          * `H+2`: `last_commit_info` is changed to include the altered validator set.
+      * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
+        params for the same block `H`. For more information on the consensus parameters,
+        see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
     * In next-block execution mode, the Application must set `ResponsePrepareProposal.same_block` to false.
       Tendermint will ignore parameters `ResponsePrepareProposal.tx_result`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
@@ -575,14 +587,23 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
       before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
       previously executed via `PrepareProposal` or `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_result[i].Code == 0` only if the _i_-th transaction is fully valid.
-    * Optional `ResponseFinalizeBlock.validator_updates` triggered by block `H`. These updates affect validation
-      for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
-        * `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
-        * `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
-        * `H+3`: `last_commit_info` is changed to include the altered validator set.
-    * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-      params for block `H+1`. For more information on the consensus parameters,
-      see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+    * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_data`,
+      `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`, and
+      `ResponsePrepareProposal.consensus_param_updates` as a result of executing the block.
+      * The values for `ResponseFinalizeBlock.validator_updates`, or
+        `ResponseFinalizeBlock.consensus_param_updates` may be empty. In this case, Tendermint will keep
+        the current values.
+      * `ResponseFinalizeBlock.validator_updates`, triggered by block `H`, affect validation
+        for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
+          * `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
+          * `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
+          * `H+3`: `last_commit_info` is changed to include the altered validator set.
+      * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
+        params for block `H+1`. For more information on the consensus parameters,
+        see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+    * In same-block execution mode, Tendermint will ignore values for `ResponseFinalizeBlock.app_data`,
+      `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`, and
+      `ResponsePrepareProposal.consensus_param_updates`, as those data have been provided by `PrepareProposal`.
     * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
     * `ResponseFinalizeBlock.app_data` contains an (optional) Merkle root hash of the application state.
     * `ResponseFinalizeBlock.app_data` is included

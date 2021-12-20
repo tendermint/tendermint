@@ -212,7 +212,7 @@ in the next height, along with the vote it is extending.
 The vote extension data is split into two parts, one signed by Tendermint as part
 of the vote data structure, and the other (optionally) signed by the application.
 The Application may also choose not to include any vote extension.
-When another process receives a precommit message with and vote extension, it calls
+When another process receives a precommit message with a vote extension, it calls
 method `VerifyVoteExtension` so that the application can validate the data received.
 If the validation fails, the precommit message will be deemed invalid and ignored
 by Tendermint. This has negative impact on Tendermint's liveness, i.e., if repeatedly vote extensions by correct validators cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should only be used with special care.
@@ -284,12 +284,13 @@ block, resulting in an updated application state.
 During consensus execution of a block height, before method `FinalizeBlock` is
 called, methods `PrepareProposal`, `ProcessProposal`, `ExtendVote`, and
 `VerifyVoteExtension` may be called a number of times.
-See [Application Requirements](abci++_app_requirements_002_draft.md) for
-details on the possible call sequences of these methods.
+See [Tendermint's expected behavior](abci++_tmint_expected_behavior_002_draft.md)
+for details on the possible call sequences of these methods.
 
 Method `PrepareProposal` is called every time Tendermint is about to send
-a proposal message. Tendermint gathers outstanding transactions from the mempool
-(see [PrepareProposal]()#PrepareProposal), generates a block header and uses
+a proposal message, but no previous proposal has been locked at Tendermint level.
+Tendermint gathers outstanding transactions from the mempool
+(see [PrepareProposal](#PrepareProposal)), generates a block header and uses
 them to create a block to propose. Then, it calls `RequestPrepareProposal`
 with the newly created proposal, called _raw proposal_. The Application can
 make changes to the raw proposal, such as modifying transactions, and returns
