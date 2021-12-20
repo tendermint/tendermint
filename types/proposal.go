@@ -84,15 +84,21 @@ func (p *Proposal) ValidateBasic() error {
 // configured Precision and MsgDelay parameters.
 // Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
 //
-// proposedBlockTime > validatorLocaltime - Precision - MsgDelay && proposedBlockTime < validatorLocalTime + Precision.
+// localtime >= proposedBlockTime - Precision
+// localtime <= proposedBlockTime + MsgDelay + Precision
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
 func (p *Proposal) IsTimely(clock tmtime.Source, tp TimingParams, genesisHeight int64) bool {
-	lt := clock.Now()
-	lhs := lt.Add(-tp.Precision).Add(-tp.MessageDelay)
-	rhs := lt.Add(tp.Precision)
-	if (p.Height == genesisHeight || lhs.Before(p.Timestamp)) && rhs.After(p.Timestamp) {
+	localTime := clock.Now()
+	// lhs is `proposedBlockTime - Precision` in the first inequality
+	lhs := p.Timestamp.Add(-tp.Precision)
+	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
+	rhs := p.Timestamp.Add(tp.MessageDelay).Add(tp.Precision)
+
+	localTimeAfterOrEqLhs := localTime.After(lhs) || localTime.Equal(lhs)
+	localTimeBeforeOrEqRhs := localTime.Before(rhs) || localTime.Equal(rhs)
+	if localTimeAfterOrEqLhs && (p.Height == genesisHeight || localTimeBeforeOrEqRhs) {
 		return true
 	}
 	return false
