@@ -5,10 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
-
 	"github.com/stretchr/testify/assert"
-
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )

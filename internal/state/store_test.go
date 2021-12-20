@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -28,10 +29,16 @@ const (
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	val, _ := factory.RandValidator()
+	val2, _ := factory.RandValidator()
+	val3, _ := factory.RandValidator()
+	vals := types.NewValidatorSet(
+		[]*types.Validator{val, val2, val3},
+		val.PubKey,
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
+		true,
+	)
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
 	require.NoError(t, err)
@@ -54,10 +61,16 @@ func TestStoreBootstrap(t *testing.T) {
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	val, _ := factory.RandValidator()
+	val2, _ := factory.RandValidator()
+	val3, _ := factory.RandValidator()
+	vals := types.NewValidatorSet(
+		[]*types.Validator{val, val2, val3},
+		val.PubKey,
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
+		true,
+	)
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// Note that only the next validators at height h + 1 are saved
@@ -114,7 +127,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	state.Validators = genValSet(valSetSize)
+	state.Validators, _ = factory.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err = stateStore.Save(state)
 	require.NoError(b, err)
@@ -190,7 +203,7 @@ func TestPruneStates(t *testing.T) {
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{Address: tmrand.Bytes(crypto.AddressSize), VotingPower: 100, PubKey: pk}
+			validator := &types.Validator{ProTxHash: tmrand.Bytes(crypto.ProTxHashSize), VotingPower: 100, PubKey: pk}
 			validatorSet := &types.ValidatorSet{
 				Validators: []*types.Validator{validator},
 				Proposer:   validator,

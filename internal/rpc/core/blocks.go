@@ -178,15 +178,15 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 	for _, tx := range results.GetDeliverTxs() {
 		totalGasUsed += tx.GetGasUsed()
 	}
-
+	consensusParamUpdates := types.ConsensusParamsFromProto(*results.EndBlock.ConsensusParamUpdates)
 	return &coretypes.ResultBlockResults{
 		Height:                height,
 		TxsResults:            results.DeliverTxs,
 		TotalGasUsed:          totalGasUsed,
 		BeginBlockEvents:      results.BeginBlock.Events,
 		EndBlockEvents:        results.EndBlock.Events,
-		ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
-		ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
+		ValidatorSetUpdate:    results.EndBlock.ValidatorSetUpdate,
+		ConsensusParamUpdates: &consensusParamUpdates,
 	}, nil
 }
 

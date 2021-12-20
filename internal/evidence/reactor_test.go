@@ -14,6 +14,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/evidence"
@@ -218,13 +219,17 @@ func createEvidenceList(
 
 	evList := make([]types.Evidence, numEvidence)
 
+	vals := pool.State().Validators
 	for i := 0; i < numEvidence; i++ {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 			int64(i+1),
 			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC),
 			val,
 			evidenceChainID,
+			vals.QuorumType,
+			vals.QuorumHash,
 		)
+		require.NoError(t, err)
 
 		require.NoError(t, pool.AddEvidence(ev),
 			"adding evidence it#%d of %d to pool with height %d",
@@ -239,8 +244,9 @@ func TestReactorMultiDisconnect(t *testing.T) {
 	val := types.NewMockPV()
 	height := int64(numEvidence) + 10
 
-	stateDB1 := initializeValidatorState(t, val, height)
-	stateDB2 := initializeValidatorState(t, val, height)
+	quorumHash := crypto.RandQuorumHash()
+	stateDB1 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 20)
 	primary := rts.nodes[0]
@@ -275,13 +281,14 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// create a stateDB for all test suites (nodes)
 	stateDBs := make([]sm.Store, numPeers)
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 
 	// We need all validators saved for heights at least as high as we have
 	// evidence for.
 	height := int64(numEvidence) + 10
 	for i := 0; i < numPeers; i++ {
-		stateDBs[i] = initializeValidatorState(t, val, height)
+		stateDBs[i] = initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 	}
 
 	rts := setup(t, stateDBs, 0)
@@ -329,14 +336,15 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 // connected to one another but are at different heights. Reactor 1 which is
 // ahead receives a list of evidence.
 func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
 	// stateDB1 is ahead of stateDB2, where stateDB1 has all heights (1-20) and
 	// stateDB2 only has heights 1-5.
-	stateDB1 := initializeValidatorState(t, val, height1)
-	stateDB2 := initializeValidatorState(t, val, height2)
+	stateDB1 := initializeValidatorState(t, val, height1, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(t, val, height2, btcjson.LLMQType_5_60, quorumHash)
 
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
 	rts.start(t)
@@ -365,11 +373,12 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 }
 
 func TestReactorBroadcastEvidence_Pending(t *testing.T) {
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	height := int64(10)
 
-	stateDB1 := initializeValidatorState(t, val, height)
-	stateDB2 := initializeValidatorState(t, val, height)
+	stateDB1 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
 	primary := rts.nodes[0]
@@ -405,11 +414,12 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	height := int64(10)
 
-	stateDB1 := initializeValidatorState(t, val, height)
-	stateDB2 := initializeValidatorState(t, val, height)
+	stateDB1 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 0)
 
@@ -465,13 +475,14 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 
 	// create a stateDB for all test suites (nodes)
 	stateDBs := make([]sm.Store, numPeers)
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 
 	// We need all validators saved for heights at least as high as we have
 	// evidence for.
 	height := int64(numEvidence) + 10
 	for i := 0; i < numPeers; i++ {
-		stateDBs[i] = initializeValidatorState(t, val, height)
+		stateDBs[i] = initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 	}
 
 	rts := setup(t, stateDBs, 0)
@@ -507,14 +518,10 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 // nolint:lll
 func TestEvidenceListSerialization(t *testing.T) {
 	exampleVote := func(msgType byte) *types.Vote {
-		var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
-		require.NoError(t, err)
-
 		return &types.Vote{
-			Type:      tmproto.SignedMsgType(msgType),
-			Height:    3,
-			Round:     2,
-			Timestamp: stamp,
+			Type:   tmproto.SignedMsgType(msgType),
+			Height: 3,
+			Round:  2,
 			BlockID: types.BlockID{
 				Hash: tmhash.Sum([]byte("blockID_hash")),
 				PartSetHeader: types.PartSetHeader{
@@ -522,17 +529,23 @@ func TestEvidenceListSerialization(t *testing.T) {
 					Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 				},
 			},
-			ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-			ValidatorIndex:   56789,
+			ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
+			ValidatorIndex:     56789,
 		}
 	}
 
 	val := &types.Validator{
-		Address:     crypto.AddressHash([]byte("validator_address")),
+		ProTxHash:   crypto.ProTxHashFromSeedBytes([]byte("validator_address")),
 		VotingPower: 10,
 	}
 
-	valSet := types.NewValidatorSet([]*types.Validator{val})
+	valSet := types.NewValidatorSet(
+		[]*types.Validator{val},
+		val.PubKey,
+		btcjson.LLMQType_5_60,
+		crypto.RandQuorumHash(),
+		true,
+	)
 
 	dupl, err := types.NewDuplicateVoteEvidence(
 		exampleVote(1),

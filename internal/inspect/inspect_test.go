@@ -498,7 +498,8 @@ func TestValidators(t *testing.T) {
 
 	testPage := 1
 	testPerPage := 100
-	res, err := cli.Validators(context.Background(), &testHeight, &testPage, &testPerPage)
+	requestQuorumInfo := true
+	res, err := cli.Validators(context.Background(), &testHeight, &testPage, &testPerPage, &requestQuorumInfo)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.Equal(t, testVotingPower, res.Validators[0].VotingPower)

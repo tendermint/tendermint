@@ -3,6 +3,7 @@ package statesync
 import (
 	"context"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"strings"
 	"sync"
 	"testing"
@@ -401,19 +402,24 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	h := factory.MakeRandomHeader()
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
-	vals, pv := factory.RandValidatorSet(1, 10)
-	vote, err := factory.MakeVote(pv[0], h.ChainID, 0, h.Height, 0, 2,
-		blockID, factory.DefaultTestTime)
+	stateID := types.StateID{
+		Height:      height,
+		LastAppHash: h.AppHash,
+	}
+	vals, pv := factory.RandValidatorSet(1)
+	vote, err := factory.MakeVote(pv[0], vals, h.ChainID, 0, h.Height, 0, 2,
+		blockID, stateID)
 	require.NoError(t, err)
 
 	sh := &types.SignedHeader{
 		Header: h,
 		Commit: &types.Commit{
-			Height:  h.Height,
-			BlockID: blockID,
-			Signatures: []types.CommitSig{
-				vote.CommitSig(),
-			},
+			Height:                  h.Height,
+			BlockID:                 blockID,
+			StateID:                 stateID,
+			QuorumHash:              crypto.RandQuorumHash(),
+			ThresholdBlockSignature: vote.BlockSignature,
+			ThresholdStateSignature: vote.StateSignature,
 		},
 	}
 
@@ -680,7 +686,7 @@ func handleLightBlockRequests(t *testing.T,
 				} else {
 					switch errorCount % 3 {
 					case 0: // send a different block
-						vals, pv := factory.RandValidatorSet(3, 10)
+						vals, pv := factory.RandValidatorSet(3)
 						_, _, lb := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
 						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
@@ -737,7 +743,7 @@ func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime ti
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
 	blockTime := startTime.Add(time.Duration(fromHeight-toHeight) * time.Minute)
-	vals, pv := factory.RandValidatorSet(3, 10)
+	vals, pv := factory.RandValidatorSet(3)
 	for height := fromHeight; height < toHeight; height++ {
 		vals, pv, chain[height] = mockLB(t, height, blockTime, lastBlockID, vals, pv)
 		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
@@ -755,13 +761,17 @@ func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockI
 		Time:        time,
 	})
 	require.NoError(t, err)
-	nextVals, nextPrivVals := factory.RandValidatorSet(3, 10)
+	nextVals, nextPrivVals := factory.RandValidatorSet(3)
 	header.ValidatorsHash = currentVals.Hash()
 	header.NextValidatorsHash = nextVals.Hash()
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()
 	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
-	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals)
-	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, currentPrivVals, time)
+	stateID := types.StateID{
+		Height:      height,
+		LastAppHash: header.AppHash,
+	}
+	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals, stateID)
+	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, currentVals, currentPrivVals, stateID)
 	require.NoError(t, err)
 	return nextVals, nextPrivVals, &types.LightBlock{
 		SignedHeader: &types.SignedHeader{

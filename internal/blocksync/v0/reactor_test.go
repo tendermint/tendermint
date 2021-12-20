@@ -114,13 +114,15 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		stateStore,
 		log.TestingLogger(),
 		rts.app[nodeID].Consensus(),
+		rts.app[nodeID].Query(),
 		mock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		nil,
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, state.StateID(), nil, nil, nil)
 
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
@@ -128,10 +130,14 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 
 			vote, err := factory.MakeVote(
 				privVal,
+				state.Validators,
 				lastBlock.Header.ChainID, 0,
 				lastBlock.Header.Height, 0, 2,
 				lastBlockMeta.BlockID,
-				time.Now(),
+				types.StateID{
+					Height:      lastBlock.Height,
+					LastAppHash: lastBlock.AppHash,
+				},
 			)
 			require.NoError(t, err)
 

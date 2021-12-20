@@ -85,7 +85,7 @@ func TestBlockResults(t *testing.T) {
 	err := env.StateStore.SaveABCIResponses(100, results)
 	require.NoError(t, err)
 	env.BlockStore = mockBlockStore{height: 100, coreChainLockedHeight: 3025}
-
+	consensusParamUpdates := types.ConsensusParamsFromProto(*results.EndBlock.ConsensusParamUpdates)
 	testCases := []struct {
 		height  int64
 		wantErr bool
@@ -101,7 +101,7 @@ func TestBlockResults(t *testing.T) {
 			BeginBlockEvents:      results.BeginBlock.Events,
 			EndBlockEvents:        results.EndBlock.Events,
 			ValidatorSetUpdate:    results.EndBlock.ValidatorSetUpdate,
-			ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
+			ConsensusParamUpdates: &consensusParamUpdates,
 		}},
 	}
 
