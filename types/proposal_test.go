@@ -205,9 +205,10 @@ func TestIsTimely(t *testing.T) {
 		msgDelay     time.Duration
 		expectTimely bool
 	}{
+		// proposalTime - precision <= localTime <= proposalTime + msgDelay + precision
 		{
 			// Checking that the following inequality evaluates to true:
-			// 1 - 2 < 0 < 1 + 2 + 1
+			// 0 - 2 <= 1 <= 0 + 1 + 2
 			name:         "basic timely",
 			proposalTime: genesisTime,
 			localTime:    genesisTime.Add(1 * time.Nanosecond),
@@ -217,17 +218,17 @@ func TestIsTimely(t *testing.T) {
 		},
 		{
 			// Checking that the following inequality evaluates to false:
-			// 3 - 2 < 0 < 3 + 2 + 1
+			// 0 - 2 <= 4 <= 0 + 1 + 2
 			name:         "local time too large",
 			proposalTime: genesisTime,
-			localTime:    genesisTime.Add(3 * time.Nanosecond),
+			localTime:    genesisTime.Add(4 * time.Nanosecond),
 			precision:    time.Nanosecond * 2,
 			msgDelay:     time.Nanosecond,
 			expectTimely: false,
 		},
 		{
 			// Checking that the following inequality evaluates to false:
-			// 0 - 2 < 2 < 2 + 1
+			// 4 - 2 <= 0 <= 4 + 2 + 1
 			name:         "proposal time too large",
 			proposalTime: genesisTime.Add(4 * time.Nanosecond),
 			localTime:    genesisTime,
@@ -250,7 +251,7 @@ func TestIsTimely(t *testing.T) {
 			mockSource := new(tmtimemocks.Source)
 			mockSource.On("Now").Return(testCase.localTime)
 
-			ti := p.IsTimely(mockSource, tp, 1)
+			ti := p.IsTimely(mockSource, tp, 2)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}

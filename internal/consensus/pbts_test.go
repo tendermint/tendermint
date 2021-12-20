@@ -300,7 +300,6 @@ func (p *pbtsTestHarness) run() resultSet {
 	r2 := p.height2()
 	p.intermediateHeights()
 	r5 := p.height5()
-	_ = p.observedState.Stop()
 	return resultSet{
 		genesisHeight: r1,
 		height2:       r2,
