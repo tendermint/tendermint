@@ -41,7 +41,7 @@ const (
 	testSubscriber = "test-client"
 
 	// genesis, chain_id, priv_val
-	ensureTimeout = time.Second
+	ensureTimeout = 200 * time.Millisecond
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular
