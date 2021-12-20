@@ -96,9 +96,9 @@ func (p *Proposal) IsTimely(clock tmtime.Source, tp TimingParams, genesisHeight 
 	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
 	rhs := p.Timestamp.Add(tp.MessageDelay).Add(tp.Precision)
 
-	localTimeAfterOrEqLhs := localTime.After(lhs) || localTime.Equal(lhs)
-	localTimeBeforeOrEqRhs := localTime.Before(rhs) || localTime.Equal(rhs)
-	if localTimeAfterOrEqLhs && (p.Height == genesisHeight || localTimeBeforeOrEqRhs) {
+	localTimeAfterOrEqLHS := localTime.After(lhs) || localTime.Equal(lhs)
+	localTimeBeforeOrEqRHS := localTime.Before(rhs) || localTime.Equal(rhs)
+	if localTimeAfterOrEqLHS && (p.Height == genesisHeight || localTimeBeforeOrEqRHS) {
 		return true
 	}
 	return false
