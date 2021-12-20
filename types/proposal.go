@@ -84,7 +84,7 @@ func (p *Proposal) ValidateBasic() error {
 // configured Precision and MsgDelay parameters.
 // Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
 //
-// proposedBlockTime > validatorLocaltime - Precision && proposedBlockTime < validatorLocalTime + Precision + MsgDelay.
+// proposedBlockTime > validatorLocaltime - Precision - MsgDelay && proposedBlockTime < validatorLocalTime + Precision.
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
