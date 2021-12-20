@@ -215,7 +215,7 @@ The Application may also choose not to include any vote extension.
 When another process receives a precommit message with and vote extension, it calls
 method `VerifyVoteExtension` so that the application can validate the data received.
 If the validation fails, the precommit message will be deemed invalid and ignored
-by Tendermint. This has strong implications on Tendermint's liveness.
+by Tendermint. This has negative impact on Tendermint's liveness, i.e., if repeatedly vote extensions by correct validators cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should only be used with special care.
 As a general rule, an Application that detects an invalid vote extension SHOULD
 accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic.
 
@@ -261,7 +261,7 @@ Sources of non-determinism in applications may include:
     * Library version changes
     * Race conditions
     * Floating point numbers
-    * JSON serialization
+    * JSON or protobuf serialization
     * Iterating through hash-tables/maps/dictionaries
 * External Sources
     * Filesystem

@@ -67,8 +67,8 @@ of `ProcessProposal`. As a general rule `ProcessProposal` _should_ always accept
 According to the Tendermint algorithm, a correct process can broadcast at most one precommit message in round $r$, height $h$.
 Since, as stated in the [Description](#description) section, `ResponseExtendVote` is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension in round $r$, height $h$.
-Let $e^r_p$ the vote extension that the Application of a correct process $p$ returns via `ResponseExtendVote` in round $r$, height $h$.
-Let $w^r_p$ the proposed block that $p$'s Tendermint passes to the Application via `RequestExtendVote` in round $r$, height $h$.
+Let $e^r_p$ be the vote extension that the Application of a correct process $p$ returns via `ResponseExtendVote` in round $r$, height $h$.
+Let $w^r_p$ be the proposed block that $p$'s Tendermint passes to the Application via `RequestExtendVote` in round $r$, height $h$.
 
 * Requirement 6 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two correct processes $p$ and $q$, if $q$ receives $e^r_p$
   from $p$ in height $h$, $q$'s Application returns Accept in `ResponseVerifyVoteExtension`.
