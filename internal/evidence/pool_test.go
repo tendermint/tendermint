@@ -11,11 +11,12 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	sm "github.com/tendermint/tendermint/internal/state"
 	smmocks "github.com/tendermint/tendermint/internal/state/mocks"
-	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
@@ -38,7 +39,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 		blockStore = &mocks.BlockStore{}
 	)
 
-	valSet, privVals := factory.RandValidatorSet(1, 10)
+	valSet, privVals := factory.RandValidatorSet(1)
 
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
@@ -54,7 +55,10 @@ func TestEvidencePoolBasic(t *testing.T) {
 	require.Equal(t, 0, len(evs))
 	require.Zero(t, size)
 
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID)
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID,
+		valSet.QuorumType, valSet.QuorumHash)
+
+	require.NoError(t, err)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -89,9 +93,10 @@ func TestEvidencePoolBasic(t *testing.T) {
 // Tests inbound evidence for the right time and height
 func TestAddExpiredEvidence(t *testing.T) {
 	var (
-		val                 = types.NewMockPV()
+		quorumHash          = crypto.RandQuorumHash()
+		val                 = types.NewMockPVForQuorum(quorumHash)
 		height              = int64(30)
-		stateStore          = initializeValidatorState(t, val, height)
+		stateStore          = initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 		evidenceDB          = dbm.NewMemDB()
 		blockStore          = &mocks.BlockStore{}
 		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -126,8 +131,10 @@ func TestAddExpiredEvidence(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.evDescription, func(t *testing.T) {
-			ev := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID)
-			err := pool.AddEvidence(ev)
+			vals := pool.State().Validators
+			ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID, vals.QuorumType, vals.QuorumHash)
+			require.NoError(t, err)
+			err = pool.AddEvidence(ev)
 			if tc.expErr {
 				require.Error(t, err)
 			} else {
@@ -141,8 +148,13 @@ func TestReportConflictingVotes(t *testing.T) {
 	var height int64 = 10
 
 	pool, pv := defaultTestPool(t, height)
-	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID)
+
+	quorumHash := pool.State().Validators.QuorumHash
+
+	val := pv.ExtractIntoValidator(context.Background(), quorumHash)
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID,
+		btcjson.LLMQType_5_60, quorumHash)
+	require.NoError(t, err)
 
 	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 
@@ -161,7 +173,8 @@ func TestReportConflictingVotes(t *testing.T) {
 	state := pool.State()
 	state.LastBlockHeight++
 	state.LastBlockTime = ev.Time()
-	state.LastValidators = types.NewValidatorSet([]*types.Validator{val})
+	state.LastValidators = types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60,
+		quorumHash, true)
 	pool.Update(state, []types.Evidence{})
 
 	// should be able to retrieve evidence from pool
@@ -178,31 +191,42 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	state := pool.State()
 
 	// create two lots of old evidence that we expect to be pruned when we update
-	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(
+	prunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		1,
 		defaultEvidenceTime.Add(1*time.Minute),
 		val,
 		evidenceChainID,
+		state.Validators.QuorumType,
+		state.Validators.QuorumHash,
 	)
+	require.NoError(t, err)
 
-	notPrunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(
-		2,
+	notPrunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(
+		height,
 		defaultEvidenceTime.Add(2*time.Minute),
 		val,
 		evidenceChainID,
+		state.Validators.QuorumType,
+		state.Validators.QuorumHash,
 	)
+	require.NoError(t, err)
 
 	require.NoError(t, pool.AddEvidence(prunedEv))
 	require.NoError(t, pool.AddEvidence(notPrunedEv))
 
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
 		defaultEvidenceTime.Add(21*time.Minute),
 		val,
 		evidenceChainID,
+		state.Validators.QuorumType,
+		state.Validators.QuorumHash,
 	)
-	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
-	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
+	require.NoError(t, err)
+	lastCommit := makeCommit(height, state.Validators.QuorumHash, val.ProTxHash)
+
+	coreChainLockHeight := state.LastCoreChainLockedBlockHeight
+	block := types.MakeBlock(height+1, coreChainLockHeight, nil, []types.Tx{}, lastCommit, []types.Evidence{ev}, 0)
 
 	// update state (partially)
 	state.LastBlockHeight = height + 1
@@ -227,7 +251,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	require.Equal(t, []types.Evidence{notPrunedEv}, evList)
 
 	// b) If we try to check this evidence again it should fail because it has already been committed
-	err := pool.CheckEvidence(types.EvidenceList{ev})
+	err = pool.CheckEvidence(types.EvidenceList{ev})
 	if assert.Error(t, err) {
 		assert.Equal(t, "evidence was already committed", err.(*types.ErrInvalidEvidence).Reason.Error())
 	}
@@ -237,12 +261,16 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 
 	pool, val := defaultTestPool(t, height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(
+	vals := pool.State().Validators
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
 		val,
 		evidenceChainID,
+		vals.QuorumType,
+		vals.QuorumHash,
 	)
+	require.NoError(t, err)
 
 	require.NoError(t, pool.AddEvidence(ev))
 	require.NoError(t, pool.CheckEvidence(types.EvidenceList{ev}))
@@ -251,108 +279,62 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(t, height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(
+	vals := pool.State().Validators
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
 		val,
 		evidenceChainID,
+		vals.QuorumType,
+		vals.QuorumHash,
 	)
+	require.NoError(t, err)
 
-	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
+	err = pool.CheckEvidence(types.EvidenceList{ev, ev})
 	if assert.Error(t, err) {
 		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
 	}
-}
-
-// check that valid light client evidence is correctly validated and stored in
-// evidence pool
-func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
-	var (
-		height       int64 = 100
-		commonHeight int64 = 90
-	)
-
-	ev, trusted, common := makeLunaticEvidence(t, height, commonHeight,
-		10, 5, 5, defaultEvidenceTime, defaultEvidenceTime.Add(1*time.Hour))
-
-	state := sm.State{
-		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
-		LastBlockHeight: 110,
-		ConsensusParams: *types.DefaultConsensusParams(),
-	}
-
-	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", height).Return(trusted.ValidatorSet, nil)
-	stateStore.On("LoadValidators", commonHeight).Return(common.ValidatorSet, nil)
-	stateStore.On("Load").Return(state, nil)
-
-	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trusted.Header})
-	blockStore.On("LoadBlockMeta", commonHeight).Return(&types.BlockMeta{Header: *common.Header})
-	blockStore.On("LoadBlockCommit", height).Return(trusted.Commit)
-	blockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
-
-	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
-	require.NoError(t, err)
-
-	hash := ev.Hash()
-
-	require.NoError(t, pool.AddEvidence(ev))
-	require.NoError(t, pool.AddEvidence(ev))
-
-	pendingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Equal(t, 1, len(pendingEv))
-	require.Equal(t, ev, pendingEv[0])
-
-	require.NoError(t, pool.CheckEvidence(pendingEv))
-	require.Equal(t, ev, pendingEv[0])
-
-	state.LastBlockHeight++
-	state.LastBlockTime = state.LastBlockTime.Add(1 * time.Minute)
-	pool.Update(state, pendingEv)
-	require.Equal(t, hash, pendingEv[0].Hash())
-
-	remaindingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Empty(t, remaindingEv)
-
-	// evidence is already committed so it shouldn't pass
-	require.Error(t, pool.CheckEvidence(types.EvidenceList{ev}))
-	require.NoError(t, pool.AddEvidence(ev))
-
-	remaindingEv, _ = pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Empty(t, remaindingEv)
 }
 
 // Tests that restarting the evidence pool after a potential failure will recover the
 // pending evidence and continue to gossip it
 func TestRecoverPendingEvidence(t *testing.T) {
 	height := int64(10)
+	quorumHash := crypto.RandQuorumHash()
 	val := types.NewMockPV()
-	valAddress := val.PrivKey.PubKey().Address()
+	proTxHash := val.ProTxHash
 	evidenceDB := dbm.NewMemDB()
-	stateStore := initializeValidatorState(t, val, height)
+	stateStore := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 
-	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	blockStore := initializeBlockStore(dbm.NewMemDB(), state, proTxHash)
 
 	// create previous pool and populate it
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
-	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(
+	vals := pool.State().Validators
+
+	goodEvidence, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
 		defaultEvidenceTime.Add(10*time.Minute),
 		val,
 		evidenceChainID,
+		vals.QuorumType,
+		vals.QuorumHash,
 	)
-	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(
+	require.NoError(t, err)
+	expiredEvidence, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		int64(1),
 		defaultEvidenceTime.Add(1*time.Minute),
 		val,
 		evidenceChainID,
+		vals.QuorumType,
+		vals.QuorumHash,
 	)
+	require.NoError(t, err)
 
 	require.NoError(t, pool.AddEvidence(goodEvidence))
 	require.NoError(t, pool.AddEvidence(expiredEvidence))
@@ -419,14 +401,29 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 	return stateStore
 }
 
-func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height int64) sm.Store {
-	pubKey, _ := privVal.GetPubKey(context.Background())
-	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
+func initializeValidatorState(
+	t *testing.T,
+	privVal types.PrivValidator,
+	height int64,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+) sm.Store {
+	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
+	require.NoError(t, err)
+	proTxHash, err := privVal.GetProTxHash(context.Background())
+	require.NoError(t, err)
+	if len(proTxHash) != 32 {
+		t.Fatalf("proTxHash len not correct")
+	}
+	validator := &types.Validator{VotingPower: types.DefaultDashVotingPower, PubKey: pubKey, ProTxHash: proTxHash}
 
 	// create validator set and state
 	valSet := &types.ValidatorSet{
-		Validators: []*types.Validator{validator},
-		Proposer:   validator,
+		Validators:         []*types.Validator{validator},
+		Proposer:           validator,
+		ThresholdPublicKey: validator.PubKey,
+		QuorumType:         quorumType,
+		QuorumHash:         quorumHash,
 	}
 
 	return initializeStateFromValidatorSet(t, valSet, height)
@@ -434,42 +431,43 @@ func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height 
 
 // initializeBlockStore creates a block storage and populates it w/ a dummy
 // block at +height+.
-func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.BlockStore {
+func initializeBlockStore(db dbm.DB, state sm.State, valProTxHash []byte) *store.BlockStore {
 	blockStore := store.NewBlockStore(db)
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
-		lastCommit := makeCommit(i-1, valAddr)
-		block := sf.MakeBlock(state, i, lastCommit)
+		lastCommit := makeCommit(i-1, state.Validators.QuorumHash, valProTxHash)
+		block, _ := state.MakeBlock(i, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
 		partSet := block.MakePartSet(parts)
 
-		seenCommit := makeCommit(i, valAddr)
+		seenCommit := makeCommit(i, state.Validators.QuorumHash, valProTxHash)
 		blockStore.SaveBlock(block, partSet, seenCommit)
 	}
 
 	return blockStore
 }
 
-func makeCommit(height int64, valAddr []byte) *types.Commit {
-	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
-		ValidatorAddress: valAddr,
-		Timestamp:        defaultEvidenceTime,
-		Signature:        []byte("Signature"),
-	}}
-
-	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+func makeCommit(height int64, quorumHash []byte, valProTxHash []byte) *types.Commit {
+	return types.NewCommit(
+		height,
+		0,
+		types.BlockID{},
+		types.StateID{Height: height - 1},
+		quorumHash,
+		crypto.CRandBytes(types.SignatureSize),
+		crypto.CRandBytes(types.SignatureSize),
+	)
 }
 
-func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) {
-	val := types.NewMockPV()
-	valAddress := val.PrivKey.PubKey().Address()
+func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, *types.MockPV) {
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	evidenceDB := dbm.NewMemDB()
-	stateStore := initializeValidatorState(t, val, height)
+	stateStore := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 	state, _ := stateStore.Load()
-	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	blockStore := initializeBlockStore(dbm.NewMemDB(), state, val.ProTxHash)
 
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err, "test evidence pool could not be created")

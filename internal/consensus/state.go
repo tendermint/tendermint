@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"io/ioutil"
 	"os"
 	"runtime/debug"
@@ -155,7 +154,6 @@ type State struct {
 
 	// wait the channel event happening for shutting down the state gracefully
 	onStopCh chan *cstypes.RoundState
-
 }
 
 // StateOption sets an optional parameter on the State.
@@ -202,7 +200,7 @@ func NewStateWithLogger(
 		evsw:               tmevents.NewEventSwitch(),
 		metrics:            NopMetrics(),
 		proposedAppVersion: proposedAppVersion,
-		onStopCh:         make(chan *cstypes.RoundState),
+		onStopCh:           make(chan *cstypes.RoundState),
 	}
 
 	// set function defaults (may be overwritten before calling Start)
@@ -1785,7 +1783,7 @@ func (cs *State) finalizeCommit(height int64) {
 }
 
 // If we received a commit message from an external source try to add it then finalize it.
-func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error) {
+func (cs *State) tryAddCommit(commit *types.Commit, peerID types.NodeID) (bool, error) {
 	// Let's only add one remote commit
 	if cs.Commit != nil {
 		return false, nil
@@ -1835,7 +1833,7 @@ func (cs *State) tryAddCommit(commit *types.Commit, peerID p2p.ID) (bool, error)
 }
 
 func (cs *State) verifyCommit(
-	commit *types.Commit, peerID p2p.ID, ignoreProposalBlock bool,
+	commit *types.Commit, peerID types.NodeID, ignoreProposalBlock bool,
 ) (verified bool, err error) {
 	// Lets first do some basic commit validation before more complicated commit verification
 	if err := commit.ValidateBasic(); err != nil {
@@ -1948,7 +1946,7 @@ func (cs *State) addCommit(commit *types.Commit) (added bool, err error) {
 	if err := cs.eventBus.PublishEventCommit(types.EventDataCommit{Commit: commit}); err != nil {
 		return added, err
 	}
-	cs.evsw.FireEvent(types.EventCommit, commit)
+	cs.evsw.FireEvent(types.EventCommitValue, commit)
 
 	if cs.config.SkipTimeoutCommit {
 		cs.enterNewRound(cs.Height, 0)
@@ -2010,7 +2008,6 @@ func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
 		},
 		block,
 		logger,
-
 	)
 	if err != nil {
 		logger.Error("failed to apply block", "err", err)

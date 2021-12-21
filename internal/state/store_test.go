@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/test/factory"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -28,10 +27,8 @@ const (
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	vals, _ := factory.GenerateMockValidatorSet(3)
+
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
 	require.NoError(t, err)
@@ -54,10 +51,7 @@ func TestStoreBootstrap(t *testing.T) {
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	vals, _ := factory.GenerateMockValidatorSet(3)
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// Note that only the next validators at height h + 1 are saved
@@ -114,7 +108,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	state.Validators = genValSet(valSetSize)
+	state.Validators, _ = factory.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err = stateStore.Save(state)
 	require.NoError(b, err)
@@ -190,7 +184,7 @@ func TestPruneStates(t *testing.T) {
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{Address: tmrand.Bytes(crypto.AddressSize), VotingPower: 100, PubKey: pk}
+			validator := &types.Validator{ProTxHash: crypto.RandProTxHash(), VotingPower: 100, PubKey: pk}
 			validatorSet := &types.ValidatorSet{
 				Validators: []*types.Validator{validator},
 				Proposer:   validator,

@@ -55,7 +55,7 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 		shim: p2p.NewReactorShim(log.TestingLogger(), "TestShim", testChannelShims),
 	}
 
-	rts.sw = p2p.MakeSwitch(p2pCfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+	rts.sw = p2p.MakeSwitch(p2pCfg, 1, "testing", "123.123.123", nil, func(_ int, sw *p2p.Switch) *p2p.Switch {
 		for _, peer := range peers {
 			p2p.AddPeerToSwitchPeerSet(sw, peer)
 		}

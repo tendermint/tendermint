@@ -4,9 +4,8 @@ package bls12381_test
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"math/rand"
 	"testing"
-
-	"github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

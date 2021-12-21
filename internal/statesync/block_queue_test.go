@@ -274,7 +274,7 @@ loop:
 }
 
 func mockLBResp(t *testing.T, peer types.NodeID, height int64, time time.Time) lightBlockResponse {
-	vals, pv := factory.RandValidatorSet(3, 10)
+	vals, pv := factory.RandValidatorSet(3)
 	_, _, lb := mockLB(t, height, time, factory.MakeBlockID(), vals, pv)
 	return lightBlockResponse{
 		block: lb,
