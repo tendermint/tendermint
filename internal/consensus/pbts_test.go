@@ -486,6 +486,7 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 		genesisTime:                initialTime,
 		height2ProposedBlockTime:   initialTime.Add(100 * time.Millisecond),
 		height2ProposalDeliverTime: initialTime.Add(10 * time.Millisecond),
+		height4ProposedBlockTime:   initialTime.Add(150 * time.Millisecond),
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)

@@ -36,7 +36,6 @@ import (
 var (
 	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
-	ErrInvalidProposalNotTimely   = errors.New("error invalid proposal un-timely block timestamp ")
 	ErrAddingVote                 = errors.New("error adding vote")
 	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
@@ -1370,7 +1369,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
-			if !cs.proposalIsTimely(cs.Proposal) {
+			if !cs.Proposal.Valid {
 				logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
 				cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 				return
@@ -1926,11 +1925,6 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrInvalidProposalPOLRound
 	}
 
-	// Verify that the proposal is not too far in the past or future
-	//if !cs.proposalIsTimely(proposal) {
-	//	return ErrInvalidProposalNotTimely
-	//}
-
 	p := proposal.ToProto()
 	// Verify signature
 	if !cs.Validators.GetProposer().PubKey.VerifySignature(
@@ -1948,6 +1942,10 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
 
+	// Mark the proposal as invalid if too far in the past or future
+	if proposal.POLRound > -1 || cs.proposalIsTimely(proposal) {
+		cs.Proposal.Valid = true
+	}
 	cs.Logger.Info("received proposal", "proposal", proposal)
 	return nil
 }
