@@ -1312,12 +1312,30 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
 }
 
+func (cs *State) proposalIsTimely(proposal *types.Proposal) bool {
+	tp := types.TimingParams{
+		Precision:    cs.state.ConsensusParams.Timing.Precision,
+		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
+	}
+
+	if !proposal.IsTimely(tmtime.DefaultSource{}, tp, cs.state.InitialHeight) {
+		return false
+	}
+	return true
+}
+
 func (cs *State) defaultDoPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	// We did not receive a proposal within this round. (and thus executing this from a timeout)
 	if cs.ProposalBlock == nil {
 		logger.Debug("prevote step: ProposalBlock is nil")
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	if cs.Proposal == nil {
+		logger.Debug("prevote step; did not receive proposal, prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1352,7 +1370,11 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
-			// TODO(@wbanfield) add check for timely here as well
+			if !cs.proposalIsTimely(cs.Proposal) {
+				logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
+				cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+				return
+			}
 			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
 			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
@@ -1489,6 +1511,13 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		return
 	}
 	// At this point, +2/3 prevoted for a particular block.
+
+	// If we never received a proposal for this block, we must precommit nil
+	if cs.Proposal == nil {
+		logger.Debug("precommit step; did not receive proposal, precommitting nil")
+		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
 
 	// If the proposal time does not match the block time, precommit nil.
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
@@ -1882,7 +1911,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
 	// TODO: possibly catch double proposals
-	if cs.Proposal != nil {
+	if cs.Proposal != nil || proposal == nil {
 		return nil
 	}
 
@@ -1897,14 +1926,10 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrInvalidProposalPOLRound
 	}
 
-	// Verify timely
-	tp := types.TimingParams{
-		Precision:    cs.state.ConsensusParams.Timing.Precision,
-		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
-	}
-	if proposal.POLRound == -1 && !proposal.IsTimely(tmtime.DefaultSource{}, tp, cs.state.InitialHeight) {
-		return ErrInvalidProposalNotTimely
-	}
+	// Verify that the proposal is not too far in the past or future
+	//if !cs.proposalIsTimely(proposal) {
+	//	return ErrInvalidProposalNotTimely
+	//}
 
 	p := proposal.ToProto()
 	// Verify signature

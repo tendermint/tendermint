@@ -422,3 +422,74 @@ func TestProposerWaitTime(t *testing.T) {
 		})
 	}
 }
+
+func TestTimelyProposal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	initialTime := time.Now()
+
+	cfg := pbtsTestConfiguration{
+		timingParams: types.TimingParams{
+			Precision:    10 * time.Millisecond,
+			MessageDelay: 140 * time.Millisecond,
+		},
+		timeoutPropose:             40 * time.Millisecond,
+		genesisTime:                initialTime,
+		height2ProposedBlockTime:   initialTime.Add(10 * time.Millisecond),
+		height2ProposalDeliverTime: initialTime.Add(30 * time.Millisecond),
+	}
+
+	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
+	results := pbtsTest.run()
+	assert.True(t, results.height2.prevote.BlockID.Hash != nil)
+}
+
+func TestTooFarInThePastProposal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	initialTime := time.Now()
+
+	// localtime > proposedBlockTime + MsgDelay + Precision
+	cfg := pbtsTestConfiguration{
+		timingParams: types.TimingParams{
+			Precision:    1 * time.Millisecond,
+			MessageDelay: 10 * time.Millisecond,
+		},
+		timeoutPropose:             50 * time.Millisecond,
+		genesisTime:                initialTime,
+		height2ProposedBlockTime:   initialTime.Add(10 * time.Millisecond),
+		height2ProposalDeliverTime: initialTime.Add(100 * time.Millisecond),
+	}
+
+	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
+	results := pbtsTest.run()
+	time.Sleep(1 * time.Second)
+
+	assert.True(t, results.height2.prevote.BlockID.Hash == nil)
+}
+
+func TestTooFarInTheFutureProposal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	initialTime := time.Now()
+
+	// localtime < proposedBlockTime - Precision
+	cfg := pbtsTestConfiguration{
+		timingParams: types.TimingParams{
+			Precision:    1 * time.Millisecond,
+			MessageDelay: 10 * time.Millisecond,
+		},
+		timeoutPropose:             50 * time.Millisecond,
+		genesisTime:                initialTime,
+		height2ProposedBlockTime:   initialTime.Add(100 * time.Millisecond),
+		height2ProposalDeliverTime: initialTime.Add(10 * time.Millisecond),
+	}
+
+	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
+	results := pbtsTest.run()
+
+	assert.True(t, results.height2.prevote.BlockID.Hash == nil)
+}
