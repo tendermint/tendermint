@@ -27,10 +27,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const (
-	dashDefaultVotingPower = 10
-)
-
 var (
 	numEvidence = 10
 
@@ -540,7 +536,7 @@ func TestEvidenceListSerialization(t *testing.T) {
 
 	val := &types.Validator{
 		ProTxHash:   crypto.ProTxHashFromSeedBytes([]byte("validator_address")),
-		VotingPower: dashDefaultVotingPower,
+		VotingPower: types.DefaultDashVotingPower,
 	}
 
 	valSet := types.NewValidatorSet(
