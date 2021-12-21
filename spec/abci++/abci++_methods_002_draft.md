@@ -182,7 +182,7 @@ title: Methods
 
     | Name   | Type   | Description                                                           | Field Number |
     |--------|--------|-----------------------------------------------------------------------|--------------|
-    | height | uint64 | The height of the snapshot the chunks belongs to.                     | 1            |
+    | height | uint64 | The height of the snapshot the chunk belongs to.                      | 1            |
     | format | uint32 | The application-specific format of the snapshot the chunk belongs to. | 2            |
     | chunk  | uint32 | The chunk index, starting from `0` for the initial chunk.             | 3            |
 
@@ -304,11 +304,10 @@ From the App's perspective, they'll probably skip ProcessProposal
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
     | modified_tx             | bool                                             | The Application sets it to true to denote it made changes to transactions                   | 1            |
     | tx                      | repeated [TransactionRecord](#transactionrecord) | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
-    | same_block              | bool                                             | If true, Application is in same-block execution mode                                        | 3            |
-    | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 4            |
-    | tx_result               | repeated [DeliverTxResult](#delivertxresult)     | List of structures containing the data resulting from executing the transactions            | 5            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 6            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 7            |
+    | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
+    | tx_result               | repeated [DeliverTxResult](#delivertxresult)     | List of structures containing the data resulting from executing the transactions            | 4            |
+    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
 * **Usage**:
     * Contains a preliminary block to be proposed, which the Application can modify.
@@ -320,10 +319,9 @@ From the App's perspective, they'll probably skip ProcessProposal
       them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified_tx` is set to true.
     * If `ResponsePrepareProposal.modified_tx` is false, then Tendermint will ignore the contents of
       `ResponsePrepareProposal.tx`.
-    * In same-block execution mode, the Application must set `ResponsePrepareProposal.same_block` to true, and,
-      as a result of executing the block, provide values for `ResponsePrepareProposal.data`,
+    * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.data`,
       `ResponsePrepareProposal.tx_result`, `ResponsePrepareProposal.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`.
+      `ResponsePrepareProposal.consensus_param_updates`, as a result of executing the block.
       * The values for `ResponsePrepareProposal.validator_updates`, or
         `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
         the current values.
@@ -335,8 +333,7 @@ From the App's perspective, they'll probably skip ProcessProposal
       * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
         params for the same block `H`. For more information on the consensus parameters,
         see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
-    * In next-block execution mode, the Application must set `ResponsePrepareProposal.same_block` to false.
-      Tendermint will ignore parameters `ResponsePrepareProposal.tx_result`,
+    * In next-block execution mode, Tendermint will ignore parameters `ResponsePrepareProposal.tx_result`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * As a result of executing the prepared proposal, the Application may produce header events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
@@ -437,7 +434,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
       `ResponseProcessProposal.accept` MUST *exclusively* depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
-      (see [Properties](#properties) section below).
+      (see [Requirements](abci++_app_requirements_002_draft.md) section).
     * Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_,
       unless they _really_ know what the potential liveness implications of returning _false_ are.
 
@@ -525,11 +522,12 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
 
 * **Usage**:
     * If `ResponseVerifyVoteExtension.accept` is _false_, Tendermint will reject the whole received vote.
-      See the [Properties](#properties) section to understand the potential liveness implications of this.
+      See the [Requirements](abci++_app_requirements_002_draft.md) section to understand the potential
+      liveness implications of this.
     * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
       `ResponseVerifyVoteExtension.accept` MUST *exclusively* depend on the parameters passed in
       the call to `RequestVerifyVoteExtension`, and the last committed Application state
-      (see [Properties](#properties) section below).
+      (see [Requirements](abci++_app_requirements_002_draft.md) section).
     * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_,
       unless they _really_ know what the potential liveness implications of returning _false_ are.
 

@@ -322,9 +322,9 @@ namely:
 * the consensus parameter updates
 * the validator updates
 
-With ABCI++, an Application may decide to keep using the next-block execution model,
+With ABCI++, an Application may decide to keep using the next-block execution model;
 however the new methods introduced, `PrepareProposal` and `ProcessProposal` allow
-for a new execution model, called same-block execution. An Application implementing
+for a new execution model, called _same-block execution_. An Application implementing
 this execution model, upon receiving a raw proposal via `PrepareProposal` and
 potentially modifying the list of transactions, the Application fully executes the
 resulting prepared proposal as though it was the decided block. The results of the
@@ -341,12 +341,18 @@ block execution are used as follows:
   in the prepared proposal's header.
 * the consensus parameter updates and validator updates are also provided in
   `ResponsePrepareProposal` and reflect the result of the prepared proposal's
-  execution. They come into force in the next height (as opposed to the H+2 rule
+  execution. They come into force in height H+1 (as opposed to the H+2 rule
   in next-block execution model).
 
 If the Application decides to keep the next-block execution model, it will not
 provide any data in `ResponsePrepareProposal`, other than an optionally modified
 transaction list.
+
+The execution model is set in boolean parameter _same_block_ in ConsensusParameters.
+It should **not** be changed once the blockchain has started, unless the Application
+developers _really_ know what they are doing.
+
+>**TODO**: Update ConsensusParams struct with "same_block"
 
 ## State Sync
 
