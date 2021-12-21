@@ -41,8 +41,9 @@ from the point of view of the Application.
 start               = clean-start / recovery
 
 clean-start         = init-chain [state-sync] *consensus-height
-state-sync          = 1*state-sync-attempt info
+state-sync          = *state-sync-attempt success-sync info
 state-sync-attempt  = offer-snapshot *apply-chunk
+success-sync        = offer-snapshot 1*apply-chunk
 
 recovery            = info *consensus-replay *consensus-height
 consensus-replay    = decide
@@ -113,12 +114,14 @@ Let us now examine the grammar line by line, providing further details.
 * In _state-sync_ mode, Tendermint makes one or more attempts at synchronizing the Application's state.
   At the beginning of each attempt, it offers the Application a snapshot found at another process.
   If the Application accepts the snapshop, at sequence of calls to `ApplySnapshotChunk` method follow
-  to provide the Application with all the snapshots needed, in order, to reconstruct the state locally.
+  to provide the Application with all the snapshots needed, in order to reconstruct the state locally.
+  A successful attempt must provide at least one chunk via `ApplySnapshotChunk`.
   At the end of a successful attempt, Tendermint calls `Info` to make sure the recontructed state's
   _AppHash_ matches the one in the block header at the corresponding height.
 >```abnf
->state-sync          = 1*state-sync-attempt info
+>state-sync          = *state-sync-attempt success-sync info
 >state-sync-attempt  = offer-snapshot *apply-chunk
+>success-sync        = offer-snapshot 1*apply-chunk
 >```
 
 * In recovery mode, Tendermint first calls `Info` to know from which height it needs to replay decisions
