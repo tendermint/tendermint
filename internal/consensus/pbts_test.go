@@ -335,7 +335,7 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 	cfg := pbtsTestConfiguration{
 		timingParams: types.TimingParams{
 			Precision:    10 * time.Millisecond,
-			MessageDelay: 100 * time.Millisecond,
+			MessageDelay: 10 * time.Millisecond,
 		},
 		timeoutPropose:             10 * time.Millisecond,
 		genesisTime:                initialTime,

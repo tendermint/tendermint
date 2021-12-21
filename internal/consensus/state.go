@@ -1317,10 +1317,7 @@ func (cs *State) proposalIsTimely(proposal *types.Proposal) bool {
 		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
 	}
 
-	if !proposal.IsTimely(tmtime.DefaultSource{}, tp, cs.state.InitialHeight) {
-		return false
-	}
-	return true
+	return proposal.IsTimely(tmtime.DefaultSource{}, tp, cs.state.InitialHeight)
 }
 
 func (cs *State) defaultDoPrevote(height int64, round int32) {
