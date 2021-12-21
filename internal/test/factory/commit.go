@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"

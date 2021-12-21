@@ -51,4 +51,5 @@ func ValidateSignatureSize(keyType crypto.KeyType, h []byte) error {
 			len(h),
 		)
 	}
+	return nil
 }

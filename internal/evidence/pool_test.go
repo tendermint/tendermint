@@ -2,8 +2,6 @@ package evidence_test
 
 import (
 	"context"
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto"
 	"testing"
 	"time"
 
@@ -13,6 +11,8 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -149,8 +149,7 @@ func TestReportConflictingVotes(t *testing.T) {
 
 	pool, pv := defaultTestPool(t, height)
 
-	quorumHash, err := pv.GetFirstQuorumHash(context.Background())
-	require.NoError(t, err)
+	quorumHash := pool.State().Validators.QuorumHash
 
 	val := pv.ExtractIntoValidator(context.Background(), quorumHash)
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID,
@@ -204,7 +203,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 	notPrunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
-		defaultEvidenceTime.Add(21*time.Minute),
+		defaultEvidenceTime.Add(2*time.Minute),
 		val,
 		evidenceChainID,
 		state.Validators.QuorumType,
