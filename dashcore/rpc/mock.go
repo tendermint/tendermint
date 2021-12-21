@@ -1,6 +1,7 @@
 package dashcore
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"strconv"
@@ -48,11 +49,11 @@ func (mc *MockClient) QuorumInfo(
 	quorumHash crypto.QuorumHash,
 ) (*btcjson.QuorumInfoResult, error) {
 	var members []btcjson.QuorumMember
-	proTxHash, err := mc.localPV.GetProTxHash()
+	proTxHash, err := mc.localPV.GetProTxHash(context.Background())
 	if err != nil {
 		panic(err)
 	}
-	pk, err := mc.localPV.GetPubKey(quorumHash)
+	pk, err := mc.localPV.GetPubKey(context.Background(), quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -64,11 +65,11 @@ func (mc *MockClient) QuorumInfo(
 			PubKeyShare:    pk.HexString(),
 		})
 	}
-	tpk, err := mc.localPV.GetThresholdPublicKey(quorumHash)
+	tpk, err := mc.localPV.GetThresholdPublicKey(context.Background(), quorumHash)
 	if err != nil {
 		panic(err)
 	}
-	height, err := mc.localPV.GetHeight(quorumHash)
+	height, err := mc.localPV.GetHeight(context.Background(), quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +83,7 @@ func (mc *MockClient) QuorumInfo(
 }
 
 func (mc *MockClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
-	proTxHash, err := mc.localPV.GetProTxHash()
+	proTxHash, err := mc.localPV.GetProTxHash(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -117,7 +118,7 @@ func (mc *MockClient) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
 }
 
 func (mc *MockClient) MasternodeListJSON(filter string) (map[string]btcjson.MasternodelistResultJSON, error) {
-	proTxHash, err := mc.localPV.GetProTxHash()
+	proTxHash, err := mc.localPV.GetProTxHash(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +155,7 @@ func (mc *MockClient) QuorumSign(
 		bls12381.ReverseBytes(requestID),
 		bls12381.ReverseBytes(messageHash),
 	)
-	privateKey, err := mc.localPV.GetPrivateKey(quorumHash)
+	privateKey, err := mc.localPV.GetPrivateKey(context.Background(), quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -188,7 +189,7 @@ func (mc *MockClient) QuorumVerify(
 		bls12381.ReverseBytes(requestID),
 		bls12381.ReverseBytes(messageHash),
 	)
-	thresholdPublicKey, err := mc.localPV.GetThresholdPublicKey(quorumHash)
+	thresholdPublicKey, err := mc.localPV.GetThresholdPublicKey(context.Background(), quorumHash)
 	if err != nil {
 		panic(err)
 	}
