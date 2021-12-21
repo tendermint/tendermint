@@ -83,7 +83,7 @@ However, if there is a (deterministic) bug in `ExtendVote` or `VerifyVoteExtensi
 we will face the same liveness issues as described for Requirement 3, as Precommit messages with invalid vote
 extensions will be discarded.
 
-* Requirement 7 [`VerifyVoteExtension`, determinism-1]: `VerifyVoteExtension` is a (deterministic) function of 
+* Requirement 7 [`VerifyVoteExtension`, determinism-1]: `VerifyVoteExtension` is a (deterministic) function of
   the current state, the vote extension received, and the prepared proposal that the extension refers to.
   In other words, for any correct process $p$, and any arbitrary vote extension $e$, and any arbitrary
   block $w$, if $p$'s (resp. $q$'s) Tendermint calls `RequestVerifyVoteExtension` on $e$ and $w$ at height $h$,

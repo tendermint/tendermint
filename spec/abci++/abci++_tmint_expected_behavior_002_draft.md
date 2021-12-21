@@ -100,6 +100,7 @@ hand, are present in the grammar.
 Let us now examine the grammar line by line, providing further details.
 
 * When a process starts, it may do so for the first time or after a crash (it is recovering).
+
 >```abnf
 >start               = clean-start / recovery
 >```
@@ -107,6 +108,7 @@ Let us now examine the grammar line by line, providing further details.
 * If the process is starting from scratch, Tendermint first calls `InitChain`, then it may optionally
   start a _state-sync_ mechanism to catch up with other processes. Finally, it enters normal
   consensus execution, which is a sequence of zero or more consensus heights.
+
 >```abnf
 >clean-start         = init-chain [state-sync] *consensus-height
 >```
@@ -118,6 +120,7 @@ Let us now examine the grammar line by line, providing further details.
   A successful attempt must provide at least one chunk via `ApplySnapshotChunk`.
   At the end of a successful attempt, Tendermint calls `Info` to make sure the recontructed state's
   _AppHash_ matches the one in the block header at the corresponding height.
+
 >```abnf
 >state-sync          = *state-sync-attempt success-sync info
 >state-sync-attempt  = offer-snapshot *apply-chunk
@@ -127,6 +130,7 @@ Let us now examine the grammar line by line, providing further details.
 * In recovery mode, Tendermint first calls `Info` to know from which height it needs to replay decisions
   to the Application. To replay a decision, Tendermint simply calls `FinalizeBlock` with the decided
   block at that height. After this, Tendermint enters nomal consensus execution: zero or more consensus heights.
+
 >```abnf
 >recovery            = info *consensus-replay *consensus-height
 >consensus-replay    = decide
@@ -134,6 +138,7 @@ Let us now examine the grammar line by line, providing further details.
 
 * A consensus height consists of zero or more rounds before deciding via a call to `FinalizeBlock`.
   In each round, the sequence of method calls depends on whether the local process is the proposer or not.
+
 >```abnf
 >consensus-height    = *consensus-round decide
 >consensus-round     = proposer / non-proposer
@@ -141,9 +146,10 @@ Let us now examine the grammar line by line, providing further details.
 
 * If the local process is the proposer of the current round, Tendermint starts by calling `PrepareProposal`.
   No calls to methods related to vote extensions (`ExtendVote`, `VerifyVoteExtension`) can be called
-  in the present round before `PrepareProposal`. Once `PrepareProposal` is called, calls to 
+  in the present round before `PrepareProposal`. Once `PrepareProposal` is called, calls to
   `ExtendVote` and `VerifyVoteExtension` can come in any order, although the former will be called
   at most once in this round.
+
 >```abnf
 >proposer            = prepare-proposal extend-proposer
 >extend-proposer     = *got-vote [extend-vote] *got-vote
@@ -153,6 +159,7 @@ Let us now examine the grammar line by line, providing further details.
   at most once. At most one call to `ExtendVote` can occur only after `ProcessProposal` is called.
   A number of calls to `VerifyVoteExtension` can occur in any order with respect to `ProcessProposal`
   and `ExtendVote` throughout the round.
+
 >```abnf
 >non-proposer        = *got-vote [extend-non-proposer] *got-vote
 >extend-non-proposer = process-proposal *got-vote [extend-vote]
@@ -160,6 +167,7 @@ Let us now examine the grammar line by line, providing further details.
 
 * Finally, the grammar describes all its terminal symbols, which denote the different ABCI++ method calls that
   may appear in a sequence.
+
 >```abnf
 >init-chain          = %s"<InitChain>"
 >offer-snapshot      = %s"<OfferSnapshot>"
@@ -181,6 +189,7 @@ Let us now examine the grammar line by line, providing further details.
 >so the App can adjust it with its knowledge of the time may take to prepare/process the proposal.
 >
 >This should probably go elsewhere in the spec.
+>Also, see tendermint/tendermint#7274
 
 ## Failure modes
 

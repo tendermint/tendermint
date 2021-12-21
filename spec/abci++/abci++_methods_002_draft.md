@@ -531,7 +531,6 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
     * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_,
       unless they _really_ know what the potential liveness implications of returning _false_ are.
 
-
 #### When does Tendermint call it?
 
 When a validator _p_ is in Tendermint consensus round _r_, height _h_, state _prevote_ (**TODO** discuss: I think I must remove the state

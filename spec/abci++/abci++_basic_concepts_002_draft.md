@@ -16,23 +16,23 @@ When Tendermint and the ABCI++ application are run as separate processes, Tender
 opens four connections to the application for ABCI++ methods. The connections each
 handle a subset of the ABCI++ method calls. These subsets are defined as follows:
 
-#### **Consensus** connection
+### **Consensus** connection
 
 * Driven by a consensus protocol and is responsible for block execution.
 * Handles the `InitChain`, `PrepareProposal`, `ProcessProposal`, `ExtendVote`,
   `VerifyVoteExtension`, and `FinalizeBlock` method calls.
 
-#### **Mempool** connection
+### **Mempool** connection
 
 * For validating new transactions, before they're shared or included in a block.
 * Handles the `CheckTx` calls.
 
-#### **Info** connection
+### **Info** connection
 
 * For initialization and for queries from the user.
 * Handles the `Info` and `Query` calls.
 
-#### **Snapshot** connection
+### **Snapshot** connection
 
 * For serving and restoring [state sync snapshots](../abci/apps.md#state-sync).
 * Handles the `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` calls.
@@ -48,7 +48,7 @@ More details on managing state across connections can be found in the section on
 ## Errors
 
 The `Query`, and `CheckTx` methods include a `Code` field in their `Response*`.
-The `Code` field is also included in type `DeliverTxResult`, used by 
+The `Code` field is also included in type `DeliverTxResult`, used by
 method `FinalizeBlock`'s `Response*`.
 Field `Code` is meant to contain an application-specific response code.
 A response code of `0` indicates no error.  Any other response code
@@ -56,12 +56,12 @@ indicates to Tendermint that an error occurred.
 
 These methods also return a `Codespace` string to Tendermint. This field is
 used to disambiguate `Code` values returned by different domains of the
-application. The `Codespace` is a namespace for the `Code`.
+Application. The `Codespace` is a namespace for the `Code`.
 
 Methods `Echo`, `Info`, and `InitChain` do not return errors.
 An error in any of these methods represents a critical issue that Tendermint
 has no reasonable way to handle. If there is an error in one
-of these methods, the application must crash to ensure that the error is safely
+of these methods, the Application must crash to ensure that the error is safely
 handled by an operator.
 
 Method `FinalizeBlock` is a special case. It contains a number of
@@ -83,7 +83,7 @@ it is already included.
 
 ### `DeliverTxResult` (as part of `FinalizeBlock`)
 
-The `DeliverTxResult` type delivers transactions from Tendermint to the application.
+The `DeliverTxResult` type delivers transactions from Tendermint to the Application.
 When Tendermint receives a `ReponseFinalizeBlock` containing a `DeliverTxResult`
 with a non-zero `Code`, the response code is logged.
 The transaction was already included in a block, so the `Code` does not influence
@@ -91,8 +91,8 @@ Tendermint consensus.
 
 ### `Query`
 
-The `Query` ABCI++ method queries the application for information about application state.
-When Tendermint receives a `ResponseQuery` with a non-zero `Code`, this code is 
+The `Query` ABCI++ method queries the Application for information about application state.
+When Tendermint receives a `ResponseQuery` with a non-zero `Code`, this code is
 returned directly to the client that initiated the query.
 
 ## Events
@@ -106,7 +106,7 @@ transactions and blocks this metadata relates to.
 Events returned via these ABCI++ methods do not impact Tendermint consensus in any way
 and instead exist to power subscriptions and queries of Tendermint state.
 
-An `Event` contains a `type` and a list of `EventAttributes`, which are key-value 
+An `Event` contains a `type` and a list of `EventAttributes`, which are key-value
 string pairs denoting metadata about what happened during the method's (or transaction's)
 execution. `Event` values can be used to index transactions and blocks according to what
 happened during their execution.
@@ -176,10 +176,10 @@ Example:
 Tendermint's security model relies on the use of "evidence". Evidence is proof of
 malicious behaviour by a network participant. It is the responsibility of Tendermint
 to detect such malicious behaviour. When malicious behavior is detected, Tendermint
-will gossip evidence of the behavior to other nodes and commit the evidence to 
-the chain once it is verified by all validators. This evidence will then be 
-passed on to the application through ABCI++. It is the responsibility of the
-application to handle the evidence and exercise punishment.
+will gossip evidence of the behavior to other nodes and commit the evidence to
+the chain once it is verified by all validators. This evidence will then be
+passed on to the Application through ABCI++. It is the responsibility of the
+Application to handle the evidence and exercise punishment.
 
 EvidenceType has the following protobuf format:
 
@@ -203,17 +203,17 @@ precommit votes for the decided block that it receives before the block is decid
 and then includes these votes in the proposed block for the next height whenever
 the local process is the proposer of the round.
 
-When Tendermint's consensus is about to send a non-`nil` precommit message, it calls 
+When Tendermint's consensus is about to send a non-`nil` precommit message, it calls
 method `ExtendVote`, which gives the Application the opportunity to include
 non-deterministic data, opaque to Tendermint, that will be attached to the precommit
 message. The data, called _vote extension_, will also be part of the proposed block
 in the next height, along with the vote it is extending.
 
 The vote extension data is split into two parts, one signed by Tendermint as part
-of the vote data structure, and the other (optionally) signed by the application.
+of the vote data structure, and the other (optionally) signed by the Application.
 The Application may also choose not to include any vote extension.
 When another process receives a precommit message with a vote extension, it calls
-method `VerifyVoteExtension` so that the application can validate the data received.
+method `VerifyVoteExtension` so that the Application can validate the data received.
 If the validation fails, the precommit message will be deemed invalid and ignored
 by Tendermint. This has negative impact on Tendermint's liveness, i.e., if repeatedly vote extensions by correct validators cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should only be used with special care.
 As a general rule, an Application that detects an invalid vote extension SHOULD
@@ -231,13 +231,13 @@ or directly, so all nodes must agree on exactly what they are.
 
 For this reason, it is recommended that applications not be exposed to any
 external user or process except via the ABCI connections to a consensus engine
-like Tendermint Core. The application must only change its state based on input
+like Tendermint Core. The Application must only change its state based on input
 from block execution (`FinalizeBlock` calls), and not through
 any other kind of request. This is the only way to ensure all nodes see the same
 transactions and compute the same results.
 
 Some Applications may choose to execute the blocks that are about to be proposed
-(via `PrepareProposal`), or those that the application is asked to validate
+(via `PrepareProposal`), or those that the Application is asked to validate
 (via `Processproposal`). However the state changes caused by processing those
 proposed blocks must never replace the previous state until `FinalizeBlock` confirms
 the block decided.
@@ -271,7 +271,7 @@ See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
 
 Note that some methods (`Query, CheckTx, FinalizeBlock`) return
 explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
-intended for the literal output from the application's logger, while the
+intended for the literal output from the Application's logger, while the
 `Info` is any additional info that should be returned. These are the only fields
 that are not included in block header computations, so we don't need agreement
 on them. All other fields in the `Response*` must be strictly deterministic.
@@ -280,7 +280,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 
 The first time a new blockchain is started, Tendermint calls
 `InitChain`. From then on, method `FinalizeBlock` is executed at the end of each
-block, resulting in an updated application state.
+block, resulting in an updated Application state.
 During consensus execution of a block height, before method `FinalizeBlock` is
 called, methods `PrepareProposal`, `ProcessProposal`, `ExtendVote`, and
 `VerifyVoteExtension` may be called a number of times.
@@ -294,7 +294,7 @@ Tendermint gathers outstanding transactions from the mempool
 them to create a block to propose. Then, it calls `RequestPrepareProposal`
 with the newly created proposal, called _raw proposal_. The Application can
 make changes to the raw proposal, such as modifying transactions, and returns
-the (potentially) modified proposal, called _prepared proposal_ in the 
+the (potentially) modified proposal, called _prepared proposal_ in the
 `Response*` call. The logic modifying the raw proposal can be non-deterministic.
 
 When Tendermint receives a prepared proposal it uses method `ProcessProposal`
@@ -305,7 +305,6 @@ strong liveness implications for Tendermint. As a general rule, the Application
 SHOULD accept a prepared proposal passed via `ProcessProposal`, even if a part of
 the proposal is invalid (e.g., an invalid transaction); the Application can later
 ignore the invalid part of the prepared proposal at block execution time.
-
 
 Cryptographic commitments to the block and transaction results, via the corresponding
 parameters in `FinalizeBlockResponse` are included in the header of the next block.
@@ -362,18 +361,18 @@ state machine snapshots instead of replaying historical blocks. For more details
 
 New nodes will discover and request snapshots from other nodes in the P2P network.
 A Tendermint node that receives a request for snapshots from a peer will call
-`ListSnapshots` on its application to retrieve any local state snapshots. After receiving
+`ListSnapshots` on its Application to retrieve any local state snapshots. After receiving
  snapshots from peers, the new node will offer each snapshot received from a peer
-to its local application via the `OfferSnapshot` method.
+to its local Application via the `OfferSnapshot` method.
 
 Snapshots may be quite large and are thus broken into smaller "chunks" that can be
-assembled into the whole snapshot. Once the application accepts a snapshot and
+assembled into the whole snapshot. Once the Application accepts a snapshot and
 begins restoring it, Tendermint will fetch snapshot "chunks" from existing nodes.
-The node providing "chunks" will fetch them from its local application using
+The node providing "chunks" will fetch them from its local Application using
 the `LoadSnapshotChunk` method.
 
 As the new node receives "chunks" it will apply them sequentially to the local
-application with `ApplySnapshotChunk`. When all chunks have been applied, the application
-`AppHash` is retrieved via an `Info` query. The `AppHash` is then compared to
-the blockchain's `AppHash` which is verified via
+application with `ApplySnapshotChunk`. When all chunks have been applied, the
+Application's `AppHash` is retrieved via an `Info` query. The `AppHash` is then
+compared to the blockchain's `AppHash` which is verified via
 [light client verification](../spec/light-client/verification/README.md).
