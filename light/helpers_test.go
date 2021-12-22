@@ -1,12 +1,12 @@
 package light_test
 
 import (
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -24,22 +24,6 @@ import (
 // and can optionally extend the validator set later with Extend.
 type privKeys []crypto.PrivKey
 
-// genPrivKeys produces an array of private keys to generate commits.
-func genPrivKeys(n int, keyType crypto.KeyType) privKeys {
-	res := make(privKeys, n)
-	for i := range res {
-		switch keyType {
-		case crypto.BLS12381:
-			res[i] = bls12381.GenPrivKey()
-		case crypto.Ed25519:
-			res[i] = ed25519.GenPrivKey()
-		default:
-			panic("genPrivKeys: unsupported keyType received")
-		}
-	}
-	return res
-}
-
 func exposeMockPVKeys(pvs []*types.MockPV, quorumHash crypto.QuorumHash) privKeys {
 	res := make(privKeys, len(pvs))
 	for i, pval := range pvs {
@@ -47,35 +31,6 @@ func exposeMockPVKeys(pvs []*types.MockPV, quorumHash crypto.QuorumHash) privKey
 	}
 	return res
 }
-
-// // Change replaces the key at index i.
-// func (pkz privKeys) Change(i int) privKeys {
-// 	res := make(privKeys, len(pkz))
-// 	copy(res, pkz)
-// 	res[i] = ed25519.GenPrivKey()
-// 	return res
-// }
-
-// Extend adds n more keys (to remove, just take a slice).
-func (pkz privKeys) Extend(n int) privKeys {
-	extra := genPrivKeys(n, crypto.BLS12381)
-	return append(pkz, extra...)
-}
-
-// // GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
-// func GenSecpPrivKeys(n int) privKeys {
-// 	res := make(privKeys, n)
-// 	for i := range res {
-// 		res[i] = secp256k1.GenPrivKey()
-// 	}
-// 	return res
-// }
-
-// // ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
-// func (pkz privKeys) ExtendSecp(n int) privKeys {
-// 	extra := GenSecpPrivKeys(n)
-// 	return append(pkz, extra...)
-// }
 
 // ToValidators produces a valset from the set of keys.
 // The first key has weight `init` and it increases by `inc` every step
@@ -219,11 +174,6 @@ func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTi
 	}
 }
 
-func (pkz privKeys) ChangeKeys(delta int) privKeys {
-	newKeys := pkz[delta:]
-	return newKeys.Extend(delta)
-}
-
 // Generates the header and validator set to create a full entire mock node with blocks to height (
 // blockSize) and with variation in validator sets. BlockIntervals are in per minute.
 // NOTE: Expected to have a large validator set size ~ 100 validators.
@@ -298,4 +248,53 @@ func genMockNode(
 
 func hash(s string) []byte {
 	return tmhash.Sum([]byte(s))
+}
+
+// genLightBlocksWithValidatorsRotatingEveryBlock generates the header and validator set to create
+// blocks to height. BlockIntervals are in per minute.
+// NOTE: Expected to have a large validator set size ~ 100 validators.
+func genLightBlocksWithValidatorsRotatingEveryBlock(
+	chainID string,
+	numBlocks int64,
+	valSize int,
+	bTime time.Time) (
+	map[int64]*types.SignedHeader,
+	map[int64]*types.ValidatorSet,
+	[]*types.MockPV) {
+
+	var (
+		headers = make(map[int64]*types.SignedHeader, numBlocks)
+		valset  = make(map[int64]*types.ValidatorSet, numBlocks+1)
+	)
+
+	vals, privVals := factory.GenerateMockValidatorSet(valSize)
+	keys := exposeMockPVKeys(privVals, vals.QuorumHash)
+
+	newVals, newPrivVals := factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(vals.GetProTxHashes(), types.MapMockPVByProTxHashes(privVals), 1)
+	newKeys := exposeMockPVKeys(newPrivVals, newVals.QuorumHash)
+
+	// genesis header and vals
+	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
+		vals, newVals, hash("app_hash"), hash("cons_hash"),
+		hash("results_hash"), 0, len(keys))
+	currentHeader := lastHeader
+	headers[1] = currentHeader
+	valset[1] = vals
+	keys = newKeys
+
+	for height := int64(2); height <= numBlocks; height++ {
+		newVals, newPrivVals = factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(vals.GetProTxHashes(), types.MapMockPVByProTxHashes(privVals), height)
+		newKeys = exposeMockPVKeys(newPrivVals, newVals.QuorumHash)
+
+		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+			nil,
+			vals, newVals, hash("app_hash"), hash("cons_hash"),
+			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})
+		headers[height] = currentHeader
+		valset[height] = vals
+		lastHeader = currentHeader
+		keys = newKeys
+	}
+
+	return headers, valset, newPrivVals
 }

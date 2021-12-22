@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	"github.com/tendermint/tendermint/types"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
-	mockp "github.com/tendermint/tendermint/light/provider/mock"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	dbm "github.com/tendermint/tm-db"
 )
@@ -22,40 +22,65 @@ import (
 // or -benchtime 100x.
 //
 // Remember that none of these benchmarks account for network latency.
-var (
-	blocks                    = int64(1000)
-	benchmarkNode *mockp.Mock = nil // lazy-load with getBenchmarkFullNode()
-)
-
-func getBenchmarkFullNode() *mockp.Mock {
-	if benchmarkNode == nil {
-		// TODO: Investigate why the line blow takes so much time
-		benchmarkNode = mockp.New(genMockNode(chainID, blocks, 20, bTime))
-	}
-
-	return benchmarkNode
+type providerBenchmarkImpl struct {
+	currentHeight int64
+	blocks        map[int64]*types.LightBlock
 }
 
-func setupDashCoreRPCMockForBenchmark(b *testing.B) {
-	benchmarkFullNode := getBenchmarkFullNode()
+func newProviderBenchmarkImpl(headers map[int64]*types.SignedHeader,
+	vals map[int64]*types.ValidatorSet) provider.Provider {
+	impl := providerBenchmarkImpl{
+		blocks: make(map[int64]*types.LightBlock, len(headers)),
+	}
+	for height, header := range headers {
+		if height > impl.currentHeight {
+			impl.currentHeight = height
+		}
+		impl.blocks[height] = &types.LightBlock{
+			SignedHeader: header,
+			ValidatorSet: vals[height],
+		}
+	}
+	return &impl
+}
 
-	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, benchmarkFullNode.MockPV, false)
+func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
+	if height == 0 {
+		return impl.blocks[impl.currentHeight], nil
+	}
+	lb, ok := impl.blocks[height]
+	if !ok {
+		return nil, provider.ErrLightBlockNotFound
+	}
+	return lb, nil
+}
+
+func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
+	panic("not implemented")
+}
+
+func setupDashCoreRPCMockForBenchmark(b *testing.B, validator types.PrivValidator) {
+	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, validator, true)
 
 	b.Cleanup(func() {
 		dashCoreMockClient = nil
 	})
 }
 
-func BenchmarkSequence(b *testing.B) {
-	benchmarkFullNode := getBenchmarkFullNode()
-	setupDashCoreRPCMockForBenchmark(b)
+func BenchmarkDashCore(b *testing.B) {
+	headers, vals, privvals := genLightBlocksWithValidatorsRotatingEveryBlock(chainID, 1000, 100, bTime)
+	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
+
+	privval := privvals[0]
+
+	setupDashCoreRPCMockForBenchmark(b, privval)
 
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
+		dbs.New(dbm.NewMemDB()),
 		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
@@ -66,63 +91,6 @@ func BenchmarkSequence(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1000, bTime.Add(1000*time.Minute))
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkBisection(b *testing.B) {
-	setupDashCoreRPCMockForBenchmark(b)
-	benchmarkFullNode := getBenchmarkFullNode()
-
-	c, err := light.NewClient(
-		context.Background(),
-		chainID,
-		benchmarkFullNode,
-		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreMockClient,
-		light.Logger(log.TestingLogger()),
-	)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.ResetTimer()
-
-	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1000, bTime.Add(1000*time.Minute))
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkBackwards(b *testing.B) {
-	setupDashCoreRPCMockForBenchmark(b)
-	benchmarkFullNode := getBenchmarkFullNode()
-
-	_, err := benchmarkFullNode.LightBlock(context.Background(), 0)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	c, err := light.NewClient(
-		context.Background(),
-		chainID,
-		benchmarkFullNode,
-		[]provider.Provider{benchmarkFullNode},
-		dbs.New(dbm.NewMemDB(), chainID),
-		dashCoreMockClient,
-		light.Logger(log.TestingLogger()),
-	)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.ResetTimer()
-
-	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1, bTime)
 		if err != nil {
 			b.Fatal(err)
 		}
