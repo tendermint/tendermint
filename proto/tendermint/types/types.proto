@@ -56,7 +56,7 @@ message BlockID {
 // StateID
 message StateID {
   bytes last_app_hash = 1;
-  int64 height = 2;
+  int64 height        = 2;
 }
 
 // --------------------------------
@@ -88,7 +88,7 @@ message Header {
   bytes evidence_hash        = 13;   // evidence included in the block
   bytes proposer_pro_tx_hash = 101;  // original proposer of the block
 
-  uint64 proposed_app_version = 102; // proposer's latest available app protocol version
+  uint64 proposed_app_version = 102;  // proposer's latest available app protocol version
 }
 
 // CoreChainLock represents a core chain lock for synchronization between state data and core chain
@@ -115,10 +115,10 @@ message Vote {
   int32         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
-  bytes   validator_pro_tx_hash = 6;
-  int32   validator_index       = 7;
-  bytes   block_signature       = 8;
-  bytes   state_signature       = 10;
+  bytes validator_pro_tx_hash = 6;
+  int32 validator_index       = 7;
+  bytes block_signature       = 8;
+  bytes state_signature       = 10;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.

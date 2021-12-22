@@ -196,10 +196,9 @@ func TestSyncer_SyncAny(t *testing.T) {
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 	connQuery.On("InfoSync", proxy.RequestInfo).Return(&abci.ResponseInfo{
-		AppVersion:                9,
-		LastBlockHeight:           1,
-		LastCoreChainLockedHeight: 1,
-		LastBlockAppHash:          []byte("app_hash"),
+		AppVersion:       9,
+		LastBlockHeight:  1,
+		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
 
 	newState, lastCommit, err := syncer.SyncAny(0, func() {})
@@ -682,10 +681,9 @@ func TestSyncer_verifyApp(t *testing.T) {
 		expectErr error
 	}{
 		"verified": {&abci.ResponseInfo{
-			LastBlockHeight:           3,
-			LastCoreChainLockedHeight: 10,
-			LastBlockAppHash:          []byte("app_hash"),
-			AppVersion:                9,
+			LastBlockHeight:  3,
+			LastBlockAppHash: []byte("app_hash"),
+			AppVersion:       9,
 		}, nil, nil},
 		"invalid height": {&abci.ResponseInfo{
 			LastBlockHeight:  5,

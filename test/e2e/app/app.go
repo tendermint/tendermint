@@ -58,15 +58,14 @@ func NewApplication(cfg *Config) (*Application, error) {
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{
-		Version:                   version.ABCIVersion,
-		AppVersion:                1,
-		LastBlockHeight:           int64(app.state.Height),
-		LastBlockAppHash:          app.state.Hash,
-		LastCoreChainLockedHeight: app.state.CoreHeight,
+		Version:          version.ABCIVersion,
+		AppVersion:       1,
+		LastBlockHeight:  int64(app.state.Height),
+		LastBlockAppHash: app.state.Hash,
 	}
 }
 
-// Info implements ABCI.
+// InitChain implements ABCI.
 func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
 	var err error
 	app.state.initialHeight = uint64(req.InitialHeight)
@@ -85,7 +84,7 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 		panic(err)
 	}
 	resp.ValidatorSetUpdate = *validatorSetUpdate
-
+	resp.InitialCoreHeight = app.cfg.InitAppInitialCoreHeight
 	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(0); err != nil {
 		panic(err)
 	}

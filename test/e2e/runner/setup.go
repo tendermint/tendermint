@@ -241,7 +241,7 @@ func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc,
 		ChainID:                      testnet.Name,
 		ConsensusParams:              types.DefaultConsensusParams(),
 		InitialHeight:                testnet.InitialHeight,
-		InitialCoreChainLockedHeight: testnet.InitialCoreHeight,
+		InitialCoreChainLockedHeight: testnet.GenesisCoreHeight,
 		ThresholdPublicKey:           testnet.ThresholdPublicKey,
 		QuorumType:                   testnet.QuorumType,
 		QuorumHash:                   testnet.QuorumHash,
@@ -456,6 +456,10 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			quorumHashUpdates[fmt.Sprintf("%v", height)] = hex.EncodeToString(quorumHash.Bytes())
 		}
 		cfg["quorum_hash_update"] = quorumHashUpdates
+	}
+
+	if node.Testnet.InitAppCoreHeight > 0 {
+		cfg["init_app_core_chain_locked_height"] = node.Testnet.InitAppCoreHeight
 	}
 	if len(node.Testnet.ChainLockUpdates) > 0 {
 		chainLockUpdates := map[string]string{}

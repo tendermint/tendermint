@@ -1848,14 +1848,70 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	assert.Equal(t, newValProTxHash, expectValProTxHash)
 }
 
+func TestHandshakeInitialCoreLockHeight(t *testing.T) {
+	const InitialCoreHeight uint32 = 12345
+	config := ResetConfig("handshake_test_initial_core_lock_height")
+	defer os.RemoveAll(config.RootDir)
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+
+	randQuorumHash, err := privVal.GetFirstQuorumHash()
+	require.NoError(t, err)
+
+	app := &initChainApp{initialCoreHeight: InitialCoreHeight}
+	clientCreator := proxy.NewLocalClientCreator(app)
+
+	pubKey, err := privVal.GetPubKey(randQuorumHash)
+	require.NoError(t, err)
+	proTxHash, err := privVal.GetProTxHash()
+	require.NoError(t, err)
+	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
+	stateStore := sm.NewStore(stateDB)
+
+	// now start the app using the handshake - it should sync
+	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	handshaker := NewHandshaker(
+		stateStore,
+		state,
+		store,
+		genDoc,
+		&proTxHash,
+		config.Consensus.AppHashSize,
+	)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	if err := proxyApp.Start(); err != nil {
+		t.Fatalf("Error starting proxy app connections: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := proxyApp.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := handshaker.Handshake(proxyApp); err != nil {
+		t.Fatalf("Error on abci handshake: %v", err)
+	}
+
+	// reload the state, check the validator set was updated
+	state, err = stateStore.Load()
+	require.NoError(t, err)
+	assert.Equal(t, InitialCoreHeight, state.LastCoreChainLockedBlockHeight)
+	assert.Equal(t, InitialCoreHeight, handshaker.initialState.LastCoreChainLockedBlockHeight)
+}
+
 // returns the vals on InitChain
 type initChainApp struct {
 	abci.BaseApplication
-	vals *abci.ValidatorSetUpdate
+	vals              *abci.ValidatorSetUpdate
+	initialCoreHeight uint32
 }
 
 func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
-	return abci.ResponseInitChain{
-		ValidatorSetUpdate: *ica.vals,
+	resp := abci.ResponseInitChain{
+		InitialCoreHeight: ica.initialCoreHeight,
 	}
+
+	if ica.vals != nil {
+		resp.ValidatorSetUpdate = *ica.vals
+	}
+
+	return resp
 }

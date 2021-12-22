@@ -512,12 +512,6 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 			"expected", snapshot.Height, "actual", resp.LastBlockHeight)
 		return 0, errVerifyFailed
 	}
-	if snapshot.CoreChainLockedHeight != resp.LastCoreChainLockedHeight {
-		s.logger.Error("last core chain locked height verification failed",
-			"expected", fmt.Sprintf("%d", snapshot.CoreChainLockedHeight),
-			"actual", fmt.Sprintf("%d", resp.LastCoreChainLockedHeight))
-		return 0, errVerifyFailed
-	}
 
 	s.logger.Info(
 		"Verified ABCI app",
