@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 	"testing"
 	"time"
@@ -59,11 +58,6 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
 	panic("not implemented")
 }
-func getBenchmarkFullNode(privval types.PrivValidator, startHeight int64, endHeight int64) provider.Provider {
-	typ
-	newProviderBenchmarkImpl
-	return benchmarkNode
-}
 
 func setupDashCoreRPCMockForBenchmark(b *testing.B, validator types.PrivValidator) {
 	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, validator, true)
@@ -74,9 +68,11 @@ func setupDashCoreRPCMockForBenchmark(b *testing.B, validator types.PrivValidato
 }
 
 func BenchmarkDashCore(b *testing.B) {
-	quorumHash := crypto.RandQuorumHash()
-	privval := types.NewMockPVForQuorum(quorumHash)
-	benchmarkFullNode := getBenchmarkFullNode()
+	headers, vals, privvals := genLightBlocksWithValidatorsRotatingEveryBlock(chainID, 1000, 100, bTime)
+	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
+
+	privval := privvals[0]
+
 	setupDashCoreRPCMockForBenchmark(b, privval)
 
 	c, err := light.NewClient(

@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -51,7 +52,7 @@ func TestClientIntegration_Update(t *testing.T) {
 	require.NoError(t, err)
 
 	// give Tendermint time to generate some blocks
-	block, err := waitForBlock(ctx, primary, 2)
+	_, err = waitForBlock(ctx, primary, 2)
 	require.NoError(t, err)
 
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
@@ -60,14 +61,10 @@ func TestClientIntegration_Update(t *testing.T) {
 	c, err := light.NewClient(
 		ctx,
 		chainID,
-		light.TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
+		dashcore.NewMockClient(chainID, 100, validator, true),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -110,7 +107,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	require.NoError(t, err)
 
 	// give Tendermint time to generate some blocks
-	block, err := waitForBlock(ctx, primary, 2)
+	_, err = waitForBlock(ctx, primary, 2)
 	require.NoError(t, err)
 
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
@@ -118,14 +115,10 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 
 	c, err := light.NewClient(ctx,
 		chainID,
-		light.TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
+		dashcore.NewMockClient(chainID, 100, validator, true),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)

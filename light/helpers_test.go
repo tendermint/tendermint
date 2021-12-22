@@ -250,22 +250,21 @@ func hash(s string) []byte {
 	return tmhash.Sum([]byte(s))
 }
 
-// genLightBlocksWithKeys generates the header and validator set to create
+// genLightBlocksWithValidatorsRotatingEveryBlock generates the header and validator set to create
 // blocks to height. BlockIntervals are in per minute.
 // NOTE: Expected to have a large validator set size ~ 100 validators.
-func genLightBlocksWithKeys(
+func genLightBlocksWithValidatorsRotatingEveryBlock(
 	chainID string,
 	numBlocks int64,
 	valSize int,
 	bTime time.Time) (
 	map[int64]*types.SignedHeader,
 	map[int64]*types.ValidatorSet,
-	map[int64]privKeys) {
+	[]*types.MockPV) {
 
 	var (
-		headers         = make(map[int64]*types.SignedHeader, numBlocks)
-		valset          = make(map[int64]*types.ValidatorSet, numBlocks+1)
-		keymap          = make(map[int64]privKeys, numBlocks+1)
+		headers = make(map[int64]*types.SignedHeader, numBlocks)
+		valset  = make(map[int64]*types.ValidatorSet, numBlocks+1)
 	)
 
 	vals, privVals := factory.GenerateMockValidatorSet(valSize)
@@ -295,8 +294,7 @@ func genLightBlocksWithKeys(
 		valset[height] = vals
 		lastHeader = currentHeader
 		keys = newKeys
-		keymap[height+1] = keys
 	}
 
-	return headers, valset, keymap
+	return headers, valset, newPrivVals
 }
