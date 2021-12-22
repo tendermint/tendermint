@@ -1321,6 +1321,12 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+	if cs.Proposal == nil || cs.ProposalBlock == nil {
+		logger.Debug("prevote step; did not receive proposal, prevoting nil")
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
 		logger.Debug("proposal timestamp not equal, prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
@@ -1488,6 +1494,13 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		return
 	}
 	// At this point, +2/3 prevoted for a particular block.
+
+	// If we never received a proposal for this block, we must precommit nil
+	if cs.Proposal == nil || cs.ProposalBlock == nil {
+		logger.Debug("precommit step; did not receive proposal, precommitting nil")
+		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
 
 	// If the proposal time does not match the block time, precommit nil.
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
