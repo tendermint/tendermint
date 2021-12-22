@@ -357,7 +357,7 @@ developers _really_ know what they are doing.
 
 State sync allows new nodes to rapidly bootstrap by discovering, fetching, and applying
 state machine snapshots instead of replaying historical blocks. For more details, see the
-[state sync section](../spec/p2p/messages/state-sync.md).
+[state sync section](../p2p/messages/state-sync.md).
 
 New nodes will discover and request snapshots from other nodes in the P2P network.
 A Tendermint node that receives a request for snapshots from a peer will call
@@ -375,4 +375,4 @@ As the new node receives "chunks" it will apply them sequentially to the local
 application with `ApplySnapshotChunk`. When all chunks have been applied, the
 Application's `AppHash` is retrieved via an `Info` query. The `AppHash` is then
 compared to the blockchain's `AppHash` which is verified via
-[light client verification](../spec/light-client/verification/README.md).
+[light client verification](../light-client/verification/README.md).
