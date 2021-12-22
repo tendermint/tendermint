@@ -1,32 +1,35 @@
 linters:
   enable:
+    - asciicheck
     - bodyclose
     - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
+    - exportloopref
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
+    # - gocognit
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
     - ineffassign
     # - interfacer
-    - lll
-    - misspell
+    # - lll
     # - maligned
+    - misspell
     - nakedret
+    - nolintlint
     - prealloc
-    - scopelint
     - staticcheck
     - structcheck
     - stylecheck
@@ -37,18 +40,12 @@ linters:
     - varcheck
     # - whitespace
     # - wsl
-    # - gocognit
-    - nolintlint
-    - asciicheck
 
 issues:
   exclude-rules:
     - path: _test\.go
       linters:
         - gosec
-    - linters:
-        - lll
-      source: "https://"
   max-same-issues: 50
 
 linters-settings:

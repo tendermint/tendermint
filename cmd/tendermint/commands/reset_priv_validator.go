@@ -14,11 +14,9 @@ import (
 // ResetAllCmd removes the database of this Tendermint core
 // instance.
 var ResetAllCmd = &cobra.Command{
-	Use:     "unsafe-reset-all",
-	Aliases: []string{"unsafe_reset_all"},
-	Short:   "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
-	RunE:    resetAll,
-	PreRun:  deprecateSnakeCase,
+	Use:   "unsafe-reset-all",
+	Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
+	RunE:  resetAll,
 }
 
 var keepAddrBook bool
@@ -31,17 +29,15 @@ func init() {
 
 // ResetPrivValidatorCmd resets the private validator files.
 var ResetPrivValidatorCmd = &cobra.Command{
-	Use:     "unsafe-reset-priv-validator",
-	Aliases: []string{"unsafe_reset_priv_validator"},
-	Short:   "(unsafe) Reset this node's validator to genesis state",
-	RunE:    resetPrivValidator,
-	PreRun:  deprecateSnakeCase,
+	Use:   "unsafe-reset-priv-validator",
+	Short: "(unsafe) Reset this node's validator to genesis state",
+	RunE:  resetPrivValidator,
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) error {
-	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
+	return ResetAll(config.DBDir(), config.PrivValidator.KeyFile(),
 		config.PrivValidator.StateFile(), logger)
 }
 
@@ -53,12 +49,7 @@ func resetPrivValidator(cmd *cobra.Command, args []string) error {
 
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
-func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
-	if keepAddrBook {
-		logger.Info("The address book remains intact")
-	} else {
-		removeAddrBook(addrBookFile, logger)
-	}
+func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
@@ -77,7 +68,9 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) err
 		if err != nil {
 			return err
 		}
-		pv.Reset()
+		if err := pv.Reset(); err != nil {
+			return err
+		}
 		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
@@ -85,17 +78,11 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) err
 		if err != nil {
 			return err
 		}
-		pv.Save()
+		if err := pv.Save(); err != nil {
+			return err
+		}
 		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	}
 	return nil
-}
-
-func removeAddrBook(addrBookFile string, logger log.Logger) {
-	if err := os.Remove(addrBookFile); err == nil {
-		logger.Info("Removed existing address book", "file", addrBookFile)
-	} else if !os.IsNotExist(err) {
-		logger.Info("Error removing address book", "file", addrBookFile, "err", err)
-	}
 }

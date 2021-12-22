@@ -105,11 +105,11 @@ func TestValidatorValidateBasic(t *testing.T) {
 
 // deterministicValidator returns a deterministic validator, useful for testing.
 // UNSTABLE
-func deterministicValidator(key crypto.PrivKey) (*Validator, PrivValidator) {
+func deterministicValidator(ctx context.Context, key crypto.PrivKey) (*Validator, PrivValidator) {
 	privVal := NewMockPV()
 	privVal.PrivKey = key
 	var votePower int64 = 50
-	pubKey, err := privVal.GetPubKey(context.TODO())
+	pubKey, err := privVal.GetPubKey(ctx)
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}

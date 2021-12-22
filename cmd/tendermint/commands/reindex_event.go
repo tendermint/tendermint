@@ -3,20 +3,22 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
-	tmdb "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tm-db"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/progressbar"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/indexer/sink/kv"
-	"github.com/tendermint/tendermint/state/indexer/sink/psql"
-	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/internal/state"
+	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/kv"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink/psql"
+	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -29,11 +31,12 @@ var ReIndexEventCmd = &cobra.Command{
 	Use:   "reindex-event",
 	Short: "reindex events to the event store backends",
 	Long: `
-	reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
-	you can run this command when the event store backend dropped/disconnected or you want to replace the backend.
-	The default start-height is 0, meaning the tooling will start reindex from the base block height(inclusive); and the 
-	default end-height is 0, meaning the tooling will reindex until the latest block height(inclusive). User can omits
-	either or both arguments.
+reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
+you can run this command when the event store backend dropped/disconnected or you want to 
+replace the backend. The default start-height is 0, meaning the tooling will start 
+reindex from the base block height(inclusive); and the default end-height is 0, meaning 
+the tooling will reindex until the latest block height(inclusive). User can omit
+either or both arguments.
 	`,
 	Example: `
 	tendermint reindex-event
@@ -106,7 +109,7 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 			if conn == "" {
 				return nil, errors.New("the psql connection settings cannot be empty")
 			}
-			es, _, err := psql.NewEventSink(conn, chainID)
+			es, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, err
 			}
@@ -129,17 +132,25 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 }
 
 func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
-	dbType := tmdb.BackendType(cfg.DBBackend)
+	dbType := dbm.BackendType(cfg.DBBackend)
+
+	if !os.FileExists(filepath.Join(cfg.DBDir(), "blockstore.db")) {
+		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
+	}
 
 	// Get BlockStore
-	blockStoreDB, err := tmdb.NewDB("blockstore", dbType, cfg.DBDir())
+	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
+	if !os.FileExists(filepath.Join(cfg.DBDir(), "state.db")) {
+		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
+	}
+
 	// Get StateStore
-	stateDB, err := tmdb.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -221,14 +232,15 @@ func checkValidHeight(bs state.BlockStore) error {
 	}
 
 	if startHeight < base {
-		return fmt.Errorf("%s (requested start height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, startHeight, base)
+		return fmt.Errorf("%s (requested start height: %d, base height: %d)",
+			coretypes.ErrHeightNotAvailable, startHeight, base)
 	}
 
 	height := bs.Height()
 
 	if startHeight > height {
 		return fmt.Errorf(
-			"%s (requested start height: %d, store height: %d)", ctypes.ErrHeightNotAvailable, startHeight, height)
+			"%s (requested start height: %d, store height: %d)", coretypes.ErrHeightNotAvailable, startHeight, height)
 	}
 
 	if endHeight == 0 || endHeight > height {
@@ -238,13 +250,13 @@ func checkValidHeight(bs state.BlockStore) error {
 
 	if endHeight < base {
 		return fmt.Errorf(
-			"%s (requested end height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, endHeight, base)
+			"%s (requested end height: %d, base height: %d)", coretypes.ErrHeightNotAvailable, endHeight, base)
 	}
 
 	if endHeight < startHeight {
 		return fmt.Errorf(
 			"%s (requested the end height: %d is less than the start height: %d)",
-			ctypes.ErrInvalidRequest, startHeight, endHeight)
+			coretypes.ErrInvalidRequest, startHeight, endHeight)
 	}
 
 	return nil

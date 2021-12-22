@@ -1,14 +1,16 @@
 package p2p
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func TestPeerScoring(t *testing.T) {
@@ -20,7 +22,6 @@ func TestPeerScoring(t *testing.T) {
 	db := dbm.NewMemDB()
 	peerManager, err := NewPeerManager(selfID, db, PeerManagerOptions{})
 	require.NoError(t, err)
-	defer peerManager.Close()
 
 	// create a fake node
 	id := types.NodeID(strings.Repeat("a1", 20))
@@ -28,13 +29,16 @@ func TestPeerScoring(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("Synchronous", func(t *testing.T) {
 		// update the manager and make sure it's correct
 		require.EqualValues(t, 0, peerManager.Scores()[id])
 
 		// add a bunch of good status updates and watch things increase.
 		for i := 1; i < 10; i++ {
-			peerManager.processPeerEvent(PeerUpdate{
+			peerManager.processPeerEvent(ctx, PeerUpdate{
 				NodeID: id,
 				Status: PeerStatusGood,
 			})
@@ -43,7 +47,7 @@ func TestPeerScoring(t *testing.T) {
 
 		// watch the corresponding decreases respond to update
 		for i := 10; i == 0; i-- {
-			peerManager.processPeerEvent(PeerUpdate{
+			peerManager.processPeerEvent(ctx, PeerUpdate{
 				NodeID: id,
 				Status: PeerStatusBad,
 			})
@@ -52,9 +56,8 @@ func TestPeerScoring(t *testing.T) {
 	})
 	t.Run("AsynchronousIncrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
-		pu := peerManager.Subscribe()
-		defer pu.Close()
-		pu.SendUpdate(PeerUpdate{
+		pu := peerManager.Subscribe(ctx)
+		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusGood,
 		})
@@ -66,9 +69,8 @@ func TestPeerScoring(t *testing.T) {
 	})
 	t.Run("AsynchronousDecrement", func(t *testing.T) {
 		start := peerManager.Scores()[id]
-		pu := peerManager.Subscribe()
-		defer pu.Close()
-		pu.SendUpdate(PeerUpdate{
+		pu := peerManager.Subscribe(ctx)
+		pu.SendUpdate(ctx, PeerUpdate{
 			NodeID: id,
 			Status: PeerStatusBad,
 		})

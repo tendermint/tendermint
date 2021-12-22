@@ -3,13 +3,13 @@ package debug
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
@@ -48,7 +48,7 @@ func dumpConsensusState(rpc *rpchttp.HTTP, dir, filename string) error {
 
 // copyWAL copies the Tendermint node's WAL file. It returns an error if the
 // WAL file cannot be read or copied.
-func copyWAL(conf *cfg.Config, dir string) error {
+func copyWAL(conf *config.Config, dir string) error {
 	walPath := conf.Consensus.WalFile()
 	walFile := filepath.Base(walPath)
 
@@ -73,10 +73,10 @@ func dumpProfile(dir, addr, profile string, debug int) error {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read %s profile response body: %w", profile, err)
 	}
 
-	return ioutil.WriteFile(path.Join(dir, fmt.Sprintf("%s.out", profile)), body, os.ModePerm)
+	return os.WriteFile(path.Join(dir, fmt.Sprintf("%s.out", profile)), body, os.ModePerm)
 }

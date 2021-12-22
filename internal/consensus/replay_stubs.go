@@ -3,11 +3,13 @@ package consensus
 import (
 	"context"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/mempool"
+	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -15,30 +17,32 @@ import (
 
 type emptyMempool struct{}
 
-var _ mempl.Mempool = emptyMempool{}
+var _ mempool.Mempool = emptyMempool{}
 
 func (emptyMempool) Lock()     {}
 func (emptyMempool) Unlock()   {}
 func (emptyMempool) Size() int { return 0 }
-func (emptyMempool) CheckTx(_ context.Context, _ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error {
+func (emptyMempool) CheckTx(_ context.Context, _ types.Tx, _ func(*abci.Response), _ mempool.TxInfo) error {
 	return nil
 }
+func (emptyMempool) RemoveTxByKey(txKey types.TxKey) error   { return nil }
 func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
 func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
 func (emptyMempool) Update(
+	_ context.Context,
 	_ int64,
 	_ types.Txs,
 	_ []*abci.ResponseDeliverTx,
-	_ mempl.PreCheckFunc,
-	_ mempl.PostCheckFunc,
+	_ mempool.PreCheckFunc,
+	_ mempool.PostCheckFunc,
 ) error {
 	return nil
 }
-func (emptyMempool) Flush()                        {}
-func (emptyMempool) FlushAppConn() error           { return nil }
-func (emptyMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
-func (emptyMempool) EnableTxsAvailable()           {}
-func (emptyMempool) SizeBytes() int64              { return 0 }
+func (emptyMempool) Flush()                                 {}
+func (emptyMempool) FlushAppConn(ctx context.Context) error { return nil }
+func (emptyMempool) TxsAvailable() <-chan struct{}          { return make(chan struct{}) }
+func (emptyMempool) EnableTxsAvailable()                    {}
+func (emptyMempool) SizeBytes() int64                       { return 0 }
 
 func (emptyMempool) TxsFront() *clist.CElement    { return nil }
 func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
@@ -52,17 +56,22 @@ func (emptyMempool) CloseWAL()      {}
 // Useful because we don't want to call Commit() twice for the same block on
 // the real app.
 
-func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
-	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
+func newMockProxyApp(
+	ctx context.Context,
+	logger log.Logger,
+	appHash []byte,
+	abciResponses *tmstate.ABCIResponses,
+) proxy.AppConnConsensus {
+	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
 	})
-	cli, _ := clientCreator.NewABCIClient()
-	err := cli.Start()
+	cli, _ := clientCreator(logger)
+	err := cli.Start(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return proxy.NewAppConnConsensus(cli)
+	return proxy.NewAppConnConsensus(cli, proxy.NopMetrics())
 }
 
 type mockProxyApp struct {

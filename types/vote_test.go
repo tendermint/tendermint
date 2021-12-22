@@ -220,13 +220,13 @@ func TestVoteVerify(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
+	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
+	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
@@ -293,4 +293,53 @@ func TestVoteProtobuf(t *testing.T) {
 			require.Error(t, err)
 		}
 	}
+}
+
+var sink interface{}
+
+var protoVote *tmproto.Vote
+var sampleCommit *Commit
+
+func init() {
+	protoVote = examplePrecommit().ToProto()
+
+	lastID := makeBlockIDRandom()
+	voteSet, _, vals := randVoteSet(2, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := makeCommit(lastID, 2, 1, voteSet, vals, time.Now())
+	if err != nil {
+		panic(err)
+	}
+	sampleCommit = commit
+}
+
+func BenchmarkVoteSignBytes(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		sink = VoteSignBytes("test_chain_id", protoVote)
+	}
+
+	if sink == nil {
+		b.Fatal("Benchmark did not run")
+	}
+
+	// Reset the sink.
+	sink = (interface{})(nil)
+}
+
+func BenchmarkCommitVoteSignBytes(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		for index := range sampleCommit.Signatures {
+			sink = sampleCommit.VoteSignBytes("test_chain_id", int32(index))
+		}
+	}
+
+	if sink == nil {
+		b.Fatal("Benchmark did not run")
+	}
+
+	// Reset the sink.
+	sink = (interface{})(nil)
 }

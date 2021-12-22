@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -151,7 +151,7 @@ type PartSet struct {
 	total uint32
 	hash  []byte
 
-	mtx           tmsync.Mutex
+	mtx           sync.Mutex
 	parts         []*Part
 	partsBitArray *bits.BitArray
 	count         uint32

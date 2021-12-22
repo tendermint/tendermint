@@ -2,8 +2,8 @@ package mempool
 
 import (
 	"container/list"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -29,16 +29,16 @@ var _ TxCache = (*LRUTxCache)(nil)
 // LRUTxCache maintains a thread-safe LRU cache of raw transactions. The cache
 // only stores the hash of the raw transaction.
 type LRUTxCache struct {
-	mtx      tmsync.Mutex
+	mtx      sync.Mutex
 	size     int
-	cacheMap map[[TxKeySize]byte]*list.Element
+	cacheMap map[types.TxKey]*list.Element
 	list     *list.List
 }
 
 func NewLRUTxCache(cacheSize int) *LRUTxCache {
 	return &LRUTxCache{
 		size:     cacheSize,
-		cacheMap: make(map[[TxKeySize]byte]*list.Element, cacheSize),
+		cacheMap: make(map[types.TxKey]*list.Element, cacheSize),
 		list:     list.New(),
 	}
 }
@@ -53,7 +53,7 @@ func (c *LRUTxCache) Reset() {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
-	c.cacheMap = make(map[[TxKeySize]byte]*list.Element, c.size)
+	c.cacheMap = make(map[types.TxKey]*list.Element, c.size)
 	c.list.Init()
 }
 
@@ -61,7 +61,7 @@ func (c *LRUTxCache) Push(tx types.Tx) bool {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
-	key := TxKey(tx)
+	key := tx.Key()
 
 	moved, ok := c.cacheMap[key]
 	if ok {
@@ -72,7 +72,7 @@ func (c *LRUTxCache) Push(tx types.Tx) bool {
 	if c.list.Len() >= c.size {
 		front := c.list.Front()
 		if front != nil {
-			frontKey := front.Value.([TxKeySize]byte)
+			frontKey := front.Value.(types.TxKey)
 			delete(c.cacheMap, frontKey)
 			c.list.Remove(front)
 		}
@@ -88,7 +88,7 @@ func (c *LRUTxCache) Remove(tx types.Tx) {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 
-	key := TxKey(tx)
+	key := tx.Key()
 	e := c.cacheMap[key]
 	delete(c.cacheMap, key)
 

@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
@@ -129,7 +130,7 @@ type Client struct {
 
 	client *http.Client
 
-	mtx       tmsync.Mutex
+	mtx       sync.Mutex
 	nextReqID int
 }
 
@@ -155,7 +156,7 @@ func New(remote string) (*Client, error) {
 // panics when client is nil.
 func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 	if c == nil {
-		panic("nil http.Client")
+		return nil, errors.New("nil client")
 	}
 
 	parsedURL, err := newParsedURL(remote)
@@ -189,7 +190,7 @@ func (c *Client) Call(
 ) (interface{}, error) {
 	id := c.nextRequestID()
 
-	request, err := types.MapToRequest(id, method, params)
+	request, err := rpctypes.MapToRequest(id, method, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
@@ -218,7 +219,7 @@ func (c *Client) Call(
 
 	defer httpResponse.Body.Close()
 
-	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
+	responseBytes, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -235,7 +236,7 @@ func (c *Client) NewRequestBatch() *RequestBatch {
 }
 
 func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedRequest) ([]interface{}, error) {
-	reqs := make([]types.RPCRequest, 0, len(requests))
+	reqs := make([]rpctypes.RPCRequest, 0, len(requests))
 	results := make([]interface{}, 0, len(requests))
 	for _, req := range requests {
 		reqs = append(reqs, req.request)
@@ -266,26 +267,26 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 
 	defer httpResponse.Body.Close()
 
-	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
+	responseBytes, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
 	// collect ids to check responses IDs in unmarshalResponseBytesArray
-	ids := make([]types.JSONRPCIntID, len(requests))
+	ids := make([]rpctypes.JSONRPCIntID, len(requests))
 	for i, req := range requests {
-		ids[i] = req.request.ID.(types.JSONRPCIntID)
+		ids[i] = req.request.ID.(rpctypes.JSONRPCIntID)
 	}
 
 	return unmarshalResponseBytesArray(responseBytes, ids, results)
 }
 
-func (c *Client) nextRequestID() types.JSONRPCIntID {
+func (c *Client) nextRequestID() rpctypes.JSONRPCIntID {
 	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
 	c.mtx.Unlock()
-	return types.JSONRPCIntID(id)
+	return rpctypes.JSONRPCIntID(id)
 }
 
 //------------------------------------------------------------------------------------
@@ -293,7 +294,7 @@ func (c *Client) nextRequestID() types.JSONRPCIntID {
 // jsonRPCBufferedRequest encapsulates a single buffered request, as well as its
 // anticipated response structure.
 type jsonRPCBufferedRequest struct {
-	request types.RPCRequest
+	request rpctypes.RPCRequest
 	result  interface{} // The result will be deserialized into this object.
 }
 
@@ -303,7 +304,7 @@ type jsonRPCBufferedRequest struct {
 type RequestBatch struct {
 	client *Client
 
-	mtx      tmsync.Mutex
+	mtx      sync.Mutex
 	requests []*jsonRPCBufferedRequest
 }
 
@@ -354,7 +355,7 @@ func (b *RequestBatch) Call(
 	result interface{},
 ) (interface{}, error) {
 	id := b.client.nextRequestID()
-	request, err := types.MapToRequest(id, method, params)
+	request, err := rpctypes.MapToRequest(id, method, params)
 	if err != nil {
 		return nil, err
 	}

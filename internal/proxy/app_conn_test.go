@@ -1,0 +1,181 @@
+package proxy
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"testing"
+
+	abciclient "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/server"
+	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+)
+
+//----------------------------------------
+
+type appConnTestI interface {
+	EchoAsync(ctx context.Context, msg string) (*abciclient.ReqRes, error)
+	FlushSync(context.Context) error
+	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+}
+
+type appConnTest struct {
+	appConn abciclient.Client
+}
+
+func newAppConnTest(appConn abciclient.Client) appConnTestI {
+	return &appConnTest{appConn}
+}
+
+func (app *appConnTest) EchoAsync(ctx context.Context, msg string) (*abciclient.ReqRes, error) {
+	return app.appConn.EchoAsync(ctx, msg)
+}
+
+func (app *appConnTest) FlushSync(ctx context.Context) error {
+	return app.appConn.FlushSync(ctx)
+}
+
+func (app *appConnTest) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+	return app.appConn.InfoSync(ctx, req)
+}
+
+//----------------------------------------
+
+var SOCKET = "socket"
+
+func TestEcho(t *testing.T) {
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	logger := log.TestingLogger()
+	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start server
+	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
+	if err := s.Start(ctx); err != nil {
+		t.Fatalf("Error starting socket server: %v", err.Error())
+	}
+	t.Cleanup(func() { cancel(); s.Wait() })
+
+	// Start client
+	cli, err := clientCreator(logger.With("module", "abci-client"))
+	if err != nil {
+		t.Fatalf("Error creating ABCI client: %v", err.Error())
+	}
+
+	if err := cli.Start(ctx); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+
+	proxy := newAppConnTest(cli)
+	t.Log("Connected")
+
+	for i := 0; i < 1000; i++ {
+		_, err = proxy.EchoAsync(ctx, fmt.Sprintf("echo-%v", i))
+		if err != nil {
+			t.Error(err)
+		}
+		// flush sometimes
+		if i%128 == 0 {
+			if err := proxy.FlushSync(ctx); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+	if err := proxy.FlushSync(ctx); err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEcho(b *testing.B) {
+	b.StopTimer() // Initialize
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	logger := log.TestingLogger()
+	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start server
+	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
+	if err := s.Start(ctx); err != nil {
+		b.Fatalf("Error starting socket server: %v", err.Error())
+	}
+	b.Cleanup(func() { cancel(); s.Wait() })
+
+	// Start client
+	cli, err := clientCreator(logger.With("module", "abci-client"))
+	if err != nil {
+		b.Fatalf("Error creating ABCI client: %v", err.Error())
+	}
+
+	if err := cli.Start(ctx); err != nil {
+		b.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+
+	proxy := newAppConnTest(cli)
+	b.Log("Connected")
+	echoString := strings.Repeat(" ", 200)
+	b.StartTimer() // Start benchmarking tests
+
+	for i := 0; i < b.N; i++ {
+		_, err = proxy.EchoAsync(ctx, echoString)
+		if err != nil {
+			b.Error(err)
+		}
+		// flush sometimes
+		if i%128 == 0 {
+			if err := proxy.FlushSync(ctx); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+	if err := proxy.FlushSync(ctx); err != nil {
+		b.Error(err)
+	}
+
+	b.StopTimer()
+	// info := proxy.InfoSync(types.RequestInfo{""})
+	// b.Log("N: ", b.N, info)
+}
+
+func TestInfo(t *testing.T) {
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	logger := log.TestingLogger()
+	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start server
+	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
+	if err := s.Start(ctx); err != nil {
+		t.Fatalf("Error starting socket server: %v", err.Error())
+	}
+	t.Cleanup(func() { cancel(); s.Wait() })
+
+	// Start client
+	cli, err := clientCreator(logger.With("module", "abci-client"))
+	if err != nil {
+		t.Fatalf("Error creating ABCI client: %v", err.Error())
+	}
+
+	if err := cli.Start(ctx); err != nil {
+		t.Fatalf("Error starting ABCI client: %v", err.Error())
+	}
+
+	proxy := newAppConnTest(cli)
+	t.Log("Connected")
+
+	resInfo, err := proxy.InfoSync(context.Background(), RequestInfo)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if resInfo.Data != "{\"size\":0}" {
+		t.Error("Expected ResponseInfo with one element '{\"size\":0}' but got something else")
+	}
+}

@@ -4,8 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"sync"
 )
 
 var (
@@ -39,7 +38,7 @@ type typeInfo struct {
 
 // types is a type registry. It is safe for concurrent use.
 type types struct {
-	tmsync.RWMutex
+	sync.RWMutex
 	byType map[reflect.Type]*typeInfo
 	byName map[string]*typeInfo
 }

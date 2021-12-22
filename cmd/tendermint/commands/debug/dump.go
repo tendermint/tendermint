@@ -3,7 +3,6 @@ package debug
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -65,9 +64,9 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 	}
 
 	home := viper.GetString(cli.HomeFlag)
-	conf := cfg.DefaultConfig()
+	conf := config.DefaultConfig()
 	conf = conf.SetRoot(home)
-	cfg.EnsureRoot(conf.RootDir)
+	config.EnsureRoot(conf.RootDir)
 
 	dumpDebugData(outDir, conf, rpc)
 
@@ -79,10 +78,10 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func dumpDebugData(outDir string, conf *cfg.Config, rpc *rpchttp.HTTP) {
+func dumpDebugData(outDir string, conf *config.Config, rpc *rpchttp.HTTP) {
 	start := time.Now().UTC()
 
-	tmpDir, err := ioutil.TempDir(outDir, "tendermint_debug_tmp")
+	tmpDir, err := os.MkdirTemp(outDir, "tendermint_debug_tmp")
 	if err != nil {
 		logger.Error("failed to create temporary directory", "dir", tmpDir, "error", err)
 		return

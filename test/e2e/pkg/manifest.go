@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/BurntSushi/toml"
 )
@@ -59,14 +60,17 @@ type Manifest struct {
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 
-	// DisableLegacyP2P enables use of the new p2p layer for all nodes in a test.
-	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
-
 	// QueueType describes the type of queue that the system uses internally
 	QueueType string `toml:"queue_type"`
 
 	// Number of bytes per tx. Default is 1kb (1024)
 	TxSize int64
+
+	// ABCIProtocol specifies the protocol used to communicate with the ABCI
+	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
+	// builtin will build a complete Tendermint node into the application and
+	// launch it instead of launching a separate Tendermint process.
+	ABCIProtocol string `toml:"abci_protocol"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -89,12 +93,6 @@ type ManifestNode struct {
 	// "rocksdb", "boltdb", or "badgerdb". Defaults to goleveldb.
 	Database string `toml:"database"`
 
-	// ABCIProtocol specifies the protocol used to communicate with the ABCI
-	// application: "unix", "tcp", "grpc", or "builtin". Defaults to unix.
-	// builtin will build a complete Tendermint node into the application and
-	// launch it instead of launching a separate Tendermint process.
-	ABCIProtocol string `toml:"abci_protocol"`
-
 	// PrivvalProtocol specifies the protocol used to sign consensus messages:
 	// "file", "unix", "tcp", or "grpc". Defaults to "file". For tcp and unix, the ABCI
 	// application will launch a remote signer client in a separate goroutine.
@@ -106,10 +104,6 @@ type ManifestNode struct {
 	// runner will wait for the network to reach at least this block height.
 	StartAt int64 `toml:"start_at"`
 
-	// BlockSync specifies the block sync mode: "" (disable), "v0" or "v2".
-	// Defaults to disabled.
-	BlockSync string `toml:"block_sync"`
-
 	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
 	Mempool string `toml:"mempool_version"`
 
@@ -117,7 +111,8 @@ type ManifestNode struct {
 	// block hashes and RPC servers. At least one node in the network must have
 	// SnapshotInterval set to non-zero, and the state syncing node must have
 	// StartAt set to an appropriate height where a snapshot is available.
-	StateSync bool `toml:"state_sync"`
+	// StateSync can either be "p2p" or "rpc" or an empty string to disable
+	StateSync string `toml:"state_sync"`
 
 	// PersistInterval specifies the height interval at which the application
 	// will persist state to disk. Defaults to 1 (every height), setting this to
@@ -146,9 +141,11 @@ type ManifestNode struct {
 	// This is helpful when debugging a specific problem. This overrides the network
 	// level.
 	LogLevel string `toml:"log_level"`
+}
 
-	// UseNewP2P enables use of the new p2p layer for this node.
-	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
+// Stateless reports whether m is a node that does not own state, including light and seed nodes.
+func (m ManifestNode) Stateless() bool {
+	return m.Mode == string(ModeLight) || m.Mode == string(ModeSeed)
 }
 
 // Save saves the testnet manifest to a file.
@@ -168,4 +165,94 @@ func LoadManifest(file string) (Manifest, error) {
 		return manifest, fmt.Errorf("failed to load testnet manifest %q: %w", file, err)
 	}
 	return manifest, nil
+}
+
+// SortManifests orders (in-place) a list of manifests such that the
+// manifests will be ordered in terms of complexity (or expected
+// runtime). Complexity is determined first by the number of nodes,
+// and then by the total number of perturbations in the network.
+//
+// If reverse is true, then the manifests are ordered with the most
+// complex networks before the less complex networks.
+func SortManifests(manifests []Manifest, reverse bool) {
+	sort.SliceStable(manifests, func(i, j int) bool {
+		// sort based on a point-based comparison between two
+		// manifests.
+		var (
+			left  = manifests[i]
+			right = manifests[j]
+		)
+
+		// scores start with 100 points for each node. The
+		// number of nodes in a network is the most important
+		// factor in the complexity of the test.
+		leftScore := len(left.Nodes) * 100
+		rightScore := len(right.Nodes) * 100
+
+		// add two points for every node perturbation, and one
+		// point for every node that starts after genesis.
+		for _, n := range left.Nodes {
+			leftScore += (len(n.Perturb) * 2)
+
+			if n.StartAt > 0 {
+				leftScore += 3
+			}
+		}
+		for _, n := range right.Nodes {
+			rightScore += (len(n.Perturb) * 2)
+			if n.StartAt > 0 {
+				rightScore += 3
+			}
+		}
+
+		// add one point if the network has evidence.
+		if left.Evidence > 0 {
+			leftScore += 2
+		}
+
+		if right.Evidence > 0 {
+			rightScore += 2
+		}
+
+		if left.TxSize > right.TxSize {
+			leftScore++
+		}
+
+		if right.TxSize > left.TxSize {
+			rightScore++
+		}
+
+		if reverse {
+			return leftScore >= rightScore
+		}
+
+		return leftScore < rightScore
+	})
+}
+
+// SplitGroups divides a list of manifests into n groups of
+// manifests.
+func SplitGroups(groups int, manifests []Manifest) [][]Manifest {
+	groupSize := (len(manifests) + groups - 1) / groups
+	splitManifests := make([][]Manifest, 0, groups)
+
+	for i := 0; i < len(manifests); i += groupSize {
+		grp := make([]Manifest, groupSize)
+		n := copy(grp, manifests[i:])
+		splitManifests = append(splitManifests, grp[:n])
+	}
+
+	return splitManifests
+}
+
+// WriteManifests writes a collection of manifests into files with the
+// specified path prefix.
+func WriteManifests(prefix string, manifests []Manifest) error {
+	for i, manifest := range manifests {
+		if err := manifest.Save(fmt.Sprintf("%s-%04d.toml", prefix, i)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

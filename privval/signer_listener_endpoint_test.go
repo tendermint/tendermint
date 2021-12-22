@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -38,6 +39,9 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 		retries   = 10
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
@@ -71,13 +75,9 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 	mockPV := types.NewMockPV()
 	signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
-	err = signerServer.Start()
+	err = signerServer.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := signerServer.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	t.Cleanup(signerServer.Wait)
 
 	select {
 	case attempts := <-attemptCh:
@@ -88,6 +88,9 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 }
 
 func TestRetryConnToRemoteSigner(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, tc := range getDialerTestCases(t) {
 		var (
 			logger           = log.TestingLogger()
@@ -95,7 +98,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			mockPV           = types.NewMockPV()
 			endpointIsOpenCh = make(chan struct{})
 			thisConnTimeout  = testTimeoutReadWrite
-			listenerEndpoint = newSignerListenerEndpoint(logger, tc.addr, thisConnTimeout)
+			listenerEndpoint = newSignerListenerEndpoint(t, logger, tc.addr, thisConnTimeout)
 		)
 
 		dialerEndpoint := NewSignerDialerEndpoint(
@@ -107,14 +110,9 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 
 		signerServer := NewSignerServer(dialerEndpoint, chainID, mockPV)
 
-		startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
-		t.Cleanup(func() {
-			if err := listenerEndpoint.Stop(); err != nil {
-				t.Error(err)
-			}
-		})
+		startListenerEndpointAsync(ctx, t, listenerEndpoint, endpointIsOpenCh)
 
-		require.NoError(t, signerServer.Start())
+		require.NoError(t, signerServer.Start(ctx))
 		assert.True(t, signerServer.IsRunning())
 		<-endpointIsOpenCh
 		if err := signerServer.Stop(); err != nil {
@@ -128,13 +126,8 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		signerServer2 := NewSignerServer(dialerEndpoint2, chainID, mockPV)
 
 		// let some pings pass
-		require.NoError(t, signerServer2.Start())
+		require.NoError(t, signerServer2.Start(ctx))
 		assert.True(t, signerServer2.IsRunning())
-		t.Cleanup(func() {
-			if err := signerServer2.Stop(); err != nil {
-				t.Error(err)
-			}
-		})
 
 		// give the client some time to re-establish the conn to the remote signer
 		// should see sth like this in the logs:
@@ -145,14 +138,12 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 	}
 }
 
-func newSignerListenerEndpoint(logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
+func newSignerListenerEndpoint(t *testing.T, logger log.Logger, addr string, timeoutReadWrite time.Duration) *SignerListenerEndpoint {
 	proto, address := tmnet.ProtocolAndAddress(addr)
 
 	ln, err := net.Listen(proto, address)
 	logger.Info("SignerListener: Listening", "proto", proto, "address", address)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	var listener net.Listener
 
@@ -175,15 +166,23 @@ func newSignerListenerEndpoint(logger log.Logger, addr string, timeoutReadWrite 
 	)
 }
 
-func startListenerEndpointAsync(t *testing.T, sle *SignerListenerEndpoint, endpointIsOpenCh chan struct{}) {
+func startListenerEndpointAsync(
+	ctx context.Context,
+	t *testing.T,
+	sle *SignerListenerEndpoint,
+	endpointIsOpenCh chan struct{},
+) {
+	t.Helper()
+
 	go func(sle *SignerListenerEndpoint) {
-		require.NoError(t, sle.Start())
+		require.NoError(t, sle.Start(ctx))
 		assert.True(t, sle.IsRunning())
 		close(endpointIsOpenCh)
 	}(sle)
 }
 
 func getMockEndpoints(
+	ctx context.Context,
 	t *testing.T,
 	addr string,
 	socketDialer SocketDialer,
@@ -198,15 +197,15 @@ func getMockEndpoints(
 			socketDialer,
 		)
 
-		listenerEndpoint = newSignerListenerEndpoint(logger, addr, testTimeoutReadWrite)
+		listenerEndpoint = newSignerListenerEndpoint(t, logger, addr, testTimeoutReadWrite)
 	)
 
 	SignerDialerEndpointTimeoutReadWrite(testTimeoutReadWrite)(dialerEndpoint)
 	SignerDialerEndpointConnRetries(1e6)(dialerEndpoint)
 
-	startListenerEndpointAsync(t, listenerEndpoint, endpointIsOpenCh)
+	startListenerEndpointAsync(ctx, t, listenerEndpoint, endpointIsOpenCh)
 
-	require.NoError(t, dialerEndpoint.Start())
+	require.NoError(t, dialerEndpoint.Start(ctx))
 	assert.True(t, dialerEndpoint.IsRunning())
 
 	<-endpointIsOpenCh

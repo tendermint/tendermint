@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
@@ -52,6 +51,8 @@ const (
 
 	// 10s is sufficient for most networks.
 	defaultMaxBlockLag = 10 * time.Second
+
+	defaultProviderTimeout = 10 * time.Second
 )
 
 // Option sets a parameter for the light client.
@@ -61,9 +62,7 @@ type Option func(*Client)
 // check the blocks (every block, in ascending height order). Note this is
 // much slower than SkippingVerification, albeit more secure.
 func SequentialVerification() Option {
-	return func(c *Client) {
-		c.verificationMode = sequential
-	}
+	return func(c *Client) { c.verificationMode = sequential }
 }
 
 // SkippingVerification option configures the light client to skip blocks as
@@ -87,24 +86,18 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 // the h amount of light blocks will be removed from the store.
 // Default: 1000. A pruning size of 0 will not prune the light client at all.
 func PruningSize(h uint16) Option {
-	return func(c *Client) {
-		c.pruningSize = h
-	}
+	return func(c *Client) { c.pruningSize = h }
 }
 
 // Logger option can be used to set a logger for the client.
 func Logger(l log.Logger) Option {
-	return func(c *Client) {
-		c.logger = l
-	}
+	return func(c *Client) { c.logger = l }
 }
 
 // MaxClockDrift defines how much new header's time can drift into
 // the future relative to the light clients local time. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
-	return func(c *Client) {
-		c.maxClockDrift = d
-	}
+	return func(c *Client) { c.maxClockDrift = d }
 }
 
 // MaxBlockLag represents the maximum time difference between the realtime
@@ -116,9 +109,13 @@ func MaxClockDrift(d time.Duration) Option {
 // was 12:00. Then the lag here is 5 minutes.
 // Default: 10s
 func MaxBlockLag(d time.Duration) Option {
-	return func(c *Client) {
-		c.maxBlockLag = d
-	}
+	return func(c *Client) { c.maxBlockLag = d }
+}
+
+// Provider timeout is the maximum time that the light client will wait for a
+// provider to respond with a light block.
+func ProviderTimeout(d time.Duration) Option {
+	return func(c *Client) { c.providerTimeout = d }
 }
 
 // Client represents a light client, connected to a single chain, which gets
@@ -133,9 +130,10 @@ type Client struct {
 	trustLevel       tmmath.Fraction
 	maxClockDrift    time.Duration
 	maxBlockLag      time.Duration
+	providerTimeout  time.Duration
 
 	// Mutex for locking during changes of the light clients providers
-	providerMutex tmsync.Mutex
+	providerMutex sync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
 	// Providers used to "witness" new headers.
@@ -169,7 +167,8 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	options ...Option) (*Client, error) {
+	options ...Option,
+) (*Client, error) {
 
 	// Check whether the trusted store already has a trusted block. If so, then create
 	// a new client from the trusted store instead of the trust options.
@@ -197,12 +196,13 @@ func NewClient(
 		chainID:          chainID,
 		trustingPeriod:   trustOptions.Period,
 		verificationMode: skipping,
-		trustLevel:       DefaultTrustLevel,
-		maxClockDrift:    defaultMaxClockDrift,
-		maxBlockLag:      defaultMaxBlockLag,
 		primary:          primary,
 		witnesses:        witnesses,
 		trustedStore:     trustedStore,
+		trustLevel:       DefaultTrustLevel,
+		maxClockDrift:    defaultMaxClockDrift,
+		maxBlockLag:      defaultMaxBlockLag,
+		providerTimeout:  defaultProviderTimeout,
 		pruningSize:      defaultPruningSize,
 		logger:           log.NewNopLogger(),
 	}
@@ -379,6 +379,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		return nil, err
 	}
 
+	// If there is a new light block then verify it
 	if latestBlock.Height > lastTrustedHeight {
 		err = c.verifyLightBlock(ctx, latestBlock, now)
 		if err != nil {
@@ -388,7 +389,8 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		return latestBlock, nil
 	}
 
-	return nil, nil
+	// else return the latestTrustedBlock
+	return c.latestTrustedBlock, nil
 }
 
 // VerifyLightBlockAtHeight fetches the light block at the given height
@@ -693,7 +695,9 @@ func (c *Client) verifySkipping(
 			if depth == len(blockCache)-1 {
 				// schedule what the next height we need to fetch is
 				pivotHeight := c.schedule(verifiedBlock.Height, blockCache[depth].Height)
-				interimBlock, providerErr := source.LightBlock(ctx, pivotHeight)
+				subCtx, cancel := context.WithTimeout(ctx, c.providerTimeout)
+				defer cancel()
+				interimBlock, providerErr := c.getLightBlock(subCtx, source, pivotHeight)
 				if providerErr != nil {
 					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: providerErr}
 				}
@@ -930,7 +934,7 @@ func (c *Client) backwards(
 //    any other error, the primary is permanently dropped and is replaced by a witness.
 func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
-	l, err := c.primary.LightBlock(ctx, height)
+	l, err := c.getLightBlock(ctx, c.primary, height)
 	c.providerMutex.Unlock()
 
 	switch err {
@@ -955,6 +959,16 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 			"error", err, "height", height, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, true)
 	}
+}
+
+func (c *Client) getLightBlock(ctx context.Context, p provider.Provider, height int64) (*types.LightBlock, error) {
+	subCtx, cancel := context.WithTimeout(ctx, c.providerTimeout)
+	defer cancel()
+	l, err := p.LightBlock(subCtx, height)
+	if err == context.DeadlineExceeded || ctx.Err() != nil {
+		return nil, provider.ErrNoResponse
+	}
+	return l, err
 }
 
 // NOTE: requires a providerMutex lock
@@ -989,7 +1003,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) <= 1 {
+	if len(c.witnesses) < 1 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -1001,7 +1015,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	)
 
 	// send out a light block request to all witnesses
-	subctx, cancel := context.WithCancel(ctx)
+	subctx, cancel := context.WithTimeout(ctx, c.providerTimeout)
 	defer cancel()
 	for index := range c.witnesses {
 		wg.Add(1)
@@ -1009,7 +1023,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			defer wg.Done()
 
 			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
-			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
+			select {
+			case witnessResponsesC <- witnessResponse{lb, witnessIndex, err}:
+			case <-ctx.Done():
+			}
+
 		}(index, witnessResponsesC)
 	}
 

@@ -1,6 +1,7 @@
 package evidence_test
 
 import (
+	"context"
 	"encoding/hex"
 	"math/rand"
 	"sync"
@@ -20,9 +21,9 @@ import (
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
+	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -44,7 +45,7 @@ type reactorTestSuite struct {
 	numStateStores   int
 }
 
-func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
+func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
 	pID := make([]byte, 16)
@@ -55,18 +56,15 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	rts := &reactorTestSuite{
 		numStateStores: numStateStores,
 		logger:         log.TestingLogger().With("testCase", t.Name()),
-		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
+		network:        p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
 		reactors:       make(map[types.NodeID]*evidence.Reactor, numStateStores),
 		pools:          make(map[types.NodeID]*evidence.Pool, numStateStores),
 		peerUpdates:    make(map[types.NodeID]*p2p.PeerUpdates, numStateStores),
 		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
-	chDesc := p2p.ChannelDescriptor{ID: byte(evidence.EvidenceChannel)}
-	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(t,
-		chDesc,
-		new(tmproto.EvidenceList),
-		int(chBuf))
+	chDesc := &p2p.ChannelDescriptor{ID: evidence.EvidenceChannel, MessageType: new(tmproto.EvidenceList)}
+	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), 0)
 
 	idx := 0
@@ -88,7 +86,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 		rts.nodes = append(rts.nodes, rts.network.Nodes[nodeID])
 
 		rts.reactors[nodeID] = evidence.NewReactor(logger,
@@ -96,7 +94,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 			rts.peerUpdates[nodeID],
 			rts.pools[nodeID])
 
-		require.NoError(t, rts.reactors[nodeID].Start())
+		require.NoError(t, rts.reactors[nodeID].Start(ctx))
 		require.True(t, rts.reactors[nodeID].IsRunning())
 
 		idx++
@@ -110,14 +108,14 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 			}
 		}
 
-		leaktest.Check(t)
 	})
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }
 
-func (rts *reactorTestSuite) start(t *testing.T) {
-	rts.network.Start(t)
+func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
+	rts.network.Start(ctx, t)
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
 		rts.numStateStores-1,
@@ -193,21 +191,6 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 	wg.Wait()
 }
 
-func (rts *reactorTestSuite) assertEvidenceChannelsEmpty(t *testing.T) {
-	t.Helper()
-
-	for id, r := range rts.reactors {
-		require.NoError(t, r.Stop(), "stopping reactor #%s", id)
-		r.Wait()
-		require.False(t, r.IsRunning(), "reactor #%d did not stop", id)
-
-	}
-
-	for id, ech := range rts.evidenceChannels {
-		require.Empty(t, ech.Out, "checking channel #%q", id)
-	}
-}
-
 func createEvidenceList(
 	t *testing.T,
 	pool *evidence.Pool,
@@ -236,13 +219,16 @@ func createEvidenceList(
 }
 
 func TestReactorMultiDisconnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	val := types.NewMockPV()
 	height := int64(numEvidence) + 10
 
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 20)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 20)
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -250,17 +236,17 @@ func TestReactorMultiDisconnect(t *testing.T) {
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusUp)
 	// Ensure "disconnecting" the secondary peer from the primary more than once
 	// is handled gracefully.
 
-	primary.PeerManager.Disconnected(secondary.NodeID)
+	primary.PeerManager.Disconnected(ctx, secondary.NodeID)
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 	_, err := primary.PeerManager.TryEvictNext()
 	require.NoError(t, err)
-	primary.PeerManager.Disconnected(secondary.NodeID)
+	primary.PeerManager.Disconnected(ctx, secondary.NodeID)
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 	require.Equal(t, secondary.PeerManager.Status(primary.NodeID), p2p.PeerStatusUp)
@@ -284,8 +270,11 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
 
-	rts := setup(t, stateDBs, 0)
-	rts.start(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, stateDBs, 0)
+	rts.start(ctx, t)
 
 	// Create a series of fixtures where each suite contains a reactor and
 	// evidence pool. In addition, we mark a primary suite and the rest are
@@ -321,8 +310,6 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, pool := range rts.pools {
 		require.Equal(t, numEvidence, int(pool.Size()))
 	}
-
-	rts.assertEvidenceChannelsEmpty(t)
 }
 
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
@@ -338,8 +325,11 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height1)
 	stateDB2 := initializeValidatorState(t, val, height2)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
-	rts.start(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
+	rts.start(ctx, t)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -360,8 +350,6 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 
 	require.Equal(t, numEvidence, int(rts.pools[primary.NodeID].Size()))
 	require.Equal(t, int(height2), int(rts.pools[secondary.NodeID].Size()))
-
-	rts.assertEvidenceChannelsEmpty(t)
 }
 
 func TestReactorBroadcastEvidence_Pending(t *testing.T) {
@@ -371,7 +359,10 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -386,7 +377,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
@@ -397,11 +388,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
 		"primary node should have all the evidence")
-	if assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
-		"secondary nodes should have caught up") {
-
-		rts.assertEvidenceChannelsEmpty(t)
-	}
+	assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up")
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
@@ -411,7 +399,10 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -439,12 +430,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
 
 	// start the network and ensure it's configured
-	rts.start(t)
-
-	// without the following sleep the test consistently fails;
-	// likely because the sleep forces a context switch that lets
-	// the router process other operations.
-	time.Sleep(2 * time.Millisecond)
+	rts.start(ctx, t)
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already committed evidence.
@@ -453,11 +439,8 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
 		"primary node should have all the evidence")
-	if assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
-		"secondary nodes should have caught up") {
-
-		rts.assertEvidenceChannelsEmpty(t)
-	}
+	assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up")
 }
 
 func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
@@ -474,8 +457,11 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
 
-	rts := setup(t, stateDBs, 0)
-	rts.start(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setup(ctx, t, stateDBs, 0)
+	rts.start(ctx, t)
 
 	evList := createEvidenceList(t, rts.pools[rts.network.RandomNode().NodeID], val, numEvidence)
 
@@ -504,7 +490,6 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 	}
 }
 
-// nolint:lll
 func TestEvidenceListSerialization(t *testing.T) {
 	exampleVote := func(msgType byte) *types.Vote {
 		var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
@@ -534,12 +519,13 @@ func TestEvidenceListSerialization(t *testing.T) {
 
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 
-	dupl := types.NewDuplicateVoteEvidence(
+	dupl, err := types.NewDuplicateVoteEvidence(
 		exampleVote(1),
 		exampleVote(2),
 		defaultEvidenceTime,
 		valSet,
 	)
+	require.NoError(t, err)
 
 	testCases := map[string]struct {
 		evidenceList []types.Evidence

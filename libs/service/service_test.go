@@ -1,24 +1,30 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type testService struct {
 	BaseService
 }
 
-func (testService) OnReset() error {
+func (testService) OnStop() {}
+func (testService) OnStart(context.Context) error {
 	return nil
 }
 
 func TestBaseServiceWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	ts := &testService{}
-	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start()
+	ts.BaseService = *NewBaseService(log.TestingLogger(), "TestService", ts)
+	err := ts.Start(ctx)
 	require.NoError(t, err)
 
 	waitFinished := make(chan struct{})
@@ -27,7 +33,7 @@ func TestBaseServiceWait(t *testing.T) {
 		waitFinished <- struct{}{}
 	}()
 
-	go ts.Stop() //nolint:errcheck // ignore for tests
+	go cancel()
 
 	select {
 	case <-waitFinished:
@@ -35,23 +41,4 @@ func TestBaseServiceWait(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected Wait() to finish within 100 ms.")
 	}
-}
-
-func TestBaseServiceReset(t *testing.T) {
-	ts := &testService{}
-	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	err := ts.Start()
-	require.NoError(t, err)
-
-	err = ts.Reset()
-	require.Error(t, err, "expected cant reset service error")
-
-	err = ts.Stop()
-	require.NoError(t, err)
-
-	err = ts.Reset()
-	require.NoError(t, err)
-
-	err = ts.Start()
-	require.NoError(t, err)
 }

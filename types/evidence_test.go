@@ -85,7 +85,8 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
 			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(10)})
-			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
+			ev, err := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
+			require.NoError(t, err)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -316,6 +317,9 @@ func TestEvidenceProto(t *testing.T) {
 }
 
 func TestEvidenceVectors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Votes for duplicateEvidence
 	val := NewMockPV()
 	val.PrivKey = ed25519.GenPrivKeyFromSecret([]byte("it's a secret")) // deterministic key
@@ -329,7 +333,7 @@ func TestEvidenceVectors(t *testing.T) {
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := deterministicVoteSet(height, 1, tmproto.PrecommitType, 1)
+	voteSet, valSet, privVals := deterministicVoteSet(ctx, height, 1, tmproto.PrecommitType, 1)
 	header := &Header{
 		Version:            version.Consensus{Block: 1, App: 1},
 		ChainID:            chainID,

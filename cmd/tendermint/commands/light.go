@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -188,12 +189,16 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
+	tmos.TrapSignal(cmd.Context(), logger, func() {
 		p.Listener.Close()
 	})
 
+	// this might be redundant to the above, eventually.
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+	defer cancel()
+
 	logger.Info("Starting proxy...", "laddr", listenAddr)
-	if err := p.ListenAndServe(); err != http.ErrServerClosed {
+	if err := p.ListenAndServe(ctx); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
 	}

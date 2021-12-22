@@ -34,6 +34,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"sync"
 
 	"github.com/gogo/protobuf/proto"
 )
@@ -90,11 +91,44 @@ func (w *varintWriter) Close() error {
 	return nil
 }
 
-func MarshalDelimited(msg proto.Message) ([]byte, error) {
-	var buf bytes.Buffer
-	_, err := NewDelimitedWriter(&buf).WriteMsg(msg)
+func varintWrittenBytes(m marshaler, size int) ([]byte, error) {
+	buf := make([]byte, size+binary.MaxVarintLen64)
+	n := binary.PutUvarint(buf, uint64(size))
+	nw, err := m.MarshalTo(buf[n:])
 	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return buf[:n+nw], nil
+}
+
+var bufPool = &sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
+
+func MarshalDelimited(msg proto.Message) ([]byte, error) {
+	// The goal here is to write proto message as is knowning already if
+	// the exact size can be retrieved and if so just use that.
+	if m, ok := msg.(marshaler); ok {
+		size, ok := getSize(msg)
+		if ok {
+			return varintWrittenBytes(m, size)
+		}
+	}
+
+	// Otherwise, go down the route of using proto.Marshal,
+	// and use the buffer pool to retrieve a writer.
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer bufPool.Put(buf)
+	buf.Reset()
+	_, err := NewDelimitedWriter(buf).WriteMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+	// Given that we are reusing buffers, we should
+	// make a copy of the returned bytes.
+	bytesCopy := make([]byte, buf.Len())
+	copy(bytesCopy, buf.Bytes())
+	return bytesCopy, nil
 }

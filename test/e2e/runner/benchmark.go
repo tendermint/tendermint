@@ -21,8 +21,8 @@ import (
 //
 // Metrics are based of the `benchmarkLength`, the amount of consecutive blocks
 // sampled from in the testnet
-func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
-	block, _, err := waitForHeight(testnet, 0)
+func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64) error {
+	block, err := getLatestBlock(ctx, testnet)
 	if err != nil {
 		return err
 	}
@@ -32,13 +32,15 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 	// wait for the length of the benchmark period in blocks to pass. We allow 5 seconds for each block
 	// which should be sufficient.
 	waitingTime := time.Duration(benchmarkLength*5) * time.Second
-	endHeight, err := waitForAllNodes(testnet, block.Height+benchmarkLength, waitingTime)
+	ctx, cancel := context.WithTimeout(ctx, waitingTime)
+	defer cancel()
+	block, _, err = waitForHeight(ctx, testnet, block.Height+benchmarkLength)
 	if err != nil {
 		return err
 	}
 	dur := time.Since(startAt)
 
-	logger.Info("Ending benchmark period", "height", endHeight)
+	logger.Info("Ending benchmark period", "height", block.Height)
 
 	// fetch a sample of blocks
 	blocks, err := fetchBlockChainSample(testnet, benchmarkLength)

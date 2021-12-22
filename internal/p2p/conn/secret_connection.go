@@ -11,6 +11,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sync"
 	"time"
 
 	gogotypes "github.com/gogo/protobuf/types"
@@ -23,10 +24,9 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/libs/async"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/libs/async"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -76,11 +76,11 @@ type SecretConnection struct {
 	// are independent, so we can use two mtxs.
 	// All .Read are covered by recvMtx,
 	// all .Write are covered by sendMtx.
-	recvMtx    tmsync.Mutex
+	recvMtx    sync.Mutex
 	recvBuffer []byte
 	recvNonce  *[aeadNonceSize]byte
 
-	sendMtx   tmsync.Mutex
+	sendMtx   sync.Mutex
 	sendNonce *[aeadNonceSize]byte
 }
 
@@ -406,7 +406,7 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 	// Send our info and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			pbpk, err := cryptoenc.PubKeyToProto(pubKey)
+			pbpk, err := encoding.PubKeyToProto(pubKey)
 			if err != nil {
 				return nil, true, err
 			}
@@ -423,7 +423,7 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 				return nil, true, err // abort
 			}
 
-			pk, err := cryptoenc.PubKeyFromProto(pba.PubKey)
+			pk, err := encoding.PubKeyFromProto(pba.PubKey)
 			if err != nil {
 				return nil, true, err // abort
 			}

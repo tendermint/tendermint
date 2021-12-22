@@ -9,19 +9,17 @@ import (
 var ReplayCmd = &cobra.Command{
 	Use:   "replay",
 	Short: "Replay messages from WAL",
-	Run: func(cmd *cobra.Command, args []string) {
-		consensus.RunReplayFile(config.BaseConfig, config.Consensus, false)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return consensus.RunReplayFile(cmd.Context(), logger, config.BaseConfig, config.Consensus, false)
 	},
 }
 
 // ReplayConsoleCmd allows replaying of messages from the WAL in a
 // console.
 var ReplayConsoleCmd = &cobra.Command{
-	Use:     "replay-console",
-	Aliases: []string{"replay_console"},
-	Short:   "Replay messages from WAL in a console",
-	Run: func(cmd *cobra.Command, args []string) {
-		consensus.RunReplayFile(config.BaseConfig, config.Consensus, true)
+	Use:   "replay-console",
+	Short: "Replay messages from WAL in a console",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return consensus.RunReplayFile(cmd.Context(), logger, config.BaseConfig, config.Consensus, true)
 	},
-	PreRun: deprecateSnakeCase,
 }

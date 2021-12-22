@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 var (
@@ -33,7 +34,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"socket address to listen on for connections from external priv-validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast-sync", config.FastSyncMode, "fast blockchain syncing")
+
 	cmd.Flags().BytesHexVar(
 		&genesisHash,
 		"genesis-hash",
@@ -48,15 +49,11 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"proxy-app",
 		config.ProxyApp,
 		"proxy app address, or one of: 'kvstore',"+
-			" 'persistent_kvstore' or 'noop' for local testing.")
+			" 'persistent_kvstore', 'e2e' or 'noop' for local testing.")
 	cmd.Flags().String("abci", config.ABCI, "specify abci transport (socket | grpc)")
 
 	// rpc flags
 	cmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listen address. Port required")
-	cmd.Flags().String(
-		"rpc.grpc-laddr",
-		config.RPC.GRPCListenAddress,
-		"GRPC listen address (BroadcastTx only). Port required")
 	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "enabled unsafe rpc methods")
 	cmd.Flags().String("rpc.pprof-laddr", config.RPC.PprofListenAddress, "pprof listen address (https://golang.org/pkg/net/http/pprof)")
 
@@ -67,8 +64,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"node listen address. (0.0.0.0:0 means any interface, any port)")
 	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "comma-delimited ID@host:port seed nodes")
 	cmd.Flags().String("p2p.persistent-peers", config.P2P.PersistentPeers, "comma-delimited ID@host:port persistent peers")
-	cmd.Flags().String("p2p.unconditional-peer-ids",
-		config.P2P.UnconditionalPeerIDs, "comma-delimited IDs of unconditional peers")
 	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "enable/disable UPNP port forwarding")
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "enable/disable Peer-Exchange")
 	cmd.Flags().String("p2p.private-peer-ids", config.P2P.PrivatePeerIDs, "comma-delimited private peer IDs")
@@ -109,28 +104,22 @@ func NewRunNodeCmd(nodeProvider cfg.ServiceProvider) *cobra.Command {
 				return err
 			}
 
-			n, err := nodeProvider(config, logger)
+			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+			defer cancel()
+
+			n, err := nodeProvider(ctx, config, logger)
 			if err != nil {
 				return fmt.Errorf("failed to create node: %w", err)
 			}
 
-			if err := n.Start(); err != nil {
+			if err := n.Start(ctx); err != nil {
 				return fmt.Errorf("failed to start node: %w", err)
 			}
 
 			logger.Info("started node", "node", n.String())
 
-			// Stop upon receiving SIGTERM or CTRL-C.
-			tmos.TrapSignal(logger, func() {
-				if n.IsRunning() {
-					if err := n.Stop(); err != nil {
-						logger.Error("unable to stop the node", "error", err)
-					}
-				}
-			})
-
-			// Run forever.
-			select {}
+			<-ctx.Done()
+			return nil
 		},
 	}
 
@@ -158,7 +147,7 @@ func checkGenesisHash(config *cfg.Config) error {
 	// Compare with the flag.
 	if !bytes.Equal(genesisHash, actualHash) {
 		return fmt.Errorf(
-			"--genesis_hash=%X does not match %s hash: %X",
+			"--genesis-hash=%X does not match %s hash: %X",
 			genesisHash, config.GenesisFile(), actualHash)
 	}
 

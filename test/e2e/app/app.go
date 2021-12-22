@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -27,9 +29,58 @@ type Application struct {
 	restoreChunks   [][]byte
 }
 
+// Config allows for the setting of high level parameters for running the e2e Application
+// KeyType and ValidatorUpdates must be the same for all nodes running the same application.
+type Config struct {
+	// The directory with which state.json will be persisted in. Usually $HOME/.tendermint/data
+	Dir string `toml:"dir"`
+
+	// SnapshotInterval specifies the height interval at which the application
+	// will take state sync snapshots. Defaults to 0 (disabled).
+	SnapshotInterval uint64 `toml:"snapshot_interval"`
+
+	// RetainBlocks specifies the number of recent blocks to retain. Defaults to
+	// 0, which retains all blocks. Must be greater that PersistInterval,
+	// SnapshotInterval and EvidenceAgeHeight.
+	RetainBlocks uint64 `toml:"retain_blocks"`
+
+	// KeyType sets the curve that will be used by validators.
+	// Options are ed25519 & secp256k1
+	KeyType string `toml:"key_type"`
+
+	// PersistInterval specifies the height interval at which the application
+	// will persist state to disk. Defaults to 1 (every height), setting this to
+	// 0 disables state persistence.
+	PersistInterval uint64 `toml:"persist_interval"`
+
+	// ValidatorUpdates is a map of heights to validator names and their power,
+	// and will be returned by the ABCI application. For example, the following
+	// changes the power of validator01 and validator02 at height 1000:
+	//
+	// [validator_update.1000]
+	// validator01 = 20
+	// validator02 = 10
+	//
+	// Specifying height 0 returns the validator update during InitChain. The
+	// application returns the validator updates as-is, i.e. removing a
+	// validator must be done by returning it with power 0, and any validators
+	// not specified are not changed.
+	//
+	// height <-> pubkey <-> voting power
+	ValidatorUpdates map[string]map[string]uint8 `toml:"validator_update"`
+}
+
+func DefaultConfig(dir string) *Config {
+	return &Config{
+		PersistInterval:  1,
+		SnapshotInterval: 100,
+		Dir:              dir,
+	}
+}
+
 // NewApplication creates the application.
 func NewApplication(cfg *Config) (*Application, error) {
-	state, err := NewState(filepath.Join(cfg.Dir, "state.json"), cfg.PersistInterval)
+	state, err := NewState(cfg.Dir, cfg.PersistInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +98,9 @@ func NewApplication(cfg *Config) (*Application, error) {
 
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
+	app.state.RLock()
+	defer app.state.RUnlock()
+
 	return abci.ResponseInfo{
 		Version:          version.ABCIVersion,
 		AppVersion:       1,
@@ -67,6 +121,11 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 	}
 	resp := abci.ResponseInitChain{
 		AppHash: app.state.Hash,
+		ConsensusParams: &types.ConsensusParams{
+			Version: &types.VersionParams{
+				AppVersion: 1,
+			},
+		},
 	}
 	if resp.Validators, err = app.validatorUpdates(0); err != nil {
 		panic(err)
@@ -134,7 +193,11 @@ func (app *Application) Commit() abci.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		err = app.snapshots.Prune(maxSnapshotCount)
+		if err != nil {
+			app.logger.Error("Failed to prune snapshots", "err", err)
+		}
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {
@@ -204,6 +267,10 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
 }
 
+func (app *Application) Rollback() error {
+	return app.state.Rollback()
+}
+
 // validatorUpdates generates a validator set update.
 func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
@@ -220,6 +287,14 @@ func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, 
 		}
 		valUpdates = append(valUpdates, abci.UpdateValidator(keyBytes, int64(power), app.cfg.KeyType))
 	}
+
+	// the validator updates could be returned in arbitrary order,
+	// and that seems potentially bad. This orders the validator
+	// set.
+	sort.Slice(valUpdates, func(i, j int) bool {
+		return valUpdates[i].PubKey.Compare(valUpdates[j].PubKey) < 0
+	})
+
 	return valUpdates, nil
 }
 

@@ -5,19 +5,14 @@ coverage:
   status:
     project:
       default:
-        threshold: 1%
-    patch: on
+        threshold: 20%
+    patch: off
     changes: off
 
 github_checks:
   annotations: false
 
-comment:
-  layout: "diff, files"
-  behavior: default
-  require_changes: no
-  require_base: no
-  require_head: yes
+comment: false
 
 ignore:
   - "docs"
@@ -25,3 +20,6 @@ ignore:
   - "scripts"
   - "**/*.pb.go"
   - "libs/pubsub/query/query.peg.go"
+  - "*.md"
+  - "*.rst"
+  - "*.yml"

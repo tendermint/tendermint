@@ -3,10 +3,11 @@ package privval
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
@@ -17,8 +18,9 @@ const (
 
 type signerEndpoint struct {
 	service.BaseService
+	logger log.Logger
 
-	connMtx tmsync.Mutex
+	connMtx sync.Mutex
 	conn    net.Conn
 
 	timeoutReadWrite time.Duration
@@ -104,7 +106,7 @@ func (se *signerEndpoint) ReadMessage() (msg privvalproto.Message, err error) {
 			err = fmt.Errorf("empty error: %w", ErrReadTimeout)
 		}
 
-		se.Logger.Debug("Dropping [read]", "obj", se)
+		se.logger.Debug("Dropping [read]", "obj", se)
 		se.dropConnection()
 	}
 
@@ -149,7 +151,7 @@ func (se *signerEndpoint) isConnected() bool {
 func (se *signerEndpoint) dropConnection() {
 	if se.conn != nil {
 		if err := se.conn.Close(); err != nil {
-			se.Logger.Error("signerEndpoint::dropConnection", "err", err)
+			se.logger.Error("signerEndpoint::dropConnection", "err", err)
 		}
 		se.conn = nil
 	}

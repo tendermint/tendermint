@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -51,6 +50,9 @@ func main() {
 	)
 	flag.Parse()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	logger.Info(
 		"Starting private validator",
 		"addr", *addr,
@@ -78,7 +80,7 @@ func main() {
 		}
 
 		certPool := x509.NewCertPool()
-		bs, err := ioutil.ReadFile(*rootCA)
+		bs, err := os.ReadFile(*rootCA)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to read client ca cert: %s", err)
 			os.Exit(1)
@@ -132,7 +134,7 @@ func main() {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
+	tmos.TrapSignal(ctx, logger, func() {
 		logger.Debug("SignerServer: calling Close")
 		if *prometheusAddr != "" {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

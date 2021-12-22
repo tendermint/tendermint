@@ -3,6 +3,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 	"golang.org/x/net/netutil"
 
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Config is a RPC server configuration.
@@ -50,7 +51,13 @@ func DefaultConfig() *Config {
 // body size to config.MaxBodyBytes.
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
-func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
+func Serve(
+	ctx context.Context,
+	listener net.Listener,
+	handler http.Handler,
+	logger log.Logger,
+	config *Config,
+) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
@@ -58,9 +65,23 @@ func Serve(listener net.Listener, handler http.Handler, logger log.Logger, confi
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	err := s.Serve(listener)
-	logger.Info("RPC HTTP server stopped", "err", err)
-	return err
+	sig := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			sctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = s.Shutdown(sctx)
+		case <-sig:
+		}
+	}()
+
+	if err := s.Serve(listener); err != nil {
+		logger.Info("RPC HTTP server stopped", "err", err)
+		close(sig)
+		return err
+	}
+	return nil
 }
 
 // Serve creates a http.Server and calls ServeTLS with the given listener,
@@ -69,6 +90,7 @@ func Serve(listener net.Listener, handler http.Handler, logger log.Logger, confi
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func ServeTLS(
+	ctx context.Context,
 	listener net.Listener,
 	handler http.Handler,
 	certFile, keyFile string,
@@ -83,10 +105,23 @@ func ServeTLS(
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	err := s.ServeTLS(listener, certFile, keyFile)
+	sig := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			sctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = s.Shutdown(sctx)
+		case <-sig:
+		}
+	}()
 
-	logger.Error("RPC HTTPS server stopped", "err", err)
-	return err
+	if err := s.ServeTLS(listener, certFile, keyFile); err != nil {
+		logger.Error("RPC HTTPS server stopped", "err", err)
+		close(sig)
+		return err
+	}
+	return nil
 }
 
 // WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it
@@ -105,7 +140,7 @@ func ServeTLS(
 // source: https://www.jsonrpc.org/historical/json-rpc-over-http.html
 func WriteRPCResponseHTTPError(
 	w http.ResponseWriter,
-	res types.RPCResponse,
+	res rpctypes.RPCResponse,
 ) error {
 	if res.Error == nil {
 		panic("tried to write http error response without RPC error")
@@ -134,7 +169,7 @@ func WriteRPCResponseHTTPError(
 
 // WriteRPCResponseHTTP marshals res as JSON (with indent) and writes it to w.
 // If the rpc response can be cached, add cache-control to the response header.
-func WriteRPCResponseHTTP(w http.ResponseWriter, c bool, res ...types.RPCResponse) error {
+func WriteRPCResponseHTTP(w http.ResponseWriter, c bool, res ...rpctypes.RPCResponse) error {
 	var v interface{}
 	if len(res) == 1 {
 		v = res[0]
@@ -189,7 +224,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 			if e := recover(); e != nil {
 
 				// If RPCResponse
-				if res, ok := e.(types.RPCResponse); ok {
+				if res, ok := e.(rpctypes.RPCResponse); ok {
 					if wErr := WriteRPCResponseHTTP(rww, false, res); wErr != nil {
 						logger.Error("failed to write response", "res", res, "err", wErr)
 					}
@@ -208,7 +243,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 
 					logger.Error("panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
 
-					res := types.RPCInternalError(types.JSONRPCIntID(-1), err)
+					res := rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)
 					if wErr := WriteRPCResponseHTTPError(rww, res); wErr != nil {
 						logger.Error("failed to write response", "res", res, "err", wErr)
 					}
@@ -261,7 +296,7 @@ func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Listen starts a new net.Listener on the given address.
 // It returns an error if the address is invalid or the call to Listen() fails.
-func Listen(addr string, config *Config) (listener net.Listener, err error) {
+func Listen(addr string, maxOpenConnections int) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf(
@@ -274,8 +309,8 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on %v: %v", addr, err)
 	}
-	if config.MaxOpenConnections > 0 {
-		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
+	if maxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, maxOpenConnections)
 	}
 
 	return listener, nil

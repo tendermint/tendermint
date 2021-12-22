@@ -5,7 +5,10 @@ package mocks
 import (
 	context "context"
 
+	conn "github.com/tendermint/tendermint/internal/p2p/conn"
+
 	mock "github.com/stretchr/testify/mock"
+
 	p2p "github.com/tendermint/tendermint/internal/p2p"
 )
 
@@ -14,13 +17,13 @@ type Transport struct {
 	mock.Mock
 }
 
-// Accept provides a mock function with given fields:
-func (_m *Transport) Accept() (p2p.Connection, error) {
-	ret := _m.Called()
+// Accept provides a mock function with given fields: _a0
+func (_m *Transport) Accept(_a0 context.Context) (p2p.Connection, error) {
+	ret := _m.Called(_a0)
 
 	var r0 p2p.Connection
-	if rf, ok := ret.Get(0).(func() p2p.Connection); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) p2p.Connection); ok {
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(p2p.Connection)
@@ -28,13 +31,18 @@ func (_m *Transport) Accept() (p2p.Connection, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
 
 	return r0, r1
+}
+
+// AddChannelDescriptors provides a mock function with given fields: _a0
+func (_m *Transport) AddChannelDescriptors(_a0 []*conn.ChannelDescriptor) {
+	_m.Called(_a0)
 }
 
 // Close provides a mock function with given fields:
@@ -85,6 +93,20 @@ func (_m *Transport) Endpoints() []p2p.Endpoint {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]p2p.Endpoint)
 		}
+	}
+
+	return r0
+}
+
+// Listen provides a mock function with given fields: _a0
+func (_m *Transport) Listen(_a0 p2p.Endpoint) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(p2p.Endpoint) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
 	}
 
 	return r0

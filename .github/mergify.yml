@@ -1,13 +1,22 @@
+queue_rules:
+  - name: default
+    conditions:
+      - base=master
+      - label=S:automerge
+
 pull_request_rules:
   - name: Automerge to master
     conditions:
       - base=master
       - label=S:automerge
     actions:
-      merge:
+      queue:
         method: squash
-        strict: true
-        commit_message: title+body
+        name: default
+        commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}
   - name: backport patches to v0.34.x branch
     conditions:
       - base=master
@@ -16,3 +25,11 @@ pull_request_rules:
       backport:
         branches:
           - v0.34.x
+  - name: backport patches to v0.35.x branch
+    conditions:
+      - base=master
+      - label=S:backport-to-v0.35.x
+    actions:
+      backport:
+        branches:
+          - v0.35.x

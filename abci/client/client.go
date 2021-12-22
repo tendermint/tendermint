@@ -1,4 +1,4 @@
-package abcicli
+package abciclient
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -68,12 +68,12 @@ type Client interface {
 
 // NewClient returns a new ABCI client of the specified transport type.
 // It returns an error if the transport is not "socket" or "grpc"
-func NewClient(addr, transport string, mustConnect bool) (client Client, err error) {
+func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (client Client, err error) {
 	switch transport {
 	case "socket":
-		client = NewSocketClient(addr, mustConnect)
+		client = NewSocketClient(logger, addr, mustConnect)
 	case "grpc":
-		client = NewGRPCClient(addr, mustConnect)
+		client = NewGRPCClient(logger, addr, mustConnect)
 	default:
 		err = fmt.Errorf("unknown abci transport %s", transport)
 	}
@@ -87,7 +87,7 @@ type ReqRes struct {
 	*sync.WaitGroup
 	*types.Response // Not set atomically, so be sure to use WaitGroup.
 
-	mtx  tmsync.RWMutex
+	mtx  sync.Mutex
 	done bool                  // Gets set to true once *after* WaitGroup.Done().
 	cb   func(*types.Response) // A single callback that may be set.
 }
@@ -137,16 +137,16 @@ func (r *ReqRes) InvokeCallback() {
 //
 // ref: https://github.com/tendermint/tendermint/issues/5439
 func (r *ReqRes) GetCallback() func(*types.Response) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	return r.cb
 }
 
 // SetDone marks the ReqRes object as done.
 func (r *ReqRes) SetDone() {
 	r.mtx.Lock()
-	defer r.mtx.Unlock()
 	r.done = true
+	r.mtx.Unlock()
 }
 
 func waitGroup1() (wg *sync.WaitGroup) {

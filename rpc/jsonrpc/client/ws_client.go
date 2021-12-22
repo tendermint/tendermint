@@ -13,9 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/libs/service"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	tmclient "github.com/tendermint/tendermint/rpc/client"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // WSOptions for WSClient.
@@ -24,6 +23,7 @@ type WSOptions struct {
 	ReadWait             time.Duration // deadline for any read op
 	WriteWait            time.Duration // deadline for any write op
 	PingPeriod           time.Duration // frequency with which pings are sent
+	SkipMetrics          bool          // do not keep metrics for ping/pong latency
 }
 
 // DefaultWSOptions returns default WS options.
@@ -41,6 +41,7 @@ func DefaultWSOptions() WSOptions {
 //
 // WSClient is safe for concurrent use by multiple goroutines.
 type WSClient struct { // nolint: maligned
+	*tmclient.RunState
 	conn *websocket.Conn
 
 	Address  string // IP:PORT or /path/to/socket
@@ -49,16 +50,16 @@ type WSClient struct { // nolint: maligned
 
 	// Single user facing channel to read RPCResponses from, closed only when the
 	// client is being stopped.
-	ResponsesCh chan types.RPCResponse
+	ResponsesCh chan rpctypes.RPCResponse
 
 	// Callback, which will be called each time after successful reconnect.
 	onReconnect func()
 
 	// internal channels
-	send            chan types.RPCRequest // user requests
-	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter  chan error            // reconnect requests
-	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
+	send            chan rpctypes.RPCRequest // user requests
+	backlog         chan rpctypes.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter  chan error               // reconnect requests
+	readRoutineQuit chan struct{}            // a way for readRoutine to close writeRoutine
 
 	// Maximum reconnect attempts (0 or greater; default: 25).
 	maxReconnectAttempts uint
@@ -68,7 +69,7 @@ type WSClient struct { // nolint: maligned
 
 	wg sync.WaitGroup
 
-	mtx            tmsync.RWMutex
+	mtx            sync.RWMutex
 	sentLastPingAt time.Time
 	reconnecting   bool
 	nextReqID      int
@@ -82,8 +83,6 @@ type WSClient struct { // nolint: maligned
 
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
-
-	service.BaseService
 
 	// Time between sending a ping and receiving a pong. See
 	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
@@ -114,11 +113,10 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 	}
 
 	c := &WSClient{
+		RunState:             tmclient.NewRunState("WSClient", nil),
 		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
-		PingPongLatencyTimer: metrics.NewTimer(),
-
 		maxReconnectAttempts: opts.MaxReconnectAttempts,
 		readWait:             opts.ReadWait,
 		writeWait:            opts.WriteWait,
@@ -127,7 +125,14 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
-	c.BaseService = *service.NewBaseService(nil, "WSClient", c)
+
+	switch opts.SkipMetrics {
+	case true:
+		c.PingPongLatencyTimer = metrics.NilTimer{}
+	case false:
+		c.PingPongLatencyTimer = metrics.NewTimer()
+	}
+
 	return c, nil
 }
 
@@ -143,36 +148,38 @@ func (c *WSClient) String() string {
 	return fmt.Sprintf("WSClient{%s (%s)}", c.Address, c.Endpoint)
 }
 
-// OnStart implements service.Service by dialing a server and creating read and
-// write routines.
-func (c *WSClient) OnStart() error {
+// Start dials the specified service address and starts the I/O routines.
+func (c *WSClient) Start(ctx context.Context) error {
+	if err := c.RunState.Start(ctx); err != nil {
+		return err
+	}
 	err := c.dial()
 	if err != nil {
 		return err
 	}
 
-	c.ResponsesCh = make(chan types.RPCResponse)
+	c.ResponsesCh = make(chan rpctypes.RPCResponse)
 
-	c.send = make(chan types.RPCRequest)
+	c.send = make(chan rpctypes.RPCRequest)
 	// 1 additional error may come from the read/write
 	// goroutine depending on which failed first.
 	c.reconnectAfter = make(chan error, 1)
 	// capacity for 1 request. a user won't be able to send more because the send
 	// channel is unbuffered.
-	c.backlog = make(chan types.RPCRequest, 1)
+	c.backlog = make(chan rpctypes.RPCRequest, 1)
 
-	c.startReadWriteRoutines()
-	go c.reconnectRoutine()
+	c.startReadWriteRoutines(ctx)
+	go c.reconnectRoutine(ctx)
 
 	return nil
 }
 
-// Stop overrides service.Service#Stop. There is no other way to wait until Quit
-// channel is closed.
+// Stop shuts down the client.
 func (c *WSClient) Stop() error {
-	if err := c.BaseService.Stop(); err != nil {
+	if err := c.RunState.Stop(); err != nil {
 		return err
 	}
+
 	// only close user-facing channels when we can't write to them
 	c.wg.Wait()
 	close(c.ResponsesCh)
@@ -195,7 +202,7 @@ func (c *WSClient) IsActive() bool {
 // Send the given RPC request to the server. Results will be available on
 // ResponsesCh, errors, if any, on ErrorsCh. Will block until send succeeds or
 // ctx.Done is closed.
-func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
+func (c *WSClient) Send(ctx context.Context, request rpctypes.RPCRequest) error {
 	select {
 	case c.send <- request:
 		c.Logger.Info("sent a request", "req", request)
@@ -210,7 +217,7 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := types.MapToRequest(c.nextRequestID(), method, params)
+	request, err := rpctypes.MapToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
@@ -220,7 +227,7 @@ func (c *WSClient) Call(ctx context.Context, method string, params map[string]in
 // CallWithArrayParams enqueues a call request onto the Send queue. Params are
 // in a form of array (e.g. []interface{}{"abcd"}). Requests are JSON encoded.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := types.ArrayToRequest(c.nextRequestID(), method, params)
+	request, err := rpctypes.ArrayToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
@@ -229,12 +236,12 @@ func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, param
 
 // Private methods
 
-func (c *WSClient) nextRequestID() types.JSONRPCIntID {
+func (c *WSClient) nextRequestID() rpctypes.JSONRPCIntID {
 	c.mtx.Lock()
 	id := c.nextReqID
 	c.nextReqID++
 	c.mtx.Unlock()
-	return types.JSONRPCIntID(id)
+	return rpctypes.JSONRPCIntID(id)
 }
 
 func (c *WSClient) dial() error {
@@ -253,7 +260,7 @@ func (c *WSClient) dial() error {
 
 // reconnect tries to redial up to maxReconnectAttempts with exponential
 // backoff.
-func (c *WSClient) reconnect() error {
+func (c *WSClient) reconnect(ctx context.Context) error {
 	attempt := uint(0)
 
 	c.mtx.Lock()
@@ -265,13 +272,21 @@ func (c *WSClient) reconnect() error {
 		c.mtx.Unlock()
 	}()
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
 	for {
 		// nolint:gosec // G404: Use of weak random number generator
 		jitter := time.Duration(mrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitter + ((1 << attempt) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
-		time.Sleep(backoffDuration)
+		timer.Reset(backoffDuration)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+		}
 
 		err := c.dial()
 		if err != nil {
@@ -292,11 +307,11 @@ func (c *WSClient) reconnect() error {
 	}
 }
 
-func (c *WSClient) startReadWriteRoutines() {
+func (c *WSClient) startReadWriteRoutines(ctx context.Context) {
 	c.wg.Add(2)
 	c.readRoutineQuit = make(chan struct{})
-	go c.readRoutine()
-	go c.writeRoutine()
+	go c.readRoutine(ctx)
+	go c.writeRoutine(ctx)
 }
 
 func (c *WSClient) processBacklog() error {
@@ -320,13 +335,15 @@ func (c *WSClient) processBacklog() error {
 	return nil
 }
 
-func (c *WSClient) reconnectRoutine() {
+func (c *WSClient) reconnectRoutine(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case originalError := <-c.reconnectAfter:
 			// wait until writeRoutine and readRoutine finish
 			c.wg.Wait()
-			if err := c.reconnect(); err != nil {
+			if err := c.reconnect(ctx); err != nil {
 				c.Logger.Error("failed to reconnect", "err", err, "original_err", originalError)
 				if err = c.Stop(); err != nil {
 					c.Logger.Error("failed to stop conn", "error", err)
@@ -338,6 +355,8 @@ func (c *WSClient) reconnectRoutine() {
 		LOOP:
 			for {
 				select {
+				case <-ctx.Done():
+					return
 				case <-c.reconnectAfter:
 				default:
 					break LOOP
@@ -345,18 +364,15 @@ func (c *WSClient) reconnectRoutine() {
 			}
 			err := c.processBacklog()
 			if err == nil {
-				c.startReadWriteRoutines()
+				c.startReadWriteRoutines(ctx)
 			}
-
-		case <-c.Quit():
-			return
 		}
 	}
 }
 
 // The client ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *WSClient) writeRoutine() {
+func (c *WSClient) writeRoutine(ctx context.Context) {
 	var ticker *time.Ticker
 	if c.pingPeriod > 0 {
 		// ticker with a predefined period
@@ -408,7 +424,7 @@ func (c *WSClient) writeRoutine() {
 			c.Logger.Debug("sent ping")
 		case <-c.readRoutineQuit:
 			return
-		case <-c.Quit():
+		case <-ctx.Done():
 			if err := c.conn.WriteMessage(
 				websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
@@ -422,7 +438,7 @@ func (c *WSClient) writeRoutine() {
 
 // The client ensures that there is at most one reader to a connection by
 // executing all reads from this goroutine.
-func (c *WSClient) readRoutine() {
+func (c *WSClient) readRoutine(ctx context.Context) {
 	defer func() {
 		c.conn.Close()
 		// err != nil {
@@ -462,7 +478,7 @@ func (c *WSClient) readRoutine() {
 			return
 		}
 
-		var response types.RPCResponse
+		var response rpctypes.RPCResponse
 		err = json.Unmarshal(data, &response)
 		if err != nil {
 			c.Logger.Error("failed to parse response", "err", err, "data", string(data))
@@ -494,7 +510,8 @@ func (c *WSClient) readRoutine() {
 		c.Logger.Info("got response", "id", response.ID, "result", response.Result)
 
 		select {
-		case <-c.Quit():
+		case <-ctx.Done():
+			return
 		case c.ResponsesCh <- response:
 		}
 	}

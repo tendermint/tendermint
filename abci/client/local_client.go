@@ -1,10 +1,11 @@
-package abcicli
+package abciclient
 
 import (
 	"context"
+	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -15,7 +16,7 @@ import (
 type localClient struct {
 	service.BaseService
 
-	mtx *tmsync.RWMutex
+	mtx *sync.Mutex
 	types.Application
 	Callback
 }
@@ -26,19 +27,20 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
+func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = &tmsync.RWMutex{}
+		mtx = new(sync.Mutex)
 	}
-
 	cli := &localClient{
 		mtx:         mtx,
 		Application: app,
 	}
-
-	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
+	cli.BaseService = *service.NewBaseService(logger, "localClient", cli)
 	return cli
 }
+
+func (*localClient) OnStart(context.Context) error { return nil }
+func (*localClient) OnStop()                       {}
 
 func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
@@ -67,8 +69,8 @@ func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, err
 }
 
 func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Info(req)
 	return app.callback(
@@ -100,8 +102,8 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheck
 }
 
 func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Query(req)
 	return app.callback(
@@ -215,8 +217,8 @@ func (app *localClient) EchoSync(ctx context.Context, msg string) (*types.Respon
 }
 
 func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Info(req)
 	return &res, nil
@@ -249,8 +251,8 @@ func (app *localClient) QuerySync(
 	ctx context.Context,
 	req types.RequestQuery,
 ) (*types.ResponseQuery, error) {
-	app.mtx.RLock()
-	defer app.mtx.RUnlock()
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
 
 	res := app.Application.Query(req)
 	return &res, nil

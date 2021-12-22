@@ -2,7 +2,7 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
-## Unreleased
+## v0.35
 
 ### ABCI Changes
 
@@ -17,7 +17,16 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### Config Changes
 
-* `fast_sync = "v1"` and `fast_sync = "v2"` are no longer supported. Please use `v0` instead.
+* The configuration file field `[fastsync]` has been renamed to `[blocksync]`.
+
+* The top level configuration file field `fast-sync` has moved under the new `[blocksync]`
+  field as `blocksync.enable`.
+
+* `blocksync.version = "v1"` and `blocksync.version = "v2"` (previously `fastsync`)
+  are no longer supported. Please use `v0` instead. During the v0.35 release cycle, `v0` was
+  determined to suit the existing needs and the cost of maintaining the `v1` and `v2` modules
+  was determined to be greater than necessary.
+
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
@@ -35,7 +44,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * The fast sync process as well as the blockchain package and service has all
   been renamed to block sync
 
-### Key Format Changes
+### Database Key Format Changes
 
 The format of all tendermint on-disk database keys changes in
 0.35. Upgrading nodes must either re-sync all data or run a migration
@@ -60,6 +69,8 @@ if needed.
 
 * You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
 
+* The `--fast-sync` command line option has been renamed to `--blocksync.enable`
+
 * If you had previously used `tendermint gen_node_key` to generate a new node
   key, keep in mind that it no longer saves the output to a file. You can use
   `tendermint init validator` or pipe the output of `tendermint gen_node_key` to
@@ -74,8 +85,8 @@ if needed.
 
 ### API Changes
 
-The p2p layer was reimplemented as part of the 0.35 release cycle, and
-all reactors were refactored. As part of that work these
+The p2p layer was reimplemented as part of the 0.35 release cycle and
+all reactors were refactored to accomodate the change. As part of that work these
 implementations moved into the `internal` package and are no longer
 considered part of the public Go API of tendermint. These packages
 are:
@@ -87,7 +98,7 @@ are:
 - `blockchain`
 - `evidence`
 
-Accordingly, the `node` package was changed to reduce access to
+Accordingly, the `node` package changed to reduce access to
 tendermint internals: applications that use tendermint as a library
 will need to change to accommodate these changes. Most notably:
 
@@ -98,9 +109,87 @@ will need to change to accommodate these changes. Most notably:
   longer exported and have been replaced with `node.New` and
   `node.NewDefault` which provide more functional interfaces.
 
-### RPC changes
+To access any of the functionality previously available via the
+`node.Node` type, use the `*local.Local` "RPC" client, that exposes
+the full RPC interface provided as direct function calls. Import the
+`github.com/tendermint/tendermint/rpc/client/local` package and pass
+the node service as in the following: 
+
+```go
+    node := node.NewDefault() //construct the node object
+    // start and set up the node service 
+
+    client := local.New(node.(local.NodeService))
+    // use client object to interact with the node
+```
+
+### gRPC Support
 
 Mark gRPC in the RPC layer as deprecated and to be removed in 0.36.
+
+### Peer Management Interface
+
+When running with the new P2P Layer, the methods `UnsafeDialSeeds` and
+`UnsafeDialPeers` RPC methods will always return an error. They are
+deprecated and will be removed in 0.36 when the legacy peer stack is
+removed.
+
+Additionally the format of the Peer list returned in the `NetInfo`
+method changes in this release to accommodate the different way that
+the new stack tracks data about peers. This change affects users of
+both stacks.
+
+### Using the updated p2p library
+
+The P2P library was reimplemented in this release. The new implementation is
+enabled by default in this version of Tendermint. The legacy implementation is still
+included in this version of Tendermint as a backstop to work around unforeseen
+production issues. The new and legacy version are interoperable. If necessary, 
+you can enable the legacy implementation in the server configuration file.
+
+To make use of the legacy P2P implemementation add or update the following field of 
+your server's configuration file under the `[p2p]` section:
+
+```toml
+[p2p]
+...
+use-legacy = true
+...
+```
+
+If you need to do this, please consider filing an issue in the Tendermint repository
+to let us know why. We plan to remove the legacy P2P code in the next (v0.36) release.
+
+#### New p2p queue types
+
+The new p2p implementation enables selection of the queue type to be used for
+passing messages between peers.
+
+The following values may be used when selecting which queue type to use:
+
+* `fifo`: (**default**) An unbuffered and lossless queue that passes messages through
+in the order in which they were received.
+
+* `priority`: A priority queue of messages.
+
+* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A 
+weighted deficit round robin queue is created per peer. Each queue contains a 
+separate 'flow' for each of the channels of communication that exist between any two
+peers. Tendermint maintains a channel per message type between peers. Each WDRR
+queue maintains a shared buffered with a fixed capacity through which messages on different
+flows are passed.
+For more information on WDRR scheduling, see: https://en.wikipedia.org/wiki/Deficit_round_robin
+
+To select a queue type, add or update the following field under the `[p2p]`
+section of your server's configuration file.
+
+```toml
+[p2p]
+...
+queue-type = wdrr
+...
+```
+
 
 ### Support for Custom Reactor and Mempool Implementations
 
@@ -110,7 +199,7 @@ used, the introduction of the prioritized mempool covers nearly all of
 the use cases for custom reactors. If you are currently running custom
 reactors and mempools and are having trouble seeing the migration path
 for your project please feel free to reach out to the Tendermint Core
-development team directly. 
+development team directly.
 
 ## v0.34.0
 

@@ -16,24 +16,23 @@ import (
 
 // ShowValidatorCmd adds capabilities for showing the validator info.
 var ShowValidatorCmd = &cobra.Command{
-	Use:     "show-validator",
-	Aliases: []string{"show_validator"},
-	Short:   "Show this node's validator info",
-	RunE:    showValidator,
-	PreRun:  deprecateSnakeCase,
+	Use:   "show-validator",
+	Short: "Show this node's validator info",
+	RunE:  showValidator,
 }
 
 func showValidator(cmd *cobra.Command, args []string) error {
 	var (
 		pubKey crypto.PubKey
 		err    error
+		bctx   = cmd.Context()
 	)
-
 	//TODO: remove once gRPC is the only supported protocol
 	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidator.ListenAddr)
 	switch protocol {
 	case "grpc":
 		pvsc, err := tmgrpc.DialRemoteSigner(
+			bctx,
 			config.PrivValidator,
 			config.ChainID(),
 			logger,
@@ -43,7 +42,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(bctx, ctxTimeout)
 		defer cancel()
 
 		pubKey, err = pvsc.GetPubKey(ctx)
@@ -62,7 +61,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(bctx, ctxTimeout)
 		defer cancel()
 
 		pubKey, err = pv.GetPubKey(ctx)

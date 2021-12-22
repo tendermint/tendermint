@@ -5,7 +5,7 @@ import (
 	math "math"
 	"testing"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
@@ -84,7 +84,6 @@ func TestStatusResponse_Validate(t *testing.T) {
 	}
 }
 
-// nolint:lll
 func TestBlockchainMessageVectors(t *testing.T) {
 	block := types.MakeBlock(int64(3), []types.Tx{types.Tx("Hello World")}, nil, nil)
 	block.Version.Block = 11 // overwrite updated protocol version

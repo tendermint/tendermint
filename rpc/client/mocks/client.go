@@ -8,9 +8,7 @@ import (
 
 	context "context"
 
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
-
-	log "github.com/tendermint/tendermint/libs/log"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -115,11 +113,11 @@ func (_m *Client) Block(ctx context.Context, height *int64) (*coretypes.ResultBl
 }
 
 // BlockByHash provides a mock function with given fields: ctx, hash
-func (_m *Client) BlockByHash(ctx context.Context, hash []byte) (*coretypes.ResultBlock, error) {
+func (_m *Client) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
 	ret := _m.Called(ctx, hash)
 
 	var r0 *coretypes.ResultBlock
-	if rf, ok := ret.Get(0).(func(context.Context, []byte) *coretypes.ResultBlock); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, bytes.HexBytes) *coretypes.ResultBlock); ok {
 		r0 = rf(ctx, hash)
 	} else {
 		if ret.Get(0) != nil {
@@ -128,7 +126,7 @@ func (_m *Client) BlockByHash(ctx context.Context, hash []byte) (*coretypes.Resu
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, bytes.HexBytes) error); ok {
 		r1 = rf(ctx, hash)
 	} else {
 		r1 = ret.Error(1)
@@ -459,6 +457,52 @@ func (_m *Client) GenesisChunked(_a0 context.Context, _a1 uint) (*coretypes.Resu
 	return r0, r1
 }
 
+// Header provides a mock function with given fields: ctx, height
+func (_m *Client) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	ret := _m.Called(ctx, height)
+
+	var r0 *coretypes.ResultHeader
+	if rf, ok := ret.Get(0).(func(context.Context, *int64) *coretypes.ResultHeader); ok {
+		r0 = rf(ctx, height)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultHeader)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *int64) error); ok {
+		r1 = rf(ctx, height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HeaderByHash provides a mock function with given fields: ctx, hash
+func (_m *Client) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
+	ret := _m.Called(ctx, hash)
+
+	var r0 *coretypes.ResultHeader
+	if rf, ok := ret.Get(0).(func(context.Context, bytes.HexBytes) *coretypes.ResultHeader); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultHeader)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, bytes.HexBytes) error); ok {
+		r1 = rf(ctx, hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Health provides a mock function with given fields: _a0
 func (_m *Client) Health(_a0 context.Context) (*coretypes.ResultHealth, error) {
 	ret := _m.Called(_a0)
@@ -542,13 +586,13 @@ func (_m *Client) NumUnconfirmedTxs(_a0 context.Context) (*coretypes.ResultUncon
 	return r0, r1
 }
 
-// OnReset provides a mock function with given fields:
-func (_m *Client) OnReset() error {
-	ret := _m.Called()
+// RemoveTx provides a mock function with given fields: _a0, _a1
+func (_m *Client) RemoveTx(_a0 context.Context, _a1 types.TxKey) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context, types.TxKey) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -556,67 +600,13 @@ func (_m *Client) OnReset() error {
 	return r0
 }
 
-// OnStart provides a mock function with given fields:
-func (_m *Client) OnStart() error {
-	ret := _m.Called()
+// Start provides a mock function with given fields: _a0
+func (_m *Client) Start(_a0 context.Context) error {
+	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// OnStop provides a mock function with given fields:
-func (_m *Client) OnStop() {
-	_m.Called()
-}
-
-// Quit provides a mock function with given fields:
-func (_m *Client) Quit() <-chan struct{} {
-	ret := _m.Called()
-
-	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func() <-chan struct{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan struct{})
-		}
-	}
-
-	return r0
-}
-
-// Reset provides a mock function with given fields:
-func (_m *Client) Reset() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SetLogger provides a mock function with given fields: _a0
-func (_m *Client) SetLogger(_a0 log.Logger) {
-	_m.Called(_a0)
-}
-
-// Start provides a mock function with given fields:
-func (_m *Client) Start() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -645,34 +635,6 @@ func (_m *Client) Status(_a0 context.Context) (*coretypes.ResultStatus, error) {
 	}
 
 	return r0, r1
-}
-
-// Stop provides a mock function with given fields:
-func (_m *Client) Stop() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// String provides a mock function with given fields:
-func (_m *Client) String() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
 }
 
 // Subscribe provides a mock function with given fields: ctx, subscriber, query, outCapacity
@@ -706,11 +668,11 @@ func (_m *Client) Subscribe(ctx context.Context, subscriber string, query string
 }
 
 // Tx provides a mock function with given fields: ctx, hash, prove
-func (_m *Client) Tx(ctx context.Context, hash []byte, prove bool) (*coretypes.ResultTx, error) {
+func (_m *Client) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
 	ret := _m.Called(ctx, hash, prove)
 
 	var r0 *coretypes.ResultTx
-	if rf, ok := ret.Get(0).(func(context.Context, []byte, bool) *coretypes.ResultTx); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, bytes.HexBytes, bool) *coretypes.ResultTx); ok {
 		r0 = rf(ctx, hash, prove)
 	} else {
 		if ret.Get(0) != nil {
@@ -719,7 +681,7 @@ func (_m *Client) Tx(ctx context.Context, hash []byte, prove bool) (*coretypes.R
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []byte, bool) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, bytes.HexBytes, bool) error); ok {
 		r1 = rf(ctx, hash, prove)
 	} else {
 		r1 = ret.Error(1)
@@ -823,9 +785,4 @@ func (_m *Client) Validators(ctx context.Context, height *int64, page *int, perP
 	}
 
 	return r0, r1
-}
-
-// Wait provides a mock function with given fields:
-func (_m *Client) Wait() {
-	_m.Called()
 }

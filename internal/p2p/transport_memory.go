@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -95,9 +94,7 @@ type MemoryTransport struct {
 	nodeID     types.NodeID
 	bufferSize int
 
-	acceptCh  chan *MemoryConnection
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	acceptCh chan *MemoryConnection
 }
 
 // newMemoryTransport creates a new MemoryTransport. This is for internal use by
@@ -109,7 +106,6 @@ func newMemoryTransport(network *MemoryNetwork, nodeID types.NodeID) *MemoryTran
 		nodeID:     nodeID,
 		bufferSize: network.bufferSize,
 		acceptCh:   make(chan *MemoryConnection),
-		closeCh:    make(chan struct{}),
 	}
 }
 
@@ -118,6 +114,10 @@ func (t *MemoryTransport) String() string {
 	return string(MemoryProtocol)
 }
 
+func (*MemoryTransport) Listen(Endpoint) error { return nil }
+
+func (t *MemoryTransport) AddChannelDescriptors([]*ChannelDescriptor) {}
+
 // Protocols implements Transport.
 func (t *MemoryTransport) Protocols() []Protocol {
 	return []Protocol{MemoryProtocol}
@@ -125,28 +125,27 @@ func (t *MemoryTransport) Protocols() []Protocol {
 
 // Endpoints implements Transport.
 func (t *MemoryTransport) Endpoints() []Endpoint {
-	select {
-	case <-t.closeCh:
+	if n := t.network.GetTransport(t.nodeID); n == nil {
 		return []Endpoint{}
-	default:
-		return []Endpoint{{
-			Protocol: MemoryProtocol,
-			Path:     string(t.nodeID),
-			// An arbitrary IP and port is used in order for the pex
-			// reactor to be able to send addresses to one another.
-			IP:   net.IPv4zero,
-			Port: 0,
-		}}
 	}
+
+	return []Endpoint{{
+		Protocol: MemoryProtocol,
+		Path:     string(t.nodeID),
+		// An arbitrary IP and port is used in order for the pex
+		// reactor to be able to send addresses to one another.
+		IP:   net.IPv4zero,
+		Port: 0,
+	}}
 }
 
 // Accept implements Transport.
-func (t *MemoryTransport) Accept() (Connection, error) {
+func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
 	select {
 	case conn := <-t.acceptCh:
 		t.logger.Info("accepted connection", "remote", conn.RemoteEndpoint().Path)
 		return conn, nil
-	case <-t.closeCh:
+	case <-ctx.Done():
 		return nil, io.EOF
 	}
 }
@@ -184,20 +183,14 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	select {
 	case peer.acceptCh <- inConn:
 		return outConn, nil
-	case <-peer.closeCh:
-		return nil, io.EOF
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, io.EOF
 	}
 }
 
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)
-	t.closeOnce.Do(func() {
-		close(t.closeCh)
-		t.logger.Info("closed transport")
-	})
 	return nil
 }
 
@@ -262,11 +255,6 @@ func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
-// Status implements Connection.
-func (c *MemoryConnection) Status() conn.ConnectionStatus {
-	return conn.ConnectionStatus{}
-}
-
 // Handshake implements Connection.
 func (c *MemoryConnection) Handshake(
 	ctx context.Context,
@@ -297,11 +285,13 @@ func (c *MemoryConnection) Handshake(
 }
 
 // ReceiveMessage implements Connection.
-func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
+func (c *MemoryConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byte, error) {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
+		return 0, nil, io.EOF
+	case <-ctx.Done():
 		return 0, nil, io.EOF
 	default:
 	}
@@ -316,42 +306,25 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 }
 
 // SendMessage implements Connection.
-func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
+func (c *MemoryConnection) SendMessage(ctx context.Context, chID ChannelID, msg []byte) error {
 	// Check close first, since channels are buffered. Otherwise, below select
 	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
-		return false, io.EOF
+		return io.EOF
+	case <-ctx.Done():
+		return io.EOF
 	default:
 	}
 
 	select {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
 		c.logger.Debug("sent message", "chID", chID, "msg", msg)
-		return true, nil
+		return nil
+	case <-ctx.Done():
+		return io.EOF
 	case <-c.closer.Done():
-		return false, io.EOF
-	}
-}
-
-// TrySendMessage implements Connection.
-func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
-	// Check close first, since channels are buffered. Otherwise, below select
-	// may non-deterministically return non-error even when closed.
-	select {
-	case <-c.closer.Done():
-		return false, io.EOF
-	default:
-	}
-
-	select {
-	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
-		c.logger.Debug("sent message", "chID", chID, "msg", msg)
-		return true, nil
-	case <-c.closer.Done():
-		return false, io.EOF
-	default:
-		return false, nil
+		return io.EOF
 	}
 }
 
@@ -365,9 +338,4 @@ func (c *MemoryConnection) Close() error {
 		c.logger.Info("closed connection")
 	}
 	return nil
-}
-
-// FlushClose implements Connection.
-func (c *MemoryConnection) FlushClose() error {
-	return c.Close()
 }

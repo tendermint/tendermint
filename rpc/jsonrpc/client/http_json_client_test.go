@@ -1,7 +1,7 @@
 package client
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +21,7 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 	defer tsTLS.Close()
 	// This silences a TLS handshake error, caused by the dialer just immediately
 	// disconnecting, which we can just ignore.
-	tsTLS.Config.ErrorLog = log.New(ioutil.Discard, "", 0)
+	tsTLS.Config.ErrorLog = log.New(io.Discard, "", 0)
 
 	for _, testURL := range []string{ts.URL, tsTLS.URL} {
 		u, err := newParsedURL(testURL)

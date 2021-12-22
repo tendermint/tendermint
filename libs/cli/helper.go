@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -19,7 +18,7 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return ioutil.WriteFile(cfile, []byte(data), 0600)
+	return os.WriteFile(cfile, []byte(data), 0600)
 }
 
 // RunWithArgs executes the given command with the specified command line args
@@ -70,7 +69,10 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 			var buf bytes.Buffer
 			// io.Copy will end when we call reader.Close() below
 			io.Copy(&buf, reader) //nolint:errcheck //ignore error
-			stdC <- buf.String()
+			select {
+			case <-cmd.Context().Done():
+			case stdC <- buf.String():
+			}
 		}()
 		return &stdC
 	}

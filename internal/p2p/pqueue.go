@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"container/heap"
+	"context"
 	"sort"
 	"strconv"
 	"time"
@@ -71,7 +72,7 @@ type pqScheduler struct {
 	size         uint
 	sizes        map[uint]uint // cumulative priority sizes
 	pq           *priorityQueue
-	chDescs      []ChannelDescriptor
+	chDescs      []*ChannelDescriptor
 	capacity     uint
 	chPriorities map[ChannelID]uint
 
@@ -84,12 +85,12 @@ type pqScheduler struct {
 func newPQScheduler(
 	logger log.Logger,
 	m *Metrics,
-	chDescs []ChannelDescriptor,
+	chDescs []*ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
 ) *pqScheduler {
 
 	// copy each ChannelDescriptor and sort them by ascending channel priority
-	chDescsCopy := make([]ChannelDescriptor, len(chDescs))
+	chDescsCopy := make([]*ChannelDescriptor, len(chDescs))
 	copy(chDescsCopy, chDescs)
 	sort.Slice(chDescsCopy, func(i, j int) bool { return chDescsCopy[i].Priority < chDescsCopy[j].Priority })
 
@@ -99,7 +100,7 @@ func newPQScheduler(
 	)
 
 	for _, chDesc := range chDescsCopy {
-		chID := ChannelID(chDesc.ID)
+		chID := chDesc.ID
 		chPriorities[chID] = uint(chDesc.Priority)
 		sizes[uint(chDesc.Priority)] = 0
 	}
@@ -140,8 +141,8 @@ func (s *pqScheduler) closed() <-chan struct{} {
 }
 
 // start starts non-blocking process that starts the priority queue scheduler.
-func (s *pqScheduler) start() {
-	go s.process()
+func (s *pqScheduler) start(ctx context.Context) {
+	go s.process(ctx)
 }
 
 // process starts a block process where we listen for Envelopes to enqueue. If
@@ -153,27 +154,26 @@ func (s *pqScheduler) start() {
 //
 // After we attempt to enqueue the incoming Envelope, if the priority queue is
 // non-empty, we pop the top Envelope and send it on the dequeueCh.
-func (s *pqScheduler) process() {
+func (s *pqScheduler) process(ctx context.Context) {
 	defer s.done.Close()
 
 	for {
 		select {
 		case e := <-s.enqueueCh:
-			chIDStr := strconv.Itoa(int(e.channelID))
+			chIDStr := strconv.Itoa(int(e.ChannelID))
 			pqEnv := &pqEnvelope{
 				envelope:  e,
 				size:      uint(proto.Size(e.Message)),
-				priority:  s.chPriorities[e.channelID],
+				priority:  s.chPriorities[e.ChannelID],
 				timestamp: time.Now().UTC(),
 			}
-
-			s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
 
 			// enqueue
 
 			// Check if we have sufficient capacity to simply enqueue the incoming
 			// Envelope.
 			if s.size+pqEnv.size <= s.capacity {
+				s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
 				// enqueue the incoming Envelope
 				s.push(pqEnv)
 			} else {
@@ -203,7 +203,7 @@ func (s *pqScheduler) process() {
 							if tmpSize+pqEnv.size <= s.capacity {
 								canEnqueue = true
 							} else {
-								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.channelID))
+								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.ChannelID))
 								s.metrics.PeerQueueDroppedMsgs.With("ch_id", pqEnvTmpChIDStr).Add(1)
 								s.logger.Debug(
 									"dropped envelope",
@@ -212,6 +212,8 @@ func (s *pqScheduler) process() {
 									"msg_size", pqEnvTmp.size,
 									"capacity", s.capacity,
 								)
+
+								s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnvTmp.envelope.To)).Add(float64(-pqEnvTmp.size))
 
 								// dequeue/drop from the priority queue
 								heap.Remove(s.pq, pqEnvTmp.index)
@@ -256,14 +258,18 @@ func (s *pqScheduler) process() {
 
 				s.metrics.PeerSendBytesTotal.With(
 					"chID", chIDStr,
-					"peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
+					"peer_id", string(pqEnv.envelope.To),
+					"message_type", s.metrics.ValueToMetricLabel(pqEnv.envelope.Message)).Add(float64(pqEnv.size))
+				s.metrics.PeerPendingSendBytes.With(
+					"peer_id", string(pqEnv.envelope.To)).Add(float64(-pqEnv.size))
 				select {
 				case s.dequeueCh <- pqEnv.envelope:
 				case <-s.closer.Done():
 					return
 				}
 			}
-
+		case <-ctx.Done():
+			return
 		case <-s.closer.Done():
 			return
 		}
@@ -271,7 +277,7 @@ func (s *pqScheduler) process() {
 }
 
 func (s *pqScheduler) push(pqEnv *pqEnvelope) {
-	chIDStr := strconv.Itoa(int(pqEnv.envelope.channelID))
+	chIDStr := strconv.Itoa(int(pqEnv.envelope.ChannelID))
 
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)
