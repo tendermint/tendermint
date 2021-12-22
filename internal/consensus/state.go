@@ -1311,13 +1311,13 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
 }
 
-func (cs *State) proposalIsTimely(proposal *types.Proposal) bool {
+func (cs *State) proposalIsTimely() bool {
 	tp := types.TimingParams{
 		Precision:    cs.state.ConsensusParams.Timing.Precision,
 		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
 	}
 
-	return proposal.IsTimely(tmtime.DefaultSource{}, tp, cs.state.InitialHeight)
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.state.InitialHeight)
 }
 
 func (cs *State) defaultDoPrevote(height int64, round int32) {
@@ -1366,7 +1366,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
-			if !cs.Proposal.Valid {
+			if !cs.proposalIsTimely() {
 				logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
 				cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 				return
@@ -1905,6 +1905,8 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 //-----------------------------------------------------------------------------
 
 func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
+	recvTime := tmtime.Now()
+
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil || proposal == nil {
@@ -1932,6 +1934,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
+	cs.ProposalReceiveTime = recvTime
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
@@ -1939,10 +1942,6 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
 
-	// Mark the proposal as invalid if too far in the past or future
-	if proposal.POLRound > -1 || cs.proposalIsTimely(proposal) {
-		cs.Proposal.Valid = true
-	}
 	cs.Logger.Info("received proposal", "proposal", proposal)
 	return nil
 }

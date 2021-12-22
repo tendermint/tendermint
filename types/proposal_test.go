@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	tmtimemocks "github.com/tendermint/tendermint/libs/time/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -200,7 +199,7 @@ func TestIsTimely(t *testing.T) {
 	testCases := []struct {
 		name         string
 		proposalTime time.Time
-		localTime    time.Time
+		recvTime     time.Time
 		precision    time.Duration
 		msgDelay     time.Duration
 		expectTimely bool
@@ -211,7 +210,7 @@ func TestIsTimely(t *testing.T) {
 			// 0 - 2 <= 1 <= 0 + 1 + 2
 			name:         "basic timely",
 			proposalTime: genesisTime,
-			localTime:    genesisTime.Add(1 * time.Nanosecond),
+			recvTime:     genesisTime.Add(1 * time.Nanosecond),
 			precision:    time.Nanosecond * 2,
 			msgDelay:     time.Nanosecond,
 			expectTimely: true,
@@ -221,7 +220,7 @@ func TestIsTimely(t *testing.T) {
 			// 0 - 2 <= 4 <= 0 + 1 + 2
 			name:         "local time too large",
 			proposalTime: genesisTime,
-			localTime:    genesisTime.Add(4 * time.Nanosecond),
+			recvTime:     genesisTime.Add(4 * time.Nanosecond),
 			precision:    time.Nanosecond * 2,
 			msgDelay:     time.Nanosecond,
 			expectTimely: false,
@@ -231,7 +230,7 @@ func TestIsTimely(t *testing.T) {
 			// 4 - 2 <= 0 <= 4 + 2 + 1
 			name:         "proposal time too large",
 			proposalTime: genesisTime.Add(4 * time.Nanosecond),
-			localTime:    genesisTime,
+			recvTime:     genesisTime,
 			precision:    time.Nanosecond * 2,
 			msgDelay:     time.Nanosecond,
 			expectTimely: false,
@@ -248,10 +247,7 @@ func TestIsTimely(t *testing.T) {
 				MessageDelay: testCase.msgDelay,
 			}
 
-			mockSource := new(tmtimemocks.Source)
-			mockSource.On("Now").Return(testCase.localTime)
-
-			ti := p.IsTimely(mockSource, tp, 2)
+			ti := p.IsTimely(testCase.recvTime, tp, 2)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}

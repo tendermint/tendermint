@@ -30,7 +30,6 @@ type Proposal struct {
 	BlockID   BlockID   `json:"block_id"`
 	Timestamp time.Time `json:"timestamp"`
 	Signature []byte    `json:"signature"`
-	Valid     bool
 }
 
 // NewProposal returns a new Proposal.
@@ -90,16 +89,15 @@ func (p *Proposal) ValidateBasic() error {
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (p *Proposal) IsTimely(clock tmtime.Source, tp TimingParams, initialHeight int64) bool {
-	localTime := clock.Now()
+func (p *Proposal) IsTimely(recvTime time.Time, tp TimingParams, initialHeight int64) bool {
 	// lhs is `proposedBlockTime - Precision` in the first inequality
 	lhs := p.Timestamp.Add(-tp.Precision)
 	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
 	rhs := p.Timestamp.Add(tp.MessageDelay).Add(tp.Precision)
 
-	localTimeAfterOrEqLHS := localTime.After(lhs) || localTime.Equal(lhs)
-	localTimeBeforeOrEqRHS := localTime.Before(rhs) || localTime.Equal(rhs)
-	if localTimeAfterOrEqLHS && (p.Height == initialHeight || localTimeBeforeOrEqRHS) {
+	recvTimeAfterOrEqLHS := recvTime.After(lhs) || recvTime.Equal(lhs)
+	recvTimeBeforeOrEqRHS := recvTime.Before(rhs) || recvTime.Equal(rhs)
+	if recvTimeAfterOrEqLHS && (p.Height == initialHeight || recvTimeBeforeOrEqRHS) {
 		return true
 	}
 	return false
