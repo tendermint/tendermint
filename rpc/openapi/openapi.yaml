@@ -365,10 +365,14 @@ paths:
         import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := rpchttp.New("tcp://0.0.0.0:26657")
-        err := client.Start()
+        client, err := rpchttp.New("tcp://0.0.0.0:26657", "/websocket")
         if err != nil {
-          handle error
+          // handle error
+        }
+
+        err = client.Start()
+        if err != nil {
+          // handle error
         }
         defer client.Stop()
         ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
@@ -376,7 +380,7 @@ paths:
         query := "tm.event = 'Tx' AND tx.height = 3"
         txs, err := client.Subscribe(ctx, "test-client", query)
         if err != nil {
-          handle error
+          // handle error
         }
 
         go func() {
@@ -422,16 +426,20 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := rpchttp.New("tcp://0.0.0.0:26657")
+        client, err := rpchttp.New("tcp://0.0.0.0:26657", "/websocket")
+        if err != nil {
+          // handle error
+        }
+
         err := client.Start()
         if err != nil {
-           handle error
+          // handle error
         }
         defer client.Stop()
         query := "tm.event = 'Tx' AND tx.height = 3"
         err = client.Unsubscribe(context.Background(), "test-client", query)
         if err != nil {
-           handle error
+          // handle error
         }
         ```
       parameters:
