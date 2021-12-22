@@ -304,7 +304,7 @@ From the App's perspective, they'll probably skip ProcessProposal
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
     | modified_tx             | bool                                             | The Application sets it to true to denote it made changes to transactions                   | 1            |
     | tx                      | repeated [TransactionRecord](#transactionrecord) | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
-    | data                    | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
+    | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
     | tx_result               | repeated [DeliverTxResult](#delivertxresult)     | List of structures containing the data resulting from executing the transactions            | 4            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
@@ -319,7 +319,7 @@ From the App's perspective, they'll probably skip ProcessProposal
       them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified_tx` is set to true.
     * If `ResponsePrepareProposal.modified_tx` is false, then Tendermint will ignore the contents of
       `ResponsePrepareProposal.tx`.
-    * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.data`,
+    * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_result`, `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as a result of executing the block.
       * The values for `ResponsePrepareProposal.validator_updates`, or
@@ -380,10 +380,10 @@ and _p_'s _validValue_ is `nil`:
 2. _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block.
    The call is synchronous: Tendermint's execution will block until the Application returns from the call.
 3. The Application checks the block (header, transactions, commit info, evidences). Besides,
-    * in same-block execution mode, the Application can (and should) provide `ResponsePrepareProposal.data`,
+    * in same-block execution mode, the Application can (and should) provide `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.validator_updates`, or
       `ResponsePrepareProposal.consensus_param_updates`.
-    * in "next-block execution" mode, _p_'s Tendermint will ignore the values for `ResponsePrepareProposal.data`,
+    * in "next-block execution" mode, _p_'s Tendermint will ignore the values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * in both modes, the Application can manipulate transactions
         * leave transactions untouched - `TxAction = UNMODIFIED`
@@ -427,8 +427,14 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
         * The Application may fully execute the block as though it was handling `RequestFinalizeBlock`.
           However, any resulting state changes must be kept as _canditade state_,
           and the Application should be ready to backtrack/discard it in case the decided block is different.
-    * The header contains the height, timestamp, and more - it exactly matches the
-      Tendermint block header.
+    * The header exactly matches the Tendermint header of the proposed block.
+        * In next-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
+           and _ConsensusHash_ refer to the **last committed block** (data was provided by the last call to
+          `ResponseFinalizeBlock`).
+        * In same-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
+          and _ConsensusHash_ refer to the **same** block being passed in the `Request*` call to this
+          method (data was provided by the call to `ResponsePrepareProposal` at the current height that
+          resulted in the block being passed in the `Request*` call to this method)
     * If `ResponseProcessProposal.accept` is _false_, Tendermint assumes the proposal received
       is not valid.
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
@@ -466,10 +472,10 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 
 * **Request**:
 
-    | Name   | Type  | Description                                                           | Field Number |
-    |--------|-------|-----------------------------------------------------------------------|--------------|
-    | hash   | bytes | The hash of the proposed block that the vote extension is to refer to | 1            |
-    | height | int64 | Height of the proposed block (for sanity check).                      | 2            |
+    | Name   | Type  | Description                                                                  | Field Number |
+    |--------|-------|------------------------------------------------------------------------------|--------------|
+    | hash   | bytes | The header hash of the proposed block that the vote extension is to refer to | 1            |
+    | height | int64 | Height of the proposed block (for sanity check).                             | 2            |
 
 * **Response**:
 
@@ -510,7 +516,7 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
     | Name      | Type  | Description                                                                              | Field Number |
     |-----------|-------|------------------------------------------------------------------------------------------|--------------|
     | extension | bytes | Sender Application's vote extension to be validated                                      | 1            |
-    | hash      | bytes | The hash of the propsed block that the vote extension refers to                          | 2            |
+    | hash      | bytes | The header hash of the propsed block that the vote extension refers to                   | 2            |
     | address   | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension | 3            |
     | height    | int64 | Height of the block  (for sanity check).                                                 | 4            |
 
@@ -569,46 +575,45 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | tx_result               | repeated [DeliverTxResult](#delivertxresult)                | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
-    | app_data                | bytes                                                       | The Merkle root hash of the application state.                                   | 6            |
+    | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 6            |
     | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 7            |
 
 * **Usage**:
     * Contains a newly decided block.
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
       `EndBlock`, `Commit` in the previous version of ABCI.
-    * The header contains the height, timestamp, and more - it exactly matches the
-      Tendermint block header.
+    * The header exactly matches the Tendermint header of the proposed block.
     * The Application can use `RequestFinalizeBlock.last_commit_info` and `RequestFinalizeBlock.byzantine_validators`
       to determine rewards and punishments for the validators.
     * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.tx`,
       before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
       previously executed via `PrepareProposal` or `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_result[i].Code == 0` only if the _i_-th transaction is fully valid.
-    * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_data`,
+    * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash`,
       `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates` as a result of executing the block.
-      * The values for `ResponseFinalizeBlock.validator_updates`, or
-        `ResponseFinalizeBlock.consensus_param_updates` may be empty. In this case, Tendermint will keep
-        the current values.
-      * `ResponseFinalizeBlock.validator_updates`, triggered by block `H`, affect validation
-        for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
-          * `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
-          * `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
-          * `H+3`: `last_commit_info` is changed to include the altered validator set.
-      * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-        params for block `H+1`. For more information on the consensus parameters,
-        see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
-    * In same-block execution mode, Tendermint will ignore values for `ResponseFinalizeBlock.app_data`,
+        * The values for `ResponseFinalizeBlock.validator_updates`, or
+          `ResponseFinalizeBlock.consensus_param_updates` may be empty. In this case, Tendermint will keep
+          the current values.
+        * `ResponseFinalizeBlock.validator_updates`, triggered by block `H`, affect validation
+          for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
+              * `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
+              * `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
+              * `H+3`: `last_commit_info` is changed to include the altered validator set.
+        * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
+          params for block `H+1`. For more information on the consensus parameters,
+          see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+    * In same-block execution mode, Tendermint will ignore values for `ResponseFinalizeBlock.app_hash`,
       `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as those data have been provided by `PrepareProposal`.
     * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
-    * `ResponseFinalizeBlock.app_data` contains an (optional) Merkle root hash of the application state.
-    * `ResponseFinalizeBlock.app_data` is included
+    * `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state.
+    * `ResponseFinalizeBlock.app_hash` is included
         * [in next-block execution mode] as the `Header.AppHash` in the next block.
         * [in same-block execution mode] as the `Header.AppHash` in the current block. In this case,
           `PrepareProposal` is required to fully execute the block and set the App hash before
           returning the proposed block to Tendermint.
-        * `ResponseFinalizeBlock.app_data` may also be empty or hard-coded, but MUST be
+        * `ResponseFinalizeBlock.app_hash` may also be empty or hard-coded, but MUST be
           **deterministic** - it must not be a function of anything that did not come from the parameters
           of `RequestFinalizeBlock` and the previous committed state.
     * Later calls to `Query` can return proofs about the application state anchored

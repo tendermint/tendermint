@@ -84,7 +84,7 @@ it is already included.
 ### `DeliverTxResult` (as part of `FinalizeBlock`)
 
 The `DeliverTxResult` type delivers transactions from Tendermint to the Application.
-When Tendermint receives a `ReponseFinalizeBlock` containing a `DeliverTxResult`
+When Tendermint receives a `ResponseFinalizeBlock` containing a `DeliverTxResult`
 with a non-zero `Code`, the response code is logged.
 The transaction was already included in a block, so the `Code` does not influence
 Tendermint consensus.
