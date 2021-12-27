@@ -571,9 +571,11 @@ type P2PConfig struct { //nolint: maligned
 
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
-	// NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
-	// TODO: Remove once p2p refactor is complete
-	// ref: https://github.com/tendermint/tendermint/issues/5670
+	//
+	// Deprecated: This value is not used by the new PEX reactor. Use
+	// BootstrapPeers instead.
+	//
+	// TODO(#5670): Remove once the p2p refactor is complete.
 	Seeds string `mapstructure:"seeds"`
 
 	// Comma separated list of peers to be added to the peer store
