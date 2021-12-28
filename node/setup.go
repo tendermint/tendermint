@@ -636,7 +636,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, cfg *config.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    tmstrings.SplitAndTrimEmpty(cfg.P2P.Seeds, ",", " "),
+		Seeds:    tmstrings.SplitAndTrimEmpty(cfg.P2P.Seeds, ",", " "), //nolint: staticcheck
 		SeedMode: cfg.Mode == config.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
