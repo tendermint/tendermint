@@ -10,17 +10,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func mustTempPath(t *testing.T, name string) string {
-	t.Helper()
-
-	dir, err := os.MkdirTemp(t.TempDir(), t.Name()+"*")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(dir) })
-	return filepath.Join(dir, name)
-}
-
 func TestLoadOrGenNodeKey(t *testing.T) {
-	filePath := mustTempPath(t, "peer_id.json")
+	filePath := filepath.Join(t.TempDir(), "peer_id.json")
 
 	nodeKey, err := types.LoadOrGenNodeKey(filePath)
 	require.Nil(t, err)
@@ -31,7 +22,7 @@ func TestLoadOrGenNodeKey(t *testing.T) {
 }
 
 func TestLoadNodeKey(t *testing.T) {
-	filePath := mustTempPath(t, "peer_id.json")
+	filePath := filepath.Join(t.TempDir(), "peer_id.json")
 
 	_, err := types.LoadNodeKey(filePath)
 	require.True(t, os.IsNotExist(err))
@@ -45,7 +36,7 @@ func TestLoadNodeKey(t *testing.T) {
 }
 
 func TestNodeKeySaveAs(t *testing.T) {
-	filePath := mustTempPath(t, "peer_id.json")
+	filePath := filepath.Join(t.TempDir(), "peer_id.json")
 	require.NoFileExists(t, filePath)
 
 	nodeKey := types.GenNodeKey()
