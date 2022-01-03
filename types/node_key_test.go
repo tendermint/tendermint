@@ -13,7 +13,7 @@ import (
 func mustTempPath(t *testing.T, name string) string {
 	t.Helper()
 
-	dir, err := os.MkdirTemp("", t.Name()+"*")
+	dir, err := os.MkdirTemp(t.TempDir(), t.Name()+"*")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(dir) })
 	return filepath.Join(dir, name)
