@@ -8,6 +8,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/light/provider"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -122,11 +123,20 @@ type ValidatorInfo struct {
 	VotingPower int64          `json:"voting_power"`
 }
 
+// Info about the status of the light client
+type LightClientInfo struct {
+	Primary           provider.Provider   `json:"primary"`
+	Witnesses         []provider.Provider `json:"witnesses"`
+	LastTrustedHeight int64               `json:"last_trusted_height"`
+	LastTrustedHash   bytes.HexBytes      `json:"last_trusted_hash"`
+}
+
 // Node Status
 type ResultStatus struct {
-	NodeInfo      types.NodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo       `json:"sync_info"`
-	ValidatorInfo ValidatorInfo  `json:"validator_info"`
+	NodeInfo        types.NodeInfo  `json:"node_info"`
+	SyncInfo        SyncInfo        `json:"sync_info"`
+	ValidatorInfo   ValidatorInfo   `json:"validator_info"`
+	LightClientInfo LightClientInfo `json:"light_client_info"`
 }
 
 // Is TxIndexing enabled

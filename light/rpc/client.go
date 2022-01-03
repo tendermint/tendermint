@@ -32,6 +32,7 @@ type LightClient interface {
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
 	VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error)
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
+	Status(ctx context.Context) (*coretypes.ResultStatus, error)
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -125,7 +126,7 @@ func (c *Client) OnStop() {
 }
 
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
-	return c.next.Status(ctx)
+	return c.lc.Status(ctx)
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
