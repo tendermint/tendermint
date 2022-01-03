@@ -9,7 +9,7 @@ import (
 )
 
 func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
-	blocks := make([]*types.Block, 0, n)
+	blocks := make([]*types.Block, n)
 
 	var (
 		prevBlock     *types.Block
