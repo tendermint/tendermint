@@ -1223,7 +1223,6 @@ func (cs *State) isProposer(address []byte) bool {
 func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round int32) {
 	var block *types.Block
 	var blockParts *types.PartSet
-	var err error
 
 	// Decide on block
 	if cs.ValidBlock != nil {
