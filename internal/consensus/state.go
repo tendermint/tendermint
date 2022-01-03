@@ -1231,6 +1231,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
+		var err error
 		block, blockParts, err = cs.createProposalBlock()
 		if block == nil || err != nil {
 			return
