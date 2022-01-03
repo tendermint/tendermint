@@ -143,8 +143,8 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(p testReactorParams) *BlockchainReactor {
-	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
+	store, state, _ := newReactorStore(t, p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
 
 	var appl blockApplier
@@ -392,7 +392,7 @@ func TestReactorHelperMode(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			reactor := newTestReactor(params)
+			reactor := newTestReactor(t, params)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
 			err := reactor.Start()
@@ -435,7 +435,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
 
-	reactor := newTestReactor(testReactorParams{
+	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),
 		genDoc:   genDoc,
 		privVals: privVals,
@@ -474,6 +474,7 @@ func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower 
 // Why are we importing the entire blockExecutor dependency graph here
 // when we have the facilities to
 func newReactorStore(
+	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
 	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
@@ -525,9 +526,12 @@ func newReactorStore(
 				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
+		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit)
+		require.NoError(t, err)
 
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
+
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)

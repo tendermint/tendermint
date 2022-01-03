@@ -148,7 +148,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 func TestReportConflictingVotes(t *testing.T) {
 	var height int64 = 10
 
-	pool, pv := defaultTestPool(height)
+	pool, pv := defaultTestPool(t, height)
 	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID)
 
@@ -182,7 +182,7 @@ func TestReportConflictingVotes(t *testing.T) {
 
 func TestEvidencePoolUpdate(t *testing.T) {
 	height := int64(21)
-	pool, val := defaultTestPool(height)
+	pool, val := defaultTestPool(t, height)
 	state := pool.State()
 
 	// create new block (no need to save it to blockStore)
@@ -215,7 +215,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
-	pool, val := defaultTestPool(height)
+	pool, val := defaultTestPool(t, height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
 		val, evidenceChainID)
 	err := pool.AddEvidence(ev)
@@ -227,7 +227,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 
 func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
-	pool, val := defaultTestPool(height)
+	pool, val := defaultTestPool(t, height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
 		val, evidenceChainID)
 	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
@@ -307,7 +307,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	stateStore := initializeValidatorState(val, height)
 	state, err := stateStore.Load()
 	require.NoError(t, err)
-	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	blockStore, err := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	require.NoError(t, err)
 	// create previous pool and populate it
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
@@ -399,22 +400,29 @@ func initializeValidatorState(privVal types.PrivValidator, height int64) sm.Stor
 
 // initializeBlockStore creates a block storage and populates it w/ a dummy
 // block at +height+.
-func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.BlockStore {
+func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.BlockStore, error) {
 	blockStore := store.NewBlockStore(db)
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
 		lastCommit := makeCommit(i-1, valAddr)
-		block := sf.MakeBlock(state, i, lastCommit)
+		block, err := sf.MakeBlock(state, i, lastCommit)
+		if err != nil {
+			return nil, err
+		}
+
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		block.Header.Version = tmversion.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
-		partSet := block.MakePartSet(parts)
+		partSet, err := block.MakePartSet(parts)
+		if err != nil {
+			return nil, err
+		}
 
 		seenCommit := makeCommit(i, valAddr)
 		blockStore.SaveBlock(block, partSet, seenCommit)
 	}
 
-	return blockStore
+	return blockStore, nil
 }
 
 func makeCommit(height int64, valAddr []byte) *types.Commit {
@@ -427,13 +435,15 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }
 
-func defaultTestPool(height int64) (*evidence.Pool, types.MockPV) {
+func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) {
+	t.Helper()
 	val := types.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(val, height)
 	state, _ := stateStore.Load()
-	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	blockStore, err := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	require.NoError(t, err)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	if err != nil {
 		panic("test evidence pool could not be created")

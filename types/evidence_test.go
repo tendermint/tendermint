@@ -245,9 +245,8 @@ func makeVote(
 
 	vpb := v.ToProto()
 	err = val.SignVote(chainID, vpb)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
+
 	v.Signature = vpb.Signature
 	return v
 }

@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"fmt"
+	stdlog "log"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -133,9 +134,17 @@ var (
 
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
+	var err error
 	state, _, cleanup = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	block = factory.MakeBlock(state, 1, new(types.Commit))
-	partSet = block.MakePartSet(2)
+	block, err = factory.MakeBlock(state, 1, new(types.Commit))
+
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	partSet, err = block.MakePartSet(2)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)
 	seenCommit1 = makeTestCommit(10, tmtime.Now())
@@ -161,8 +170,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
-	validPartSet := block.MakePartSet(2)
+	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+	require.NoError(t, err)
+	validPartSet, err := block.MakePartSet(2)
+	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
@@ -170,7 +181,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
-	_, err := uncontiguousPartSet.AddPart(part2)
+	_, err = uncontiguousPartSet.AddPart(part2)
 	require.Error(t, err)
 
 	header1 := types.Header{
@@ -364,8 +375,10 @@ func TestLoadBaseMeta(t *testing.T) {
 	bs := NewBlockStore(dbm.NewMemDB())
 
 	for h := int64(1); h <= 10; h++ {
-		block := factory.MakeBlock(state, h, new(types.Commit))
-		partSet := block.MakePartSet(2)
+		block, err := factory.MakeBlock(state, h, new(types.Commit))
+		require.NoError(t, err)
+		partSet, err := block.MakePartSet(2)
+		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
@@ -432,8 +445,10 @@ func TestPruneBlocks(t *testing.T) {
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
-		block := factory.MakeBlock(state, h, new(types.Commit))
-		partSet := block.MakePartSet(2)
+		block, err := factory.MakeBlock(state, h, new(types.Commit))
+		require.NoError(t, err)
+		partSet, err := block.MakePartSet(2)
+		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
@@ -541,9 +556,11 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+	require.NoError(t, err)
 
-	partSet := block.MakePartSet(2)
+	partSet, err := block.MakePartSet(2)
+	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")

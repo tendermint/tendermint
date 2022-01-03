@@ -53,6 +53,7 @@ type BlockchainReactorPair struct {
 }
 
 func newBlockchainReactor(
+	t *testing.T,
 	logger log.Logger,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
@@ -113,9 +114,11 @@ func newBlockchainReactor(
 				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
+		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit)
+		require.NoError(t, err)
 
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
@@ -141,8 +144,8 @@ func TestNoBlockResponse(t *testing.T) {
 
 	reactorPairs := make([]BlockchainReactorPair, 2)
 
-	reactorPairs[0] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
-	reactorPairs[1] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[0] = newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
@@ -203,7 +206,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	// Other chain needs a different validator set
 	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
-	otherChain := newBlockchainReactor(log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
+	otherChain := newBlockchainReactor(t, log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
 	defer func() {
 		err := otherChain.reactor.Stop()
@@ -214,10 +217,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	reactorPairs := make([]BlockchainReactorPair, 4)
 
-	reactorPairs[0] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
-	reactorPairs[1] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
-	reactorPairs[2] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
-	reactorPairs[3] = newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[0] = newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[2] = newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[3] = newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
@@ -255,7 +258,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	// race, but can't be easily avoided.
 	reactorPairs[3].reactor.store = otherChain.reactor.store
 
-	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)
+	lastReactorPair := newBlockchainReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {

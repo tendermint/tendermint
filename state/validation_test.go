@@ -79,9 +79,10 @@ func TestValidateBlockHeader(t *testing.T) {
 			Invalid blocks don't pass
 		*/
 		for _, tc := range testCases {
-			block := sf.MakeBlock(state, height, lastCommit)
+			block, err := sf.MakeBlock(state, height, lastCommit)
+			require.NoError(t, err)
 			tc.malleateBlock(block)
-			err := blockExec.ValidateBlock(state, block)
+			err = blockExec.ValidateBlock(state, block)
 			require.Error(t, err, tc.name)
 		}
 
@@ -135,7 +136,8 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.LastBlockID,
 				[]types.CommitSig{wrongHeightVote.CommitSig()},
 			)
-			block := sf.MakeBlock(state, height, wrongHeightCommit)
+			block, err := sf.MakeBlock(state, height, wrongHeightCommit)
+			require.NoError(t, err)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
 			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
@@ -143,7 +145,8 @@ func TestValidateBlockCommit(t *testing.T) {
 			/*
 				#2589: test len(block.LastCommit.Signatures) == state.LastValidators.Size()
 			*/
-			block = sf.MakeBlock(state, height, wrongSigsCommit)
+			block, err = sf.MakeBlock(state, height, wrongSigsCommit)
+			require.NoError(t, err)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitSignatures := err.(types.ErrInvalidCommitSignatures)
 			require.True(t, isErrInvalidCommitSignatures,
@@ -250,8 +253,10 @@ func TestValidateBlockEvidence(t *testing.T) {
 				evidence = append(evidence, newEv)
 				currentBytes += int64(len(newEv.Bytes()))
 			}
-			block, _ := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
-			err := blockExec.ValidateBlock(state, block)
+			block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+			require.NoError(t, err)
+
+			err = blockExec.ValidateBlock(state, block)
 			if assert.Error(t, err) {
 				_, ok := err.(*types.ErrEvidenceOverflow)
 				require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d but got %v", height, err)
