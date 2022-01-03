@@ -335,7 +335,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 
-	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	blockStore, err := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	require.NoError(t, err)
 
 	// create previous pool and populate it
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
@@ -434,22 +435,29 @@ func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height 
 
 // initializeBlockStore creates a block storage and populates it w/ a dummy
 // block at +height+.
-func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.BlockStore {
+func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.BlockStore, error) {
 	blockStore := store.NewBlockStore(db)
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
 		lastCommit := makeCommit(i-1, valAddr)
-		block := sf.MakeBlock(state, i, lastCommit)
+		block, err := sf.MakeBlock(state, i, lastCommit)
+		if err != nil {
+			return nil, err
+		}
+
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
-		partSet := block.MakePartSet(parts)
+		partSet, err := block.MakePartSet(parts)
+		if err != nil {
+			return nil, err
+		}
 
 		seenCommit := makeCommit(i, valAddr)
 		blockStore.SaveBlock(block, partSet, seenCommit)
 	}
 
-	return blockStore
+	return blockStore, nil
 }
 
 func makeCommit(height int64, valAddr []byte) *types.Commit {
@@ -464,12 +472,14 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 }
 
 func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) {
+	t.Helper()
 	val := types.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(t, val, height)
 	state, _ := stateStore.Load()
-	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	blockStore, err := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	require.NoError(t, err)
 
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err, "test evidence pool could not be created")

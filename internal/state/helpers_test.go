@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -69,13 +71,17 @@ func makeAndApplyGoodBlock(
 	blockExec *sm.BlockExecutor,
 	evidence []types.Evidence,
 ) (sm.State, types.BlockID, error) {
-	block, _ := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	if err != nil {
+		return state, types.BlockID{}, err
+	}
+
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, types.BlockID{}, err
 	}
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
-	state, err := blockExec.ApplyBlock(ctx, state, blockID, block)
+	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	if err != nil {
 		return state, types.BlockID{}, err
 	}
@@ -147,11 +153,13 @@ func genValSet(size int) *types.ValidatorSet {
 }
 
 func makeHeaderPartsResponsesValPubKeyChange(
+	t *testing.T,
 	state sm.State,
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	require.NoError(t, err)
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -160,13 +168,10 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
-		if err != nil {
-			panic(err)
-		}
+		require.NoError(t, err)
 		pbPk, err := encoding.PubKeyToProto(pubkey)
-		if err != nil {
-			panic(err)
-		}
+		require.NoError(t, err)
+
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
 				{PubKey: vPbPk, Power: 0},
@@ -179,11 +184,14 @@ func makeHeaderPartsResponsesValPubKeyChange(
 }
 
 func makeHeaderPartsResponsesValPowerChange(
+	t *testing.T,
 	state sm.State,
 	power int64,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	require.NoError(t, err)
+
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -207,11 +215,13 @@ func makeHeaderPartsResponsesValPowerChange(
 }
 
 func makeHeaderPartsResponsesParams(
+	t *testing.T,
 	state sm.State,
 	params *types.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	require.NoError(t, err)
 	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
