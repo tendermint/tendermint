@@ -13,6 +13,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -1145,4 +1146,26 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 	return errors.As(err, &provider.ErrUnreliableProvider{}) ||
 		errors.As(err, &provider.ErrBadLightBlock{}) ||
 		errors.Is(err, provider.ErrConnectionClosed)
+}
+
+func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
+
+	lightClientInfo := coretypes.LightClientInfo{}
+	// ToDo Add error handling
+	lastTrustedHeight, _ := c.LastTrustedHeight()
+
+	lightClientInfo = coretypes.LightClientInfo{
+		Primary:           c.Primary(),
+		Witnesses:         c.Witnesses(),
+		LastTrustedHeight: lastTrustedHeight,
+		LastTrustedHash:   nil,
+	}
+	result := &coretypes.ResultStatus{
+		NodeInfo:        types.NodeInfo{},
+		SyncInfo:        coretypes.SyncInfo{},
+		ValidatorInfo:   coretypes.ValidatorInfo{},
+		LightClientInfo: lightClientInfo,
+	}
+
+	return result, nil
 }
