@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	stdlog "log"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -78,14 +79,13 @@ func TestMain(m *testing.M) {
 	var err error
 	state, _, cleanup = makeStateAndBlockStore(log.NewNopLogger())
 	block, err = factory.MakeBlock(state, 1, new(types.Commit))
+
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		stdlog.Fatal(err)
 	}
 	partSet, err = block.MakePartSet(2)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		stdlog.Fatal(err)
 	}
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)

@@ -230,8 +230,8 @@ func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
 
 // Create proposal block from cs1 but sign it with vs.
 func decideProposal(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	cs1 *State,
 	vs *validatorStub,
 	height int64,
