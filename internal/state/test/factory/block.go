@@ -25,7 +25,7 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 			return nil, err
 		}
 
-		blocks = append(blocks, block)
+		blocks[i] = block
 
 		prevBlock = block
 		prevBlockMeta = types.NewBlockMeta(block, parts)
