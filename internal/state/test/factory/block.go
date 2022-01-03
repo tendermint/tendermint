@@ -8,8 +8,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
-	blocks := make([]*types.Block, 0)
+func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
+	blocks := make([]*types.Block, 0, n)
 
 	var (
 		prevBlock     *types.Block
@@ -20,7 +20,11 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 	for i := 0; i < n; i++ {
 		height := int64(i + 1)
 
-		block, parts := makeBlockAndPartSet(*state, prevBlock, prevBlockMeta, privVal, height)
+		block, parts, err := makeBlockAndPartSet(*state, prevBlock, prevBlockMeta, privVal, height)
+		if err != nil {
+			return nil, err
+		}
+
 		blocks = append(blocks, block)
 
 		prevBlock = block
@@ -32,23 +36,31 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 		state.LastBlockHeight = height
 	}
 
-	return blocks
+	return blocks, nil
 }
 
-func MakeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(
+func MakeBlock(state sm.State, height int64, c *types.Commit) (*types.Block, error) {
+	block, _, err := state.MakeBlock(
 		height,
 		factory.MakeTenTxs(state.LastBlockHeight),
 		c,
 		nil,
 		state.Validators.GetProposer().Address,
 	)
-	return block
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
 }
 
-func makeBlockAndPartSet(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
-
+func makeBlockAndPartSet(
+	state sm.State,
+	lastBlock *types.Block,
+	lastBlockMeta *types.BlockMeta,
+	privVal types.PrivValidator,
+	height int64,
+) (*types.Block, *types.PartSet, error) {
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	if height > 1 {
 		vote, _ := factory.MakeVote(

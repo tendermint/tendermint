@@ -53,8 +53,11 @@ func TestApplyBlock(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.Nil(t, err)
@@ -109,7 +112,8 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
-		block := sf.MakeBlock(state, 2, lastCommit)
+		block, err := sf.MakeBlock(state, 2, lastCommit)
+		require.NoError(t, err)
 
 		_, err = sm.ExecCommitBlock(ctx, nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
 		require.Nil(t, err, tc.desc)
@@ -214,10 +218,14 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mmock.Mempool{}, evpool, blockStore)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
-	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+
+	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.Nil(t, err)
@@ -394,8 +402,11 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
 	pk, err := encoding.PubKeyToProto(pubkey)
@@ -452,8 +463,11 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		blockStore,
 	)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	vp, err := encoding.PubKeyToProto(state.Validators.Validators[0].PubKey)
 	require.NoError(t, err)

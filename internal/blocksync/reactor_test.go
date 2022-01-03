@@ -152,8 +152,10 @@ func (rts *reactorTestSuite) addNode(
 			)
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit)
+		require.NoError(t, err)
+		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)

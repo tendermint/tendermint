@@ -104,7 +104,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
-) (*types.Block, *types.PartSet) {
+) (*types.Block, *types.PartSet, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
@@ -603,7 +603,12 @@ func ExecCommitBlock(
 			return nil, err
 		}
 
-		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
+		bps, err := block.MakePartSet(types.BlockPartSizeBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 		fireEvents(ctx, be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
 	}
 
