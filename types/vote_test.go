@@ -16,19 +16,20 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-func examplePrevote() *Vote {
-	return exampleVote(byte(tmproto.PrevoteType))
+func examplePrevote(t *testing.T) *Vote {
+	t.Helper()
+	return exampleVote(t, byte(tmproto.PrevoteType))
 }
 
-func examplePrecommit() *Vote {
-	return exampleVote(byte(tmproto.PrecommitType))
+func examplePrecommit(t testing.TB) *Vote {
+	t.Helper()
+	return exampleVote(t, byte(tmproto.PrecommitType))
 }
 
-func exampleVote(t byte) *Vote {
+func exampleVote(tb testing.TB, t byte) *Vote {
+	tb.Helper()
 	var stamp, err = time.Parse(TimeFormat, "2017-12-25T03:00:01.234Z")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(tb, err)
 
 	return &Vote{
 		Type:      tmproto.SignedMsgType(t),
@@ -48,7 +49,7 @@ func exampleVote(t byte) *Vote {
 }
 
 func TestVoteSignable(t *testing.T) {
-	vote := examplePrecommit()
+	vote := examplePrecommit(t)
 	v := vote.ToProto()
 	signBytes := VoteSignBytes("test_chain_id", v)
 	pb := CanonicalizeVote("test_chain_id", v)
@@ -152,7 +153,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	pubkey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	vote := examplePrecommit()
+	vote := examplePrecommit(t)
 	v := vote.ToProto()
 	signBytes := VoteSignBytes("test_chain_id", v)
 
@@ -204,7 +205,7 @@ func TestVoteVerify(t *testing.T) {
 	pubkey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 
-	vote := examplePrevote()
+	vote := examplePrevote(t)
 	vote.ValidatorAddress = pubkey.Address()
 
 	err = vote.Verify("test_chain_id", ed25519.GenPrivKey().PubKey())
@@ -219,13 +220,13 @@ func TestVoteVerify(t *testing.T) {
 }
 
 func TestVoteString(t *testing.T) {
-	str := examplePrecommit().String()
+	str := examplePrecommit(t).String()
 	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
-	str2 := examplePrevote().String()
+	str2 := examplePrevote(t).String()
 	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}`
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
@@ -254,7 +255,7 @@ func TestVoteValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote := examplePrecommit()
+			vote := examplePrecommit(t)
 			v := vote.ToProto()
 			err := privVal.SignVote(context.Background(), "test_chain_id", v)
 			vote.Signature = v.Signature
@@ -267,7 +268,7 @@ func TestVoteValidateBasic(t *testing.T) {
 
 func TestVoteProtobuf(t *testing.T) {
 	privVal := NewMockPV()
-	vote := examplePrecommit()
+	vote := examplePrecommit(t)
 	v := vote.ToProto()
 	err := privVal.SignVote(context.Background(), "test_chain_id", v)
 	vote.Signature = v.Signature
@@ -297,22 +298,21 @@ func TestVoteProtobuf(t *testing.T) {
 
 var sink interface{}
 
-var protoVote *tmproto.Vote
-var sampleCommit *Commit
-
-func init() {
-	protoVote = examplePrecommit().ToProto()
+func getSampleCommit(t testing.TB) *Commit {
+	t.Helper()
 
 	lastID := makeBlockIDRandom()
-	voteSet, _, vals := randVoteSet(2, 1, tmproto.PrecommitType, 10, 1)
+	voteSet, _, vals := randVoteSet(t, 2, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(lastID, 2, 1, voteSet, vals, time.Now())
-	if err != nil {
-		panic(err)
-	}
-	sampleCommit = commit
+	require.NoError(t, err)
+
+	return commit
 }
 
 func BenchmarkVoteSignBytes(b *testing.B) {
+	protoVote := examplePrecommit(b).ToProto()
+
+	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
@@ -328,7 +328,11 @@ func BenchmarkVoteSignBytes(b *testing.B) {
 }
 
 func BenchmarkCommitVoteSignBytes(b *testing.B) {
+
+	sampleCommit := getSampleCommit(b)
+
 	b.ReportAllocs()
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		for index := range sampleCommit.Signatures {

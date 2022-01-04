@@ -97,7 +97,7 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
+	voteSet, valSet, privVals := randVoteSet(t, height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
@@ -156,7 +156,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
+	voteSet, valSet, privVals := randVoteSet(t, height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
 	header.ValidatorsHash = valSet.Hash()
@@ -332,7 +332,7 @@ func TestEvidenceVectors(t *testing.T) {
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := deterministicVoteSet(ctx, height, 1, tmproto.PrecommitType, 1)
+	voteSet, valSet, privVals := deterministicVoteSet(ctx, t, height, 1, tmproto.PrecommitType, 1)
 	header := &Header{
 		Version:            version.Consensus{Block: 1, App: 1},
 		ChainID:            chainID,
