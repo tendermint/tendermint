@@ -205,13 +205,10 @@ func TestClient_SequentialVerification(t *testing.T) {
 		},
 	}
 
-	bctx, bcancel := context.WithCancel(context.Background())
-	defer bcancel()
-
 	for _, tc := range testCases {
 		testCase := tc
 		t.Run(testCase.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(bctx)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			mockNode := mockNodeFromHeadersAndVals(testCase.otherHeaders, testCase.vals)
@@ -1059,12 +1056,10 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 		},
 	}
 
-	bctx, bcancel := context.WithCancel(context.Background())
-	defer bcancel()
 	for i, tc := range testCases {
 		testCase := tc
 		t.Run(fmt.Sprintf("case: %d", i), func(t *testing.T) {
-			ctx, cancel := context.WithCancel(bctx)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			mockBadNode := mockNodeFromHeadersAndVals(testCase.headers, testCase.vals)
