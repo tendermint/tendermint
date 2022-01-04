@@ -75,8 +75,8 @@ to these parameters will no longer be possible; instead, the application will co
 updating the parameters. Applications using the Cosmos SDK will be automatically be
 able to change the values of these consensus parameters [via a governance proposal][cosmos-sdk-consensus-params].
 
-This change is low risk. While these values may be configured, many running chains
-do not change these parameters from their default values. For example, initializing
+This change is low-risk. While parameters are locally configurable, many running chains
+do not change them from their default values. For example, initializing
 a node on Osmosis, Terra, and the Cosmos Hub using the their `init` command produces
 a `config.toml` with Tendermint's default values for these parameters.
 
