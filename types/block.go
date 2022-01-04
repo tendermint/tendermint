@@ -781,7 +781,7 @@ func CommitToVoteSet(chainID string, commit *Commit, vals *ValidatorSet) *VoteSe
 		}
 		added, err := voteSet.AddVote(commit.GetVote(int32(idx)))
 		if !added || err != nil {
-			panic(fmt.Errorf("Failed to reconstruct LastCommit: %w", err))
+			panic(fmt.Errorf("failed to reconstruct LastCommit: %w", err))
 		}
 	}
 	return voteSet
