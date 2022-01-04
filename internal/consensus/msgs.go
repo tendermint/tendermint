@@ -109,7 +109,7 @@ func (m *NewValidBlockMessage) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 	if err := m.BlockPartSetHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockPartSetHeader: %v", err)
+		return fmt.Errorf("wrong BlockPartSetHeader: %w", err)
 	}
 	if m.BlockParts.Size() == 0 {
 		return errors.New("empty blockParts")
@@ -191,7 +191,7 @@ func (m *BlockPartMessage) ValidateBasic() error {
 		return errors.New("negative Round")
 	}
 	if err := m.Part.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Part: %v", err)
+		return fmt.Errorf("wrong Part: %w", err)
 	}
 	return nil
 }
@@ -266,7 +266,7 @@ func (m *VoteSetMaj23Message) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 
 	return nil
@@ -296,7 +296,7 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 
 	// NOTE: Votes.Size() can be zero if the node does not have any

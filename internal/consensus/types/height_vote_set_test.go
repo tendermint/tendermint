@@ -2,10 +2,10 @@ package types
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -92,9 +92,7 @@ func makeVoteHR(
 
 	v := vote.ToProto()
 	err = privVal.SignVote(ctx, chainID, v)
-	if err != nil {
-		panic(fmt.Sprintf("Error signing vote: %v", err))
-	}
+	require.NoError(t, err, "Error signing vote")
 
 	vote.Signature = v.Signature
 

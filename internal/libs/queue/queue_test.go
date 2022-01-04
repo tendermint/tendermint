@@ -167,7 +167,7 @@ func TestWait(t *testing.T) {
 			defer close(done)
 			got, err := q.Wait(ctx)
 			if err != nil {
-				t.Errorf("Wait: unexpected error: %v", err)
+				t.Errorf("Wait: unexpected error: %w", err)
 			} else if got != input {
 				t.Errorf("Wait: got %q, want %q", got, input)
 			}
