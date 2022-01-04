@@ -713,6 +713,7 @@ func (cs *State) updateToState(state sm.State) {
 
 	cs.Validators = validators
 	cs.Proposal = nil
+	cs.ProposalReceiveTime = time.Time{}
 	cs.ProposalBlock = nil
 	cs.ProposalBlockParts = nil
 	cs.LockedRound = -1
@@ -1047,6 +1048,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	} else {
 		logger.Debug("resetting proposal info")
 		cs.Proposal = nil
+		cs.ProposalReceiveTime = time.Time{}
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
 	}
