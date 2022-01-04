@@ -93,11 +93,20 @@ block to be gossiped. Blocks are much larger than votes and therefore tend to be
 gossiped much more slowly. It therefore makes sense to keep `TimeoutPropose` and
 the `TimeoutProposeDelta` as parameters separate from the vote timeouts.
 
-`TimeoutCommit` is used by chains to ensure that validators wait enough time between
-the end of one height to the beginning of the next. The amount of time a validator
-should wait before beginning the next height is related to how slowly an application
-processes a state update and should therefore be separate from both the timeouts for
-proposal and for votes. 
+`TimeoutCommit` is used by chains to ensure that the network waits for the votes from
+slower validators before proceeding to the next height. Without this timeout, the votes
+from slower validators would consistently not be included in blocks and those validators
+would not be counted as 'up' from the chain's perspective. Being down damages a validator's
+reputation and causes potential stakers to think twice before delegating to that validator.
+
+`TimeoutCommit` also prevents the network from producing the next height as soon as validators
+on the fastest hardware with a summed voting power of +2/3 of the network's total have
+completed execution of the block. Allowing the network to proceed as soon as the fastest
++2/3 completed execution would have a cumulative effect over heights, eventually
+leaving slower validators unable to participate in consensus at all. `TimeoutCommit`
+therefore allows networks to have greater variability in hardware. Additional
+discussion of this can be found in [tendermint issue 5911][tendermint-issue-5911-comment]
+and [spec issue 359][spec-359].
 
 ## Alternative Approaches
 
