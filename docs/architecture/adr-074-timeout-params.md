@@ -21,22 +21,24 @@ relies on these parameters being uniform across validators.
 
 The configurable values are as follows:
 
-* `TimeoutPropose` 
+* `TimeoutPropose`
 	* How long the consensus algorithm waits for a proposal block before issuing a prevote.
 	* If no prevote arrives by `TimeoutPropose`, then the consensus algorithm will issue a nil prevote.
-* `TimeoutProposeDelta` 
+* `TimeoutProposeDelta`
 	* How much the `TimeoutPropose` grows each round.
-* `TimeoutPrevote` 
-	* How long the consensus algorithm waits after receiving +2/3 prevotes before 
-	issuing a precommit.
-* `TimeoutPrevoteDelta` 
+* `TimeoutPrevote`
+	* How long the consensus algorithm waits after receiving +2/3 prevotes with
+	no quorum for a value before issuing a precommit for nil.
+	(See the [arXiv paper][arxiv-paper], Algorithm 1, Line 34)
+* `TimeoutPrevoteDelta`
 	* How much the `TimeoutPrevote` increases with each round.
-* `TimeoutPrecommit` 
-	* How long the consensus algorithm waits after receiving +2/3 precommits with 
-	no quorum before entering the next round.
-* `TimeoutPrecommitDelta` 
+* `TimeoutPrecommit`
+	* How long the consensus algorithm waits after receiving +2/3 precommits that
+	do not have a quorum for a value before entering the next round. 
+	(See the [arXiv paper][arxiv-paper], Algorithm 1, Line 47)
+* `TimeoutPrecommitDelta`
 	* How much the `TimeoutPrecommit` increases with each round.
-* `TimeoutCommit` 
+* `TimeoutCommit`
 	* How long the consensus algorithm waits after committing a block but before starting the new height.
 	* This gives a validator a chance to receive slow precommits.
 * `SkipTimeoutCommit`
@@ -226,3 +228,4 @@ should be included in in the hash as part of that release.
 [time-param-validation]: https://github.com/tendermint/tendermint/blob/7cdf560173dee6773b80d1c574a06489d4c394fe/config/config.go#L1038
 [tendermint-issue-5911-comment]: https://github.com/tendermint/tendermint/issues/5911#issuecomment-973560381
 [spec-issue-359]: https://github.com/tendermint/spec/issues/359
+[arxiv-paper]: https://arxiv.org/pdf/1807.04938.pdf
