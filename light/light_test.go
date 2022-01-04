@@ -31,6 +31,8 @@ func TestClientIntegration_Update(t *testing.T) {
 	conf, err := rpctest.CreateConfig(t.Name())
 	require.NoError(t, err)
 
+	logger := log.NewTestingLogger(t)
+
 	// Start a test application
 	app := kvstore.NewApplication()
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
@@ -67,7 +69,7 @@ func TestClientIntegration_Update(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 	)
 	require.NoError(t, err)
 
@@ -91,6 +93,8 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	defer cancel()
 	conf, err := rpctest.CreateConfig(t.Name())
 	require.NoError(t, err)
+
+	logger := log.NewTestingLogger(t)
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -125,7 +129,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 	)
 	require.NoError(t, err)
 

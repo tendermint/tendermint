@@ -22,8 +22,10 @@ func TestBaseServiceWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	ts := &testService{}
-	ts.BaseService = *NewBaseService(log.TestingLogger(), "TestService", ts)
+	ts.BaseService = *NewBaseService(logger, "TestService", ts)
 	err := ts.Start(ctx)
 	require.NoError(t, err)
 

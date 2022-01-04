@@ -273,6 +273,8 @@ func TestServersAndClientsBasic(t *testing.T) {
 			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
+			logger := log.NewTestingLogger(t)
+
 			cl2, err := client.New(addr)
 			require.Nil(t, err)
 			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
@@ -280,7 +282,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 
 			cl3, err := client.NewWS(addr, websocketEndpoint)
 			require.Nil(t, err)
-			cl3.Logger = log.TestingLogger()
+			cl3.Logger = logger
 			err = cl3.Start(ctx)
 			require.Nil(t, err)
 			fmt.Printf("=== testing server on %s using WS client", addr)
@@ -296,7 +298,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
-	cl.Logger = log.TestingLogger()
+	cl.Logger = log.NewTestingLogger(t)
 	err = cl.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(func() {
@@ -330,7 +332,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
 
-	cl.Logger = log.TestingLogger()
+	cl.Logger = log.NewTestingLogger(t)
 	require.Nil(t, cl.Start(ctx))
 	t.Cleanup(func() {
 		if err := cl.Stop(); err != nil {
@@ -362,7 +364,7 @@ func TestWSClientPingPong(t *testing.T) {
 
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.Nil(t, err)
-	cl.Logger = log.TestingLogger()
+	cl.Logger = log.NewTestingLogger(t)
 	err = cl.Start(ctx)
 	require.Nil(t, err)
 	t.Cleanup(func() {
