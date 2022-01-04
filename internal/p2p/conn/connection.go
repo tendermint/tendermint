@@ -295,7 +295,7 @@ func (c *MConnection) _recover(ctx context.Context) {
 
 func (c *MConnection) stopForError(ctx context.Context, r interface{}) {
 	if err := c.Stop(); err != nil {
-		c.logger.Error("Error stopping connection", "err", err)
+		c.logger.Error("error stopping connection", "err", err)
 	}
 
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
@@ -490,7 +490,7 @@ FOR_LOOP:
 				if err == nil {
 					// return
 				} else {
-					c.logger.Debug("Error peeking connection buffer", "err", err)
+					c.logger.Debug("error peeking connection buffer", "err", err)
 					// return nil
 				}
 				c.logger.Info("Peek connection buffer", "numBytes", numBytes, "bz", bz)

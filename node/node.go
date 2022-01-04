@@ -173,7 +173,7 @@ func makeNode(
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
 	if err := proxyApp.Start(ctx); err != nil {
-		return nil, fmt.Errorf("error starting proxy app connections: %v", err)
+		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
 	}
 
 	// EventBus and IndexerService must be started before the handshake because
@@ -703,7 +703,7 @@ func (n *nodeImpl) OnStop() {
 	for _, l := range n.rpcListeners {
 		n.logger.Info("Closing rpc listener", "listener", l)
 		if err := l.Close(); err != nil {
-			n.logger.Error("Error closing listener", "listener", l, "err", err)
+			n.logger.Error("error closing listener", "listener", l, "err", err)
 		}
 	}
 
@@ -811,7 +811,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 					rpcLogger,
 					cfg,
 				); err != nil {
-					n.logger.Error("Error serving server with TLS", "err", err)
+					n.logger.Error("error serving server with TLS", "err", err)
 				}
 			}()
 		} else {
@@ -823,7 +823,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 					rpcLogger,
 					cfg,
 				); err != nil {
-					n.logger.Error("Error serving server", "err", err)
+					n.logger.Error("error serving server", "err", err)
 				}
 			}()
 		}

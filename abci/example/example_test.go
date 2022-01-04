@@ -132,6 +132,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 }
 
 func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app types.ABCIApplicationServer) {
+	t.Helper()
 	numDeliverTxs := 2000
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
@@ -140,10 +141,7 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 	// Start the listener
 	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
 
-	if err := server.Start(ctx); err != nil {
-		t.Fatalf("Error starting GRPC server: %v", err.Error())
-	}
-
+	require.NoError(t, server.Start(ctx))
 	t.Cleanup(func() { server.Wait() })
 
 	// Connect to the socket
@@ -151,9 +149,7 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialerFunc),
 	)
-	if err != nil {
-		t.Fatalf("Error dialing GRPC server: %v", err.Error())
-	}
+	require.NoError(t, err, "Error dialing GRPC server")
 
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
@@ -167,9 +163,8 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
 		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
-		if err != nil {
-			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
-		}
+		require.NoError(t, err, "Error in GRPC DeliverTx")
+
 		counter++
 		if response.Code != code.CodeTypeOK {
 			t.Error("DeliverTx failed with ret_code", response.Code)

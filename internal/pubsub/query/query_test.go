@@ -233,7 +233,7 @@ func TestAllMatchesAll(t *testing.T) {
 	for i := 0; i < len(events); i++ {
 		match, err := query.All.Matches(events[:i])
 		if err != nil {
-			t.Errorf("Matches failed: %v", err)
+			t.Errorf("Matches failed: %w", err)
 		} else if !match {
 			t.Errorf("Did not match on %+v ", events[:i])
 		}

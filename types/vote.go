@@ -172,7 +172,7 @@ func (vote *Vote) ValidateBasic() error {
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a

@@ -1509,7 +1509,7 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
-			panic(fmt.Sprintf("precommit step; +2/3 prevoted for an invalid block: %v", err))
+			panic(fmt.Errorf("precommit step; +2/3 prevoted for an invalid block: %w", err))
 		}
 
 		cs.LockedRound = round
@@ -1815,7 +1815,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 		if cs.privValidator != nil {
 			if cs.privValidatorPubKey == nil {
 				// Metrics won't be updated, but it's not critical.
-				cs.logger.Error(fmt.Sprintf("recordMetrics: %v", errPubKeyIsNotSet))
+				cs.logger.Error("recordMetrics", "err", errPubKeyIsNotSet)
 			} else {
 				address = cs.privValidatorPubKey.Address()
 			}
@@ -2336,7 +2336,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 
 	if cs.privValidatorPubKey == nil {
 		// Vote won't be signed, but it's not critical.
-		cs.logger.Error(fmt.Sprintf("signAddVote: %v", errPubKeyIsNotSet))
+		cs.logger.Error("signAddVote", "err", errPubKeyIsNotSet)
 		return nil
 	}
 
