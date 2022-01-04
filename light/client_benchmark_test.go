@@ -59,6 +59,9 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
 	panic("not implemented")
 }
+func (impl *providerBenchmarkImpl) String() string {
+	return ""
+}
 
 func BenchmarkSequence(b *testing.B) {
 	headers, vals, _ := genLightBlocksWithKeys(chainID, 1000, 100, 1, bTime)
@@ -152,4 +155,5 @@ func BenchmarkBackwards(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
 }

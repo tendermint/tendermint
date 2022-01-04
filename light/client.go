@@ -13,6 +13,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
+
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
@@ -1150,15 +1151,21 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 
+	chunks := make([]string, len(c.witnesses))
+	for i, val := range c.witnesses {
+		chunks[i] = val.String()
+	}
+
 	lightClientInfo := coretypes.LightClientInfo{}
 	// ToDo Add error handling
-	lastTrustedHeight, _ := c.LastTrustedHeight()
+	// lastTrustedHeight, _ := c.LastTrustedHeight()
+	lastTrustedBlock := c.latestTrustedBlock
 
 	lightClientInfo = coretypes.LightClientInfo{
-		Primary:           c.Primary(),
-		Witnesses:         c.Witnesses(),
-		LastTrustedHeight: lastTrustedHeight,
-		LastTrustedHash:   nil,
+		Primary:           c.primary.String(),
+		Witnesses:         chunks, //strings.Join(chunks, ","),
+		LastTrustedHeight: lastTrustedBlock.Height,
+		LastTrustedHash:   lastTrustedBlock.Hash(),
 	}
 	result := &coretypes.ResultStatus{
 		NodeInfo:        types.NodeInfo{},
