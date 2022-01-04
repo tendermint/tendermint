@@ -236,7 +236,7 @@ func (pool *BlockPool) PopRequest() {
 
 	if r := pool.requesters[pool.height]; r != nil {
 		if err := r.Stop(); err != nil {
-			pool.logger.Error("Error stopping requester", "err", err)
+			pool.logger.Error("error stopping requester", "err", err)
 		}
 		delete(pool.requesters, pool.height)
 		pool.height++
@@ -425,7 +425,7 @@ func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 
 	err := request.Start(ctx)
 	if err != nil {
-		request.logger.Error("Error starting request", "err", err)
+		request.logger.Error("error starting request", "err", err)
 	}
 }
 
@@ -677,7 +677,7 @@ OUTER_LOOP:
 				return
 			case <-bpr.pool.exitedCh:
 				if err := bpr.Stop(); err != nil {
-					bpr.logger.Error("Error stopped requester", "err", err)
+					bpr.logger.Error("error stopped requester", "err", err)
 				}
 				return
 			case peerID := <-bpr.redoCh:

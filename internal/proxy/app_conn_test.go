@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
@@ -56,20 +57,14 @@ func TestEcho(t *testing.T) {
 
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
-	if err := s.Start(ctx); err != nil {
-		t.Fatalf("Error starting socket server: %v", err.Error())
-	}
+	require.NoError(t, s.Start(ctx), "error starting socket server")
 	t.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
 	cli, err := clientCreator(logger.With("module", "abci-client"))
-	if err != nil {
-		t.Fatalf("Error creating ABCI client: %v", err.Error())
-	}
+	require.NoError(t, err, "Error creating ABCI client:")
 
-	if err := cli.Start(ctx); err != nil {
-		t.Fatalf("Error starting ABCI client: %v", err.Error())
-	}
+	require.NoError(t, cli.Start(ctx), "Error starting ABCI client")
 
 	proxy := newAppConnTest(cli)
 	t.Log("Connected")
@@ -102,20 +97,14 @@ func BenchmarkEcho(b *testing.B) {
 
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
-	if err := s.Start(ctx); err != nil {
-		b.Fatalf("Error starting socket server: %v", err.Error())
-	}
+	require.NoError(b, s.Start(ctx), "Error starting socket server")
 	b.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
 	cli, err := clientCreator(logger.With("module", "abci-client"))
-	if err != nil {
-		b.Fatalf("Error creating ABCI client: %v", err.Error())
-	}
+	require.NoError(b, err, "Error creating ABCI client")
 
-	if err := cli.Start(ctx); err != nil {
-		b.Fatalf("Error starting ABCI client: %v", err.Error())
-	}
+	require.NoError(b, cli.Start(ctx), "Error starting ABCI client")
 
 	proxy := newAppConnTest(cli)
 	b.Log("Connected")
@@ -153,28 +142,21 @@ func TestInfo(t *testing.T) {
 
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
-	if err := s.Start(ctx); err != nil {
-		t.Fatalf("Error starting socket server: %v", err.Error())
-	}
+	require.NoError(t, s.Start(ctx), "Error starting socket server")
 	t.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
 	cli, err := clientCreator(logger.With("module", "abci-client"))
-	if err != nil {
-		t.Fatalf("Error creating ABCI client: %v", err.Error())
-	}
+	require.NoError(t, err, "Error creating ABCI client")
 
-	if err := cli.Start(ctx); err != nil {
-		t.Fatalf("Error starting ABCI client: %v", err.Error())
-	}
+	require.NoError(t, cli.Start(ctx), "Error starting ABCI client")
 
 	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
 	resInfo, err := proxy.InfoSync(context.Background(), RequestInfo)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
+
 	if resInfo.Data != "{\"size\":0}" {
 		t.Error("Expected ResponseInfo with one element '{\"size\":0}' but got something else")
 	}

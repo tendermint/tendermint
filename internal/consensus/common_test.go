@@ -156,7 +156,7 @@ func signVote(
 
 	v, err := vs.signVote(ctx, cfg, voteType, hash, header)
 	if err != nil {
-		panic(fmt.Errorf("failed to sign vote: %v", err))
+		panic(fmt.Errorf("failed to sign vote: %w", err))
 	}
 
 	vs.lastVote = v

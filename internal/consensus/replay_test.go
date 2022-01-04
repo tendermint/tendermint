@@ -704,14 +704,14 @@ func TestMockProxyApp(t *testing.T) {
 func tempWALWithData(data []byte) string {
 	walFile, err := os.CreateTemp("", "wal")
 	if err != nil {
-		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
+		panic(fmt.Errorf("failed to create temp WAL file: %w", err))
 	}
 	_, err = walFile.Write(data)
 	if err != nil {
-		panic(fmt.Sprintf("failed to write to temp WAL file: %v", err))
+		panic(fmt.Errorf("failed to write to temp WAL file: %w", err))
 	}
 	if err := walFile.Close(); err != nil {
-		panic(fmt.Sprintf("failed to close temp WAL file: %v", err))
+		panic(fmt.Errorf("failed to close temp WAL file: %w", err))
 	}
 	return walFile.Name()
 }
@@ -825,9 +825,7 @@ func testHandshakeReplay(
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, logger, proxy.NopMetrics())
-	if err := proxyApp.Start(ctx); err != nil {
-		t.Fatalf("Error starting proxy app connections: %v", err)
-	}
+	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
 	t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
@@ -835,9 +833,8 @@ func testHandshakeReplay(
 	if expectError {
 		require.Error(t, err)
 		return
-	} else if err != nil {
-		t.Fatalf("Error on abci handshake: %v", err)
 	}
+	require.NoError(t, err, "Error on abci handshake")
 
 	// get the latest app hash from the app
 	res, err := proxyApp.Query().InfoSync(ctx, abci.RequestInfo{Version: ""})
@@ -1326,13 +1323,10 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	logger := log.TestingLogger()
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
-	if err := proxyApp.Start(ctx); err != nil {
-		t.Fatalf("Error starting proxy app connections: %v", err)
-	}
+	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
-	if err := handshaker.Handshake(ctx, proxyApp); err != nil {
-		t.Fatalf("Error on abci handshake: %v", err)
-	}
+	require.NoError(t, handshaker.Handshake(ctx, proxyApp), "error on abci handshake")
+
 	// reload the state, check the validator set was updated
 	state, err = stateStore.Load()
 	require.NoError(t, err)

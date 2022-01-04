@@ -257,7 +257,7 @@ func (c *Client) handleConflictingHeaders(
 		now,
 	)
 	if err != nil {
-		c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
+		c.logger.Info("error validating primary's divergent header", "primary", c.primary, "err", err)
 		return ErrLightClientAttack
 	}
 

@@ -74,7 +74,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 	defer func() {
 		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
 		if err := cs.eventBus.Unsubscribe(ctx, args); err != nil {
-			cs.logger.Error("Error unsubscribing to event bus", "err", err)
+			cs.logger.Error("error unsubscribing to event bus", "err", err)
 		}
 	}()
 
@@ -237,7 +237,7 @@ func (pb *playback) replayConsoleLoop(ctx context.Context) (int, error) {
 			defer func() {
 				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
 				if err := pb.cs.eventBus.Unsubscribe(ctx, args); err != nil {
-					pb.cs.logger.Error("Error unsubscribing from eventBus", "err", err)
+					pb.cs.logger.Error("error unsubscribing from eventBus", "err", err)
 				}
 			}()
 
