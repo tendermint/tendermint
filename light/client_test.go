@@ -27,7 +27,6 @@ const (
 )
 
 var (
-	ctx      = context.Background()
 	keys     = genPrivKeys(4)
 	vals     = keys.ToValidators(20, 10)
 	bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
@@ -206,9 +205,15 @@ func TestClient_SequentialVerification(t *testing.T) {
 		},
 	}
 
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
+
 	for _, tc := range testCases {
 		testCase := tc
 		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(bctx)
+			defer cancel()
+
 			mockNode := mockNodeFromHeadersAndVals(testCase.otherHeaders, testCase.vals)
 			mockNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 			c, err := light.NewClient(
@@ -326,9 +331,15 @@ func TestClient_SkippingVerification(t *testing.T) {
 		},
 	}
 
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(bctx)
+			defer cancel()
+
 			mockNode := mockNodeFromHeadersAndVals(tc.otherHeaders, tc.vals)
 			mockNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 			c, err := light.NewClient(
@@ -378,6 +389,9 @@ func TestClientLargeBisectionVerification(t *testing.T) {
 
 	mockNode.On("LightBlock", mock.Anything, int64(0)).Return(lastBlock, nil)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	trustedLightBlock, err := mockNode.LightBlock(ctx, int64(200))
 	require.NoError(t, err)
 	c, err := light.NewClient(
@@ -406,6 +420,9 @@ func TestClientLargeBisectionVerification(t *testing.T) {
 }
 
 func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
 	c, err := light.NewClient(
 		ctx,
@@ -436,6 +453,9 @@ func TestClientBisectionBetweenTrustedHeaders(t *testing.T) {
 }
 
 func TestClient_Cleanup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := &provider_mocks.Provider{}
 	mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
 	c, err := light.NewClient(
@@ -463,8 +483,14 @@ func TestClient_Cleanup(t *testing.T) {
 
 // trustedHeader.Height == options.Height
 func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
+
 	// 1. options.Hash == trustedHeader.Hash
 	t.Run("hashes should match", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(bctx)
+		defer cancel()
+
 		mockNode := &provider_mocks.Provider{}
 		trustedStore := dbs.New(dbm.NewMemDB())
 		err := trustedStore.SaveLightBlock(l1)
@@ -491,6 +517,9 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 
 	// 2. options.Hash != trustedHeader.Hash
 	t.Run("hashes should not match", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(bctx)
+		defer cancel()
+
 		trustedStore := dbs.New(dbm.NewMemDB())
 		err := trustedStore.SaveLightBlock(l1)
 		require.NoError(t, err)
@@ -527,6 +556,9 @@ func TestClientRestoresTrustedHeaderAfterStartup(t *testing.T) {
 }
 
 func TestClient_Update(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := &provider_mocks.Provider{}
 	mockFullNode.On("LightBlock", mock.Anything, int64(0)).Return(l3, nil)
 	mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
@@ -553,6 +585,9 @@ func TestClient_Update(t *testing.T) {
 }
 
 func TestClient_Concurrency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := &provider_mocks.Provider{}
 	mockFullNode.On("LightBlock", mock.Anything, int64(2)).Return(l2, nil)
 	mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
@@ -598,6 +633,9 @@ func TestClient_Concurrency(t *testing.T) {
 }
 
 func TestClient_AddProviders(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := mockNodeFromHeadersAndVals(map[int64]*types.SignedHeader{
 		1: h1,
 		2: h2,
@@ -633,6 +671,9 @@ func TestClient_AddProviders(t *testing.T) {
 }
 
 func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := &provider_mocks.Provider{}
 	mockFullNode.On("LightBlock", mock.Anything, mock.Anything).Return(l1, nil)
 
@@ -663,6 +704,9 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 }
 
 func TestClientReplacesPrimaryWithWitnessIfPrimaryDoesntHaveBlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockFullNode := &provider_mocks.Provider{}
 	mockFullNode.On("LightBlock", mock.Anything, mock.Anything).Return(l1, nil)
 
@@ -689,6 +733,9 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryDoesntHaveBlock(t *testing.T) 
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	{
 		headers, vals, _ := genLightBlocksWithKeys(chainID, 9, 3, 0, bTime)
 		delete(headers, 1)
@@ -830,6 +877,9 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 
 	mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	lb1, _ := mockBadNode1.LightBlock(ctx, 2)
 	require.NotEqual(t, lb1.Hash(), l1.Hash())
 
@@ -889,6 +939,9 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 			2: vals,
 		})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	c, err := light.NewClient(
 		ctx,
 		chainID,
@@ -920,6 +973,9 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 			3: vals,
 			0: vals,
 		})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	c, err := light.NewClient(
 		ctx,
@@ -1003,9 +1059,14 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 		},
 	}
 
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 	for i, tc := range testCases {
 		testCase := tc
 		t.Run(fmt.Sprintf("case: %d", i), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(bctx)
+			defer cancel()
+
 			mockBadNode := mockNodeFromHeadersAndVals(testCase.headers, testCase.vals)
 			if testCase.errorToThrow != nil {
 				mockBadNode.On("LightBlock", mock.Anything, testCase.errorHeight).Return(nil, testCase.errorToThrow)
