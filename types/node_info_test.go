@@ -241,7 +241,7 @@ func TestParseAddressString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			addr, port, err := ParseAddressString(tc.addr)
 			if tc.correct {
-				require.Nil(t, err, tc.addr)
+				require.NoError(t, err, tc.addr)
 				assert.Contains(t, tc.expected, addr.String())
 				assert.Contains(t, tc.expected, fmt.Sprint(port))
 			} else {

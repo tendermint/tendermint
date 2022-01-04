@@ -24,7 +24,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// connection failure always leads to error
 	err := client.WaitForHeight(r, 8, nil)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, "bye", err.Error())
 	// we called status once to check
 	require.Equal(t, 1, len(r.Calls))
@@ -36,7 +36,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// we will not wait for more than 10 blocks
 	err = client.WaitForHeight(r, 40, nil)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "aborting"))
 	// we called status once more to check
 	require.Equal(t, 2, len(r.Calls))

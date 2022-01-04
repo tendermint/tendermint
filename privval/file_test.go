@@ -22,9 +22,9 @@ import (
 
 func TestGenLoadValidator(t *testing.T) {
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -42,9 +42,9 @@ func TestGenLoadValidator(t *testing.T) {
 
 func TestResetValidator(t *testing.T) {
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -72,9 +72,9 @@ func TestResetValidator(t *testing.T) {
 
 func TestLoadOrGenValidator(t *testing.T) {
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tempKeyFilePath := tempKeyFile.Name()
 	if err := os.Remove(tempKeyFilePath); err != nil {
@@ -155,9 +155,9 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 
 func TestSignVote(t *testing.T) {
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -205,9 +205,9 @@ func TestSignVote(t *testing.T) {
 
 func TestSignProposal(t *testing.T) {
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -257,9 +257,9 @@ func TestDifferByTimestamp(t *testing.T) {
 	defer cancel()
 
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)

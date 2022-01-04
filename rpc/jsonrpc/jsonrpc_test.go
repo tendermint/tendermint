@@ -186,22 +186,22 @@ func echoDataBytesViaHTTP(ctx context.Context, cl client.Caller, bytes tmbytes.H
 func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.HTTPClient) {
 	val := testVal
 	got, err := echoViaHTTP(ctx, cl, val)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, got, val)
 
 	val2 := randBytes(t)
 	got2, err := echoBytesViaHTTP(ctx, cl, val2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, got2, val2)
 
 	val3 := tmbytes.HexBytes(randBytes(t))
 	got3, err := echoDataBytesViaHTTP(ctx, cl, val3)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, got3, val3)
 
 	val4 := mrand.Intn(10000)
 	got4, err := echoIntViaHTTP(ctx, cl, val4)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, got4, val4)
 }
 
@@ -252,12 +252,12 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 func testWithWSClient(t *testing.T, cl *client.WSClient) {
 	val := testVal
 	got, err := echoViaWS(cl, val)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, got, val)
 
 	val2 := randBytes(t)
 	got2, err := echoBytesViaWS(cl, val2)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, got2, val2)
 }
 
@@ -276,15 +276,15 @@ func TestServersAndClientsBasic(t *testing.T) {
 			logger := log.NewTestingLogger(t)
 
 			cl2, err := client.New(addr)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
 			testWithHTTPClient(ctx, t, cl2)
 
 			cl3, err := client.NewWS(addr, websocketEndpoint)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			cl3.Logger = logger
 			err = cl3.Start(ctx)
-			require.Nil(t, err)
+			require.NoError(t, err)
 			fmt.Printf("=== testing server on %s using WS client", addr)
 			testWithWSClient(t, cl3)
 			cancel()
@@ -297,10 +297,10 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	defer cancel()
 
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cl.Logger = log.NewTestingLogger(t)
 	err = cl.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := cl.Stop(); err != nil {
 			t.Error(err)
@@ -312,7 +312,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 		"arg": val,
 	}
 	err = cl.Call(context.Background(), "echo_ws", params)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
@@ -320,7 +320,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	got := result.Value
 	assert.Equal(t, got, val)
 }
@@ -330,7 +330,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	defer cancel()
 
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	cl.Logger = log.NewTestingLogger(t)
 	require.Nil(t, cl.Start(ctx))
@@ -343,7 +343,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	val := testVal
 	params := []interface{}{val}
 	err = cl.CallWithArrayParams(context.Background(), "echo_ws", params)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
@@ -351,7 +351,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	got := result.Value
 	assert.Equal(t, got, val)
 }
@@ -363,10 +363,10 @@ func TestWSClientPingPong(t *testing.T) {
 	defer cancel()
 
 	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	cl.Logger = log.NewTestingLogger(t)
 	err = cl.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := cl.Stop(); err != nil {
 			t.Error(err)
@@ -380,6 +380,6 @@ func randBytes(t *testing.T) []byte {
 	n := mrand.Intn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return bytes.ReplaceAll(buf, []byte("="), []byte{100})
 }

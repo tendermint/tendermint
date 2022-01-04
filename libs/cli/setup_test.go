@@ -49,7 +49,7 @@ func TestSetupEnv(t *testing.T) {
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
 		err := RunWithArgs(cmd, args, tc.env)
-		require.Nil(t, err, i)
+		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, foo, i)
 	}
 }
@@ -68,7 +68,7 @@ func TestSetupConfig(t *testing.T) {
 	cval1 := "fubble"
 	conf1 := tempDir()
 	err := WriteConfigVals(conf1, map[string]string{"boo": cval1})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	cases := []struct {
 		args        []string
@@ -109,7 +109,7 @@ func TestSetupConfig(t *testing.T) {
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
 		err := RunWithArgs(cmd, args, tc.env)
-		require.Nil(t, err, i)
+		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, foo, i)
 		assert.Equal(t, tc.expectedTwo, two, i)
 	}
@@ -127,11 +127,11 @@ func TestSetupUnmarshal(t *testing.T) {
 	cval1, cval2 := "someone", "else"
 	conf1 := tempDir()
 	err := WriteConfigVals(conf1, map[string]string{"name": cval1})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// even with some ignored fields, should be no problem
 	conf2 := tempDir()
 	err = WriteConfigVals(conf2, map[string]string{"name": cval2, "foo": "bar"})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// unused is not declared on a flag and remains from base
 	base := DemoConfig{
@@ -188,7 +188,7 @@ func TestSetupUnmarshal(t *testing.T) {
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
 		err := RunWithArgs(cmd, args, tc.env)
-		require.Nil(t, err, i)
+		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, cfg, i)
 	}
 }
@@ -221,7 +221,7 @@ func TestSetupTrace(t *testing.T) {
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
 		stdout, stderr, err := RunCaptureWithArgs(cmd, args, tc.env)
-		require.NotNil(t, err, i)
+		require.Error(t, err, i)
 		require.Equal(t, "", stdout, i)
 		require.NotEqual(t, "", stderr, i)
 		msg := strings.Split(stderr, "\n")

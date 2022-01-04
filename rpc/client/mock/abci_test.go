@@ -62,7 +62,7 @@ func TestABCIMock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "must commit", err.Error())
 	_, err = m.BroadcastTxAsync(context.Background(), goodTx)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "must commit", err.Error())
 
 	// commit depends on the input
@@ -70,7 +70,7 @@ func TestABCIMock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "bad tx", err.Error())
 	bres, err := m.BroadcastTxCommit(context.Background(), goodTx)
-	require.Nil(t, err, "%+v", err)
+	require.NoError(t, err, "%+v", err)
 	assert.EqualValues(t, 0, bres.CheckTx.Code)
 	assert.EqualValues(t, "stand", bres.CheckTx.Data)
 	assert.EqualValues(t, "deliver", bres.DeliverTx.Data)

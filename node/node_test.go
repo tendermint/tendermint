@@ -265,7 +265,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	const height int64 = 1
 	state, stateDB, privVals := state(t, 1, height)
@@ -361,7 +361,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	const height int64 = 1
 	state, stateDB, _ := state(t, 1, height)
@@ -427,7 +427,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)

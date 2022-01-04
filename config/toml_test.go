@@ -14,7 +14,7 @@ func ensureFiles(t *testing.T, rootDir string, files ...string) {
 	for _, f := range files {
 		p := rootify(rootDir, f)
 		_, err := os.Stat(p)
-		assert.Nil(t, err, p)
+		assert.NoError(t, err, p)
 	}
 }
 
