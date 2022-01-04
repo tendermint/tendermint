@@ -6,6 +6,7 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
+	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
 	time "time"
 
@@ -29,6 +30,29 @@ func (_m *LightClient) ChainID() string {
 	}
 
 	return r0
+}
+
+// Status provides a mock function with given fields: ctx
+func (_m *LightClient) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
+	ret := _m.Called(ctx)
+
+	var r0 *coretypes.ResultStatus
+	if rf, ok := ret.Get(0).(func(context.Context) *coretypes.ResultStatus); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultStatus)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // TrustedLightBlock provides a mock function with given fields: height

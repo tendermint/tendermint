@@ -60,6 +60,9 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
 	return errors.New("not implemented")
 }
+func (impl *providerBenchmarkImpl) String() string {
+	return ""
+}
 
 func BenchmarkSequence(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -168,4 +171,5 @@ func BenchmarkBackwards(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
 }

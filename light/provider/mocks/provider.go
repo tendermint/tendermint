@@ -51,3 +51,17 @@ func (_m *Provider) ReportEvidence(_a0 context.Context, _a1 types.Evidence) erro
 
 	return r0
 }
+
+// String provides a mock function with given fields:
+func (_m *Provider) String() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}

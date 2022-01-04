@@ -25,4 +25,6 @@ type Provider interface {
 
 	// ReportEvidence reports an evidence of misbehavior.
 	ReportEvidence(context.Context, types.Evidence) error
+
+	String() string
 }

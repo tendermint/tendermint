@@ -8,7 +8,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/light/provider"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -125,10 +124,10 @@ type ValidatorInfo struct {
 
 // Info about the status of the light client
 type LightClientInfo struct {
-	Primary           provider.Provider   `json:"primary"`
-	Witnesses         []provider.Provider `json:"witnesses"`
-	LastTrustedHeight int64               `json:"last_trusted_height"`
-	LastTrustedHash   bytes.HexBytes      `json:"last_trusted_hash"`
+	Primary           string         `json:"primary"`
+	Witnesses         []string       `json:"witnesses"`
+	LastTrustedHeight int64          `json:"last_trusted_height"`
+	LastTrustedHash   bytes.HexBytes `json:"last_trusted_hash"`
 }
 
 // Node Status
