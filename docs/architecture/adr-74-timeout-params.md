@@ -14,9 +14,9 @@ Proposed
 
 Tendermint's consensus timeout parameters are currently configured locally by each validator
 in the validator's [config.toml][config-toml].
-This means that the many validators on a Tendermint network may have different timeouts
-from each other. There is no reason for different validators on a network to configure
-different timeout values and proper functioning of the Tendermint consensus algorithm
+This means that the validators on a Tendermint network may have different timeouts
+from each other. There is no reason for validators on the same network to configure
+different timeout values. Proper functioning of the Tendermint consensus algorithm
 relies on these parameters being uniform across validators.
 
 The configurable values are as follows:
@@ -42,9 +42,6 @@ The configurable values are as follows:
 * `SkipTimeoutCommit`
 	* Make progress as soon as the node has 100% of the precommits.
 
-Many running chains do not change these parameters from their default values. For example,
-initializing a node on Osmosis, Terra, and the Cosmos Hub using the their `init`
-command produces a `config.toml` with Tendermint's default values for these parameters.
 
 ### Overview of Proposed Change
 
@@ -58,7 +55,7 @@ to these parameters will no longer be possible; instead, the application will co
 updating the parameters. Applications using the Cosmos SDK will be automatically be
 able to change the values of these consensus parameters [via a governance proposal][cosmos-sdk-consensus-params].
 This ADR also proposes consolidating the 8 timeout parameters into 6. These
-5 parameters would be as follows:
+6 parameters would be as follows:
 
 * `TimeoutPropose`
 	* Same as current `TimeoutPropose`.
@@ -75,7 +72,12 @@ This ADR also proposes consolidating the 8 timeout parameters into 6. These
 * `TimeoutCommit`
 	* Same as current `TimeoutCommit`.
 * `SkipTimeoutCommit`
-	* Same as current `TimeoutCommit`.
+	* Same as current `SkipTimeoutCommit`.
+
+This change is low risk. While these values may be configured, many running chains
+do not change these parameters from their default values. For example, initializing
+a node on Osmosis, Terra, and the Cosmos Hub using the their `init` command produces
+a `config.toml` with Tendermint's default values for these parameters.
 
 ### Why this parameter consolidation?
 
@@ -131,7 +133,7 @@ None
 
 ### New Consensus Parameters
 
-A new `TimeoutParams` `message` will be added to the [params.proto file][consensus-params-proto]. 
+A new `TimeoutParams` `message` will be added to the [params.proto file][consensus-params-proto].
 This message will have the following form:
 
 ```proto
