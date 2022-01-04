@@ -1327,19 +1327,19 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 
 	// We did not receive a proposal within this round. (and thus executing this from a timeout)
 	if cs.ProposalBlock == nil {
-		logger.Debug("prevote step: ProposalBlock is nil")
+		logger.Debug("prevote step: ProposalBlock is nil; prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
 	if cs.Proposal == nil {
-		logger.Debug("prevote step; did not receive proposal, prevoting nil")
+		logger.Debug("prevote step: did not receive proposal; prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
-		logger.Debug("proposal timestamp not equal, prevoting nil")
+		logger.Debug("prevote step: proposal timestamp not equal; prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1348,7 +1348,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		logger.Error("prevote step: ProposalBlock is invalid", "err", err)
+		logger.Error("prevote step: ProposalBlock is invalid; prevoting nil", "err", err)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1504,14 +1504,14 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// +2/3 prevoted nil. Precommit nil.
 	if blockID.IsNil() {
-		logger.Debug("precommit step; +2/3 prevoted for nil")
+		logger.Debug("precommit step: +2/3 prevoted for nil; precommitting nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
 	// At this point, +2/3 prevoted for a particular block.
 
 	// If we never received a proposal for this block, we must precommit nil
-	if cs.Proposal == nil {
+	if cs.Proposal == nil || cs.ProposalBlock == nil {
 		logger.Debug("precommit step; did not receive proposal, precommitting nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
@@ -1519,18 +1519,18 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// If the proposal time does not match the block time, precommit nil.
 	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
-		logger.Debug("proposal timestamp not equal, precommitting nil")
+		logger.Debug("precommit step: proposal timestamp not equal; precommitting nil")
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		logger.Debug("precommit step; +2/3 prevoted locked block; relocking")
+		logger.Debug("precommit step: +2/3 prevoted locked block; relocking")
 		cs.LockedRound = round
 
 		if err := cs.eventBus.PublishEventRelock(cs.RoundStateEvent()); err != nil {
-			logger.Error("failed publishing event relock", "err", err)
+			logger.Error("precommit step: failed publishing event relock", "err", err)
 		}
 
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
@@ -1541,11 +1541,11 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	// the proposed block, update our locked block to this block and issue a
 	// precommit vote for it.
 	if cs.ProposalBlock.HashesTo(blockID.Hash) {
-		logger.Debug("precommit step; +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
+		logger.Debug("precommit step: +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
 
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
-			panic(fmt.Sprintf("precommit step; +2/3 prevoted for an invalid block: %v", err))
+			panic(fmt.Sprintf("precommit step: +2/3 prevoted for an invalid block %v; relocking", err))
 		}
 
 		cs.LockedRound = round
@@ -1553,7 +1553,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.LockedBlockParts = cs.ProposalBlockParts
 
 		if err := cs.eventBus.PublishEventLock(cs.RoundStateEvent()); err != nil {
-			logger.Error("failed publishing event lock", "err", err)
+			logger.Error("precommit step: failed publishing event lock", "err", err)
 		}
 
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
@@ -1562,7 +1562,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// There was a polka in this round for a block we don't have.
 	// Fetch that block, and precommit nil.
-	logger.Debug("precommit step; +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
+	logger.Debug("precommit step: +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
