@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,9 +57,7 @@ func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 
 	srv := httptest.NewServer(mux)
 
-	t.Cleanup(func() {
-		_ = srv.Config.Shutdown(context.Background())
-	})
+	t.Cleanup(srv.Close)
 
 	return srv
 }
