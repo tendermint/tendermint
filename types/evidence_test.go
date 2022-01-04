@@ -22,7 +22,10 @@ import (
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func TestEvidenceList(t *testing.T) {
-	ev := randomDuplicateVoteEvidence(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ev := randomDuplicateVoteEvidence(ctx, t)
 	evl := EvidenceList([]Evidence{ev})
 
 	assert.NotNil(t, evl.Hash())
@@ -30,14 +33,15 @@ func TestEvidenceList(t *testing.T) {
 	assert.False(t, evl.Has(&DuplicateVoteEvidence{}))
 }
 
-func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
+func randomDuplicateVoteEvidence(ctx context.Context, t *testing.T) *DuplicateVoteEvidence {
+	t.Helper()
 	val := NewMockPV()
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
 	return &DuplicateVoteEvidence{
-		VoteA:            makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
-		VoteB:            makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime.Add(1*time.Minute)),
+		VoteA:            makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
+		VoteB:            makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime.Add(1*time.Minute)),
 		TotalVotingPower: 30,
 		ValidatorPower:   10,
 		Timestamp:        defaultVoteTime,
@@ -46,7 +50,11 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 
 func TestDuplicateVoteEvidence(t *testing.T) {
 	const height = int64(13)
-	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ev, err := NewMockDuplicateVoteEvidence(ctx, height, time.Now(), "mock-chain-id")
+	require.NoError(t, err)
 	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
 	assert.NotNil(t, ev.String())
 	assert.Equal(t, ev.Height(), height)
@@ -57,6 +65,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	testCases := []struct {
 		testName         string
@@ -71,7 +82,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			ev.VoteB = nil
 		}, true},
 		{"Invalid vote type", func(ev *DuplicateVoteEvidence) {
-			ev.VoteA = makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0, blockID2, defaultVoteTime)
+			ev.VoteA = makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0, blockID2, defaultVoteTime)
 		}, true},
 		{"Invalid vote order", func(ev *DuplicateVoteEvidence) {
 			swap := ev.VoteA.Copy()
@@ -82,9 +93,9 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
-			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
-			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(10)})
+			vote1 := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
+			vote2 := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
+			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(ctx, 10)})
 			ev, err := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
 			require.NoError(t, err)
 			tc.malleateEvidence(ev)
@@ -94,14 +105,17 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 }
 
 func TestLightClientAttackEvidenceBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
+	voteSet, valSet, privVals := randVoteSet(ctx, t, height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := makeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
+	commit, err := makeCommit(ctx, blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -153,15 +167,18 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 }
 
 func TestLightClientAttackEvidenceValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	height := int64(5)
 	commonHeight := height - 1
 	nValidators := 10
-	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, nValidators, 1)
+	voteSet, valSet, privVals := randVoteSet(ctx, t, height, 1, tmproto.PrecommitType, nValidators, 1)
 	header := makeHeaderRandom()
 	header.Height = height
 	header.ValidatorsHash = valSet.Hash()
 	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := makeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	commit, err := makeCommit(ctx, blockID, height, 1, voteSet, privVals, time.Now())
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -228,14 +245,20 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	goodEvidence, err := NewMockDuplicateVoteEvidence(ctx, int64(1), time.Now(), "mock-chain-id")
+	require.NoError(t, err)
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
 func makeVote(
+	ctx context.Context,
 	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
-	time time.Time) *Vote {
-	pubKey, err := val.GetPubKey(context.Background())
+	time time.Time,
+) *Vote {
+	pubKey, err := val.GetPubKey(ctx)
 	require.NoError(t, err)
 	v := &Vote{
 		ValidatorAddress: pubKey.Address(),
@@ -248,7 +271,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(context.Background(), chainID, vpb)
+	err = val.SignVote(ctx, chainID, vpb)
 	require.NoError(t, err)
 
 	v.Signature = vpb.Signature
@@ -275,13 +298,16 @@ func makeHeaderRandom() *Header {
 }
 
 func TestEvidenceProto(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// -------- Votes --------
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
-	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
+	v := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
+	v2 := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
 
 	tests := []struct {
 		testName     string
@@ -325,8 +351,8 @@ func TestEvidenceVectors(t *testing.T) {
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
-	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
-	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
+	v := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, defaultVoteTime)
+	v2 := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
 
 	// Data for LightClientAttackEvidence
 	height := int64(5)
@@ -352,7 +378,7 @@ func TestEvidenceVectors(t *testing.T) {
 		ProposerAddress: []byte("2915b7b15f979e48ebc61774bb1d86ba3136b7eb"),
 	}
 	blockID3 := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := makeCommit(blockID3, height, 1, voteSet, privVals, defaultVoteTime)
+	commit, err := makeCommit(ctx, blockID3, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{

@@ -16,6 +16,9 @@ import (
 func TestStatus(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := &mock.StatusMock{
 		Call: mock.Call{
 			Response: &coretypes.ResultStatus{
@@ -41,7 +44,7 @@ func TestStatus(t *testing.T) {
 	require.Equal(0, len(r.Calls))
 
 	// make sure response works proper
-	status, err := r.Status(context.Background())
+	status, err := r.Status(ctx)
 	require.Nil(err, "%+v", err)
 	assert.EqualValues("block", status.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)

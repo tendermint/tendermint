@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"time"
 
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -8,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
+func MakeBlocks(ctx context.Context, n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
 	blocks := make([]*types.Block, n)
 
 	var (
@@ -20,7 +21,7 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 	for i := 0; i < n; i++ {
 		height := int64(i + 1)
 
-		block, parts, err := makeBlockAndPartSet(*state, prevBlock, prevBlockMeta, privVal, height)
+		block, parts, err := makeBlockAndPartSet(ctx, *state, prevBlock, prevBlockMeta, privVal, height)
 		if err != nil {
 			return nil, err
 		}
@@ -55,6 +56,7 @@ func MakeBlock(state sm.State, height int64, c *types.Commit) (*types.Block, err
 }
 
 func makeBlockAndPartSet(
+	ctx context.Context,
 	state sm.State,
 	lastBlock *types.Block,
 	lastBlockMeta *types.BlockMeta,
@@ -64,6 +66,7 @@ func makeBlockAndPartSet(
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	if height > 1 {
 		vote, _ := factory.MakeVote(
+			ctx,
 			privVal,
 			lastBlock.Header.ChainID,
 			1, lastBlock.Header.Height, 0, 2,

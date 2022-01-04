@@ -671,29 +671,32 @@ func (err *ErrEvidenceOverflow) Error() string {
 // unstable - use only for testing
 
 // assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(ctx context.Context, height int64, time time.Time, chainID string) (*DuplicateVoteEvidence, error) {
 	val := NewMockPV()
-	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
+	return NewMockDuplicateVoteEvidenceWithValidator(ctx, height, time, val, chainID)
 }
 
 // assumes voting power to be 10 and validator to be the only one in the set
-func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
-	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
-	pubKey, _ := pv.GetPubKey(context.Background())
+func NewMockDuplicateVoteEvidenceWithValidator(ctx context.Context, height int64, time time.Time, pv PrivValidator, chainID string) (*DuplicateVoteEvidence, error) {
+	pubKey, err := pv.GetPubKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	val := NewValidator(pubKey, 10)
 	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vA := voteA.ToProto()
-	_ = pv.SignVote(context.Background(), chainID, vA)
+	_ = pv.SignVote(ctx, chainID, vA)
 	voteA.Signature = vA.Signature
 	voteB := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vB := voteB.ToProto()
-	_ = pv.SignVote(context.Background(), chainID, vB)
+	_ = pv.SignVote(ctx, chainID, vB)
 	voteB.Signature = vB.Signature
 	ev, err := NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
 	if err != nil {
-		panic("constructing mock duplicate vote evidence: " + err.Error())
+		return nil, fmt.Errorf("constructing mock duplicate vote evidence: %w", err)
 	}
-	return ev
+	return ev, nil
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,

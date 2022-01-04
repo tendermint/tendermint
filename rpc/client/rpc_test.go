@@ -302,7 +302,7 @@ func TestClientMethodCalls(t *testing.T) {
 				apph := status.SyncInfo.LatestBlockHeight + 2 // this is where the tx will be applied to the state
 
 				// wait before querying
-				err = client.WaitForHeight(c, apph, nil)
+				err = client.WaitForHeight(ctx, c, apph, nil)
 				require.NoError(t, err)
 				res, err := c.ABCIQuery(ctx, "/key", k)
 				qres := res.Response
@@ -331,7 +331,7 @@ func TestClientMethodCalls(t *testing.T) {
 				apph := txh + 1 // this is where the tx will be applied to the state
 
 				// wait before querying
-				err = client.WaitForHeight(c, apph, nil)
+				err = client.WaitForHeight(ctx, c, apph, nil)
 				require.NoError(t, err)
 
 				_qres, err := c.ABCIQueryWithOptions(ctx, "/key", k, client.ABCIQueryOptions{Prove: false})
@@ -411,7 +411,10 @@ func TestClientMethodCalls(t *testing.T) {
 				// XXX Test proof
 			})
 			t.Run("BlockchainInfo", func(t *testing.T) {
-				err := client.WaitForHeight(c, 10, nil)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
+				err := client.WaitForHeight(ctx, c, 10, nil)
 				require.NoError(t, err)
 
 				res, err := c.BlockchainInfo(ctx, 0, 0)
@@ -520,6 +523,9 @@ func TestClientMethodCalls(t *testing.T) {
 			})
 			t.Run("Evidence", func(t *testing.T) {
 				t.Run("BraodcastDuplicateVote", func(t *testing.T) {
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+
 					chainID := conf.ChainID()
 
 					correct, fakes := makeEvidences(t, pv, chainID)
@@ -533,7 +539,7 @@ func TestClientMethodCalls(t *testing.T) {
 
 					status, err := c.Status(ctx)
 					require.NoError(t, err)
-					err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
+					err = client.WaitForHeight(ctx, c, status.SyncInfo.LatestBlockHeight+2, nil)
 					require.NoError(t, err)
 
 					ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
@@ -862,7 +868,7 @@ func testBatchedJSONRPCCalls(ctx context.Context, t *testing.T, c *rpchttp.HTTP)
 	require.Equal(t, *bresult2, *r2)
 	apph := tmmath.MaxInt64(bresult1.Height, bresult2.Height) + 1
 
-	err = client.WaitForHeight(c, apph, nil)
+	err = client.WaitForHeight(ctx, c, apph, nil)
 	require.NoError(t, err)
 
 	q1, err := batch.ABCIQuery(ctx, "/key", k1)

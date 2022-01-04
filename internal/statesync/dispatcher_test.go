@@ -54,7 +54,7 @@ func TestDispatcherBasic(t *testing.T) {
 		wg.Add(1)
 		go func(height int64) {
 			defer wg.Done()
-			lb, err := d.LightBlock(context.Background(), height, peers[height-1])
+			lb, err := d.LightBlock(ctx, height, peers[height-1])
 			require.NoError(t, err)
 			require.NotNil(t, lb)
 			require.Equal(t, lb.Height, height)
@@ -133,7 +133,7 @@ func TestDispatcherProviders(t *testing.T) {
 
 	for i, p := range providers {
 		assert.Equal(t, string(peers[i]), p.String(), i)
-		lb, err := p.LightBlock(context.Background(), 10)
+		lb, err := p.LightBlock(ctx, 10)
 		assert.NoError(t, err)
 		assert.NotNil(t, lb)
 	}
@@ -207,7 +207,10 @@ func TestEmptyPeerListReturnsWhenContextCanceled(t *testing.T) {
 	peerList := newPeerList()
 	require.Zero(t, peerList.Len())
 	doneCh := make(chan struct{})
-	ctx := context.Background()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	wrapped, cancel := context.WithCancel(ctx)
 	go func() {
 		peerList.Pop(wrapped)
@@ -304,7 +307,7 @@ func handleRequests(ctx context.Context, t *testing.T, d *Dispatcher, ch chan p2
 		case request := <-ch:
 			height := request.Message.(*ssproto.LightBlockRequest).Height
 			peer := request.To
-			resp := mockLBResp(t, peer, int64(height), time.Now())
+			resp := mockLBResp(ctx, t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
 			require.NoError(t, d.Respond(block, resp.peer))
 		case <-ctx.Done():

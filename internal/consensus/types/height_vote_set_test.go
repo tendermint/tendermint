@@ -32,7 +32,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	valSet, privVals := factory.RandValidatorSet(10, 1)
+	valSet, privVals := factory.RandValidatorSet(ctx, 10, 1)
 
 	hvs := NewHeightVoteSet(cfg.ChainID(), 1, valSet)
 
