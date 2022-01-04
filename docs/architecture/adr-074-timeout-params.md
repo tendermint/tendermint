@@ -162,7 +162,7 @@ message TimeoutParams {
 }
 ```
 
-This new `message` will then be added as a field into the [`ConsensusParams`
+This new message will be added as a field into the [`ConsensusParams`
 message][consensus-params-proto]. The same default values that are [currently
 set for these parameters][current-timeout-defaults] in the local configuration
 file will be used as the defaults for these new consensus parameters in the
