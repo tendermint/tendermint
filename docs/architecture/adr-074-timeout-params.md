@@ -45,36 +45,35 @@ The configurable values are as follows:
 	* Make progress as soon as the node has 100% of the precommits.
 
 
-### Overview of Proposed Change
+### Overview of Change
 
-This ADR proposes consolidating the timeout parameters and migrating them from the
-node-local `config.toml` file into the network-global consensus parameters.
-The consensus parameters are the same across all validators on the network.
+We will consolidate the timeout parameters and migrate them from the node-local 
+`config.toml` file into the network-global consensus parameters.
 
-A sane default will be provided by Tendermint for each of these parameters and
-networks will be able to update the parameters as they see fit. Local updates
-to these parameters will no longer be possible; instead, the application will control
-updating the parameters. Applications using the Cosmos SDK will be automatically be
-able to change the values of these consensus parameters [via a governance proposal][cosmos-sdk-consensus-params].
-This ADR also proposes consolidating the 8 timeout parameters into 6. These
-6 parameters would be as follows:
+The 8 timeout parameters will be consolidated down to 6. These will be as follows:
 
 * `TimeoutPropose`
 	* Same as current `TimeoutPropose`.
 * `TimeoutProposeDelta`
 	* Same as current `TimeoutProposeDelta`.
 * `TimeoutVote`
-	* Parameter that governs how long validators wait for votes in both the prevote
-	 and precommit phase of the consensus algorithm. This parameter will subsume
+	* How long validators wait for votes in both the prevote
+	 and precommit phase of the consensus algorithm. This parameter subsumes
 	 the current `TimeoutPrevote` and `TimeoutPrecommit` parameters.
 * `TimeoutVoteDelta`
-	* Parameter that governs how much the `TimeoutVote` will grow each successive round.
-	 This parameter will subsume the current `TimeoutPrevoteDelta` and `TimeoutPrecommitDelta`
+	* How much the `TimeoutVote` will grow each successive round.
+	 This parameter subsumes the current `TimeoutPrevoteDelta` and `TimeoutPrecommitDelta`
 	 parameters.
 * `TimeoutCommit`
 	* Same as current `TimeoutCommit`.
 * `SkipTimeoutCommit`
 	* Same as current `SkipTimeoutCommit`.
+
+A safe default will be provided by Tendermint for each of these parameters and
+networks will be able to update the parameters as they see fit. Local updates
+to these parameters will no longer be possible; instead, the application will control
+updating the parameters. Applications using the Cosmos SDK will be automatically be
+able to change the values of these consensus parameters [via a governance proposal][cosmos-sdk-consensus-params].
 
 This change is low risk. While these values may be configured, many running chains
 do not change these parameters from their default values. For example, initializing
