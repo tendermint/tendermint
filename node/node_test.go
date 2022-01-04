@@ -46,8 +46,9 @@ func TestNodeStartStop(t *testing.T) {
 	ctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
+	logger := log.NewTestingLogger(t)
 	// create & start node
-	ns, err := newDefaultNode(ctx, cfg, log.TestingLogger())
+	ns, err := newDefaultNode(ctx, cfg, logger)
 	require.NoError(t, err)
 
 	n, ok := ns.(*nodeImpl)
@@ -110,8 +111,10 @@ func TestNodeDelayedStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	// create & start node
-	n := getTestNode(ctx, t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, logger)
 	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
 	require.NoError(t, n.Start(ctx))
@@ -128,8 +131,10 @@ func TestNodeSetAppVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	// create node
-	n := getTestNode(ctx, t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, logger)
 
 	// default config uses the kvstore app
 	appVersion := kvstore.ProtocolVersion
@@ -149,16 +154,15 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
-		log.TestingLogger(),
-		dialer,
-	)
+	dialerEndpoint := privval.NewSignerDialerEndpoint(logger, dialer)
 	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
 
 	signerServer := privval.NewSignerServer(
@@ -175,7 +179,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n := getTestNode(ctx, t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, logger)
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -190,7 +194,10 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
-	n, err := newDefaultNode(ctx, cfg, log.TestingLogger())
+
+	logger := log.NewTestingLogger(t)
+
+	n, err := newDefaultNode(ctx, cfg, logger)
 
 	assert.Error(t, err)
 
@@ -212,11 +219,11 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = "unix://" + tmpfile
 
+	logger := log.NewTestingLogger(t)
+
 	dialer := privval.DialUnixFn(tmpfile)
-	dialerEndpoint := privval.NewSignerDialerEndpoint(
-		log.TestingLogger(),
-		dialer,
-	)
+	dialerEndpoint := privval.NewSignerDialerEndpoint(logger, dialer)
+
 	privval.SignerDialerEndpointTimeoutReadWrite(100 * time.Millisecond)(dialerEndpoint)
 
 	pvsc := privval.NewSignerServer(
@@ -230,7 +237,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-	n := getTestNode(ctx, t, cfg, log.TestingLogger())
+	n := getTestNode(ctx, t, cfg, logger)
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -253,12 +260,12 @@ func TestCreateProposalBlock(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
+	logger := log.NewTestingLogger(t)
+
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.Nil(t, err)
-
-	logger := log.TestingLogger()
 
 	const height int64 = 1
 	state, stateDB, privVals := state(t, 1, height)
@@ -348,12 +355,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
+
+	logger := log.NewTestingLogger(t)
+
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.Nil(t, err)
-
-	logger := log.TestingLogger()
 
 	const height int64 = 1
 	state, stateDB, _ := state(t, 1, height)
@@ -413,12 +421,13 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	cfg, err := config.ResetTestRoot("node_create_proposal")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
+
+	logger := log.NewTestingLogger(t)
+
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.Nil(t, err)
-
-	logger := log.TestingLogger()
 
 	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
@@ -534,12 +543,14 @@ func TestNodeNewSeedNode(t *testing.T) {
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	require.NoError(t, err)
 
+	logger := log.NewTestingLogger(t)
+
 	ns, err := makeSeedNode(ctx,
 		cfg,
 		config.DefaultDBProvider,
 		nodeKey,
 		defaultGenesisDocProviderFunc(cfg),
-		log.TestingLogger(),
+		logger,
 	)
 	t.Cleanup(ns.Wait)
 
@@ -566,7 +577,8 @@ func TestNodeSetEventSink(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
+
 	setupTest := func(t *testing.T, conf *config.Config) []indexer.EventSink {
 		eventBus := eventbus.NewDefault(logger.With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))

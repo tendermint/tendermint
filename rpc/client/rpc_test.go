@@ -40,7 +40,7 @@ func getHTTPClient(t *testing.T, conf *config.Config) *rpchttp.HTTP {
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
-	c.Logger = log.TestingLogger()
+	c.Logger = log.NewTestingLogger(t)
 	t.Cleanup(func() {
 		if c.IsRunning() {
 			require.NoError(t, c.Stop())
@@ -59,7 +59,7 @@ func getHTTPClientWithTimeout(t *testing.T, conf *config.Config, timeout time.Du
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
-	c.Logger = log.TestingLogger()
+	c.Logger = log.NewTestingLogger(t)
 	t.Cleanup(func() {
 		http.DefaultClient.Timeout = 0
 		if c.IsRunning() {

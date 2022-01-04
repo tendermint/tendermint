@@ -65,6 +65,8 @@ func BenchmarkSequence(b *testing.B) {
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
 	genesisBlock, _ := benchmarkFullNode.LightBlock(context.Background(), 1)
 
+	logger := log.NewTestingLogger(b)
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
@@ -76,7 +78,7 @@ func BenchmarkSequence(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 		light.SequentialVerification(),
 	)
 	if err != nil {
@@ -97,6 +99,8 @@ func BenchmarkBisection(b *testing.B) {
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
 	genesisBlock, _ := benchmarkFullNode.LightBlock(context.Background(), 1)
 
+	logger := log.NewTestingLogger(b)
+
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
@@ -108,7 +112,7 @@ func BenchmarkBisection(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -124,12 +128,17 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkBackwards(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	headers, vals, _ := genLightBlocksWithKeys(chainID, 1000, 100, 1, bTime)
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
-	trustedBlock, _ := benchmarkFullNode.LightBlock(context.Background(), 0)
+	trustedBlock, _ := benchmarkFullNode.LightBlock(ctx, 0)
+
+	logger := log.NewTestingLogger(b)
 
 	c, err := light.NewClient(
-		context.Background(),
+		ctx,
 		chainID,
 		light.TrustOptions{
 			Period: 24 * time.Hour,
@@ -139,7 +148,7 @@ func BenchmarkBackwards(b *testing.B) {
 		benchmarkFullNode,
 		[]provider.Provider{benchmarkFullNode},
 		dbs.New(dbm.NewMemDB()),
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -147,7 +156,7 @@ func BenchmarkBackwards(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1, bTime)
+		_, err = c.VerifyLightBlockAtHeight(ctx, 1, bTime)
 		if err != nil {
 			b.Fatal(err)
 		}

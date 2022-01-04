@@ -23,7 +23,7 @@ func TestProperSyncCalls(t *testing.T) {
 	defer cancel()
 
 	app := slowApp{}
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	_, c := setupClientServer(ctx, t, logger, app)
 

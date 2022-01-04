@@ -13,7 +13,8 @@ func TestEventCache_Flush(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch(log.TestingLogger())
+	logger := log.NewTestingLogger(t)
+	evsw := NewEventSwitch(logger)
 	err := evsw.Start(ctx)
 	require.NoError(t, err)
 
