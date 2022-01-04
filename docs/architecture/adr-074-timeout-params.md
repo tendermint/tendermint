@@ -156,15 +156,15 @@ message TimeoutParams {
 }
 ```
 
-This new `message` will then be added as a field into the [`ConsensusParams`
+This new message will be added as a field into the [`ConsensusParams`
 message][consensus-params-proto]. The same default values that are [currently
 set for these parameters][current-timeout-defaults] in the local configuration
 file will be used as the defaults for these new consensus parameters in the
 [consensus parameter defaults][default-consensus-params].
 
-Validation of these new parameters will be identical to their [validation
-currently][time-param-validation].
-Namely, these parameters must be non-negative.
+The new consensus parameters will be subject to the same
+[validity rules][time-param-validation] as the current configuration values,
+namely, each value must be non-negative.
 
 ### Removal of Old Parameters
 
