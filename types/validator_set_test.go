@@ -1531,7 +1531,7 @@ func BenchmarkUpdates(b *testing.B) {
 	}
 }
 
-func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
+func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) { // nolint
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1558,7 +1558,7 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 	}
 }
 
-func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) {
+func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) { // nolint
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
