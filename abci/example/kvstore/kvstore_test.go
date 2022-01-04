@@ -289,7 +289,7 @@ func makeGRPCClientServer(
 func TestClientServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	// set up socket app
 	kvstore := NewApplication()

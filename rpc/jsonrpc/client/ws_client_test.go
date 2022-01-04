@@ -228,7 +228,7 @@ func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	require.Nil(t, err)
 	err = c.Start(ctx)
 	require.Nil(t, err)
-	c.Logger = log.TestingLogger()
+	c.Logger = log.NewTestingLogger(t)
 	return c
 }
 
