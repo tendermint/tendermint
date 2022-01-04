@@ -592,6 +592,6 @@ func (cli *socketClient) stopForError(err error) {
 
 	cli.logger.Info("Stopping abci.socketClient", "reason", err)
 	if err := cli.Stop(); err != nil {
-		cli.logger.Error("Error stopping abci.socketClient", "err", err)
+		cli.logger.Error("error stopping abci.socketClient", "err", err)
 	}
 }

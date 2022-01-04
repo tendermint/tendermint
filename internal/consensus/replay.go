@@ -242,7 +242,7 @@ func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) err
 	// Handshake is done via ABCI Info on the query conn.
 	res, err := proxyApp.Query().InfoSync(ctx, proxy.RequestInfo)
 	if err != nil {
-		return fmt.Errorf("error calling Info: %v", err)
+		return fmt.Errorf("error calling Info: %w", err)
 	}
 
 	blockHeight := res.LastBlockHeight
@@ -266,7 +266,7 @@ func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) err
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
-		return fmt.Errorf("error on replay: %v", err)
+		return fmt.Errorf("error on replay: %w", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",

@@ -385,7 +385,7 @@ func (s *Server) run(ctx context.Context) {
 		// Sender: Service the queue and forward messages to subscribers.
 		for it := range queue {
 			if err := s.send(it.Data, it.Events); err != nil {
-				s.logger.Error("Error sending event", "err", err)
+				s.logger.Error("error sending event", "err", err)
 			}
 		}
 		// Terminate all subscribers before exit.

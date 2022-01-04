@@ -246,11 +246,11 @@ func readSchema() ([]*schema.Migration, error) {
 func resetDatabase(db *sql.DB) error {
 	_, err := db.Exec(`DROP TABLE IF EXISTS blocks,tx_results,events,attributes CASCADE;`)
 	if err != nil {
-		return fmt.Errorf("dropping tables: %v", err)
+		return fmt.Errorf("dropping tables: %w", err)
 	}
 	_, err = db.Exec(`DROP VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
 	if err != nil {
-		return fmt.Errorf("dropping views: %v", err)
+		return fmt.Errorf("dropping views: %w", err)
 	}
 	return nil
 }
@@ -282,7 +282,7 @@ SELECT tx_result FROM `+tableTxResults+` WHERE tx_hash = $1;
 
 	txr := new(abci.TxResult)
 	if err := proto.Unmarshal(resultData, txr); err != nil {
-		return nil, fmt.Errorf("unmarshaling txr: %v", err)
+		return nil, fmt.Errorf("unmarshaling txr: %w", err)
 	}
 
 	return txr, nil
@@ -313,7 +313,7 @@ SELECT type, height, chain_id FROM `+viewBlockEvents+`
 `, height, types.EventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
 		t.Errorf("No %q event found for height=%d", types.EventTypeBeginBlock, height)
 	} else if err != nil {
-		t.Fatalf("Database query failed: %v", err)
+		t.Fatalf("Database query failed: %c", err)
 	}
 
 	if err := testDB().QueryRow(`

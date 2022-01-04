@@ -184,7 +184,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
-		return state, fmt.Errorf("error in validator updates: %v", err)
+		return state, fmt.Errorf("error in validator updates: %w", err)
 	}
 
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
@@ -198,13 +198,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
 	if err != nil {
-		return state, fmt.Errorf("commit failed for application: %v", err)
+		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
 
 	// Lock mempool, commit app state, update mempoool.
 	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, abciResponses.DeliverTxs)
 	if err != nil {
-		return state, fmt.Errorf("commit failed for application: %v", err)
+		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
 
 	// Update evpool with the latest state.
@@ -460,7 +460,7 @@ func updateState(
 	if len(validatorUpdates) > 0 {
 		err := nValSet.UpdateWithChangeSet(validatorUpdates)
 		if err != nil {
-			return state, fmt.Errorf("error changing validator set: %v", err)
+			return state, fmt.Errorf("error changing validator set: %w", err)
 		}
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
@@ -477,7 +477,7 @@ func updateState(
 		nextParams = state.ConsensusParams.UpdateConsensusParams(abciResponses.EndBlock.ConsensusParamUpdates)
 		err := nextParams.ValidateConsensusParams()
 		if err != nil {
-			return state, fmt.Errorf("error updating consensus params: %v", err)
+			return state, fmt.Errorf("error updating consensus params: %w", err)
 		}
 
 		state.Version.Consensus.App = nextParams.Version.AppVersion
