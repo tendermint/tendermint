@@ -147,16 +147,11 @@ This message will have the following form:
 
 ```proto
 message TimeoutParams {
- google.protobuf.Duration timeout_propose = 1
-       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
- google.protobuf.Duration timeout_propose_delta = 2
-       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
- google.protobuf.Duration timeout_vote = 3
-       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
- google.protobuf.Duration timeout_vote_delta = 4
-       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
- google.protobuf.Duration timeout_commit = 5
-       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+ google.protobuf.Duration timeout_propose = 1;
+ google.protobuf.Duration timeout_propose_delta = 2;
+ google.protobuf.Duration timeout_vote = 3;
+ google.protobuf.Duration timeout_vote_delta = 4;
+ google.protobuf.Duration timeout_commit = 5;
  bool skip_timeout_commit = 6;
 }
 ```
