@@ -130,7 +130,7 @@ require a longer `TimeoutCommit` to allow the application to complete its work
 and be prepared for the next height.
 
 * From https://github.com/tendermint/spec/issues/359 it looks like `TimeoutCommit` really only exists for the purpose of allowing
-precommits to be collected after the +2/3 has initially been seen. Not much more value to it than that. 
+precommits to be collected after the +2/3 has initially been seen. Not much more value to it than that.
 
 * allowing long timeout commit discussed here: https://github.com/tendermint/tendermint/issues/5911#issuecomment-973560381
 
