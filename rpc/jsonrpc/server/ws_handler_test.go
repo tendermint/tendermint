@@ -59,7 +59,7 @@ func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 	srv := httptest.NewServer(mux)
 
 	t.Cleanup(func() {
-		srv.Config.Shutdown(context.Background())
+		_ = srv.Config.Shutdown(context.Background())
 	})
 
 	return srv
