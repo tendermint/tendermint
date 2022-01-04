@@ -85,9 +85,8 @@ a `config.toml` with Tendermint's default values for these parameters.
 Reducing the number of parameters is good for UX. Fewer superfluous parameters makes
 running and operating a Tendermint network less confusing. 
 
-The Prevote and Precommit messages are both similar sizes and are also similar in
-their function in the consensus algorithm so there is no strong need for them to
-be configured separately.
+The Prevote and Precommit messages are both similar sizes, require similar amounts
+of processing so there is no strong need for them to be configured separately.
 
 The `TimeoutPropose` parameter governs how long Tendermint will wait for the proposed
 block to be gossiped. Blocks are much larger than votes and therefore tend to be
