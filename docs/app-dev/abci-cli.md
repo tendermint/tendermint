@@ -94,10 +94,8 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
     }
 
     // Run until shutdown.
-    select {
-	case <-ctx.Done():
-	    srv.Wait()
-	}
+<-ctx.Done()
+srv.Wait()
 }
 ```
 
