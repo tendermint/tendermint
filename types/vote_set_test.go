@@ -21,6 +21,7 @@ func TestVoteSet_AddVote_Good(t *testing.T) {
 
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(ctx, t, height, round, tmproto.PrevoteType, 10, 1)
+
 	val0 := privValidators[0]
 
 	val0p, err := val0.GetPubKey(ctx)
@@ -289,6 +290,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(ctx, t, height, round, tmproto.PrevoteType, 4, 1)
+
 	blockHash1 := tmrand.Bytes(32)
 	blockHash2 := tmrand.Bytes(32)
 
@@ -421,6 +423,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 
 	height, round := int64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(ctx, t, height, round, tmproto.PrecommitType, 10, 1)
+
 	blockHash, blockPartSetHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
@@ -504,18 +507,22 @@ func randVoteSet(
 	numValidators int,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
+	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
+
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 func deterministicVoteSet(
 	ctx context.Context,
+	t *testing.T,
 	height int64,
 	round int32,
 	signedMsgType tmproto.SignedMsgType,
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, privValidators := deterministicValidatorSet(ctx)
+	t.Helper()
+	valSet, privValidators := deterministicValidatorSet(ctx, t)
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
@@ -528,6 +535,7 @@ func randValidatorPrivValSet(ctx context.Context, t testing.TB, numValidators in
 	for i := 0; i < numValidators; i++ {
 		val, privValidator, err := randValidator(ctx, false, votingPower)
 		require.NoError(t, err)
+
 		valz[i] = val
 		privValidators[i] = privValidator
 	}

@@ -68,6 +68,7 @@ func TestBlockValidateBasic(t *testing.T) {
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
@@ -154,6 +155,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	voteSet, _, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
@@ -175,6 +177,7 @@ func TestBlockHashesTo(t *testing.T) {
 
 	lastID := makeBlockIDRandom()
 	h := int64(3)
+
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
@@ -293,6 +296,7 @@ func TestCommitValidateBasic(t *testing.T) {
 			defer cancel()
 
 			com := randCommit(ctx, t, time.Now())
+
 			tc.malleateCommit(com)
 			assert.Equal(t, tc.expectErr, com.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -365,7 +369,7 @@ func TestHeaderHash(t *testing.T) {
 			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
 			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
 			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-		}, hexBytesFromString("F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
+		}, hexBytesFromString(t, "F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
 			Version:            version.Consensus{Block: 1, App: 2},
@@ -475,16 +479,18 @@ func randCommit(ctx context.Context, t *testing.T, now time.Time) *Commit {
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, now)
+
 	require.NoError(t, err)
 
 	return commit
 }
 
-func hexBytesFromString(s string) bytes.HexBytes {
+func hexBytesFromString(t *testing.T, s string) bytes.HexBytes {
+	t.Helper()
+
 	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
+
 	return bytes.HexBytes(b)
 }
 
@@ -558,6 +564,7 @@ func TestCommitToVoteSet(t *testing.T) {
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
+
 	assert.NoError(t, err)
 
 	chainID := voteSet.ChainID()
@@ -684,6 +691,7 @@ func TestBlockProtoBuf(t *testing.T) {
 
 	h := mrand.Int63()
 	c1 := randCommit(ctx, t, time.Now())
+
 	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
 	b1.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
 
@@ -877,6 +885,7 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 	defer cancel()
 
 	commit := randCommit(ctx, t, time.Now())
+
 	h := MakeRandHeader()
 
 	sh := SignedHeader{Header: &h, Commit: commit}

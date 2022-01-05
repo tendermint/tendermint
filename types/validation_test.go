@@ -64,6 +64,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 			defer cancel()
 
 			_, valSet, vals := randVoteSet(ctx, t, tc.height, round, tmproto.PrecommitType, tc.valSize, 10)
+
 			totalVotes := tc.blockVotes + tc.absentVotes + tc.nilVotes
 			sigs := make([]CommitSig, totalVotes)
 			vi := 0
@@ -146,6 +147,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h, 0, tmproto.PrecommitType, 4, 10)
 	commit, err := makeCommit(ctx, blockID, h, 0, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
@@ -175,6 +177,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h, 0, tmproto.PrecommitType, 4, 10)
 	commit, err := makeCommit(ctx, blockID, h, 0, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
@@ -201,6 +204,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h, 0, tmproto.PrecommitType, 4, 10)
 	commit, err := makeCommit(ctx, blockID, h, 0, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 

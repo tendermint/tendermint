@@ -16,17 +16,13 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-var (
-	testProposal *Proposal
-	pbp          *tmproto.Proposal
-)
+func getTestProposal(t testing.TB) *Proposal {
+	t.Helper()
 
-func init() {
-	var stamp, err = time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
-	if err != nil {
-		panic(err)
-	}
-	testProposal = &Proposal{
+	stamp, err := time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
+	require.NoError(t, err)
+
+	return &Proposal{
 		Height: 12345,
 		Round:  23456,
 		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
@@ -34,13 +30,12 @@ func init() {
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
-	pbp = testProposal.ToProto()
 }
 
 func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
-	signBytes := ProposalSignBytes(chainID, pbp)
-	pb := CanonicalizeProposal(chainID, pbp)
+	signBytes := ProposalSignBytes(chainID, getTestProposal(t).ToProto())
+	pb := CanonicalizeProposal(chainID, getTestProposal(t).ToProto())
 
 	expected, err := protoio.MarshalDelimited(&pb)
 	require.NoError(t, err)
@@ -48,7 +43,7 @@ func TestProposalSignable(t *testing.T) {
 }
 
 func TestProposalString(t *testing.T) {
-	str := testProposal.String()
+	str := getTestProposal(t).String()
 	expected := `Proposal{12345/23456 (2D2D4A756E655F31355F323032305F616D696E6F5F7761735F72656D6F766564:111:2D2D4A756E65, -1) 000000000000 @ 2018-02-11T07:09:22.765Z}`
 	if str != expected {
 		t.Errorf("got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
@@ -99,6 +94,10 @@ func TestProposalVerifySignature(t *testing.T) {
 }
 
 func BenchmarkProposalWriteSignBytes(b *testing.B) {
+	pbp := getTestProposal(b).ToProto()
+
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		ProposalSignBytes("test_chain_id", pbp)
 	}
@@ -109,7 +108,10 @@ func BenchmarkProposalSign(b *testing.B) {
 	defer cancel()
 
 	privVal := NewMockPV()
+
+	pbp := getTestProposal(b).ToProto()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		err := privVal.SignProposal(ctx, "test_chain_id", pbp)
 		if err != nil {
@@ -119,16 +121,18 @@ func BenchmarkProposalSign(b *testing.B) {
 }
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
+	testProposal := getTestProposal(b)
+	pbp := testProposal.ToProto()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	b.ResetTimer()
 
 	privVal := NewMockPV()
 	err := privVal.SignProposal(ctx, "test_chain_id", pbp)
 	require.NoError(b, err)
 	pubKey, err := privVal.GetPubKey(ctx)
 	require.NoError(b, err)
+
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		pubKey.VerifySignature(ProposalSignBytes("test_chain_id", pbp), testProposal.Signature)

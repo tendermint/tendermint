@@ -315,6 +315,7 @@ func getSampleCommit(ctx context.Context, t testing.TB) *Commit {
 	lastID := makeBlockIDRandom()
 	voteSet, _, vals := randVoteSet(ctx, t, 2, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := makeCommit(ctx, lastID, 2, 1, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 
 	return commit
