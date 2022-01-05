@@ -62,15 +62,7 @@ func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 		}
 
 		t.Run(node.Name, func(t *testing.T) {
-<<<<<<< HEAD
-			t.Parallel()
 			testFunc(t, node)
-=======
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			testFunc(ctx, t, node)
->>>>>>> 386c3a0ff (e2e: constrain test parallelism and reporting (#7516))
 		})
 	}
 }
