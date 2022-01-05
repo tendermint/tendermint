@@ -88,7 +88,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 	<-ctx.Done()
 
 	require.Nil(t, lb)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {

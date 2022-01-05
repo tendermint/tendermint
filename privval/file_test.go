@@ -21,12 +21,10 @@ import (
 )
 
 func TestGenLoadValidator(t *testing.T) {
-	assert := assert.New(t)
-
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -37,9 +35,9 @@ func TestGenLoadValidator(t *testing.T) {
 	addr := privVal.GetAddress()
 
 	privVal, err = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
-	assert.NoError(err)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
-	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
+	assert.NoError(t, err)
+	assert.Equal(t, addr, privVal.GetAddress(), "expected privval addr to be the same")
+	assert.Equal(t, height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
 func TestResetValidator(t *testing.T) {
@@ -47,9 +45,9 @@ func TestResetValidator(t *testing.T) {
 	defer cancel()
 
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -76,12 +74,10 @@ func TestResetValidator(t *testing.T) {
 }
 
 func TestLoadOrGenValidator(t *testing.T) {
-	assert := assert.New(t)
-
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tempKeyFilePath := tempKeyFile.Name()
 	if err := os.Remove(tempKeyFilePath); err != nil {
@@ -97,12 +93,10 @@ func TestLoadOrGenValidator(t *testing.T) {
 	addr := privVal.GetAddress()
 	privVal, err = LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
 	require.NoError(t, err)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	assert.Equal(t, addr, privVal.GetAddress(), "expected privval addr to be the same")
 }
 
 func TestUnmarshalValidatorState(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	// create some fixed values
 	serialized := `{
 		"height": "1",
@@ -112,22 +106,20 @@ func TestUnmarshalValidatorState(t *testing.T) {
 
 	val := FilePVLastSignState{}
 	err := tmjson.Unmarshal([]byte(serialized), &val)
-	require.Nil(err, "%+v", err)
+	require.NoError(t, err)
 
 	// make sure the values match
-	assert.EqualValues(val.Height, 1)
-	assert.EqualValues(val.Round, 1)
-	assert.EqualValues(val.Step, 1)
+	assert.EqualValues(t, val.Height, 1)
+	assert.EqualValues(t, val.Round, 1)
+	assert.EqualValues(t, val.Step, 1)
 
 	// export it and make sure it is the same
 	out, err := tmjson.Marshal(val)
-	require.Nil(err, "%+v", err)
-	assert.JSONEq(serialized, string(out))
+	require.NoError(t, err)
+	assert.JSONEq(t, serialized, string(out))
 }
 
 func TestUnmarshalValidatorKey(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	// create some fixed values
 	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
@@ -151,29 +143,27 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 
 	val := FilePVKey{}
 	err := tmjson.Unmarshal([]byte(serialized), &val)
-	require.Nil(err, "%+v", err)
+	require.NoError(t, err)
 
 	// make sure the values match
-	assert.EqualValues(addr, val.Address)
-	assert.EqualValues(pubKey, val.PubKey)
-	assert.EqualValues(privKey, val.PrivKey)
+	assert.EqualValues(t, addr, val.Address)
+	assert.EqualValues(t, pubKey, val.PubKey)
+	assert.EqualValues(t, privKey, val.PrivKey)
 
 	// export it and make sure it is the same
 	out, err := tmjson.Marshal(val)
-	require.Nil(err, "%+v", err)
-	assert.JSONEq(serialized, string(out))
+	require.NoError(t, err)
+	assert.JSONEq(t, serialized, string(out))
 }
 
 func TestSignVote(t *testing.T) {
-	assert := assert.New(t)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -192,12 +182,13 @@ func TestSignVote(t *testing.T) {
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
 	v := vote.ToProto()
+
 	err = privVal.SignVote(ctx, "mychainid", v)
-	assert.NoError(err, "expected no error signing vote")
+	assert.NoError(t, err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
 	err = privVal.SignVote(ctx, "mychainid", v)
-	assert.NoError(err, "expected no error on signing same vote")
+	assert.NoError(t, err, "expected no error on signing same vote")
 
 	// now try some bad votes
 	cases := []*types.Vote{
@@ -208,29 +199,26 @@ func TestSignVote(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		cpb := c.ToProto()
-		err = privVal.SignVote(ctx, "mychainid", cpb)
-		assert.Error(err, "expected error on signing conflicting vote")
+		assert.Error(t, privVal.SignVote(ctx, "mychainid", c.ToProto()),
+			"expected error on signing conflicting vote")
 	}
 
 	// try signing a vote with a different time stamp
 	sig := vote.Signature
 	vote.Timestamp = vote.Timestamp.Add(time.Duration(1000))
 	err = privVal.SignVote(ctx, "mychainid", v)
-	assert.NoError(err)
-	assert.Equal(sig, vote.Signature)
+	assert.NoError(t, err)
+	assert.Equal(t, sig, vote.Signature)
 }
 
 func TestSignProposal(t *testing.T) {
-	assert := assert.New(t)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
@@ -247,12 +235,13 @@ func TestSignProposal(t *testing.T) {
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
 	pbp := proposal.ToProto()
+
 	err = privVal.SignProposal(ctx, "mychainid", pbp)
-	assert.NoError(err, "expected no error signing proposal")
+	assert.NoError(t, err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
 	err = privVal.SignProposal(ctx, "mychainid", pbp)
-	assert.NoError(err, "expected no error on signing same proposal")
+	assert.NoError(t, err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
 	cases := []*types.Proposal{
@@ -263,16 +252,16 @@ func TestSignProposal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err = privVal.SignProposal(ctx, "mychainid", c.ToProto())
-		assert.Error(err, "expected error on signing conflicting proposal")
+		assert.Error(t, privVal.SignProposal(ctx, "mychainid", c.ToProto()),
+			"expected error on signing conflicting proposal")
 	}
 
 	// try signing a proposal with a different time stamp
 	sig := proposal.Signature
 	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
 	err = privVal.SignProposal(ctx, "mychainid", pbp)
-	assert.NoError(err)
-	assert.Equal(sig, proposal.Signature)
+	assert.NoError(t, err)
+	assert.Equal(t, sig, proposal.Signature)
 }
 
 func TestDifferByTimestamp(t *testing.T) {
@@ -280,9 +269,9 @@ func TestDifferByTimestamp(t *testing.T) {
 	defer cancel()
 
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
