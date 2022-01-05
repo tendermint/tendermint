@@ -16,7 +16,7 @@ func TestBlock_Header(t *testing.T) {
 	defer cancel()
 
 	blocks := fetchBlockChain(ctx, t)
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
@@ -54,10 +54,7 @@ func TestBlock_Header(t *testing.T) {
 
 // Tests that the node contains the expected block range.
 func TestBlock_Range(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)

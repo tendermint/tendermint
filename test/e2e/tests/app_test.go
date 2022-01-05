@@ -18,10 +18,7 @@ import (
 
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		if len(node.Testnet.InitialState) == 0 {
 			return
 		}
@@ -40,10 +37,7 @@ func TestApp_InitialState(t *testing.T) {
 // Tests that the app hash (as reported by the app) matches the last
 // block and the node sync status.
 func TestApp_Hash(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		info, err := client.ABCIInfo(ctx)
@@ -71,10 +65,7 @@ func TestApp_Hash(t *testing.T) {
 
 // Tests that the app and blockstore have and report the same height.
 func TestApp_Height(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		info, err := client.ABCIInfo(ctx)
@@ -97,9 +88,6 @@ func TestApp_Height(t *testing.T) {
 
 // Tests that we can set a value and retrieve it.
 func TestApp_Tx(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	type broadcastFunc func(context.Context, types.Tx) error
 
 	testCases := []struct {
@@ -159,7 +147,7 @@ func TestApp_Tx(t *testing.T) {
 			// testNode calls t.Parallel as well, so we should
 			// have a copy of the
 			test := testCases[idx]
-			testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+			testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 				client, err := node.Client()
 				require.NoError(t, err)
 

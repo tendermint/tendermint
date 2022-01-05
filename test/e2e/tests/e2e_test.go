@@ -36,7 +36,7 @@ var (
 // these tests are skipped so that they're not picked up during normal unit
 // test runs. If E2E_NODE is also set, only the specified node is tested,
 // otherwise all nodes are tested.
-func testNode(ctx context.Context, t *testing.T, testFunc func(context.Context, *testing.T, e2e.Node)) {
+func testNode(t *testing.T, testFunc func(context.Context, *testing.T, e2e.Node)) {
 	t.Helper()
 
 	testnet := loadTestnet(t)
@@ -57,6 +57,9 @@ func testNode(ctx context.Context, t *testing.T, testFunc func(context.Context, 
 
 		t.Run(node.Name, func(t *testing.T) {
 			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			testFunc(ctx, t, node)
 		})

@@ -14,10 +14,7 @@ import (
 // Tests that validator sets are available and correct according to
 // scheduled validator updates.
 func TestValidator_Sets(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
@@ -67,7 +64,7 @@ func TestValidator_Propose(t *testing.T) {
 	defer cancel()
 
 	blocks := fetchBlockChain(ctx, t)
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		if node.Mode != e2e.ModeValidator {
 			return
 		}
@@ -101,7 +98,7 @@ func TestValidator_Sign(t *testing.T) {
 	defer cancel()
 
 	blocks := fetchBlockChain(ctx, t)
-	testNode(ctx, t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		if node.Mode != e2e.ModeValidator {
 			return
 		}
