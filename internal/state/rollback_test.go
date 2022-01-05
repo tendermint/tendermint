@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,8 +19,11 @@ func TestRollback(t *testing.T) {
 		height     int64 = 100
 		nextHeight int64 = 101
 	)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	blockStore := &mocks.BlockStore{}
-	stateStore := setupStateStore(t, height)
+	stateStore := setupStateStore(ctx, t, height)
 	initialState, err := stateStore.Load()
 	require.NoError(t, err)
 
@@ -78,7 +82,11 @@ func TestRollbackNoState(t *testing.T) {
 
 func TestRollbackNoBlocks(t *testing.T) {
 	const height = int64(100)
-	stateStore := setupStateStore(t, height)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stateStore := setupStateStore(ctx, t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height)
 	blockStore.On("LoadBlockMeta", height-1).Return(nil)
@@ -90,7 +98,11 @@ func TestRollbackNoBlocks(t *testing.T) {
 
 func TestRollbackDifferentStateHeight(t *testing.T) {
 	const height = int64(100)
-	stateStore := setupStateStore(t, height)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stateStore := setupStateStore(ctx, t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height + 2)
 
@@ -99,9 +111,9 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 	require.Equal(t, err.Error(), "statestore height (100) is not one below or equal to blockstore height (102)")
 }
 
-func setupStateStore(t *testing.T, height int64) state.Store {
+func setupStateStore(ctx context.Context, t *testing.T, height int64) state.Store {
 	stateStore := state.NewStore(dbm.NewMemDB())
-	valSet, _ := factory.RandValidatorSet(5, 10)
+	valSet, _ := factory.RandValidatorSet(ctx, 5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = 10

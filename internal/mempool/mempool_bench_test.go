@@ -29,6 +29,6 @@ func BenchmarkTxMempool_CheckTx(b *testing.B) {
 		tx := []byte(fmt.Sprintf("%X=%d", prefix, priority))
 		b.StartTimer()
 
-		require.NoError(b, txmp.CheckTx(context.Background(), tx, nil, TxInfo{}))
+		require.NoError(b, txmp.CheckTx(ctx, tx, nil, TxInfo{}))
 	}
 }

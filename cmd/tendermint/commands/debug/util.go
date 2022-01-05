@@ -15,8 +15,8 @@ import (
 
 // dumpStatus gets node status state dump from the Tendermint RPC and writes it
 // to file. It returns an error upon failure.
-func dumpStatus(rpc *rpchttp.HTTP, dir, filename string) error {
-	status, err := rpc.Status(context.Background())
+func dumpStatus(ctx context.Context, rpc *rpchttp.HTTP, dir, filename string) error {
+	status, err := rpc.Status(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get node status: %w", err)
 	}
@@ -26,8 +26,8 @@ func dumpStatus(rpc *rpchttp.HTTP, dir, filename string) error {
 
 // dumpNetInfo gets network information state dump from the Tendermint RPC and
 // writes it to file. It returns an error upon failure.
-func dumpNetInfo(rpc *rpchttp.HTTP, dir, filename string) error {
-	netInfo, err := rpc.NetInfo(context.Background())
+func dumpNetInfo(ctx context.Context, rpc *rpchttp.HTTP, dir, filename string) error {
+	netInfo, err := rpc.NetInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get node network information: %w", err)
 	}
@@ -37,8 +37,8 @@ func dumpNetInfo(rpc *rpchttp.HTTP, dir, filename string) error {
 
 // dumpConsensusState gets consensus state dump from the Tendermint RPC and
 // writes it to file. It returns an error upon failure.
-func dumpConsensusState(rpc *rpchttp.HTTP, dir, filename string) error {
-	consDump, err := rpc.DumpConsensusState(context.Background())
+func dumpConsensusState(ctx context.Context, rpc *rpchttp.HTTP, dir, filename string) error {
+	consDump, err := rpc.DumpConsensusState(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get node consensus dump: %w", err)
 	}

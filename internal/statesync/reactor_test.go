@@ -193,7 +193,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	const snapshotHeight = 7
 	rts := setup(ctx, t, nil, nil, nil, 2)
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	chain := buildLightBlockChain(ctx, t, 1, 10, time.Now())
 	// app accepts any snapshot
 	rts.conn.On("OfferSnapshotSync", ctx, mock.AnythingOfType("types.RequestOfferSnapshot")).
 		Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
@@ -422,8 +422,8 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	h := factory.MakeRandomHeader()
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
-	vals, pv := factory.RandValidatorSet(1, 10)
-	vote, err := factory.MakeVote(pv[0], h.ChainID, 0, h.Height, 0, 2,
+	vals, pv := factory.RandValidatorSet(ctx, 1, 10)
+	vote, err := factory.MakeVote(ctx, pv[0], h.ChainID, 0, h.Height, 0, 2,
 		blockID, factory.DefaultTestTime)
 	require.NoError(t, err)
 
@@ -485,7 +485,7 @@ func TestReactor_BlockProviders(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	chain := buildLightBlockChain(ctx, t, 1, 10, time.Now())
 	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
 	peers := rts.reactor.peers.All()
@@ -544,7 +544,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	chain := buildLightBlockChain(ctx, t, 1, 10, time.Now())
 	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 	go handleConsensusParamsRequest(ctx, t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
@@ -630,7 +630,7 @@ func TestReactor_Backfill(t *testing.T) {
 				return nil
 			})
 
-			chain := buildLightBlockChain(t, stopHeight-1, startHeight+1, stopTime)
+			chain := buildLightBlockChain(ctx, t, stopHeight-1, startHeight+1, stopTime)
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
@@ -713,8 +713,8 @@ func handleLightBlockRequests(
 				} else {
 					switch errorCount % 3 {
 					case 0: // send a different block
-						vals, pv := factory.RandValidatorSet(3, 10)
-						_, _, lb := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
+						vals, pv := factory.RandValidatorSet(ctx, 3, 10)
+						_, _, lb := mockLB(ctx, t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
 						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
 						sending <- p2p.Envelope{
@@ -777,22 +777,24 @@ func handleConsensusParamsRequest(
 	}
 }
 
-func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
+func buildLightBlockChain(ctx context.Context, t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
+	t.Helper()
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
 	blockTime := startTime.Add(time.Duration(fromHeight-toHeight) * time.Minute)
-	vals, pv := factory.RandValidatorSet(3, 10)
+	vals, pv := factory.RandValidatorSet(ctx, 3, 10)
 	for height := fromHeight; height < toHeight; height++ {
-		vals, pv, chain[height] = mockLB(t, height, blockTime, lastBlockID, vals, pv)
+		vals, pv, chain[height] = mockLB(ctx, t, height, blockTime, lastBlockID, vals, pv)
 		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
 		blockTime = blockTime.Add(1 * time.Minute)
 	}
 	return chain
 }
 
-func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockID,
+func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, lastBlockID types.BlockID,
 	currentVals *types.ValidatorSet, currentPrivVals []types.PrivValidator,
 ) (*types.ValidatorSet, []types.PrivValidator, *types.LightBlock) {
+	t.Helper()
 	header, err := factory.MakeHeader(&types.Header{
 		Height:      height,
 		LastBlockID: lastBlockID,
@@ -800,13 +802,13 @@ func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockI
 	})
 	header.Version.App = testAppVersion
 	require.NoError(t, err)
-	nextVals, nextPrivVals := factory.RandValidatorSet(3, 10)
+	nextVals, nextPrivVals := factory.RandValidatorSet(ctx, 3, 10)
 	header.ValidatorsHash = currentVals.Hash()
 	header.NextValidatorsHash = nextVals.Hash()
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()
 	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
 	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals)
-	commit, err := factory.MakeCommit(lastBlockID, height, 0, voteSet, currentPrivVals, time)
+	commit, err := factory.MakeCommit(ctx, lastBlockID, height, 0, voteSet, currentPrivVals, time)
 	require.NoError(t, err)
 	return nextVals, nextPrivVals, &types.LightBlock{
 		SignedHeader: &types.SignedHeader{

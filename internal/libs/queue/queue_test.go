@@ -125,6 +125,9 @@ func TestClose(t *testing.T) {
 }
 
 func TestWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	q := mustQueue(t, Options{SoftQuota: 2, HardLimit: 2})
 
 	// A wait on an empty queue should time out.
@@ -141,10 +144,13 @@ func TestWait(t *testing.T) {
 
 	// A wait on a non-empty queue should report an item.
 	t.Run("WaitNonEmpty", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		const input = "figgy pudding"
 		q.mustAdd(input)
 
-		got, err := q.Wait(context.Background())
+		got, err := q.Wait(ctx)
 		if err != nil {
 			t.Errorf("Wait: unexpected error: %v", err)
 		} else if got != input {
@@ -159,7 +165,7 @@ func TestWait(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			got, err := q.Wait(context.Background())
+			got, err := q.Wait(ctx)
 			if err != nil {
 				t.Errorf("Wait: unexpected error: %w", err)
 			} else if got != input {
@@ -176,7 +182,7 @@ func TestWait(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			got, err := q.Wait(context.Background())
+			got, err := q.Wait(ctx)
 			if err != ErrQueueClosed {
 				t.Errorf("Wait: got (%v, %v), want %v", got, err, ErrQueueClosed)
 			}

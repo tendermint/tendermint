@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"sort"
 
 	"github.com/tendermint/tendermint/config"
@@ -9,15 +10,17 @@ import (
 )
 
 func RandGenesisDoc(
+	ctx context.Context,
 	cfg *config.Config,
 	numValidators int,
 	randPower bool,
-	minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+	minPower int64,
+) (*types.GenesisDoc, []types.PrivValidator) {
 
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
-		val, privVal := RandValidator(randPower, minPower)
+		val, privVal := RandValidator(ctx, randPower, minPower)
 		validators[i] = types.GenesisValidator{
 			PubKey: val.PubKey,
 			Power:  val.VotingPower,

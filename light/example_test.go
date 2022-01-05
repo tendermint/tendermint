@@ -91,7 +91,7 @@ func ExampleClient() {
 	time.Sleep(2 * time.Second)
 
 	// veify the block at height 3
-	_, err = c.VerifyLightBlockAtHeight(context.Background(), 3, time.Now())
+	_, err = c.VerifyLightBlockAtHeight(ctx, 3, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}

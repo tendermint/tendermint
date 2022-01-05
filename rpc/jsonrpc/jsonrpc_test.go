@@ -205,11 +205,11 @@ func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.HTTPClient)
 	assert.Equal(t, got4, val4)
 }
 
-func echoViaWS(cl *client.WSClient, val string) (string, error) {
+func echoViaWS(ctx context.Context, cl *client.WSClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err := cl.Call(context.Background(), "echo", params)
+	err := cl.Call(ctx, "echo", params)
 	if err != nil {
 		return "", err
 	}
@@ -227,11 +227,11 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 	return result.Value, nil
 }
 
-func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
+func echoBytesViaWS(ctx context.Context, cl *client.WSClient, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
-	err := cl.Call(context.Background(), "echo_bytes", params)
+	err := cl.Call(ctx, "echo_bytes", params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -249,14 +249,14 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 	return result.Value, nil
 }
 
-func testWithWSClient(t *testing.T, cl *client.WSClient) {
+func testWithWSClient(ctx context.Context, t *testing.T, cl *client.WSClient) {
 	val := testVal
-	got, err := echoViaWS(cl, val)
+	got, err := echoViaWS(ctx, cl, val)
 	require.NoError(t, err)
 	assert.Equal(t, got, val)
 
 	val2 := randBytes(t)
-	got2, err := echoBytesViaWS(cl, val2)
+	got2, err := echoBytesViaWS(ctx, cl, val2)
 	require.NoError(t, err)
 	assert.Equal(t, got2, val2)
 }
@@ -286,7 +286,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 			err = cl3.Start(ctx)
 			require.NoError(t, err)
 			fmt.Printf("=== testing server on %s using WS client", addr)
-			testWithWSClient(t, cl3)
+			testWithWSClient(ctx, t, cl3)
 			cancel()
 		})
 	}
@@ -311,7 +311,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err = cl.Call(context.Background(), "echo_ws", params)
+	err = cl.Call(ctx, "echo_ws", params)
 	require.NoError(t, err)
 
 	msg := <-cl.ResponsesCh
@@ -342,7 +342,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 
 	val := testVal
 	params := []interface{}{val}
-	err = cl.CallWithArrayParams(context.Background(), "echo_ws", params)
+	err = cl.CallWithArrayParams(ctx, "echo_ws", params)
 	require.NoError(t, err)
 
 	msg := <-cl.ResponsesCh

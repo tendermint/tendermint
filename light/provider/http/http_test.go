@@ -59,11 +59,11 @@ func TestProvider(t *testing.T) {
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err = rpcclient.WaitForHeight(c, 10, nil)
+	err = rpcclient.WaitForHeight(ctx, c, 10, nil)
 	require.NoError(t, err)
 
 	// let's get the highest block
-	lb, err := p.LightBlock(context.Background(), 0)
+	lb, err := p.LightBlock(ctx, 0)
 	require.NoError(t, err)
 	assert.True(t, lb.Height < 9001, "height=%d", lb.Height)
 
@@ -72,17 +72,17 @@ func TestProvider(t *testing.T) {
 
 	// historical queries now work :)
 	lower := lb.Height - 3
-	lb, err = p.LightBlock(context.Background(), lower)
+	lb, err = p.LightBlock(ctx, lower)
 	require.NoError(t, err)
 	assert.Equal(t, lower, lb.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	lb, err = p.LightBlock(context.Background(), 9001)
+	lb, err = p.LightBlock(ctx, 9001)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrHeightTooHigh, err)
 
-	lb, err = p.LightBlock(context.Background(), 1)
+	lb, err = p.LightBlock(ctx, 1)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
@@ -90,7 +90,7 @@ func TestProvider(t *testing.T) {
 	// if the provider is unable to provide four more blocks then we should return
 	// an unreliable peer error
 	for i := 0; i < 4; i++ {
-		_, err = p.LightBlock(context.Background(), 1)
+		_, err = p.LightBlock(ctx, 1)
 	}
 	assert.IsType(t, provider.ErrUnreliableProvider{}, err)
 
@@ -99,7 +99,7 @@ func TestProvider(t *testing.T) {
 	cancel()
 
 	time.Sleep(10 * time.Second)
-	lb, err = p.LightBlock(context.Background(), lower+2)
+	lb, err = p.LightBlock(ctx, lower+2)
 	// we should see a connection refused
 	require.Error(t, err)
 	require.Nil(t, lb)

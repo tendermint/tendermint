@@ -294,7 +294,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	var currentBytes int64
 	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height, time.Now(), privVals[0], "test-chain")
+		require.NoError(t, err)
 		currentBytes += int64(len(ev.Bytes()))
 		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
@@ -698,10 +699,13 @@ func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.Pri
 }
 
 func TestLoadStateFromGenesis(t *testing.T) {
-	_ = loadStatefromGenesis(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = loadStatefromGenesis(ctx, t)
 }
 
-func loadStatefromGenesis(t *testing.T) sm.State {
+func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 	t.Helper()
 
 	stateDB := dbm.NewMemDB()
@@ -713,7 +717,7 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 	require.NoError(t, err)
 	require.True(t, loadedState.IsEmpty())
 
-	genDoc, _ := factory.RandGenesisDoc(cfg, 0, false, 10)
+	genDoc, _ := factory.RandGenesisDoc(ctx, cfg, 0, false, 10)
 
 	state, err := loadStateFromDBOrGenesisDocProvider(
 		stateStore,

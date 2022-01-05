@@ -83,11 +83,11 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	var ev types.Evidence
 	for i := 1; i <= amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
-			ev, err = generateLightClientAttackEvidence(
+			ev, err = generateLightClientAttackEvidence(ctx,
 				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		} else {
-			ev, err = generateDuplicateVoteEvidence(
+			ev, err = generateDuplicateVoteEvidence(ctx,
 				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		}
@@ -142,6 +142,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 // creates evidence of a lunatic attack. The height provided is the common height.
 // The forged height happens 2 blocks later.
 func generateLightClientAttackEvidence(
+	ctx context.Context,
 	privVals []types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
@@ -156,7 +157,7 @@ func generateLightClientAttackEvidence(
 
 	// add a new bogus validator and remove an existing one to
 	// vary the validator set slightly
-	pv, conflictingVals, err := mutateValidatorSet(privVals, vals)
+	pv, conflictingVals, err := mutateValidatorSet(ctx, privVals, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +167,7 @@ func generateLightClientAttackEvidence(
 	// create a commit for the forged header
 	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := factory.MakeCommit(blockID, forgedHeight, 0, voteSet, pv, forgedTime)
+	commit, err := factory.MakeCommit(ctx, blockID, forgedHeight, 0, voteSet, pv, forgedTime)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +193,7 @@ func generateLightClientAttackEvidence(
 // generateDuplicateVoteEvidence picks a random validator from the val set and
 // returns duplicate vote evidence against the validator
 func generateDuplicateVoteEvidence(
+	ctx context.Context,
 	privVals []types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
@@ -202,11 +204,11 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	voteA, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteA, err := factory.MakeVote(ctx, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := factory.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteB, err := factory.MakeVote(ctx, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
@@ -284,9 +286,8 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 	}
 }
 
-func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
-) ([]types.PrivValidator, *types.ValidatorSet, error) {
-	newVal, newPrivVal := factory.RandValidator(false, 10)
+func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet) ([]types.PrivValidator, *types.ValidatorSet, error) {
+	newVal, newPrivVal := factory.RandValidator(ctx, false, 10)
 
 	var newVals *types.ValidatorSet
 	if vals.Size() > 2 {

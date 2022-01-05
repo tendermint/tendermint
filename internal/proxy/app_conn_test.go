@@ -133,12 +133,12 @@ func BenchmarkEcho(b *testing.B) {
 }
 
 func TestInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
 	logger := log.TestingLogger()
 	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
@@ -154,7 +154,7 @@ func TestInfo(t *testing.T) {
 	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
-	resInfo, err := proxy.InfoSync(context.Background(), RequestInfo)
+	resInfo, err := proxy.InfoSync(ctx, RequestInfo)
 	require.NoError(t, err)
 
 	if resInfo.Data != "{\"size\":0}" {
