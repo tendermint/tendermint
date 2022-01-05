@@ -131,7 +131,7 @@ RETRY_LOOP:
 				break ENSURE_CONNECTED
 			}
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				break ENSURE_CONNECTED
+				return err
 			}
 
 			cli.logger.Error("Echo failed", "err", err)

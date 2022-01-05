@@ -323,8 +323,8 @@ func getSampleCommit(ctx context.Context, t testing.TB) *Commit {
 func BenchmarkVoteSignBytes(b *testing.B) {
 	protoVote := examplePrecommit(b).ToProto()
 
-	b.ResetTimer()
 	b.ReportAllocs()
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		sink = VoteSignBytes("test_chain_id", protoVote)
