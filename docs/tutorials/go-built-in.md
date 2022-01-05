@@ -14,7 +14,7 @@ Tendermint Core is a service that provides a Byzantine fault tolerant consensus 
 for state-machine replication. The replicated state-machine, or "application", can be written 
 in any language that can send and receive protocol buffer messages. 
 
-This tutorial is written for Golang and uses Tendermint as a library, but applications not
+This tutorial is written for Go and uses Tendermint as a library, but applications not
 written in Go can use Tendermint to drive state-machine replication in a client-server
 model.
 
