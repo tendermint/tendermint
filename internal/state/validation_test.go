@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	testfactory "github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -148,7 +147,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			// should be height-1 instead of height
 			wrongHeightVote := testfactory.MakeVote(
 				ctx,
-				factory.Require(t),
+				testfactory.Require(t),
 				privVals[proposerAddr.String()],
 				chainID,
 				1,
@@ -205,7 +204,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		*/
 		goodVote := testfactory.MakeVote(
 			ctx,
-			factory.Require(t),
+			testfactory.Require(t),
 			privVals[proposerAddr.String()],
 			chainID,
 			1,
