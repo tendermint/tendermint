@@ -66,9 +66,9 @@ func TestMsgToProto(t *testing.T) {
 	pbProposal := proposal.ToProto()
 
 	pv := types.NewMockPV()
-	vote, err := factory.MakeVote(ctx, pv, factory.DefaultTestChainID,
+	vote := factory.MakeVote(ctx, factory.Require(t), pv, factory.DefaultTestChainID,
 		0, 1, 0, 2, types.BlockID{}, time.Now())
-	require.NoError(t, err)
+
 	pbVote := vote.ToProto()
 
 	testsCases := []struct {

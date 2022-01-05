@@ -41,7 +41,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	valSet, privVals := factory.RandValidatorSet(ctx, 1, 10)
+	valSet, privVals := factory.RandValidatorSet(ctx, t, 1, 10)
 
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},

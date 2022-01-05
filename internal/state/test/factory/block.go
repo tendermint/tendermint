@@ -2,14 +2,18 @@ package factory
 
 import (
 	"context"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/types"
 )
 
-func MakeBlocks(ctx context.Context, n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
+func MakeBlocks(ctx context.Context, t *testing.T, n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
+	t.Helper()
+
 	blocks := make([]*types.Block, n)
 
 	var (
@@ -21,10 +25,7 @@ func MakeBlocks(ctx context.Context, n int, state *sm.State, privVal types.PrivV
 	for i := 0; i < n; i++ {
 		height := int64(i + 1)
 
-		block, parts, err := makeBlockAndPartSet(ctx, *state, prevBlock, prevBlockMeta, privVal, height)
-		if err != nil {
-			return nil, err
-		}
+		block, parts := makeBlockAndPartSet(ctx, t, *state, prevBlock, prevBlockMeta, privVal, height)
 
 		blocks[i] = block
 
@@ -37,7 +38,7 @@ func MakeBlocks(ctx context.Context, n int, state *sm.State, privVal types.PrivV
 		state.LastBlockHeight = height
 	}
 
-	return blocks, nil
+	return blocks
 }
 
 func MakeBlock(state sm.State, height int64, c *types.Commit) (*types.Block, error) {
@@ -57,16 +58,20 @@ func MakeBlock(state sm.State, height int64, c *types.Commit) (*types.Block, err
 
 func makeBlockAndPartSet(
 	ctx context.Context,
+	t *testing.T,
 	state sm.State,
 	lastBlock *types.Block,
 	lastBlockMeta *types.BlockMeta,
 	privVal types.PrivValidator,
 	height int64,
-) (*types.Block, *types.PartSet, error) {
+) (*types.Block, *types.PartSet) {
+	t.Helper()
+
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	if height > 1 {
-		vote, _ := factory.MakeVote(
+		vote := factory.MakeVote(
 			ctx,
+			factory.Require(t),
 			privVal,
 			lastBlock.Header.ChainID,
 			1, lastBlock.Header.Height, 0, 2,
@@ -76,5 +81,8 @@ func makeBlockAndPartSet(
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}
 
-	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	block, partSet, err := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	require.NoError(t, err)
+
+	return block, partSet
 }

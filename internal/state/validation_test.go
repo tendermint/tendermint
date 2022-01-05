@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	testfactory "github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -103,10 +104,8 @@ func TestValidateBlockHeader(t *testing.T) {
 		/*
 			A good block passes
 		*/
-		var err error
-		state, _, lastCommit, err = makeAndCommitGoodBlock(ctx,
+		state, _, lastCommit = makeAndCommitGoodBlock(ctx, t,
 			state, height, lastCommit, state.Validators.GetProposer().Address, blockExec, privVals, nil)
-		require.NoError(t, err, "height %d", height)
 	}
 
 	nextHeight := validationTestsStopHeight
@@ -147,8 +146,9 @@ func TestValidateBlockCommit(t *testing.T) {
 				#2589: ensure state.LastValidators.VerifyCommit fails here
 			*/
 			// should be height-1 instead of height
-			wrongHeightVote, err := testfactory.MakeVote(
+			wrongHeightVote := testfactory.MakeVote(
 				ctx,
+				factory.Require(t),
 				privVals[proposerAddr.String()],
 				chainID,
 				1,
@@ -158,7 +158,6 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.LastBlockID,
 				time.Now(),
 			)
-			require.NoError(t, err, "height %d", height)
 			wrongHeightCommit := types.NewCommit(
 				wrongHeightVote.Height,
 				wrongHeightVote.Round,
@@ -188,10 +187,10 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			A good block passes
 		*/
-		var err error
 		var blockID types.BlockID
-		state, blockID, lastCommit, err = makeAndCommitGoodBlock(
+		state, blockID, lastCommit = makeAndCommitGoodBlock(
 			ctx,
+			t,
 			state,
 			height,
 			lastCommit,
@@ -200,13 +199,13 @@ func TestValidateBlockCommit(t *testing.T) {
 			privVals,
 			nil,
 		)
-		require.NoError(t, err, "height %d", height)
 
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
-		goodVote, err := testfactory.MakeVote(
+		goodVote := testfactory.MakeVote(
 			ctx,
+			factory.Require(t),
 			privVals[proposerAddr.String()],
 			chainID,
 			1,
@@ -216,7 +215,6 @@ func TestValidateBlockCommit(t *testing.T) {
 			blockID,
 			time.Now(),
 		)
-		require.NoError(t, err, "height %d", height)
 
 		bpvPubKey, err := badPrivVal.GetPubKey(ctx)
 		require.NoError(t, err)
@@ -319,9 +317,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 			evidence = append(evidence, newEv)
 		}
 
-		var err error
-		state, _, lastCommit, err = makeAndCommitGoodBlock(
+		state, _, lastCommit = makeAndCommitGoodBlock(
 			ctx,
+			t,
 			state,
 			height,
 			lastCommit,
@@ -330,6 +328,6 @@ func TestValidateBlockEvidence(t *testing.T) {
 			privVals,
 			evidence,
 		)
-		require.NoError(t, err, "height %d", height)
+
 	}
 }

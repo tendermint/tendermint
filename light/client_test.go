@@ -114,7 +114,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
-	differentVals, _ := factory.RandValidatorSet(ctx, 10, 100)
+	differentVals, _ := factory.RandValidatorSet(ctx, t, 10, 100)
 
 	testCases := []struct {
 		name         string
@@ -942,7 +942,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 
 	logger := log.NewTestingLogger(t)
 
-	differentVals, _ := factory.RandValidatorSet(ctx, 10, 100)
+	differentVals, _ := factory.RandValidatorSet(ctx, t, 10, 100)
 	mockBadValSetNode := mockNodeFromHeadersAndVals(
 		map[int64]*types.SignedHeader{
 			1: h1,

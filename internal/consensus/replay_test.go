@@ -334,6 +334,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	css, genDoc, cfg, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,
@@ -1016,8 +1017,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks, err := sf.MakeBlocks(ctx, 3, &state, privVal)
-	require.NoError(t, err)
+	blocks := sf.MakeBlocks(ctx, t, 3, &state, privVal)
 
 	store.chain = blocks
 
@@ -1298,7 +1298,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	val, _ := factory.RandValidator(ctx, true, 10)
+	val, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)

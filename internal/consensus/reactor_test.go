@@ -367,7 +367,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -703,6 +703,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,

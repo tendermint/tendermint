@@ -32,9 +32,9 @@ func TestStoreBootstrap(t *testing.T) {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(ctx, true, 10)
-	val2, _ := factory.RandValidator(ctx, true, 10)
-	val3, _ := factory.RandValidator(ctx, true, 10)
+	val, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
+	val2, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
+	val3, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
@@ -61,9 +61,9 @@ func TestStoreLoadValidators(t *testing.T) {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(ctx, true, 10)
-	val2, _ := factory.RandValidator(ctx, true, 10)
-	val3, _ := factory.RandValidator(ctx, true, 10)
+	val, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
+	val2, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
+	val3, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
@@ -153,7 +153,7 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	err := stateStore.Save(makeRandomStateFromConsensusParams(ctx, types.DefaultConsensusParams(), 1, 1))
+	err := stateStore.Save(makeRandomStateFromConsensusParams(ctx, t, types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
 	params, err := stateStore.LoadConsensusParams(1)
 	require.NoError(t, err)
@@ -163,7 +163,7 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	// it should save a pointer to the params at height 1
 	differentParams := types.DefaultConsensusParams()
 	differentParams.Block.MaxBytes = 20000
-	err = stateStore.Save(makeRandomStateFromConsensusParams(ctx, differentParams, 10, 1))
+	err = stateStore.Save(makeRandomStateFromConsensusParams(ctx, t, differentParams, 10, 1))
 	require.NoError(t, err)
 	res, err := stateStore.LoadConsensusParams(10)
 	require.NoError(t, err)

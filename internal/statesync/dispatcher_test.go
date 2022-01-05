@@ -76,7 +76,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 
 	d := NewDispatcher(ch)
 
-	peer := factory.NodeID("a")
+	peer := factory.NodeID(t, "a")
 
 	go func() {
 		<-chans.Out
@@ -99,7 +99,7 @@ func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 
 	_, ch := testChannel(100)
 	d := NewDispatcher(ch)
-	peer := factory.NodeID("a")
+	peer := factory.NodeID(t, "a")
 
 	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Millisecond)
 	defer cancelFunc()

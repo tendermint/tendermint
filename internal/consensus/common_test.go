@@ -765,7 +765,7 @@ func randConsensusState(
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -815,6 +815,7 @@ func randConsensusState(
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
 	ctx context.Context,
+	t *testing.T,
 	cfg *config.Config,
 	nValidators int,
 	nPeers int,
@@ -822,7 +823,7 @@ func randConsensusNetWithPeers(
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, nValidators, false, testMinPower)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
 
@@ -887,7 +888,7 @@ func randGenesisState(
 	minPower int64,
 ) (sm.State, []types.PrivValidator) {
 
-	genDoc, privValidators := factory.RandGenesisDoc(ctx, cfg, numValidators, randPower, minPower)
+	genDoc, privValidators := factory.RandGenesisDoc(ctx, t, cfg, numValidators, randPower, minPower)
 	s0, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 	return s0, privValidators
