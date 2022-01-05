@@ -367,7 +367,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -410,7 +410,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % n
 
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], cfg.ChainID())
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 1, defaultTestTime, privVals[vIdx], cfg.ChainID())
+		require.NoError(t, err)
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
@@ -721,7 +722,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		pubKey, err := states[i].privValidator.GetPubKey(context.Background())
+		pubKey, err := states[i].privValidator.GetPubKey(ctx)
 		require.NoError(t, err)
 
 		activeVals[string(pubKey.Address())] = struct{}{}

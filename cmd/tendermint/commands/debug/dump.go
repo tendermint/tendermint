@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -42,7 +43,7 @@ func init() {
 	)
 }
 
-func dumpCmdHandler(_ *cobra.Command, args []string) error {
+func dumpCmdHandler(cmd *cobra.Command, args []string) error {
 	outDir := args[0]
 	if outDir == "" {
 		return errors.New("invalid output directory")
@@ -63,22 +64,24 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create new http client: %w", err)
 	}
 
+	ctx := cmd.Context()
+
 	home := viper.GetString(cli.HomeFlag)
 	conf := config.DefaultConfig()
 	conf = conf.SetRoot(home)
 	config.EnsureRoot(conf.RootDir)
 
-	dumpDebugData(outDir, conf, rpc)
+	dumpDebugData(ctx, outDir, conf, rpc)
 
 	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
 	for range ticker.C {
-		dumpDebugData(outDir, conf, rpc)
+		dumpDebugData(ctx, outDir, conf, rpc)
 	}
 
 	return nil
 }
 
-func dumpDebugData(outDir string, conf *config.Config, rpc *rpchttp.HTTP) {
+func dumpDebugData(ctx context.Context, outDir string, conf *config.Config, rpc *rpchttp.HTTP) {
 	start := time.Now().UTC()
 
 	tmpDir, err := os.MkdirTemp(outDir, "tendermint_debug_tmp")
@@ -89,19 +92,19 @@ func dumpDebugData(outDir string, conf *config.Config, rpc *rpchttp.HTTP) {
 	defer os.RemoveAll(tmpDir)
 
 	logger.Info("getting node status...")
-	if err := dumpStatus(rpc, tmpDir, "status.json"); err != nil {
+	if err := dumpStatus(ctx, rpc, tmpDir, "status.json"); err != nil {
 		logger.Error("failed to dump node status", "error", err)
 		return
 	}
 
 	logger.Info("getting node network info...")
-	if err := dumpNetInfo(rpc, tmpDir, "net_info.json"); err != nil {
+	if err := dumpNetInfo(ctx, rpc, tmpDir, "net_info.json"); err != nil {
 		logger.Error("failed to dump node network info", "error", err)
 		return
 	}
 
 	logger.Info("getting node consensus state...")
-	if err := dumpConsensusState(rpc, tmpDir, "consensus_state.json"); err != nil {
+	if err := dumpConsensusState(ctx, rpc, tmpDir, "consensus_state.json"); err != nil {
 		logger.Error("failed to dump node consensus state", "error", err)
 		return
 	}

@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -14,6 +15,9 @@ import (
 )
 
 func TestWaitForHeight(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// test with error result - immediate failure
 	m := &mock.StatusMock{
 		Call: mock.Call{
@@ -23,9 +27,10 @@ func TestWaitForHeight(t *testing.T) {
 	r := mock.NewStatusRecorder(m)
 
 	// connection failure always leads to error
-	err := client.WaitForHeight(r, 8, nil)
+	err := client.WaitForHeight(ctx, r, 8, nil)
 	require.Error(t, err)
 	require.Equal(t, "bye", err.Error())
+
 	// we called status once to check
 	require.Equal(t, 1, len(r.Calls))
 
@@ -35,15 +40,17 @@ func TestWaitForHeight(t *testing.T) {
 	}
 
 	// we will not wait for more than 10 blocks
-	err = client.WaitForHeight(r, 40, nil)
+	err = client.WaitForHeight(ctx, r, 40, nil)
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "aborting"))
+
 	// we called status once more to check
 	require.Equal(t, 2, len(r.Calls))
 
 	// waiting for the past returns immediately
-	err = client.WaitForHeight(r, 5, nil)
+	err = client.WaitForHeight(ctx, r, 5, nil)
 	require.NoError(t, err)
+
 	// we called status once more to check
 	require.Equal(t, 3, len(r.Calls))
 
@@ -56,8 +63,9 @@ func TestWaitForHeight(t *testing.T) {
 	}
 
 	// we wait for a few blocks
-	err = client.WaitForHeight(r, 12, myWaiter)
+	err = client.WaitForHeight(ctx, r, 12, myWaiter)
 	require.NoError(t, err)
+
 	// we called status once to check
 	require.Equal(t, 5, len(r.Calls))
 

@@ -41,6 +41,9 @@ func TestGenLoadValidator(t *testing.T) {
 }
 
 func TestResetValidator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
@@ -59,7 +62,7 @@ func TestResetValidator(t *testing.T) {
 	randBytes := tmrand.Bytes(tmhash.Size)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
-	err = privVal.SignVote(context.Background(), "mychainid", vote.ToProto())
+	err = privVal.SignVote(ctx, "mychainid", vote.ToProto())
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -154,6 +157,9 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 }
 
 func TestSignVote(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
@@ -176,11 +182,12 @@ func TestSignVote(t *testing.T) {
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
 	v := vote.ToProto()
-	err = privVal.SignVote(context.Background(), "mychainid", v)
+
+	err = privVal.SignVote(ctx, "mychainid", v)
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote(context.Background(), "mychainid", v)
+	err = privVal.SignVote(ctx, "mychainid", v)
 	assert.NoError(t, err, "expected no error on signing same vote")
 
 	// now try some bad votes
@@ -192,18 +199,22 @@ func TestSignVote(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		assert.Error(t, privVal.SignVote(context.Background(), "mychainid", c.ToProto()),
+		assert.Error(t, privVal.SignVote(ctx, "mychainid", c.ToProto()),
 			"expected error on signing conflicting vote")
 	}
 
 	// try signing a vote with a different time stamp
 	sig := vote.Signature
 	vote.Timestamp = vote.Timestamp.Add(time.Duration(1000))
-	assert.NoError(t, privVal.SignVote(context.Background(), "mychainid", v))
+	err = privVal.SignVote(ctx, "mychainid", v)
+	assert.NoError(t, err)
 	assert.Equal(t, sig, vote.Signature)
 }
 
 func TestSignProposal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.NoError(t, err)
 	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
@@ -224,11 +235,12 @@ func TestSignProposal(t *testing.T) {
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
 	pbp := proposal.ToProto()
-	err = privVal.SignProposal(context.Background(), "mychainid", pbp)
+
+	err = privVal.SignProposal(ctx, "mychainid", pbp)
 	assert.NoError(t, err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
-	err = privVal.SignProposal(context.Background(), "mychainid", pbp)
+	err = privVal.SignProposal(ctx, "mychainid", pbp)
 	assert.NoError(t, err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
@@ -240,14 +252,14 @@ func TestSignProposal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		assert.Error(t, privVal.SignProposal(context.Background(), "mychainid", c.ToProto()),
+		assert.Error(t, privVal.SignProposal(ctx, "mychainid", c.ToProto()),
 			"expected error on signing conflicting proposal")
 	}
 
 	// try signing a proposal with a different time stamp
 	sig := proposal.Signature
 	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignProposal(context.Background(), "mychainid", pbp)
+	err = privVal.SignProposal(ctx, "mychainid", pbp)
 	assert.NoError(t, err)
 	assert.Equal(t, sig, proposal.Signature)
 }

@@ -11,7 +11,11 @@ import (
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val, _ := randValidator(true, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	val, _, err := randValidator(ctx, true, 100)
+	require.NoError(t, err)
 	testCases := []struct {
 		msg      string
 		v1       *Validator
@@ -42,8 +46,11 @@ func TestValidatorProtoBuf(t *testing.T) {
 }
 
 func TestValidatorValidateBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey(context.Background())
+	pubKey, _ := priv.GetPubKey(ctx)
 	testCases := []struct {
 		val *Validator
 		err bool

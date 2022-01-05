@@ -501,12 +501,13 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 
 func randState(
 	ctx context.Context,
+	t *testing.T,
 	cfg *config.Config,
 	logger log.Logger,
 	nValidators int,
 ) (*State, []*validatorStub, error) {
 	// Get State
-	state, privVals := randGenesisState(cfg, nValidators, false, 10)
+	state, privVals := randGenesisState(ctx, t, cfg, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -764,7 +765,7 @@ func randConsensusState(
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -821,7 +822,7 @@ func randConsensusNetWithPeers(
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, false, testMinPower)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
 
@@ -878,13 +879,17 @@ func randConsensusNetWithPeers(
 }
 
 func randGenesisState(
+	ctx context.Context,
+	t *testing.T,
 	cfg *config.Config,
 	numValidators int,
 	randPower bool,
-	minPower int64) (sm.State, []types.PrivValidator) {
+	minPower int64,
+) (sm.State, []types.PrivValidator) {
 
-	genDoc, privValidators := factory.RandGenesisDoc(cfg, numValidators, randPower, minPower)
-	s0, _ := sm.MakeGenesisState(genDoc)
+	genDoc, privValidators := factory.RandGenesisDoc(ctx, cfg, numValidators, randPower, minPower)
+	s0, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 	return s0, privValidators
 }
 

@@ -309,7 +309,8 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	ev := types.NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id")
+	require.NoError(t, err)
 
 	const query = `tm.event='NewEvidence'`
 	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{

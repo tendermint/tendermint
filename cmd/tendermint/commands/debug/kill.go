@@ -33,6 +33,7 @@ $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 }
 
 func killCmdHandler(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
 	pid, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
 		return err
@@ -62,17 +63,17 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	defer os.RemoveAll(tmpDir)
 
 	logger.Info("getting node status...")
-	if err := dumpStatus(rpc, tmpDir, "status.json"); err != nil {
+	if err := dumpStatus(ctx, rpc, tmpDir, "status.json"); err != nil {
 		return err
 	}
 
 	logger.Info("getting node network info...")
-	if err := dumpNetInfo(rpc, tmpDir, "net_info.json"); err != nil {
+	if err := dumpNetInfo(ctx, rpc, tmpDir, "net_info.json"); err != nil {
 		return err
 	}
 
 	logger.Info("getting node consensus state...")
-	if err := dumpConsensusState(rpc, tmpDir, "consensus_state.json"); err != nil {
+	if err := dumpConsensusState(ctx, rpc, tmpDir, "consensus_state.json"); err != nil {
 		return err
 	}
 
