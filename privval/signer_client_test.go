@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -55,12 +56,15 @@ func getSignerTestCases(ctx context.Context, t *testing.T, logger log.Logger) []
 			signerClient: sc,
 			signerServer: ss,
 		})
+		t.Cleanup(ss.Wait)
 	}
 
 	return testCases
 }
 
 func TestSignerClose(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	bctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
@@ -77,6 +81,8 @@ func TestSignerClose(t *testing.T) {
 }
 
 func TestSignerPing(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -89,6 +95,8 @@ func TestSignerPing(t *testing.T) {
 }
 
 func TestSignerGetPubKey(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -117,6 +125,8 @@ func TestSignerGetPubKey(t *testing.T) {
 }
 
 func TestSignerProposal(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -155,6 +165,8 @@ func TestSignerProposal(t *testing.T) {
 }
 
 func TestSignerVote(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -196,6 +208,8 @@ func TestSignerVote(t *testing.T) {
 }
 
 func TestSignerVoteResetDeadline(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -245,6 +259,8 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 }
 
 func TestSignerVoteKeepAlive(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -295,6 +311,8 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 }
 
 func TestSignerSignProposalErrors(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -334,6 +352,8 @@ func TestSignerSignProposalErrors(t *testing.T) {
 }
 
 func TestSignerSignVoteErrors(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -398,6 +418,8 @@ func brokenHandler(ctx context.Context, privVal types.PrivValidator, request pri
 }
 
 func TestSignerUnexpectedResponse(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
