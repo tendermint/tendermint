@@ -64,7 +64,7 @@ type Manifest struct {
 	QueueType string `toml:"queue_type"`
 
 	// Number of bytes per tx. Default is 1kb (1024)
-	TxSize int64
+	TxSize int
 
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
