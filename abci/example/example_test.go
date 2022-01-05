@@ -112,7 +112,7 @@ func testStream(ctx context.Context, t *testing.T, logger log.Logger, app types.
 
 		// Sometimes send flush messages
 		if counter%128 == 0 {
-			err = client.FlushSync(context.Background())
+			err = client.FlushSync(ctx)
 			require.NoError(t, err)
 		}
 	}
@@ -162,7 +162,7 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
+		response, err := client.DeliverTx(ctx, &types.RequestDeliverTx{Tx: []byte("test")})
 		require.NoError(t, err, "Error in GRPC DeliverTx")
 
 		counter++

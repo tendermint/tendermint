@@ -148,6 +148,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			*/
 			// should be height-1 instead of height
 			wrongHeightVote, err := testfactory.MakeVote(
+				ctx,
 				privVals[proposerAddr.String()],
 				chainID,
 				1,
@@ -205,6 +206,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
 		goodVote, err := testfactory.MakeVote(
+			ctx,
 			privVals[proposerAddr.String()],
 			chainID,
 			1,
@@ -284,8 +286,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 			var currentBytes int64
 			// more bytes than the maximum allowed for evidence
 			for currentBytes <= maxBytesEvidence {
-				newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+				newEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height, time.Now(),
 					privVals[proposerAddr.String()], chainID)
+				require.NoError(t, err)
 				evidence = append(evidence, newEv)
 				currentBytes += int64(len(newEv.Bytes()))
 			}
@@ -306,8 +309,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 		var currentBytes int64
 		// precisely the amount of allowed evidence
 		for {
-			newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime,
+			newEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height, defaultEvidenceTime,
 				privVals[proposerAddr.String()], chainID)
+			require.NoError(t, err)
 			currentBytes += int64(len(newEv.Bytes()))
 			if currentBytes >= maxBytesEvidence {
 				break

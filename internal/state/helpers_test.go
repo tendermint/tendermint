@@ -55,7 +55,7 @@ func makeAndCommitGoodBlock(
 	}
 
 	// Simulate a lastCommit for this block from all validators for the next height
-	commit, err := makeValidCommit(height, blockID, state.Validators, privVals)
+	commit, err := makeValidCommit(ctx, height, blockID, state.Validators, privVals)
 	if err != nil {
 		return state, types.BlockID{}, nil, err
 	}
@@ -89,6 +89,7 @@ func makeAndApplyGoodBlock(
 }
 
 func makeValidCommit(
+	ctx context.Context,
 	height int64,
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
@@ -97,7 +98,7 @@ func makeValidCommit(
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
-		vote, err := factory.MakeVote(privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
+		vote, err := factory.MakeVote(ctx, privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
 		if err != nil {
 			return nil, err
 		}
@@ -264,9 +265,9 @@ func makeRandomStateFromValidatorSet(
 	}
 }
 
-func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
+func makeRandomStateFromConsensusParams(ctx context.Context, consensusParams *types.ConsensusParams,
 	height, lastHeightConsensusParamsChanged int64) sm.State {
-	val, _ := factory.RandValidator(true, 10)
+	val, _ := factory.RandValidator(ctx, true, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{
 		LastBlockHeight:                  height - 1,

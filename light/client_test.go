@@ -109,9 +109,12 @@ func TestValidateTrustOptions(t *testing.T) {
 }
 
 func TestClient_SequentialVerification(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
-	differentVals, _ := factory.RandValidatorSet(10, 100)
+	differentVals, _ := factory.RandValidatorSet(ctx, 10, 100)
 
 	testCases := []struct {
 		name         string
@@ -934,9 +937,12 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	logger := log.NewTestingLogger(t)
 
-	differentVals, _ := factory.RandValidatorSet(10, 100)
+	differentVals, _ := factory.RandValidatorSet(ctx, 10, 100)
 	mockBadValSetNode := mockNodeFromHeadersAndVals(
 		map[int64]*types.SignedHeader{
 			1: h1,
@@ -959,9 +965,6 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 			1: vals,
 			2: vals,
 		})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	c, err := light.NewClient(
 		ctx,

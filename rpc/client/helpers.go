@@ -34,13 +34,13 @@ func DefaultWaitStrategy(delta int64) (abort error) {
 //
 // If waiter is nil, we use DefaultWaitStrategy, but you can also
 // provide your own implementation
-func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
+func WaitForHeight(ctx context.Context, c StatusClient, h int64, waiter Waiter) error {
 	if waiter == nil {
 		waiter = DefaultWaitStrategy
 	}
 	delta := int64(1)
 	for delta > 0 {
-		s, err := c.Status(context.Background())
+		s, err := c.Status(ctx)
 		if err != nil {
 			return err
 		}

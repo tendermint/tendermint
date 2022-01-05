@@ -81,7 +81,12 @@ func TestValidatorSetBasic(t *testing.T) {
 }
 
 func TestValidatorSetValidateBasic(t *testing.T) {
-	val, _ := randValidator(t, false, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	val, _, err := randValidator(ctx, false, 1)
+	require.NoError(t, err)
+
 	badVal := &Validator{}
 
 	testCases := []struct {
@@ -380,17 +385,19 @@ func randModuloValidator(totalVotingPower int64) *Validator {
 	return val
 }
 
-func randValidator(t testing.TB, randPower bool, minPower int64) (*Validator, PrivValidator) {
+func randValidator(ctx context.Context, randPower bool, minPower int64) (*Validator, PrivValidator, error) {
 	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
 		votePower += int64(rand.Uint32())
 	}
-	pubKey, err := privVal.GetPubKey(context.Background())
-	require.NoError(t, err, "could not retrieve pubkey")
+	pubKey, err := privVal.GetPubKey(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	val := NewValidator(pubKey, votePower)
-	return val, privVal
+	return val, privVal, nil
 }
 
 func randModuloValidatorSet(numValidators int) *ValidatorSet {
@@ -1281,11 +1288,14 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 }
 
 func TestNewValidatorSetFromExistingValidators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	size := 5
 	vals := make([]*Validator, size)
 	for i := 0; i < size; i++ {
 		pv := NewMockPV()
-		vals[i] = pv.ExtractIntoValidator(int64(i + 1))
+		vals[i] = pv.ExtractIntoValidator(ctx, int64(i+1))
 	}
 	valSet := NewValidatorSet(vals)
 	valSet.IncrementProposerPriority(5)
@@ -1397,14 +1407,18 @@ func TestSafeMul(t *testing.T) {
 }
 
 func TestValidatorSetProtoBuf(t *testing.T) {
-	valset, _ := randValidatorPrivValSet(t, 10, 100)
-	valset2, _ := randValidatorPrivValSet(t, 10, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	valset, _ := randValidatorPrivValSet(ctx, t, 10, 100)
+	valset2, _ := randValidatorPrivValSet(ctx, t, 10, 100)
 	valset2.Validators[0] = &Validator{}
 
-	valset3, _ := randValidatorPrivValSet(t, 10, 100)
+	valset3, _ := randValidatorPrivValSet(ctx, t, 10, 100)
 	valset3.Proposer = nil
 
-	valset4, _ := randValidatorPrivValSet(t, 10, 100)
+	valset4, _ := randValidatorPrivValSet(ctx, t, 10, 100)
+
 	valset4.Proposer = &Validator{}
 
 	testCases := []struct {
@@ -1509,7 +1523,10 @@ func BenchmarkUpdates(b *testing.B) {
 	}
 }
 
-func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
+func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) { // nolint
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, n := range []int{1, 8, 64, 1024} {
 		n := n
 		var (
@@ -1520,9 +1537,9 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			// generate n validators
-			voteSet, valSet, vals := randVoteSet(b, h, 0, tmproto.PrecommitType, n, int64(n*5))
+			voteSet, valSet, vals := randVoteSet(ctx, b, h, 0, tmproto.PrecommitType, n, int64(n*5))
 			// create a commit with n validators
-			commit, err := makeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			commit, err := makeCommit(ctx, blockID, h, 0, voteSet, vals, time.Now())
 			require.NoError(b, err)
 
 			for i := 0; i < b.N/n; i++ {
@@ -1533,7 +1550,10 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 	}
 }
 
-func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) {
+func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) { // nolint
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, n := range []int{1, 8, 64, 1024} {
 		n := n
 		var (
@@ -1544,9 +1564,10 @@ func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) {
 		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			// generate n validators
-			voteSet, valSet, vals := randVoteSet(b, h, 0, tmproto.PrecommitType, n, int64(n*5))
+			voteSet, valSet, vals := randVoteSet(ctx, b, h, 0, tmproto.PrecommitType, n, int64(n*5))
+
 			// create a commit with n validators
-			commit, err := makeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			commit, err := makeCommit(ctx, blockID, h, 0, voteSet, vals, time.Now())
 			require.NoError(b, err)
 
 			for i := 0; i < b.N/n; i++ {
@@ -1558,6 +1579,9 @@ func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) {
 }
 
 func BenchmarkValidatorSet_VerifyCommitLightTrusting_Ed25519(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, n := range []int{1, 8, 64, 1024} {
 		n := n
 		var (
@@ -1568,9 +1592,9 @@ func BenchmarkValidatorSet_VerifyCommitLightTrusting_Ed25519(b *testing.B) {
 		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			// generate n validators
-			voteSet, valSet, vals := randVoteSet(b, h, 0, tmproto.PrecommitType, n, int64(n*5))
+			voteSet, valSet, vals := randVoteSet(ctx, b, h, 0, tmproto.PrecommitType, n, int64(n*5))
 			// create a commit with n validators
-			commit, err := makeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			commit, err := makeCommit(ctx, blockID, h, 0, voteSet, vals, time.Now())
 			require.NoError(b, err)
 
 			for i := 0; i < b.N/n; i++ {

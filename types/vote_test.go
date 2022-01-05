@@ -47,7 +47,6 @@ func exampleVote(tb testing.TB, t byte) *Vote {
 		ValidatorIndex:   56789,
 	}
 }
-
 func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit(t)
 	v := vote.ToProto()
@@ -149,8 +148,11 @@ func TestVoteProposalNotEq(t *testing.T) {
 }
 
 func TestVoteVerifySignature(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey(context.Background())
+	pubkey, err := privVal.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	vote := examplePrecommit(t)
@@ -158,7 +160,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	signBytes := VoteSignBytes("test_chain_id", v)
 
 	// sign it
-	err = privVal.SignVote(context.Background(), "test_chain_id", v)
+	err = privVal.SignVote(ctx, "test_chain_id", v)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -201,8 +203,11 @@ func TestIsVoteTypeValid(t *testing.T) {
 }
 
 func TestVoteVerify(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey(context.Background())
+	pubkey, err := privVal.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	vote := examplePrevote(t)
@@ -255,9 +260,12 @@ func TestVoteValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			vote := examplePrecommit(t)
 			v := vote.ToProto()
-			err := privVal.SignVote(context.Background(), "test_chain_id", v)
+			err := privVal.SignVote(ctx, "test_chain_id", v)
 			vote.Signature = v.Signature
 			require.NoError(t, err)
 			tc.malleateVote(vote)
@@ -267,10 +275,13 @@ func TestVoteValidateBasic(t *testing.T) {
 }
 
 func TestVoteProtobuf(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	privVal := NewMockPV()
 	vote := examplePrecommit(t)
 	v := vote.ToProto()
-	err := privVal.SignVote(context.Background(), "test_chain_id", v)
+	err := privVal.SignVote(ctx, "test_chain_id", v)
 	vote.Signature = v.Signature
 	require.NoError(t, err)
 
@@ -298,12 +309,13 @@ func TestVoteProtobuf(t *testing.T) {
 
 var sink interface{}
 
-func getSampleCommit(t testing.TB) *Commit {
+func getSampleCommit(ctx context.Context, t testing.TB) *Commit {
 	t.Helper()
 
 	lastID := makeBlockIDRandom()
-	voteSet, _, vals := randVoteSet(t, 2, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(lastID, 2, 1, voteSet, vals, time.Now())
+	voteSet, _, vals := randVoteSet(ctx, t, 2, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := makeCommit(ctx, lastID, 2, 1, voteSet, vals, time.Now())
+
 	require.NoError(t, err)
 
 	return commit
@@ -312,8 +324,8 @@ func getSampleCommit(t testing.TB) *Commit {
 func BenchmarkVoteSignBytes(b *testing.B) {
 	protoVote := examplePrecommit(b).ToProto()
 
-	b.ResetTimer()
 	b.ReportAllocs()
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		sink = VoteSignBytes("test_chain_id", protoVote)
@@ -328,8 +340,10 @@ func BenchmarkVoteSignBytes(b *testing.B) {
 }
 
 func BenchmarkCommitVoteSignBytes(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	sampleCommit := getSampleCommit(b)
+	sampleCommit := getSampleCommit(ctx, b)
 
 	b.ReportAllocs()
 	b.ResetTimer()
