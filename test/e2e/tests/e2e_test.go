@@ -58,9 +58,6 @@ func testNode(ctx context.Context, t *testing.T, testFunc func(context.Context, 
 		t.Run(node.Name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
-
 			testFunc(ctx, t, node)
 		})
 	}
