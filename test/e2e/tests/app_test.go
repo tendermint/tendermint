@@ -144,10 +144,10 @@ func TestApp_Tx(t *testing.T) {
 			continue
 		}
 		t.Run(test.Name, func(t *testing.T) {
-			// testNode calls t.Parallel as well, so we should
-			// have a copy of the
 			test := testCases[idx]
+			t.Parallel()
 			testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+				t.Parallel()
 				client, err := node.Client()
 				require.NoError(t, err)
 
