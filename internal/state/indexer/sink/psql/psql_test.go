@@ -336,7 +336,7 @@ func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
 	want := label + " is not supported via the postgres event sink"
 	ok, err := f()
 	assert.False(t, ok)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, want, err.Error())
 }
 

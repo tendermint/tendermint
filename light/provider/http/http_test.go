@@ -52,7 +52,7 @@ func TestProvider(t *testing.T) {
 	t.Log("chainID:", chainID)
 
 	c, err := rpchttp.New(rpcAddr)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	p := lighthttp.NewWithClient(chainID, c)
 	require.NoError(t, err)

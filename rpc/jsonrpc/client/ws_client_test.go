@@ -225,9 +225,9 @@ func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	opts.SkipMetrics = true
 	c, err := NewWSWithOptions(addr, "/websocket", opts)
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 	err = c.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	c.Logger = log.NewTestingLogger(t)
 	return c
 }
