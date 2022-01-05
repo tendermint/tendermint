@@ -70,7 +70,7 @@ type Testnet struct {
 	KeyType          string
 	Evidence         int
 	LogLevel         string
-	TxSize           int64
+	TxSize           int
 	ABCIProtocol     string
 }
 
