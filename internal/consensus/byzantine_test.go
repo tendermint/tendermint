@@ -196,7 +196,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		if lazyNodeState.privValidatorPubKey == nil {
 			// If this node is a validator & proposer in the current round, it will
 			// miss the opportunity to create a block.
-			lazyNodeState.logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+			lazyNodeState.logger.Error("enterPropose", "err", errPubKeyIsNotSet)
 			return
 		}
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
@@ -209,7 +209,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
 		// and the privValidator will refuse to sign anything.
 		if err := lazyNodeState.wal.FlushAndSync(); err != nil {
-			lazyNodeState.logger.Error("Error flushing to disk")
+			lazyNodeState.logger.Error("error flushing to disk")
 		}
 
 		// Make proposal

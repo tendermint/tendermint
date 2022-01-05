@@ -92,7 +92,7 @@ func TestValidTxProof(t *testing.T) {
 			require.NoError(t, err)
 
 			p2, err = TxProofFromProto(pb2)
-			if assert.Nil(t, err, "%d: %d: %+v", h, i, err) {
+			if assert.NoError(t, err, "%d: %d: %+v", h, i, err) {
 				assert.Nil(t, p2.Validate(root), "%d: %d", h, i)
 			}
 		}

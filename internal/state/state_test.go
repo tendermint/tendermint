@@ -51,18 +51,16 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 func TestStateCopy(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	assert := assert.New(t)
 
 	stateCopy := state.Copy()
 
-	assert.True(state.Equals(stateCopy),
-		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
-			stateCopy, state))
+	assert.True(t, state.Equals(stateCopy),
+		"expected state and its copy to be identical.\ngot: %v\nexpected: %v",
+		stateCopy, state)
 
 	stateCopy.LastBlockHeight++
 	stateCopy.LastValidators = state.Validators
-	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
-        %v`, state))
+	assert.False(t, state.Equals(stateCopy), "expected states to be different. got same %v", state)
 }
 
 // TestMakeGenesisStateNilValidators tests state's consistency when genesis file's validators field is nil.
@@ -73,7 +71,7 @@ func TestMakeGenesisStateNilValidators(t *testing.T) {
 	}
 	require.Nil(t, doc.ValidateAndComplete())
 	state, err := sm.MakeGenesisState(&doc)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 0, len(state.Validators.Validators))
 	require.Equal(t, 0, len(state.NextValidators.Validators))
 }
@@ -83,7 +81,6 @@ func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
-	assert := assert.New(t)
 
 	state.LastBlockHeight++
 	state.LastValidators = state.Validators
@@ -92,9 +89,9 @@ func TestStateSaveLoad(t *testing.T) {
 
 	loadedState, err := stateStore.Load()
 	require.NoError(t, err)
-	assert.True(state.Equals(loadedState),
-		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
-			loadedState, state))
+	assert.True(t, state.Equals(loadedState),
+		"expected state and its copy to be identical.\ngot: %v\nexpected: %v",
+		loadedState, state)
 }
 
 // TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
@@ -102,7 +99,6 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
-	assert := assert.New(t)
 
 	state.LastBlockHeight++
 
@@ -123,17 +119,16 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	err = stateStore.SaveABCIResponses(block.Height, abciResponses)
 	require.NoError(t, err)
 	loadedABCIResponses, err := stateStore.LoadABCIResponses(block.Height)
-	assert.Nil(err)
-	assert.Equal(abciResponses, loadedABCIResponses,
-		fmt.Sprintf("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
-			loadedABCIResponses, abciResponses))
+	require.NoError(t, err)
+	assert.Equal(t, abciResponses, loadedABCIResponses,
+		"ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
+		loadedABCIResponses, abciResponses)
 }
 
 // TestResultsSaveLoad tests saving and loading ABCI results.
 func TestABCIResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
-	assert := assert.New(t)
 
 	stateStore := sm.NewStore(stateDB)
 
@@ -186,7 +181,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	for i := range cases {
 		h := int64(i + 1)
 		res, err := stateStore.LoadABCIResponses(h)
-		assert.Error(err, "%d: %#v", i, res)
+		assert.Error(t, err, "%d: %#v", i, res)
 	}
 
 	// Add all cases.
@@ -205,14 +200,14 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	for i, tc := range cases {
 		h := int64(i + 1)
 		res, err := stateStore.LoadABCIResponses(h)
-		if assert.NoError(err, "%d", i) {
+		if assert.NoError(t, err, "%d", i) {
 			t.Log(res)
 			responses := &tmstate.ABCIResponses{
 				BeginBlock: &abci.ResponseBeginBlock{},
 				DeliverTxs: tc.expected,
 				EndBlock:   &abci.ResponseEndBlock{},
 			}
-			assert.Equal(sm.ABCIResponsesResultsHash(responses), sm.ABCIResponsesResultsHash(res), "%d", i)
+			assert.Equal(t, sm.ABCIResponsesResultsHash(responses), sm.ABCIResponsesResultsHash(res), "%d", i)
 		}
 	}
 }
@@ -221,23 +216,22 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 func TestValidatorSimpleSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	assert := assert.New(t)
 
 	statestore := sm.NewStore(stateDB)
 
 	// Can't load anything for height 0.
 	_, err := statestore.LoadValidators(0)
-	assert.IsType(sm.ErrNoValSetForHeight{}, err, "expected err at height 0")
+	assert.IsType(t, sm.ErrNoValSetForHeight{}, err, "expected err at height 0")
 
 	// Should be able to load for height 1.
 	v, err := statestore.LoadValidators(1)
-	assert.Nil(err, "expected no err at height 1")
-	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
+	require.NoError(t, err, "expected no err at height 1")
+	assert.Equal(t, v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// Should be able to load for height 2.
 	v, err = statestore.LoadValidators(2)
-	assert.Nil(err, "expected no err at height 2")
-	assert.Equal(v.Hash(), state.NextValidators.Hash(), "expected validator hashes to match")
+	require.NoError(t, err, "expected no err at height 2")
+	assert.Equal(t, v.Hash(), state.NextValidators.Hash(), "expected validator hashes to match")
 
 	// Increment height, save; should be able to load for next & next next height.
 	state.LastBlockHeight++
@@ -245,11 +239,11 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	err = statestore.Save(state)
 	require.NoError(t, err)
 	vp0, err := statestore.LoadValidators(nextHeight + 0)
-	assert.Nil(err, "expected no err")
+	assert.NoError(t, err)
 	vp1, err := statestore.LoadValidators(nextHeight + 1)
-	assert.Nil(err, "expected no err")
-	assert.Equal(vp0.Hash(), state.Validators.Hash(), "expected validator hashes to match")
-	assert.Equal(vp1.Hash(), state.NextValidators.Hash(), "expected next validator hashes to match")
+	assert.NoError(t, err)
+	assert.Equal(t, vp0.Hash(), state.Validators.Hash(), "expected validator hashes to match")
+	assert.Equal(t, vp1.Hash(), state.NextValidators.Hash(), "expected next validator hashes to match")
 }
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
@@ -301,7 +295,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 
 	for i, power := range testCases {
 		v, err := stateStore.LoadValidators(int64(i + 1 + 1)) // +1 because vset changes delayed by 1 block.
-		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", i))
+		assert.NoError(t, err, fmt.Sprintf("expected no err at height %d", i))
 		assert.Equal(t, v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
 		_, val := v.GetByIndex(0)
 
@@ -958,11 +952,11 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	nextHeight := state.LastBlockHeight + 1
 
 	v0, err := stateStore.LoadValidators(nextHeight)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	acc0 := v0.Validators[0].ProposerPriority
 
 	v1, err := stateStore.LoadValidators(nextHeight + 1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	acc1 := v1.Validators[0].ProposerPriority
 
 	assert.NotEqual(t, acc1, acc0, "expected ProposerPriority value to change between heights")
@@ -993,14 +987,14 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
 	state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	err = stateStore.Save(state)
 	require.NoError(t, err)
 
 	// Load nextheight, it should be the oldpubkey.
 	v0, err := stateStore.LoadValidators(nextHeight)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, valSetSize, v0.Size())
 	index, val := v0.GetByAddress(pubkeyOld.Address())
 	assert.NotNil(t, val)
@@ -1010,7 +1004,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Load nextheight+1, it should be the new pubkey.
 	v1, err := stateStore.LoadValidators(nextHeight + 1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, valSetSize, v1.Size())
 	index, val = v1.GetByAddress(pubkey.Address())
 	assert.NotNil(t, val)
@@ -1072,7 +1066,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		require.NoError(t, err)
 		state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates)
 
-		require.Nil(t, err)
+		require.NoError(t, err)
 		err := stateStore.Save(state)
 		require.NoError(t, err)
 	}
@@ -1094,7 +1088,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	for _, testCase := range testCases {
 		p, err := stateStore.LoadConsensusParams(testCase.height)
 
-		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
+		assert.NoError(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
 		assert.EqualValues(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))
 	}

@@ -380,7 +380,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, newValidatorTx1, nil, mempool.TxInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	propBlock, _, err := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err := propBlock.MakePartSet(partSize)
@@ -414,7 +414,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, updateValidatorTx1, nil, mempool.TxInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	propBlock, _, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err = propBlock.MakePartSet(partSize)
@@ -448,14 +448,14 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, newValidatorTx2, nil, mempool.TxInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, newValidatorTx3, nil, mempool.TxInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	propBlock, _, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err = propBlock.MakePartSet(partSize)
@@ -497,7 +497,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, removeValidatorTx2, nil, mempool.TxInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
@@ -536,7 +536,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 	err = assertMempool(css[0].txNotifier).CheckTx(ctx, removeValidatorTx3, nil, mempool.TxInfo{})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	propBlock, _, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err = propBlock.MakePartSet(partSize)
@@ -704,14 +704,14 @@ func TestMockProxyApp(t *testing.T) {
 func tempWALWithData(data []byte) string {
 	walFile, err := os.CreateTemp("", "wal")
 	if err != nil {
-		panic(fmt.Sprintf("failed to create temp WAL file: %v", err))
+		panic(fmt.Errorf("failed to create temp WAL file: %w", err))
 	}
 	_, err = walFile.Write(data)
 	if err != nil {
-		panic(fmt.Sprintf("failed to write to temp WAL file: %v", err))
+		panic(fmt.Errorf("failed to write to temp WAL file: %w", err))
 	}
 	if err := walFile.Close(); err != nil {
-		panic(fmt.Sprintf("failed to close temp WAL file: %v", err))
+		panic(fmt.Errorf("failed to close temp WAL file: %w", err))
 	}
 	return walFile.Name()
 }
@@ -825,9 +825,7 @@ func testHandshakeReplay(
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, logger, proxy.NopMetrics())
-	if err := proxyApp.Start(ctx); err != nil {
-		t.Fatalf("Error starting proxy app connections: %v", err)
-	}
+	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
 	t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
@@ -835,9 +833,8 @@ func testHandshakeReplay(
 	if expectError {
 		require.Error(t, err)
 		return
-	} else if err != nil {
-		t.Fatalf("Error on abci handshake: %v", err)
 	}
+	require.NoError(t, err, "Error on abci handshake")
 
 	// get the latest app hash from the app
 	res, err := proxyApp.Query().InfoSync(ctx, abci.RequestInfo{Version: ""})
@@ -1326,13 +1323,10 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	logger := log.TestingLogger()
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
-	if err := proxyApp.Start(ctx); err != nil {
-		t.Fatalf("Error starting proxy app connections: %v", err)
-	}
+	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
-	if err := handshaker.Handshake(ctx, proxyApp); err != nil {
-		t.Fatalf("Error on abci handshake: %v", err)
-	}
+	require.NoError(t, handshaker.Handshake(ctx, proxyApp), "error on abci handshake")
+
 	// reload the state, check the validator set was updated
 	state, err = stateStore.Load()
 	require.NoError(t, err)

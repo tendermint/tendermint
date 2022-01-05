@@ -104,7 +104,7 @@ func loadGenerate(ctx context.Context, r *rand.Rand, chTx chan<- types.Tx, txSiz
 		bz := make([]byte, txSize)
 		_, err := r.Read(bz)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
+			panic(fmt.Errorf("failed to read random bytes: %w", err))
 		}
 		tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
 

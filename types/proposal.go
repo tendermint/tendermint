@@ -60,7 +60,7 @@ func (p *Proposal) ValidateBasic() error {
 		return errors.New("negative POLRound (exception: -1)")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 	// ValidateBasic above would pass even if the BlockID was empty:
 	if !p.BlockID.IsComplete() {

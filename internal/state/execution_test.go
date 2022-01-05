@@ -45,7 +45,7 @@ func TestApplyBlock(t *testing.T) {
 	defer cancel()
 
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -60,7 +60,7 @@ func TestApplyBlock(t *testing.T) {
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// TODO check state and mempool
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
@@ -76,7 +76,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
 
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state, stateDB, _ := makeState(2, 2)
 	stateStore := sm.NewStore(stateDB)
@@ -116,7 +116,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = sm.ExecCommitBlock(ctx, nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
-		require.Nil(t, err, tc.desc)
+		require.NoError(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
 		ctr := 0
@@ -142,7 +142,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -228,7 +228,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// TODO check state and mempool
 	assert.Equal(t, abciEv, app.ByzantineValidators)
@@ -374,7 +374,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -416,7 +416,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
 		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
@@ -449,7 +449,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB)
@@ -477,7 +477,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	}
 
 	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(ctx, state, blockID, block) })
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }
 
