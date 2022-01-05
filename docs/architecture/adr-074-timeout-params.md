@@ -166,36 +166,43 @@ The new consensus parameters will be subject to the same
 [validity rules][time-param-validation] as the current configuration values,
 namely, each value must be non-negative.
 
-### Removal of Old Parameters
+### Migration
 
-The old `timeout-*` parameters that are configured in the [config.toml][config-toml]
-will be removed completely.
+Migration to using these new parameters will occur across two releases.
+During the v0.36 release, Tendermint will add these as consensus parameters.
+The old parameters config-local parameters will continue to exist as well in the
+v0.36 release. If the parameters are set as consensus parameters, the config-local
+parameters will be ignored. If the consensus parameters are not set, Tendermint
+will fall back to using the values contained in the `config.toml` file.
 
-### Optional: Temporary Local Overrides
+During the v0.36 release cycle, if non-default values are set in the `config.toml`,
+the node will log a warning alerting operators that the parameters will soon be removed
+in the upcoming release.
 
-The new `TimeoutParams` will be released during the `v0.36` release cycle. Accidentally
-configuring these parameters too low would result could result in chains with slow
-networks or low-degree network topologies to not gossip votes within the configured
-timeouts and require many rounds for consensus to occur. To prevent this condition,
-we could optionally include a set of `unsafe-timeout-*` parameters in the `config.toml`.
-
-These parameters would allow node operators to quickly remedy the situation while
-preparing to update the consensus parameters. This would be a temporary solution that
-we would remove within the v0.37 release.
+In the v0.37 release, the config-local parameters will be removed. If a node
+continues to set the parameters in the configuration file, an error will be logged
+that indicates how to upgrade or remove them. 
 
 ### Add New Consensus Parameters to HashedParams
 
 Tendermint currently only verifies that a subset of the consensus parameters are
 equal across all validators. These parameters are the `BlockMaxBytes` and the `BlockMaxGas`.
-A [hash of these parameters][hashed-params] is included in the block. Validators ensure 
-their values of the parameters match by hashing their value of the parameters and 
-checking that their hashed value matches the hash included in the block. 
+A [hash of these parameters][hashed-params] is included in the block. Validators ensure
+their values of the parameters match by hashing their value of the parameters and
+checking that their hashed value matches the hash included in the block.
 
-Including the new parameters in the consensus parameters hash will break verification
-of old blocks. We will therefore wait until other verification-breaking changes
-occur and add these parameters into the hashed parameters when that occurs. Currently,
-`v0.37` is planned to be a verification-breaking change, so these parameters
-should be included in in the hash as part of that release. 
+Including the new parameters in this hash could break verification of old blocks.
+To add the parameters in a hash-compatible way, we will only include these consensus
+parameters in the hash if they have ever been updated to be non-default values.
+This is safe for validation of historic blocks because the parameters could not have
+been set during heights where they did not exist. Eliding them from the hash
+them will therefore produce the same hash that would have been produced as before
+they existed.
+
+For backwards compatibility, Tendermint will keep track of these initial default 
+values for each of these parameters. If the defaults ever change, our hash-compatible 
+upgrade scheme requires remembering the initial defaults so as to ignore the parameters
+when that initial default is being used. 
 
 ## Consequences
 
