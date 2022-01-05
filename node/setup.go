@@ -44,12 +44,16 @@ func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *stor
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
-		return
+		return nil, nil, fmt.Errorf("unable to initialize blockstore: %w", err)
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&config.DBContext{ID: "state", Config: cfg})
-	return
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to initialize statestore: %w", err)
+	}
+
+	return blockStore, stateDB, nil
 }
 
 // nolint:lll
@@ -252,7 +256,7 @@ func createEvidenceReactor(
 ) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("unable to initialize evidence db: %w", err)
 	}
 
 	logger = logger.With("module", "evidence")
@@ -479,7 +483,7 @@ func createPeerManager(
 
 	peerDB, err := dbProvider(&config.DBContext{ID: "peerstore", Config: cfg})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to initialize peer store: %w", err)
 	}
 
 	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)

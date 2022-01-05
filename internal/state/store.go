@@ -93,6 +93,8 @@ type Store interface {
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
 	PruneStates(int64) error
+	// Close closes the connection with the database
+	Close() error
 }
 
 // dbStore wraps a db (github.com/tendermint/tm-db)
@@ -662,4 +664,8 @@ func (store dbStore) saveConsensusParamsInfo(
 	}
 
 	return batch.Set(consensusParamsKey(nextHeight), bz)
+}
+
+func (store dbStore) Close() error {
+	return store.db.Close()
 }

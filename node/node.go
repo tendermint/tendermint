@@ -843,6 +843,16 @@ func (n *nodeImpl) OnStop() {
 			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
 	}
+	if n.blockStore != nil {
+		if err := n.blockStore.Close(); err != nil {
+			n.Logger.Error("problem closing blockstore", "err", err)
+		}
+	}
+	if n.stateStore != nil {
+		if err := n.stateStore.Close(); err != nil {
+			n.Logger.Error("problem closing statestore", "err", err)
+		}
+	}
 }
 
 func (n *nodeImpl) startRPC() ([]net.Listener, error) {
