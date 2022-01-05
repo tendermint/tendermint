@@ -144,10 +144,14 @@ func TestApp_Tx(t *testing.T) {
 			continue
 		}
 		t.Run(test.Name, func(t *testing.T) {
-			// testNode calls t.Parallel as well, so we should
-			// have a copy of the
 			test := testCases[idx]
+<<<<<<< HEAD
 			testNode(t, func(t *testing.T, node e2e.Node) {
+=======
+			t.Parallel()
+			testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+				t.Parallel()
+>>>>>>> 386c3a0ff (e2e: constrain test parallelism and reporting (#7516))
 				client, err := node.Client()
 				require.NoError(t, err)
 
