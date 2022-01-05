@@ -22,7 +22,6 @@ func init() {
 }
 
 var (
-	ctx             = context.Background()
 	testnetCache    = map[string]e2e.Testnet{}
 	testnetCacheMtx = sync.Mutex{}
 	blocksCache     = map[string][]*types.Block{}
@@ -37,7 +36,7 @@ var (
 // these tests are skipped so that they're not picked up during normal unit
 // test runs. If E2E_NODE is also set, only the specified node is tested,
 // otherwise all nodes are tested.
-func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
+func testNode(t *testing.T, testFunc func(context.Context, *testing.T, e2e.Node)) {
 	t.Helper()
 
 	testnet := loadTestnet(t)
@@ -58,7 +57,11 @@ func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 
 		t.Run(node.Name, func(t *testing.T) {
 			t.Parallel()
-			testFunc(t, node)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			testFunc(ctx, t, node)
 		})
 	}
 }
@@ -86,7 +89,7 @@ func loadTestnet(t *testing.T) e2e.Testnet {
 
 // fetchBlockChain fetches a complete, up-to-date block history from
 // the freshest testnet archive node.
-func fetchBlockChain(t *testing.T) []*types.Block {
+func fetchBlockChain(ctx context.Context, t *testing.T) []*types.Block {
 	t.Helper()
 
 	testnet := loadTestnet(t)

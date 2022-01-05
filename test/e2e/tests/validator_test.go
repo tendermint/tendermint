@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 // Tests that validator sets are available and correct according to
 // scheduled validator updates.
 func TestValidator_Sets(t *testing.T) {
-	testNode(t, func(t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
@@ -59,8 +60,11 @@ func TestValidator_Sets(t *testing.T) {
 // Tests that a validator proposes blocks when it's supposed to. It tolerates some
 // missed blocks, e.g. due to testnet perturbations.
 func TestValidator_Propose(t *testing.T) {
-	blocks := fetchBlockChain(t)
-	testNode(t, func(t *testing.T, node e2e.Node) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blocks := fetchBlockChain(ctx, t)
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		if node.Mode != e2e.ModeValidator {
 			return
 		}
@@ -90,8 +94,11 @@ func TestValidator_Propose(t *testing.T) {
 // Tests that a validator signs blocks when it's supposed to. It tolerates some
 // missed blocks, e.g. due to testnet perturbations.
 func TestValidator_Sign(t *testing.T) {
-	blocks := fetchBlockChain(t)
-	testNode(t, func(t *testing.T, node e2e.Node) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blocks := fetchBlockChain(ctx, t)
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		if node.Mode != e2e.ModeValidator {
 			return
 		}
