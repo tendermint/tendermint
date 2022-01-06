@@ -37,9 +37,10 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.17.x darwin/amd64
+go version go1.17.5 darwin/amd64
 ```
 
+Note that the exact patch number may differ as Go releases come out.
 ## 1.2 Creating a new Go project
 
 We'll start by creating a new Go project.
@@ -76,13 +77,13 @@ Hello, Tendermint Core
 ## 1.3 Writing a Tendermint Core application
 
 Tendermint Core communicates with an application through the Application
-BlockChain Interface (ABCI). All of the message types Tendermint uses for 
+BlockChain Interface (ABCI) protocol. All of the message types Tendermint uses for 
 communicating with the application can be found in the ABCI [protobuf
 file](https://github.com/tendermint/spec/blob/b695d30aae69933bc0e630da14949207d18ae02c/proto/tendermint/abci/types.proto).
 
 We will begin by creating the basic scaffolding for an ABCI application in 
 a new `app.go` file. The first step is to create a new type, `KVStoreApplication`
-with the methods that implement the abci `Application` interface.
+with methods that implement the abci `Application` interface.
 
 Create a file called `app.go` and add the following contents:
 
@@ -155,10 +156,10 @@ func (app *KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshot
 Our application will need to write its state out to persistent storage so that it
 can stop and start without losing all of its data.
 
-For this tutorial, we will use [badger](https://github.com/dgraph-io/badger). 
+For this tutorial, we will use [BadgerDB](https://github.com/dgraph-io/badger). 
 Badger is a fast embedded key-value store. 
 
-First, add badger as a dependency of your go module using the `go get` command:
+First, add Badger as a dependency of your go module using the `go get` command:
 
 `go get github.com/dgraph-io/badger`
 
@@ -178,9 +179,7 @@ And change the constructor to set the appropriate field when creating the applic
 
 ```go
 func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
-	return &KVStoreApplication{
-		db: db,
-	}
+	return &KVStoreApplication{db: db}
 }
 ```
 
@@ -211,11 +210,10 @@ func (app *KVStoreApplication) validateTx(tx []byte) uint32 {
 	// already stored the same transaction in the database before.
 	dbErr := app.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
-		if err != nil {
-			if err != badger.ErrKeyNotFound {
-				return err
-			}
+		if errors.Is(err, badger.ErrKeyNotFound) {
 			return nil
+		} else if err != nil {
+			return err
 		}
 		return item.Value(func(val []byte) error {
 			if bytes.Equal(val, value) {
@@ -225,7 +223,7 @@ func (app *KVStoreApplication) validateTx(tx []byte) uint32 {
 		})
 	})
 
-	// There was an error processing the transaction.
+	// There was an unexpected error processing the transaction.
 	// The application therefore cannot safely make progress so we crash.
 	if dbErr != nil {
 		panic(dbErr)
@@ -268,7 +266,8 @@ receive a block.
 will be delivered to the application.
 
 To implement these calls in our application we're going to make use of Badger's 
-transaction mechanism. 
+transaction mechanism. Bagder uses the term _transaction_ in the context of databases,
+be careful not to confuse it with _blockchain transactions_.
 
 First, let's create a new Badger `Txn` during `BeginBlock`:
 
@@ -279,7 +278,7 @@ func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcit
 }
 ```
 
-Next, let's modify `DeliverTx` to add the `key` and `value` to this `Txn` every time our application
+Next, let's modify `DeliverTx` to add the `key` and `value` to the database `Txn` every time our application
 receives a new `RequestDeliverTx`.
 
 ```go
@@ -288,11 +287,10 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 		return abcitypes.ResponseDeliverTx{Code: code}
 	}
 
-	parts := bytes.Split(req.Tx, []byte("="))
+	parts := bytes.SplitN(req.Tx, []byte("="), 2)
 	key, value := parts[0], parts[1]
 
-	err := app.currentBatch.Set(key, value)
-	if err != nil {
+	if err := app.currentBatch.Set(key, value); err != nil {
 		panic(err)
 	}
 
@@ -300,7 +298,7 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 }
 ```
 Note that we check the validity of the transaction _again_ during `DeliverTx`.
-Transactions are not guaranteed to be valid when they are delivered to to an
+Transactions are not guaranteed to be valid when they are delivered to an
 application. 
 
 Also note that we don't commit the Badger `Txn` we are building during `DeliverTx`. 
@@ -327,8 +325,7 @@ To do this, let's implement the `Query` method in `app.go`:
 
 ```go
 func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
-	var resp abcitypes.ResponseQuery
-	resp.Key = req.Data
+	resp := abcitypes.ResponseQuery{Key: req.Data}
 
 	dbErr := app.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(req.Data)
@@ -393,17 +390,13 @@ import (
 var homeDir string
 
 func init() {
-	flag.StringVar(&homeDir, "tm-home", "", "Path to the tendermint 'home' directory")
+	flag.StringVar(&homeDir, "tm-home", "", "Path to the tendermint config directory (if empty, uses $HOME/.tendermint)")
 }
 
 func main() {
 	flag.Parse()
 	if homeDir == "" {
-		h, err := os.UserHomeDir()
-		if err != nil {
-			panic(err)
-		}
-		homeDir = fmt.Sprintf("%s/%s", h, ".tendermint")
+		homeDir = os.ExpandEnv("$HOME/.tendermint")
 	}
 	config := cfg.DefaultValidatorConfig()
 
@@ -411,22 +404,23 @@ func main() {
 
 	viper.SetConfigFile(fmt.Sprintf("%s/%s", homeDir, "config/config.toml"))
 	if err := viper.ReadInConfig(); err != nil {
-		panic(err)
+		log.Fatalf("Reading config: %v", err)
 	}
 	if err := viper.Unmarshal(config); err != nil {
-		panic(err)
+		log.Fatalf("Decoding config: %v", err)
 	}
 	if err := config.ValidateBasic(); err != nil {
-		panic(err)
+		log.Fatalf("Invalid configuration data: %v", err)
 	}
 	gf, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
-		panic(err)
+		log.Fatalf("Loading genesis document: %v", err)
 	}
 
-	db, err := badger.Open(badger.DefaultOptions("./badger").WithTruncate(true))
+	dbPath := filepath.Join(homeDir, "badger")
+	db, err := badger.Open(badger.DefaultOptions(dbPath).WithTruncate(true))
 	if err != nil {
-		panic(err)
+		log.Fatalf("Opening database: %v", err)
 	}
 	defer db.Close()
 	app := NewKVStoreApplication(db)
@@ -609,7 +603,7 @@ The request returns a `json` object with a `key` and `value` field set.
 ...
       "key": "dGVuZGVybWludA==",
       "value": "cm9ja3M=",
- ...
+...
 ```
 
 Those values don't look like the `key` and `value` we sent to Tendermint,
