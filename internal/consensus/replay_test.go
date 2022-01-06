@@ -102,14 +102,16 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 	}
 }
 
-func sendTxs(ctx context.Context, cs *State) {
+func sendTxs(ctx context.Context, t *testing.T, cs *State) {
+	t.Helper()
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			tx := []byte{byte(i)}
-			if err := assertMempool(cs.txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}); err != nil {
+
+			if err := assertMempool(t, cs.txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}); err != nil {
 				panic(err)
 			}
 			i++
@@ -132,7 +134,7 @@ func TestWALCrash(t *testing.T) {
 			1},
 		{"many non-empty blocks",
 			func(stateDB dbm.DB, cs *State, ctx context.Context) {
-				go sendTxs(ctx, cs)
+				go sendTxs(ctx, t, cs)
 			},
 			3},
 	}
@@ -379,7 +381,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	valPubKey1ABCI, err := encoding.PubKeyToProto(newValidatorPubKey1)
 	require.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, newValidatorTx1, nil, mempool.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, newValidatorTx1, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	propBlock, _, err := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
@@ -413,7 +415,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, updateValidatorTx1, nil, mempool.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, updateValidatorTx1, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	propBlock, _, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
@@ -447,14 +449,14 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
 	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, newValidatorTx2, nil, mempool.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, newValidatorTx2, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, newValidatorTx3, nil, mempool.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, newValidatorTx3, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	propBlock, _, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
@@ -496,7 +498,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	ensureNewProposal(proposalCh, height, round)
 
 	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, removeValidatorTx2, nil, mempool.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, removeValidatorTx2, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 
 	rs = css[0].GetRoundState()
@@ -535,7 +537,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, removeValidatorTx3, nil, mempool.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, removeValidatorTx3, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	propBlock, _, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)

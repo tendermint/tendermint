@@ -184,7 +184,7 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}))
+			require.NoError(t, assertMempool(t, states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}))
 		}
 	}
 
@@ -495,7 +495,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	// send a tx
 	require.NoError(
 		t,
-		assertMempool(states[3].txNotifier).CheckTx(
+		assertMempool(t, states[3].txNotifier).CheckTx(
 			ctx,
 			[]byte{1, 2, 3},
 			nil,
