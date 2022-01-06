@@ -33,7 +33,7 @@ to handle this case so that new versions of Tendermint with new consensus parame
 can still validate old blocks correctly without having to do anything overly complex
 or hacky. 
 
-### Allowing Developer Defined Values and the `EndBlock` Problem
+### Allowing Developer-Defined Values and the `EndBlock` Problem
 
 When new consensus parameters are added, application developers may wish to set
 values for them so that the developer-defined values may be used as soon as the 
