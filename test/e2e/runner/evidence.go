@@ -168,10 +168,12 @@ func generateLightClientAttackEvidence(
 	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
 
-	eh := func(ehErr error) {
+	eh := func(ehErr error) bool {
 		if ehErr != nil {
 			err = ehErr
+			return true
 		}
+		return false
 	}
 	commit := factory.MakeCommit(ctx, eh, blockID, forgedHeight, 0, voteSet, pv, forgedTime)
 	if err != nil {
@@ -211,12 +213,13 @@ func generateDuplicateVoteEvidence(
 		return nil, err
 	}
 
-	eh := func(ehErr error) {
+	eh := func(ehErr error) bool {
 		if ehErr != nil {
 			err = ehErr
-		} else {
-			err = nil
+			return true
 		}
+		err = nil
+		return false
 	}
 	voteA := factory.MakeVote(ctx, eh, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
@@ -302,10 +305,12 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 
 func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet) ([]types.PrivValidator, *types.ValidatorSet, error) {
 	var err error
-	eh := func(ehErr error) {
+	eh := func(ehErr error) bool {
 		if ehErr != nil {
 			err = ehErr
+			return true
 		}
+		return false
 	}
 
 	newVal, newPrivVal := factory.RandValidator(ctx, eh, false, 10)

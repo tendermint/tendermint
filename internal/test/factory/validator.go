@@ -20,7 +20,7 @@ func RandValidator(ctx context.Context, eh ErrorHandler, randPower bool, minPowe
 	pubKey, err := privVal.GetPubKey(ctx)
 	if err != nil {
 		eh(fmt.Errorf("could not retrieve public key: %w", err))
-		return
+		return nil, nil
 	}
 
 	val := types.NewValidator(pubKey, votePower)
