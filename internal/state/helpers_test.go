@@ -186,6 +186,7 @@ func makeHeaderPartsResponsesValPowerChange(
 	state sm.State,
 	power int64,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
+	t.Helper()
 
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)
@@ -199,9 +200,8 @@ func makeHeaderPartsResponsesValPowerChange(
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
-		if err != nil {
-			panic(err)
-		}
+		require.NoError(t, err)
+
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
 				{PubKey: vPbPk, Power: power},
@@ -217,6 +217,7 @@ func makeHeaderPartsResponsesParams(
 	state sm.State,
 	params *types.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
+	t.Helper()
 
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)

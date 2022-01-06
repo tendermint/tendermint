@@ -381,8 +381,8 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		defer os.RemoveAll(thisConfig.RootDir)
 
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc()
+		ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		app := appFunc(t)
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -703,6 +703,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,

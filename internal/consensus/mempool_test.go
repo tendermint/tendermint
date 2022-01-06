@@ -41,18 +41,18 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(ctx, t, baseConfig, 1, false, 10)
-	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(ctx, cs, height, round)
 
-	ensureNewEventOnChannel(newBlockCh) // first block gets committed
-	ensureNoNewEventOnChannel(newBlockCh)
+	ensureNewEventOnChannel(t, newBlockCh) // first block gets committed
+	ensureNoNewEventOnChannel(t, newBlockCh)
 	deliverTxsRange(ctx, t, cs, 0, 1)
-	ensureNewEventOnChannel(newBlockCh) // commit txs
-	ensureNewEventOnChannel(newBlockCh) // commit updated app hash
-	ensureNoNewEventOnChannel(newBlockCh)
+	ensureNewEventOnChannel(t, newBlockCh) // commit txs
+	ensureNewEventOnChannel(t, newBlockCh) // commit updated app hash
+	ensureNoNewEventOnChannel(t, newBlockCh)
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -66,16 +66,16 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(ctx, t, baseConfig, 1, false, 10)
-	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(ctx, cs, cs.Height, cs.Round)
 
-	ensureNewEventOnChannel(newBlockCh)   // first block gets committed
-	ensureNoNewEventOnChannel(newBlockCh) // then we dont make a block ...
-	ensureNewEventOnChannel(newBlockCh)   // until the CreateEmptyBlocksInterval has passed
+	ensureNewEventOnChannel(t, newBlockCh)   // first block gets committed
+	ensureNoNewEventOnChannel(t, newBlockCh) // then we dont make a block ...
+	ensureNewEventOnChannel(t, newBlockCh)   // until the CreateEmptyBlocksInterval has passed
 }
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
@@ -89,7 +89,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(ctx, t, baseConfig, 1, false, 10)
-	cs := newStateWithConfig(ctx, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
@@ -106,19 +106,19 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	}
 	startTestRound(ctx, cs, height, round)
 
-	ensureNewRound(newRoundCh, height, round) // first round at first height
-	ensureNewEventOnChannel(newBlockCh)       // first block gets committed
+	ensureNewRound(t, newRoundCh, height, round) // first round at first height
+	ensureNewEventOnChannel(t, newBlockCh)       // first block gets committed
 
 	height++ // moving to the next height
 	round = 0
 
-	ensureNewRound(newRoundCh, height, round) // first round at next height
-	deliverTxsRange(ctx, t, cs, 0, 1)         // we deliver txs, but dont set a proposal so we get the next round
-	ensureNewTimeout(timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
+	ensureNewRound(t, newRoundCh, height, round) // first round at next height
+	deliverTxsRange(ctx, t, cs, 0, 1)            // we deliver txs, but dont set a proposal so we get the next round
+	ensureNewTimeout(t, timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
 
-	round++                                   // moving to the next round
-	ensureNewRound(newRoundCh, height, round) // wait for the next round
-	ensureNewEventOnChannel(newBlockCh)       // now we can commit the block
+	round++                                      // moving to the next round
+	ensureNewRound(t, newRoundCh, height, round) // wait for the next round
+	ensureNewEventOnChannel(t, newBlockCh)       // now we can commit the block
 }
 
 func deliverTxsRange(ctx context.Context, t *testing.T, cs *State, start, end int) {
@@ -144,6 +144,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 	cs := newStateWithConfigAndBlockStore(
 		ctx,
+		t,
 		logger, config, state, privVals[0], NewCounterApplication(), blockStore)
 
 	err := stateStore.Save(state)
@@ -174,7 +175,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	cs := newStateWithConfigAndBlockStore(ctx, log.TestingLogger(), config, state, privVals[0], app, blockStore)
+	cs := newStateWithConfigAndBlockStore(ctx, t, log.TestingLogger(), config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 

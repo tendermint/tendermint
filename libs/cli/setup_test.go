@@ -55,6 +55,7 @@ func TestSetupEnv(t *testing.T) {
 }
 
 func tempDir(t *testing.T) string {
+	t.Helper()
 	cdir, err := os.MkdirTemp("", "test-cli")
 	require.NoError(t, err)
 	return cdir
