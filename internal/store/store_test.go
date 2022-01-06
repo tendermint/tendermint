@@ -49,8 +49,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 
 func makeStateAndBlockStore(eh testfactory.ErrorHandler, logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
-	if err != nil {
-		eh(err)
+	if eh(err) {
 		return sm.State{}, nil, nil
 	}
 
@@ -79,8 +78,16 @@ var (
 
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
+
+	state, _, cleanup = makeStateAndBlockStore(func(err error) bool {
+		if err != nil {
+			stdlog.Fatal(err)
+			return true
+		}
+		return false
+	}, log.NewNopLogger())
+
 	var err error
-	state, _, cleanup = makeStateAndBlockStore(t, log.NewNopLogger())
 	block, err = factory.MakeBlock(state, 1, new(types.Commit))
 
 	if err != nil {
@@ -100,7 +107,7 @@ func TestMain(m *testing.M) {
 
 // TODO: This test should be simplified ...
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(t, log.NewNopLogger())
+	state, bs, cleanup := makeStateAndBlockStore(testfactory.Require(t), log.NewNopLogger())
 	defer cleanup()
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
@@ -491,7 +498,7 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(t, log.NewNopLogger())
+	state, bs, cleanup := makeStateAndBlockStore(testfactory.Require(t), log.NewNopLogger())
 	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))

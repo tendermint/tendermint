@@ -10,12 +10,18 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type ErrorHandler func(error)
+// ErrorHandler checks an error and returns true if the error is
+// non-nil. Pass an ErrorHandler to a function in a case where you
+// might want to use a *testing.T but cannot because one is not
+// available (e.g. as is the case in some e2e test fixtures and in
+// TestMain.)
+type ErrorHandler func(error) bool
 
 func Require(t *testing.T) ErrorHandler {
-	return func(err error) {
+	return func(err error) bool {
 		t.Helper()
 		require.NoError(t, err)
+		return err != nil
 	}
 }
 
