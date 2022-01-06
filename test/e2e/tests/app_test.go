@@ -11,9 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	randomSeed = 4827085738
 )
 
 // Tests that any initial state given in genesis has made it into the app.
@@ -139,26 +144,19 @@ func TestApp_Tx(t *testing.T) {
 		},
 	}
 
+	r := rand.New(rand.NewSource(randomSeed))
 	for idx, test := range testCases {
 		if test.ShouldSkip {
 			continue
 		}
 		t.Run(test.Name, func(t *testing.T) {
 			test := testCases[idx]
-			t.Parallel()
 			testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
-				t.Parallel()
 				client, err := node.Client()
 				require.NoError(t, err)
 
-				// Generate a random value, to prevent duplicate tx errors when
-				// manually running the test multiple times for a testnet.
-				bz := make([]byte, 32)
-				_, err = rand.Read(bz)
-				require.NoError(t, err)
-
 				key := fmt.Sprintf("testapp-tx-%v", node.Name)
-				value := fmt.Sprintf("%x", bz)
+				value := tmrand.StrFromSource(r, 32)
 				tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
 				require.NoError(t, test.BroadcastTx(client)(ctx, tx))
