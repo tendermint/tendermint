@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	randomSeed int64 = 4827085738
+	randomSeed = 4827085738
 )
 
 // Tests that any initial state given in genesis has made it into the app.
