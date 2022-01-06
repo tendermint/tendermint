@@ -193,8 +193,8 @@ When Tendermint Core receives a new transaction, Tendermint asks the application
 if the transaction is acceptable. In our new application, let's implement some
 basic validation for the transactions it will receive.
 
-For our KV store application, a transaction is a string like `key=value`, giving
-a key and value to write to the store.
+For our KV store application, a transaction is a string with the form `key=value`,
+indicating a key and value to write to the store.
 
 Add the following helper method to `app.go`:
 
