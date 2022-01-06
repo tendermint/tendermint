@@ -307,7 +307,9 @@ Let's modify our `Commit` method to persist the new state to the database:
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	app.pendingBlock.Commit()
+	if err := app.pendingBlock.Commit(); err != nil {
+		log.Panicf("Error writing to database, unable to commit block: %v", err)
+	}
 	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
@@ -346,7 +348,7 @@ func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.Respo
 
 ## 1.3.4 Additional Methods
 
-You'll noticed that we left several methods unchanged. Specifically, we have yet
+You'll notice that we left several methods unchanged. Specifically, we have yet
 to implement the `Info` and `InitChain` methods and we did not implement 
 any of the `*Snapthot` methods. These methods are all important for running Tendermint
 applications in production but are not required for getting a very simple application
