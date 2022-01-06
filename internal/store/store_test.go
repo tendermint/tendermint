@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/test/factory"
+	testfactory "github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -46,16 +47,18 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		commitSigs)
 }
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
+func makeStateAndBlockStore(eh testfactory.ErrorHandler, logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
 	if err != nil {
-		panic(err)
+		eh(err)
+		return sm.State{}, nil, nil
 	}
 
 	blockDB := dbm.NewMemDB()
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
-		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
+		eh(fmt.Errorf("error constructing state from genesis file: %w", err))
+		return sm.State{}, nil, nil
 	}
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(cfg.RootDir) }
 }
@@ -77,7 +80,7 @@ var (
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
 	var err error
-	state, _, cleanup = makeStateAndBlockStore(log.NewNopLogger())
+	state, _, cleanup = makeStateAndBlockStore(t, log.NewNopLogger())
 	block, err = factory.MakeBlock(state, 1, new(types.Commit))
 
 	if err != nil {
@@ -97,7 +100,7 @@ func TestMain(m *testing.M) {
 
 // TODO: This test should be simplified ...
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup := makeStateAndBlockStore(t, log.NewNopLogger())
 	defer cleanup()
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
@@ -488,7 +491,7 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup := makeStateAndBlockStore(t, log.NewNopLogger())
 	defer cleanup()
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))

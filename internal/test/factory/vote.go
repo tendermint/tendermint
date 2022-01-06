@@ -2,11 +2,22 @@ package factory
 
 import (
 	"context"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
+
+type ErrorHandler func(error)
+
+func Require(t *testing.T) ErrorHandler {
+	return func(err error) {
+		t.Helper()
+		require.NoError(t, err)
+	}
+}
 
 func MakeVote(
 	ctx context.Context,
