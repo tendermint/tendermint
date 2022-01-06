@@ -338,7 +338,7 @@ func validatePrecommit(
 	require.NotNil(t, vote, "Failed to find precommit from validator")
 
 	if votedBlockHash == nil {
-		require.NotNil(t, vote.BlockID.Hash, "Expected precommit to be for nil")
+		require.Nil(t, vote.BlockID.Hash, "Expected precommit to be for nil")
 	} else {
 		require.True(t, bytes.Equal(vote.BlockID.Hash, votedBlockHash), "Expected precommit to be for proposal block")
 	}
