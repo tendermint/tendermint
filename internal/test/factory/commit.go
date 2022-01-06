@@ -8,12 +8,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func MakeCommit(ctx context.Context, eh ErrorHandler, blockID types.BlockID, height int64, round int32, voteSet *types.VoteSet, validators []types.PrivValidator, now time.Time) *types.Commit {
+func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round int32, voteSet *types.VoteSet, validators []types.PrivValidator, now time.Time) (*types.Commit, error) {
 	// all sign
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey(ctx)
-		if eh(err) {
-			return nil
+		if err != nil {
+			return nil, err
 		}
 		vote := &types.Vote{
 			ValidatorAddress: pubKey.Address(),
@@ -27,15 +27,14 @@ func MakeCommit(ctx context.Context, eh ErrorHandler, blockID types.BlockID, hei
 
 		v := vote.ToProto()
 
-		if eh(validators[i].SignVote(ctx, voteSet.ChainID(), v)) {
-			return nil
+		if err := validators[i].SignVote(ctx, voteSet.ChainID(), v); err != nil {
+			return nil, err
 		}
 		vote.Signature = v.Signature
-		_, err = voteSet.AddVote(vote)
-		if eh(err) {
-			return nil
+		if _, err := voteSet.AddVote(vote); err != nil {
+			return nil, err
 		}
 	}
 
-	return voteSet.MakeCommit()
+	return voteSet.MakeCommit(), nil
 }
