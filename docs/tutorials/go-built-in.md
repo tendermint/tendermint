@@ -161,7 +161,7 @@ Badger is a fast embedded key-value store.
 
 First, add Badger as a dependency of your go module using the `go get` command:
 
-`go get github.com/dgraph-io/badger`
+`go get github.com/dgraph-io/badger@v2103.2`
 
 Next, let's update the application and its constructor to receive a handle to the 
 database. 
@@ -171,7 +171,7 @@ Update the application struct as follows:
 ```go
 type KVStoreApplication struct {
 	db           *badger.DB
-	currentBatch *badger.Txn
+	pendingBlock *badger.Txn
 }
 ```
 
@@ -183,7 +183,8 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 }
 ```
 
-Don't worry about `currentBatch` for now, we'll get to that later.
+The `pendingBlock` keeps track of the transactions that update the application's
+state when a block is completed. Don't worry about it for now, we'll get to that later.
 
 ### 1.3.1 CheckTx
 
@@ -191,49 +192,20 @@ When Tendermint Core receives a new transaction, Tendermint asks the application
 if the transaction is acceptable. In our new application, let's implement some
 basic validation for the transactions it will receive.
 
+For our KV store application, a transaction is a string like `key=value`, giving
+a key and value to write to the store.
+
 Add the following helper method to `app.go`:
 
 ```go
 func (app *KVStoreApplication) validateTx(tx []byte) uint32 {
-	parts := bytes.Split(tx, []byte("="))
+	parts := bytes.SplitN(tx, []byte("="), 2)
 
-	// first, check that the transaction is not malformed.
+	// check that the transaction is not malformed
 	if len(parts) != 2 {
 		return 1
 	}
-
-	key, value := parts[0], parts[1]
-
-	var txAlreadyExists bool
-
-	// ok, we have a well-formed transaction, next let's check that we haven't
-	// already stored the same transaction in the database before.
-	dbErr := app.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil
-		} else if err != nil {
-			return err
-		}
-		return item.Value(func(val []byte) error {
-			if bytes.Equal(val, value) {
-				txAlreadyExists = true
-			}
-			return nil
-		})
-	})
-
-	// There was an unexpected error processing the transaction.
-	// The application therefore cannot safely make progress so we crash.
-	if dbErr != nil {
-		panic(dbErr)
-	}
-
-	if txAlreadyExists {
-		return 2
-	}
 	return 0
-
 }
 ```
 
@@ -248,9 +220,12 @@ func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.R
 }
 ```
 
-Any response with a non-zero code will be considered invalid by Tendermint. 
+Any response with a non-zero code will be considered invalid by Tendermint.
 Our `CheckTx` logic returns `0` to Tendermint when the transaction passes
 the validation checks.
+
+While this `CheckTx` is simple and only validates that the transaction is well-formed,
+it is very common for `CheckTx` to make more complex use of the state of an application.
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
@@ -273,7 +248,7 @@ First, let's create a new Badger `Txn` during `BeginBlock`:
 
 ```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	app.currentBatch = app.db.NewTransaction(true)
+	app.pendingBlock = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
 }
 ```
@@ -290,7 +265,7 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 	parts := bytes.SplitN(req.Tx, []byte("="), 2)
 	key, value := parts[0], parts[1]
 
-	if err := app.currentBatch.Set(key, value); err != nil {
+	if err := app.pendingBlock.Set(key, value); err != nil {
 		panic(err)
 	}
 
@@ -312,7 +287,7 @@ Let's modify our `Commit` method to persist the new state to the database:
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	app.currentBatch.Commit()
+	app.pendingBlock.Commit()
 	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
