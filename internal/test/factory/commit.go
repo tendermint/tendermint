@@ -12,7 +12,9 @@ func MakeCommit(ctx context.Context, eh ErrorHandler, blockID types.BlockID, hei
 	// all sign
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey(ctx)
-		eh(err)
+		if eh(err) {
+			return nil
+		}
 		vote := &types.Vote{
 			ValidatorAddress: pubKey.Address(),
 			ValidatorIndex:   int32(i),
@@ -25,10 +27,14 @@ func MakeCommit(ctx context.Context, eh ErrorHandler, blockID types.BlockID, hei
 
 		v := vote.ToProto()
 
-		eh(validators[i].SignVote(ctx, voteSet.ChainID(), v))
+		if eh(validators[i].SignVote(ctx, voteSet.ChainID(), v)) {
+			return nil
+		}
 		vote.Signature = v.Signature
 		_, err = voteSet.AddVote(vote)
-		eh(err)
+		if eh(err) {
+			return nil
+		}
 	}
 
 	return voteSet.MakeCommit()
