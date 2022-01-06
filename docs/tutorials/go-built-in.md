@@ -26,7 +26,8 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core application
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest releasetd version.
+> Please, do not use master.
 
 ## 1.1 Installing Go
 
@@ -183,7 +184,7 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 }
 ```
 
-The `pendingBlock` keeps track of the transactions that update the application's
+The `pendingBlock` keeps track of the transactions that will update the application's
 state when a block is completed. Don't worry about it for now, we'll get to that later.
 
 ### 1.3.1 CheckTx
