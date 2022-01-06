@@ -1084,7 +1084,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 
-	require.NotNil(t, rs.LockedBlock, "we should not be locked!")
+	require.Nil(t, rs.LockedBlock, "we should not be locked!")
 
 	t.Logf("new prop hash %v", fmt.Sprintf("%X", propBlockHash))
 
