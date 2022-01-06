@@ -210,14 +210,13 @@ func (app *KVStoreApplication) validateTx(tx []byte) uint32 {
 }
 ```
 
+
 And call it from within your `CheckTx` method:
 
 ```go
 func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
-	if code := app.validateTx(req.Tx); code != 0 {
-		return abcitypes.ResponseCheckTx{Code: code}
-	}
-	return abcitypes.ResponseCheckTx{Code: 0}
+	code := app.validateTx(req.Tx)
+	return abcitypes.ResponseCheckTx{Code: code}
 }
 ```
 
@@ -226,6 +225,18 @@ Our `CheckTx` logic returns `0` to Tendermint when the transaction passes
 the validation checks. The specific value of the code is meaningless to Tendermint.
 Non-zero codes are logged by Tendermint so applications can provide more specific
 information on why the transaction was rejected.
+
+Finally, make sure to add the `bytes` package to the your import stanza
+at the top of `app.go`:
+
+```go
+import (
+ "bytes"
+
+ abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+```
+
 
 While this `CheckTx` is simple and only validates that the transaction is well-formed,
 it is very common for `CheckTx` to make more complex use of the state of an application.
