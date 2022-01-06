@@ -344,13 +344,13 @@ func validatePrecommit(
 	}
 
 	if lockedBlockHash == nil {
-		require.True(t, cs.LockedRound != lockRound || cs.LockedBlock != nil,
+		require.False(t, cs.LockedRound != lockRound || cs.LockedBlock != nil,
 			"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
 			lockRound,
 			cs.LockedRound,
 			cs.LockedBlock)
 	} else {
-		require.True(t, cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash),
+		require.False(t, cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash),
 			"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
 			lockRound,
 			cs.LockedRound,
