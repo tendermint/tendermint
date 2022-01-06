@@ -23,7 +23,7 @@ are currently in the [HashedParams struct][hashed-params]. This hash is included
 in the block and validators use it to validate that their local view of the consensus
 parameters matches what the rest of the network is configured with.
 
-Any additional consensus parameters added to Tendermint should be included in this
+Any new consensus parameters added to Tendermint should be included in this
 hash. This presents a challenge for verification of historical blocks when consensus
 parameters are added. If a network produced blocks with a version of Tendermint that
 did not yet have the new consensus parameters, the parameter hash it produced will
