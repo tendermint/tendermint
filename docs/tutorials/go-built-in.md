@@ -482,9 +482,11 @@ Next, we create a database handle and use it to construct our ABCI application:
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 	app := NewKVStoreApplication(db)
 	acc := abciclient.NewLocalCreator(app)
+	if err := db.Close(); err != nil {
+		log.Fatalf("Opening closing: %v", err)
+	}
 ...
 ```
 
