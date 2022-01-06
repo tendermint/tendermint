@@ -223,7 +223,7 @@ func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.R
 
 Any response with a non-zero code will be considered invalid by Tendermint.
 Our `CheckTx` logic returns `0` to Tendermint when the transaction passes
-the validation checks.
+the validation checks. The specific value of the error code is meaningless to Tendermint,
 
 While this `CheckTx` is simple and only validates that the transaction is well-formed,
 it is very common for `CheckTx` to make more complex use of the state of an application.
@@ -267,7 +267,7 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 	key, value := parts[0], parts[1]
 
 	if err := app.pendingBlock.Set(key, value); err != nil {
-		panic(err)
+		log.Panicf("Error reading database, unable to verify tx: %v", dbErr)
 	}
 
 	return abcitypes.ResponseDeliverTx{Code: 0}
@@ -320,7 +320,7 @@ func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.Respo
 		})
 	})
 	if dbErr != nil {
-		panic(dbErr)
+		log.Panicf("Error reading database, unable to verify tx: %v", dbErr)
 	}
 	return resp
 }
