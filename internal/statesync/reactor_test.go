@@ -423,8 +423,9 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
 	vals, pv := factory.RandValidatorSet(ctx, t, 1, 10)
-	vote := factory.MakeVote(ctx, factory.Require(t), pv[0], h.ChainID, 0, h.Height, 0, 2,
+	vote, err := factory.MakeVote(ctx, pv[0], h.ChainID, 0, h.Height, 0, 2,
 		blockID, factory.DefaultTestTime)
+	require.NoError(t, err)
 
 	sh := &types.SignedHeader{
 		Header: h,

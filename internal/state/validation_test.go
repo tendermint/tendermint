@@ -145,9 +145,8 @@ func TestValidateBlockCommit(t *testing.T) {
 				#2589: ensure state.LastValidators.VerifyCommit fails here
 			*/
 			// should be height-1 instead of height
-			wrongHeightVote := testfactory.MakeVote(
+			wrongHeightVote, err := testfactory.MakeVote(
 				ctx,
-				testfactory.Require(t),
 				privVals[proposerAddr.String()],
 				chainID,
 				1,
@@ -157,6 +156,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.LastBlockID,
 				time.Now(),
 			)
+			require.NoError(t, err)
 			wrongHeightCommit := types.NewCommit(
 				wrongHeightVote.Height,
 				wrongHeightVote.Round,
@@ -202,9 +202,8 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
-		goodVote := testfactory.MakeVote(
+		goodVote, err := testfactory.MakeVote(
 			ctx,
-			testfactory.Require(t),
 			privVals[proposerAddr.String()],
 			chainID,
 			1,
@@ -214,7 +213,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			blockID,
 			time.Now(),
 		)
-
+		require.NoError(t, err)
 		bpvPubKey, err := badPrivVal.GetPubKey(ctx)
 		require.NoError(t, err)
 

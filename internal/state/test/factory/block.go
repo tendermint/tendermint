@@ -69,14 +69,14 @@ func makeBlockAndPartSet(
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	if height > 1 {
-		vote := factory.MakeVote(
+		vote, err := factory.MakeVote(
 			ctx,
-			factory.Require(t),
 			privVal,
 			lastBlock.Header.ChainID,
 			1, lastBlock.Header.Height, 0, 2,
 			lastBlockMeta.BlockID,
 			time.Now())
+		require.NoError(t, err)
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}

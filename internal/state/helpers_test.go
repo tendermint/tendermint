@@ -95,8 +95,8 @@ func makeValidCommit(
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
-		vote := factory.MakeVote(ctx, factory.Require(t), privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
-
+		vote, err := factory.MakeVote(ctx, privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
+		require.NoError(t, err)
 		sigs = append(sigs, vote.CommitSig())
 	}
 

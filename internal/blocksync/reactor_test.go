@@ -135,16 +135,15 @@ func (rts *reactorTestSuite) addNode(
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote := factory.MakeVote(
+			vote, err := factory.MakeVote(
 				ctx,
-				factory.Require(t),
 				privVal,
 				lastBlock.Header.ChainID, 0,
 				lastBlock.Header.Height, 0, 2,
 				lastBlockMeta.BlockID,
 				time.Now(),
 			)
-
+			require.NoError(t, err)
 			lastCommit = types.NewCommit(
 				vote.Height,
 				vote.Round,

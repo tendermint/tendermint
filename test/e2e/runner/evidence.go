@@ -213,19 +213,11 @@ func generateDuplicateVoteEvidence(
 		return nil, err
 	}
 
-	eh := func(ehErr error) bool {
-		if ehErr != nil {
-			err = ehErr
-			return true
-		}
-		err = nil
-		return false
-	}
-	voteA := factory.MakeVote(ctx, eh, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteA, err := factory.MakeVote(ctx, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
-	voteB := factory.MakeVote(ctx, eh, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteB, err := factory.MakeVote(ctx, privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}

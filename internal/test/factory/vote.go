@@ -27,7 +27,6 @@ func Require(t *testing.T) ErrorHandler {
 
 func MakeVote(
 	ctx context.Context,
-	eh ErrorHandler,
 	val types.PrivValidator,
 	chainID string,
 	valIndex int32,
@@ -36,10 +35,10 @@ func MakeVote(
 	step int,
 	blockID types.BlockID,
 	time time.Time,
-) *types.Vote {
+) (*types.Vote, error) {
 	pubKey, err := val.GetPubKey(ctx)
-	if eh(err) {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
 	v := &types.Vote{
@@ -53,10 +52,10 @@ func MakeVote(
 	}
 
 	vpb := v.ToProto()
-	if eh(val.SignVote(ctx, chainID, vpb)) {
-		return nil
+	if err := val.SignVote(ctx, chainID, vpb); err != nil {
+		return nil, err
 	}
 
 	v.Signature = vpb.Signature
-	return v
+	return v, nil
 }
