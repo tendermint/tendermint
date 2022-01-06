@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"context"
 	"os"
+	"sort"
 	"sync"
 	"testing"
 
@@ -47,6 +48,10 @@ func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 		node := testnet.LookupNode(name)
 		require.NotNil(t, node, "node %q not found in testnet %q", name, testnet.Name)
 		nodes = []*e2e.Node{node}
+	} else {
+		sort.Slice(nodes, func(i, j int) bool {
+			return nodes[i].Name < nodes[j].Name
+		})
 	}
 
 	for _, node := range nodes {
@@ -57,7 +62,6 @@ func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 		}
 
 		t.Run(node.Name, func(t *testing.T) {
-			t.Parallel()
 			testFunc(t, node)
 		})
 	}
