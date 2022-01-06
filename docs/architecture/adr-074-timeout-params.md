@@ -170,7 +170,7 @@ namely, each value must be non-negative.
 
 Migration to using these new parameters will occur across two releases.
 During the v0.36 release, Tendermint will add these as consensus parameters.
-The old parameters config-local parameters will continue to exist as well in the
+The old local config parameters will continue to exist as well in the
 v0.36 release. If the parameters are set as consensus parameters, the config-local
 parameters will be ignored. If the consensus parameters are not set, Tendermint
 will fall back to using the values contained in the `config.toml` file.
