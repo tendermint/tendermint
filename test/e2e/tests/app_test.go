@@ -151,13 +151,7 @@ func TestApp_Tx(t *testing.T) {
 		}
 		t.Run(test.Name, func(t *testing.T) {
 			test := testCases[idx]
-<<<<<<< HEAD
-			t.Parallel()
 			testNode(t, func(t *testing.T, node e2e.Node) {
-				t.Parallel()
-=======
-			testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
->>>>>>> a91d3cb89 (e2e: make tx test more stable (#7523))
 				client, err := node.Client()
 				require.NoError(t, err)
 
