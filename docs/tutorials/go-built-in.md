@@ -291,9 +291,12 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 ```
 Note that we check the validity of the transaction _again_ during `DeliverTx`.
 Transactions are not guaranteed to be valid when they are delivered to an
-application. 
+application. This can happen if the application state is used to determine transaction
+validity. Application state may have changed between when the `CheckTx` was initially
+called and when the transaction was delivered in `DeliverTx` in a way that rendered
+the transaction no longer valid.
 
-Also note that we don't commit the Badger `Txn` we are building during `DeliverTx`. 
+Also note that we don't commit the Badger `Txn` we are building during `DeliverTx`.
 Other methods, such as `Query`, rely on a consistent view of the application's state.
 The application should only update its state when the full block has been delivered.
 
@@ -308,7 +311,6 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
-
 
 ### 1.3.3 Query Method
 
