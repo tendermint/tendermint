@@ -223,7 +223,9 @@ func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.R
 
 Any response with a non-zero code will be considered invalid by Tendermint.
 Our `CheckTx` logic returns `0` to Tendermint when the transaction passes
-the validation checks. The specific value of the error code is meaningless to Tendermint,
+the validation checks. The specific value of the code is meaningless to Tendermint.
+Non-zero codes are logged by Tendermint so applications can provide more specific
+information on why the transaction was rejected.
 
 While this `CheckTx` is simple and only validates that the transaction is well-formed,
 it is very common for `CheckTx` to make more complex use of the state of an application.
