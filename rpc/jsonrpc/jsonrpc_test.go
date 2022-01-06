@@ -6,6 +6,7 @@ import (
 	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
+	stdlog "log"
 	mrand "math/rand"
 	"net/http"
 	"os"
@@ -84,22 +85,24 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		stdlog.Fatal(err.Error())
+	}
 	code := m.Run()
 	os.Exit(code)
 }
 
 // launch unix and tcp servers
-func setup(ctx context.Context) {
+func setup(ctx context.Context) error {
 	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
 	cmd := exec.Command("rm", "-f", unixSocket)
 	err := cmd.Start()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if err = cmd.Wait(); err != nil {
-		panic(err)
+		return err
 	}
 
 	tcpLogger := logger.With("socket", "tcp")
@@ -111,7 +114,7 @@ func setup(ctx context.Context) {
 	config := server.DefaultConfig()
 	listener1, err := server.Listen(tcpAddr, config.MaxOpenConnections)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	go func() {
 		if err := server.Serve(ctx, listener1, mux, tcpLogger, config); err != nil {
@@ -127,7 +130,7 @@ func setup(ctx context.Context) {
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	listener2, err := server.Listen(unixAddr, config.MaxOpenConnections)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	go func() {
 		if err := server.Serve(ctx, listener2, mux2, unixLogger, config); err != nil {
@@ -137,6 +140,7 @@ func setup(ctx context.Context) {
 
 	// wait for servers to start
 	time.Sleep(time.Second * 2)
+	return nil
 }
 
 func echoViaHTTP(ctx context.Context, cl client.Caller, val string) (string, error) {

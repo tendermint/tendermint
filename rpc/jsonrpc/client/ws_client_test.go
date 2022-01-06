@@ -20,9 +20,10 @@ import (
 
 var wsCallTimeout = 5 * time.Second
 
-type myHandler struct {
+type myTestHandler struct {
 	closeConnAfterRead bool
 	mtx                sync.RWMutex
+	t                  *testing.T
 }
 
 var upgrader = websocket.Upgrader{
@@ -30,11 +31,10 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *myTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(h.t, err)
+
 	defer conn.Close()
 	for {
 		messageType, in, err := conn.ReadMessage()
@@ -44,17 +44,16 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		var req rpctypes.RPCRequest
 		err = json.Unmarshal(in, &req)
-		if err != nil {
-			panic(err)
-		}
+		require.NoError(h.t, err)
 
-		h.mtx.RLock()
-		if h.closeConnAfterRead {
-			if err := conn.Close(); err != nil {
-				panic(err)
+		func() {
+			h.mtx.RLock()
+			defer h.mtx.RUnlock()
+
+			if h.closeConnAfterRead {
+				require.NoError(h.t, conn.Close())
 			}
-		}
-		h.mtx.RUnlock()
+		}()
 
 		res := json.RawMessage(`{}`)
 		emptyRespBytes, _ := json.Marshal(rpctypes.RPCResponse{Result: res, ID: req.ID})
@@ -68,7 +67,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// start server
-	h := &myHandler{}
+	h := &myTestHandler{t: t}
 	s := httptest.NewServer(h)
 	defer s.Close()
 
@@ -100,7 +99,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// start server
-	h := &myHandler{}
+	h := &myTestHandler{t: t}
 	s := httptest.NewServer(h)
 	defer s.Close()
 
@@ -130,7 +129,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// start server
-	h := &myHandler{}
+	h := &myTestHandler{t: t}
 	s := httptest.NewServer(h)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -185,7 +184,7 @@ func TestNotBlockingOnStop(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	timeout := 3 * time.Second
-	s := httptest.NewServer(&myHandler{})
+	s := httptest.NewServer(&myTestHandler{t: t})
 	defer s.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

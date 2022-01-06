@@ -46,18 +46,18 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		commitSigs)
 }
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
+func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc, error) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
 	if err != nil {
-		panic(err)
+		return sm.State{}, nil, nil, err
 	}
 
 	blockDB := dbm.NewMemDB()
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
-		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
+		return sm.State{}, nil, nil, fmt.Errorf("error constructing state from genesis file: %w", err)
 	}
-	return state, NewBlockStore(blockDB), func() { os.RemoveAll(cfg.RootDir) }
+	return state, NewBlockStore(blockDB), func() { os.RemoveAll(cfg.RootDir) }, nil
 }
 
 func freshBlockStore() (*BlockStore, dbm.DB) {
@@ -77,7 +77,12 @@ var (
 func TestMain(m *testing.M) {
 	var cleanup cleanupFunc
 	var err error
-	state, _, cleanup = makeStateAndBlockStore(log.NewNopLogger())
+
+	state, _, cleanup, err = makeStateAndBlockStore(log.NewNopLogger())
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
 	block, err = factory.MakeBlock(state, 1, new(types.Commit))
 
 	if err != nil {
@@ -97,8 +102,9 @@ func TestMain(m *testing.M) {
 
 // TODO: This test should be simplified ...
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(log.NewNopLogger())
 	defer cleanup()
+	require.NoError(t, err)
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
@@ -488,8 +494,9 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(log.NewNopLogger())
 	defer cleanup()
+	require.NoError(t, err)
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 	require.NoError(t, err)

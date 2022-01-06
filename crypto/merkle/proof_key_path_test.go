@@ -28,7 +28,7 @@ func TestKeyPath(t *testing.T) {
 			case KeyEncodingHex:
 				rand.Read(keys[i])
 			default:
-				panic("Unexpected encoding")
+				require.Fail(t, "Unexpected encoding")
 			}
 			path = path.AppendKey(keys[i], enc)
 		}

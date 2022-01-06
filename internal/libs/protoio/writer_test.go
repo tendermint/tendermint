@@ -14,11 +14,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func aVote() *types.Vote {
+func aVote(t testing.TB) *types.Vote {
+	t.Helper()
 	var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	return &types.Vote{
 		Type:      tmproto.SignedMsgType(byte(tmproto.PrevoteType)),
@@ -58,14 +57,14 @@ var sink interface{}
 
 func BenchmarkMarshalDelimitedWithMarshalTo(b *testing.B) {
 	msgs := []proto.Message{
-		aVote().ToProto(),
+		aVote(b).ToProto(),
 	}
 	benchmarkMarshalDelimited(b, msgs)
 }
 
 func BenchmarkMarshalDelimitedNoMarshalTo(b *testing.B) {
 	msgs := []proto.Message{
-		&excludedMarshalTo{aVote().ToProto()},
+		&excludedMarshalTo{aVote(b).ToProto()},
 	}
 	benchmarkMarshalDelimited(b, msgs)
 }
