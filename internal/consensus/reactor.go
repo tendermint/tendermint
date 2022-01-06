@@ -82,8 +82,6 @@ const (
 	listenerIDConsensus = "consensus-reactor"
 )
 
-type ReactorOption func(*Reactor)
-
 // NOTE: Temporary interface for switching to block sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type BlockSyncReactor interface {
@@ -141,7 +139,7 @@ func NewReactor(
 	voteSetBitsCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 	waitSync bool,
-	options ...ReactorOption,
+	metrics *Metrics,
 ) *Reactor {
 
 	r := &Reactor{
@@ -149,7 +147,7 @@ func NewReactor(
 		state:         cs,
 		waitSync:      waitSync,
 		peers:         make(map[types.NodeID]*PeerState),
-		Metrics:       NopMetrics(),
+		Metrics:       metrics,
 		stateCh:       stateCh,
 		dataCh:        dataCh,
 		voteCh:        voteCh,
@@ -157,10 +155,6 @@ func NewReactor(
 		peerUpdates:   peerUpdates,
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
-
-	for _, opt := range options {
-		opt(r)
-	}
 
 	return r
 }
@@ -234,11 +228,6 @@ func (r *Reactor) WaitSync() bool {
 	defer r.mtx.RUnlock()
 
 	return r.waitSync
-}
-
-// ReactorMetrics sets the reactor's metrics as an option function.
-func ReactorMetrics(metrics *Metrics) ReactorOption {
-	return func(r *Reactor) { r.Metrics = metrics }
 }
 
 // SwitchToConsensus switches from block-sync mode to consensus mode. It resets
