@@ -134,7 +134,7 @@ func TestStateProposerSelection2(t *testing.T) {
 		require.NoError(t, err)
 		addr := pvk.Address()
 		correctProposer := addr
-		require.Equal(t, bytes.Equal(prop.Address, correctProposer),
+		require.True(t, bytes.Equal(prop.Address, correctProposer),
 			"expected RoundState.Validators.GetProposer() to be validator %d. Got %X",
 			int(i+2)%len(vss),
 			prop.Address)
