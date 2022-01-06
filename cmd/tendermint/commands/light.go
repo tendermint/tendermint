@@ -17,7 +17,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/light"
 	lproxy "github.com/tendermint/tendermint/light/proxy"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
@@ -188,14 +187,13 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(cmd.Context(), logger, func() {
-		p.Listener.Close()
-	})
-
-	// this might be redundant to the above, eventually.
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
 	defer cancel()
+
+	go func() {
+		<-ctx.Done()
+		p.Listener.Close()
+	}()
 
 	logger.Info("Starting proxy...", "laddr", listenAddr)
 	if err := p.ListenAndServe(ctx); err != http.ErrServerClosed {

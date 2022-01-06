@@ -83,19 +83,19 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
+
+    // Stop upon receiving SIGTERM or CTRL-C.
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
     srv.SetLogger(logger.With("module", "abci-server"))
-    if err := srv.Start(); err != nil {
+    if err := srv.Start(ctx); err != nil {
         return err
     }
 
-    // Stop upon receiving SIGTERM or CTRL-C.
-    tmos.TrapSignal(logger, func() {
-        // Cleanup
-        srv.Stop()
-    })
-
-    // Run forever.
-    select {}
+    // Run until shutdown.
+<-ctx.Done()
+srv.Wait()
 }
 ```
 
