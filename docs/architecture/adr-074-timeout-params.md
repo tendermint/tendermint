@@ -66,8 +66,8 @@ The 8 timeout parameters will be consolidated down to 6. These will be as follow
 	 parameters.
 * `TimeoutCommit`
 	* Same as current `TimeoutCommit`.
-* `SkipTimeoutCommit`
-	* Same as current `SkipTimeoutCommit`.
+* `TimeoutCommitBypassEnabled`
+	* Same as current `SkipTimeoutCommit`, renamed for clarity.
 
 A safe default will be provided by Tendermint for each of these parameters and
 networks will be able to update the parameters as they see fit. Local updates
