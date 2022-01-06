@@ -41,7 +41,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 		DataChannel: {
 			// TODO: Consider a split between gossiping current block and catchup
 			// stuff. Once we gossip the whole block there is nothing left to send
-			// until next height or round.q
+			// until next height or round.
 			ID:                  DataChannel,
 			MessageType:         new(tmcons.Message),
 			Priority:            12,
