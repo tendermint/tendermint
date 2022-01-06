@@ -556,7 +556,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	t.Cleanup(ns.Wait)
 
 	require.NoError(t, err)
-	n, ok := ns.(*nodeImpl)
+	n, ok := ns.(*seedNodeImpl)
 	require.True(t, ok)
 
 	err = n.Start(ctx)
