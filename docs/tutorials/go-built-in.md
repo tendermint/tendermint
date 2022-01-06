@@ -355,7 +355,7 @@ applications in production but are not required for getting a very simple applic
 up and running. 
 
 To better understand these methods and why they are useful, check out the Tendermint 
-[specification on ABCI]()
+[specification on ABCI](https://github.com/tendermint/spec/tree/20b2abb5f9a83c2d9d97b53e555e4ea5a6bd7dc4/spec/abci)
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
