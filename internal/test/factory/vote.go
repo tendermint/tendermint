@@ -13,7 +13,7 @@ import (
 // ErrorHandler checks an error and returns true if the error is
 // non-nil. Pass an ErrorHandler to a function in a case where you
 // might want to use a *testing.T but cannot because one is not
-// avalible (e.g. as is the case in some e2e test fixtures and in
+// available (e.g. as is the case in some e2e test fixtures and in
 // TestMain.)
 type ErrorHandler func(error) bool
 
