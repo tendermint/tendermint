@@ -1344,6 +1344,12 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
+		logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
 	// Validate proposal block
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
@@ -1368,11 +1374,6 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	*/
 	if cs.Proposal.POLRound == -1 {
 		if cs.LockedRound == -1 {
-			if !cs.proposalIsTimely() {
-				logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
-				cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-				return
-			}
 			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
 			cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
