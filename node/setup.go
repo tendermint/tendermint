@@ -175,13 +175,7 @@ func createMempoolReactor(
 	router *p2p.Router,
 	logger log.Logger,
 ) (service.Service, mempool.Mempool, error) {
-
 	logger = logger.With("module", "mempool")
-
-	ch, err := router.OpenChannel(ctx, mempool.GetChannelDescriptor(cfg.Mempool))
-	if err != nil {
-		return nil, nil, err
-	}
 
 	mp := mempool.NewTxMempool(
 		logger,
@@ -193,14 +187,18 @@ func createMempoolReactor(
 		mempool.WithPostCheck(sm.TxPostCheck(state)),
 	)
 
-	reactor := mempool.NewReactor(
+	reactor, err := mempool.NewReactor(
+		ctx,
 		logger,
 		cfg.Mempool,
 		peerManager,
 		mp,
-		ch,
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if cfg.Consensus.WaitForTxs() {
 		mp.EnableTxsAvailable()
