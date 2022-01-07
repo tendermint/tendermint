@@ -89,8 +89,3 @@ func MakeHeader(t *testing.T, h *types.Header) *types.Header {
 
 	return h
 }
-
-func MakeRandomHeader(t *testing.T) *types.Header {
-	t.Helper()
-	return MakeHeader(t, &types.Header{})
-}

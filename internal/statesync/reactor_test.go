@@ -434,7 +434,8 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	rts := setup(ctx, t, nil, nil, nil, 2)
 
 	var height int64 = 10
-	h := factory.MakeRandomHeader(t)
+	// generates a random header
+	h := factory.MakeHeader(t, &types.Header{})
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
 	vals, pv := factory.RandValidatorSet(ctx, t, 1, 10)
