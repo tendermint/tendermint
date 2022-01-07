@@ -256,10 +256,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				}
 
 				msg, err := s.Next(ctx)
-				if !assert.NoError(t, err) {
+
+				assert.NoError(t, err)
+				if err != nil {
 					cancel()
 					return
 				}
+
 				require.NotNil(t, msg)
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {

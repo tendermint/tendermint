@@ -87,7 +87,7 @@ func setup(
 		return func(ctx context.Context, desc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
 			switch desc.ID {
 			case StateChannel:
-				return rts.voteChannels[nodeID], nil
+				return rts.stateChannels[nodeID], nil
 			case DataChannel:
 				return rts.dataChannels[nodeID], nil
 			case VoteChannel:
