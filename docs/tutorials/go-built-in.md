@@ -315,6 +315,11 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 }
 ```
 
+You may also have noticed that the application we are writing will _crash_ if it receives an
+unexpected error from the database during the `DeliverTx` or `Commit` methods.
+This is not an accident. If the application received an error from the database,
+there is no deterministic way for it to make progress so the only safe option is to terminate.
+
 ### 1.3.3 Query Method
 
 We'll want to be able to determine if a transaction was committed to the state-machine.
