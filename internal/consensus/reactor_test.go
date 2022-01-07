@@ -83,21 +83,36 @@ func setup(
 	ctx, cancel := context.WithCancel(ctx)
 	// Canceled during cleanup (see below).
 
+	chCreator := func(nodeID types.NodeID) p2p.ChannelCreator {
+		return func(ctx context.Context, desc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			switch desc.ID {
+			case StateChannel:
+				return rts.stateChannels[nodeID], nil
+			case DataChannel:
+				return rts.dataChannels[nodeID], nil
+			case VoteChannel:
+				return rts.voteChannels[nodeID], nil
+			case VoteSetBitsChannel:
+				return rts.voteSetBitsChannels[nodeID], nil
+			default:
+				return nil, fmt.Errorf("invalid channel; %v", desc.ID)
+			}
+		}
+	}
+
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
 		state := states[i]
 
-		reactor := NewReactor(
+		reactor, err := NewReactor(ctx,
 			state.logger.With("node", nodeID),
 			state,
-			rts.stateChannels[nodeID],
-			rts.dataChannels[nodeID],
-			rts.voteChannels[nodeID],
-			rts.voteSetBitsChannels[nodeID],
+			chCreator(nodeID),
 			node.MakePeerUpdates(ctx, t),
 			true,
 			NopMetrics(),
 		)
+		require.NoError(t, err)
 
 		reactor.SetEventBus(state.eventBus)
 

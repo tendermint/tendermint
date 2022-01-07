@@ -313,29 +313,18 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 
-	csChDesc := consensus.GetChannelDescriptors()
-	channels := make(map[p2p.ChannelID]*p2p.Channel, len(csChDesc))
-	for idx := range csChDesc {
-		chd := csChDesc[idx]
-		ch, err := router.OpenChannel(ctx, chd)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		channels[ch.ID] = ch
-	}
-
-	reactor := consensus.NewReactor(
+	reactor, err := consensus.NewReactor(
+		ctx,
 		logger,
 		consensusState,
-		channels[consensus.StateChannel],
-		channels[consensus.DataChannel],
-		channels[consensus.VoteChannel],
-		channels[consensus.VoteSetBitsChannel],
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		waitSync,
 		csMetrics,
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor.
