@@ -460,7 +460,7 @@ func TestTooFarInThePastProposal(t *testing.T) {
 		timeoutPropose:             50 * time.Millisecond,
 		genesisTime:                initialTime,
 		height2ProposedBlockTime:   initialTime.Add(10 * time.Millisecond),
-		height2ProposalDeliverTime: initialTime.Add(100 * time.Millisecond),
+		height2ProposalDeliverTime: initialTime.Add(21 * time.Millisecond),
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
