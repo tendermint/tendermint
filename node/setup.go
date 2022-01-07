@@ -229,17 +229,16 @@ func createEvidenceReactor(
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
-	ch, err := router.OpenChannel(ctx, evidence.GetChannelDescriptor())
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating evidence channel: %w", err)
-	}
-
-	evidenceReactor := evidence.NewReactor(
+	evidenceReactor, err := evidence.NewReactor(
+		ctx,
 		logger,
-		ch,
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		evidencePool,
 	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating evidence reactor: %w", err)
+	}
 
 	return evidenceReactor, evidencePool, nil
 }
