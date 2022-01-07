@@ -124,10 +124,12 @@ type ValidatorInfo struct {
 
 // Info about the status of the light client
 type LightClientInfo struct {
-	Primary           string         `json:"primary"`
-	Witnesses         []string       `json:"witnesses"`
-	LastTrustedHeight int64          `json:"last_trusted_height"`
-	LastTrustedHash   bytes.HexBytes `json:"last_trusted_hash"`
+	Primary                string         `json:"primary"`
+	Witnesses              []string       `json:"witnesses"`
+	NumPeers               int            `json:"number_of_peers"`
+	LastTrustedHeight      int64          `json:"last_trusted_height"`       // Last trusted height retrieved from store
+	LastTrustedBlockHeight int64          `json:"last_trusted_block_height"` // Height of last trusted block. Should match the value above
+	LastTrustedHash        bytes.HexBytes `json:"last_trusted_hash"`
 }
 
 // Node Status
