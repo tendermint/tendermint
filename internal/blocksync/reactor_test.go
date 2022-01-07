@@ -168,13 +168,18 @@ func (rts *reactorTestSuite) addNode(
 	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 	rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
+
+	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		return rts.blockSyncChannels[nodeID], nil
+	}
 	rts.reactors[nodeID], err = NewReactor(
+		ctx,
 		rts.logger.With("nodeID", nodeID),
 		state.Copy(),
 		blockExec,
 		blockStore,
 		nil,
-		rts.blockSyncChannels[nodeID],
+		chCreator,
 		rts.peerUpdates[nodeID],
 		rts.blockSync,
 		consensus.NopMetrics())

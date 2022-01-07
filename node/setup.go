@@ -243,40 +243,6 @@ func createEvidenceReactor(
 	return evidenceReactor, evidencePool, nil
 }
 
-func createBlockchainReactor(
-	ctx context.Context,
-	logger log.Logger,
-	state sm.State,
-	blockExec *sm.BlockExecutor,
-	blockStore *store.BlockStore,
-	csReactor *consensus.Reactor,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	blockSync bool,
-	metrics *consensus.Metrics,
-) (service.Service, error) {
-
-	logger = logger.With("module", "blockchain")
-
-	ch, err := router.OpenChannel(ctx, blocksync.GetChannelDescriptor())
-	if err != nil {
-		return nil, err
-	}
-
-	peerUpdates := peerManager.Subscribe(ctx)
-
-	reactor, err := blocksync.NewReactor(
-		logger, state.Copy(), blockExec, blockStore, csReactor,
-		ch, peerUpdates, blockSync,
-		metrics,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return reactor, nil
-}
-
 func createConsensusReactor(
 	ctx context.Context,
 	cfg *config.Config,
