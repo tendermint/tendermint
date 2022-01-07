@@ -7,10 +7,11 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/types"
 )
 
-func RandValidator(ctx context.Context, eh ErrorHandler, randPower bool, minPower int64) (*types.Validator, types.PrivValidator) {
+func RandValidator(ctx context.Context, randPower bool, minPower int64) (*types.Validator, types.PrivValidator, error) {
 	privVal := types.NewMockPV()
 	votePower := minPower
 	if randPower {
@@ -19,12 +20,11 @@ func RandValidator(ctx context.Context, eh ErrorHandler, randPower bool, minPowe
 	}
 	pubKey, err := privVal.GetPubKey(ctx)
 	if err != nil {
-		eh(fmt.Errorf("could not retrieve public key: %w", err))
-		return nil, nil
+		return nil, nil, fmt.Errorf("could not retrieve public key: %w", err)
 	}
 
 	val := types.NewValidator(pubKey, votePower)
-	return val, privVal
+	return val, privVal, err
 }
 
 func RandValidatorSet(ctx context.Context, t *testing.T, numValidators int, votingPower int64) (*types.ValidatorSet, []types.PrivValidator) {
@@ -35,7 +35,8 @@ func RandValidatorSet(ctx context.Context, t *testing.T, numValidators int, voti
 	t.Helper()
 
 	for i := 0; i < numValidators; i++ {
-		val, privValidator := RandValidator(ctx, Require(t), false, votingPower)
+		val, privValidator, err := RandValidator(ctx, false, votingPower)
+		require.NoError(t, err)
 		valz[i] = val
 		privValidators[i] = privValidator
 	}

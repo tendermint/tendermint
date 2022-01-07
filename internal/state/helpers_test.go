@@ -267,7 +267,8 @@ func makeRandomStateFromConsensusParams(
 	lastHeightConsensusParamsChanged int64,
 ) sm.State {
 	t.Helper()
-	val, _ := factory.RandValidator(ctx, factory.Require(t), true, 10)
+	val, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{
 		LastBlockHeight:                  height - 1,
