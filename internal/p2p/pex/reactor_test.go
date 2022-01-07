@@ -295,7 +295,7 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+	chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
 		return pexCh, nil
 	}
 
@@ -381,7 +381,7 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], chBuf)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
-		chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
 			return rts.pexChannels[nodeID], nil
 		}
 
@@ -443,7 +443,7 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
 		r.network.Nodes[nodeID].PeerManager.Register(ctx, r.peerUpdates[nodeID])
 
-		chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
 			return r.pexChannels[nodeID], nil
 		}
 
