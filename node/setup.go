@@ -408,21 +408,6 @@ func createRouter(
 	)
 }
 
-func createPEXReactor(
-	ctx context.Context,
-	logger log.Logger,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-) (service.Service, error) {
-
-	channel, err := router.OpenChannel(ctx, pex.ChannelDescriptor())
-	if err != nil {
-		return nil, err
-	}
-
-	return pex.NewReactor(logger, peerManager, channel, peerManager.Subscribe(ctx)), nil
-}
-
 func makeNodeInfo(
 	cfg *config.Config,
 	nodeKey types.NodeKey,

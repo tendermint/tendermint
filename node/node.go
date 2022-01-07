@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
@@ -378,7 +379,7 @@ func makeNode(
 
 	var pexReactor service.Service
 	if cfg.P2P.PexReactor {
-		pexReactor, err = createPEXReactor(ctx, logger, peerManager, router)
+		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 		if err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
@@ -487,7 +488,7 @@ func makeSeedNode(
 			closer)
 	}
 
-	pexReactor, err := createPEXReactor(ctx, logger, peerManager, router)
+	pexReactor, err := pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 	if err != nil {
 		return nil, combineCloseError(err, closer)
 	}
