@@ -546,7 +546,7 @@ go get github.com/tendermint/tendermint@v0.35.0
 Next, we'll need to populate the Tendermint Core configuration files.
 This command will create a `tendermint-home` directory in your project and add a basic set of configuration
 files in `tendermint-home/config/`. For more information on what these files contain
-see [the configuration documentation]()
+see [the configuration documentation](https://github.com/tendermint/tendermint/blob/v0.35.0/docs/nodes/configuration.md).
 
 From the root of your project, run:
 ```bash
