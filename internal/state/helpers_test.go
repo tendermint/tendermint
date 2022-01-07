@@ -40,6 +40,7 @@ func newTestApp() proxy.AppConns {
 
 func makeAndCommitGoodBlock(
 	ctx context.Context,
+	t *testing.T,
 	state sm.State,
 	height int64,
 	lastCommit *types.Commit,
@@ -47,64 +48,59 @@ func makeAndCommitGoodBlock(
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
 	evidence []types.Evidence,
-) (sm.State, types.BlockID, *types.Commit, error) {
+) (sm.State, types.BlockID, *types.Commit) {
+	t.Helper()
+
 	// A good block passes
-	state, blockID, err := makeAndApplyGoodBlock(ctx, state, height, lastCommit, proposerAddr, blockExec, evidence)
-	if err != nil {
-		return state, types.BlockID{}, nil, err
-	}
+	state, blockID := makeAndApplyGoodBlock(ctx, t, state, height, lastCommit, proposerAddr, blockExec, evidence)
 
 	// Simulate a lastCommit for this block from all validators for the next height
-	commit, err := makeValidCommit(ctx, height, blockID, state.Validators, privVals)
-	if err != nil {
-		return state, types.BlockID{}, nil, err
-	}
-	return state, blockID, commit, nil
+	commit := makeValidCommit(ctx, t, height, blockID, state.Validators, privVals)
+
+	return state, blockID, commit
 }
 
 func makeAndApplyGoodBlock(
 	ctx context.Context,
+	t *testing.T,
 	state sm.State,
 	height int64,
 	lastCommit *types.Commit,
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
 	evidence []types.Evidence,
-) (sm.State, types.BlockID, error) {
+) (sm.State, types.BlockID) {
+	t.Helper()
 	block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
-	if err != nil {
-		return state, types.BlockID{}, err
-	}
+	require.NoError(t, err)
 
-	if err := blockExec.ValidateBlock(state, block); err != nil {
-		return state, types.BlockID{}, err
-	}
+	require.NoError(t, blockExec.ValidateBlock(state, block))
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	if err != nil {
-		return state, types.BlockID{}, err
-	}
-	return state, blockID, nil
+	require.NoError(t, err)
+
+	return state, blockID
 }
 
 func makeValidCommit(
 	ctx context.Context,
+	t *testing.T,
 	height int64,
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
-) (*types.Commit, error) {
+) *types.Commit {
+	t.Helper()
 	sigs := make([]types.CommitSig, 0)
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
 		vote, err := factory.MakeVote(ctx, privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
-		if err != nil {
-			return nil, err
-		}
+		require.NoError(t, err)
 		sigs = append(sigs, vote.CommitSig())
 	}
-	return types.NewCommit(height, 0, blockID, sigs), nil
+
+	return types.NewCommit(height, 0, blockID, sigs)
 }
 
 func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
@@ -263,9 +259,16 @@ func makeRandomStateFromValidatorSet(
 	}
 }
 
-func makeRandomStateFromConsensusParams(ctx context.Context, consensusParams *types.ConsensusParams,
-	height, lastHeightConsensusParamsChanged int64) sm.State {
-	val, _ := factory.RandValidator(ctx, true, 10)
+func makeRandomStateFromConsensusParams(
+	ctx context.Context,
+	t *testing.T,
+	consensusParams *types.ConsensusParams,
+	height,
+	lastHeightConsensusParamsChanged int64,
+) sm.State {
+	t.Helper()
+	val, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{
 		LastBlockHeight:                  height - 1,

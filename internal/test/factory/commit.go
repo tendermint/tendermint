@@ -2,7 +2,6 @@ package factory
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -10,12 +9,11 @@ import (
 )
 
 func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round int32, voteSet *types.VoteSet, validators []types.PrivValidator, now time.Time) (*types.Commit, error) {
-
 	// all sign
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
+			return nil, err
 		}
 		vote := &types.Vote{
 			ValidatorAddress: pubKey.Address(),
@@ -27,21 +25,16 @@ func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round 
 			Timestamp:        now,
 		}
 
-		_, err = signAddVote(ctx, validators[i], vote, voteSet)
-		if err != nil {
+		v := vote.ToProto()
+
+		if err := validators[i].SignVote(ctx, voteSet.ChainID(), v); err != nil {
+			return nil, err
+		}
+		vote.Signature = v.Signature
+		if _, err := voteSet.AddVote(vote); err != nil {
 			return nil, err
 		}
 	}
 
 	return voteSet.MakeCommit(), nil
-}
-
-func signAddVote(ctx context.Context, privVal types.PrivValidator, vote *types.Vote, voteSet *types.VoteSet) (signed bool, err error) {
-	v := vote.ToProto()
-	err = privVal.SignVote(ctx, voteSet.ChainID(), v)
-	if err != nil {
-		return false, err
-	}
-	vote.Signature = v.Signature
-	return voteSet.AddVote(vote)
 }

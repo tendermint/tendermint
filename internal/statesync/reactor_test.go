@@ -233,7 +233,7 @@ func TestReactor_Sync(t *testing.T) {
 	defer close(closeCh)
 	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh,
 		rts.blockInCh, closeCh, 0)
-	go graduallyAddPeers(rts.peerUpdateCh, closeCh, 1*time.Second)
+	go graduallyAddPeers(t, rts.peerUpdateCh, closeCh, 1*time.Second)
 	go handleSnapshotRequests(t, rts.snapshotOutCh, rts.snapshotInCh, closeCh, []snapshot{
 		{
 			Height: uint64(snapshotHeight),
@@ -434,10 +434,11 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	rts := setup(ctx, t, nil, nil, nil, 2)
 
 	var height int64 = 10
-	h := factory.MakeRandomHeader()
+	// generates a random header
+	h := factory.MakeHeader(t, &types.Header{})
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
-	vals, pv := factory.RandValidatorSet(ctx, 1, 10)
+	vals, pv := factory.RandValidatorSet(ctx, t, 1, 10)
 	vote, err := factory.MakeVote(ctx, pv[0], h.ChainID, 0, h.Height, 0, 2,
 		blockID, factory.DefaultTestTime)
 	require.NoError(t, err)
@@ -728,7 +729,7 @@ func handleLightBlockRequests(
 				} else {
 					switch errorCount % 3 {
 					case 0: // send a different block
-						vals, pv := factory.RandValidatorSet(ctx, 3, 10)
+						vals, pv := factory.RandValidatorSet(ctx, t, 3, 10)
 						_, _, lb := mockLB(ctx, t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
 						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
@@ -797,7 +798,7 @@ func buildLightBlockChain(ctx context.Context, t *testing.T, fromHeight, toHeigh
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
 	blockTime := startTime.Add(time.Duration(fromHeight-toHeight) * time.Minute)
-	vals, pv := factory.RandValidatorSet(ctx, 3, 10)
+	vals, pv := factory.RandValidatorSet(ctx, t, 3, 10)
 	for height := fromHeight; height < toHeight; height++ {
 		vals, pv, chain[height] = mockLB(ctx, t, height, blockTime, lastBlockID, vals, pv)
 		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
@@ -810,14 +811,14 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 	currentVals *types.ValidatorSet, currentPrivVals []types.PrivValidator,
 ) (*types.ValidatorSet, []types.PrivValidator, *types.LightBlock) {
 	t.Helper()
-	header, err := factory.MakeHeader(&types.Header{
+	header := factory.MakeHeader(t, &types.Header{
 		Height:      height,
 		LastBlockID: lastBlockID,
 		Time:        time,
 	})
 	header.Version.App = testAppVersion
-	require.NoError(t, err)
-	nextVals, nextPrivVals := factory.RandValidatorSet(ctx, 3, 10)
+
+	nextVals, nextPrivVals := factory.RandValidatorSet(ctx, t, 3, 10)
 	header.ValidatorsHash = currentVals.Hash()
 	header.NextValidatorsHash = nextVals.Hash()
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()
@@ -837,6 +838,7 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 // graduallyAddPeers delivers a new randomly-generated peer update on peerUpdateCh once
 // per interval, until closeCh is closed. Each peer update is assigned a random node ID.
 func graduallyAddPeers(
+	t *testing.T,
 	peerUpdateCh chan p2p.PeerUpdate,
 	closeCh chan struct{},
 	interval time.Duration,
@@ -846,7 +848,7 @@ func graduallyAddPeers(
 		select {
 		case <-ticker.C:
 			peerUpdateCh <- p2p.PeerUpdate{
-				NodeID: factory.RandomNodeID(),
+				NodeID: factory.RandomNodeID(t),
 				Status: p2p.PeerStatusUp,
 			}
 		case <-closeCh:

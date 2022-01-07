@@ -144,7 +144,6 @@ func (rts *reactorTestSuite) addNode(
 				time.Now(),
 			)
 			require.NoError(t, err)
-
 			lastCommit = types.NewCommit(
 				vote.Height,
 				vote.Round,
@@ -206,7 +205,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	maxBlockHeight := int64(64)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -245,7 +244,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	maxBlockHeight := int64(101)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -273,7 +272,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	maxBlockHeight := int64(65)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -325,7 +324,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 
 	maxBlockHeight := int64(48)
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
@@ -359,7 +358,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	//
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
-	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(ctx, cfg, 1, false, 30)
+	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	newNode := rts.network.MakeNode(ctx, t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),

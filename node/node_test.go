@@ -717,7 +717,7 @@ func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 	require.NoError(t, err)
 	require.True(t, loadedState.IsEmpty())
 
-	genDoc, _ := factory.RandGenesisDoc(ctx, cfg, 0, false, 10)
+	genDoc, _ := factory.RandGenesisDoc(ctx, t, cfg, 0, false, 10)
 
 	state, err := loadStateFromDBOrGenesisDocProvider(
 		stateStore,
