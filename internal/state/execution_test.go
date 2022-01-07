@@ -47,7 +47,7 @@ func TestApplyBlock(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(1, 1)
+	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(),
@@ -78,7 +78,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(2, 2)
+	state, stateDB, _ := makeState(t, 2, 2)
 	stateStore := sm.NewStore(stateDB)
 
 	prevHash := state.LastBlockID.Hash
@@ -144,7 +144,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, privVals := makeState(1, 1)
+	state, stateDB, privVals := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -377,7 +377,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(1, 1)
+	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -452,7 +452,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(1, 1)
+	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
