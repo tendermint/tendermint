@@ -418,14 +418,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Opening database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Fatalf("Closing database: %v", err)
+		}
+	}()
 	app := NewKVStoreApplication(db)
 	acc := abciclient.NewLocalCreator(app)
 
 	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 	node, err := nm.New(config, logger, acc, gf)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Creating node: %v", err)
 	}
 
 	node.Start()
@@ -449,27 +453,20 @@ First, we load in the Tendermint Core configuration files:
 	config := cfg.DefaultValidatorConfig()
 
 	config.SetRoot(homeDir)
-	config := cfg.DefaultValidatorConfig()
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	rootDir := fmt.Sprintf("%s/%s", homeDir, ".tendermint")
-	config.SetRoot(rootDir)
 
-	viper.SetConfigFile(fmt.Sprintf("%s/%s", rootDir, "config/config.toml"))
+	viper.SetConfigFile(fmt.Sprintf("%s/%s", homeDir, "config/config.toml"))
 	if err := viper.ReadInConfig(); err != nil {
-		panic(err)
+		log.Fatalf("Reading config: %v", err)
 	}
 	if err := viper.Unmarshal(config); err != nil {
-		panic(err)
+		log.Fatalf("Decoding config: %v", err)
 	}
 	if err := config.ValidateBasic(); err != nil {
-		panic(err)
+		log.Fatalf("Invalid configuration data: %v", err)
 	}
 	gf, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
-		panic(err)
+		log.Fatalf("Loading genesis document: %v", err)
 	}
 ...
 ```
@@ -478,15 +475,18 @@ Next, we create a database handle and use it to construct our ABCI application:
 
 ```go
 ...
-	db, err := badger.Open(badger.DefaultOptions("./badger").WithTruncate(true))
+	dbPath := filepath.Join(homeDir, "badger")
+	db, err := badger.Open(badger.DefaultOptions(dbPath).WithTruncate(true))
 	if err != nil {
-		panic(err)
+		log.Fatalf("Opening database: %v", err)
 	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Fatalf("Error closing database: %v", err)
+		}
+	}()
 	app := NewKVStoreApplication(db)
 	acc := abciclient.NewLocalCreator(app)
-	if err := db.Close(); err != nil {
-		log.Fatalf("Opening closing: %v", err)
-	}
 ...
 ```
 
@@ -505,7 +505,7 @@ the genesis file:
 ...
 	node, err := nm.New(config, logger, acc, gf)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Creating node: %v", err)
 	}
 ...
 ```
