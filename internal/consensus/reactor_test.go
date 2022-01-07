@@ -96,6 +96,7 @@ func setup(
 			rts.voteSetBitsChannels[nodeID],
 			node.MakePeerUpdates(ctx, t),
 			true,
+			NopMetrics(),
 		)
 
 		reactor.SetEventBus(state.eventBus)

@@ -334,7 +334,7 @@ func createConsensusReactor(
 		channels[consensus.VoteSetBitsChannel],
 		peerManager.Subscribe(ctx),
 		waitSync,
-		consensus.ReactorMetrics(csMetrics),
+		csMetrics,
 	)
 
 	// Services which will be publishing and/or subscribing for messages (events)
