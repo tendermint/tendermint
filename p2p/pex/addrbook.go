@@ -50,6 +50,9 @@ type AddrBook interface {
 	// Check if the address is in the book
 	HasAddress(*p2p.NetAddress) bool
 
+	// FindIP finds node ID based on IP address
+	FindIP(net.IP, uint16) p2p.ID
+
 	// Do we need more peers?
 	NeedMoreAddrs() bool
 	// Is Address Book Empty? Answer should not depend on being in your own
@@ -693,6 +696,18 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		return err
 	}
 	return a.addToNewBucket(ka, bucket)
+}
+
+// FindIP implements AddBook.
+// Finds node ID based on IP address
+func (a *addrBook) FindIP(ip net.IP, port uint16) p2p.ID {
+	for nodeID, item := range a.addrLookup {
+		if item.Addr != nil && item.Addr.IP.Equal(ip) && item.Addr.Port == port {
+			return nodeID
+		}
+	}
+
+	return ""
 }
 
 func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddress {

@@ -19,9 +19,11 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -246,7 +248,15 @@ func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc,
 		QuorumType:                   testnet.QuorumType,
 		QuorumHash:                   testnet.QuorumHash,
 	}
-	for validator, pubkey := range testnet.Validators {
+	for validator, validatorUpdate := range testnet.Validators {
+		if validatorUpdate.PubKey == nil {
+			return genesis, fmt.Errorf("public key for validator %s is nil", validator.Name)
+		}
+		pubkey, err := cryptoenc.PubKeyFromProto(*validatorUpdate.PubKey)
+		if err != nil {
+			return genesis, err
+		}
+
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:      validator.Name,
 			PubKey:    pubkey,
@@ -436,8 +446,15 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		validatorUpdates := map[string]map[string]string{}
 		for height, validators := range node.Testnet.ValidatorUpdates {
 			updateVals := map[string]string{}
-			for node, pubkey := range validators {
-				updateVals[hex.EncodeToString(node.ProTxHash.Bytes())] = base64.StdEncoding.EncodeToString(pubkey.Bytes())
+			for node, validatorUpdate := range validators {
+				key := hex.EncodeToString(node.ProTxHash.Bytes())
+				update := validatorUpdate // avoid getting address of a range variable to make linter happy
+				value, err := proto.Marshal(&update)
+				if err != nil {
+					return nil, err
+				}
+				valueBase64 := base64.StdEncoding.EncodeToString(value)
+				updateVals[key] = valueBase64
 			}
 			validatorUpdates[fmt.Sprintf("%v", height)] = updateVals
 		}

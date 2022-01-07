@@ -10,13 +10,12 @@ import (
 	"strings"
 
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto/merkle"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-
+	"github.com/tendermint/tendermint/crypto/merkle"
+	dashtypes "github.com/tendermint/tendermint/dash/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -1012,8 +1011,9 @@ func (e ErrNotEnoughVotingPowerSigned) Error() string {
 func (vals *ValidatorSet) ABCIEquivalentValidatorUpdates() *abci.ValidatorSetUpdate {
 	var valUpdates []abci.ValidatorUpdate
 	for i := 0; i < len(vals.Validators); i++ {
+
 		valUpdate := TM2PB.NewValidatorUpdate(vals.Validators[i].PubKey, DefaultDashVotingPower,
-			vals.Validators[i].ProTxHash)
+			vals.Validators[i].ProTxHash, vals.Validators[i].NodeAddress)
 		valUpdates = append(valUpdates, valUpdate)
 	}
 	abciThresholdPublicKey, err := cryptoenc.PubKeyToProto(vals.ThresholdPublicKey)
@@ -1321,6 +1321,7 @@ func GenerateTestValidatorSetWithProTxHashes(
 			privateKeys[i].PubKey(),
 			originalPowerMap[string(orderedProTxHashes[i])],
 			orderedProTxHashes[i],
+			"",
 		)
 	}
 
@@ -1536,6 +1537,7 @@ func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abc
 			privateKeys[i].PubKey(),
 			DefaultDashVotingPower,
 			orderedProTxHashes[i],
+			dashtypes.ValidatorAddress{},
 		)
 		valUpdates = append(valUpdates, valUpdate)
 	}

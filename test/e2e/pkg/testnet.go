@@ -14,13 +14,14 @@ import (
 	"strings"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -28,6 +29,7 @@ const (
 	proxyPortFirst uint32 = 5701
 	networkIPv4           = "10.186.73.0/24"
 	networkIPv6           = "fd80:b10c::/48"
+	networkPortP2P uint16 = 26656
 )
 
 type Mode string
@@ -54,6 +56,12 @@ const (
 )
 
 // Testnet represents a single testnet.
+
+type ValidatorConfig struct {
+	abci.ValidatorUpdate
+}
+
+type ValidatorsMap map[*Node]ValidatorConfig
 type Testnet struct {
 	Name                      string
 	File                      string
@@ -63,8 +71,8 @@ type Testnet struct {
 	GenesisCoreHeight         uint32 // InitialCoreHeight is a core height put into genesis file
 	InitAppCoreHeight         uint32 // InitAppCoreHeight returned in InitApp response
 	InitialState              map[string]string
-	Validators                map[*Node]crypto.PubKey
-	ValidatorUpdates          map[int64]map[*Node]crypto.PubKey
+	Validators                ValidatorsMap
+	ValidatorUpdates          map[int64]ValidatorsMap
 	ChainLockUpdates          map[int64]int64
 	Nodes                     []*Node
 	KeyType                   string
@@ -186,8 +194,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 		GenesisCoreHeight:         1,
 		InitAppCoreHeight:         0,
 		InitialState:              manifest.InitialState,
-		Validators:                map[*Node]crypto.PubKey{},
-		ValidatorUpdates:          map[int64]map[*Node]crypto.PubKey{},
+		Validators:                ValidatorsMap{},
+		ValidatorUpdates:          map[int64]ValidatorsMap{},
 		ChainLockUpdates:          map[int64]int64{},
 		Nodes:                     []*Node{},
 		ThresholdPublicKey:        thresholdPublicKey,
@@ -322,7 +330,13 @@ func LoadTestnet(file string) (*Testnet, error) {
 				return nil, fmt.Errorf("unknown validator %q", validatorName)
 			}
 			pubKey := privateKeys[i].PubKey()
-			testnet.Validators[validator] = pubKey
+
+			vu, err := validator.ValidatorUpdate(pubKey.Bytes())
+			if err != nil {
+				return nil, err
+			}
+
+			testnet.Validators[validator] = ValidatorConfig{vu}
 			validator.ProTxHash = proTxHashes[i]
 
 			quorumKeys := crypto.QuorumKeys{
@@ -342,7 +356,11 @@ func LoadTestnet(file string) (*Testnet, error) {
 		var i = 0
 		for _, node := range testnet.Nodes {
 			if node.Mode == ModeValidator {
-				testnet.Validators[node] = privateKeys[i].PubKey()
+				vu, err := node.ValidatorUpdate(privateKeys[i].PubKey().Bytes())
+				if err != nil {
+					return nil, err
+				}
+				testnet.Validators[node] = ValidatorConfig{vu} // privateKeys[i].PubKey()}
 				node.ProTxHash = proTxHashes[i]
 				quorumKeys := crypto.QuorumKeys{
 					PrivKey:            privateKeys[i],
@@ -385,7 +403,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 	for _, height := range heights {
 		heightStr := strconv.FormatInt(int64(height), 10)
 		validators := manifest.ValidatorUpdates[heightStr]
-		valUpdate := map[*Node]crypto.PubKey{}
+		valUpdate := ValidatorsMap{}
+
 		proTxHashesInUpdate := make([]crypto.ProTxHash, len(validators))
 		i := 0
 		for name := range validators {
@@ -411,10 +430,16 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 		for i, proTxHash := range proTxHashes {
 			node := testnet.LookupNodeByProTxHash(proTxHash)
-			valUpdate[node] = privateKeys[i].PubKey()
 			if node == nil {
 				return nil, fmt.Errorf("unknown validator with protxHash %X for update at height %v", proTxHash, height)
 			}
+
+			vu, err := node.ValidatorUpdate(privateKeys[i].PubKey().Bytes())
+			if err != nil {
+				return nil, err
+			}
+			valUpdate[node] = ValidatorConfig{vu} // privateKeys[i].PubKey()}
+
 			if height == 0 {
 				pubKey := privateKeys[i].PubKey()
 				quorumKeys := crypto.QuorumKeys{
@@ -702,6 +727,18 @@ func (t Testnet) LastMisbehaviorHeight() int64 {
 	return lastHeight
 }
 
+// ValidatorUpdate() creates an abci.ValidatorUpdate struct from the current node
+func (n *Node) ValidatorUpdate(publicKey []byte) (abci.ValidatorUpdate, error) {
+	proTxHash := n.ProTxHash.Bytes()
+
+	// TODO TD-10 find real power
+	power := types.DefaultDashVotingPower
+
+	address := n.AddressP2P(false)
+	validatorUpdate := abci.UpdateValidator(proTxHash, publicKey, power, address)
+	return validatorUpdate, nil
+}
+
 // Address returns a P2P endpoint address for the node.
 func (n Node) AddressP2P(withID bool) string {
 	ip := n.IP.String()
@@ -709,7 +746,7 @@ func (n Node) AddressP2P(withID bool) string {
 		// IPv6 addresses must be wrapped in [] to avoid conflict with : port separator
 		ip = fmt.Sprintf("[%v]", ip)
 	}
-	addr := fmt.Sprintf("%v:26656", ip)
+	addr := fmt.Sprintf("%v:%d", ip, networkPortP2P)
 	if withID {
 		addr = fmt.Sprintf("%x@%v", n.NodeKey.PubKey().Address().Bytes(), addr)
 	}

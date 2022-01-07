@@ -352,9 +352,10 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.crypto.PublicKey pub_key     = 1 [(gogoproto.nullable) = true];
-  int64                       power       = 2;
-  bytes                       pro_tx_hash = 3;
+  tendermint.crypto.PublicKey pub_key      = 1 [(gogoproto.nullable) = true];
+  int64                       power        = 2;
+  bytes                       pro_tx_hash  = 3;
+  string                      node_address = 4 [(gogoproto.nullable) = true];  // address of the Validator, correct URI
 }
 
 message ValidatorSetUpdate {

@@ -1,17 +1,17 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -315,4 +315,9 @@ func (book *AddrBookMock) AddPrivateIDs(addrs []string) {
 	for _, addr := range addrs {
 		book.PrivateAddrs[addr] = struct{}{}
 	}
+}
+
+// FindIP implements AddrBook
+func (book *AddrBookMock) FindIP(net.IP, uint16) ID {
+	return ID(hex.EncodeToString(tmrand.Bytes(IDByteLength)))
 }

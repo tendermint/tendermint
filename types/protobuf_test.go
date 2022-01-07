@@ -6,6 +6,7 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	dashtypes "github.com/tendermint/tendermint/dash/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,12 +85,22 @@ func (pubKeyBLS) TypeValue() crypto.KeyType                               { retu
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := bls12381.GenPrivKey().PubKey()
-
-	abciVal := TM2PB.NewValidatorUpdate(pubkey, DefaultDashVotingPower, crypto.RandProTxHash())
+	address := dashtypes.RandValidatorAddress()
+	abciVal := TM2PB.NewValidatorUpdate(pubkey, DefaultDashVotingPower, crypto.RandProTxHash(), address)
 	assert.Equal(t, DefaultDashVotingPower, abciVal.Power)
+	assert.Equal(t, address.String(), abciVal.NodeAddress)
 
-	assert.NotPanics(t, func() { TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash()) })
-	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyBLS{}, DefaultDashVotingPower, crypto.RandProTxHash()) })
+	assert.NotPanics(t, func() {
+		TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash(), dashtypes.RandValidatorAddress())
+	})
+	assert.Panics(t, func() {
+		TM2PB.NewValidatorUpdate(
+			pubKeyBLS{},
+			DefaultDashVotingPower,
+			crypto.RandProTxHash(),
+			dashtypes.RandValidatorAddress(),
+		)
+	})
 }
 
 func TestABCIValidatorWithoutPubKey(t *testing.T) {

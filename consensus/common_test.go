@@ -1017,8 +1017,8 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64, initialHe
 			Power:     val.VotingPower,
 			ProTxHash: val.ProTxHash,
 		}
-		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash, thresholdPublicKey,
-			false, false)
+		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
+			thresholdPublicKey, false, false)
 	}
 	sort.Sort(types.PrivValidatorsByProTxHash(privValidators))
 

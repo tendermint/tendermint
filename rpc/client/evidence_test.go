@@ -55,7 +55,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.StateSignature, err = privKey.SignDigest(stateID.SignID(chainID, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash)
+	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash, "")
 	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, quorumType, quorumHash, true)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
@@ -137,7 +137,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		h := int64(1)
-		vals, _ := c.Validators(context.Background(), &h, nil, nil, nil)
+		vals, err := c.Validators(context.Background(), &h, nil, nil, nil)
+		require.NoError(t, err)
 		correct, fakes := makeEvidences(t, pv, chainID, vals.QuorumType, *vals.QuorumHash)
 		t.Logf("client %d", i)
 

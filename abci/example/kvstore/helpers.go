@@ -5,10 +5,12 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	dashtypes "github.com/tendermint/tendermint/dash/types"
 )
 
-func ValUpdate(pubKey crypto.PubKey, proTxHash crypto.ProTxHash) types.ValidatorUpdate {
-	return types.UpdateValidator(proTxHash, pubKey.Bytes(), 100)
+func ValUpdate(
+	pubKey crypto.PubKey, proTxHash crypto.ProTxHash, address dashtypes.ValidatorAddress) types.ValidatorUpdate {
+	return types.UpdateValidator(proTxHash, pubKey.Bytes(), 100, address.String())
 }
 
 // RandValidatorSetUpdate returns a list of cnt validators for initializing
@@ -19,7 +21,7 @@ func RandValidatorSetUpdate(cnt int) types.ValidatorSetUpdate {
 
 	privKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(cnt)
 	for i := 0; i < cnt; i++ {
-		res[i] = ValUpdate(privKeys[i].PubKey(), proTxHashes[i])
+		res[i] = ValUpdate(privKeys[i].PubKey(), proTxHashes[i], dashtypes.RandValidatorAddress())
 	}
 	thresholdPublicKeyABCI, err := cryptoenc.PubKeyToProto(thresholdPublicKey)
 	if err != nil {

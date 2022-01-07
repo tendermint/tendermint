@@ -330,7 +330,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(
 	stateID := RandStateID().WithHeight(height - 1)
 
 	proTxHash, _ := pv.GetProTxHash()
-	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
+	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash, "")
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID())
 	vA := voteA.ToProto()

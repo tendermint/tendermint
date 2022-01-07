@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/types"
@@ -224,7 +225,7 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
 }
 
-// validatorUpdates generates a validator set update.
+// validatorSetUpdates generates a validator set update.
 func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUpdate, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
 	if len(updates) == 0 {
@@ -258,22 +259,42 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 	valSetUpdates := abci.ValidatorSetUpdate{}
 
 	valUpdates := abci.ValidatorUpdates{}
-	for proTxHashString, keyString := range updates {
-		keyBytes, err := base64.StdEncoding.DecodeString(keyString)
+	for proTxHashString, updateBase64 := range updates {
+		validator, err := parseValidatorUpdate(updateBase64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", keyString, err)
+			return nil, err
 		}
 		proTxHashBytes, err := hex.DecodeString(proTxHashString)
 		if err != nil {
 			return nil, fmt.Errorf("invalid hex proTxHash value %q: %w", proTxHashBytes, err)
 		}
-		publicKeyUpdate := bls12381.PubKey(keyBytes)
-		valUpdates = append(valUpdates, abci.UpdateValidator(proTxHashBytes, publicKeyUpdate, types.DefaultDashVotingPower))
+		if !bytes.Equal(proTxHashBytes, validator.ProTxHash) {
+			return nil, fmt.Errorf("proTxHash mismatch for key %s: %x != %x",
+				proTxHashString, proTxHashBytes, validator.ProTxHash)
+		}
+
+		valUpdates = append(valUpdates, validator)
 	}
 	valSetUpdates.ValidatorUpdates = valUpdates
 	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
 	valSetUpdates.QuorumHash = quorumHashUpdate
 	return &valSetUpdates, nil
+}
+
+func parseValidatorUpdate(validatorUpdateBase64 string) (abci.ValidatorUpdate, error) {
+	validator := abci.ValidatorUpdate{}
+
+	validatorBytes, err := base64.StdEncoding.DecodeString(validatorUpdateBase64)
+	if err != nil {
+		return validator, fmt.Errorf("invalid base64 validator update %q: %w", validatorUpdateBase64, err)
+	}
+
+	err = proto.Unmarshal(validatorBytes, &validator)
+	if err != nil {
+		return validator, fmt.Errorf("cannot parse validator update protobuf %q: %w", validatorBytes, err)
+	}
+
+	return validator, nil
 }
 
 // validatorUpdates generates a validator set update.
