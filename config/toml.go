@@ -442,6 +442,9 @@ skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
 create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 
+# How many blocks are inspected in order to determine if we need to create additional proof block.
+create_proof_block_range = "{{ .Consensus.CreateProofBlockRange }}"
+
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"

@@ -1088,21 +1088,26 @@ func (cs *State) needProofBlock(height int64) bool {
 		return true
 	}
 
-	heights := []int64{height - 1, height - 2}
-	for _, blockHeight := range heights {
+	proofBlockRange := cs.config.CreateProofBlockRange
+
+	for blockHeight := height - 1; blockHeight >= height-proofBlockRange; blockHeight-- {
 		if blockHeight >= cs.state.InitialHeight {
 			blockMeta := cs.blockStore.LoadBlockMeta(blockHeight)
 			if blockMeta == nil {
-				panic(fmt.Sprintf("needProofBlock: last block meta for height %d not found", height-1))
+				panic(fmt.Sprintf("needProofBlock (height=%d): last block meta for height %d not found", height, blockHeight))
 			}
 			if !bytes.Equal(cs.state.AppHash, blockMeta.Header.AppHash) {
-				cs.Logger.Debug("needProofBlock: proof block needed", "height", height, "modified_since", blockHeight)
+				cs.Logger.Debug(
+					"needProofBlock: proof block needed",
+					"height", height,
+					"modified_height", blockHeight,
+					"range", proofBlockRange,
+				)
 				return true
 			}
 		}
 	}
 
-	cs.Logger.Debug("needProofBlock: proof block not needed", "height", height)
 	return false
 }
 

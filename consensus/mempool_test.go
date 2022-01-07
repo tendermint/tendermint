@@ -25,25 +25,31 @@ func assertMempool(txn txNotifier) mempl.Mempool {
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
-	config := ResetConfig("consensus_mempool_txs_available_test")
-	defer os.RemoveAll(config.RootDir)
-	config.Consensus.CreateEmptyBlocks = false
+	for proofBlockRange := int64(1); proofBlockRange <= 3; proofBlockRange++ {
+		t.Logf("Checking proof block range %d", proofBlockRange)
 
-	state, privVals := randGenesisState(1, false, 100)
+		config := ResetConfig("consensus_mempool_txs_available_test")
+		defer os.RemoveAll(config.RootDir)
+		config.Consensus.CreateEmptyBlocks = false
+		config.Consensus.CreateProofBlockRange = proofBlockRange
 
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
-	assertMempool(cs.txNotifier).EnableTxsAvailable()
-	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
-	startTestRound(cs, height, round)
+		state, privVals := randGenesisState(1, false, types.DefaultDashVotingPower)
 
-	ensureNewEventOnChannel(newBlockCh) // first block gets committed
-	ensureNoNewEventOnChannel(newBlockCh)
-	deliverTxsRange(cs, 0, 1)
-	ensureNewEventOnChannel(newBlockCh) // commit txs
-	ensureNewEventOnChannel(newBlockCh) // commit updated app hash
-	ensureNewEventOnChannel(newBlockCh) // commit 2nd block for updated app hash
-	ensureNoNewEventOnChannel(newBlockCh)
+		cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+		assertMempool(cs.txNotifier).EnableTxsAvailable()
+		height, round := cs.Height, cs.Round
+		newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+		startTestRound(cs, height, round)
+
+		ensureNewEventOnChannel(newBlockCh) // first block gets committed
+		ensureNoNewEventOnChannel(newBlockCh)
+		deliverTxsRange(cs, 0, 1)
+		ensureNewEventOnChannel(newBlockCh) // commit txs
+		for i := int64(0); i < proofBlockRange; i++ {
+			ensureNewEventOnChannel(newBlockCh) // commit updated app hash
+		}
+		ensureNoNewEventOnChannel(newBlockCh)
+	}
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
