@@ -34,7 +34,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start(ctx))
 
-	state, stateDB, privVals := makeState(3, 1)
+	state, stateDB, privVals := makeState(t, 3, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
@@ -125,7 +125,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start(ctx))
 
-	state, stateDB, privVals := makeState(1, 1)
+	state, stateDB, privVals := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
@@ -253,7 +253,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start(ctx))
 
-	state, stateDB, privVals := makeState(4, 1)
+	state, stateDB, privVals := makeState(t, 4, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
