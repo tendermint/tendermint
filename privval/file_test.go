@@ -3,6 +3,7 @@ package privval
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -105,7 +106,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	}`
 
 	val := FilePVLastSignState{}
-	err := tmjson.Unmarshal([]byte(serialized), &val)
+	err := json.Unmarshal([]byte(serialized), &val)
 	require.NoError(t, err)
 
 	// make sure the values match
@@ -114,7 +115,7 @@ func TestUnmarshalValidatorState(t *testing.T) {
 	assert.EqualValues(t, val.Step, 1)
 
 	// export it and make sure it is the same
-	out, err := tmjson.Marshal(val)
+	out, err := json.Marshal(val)
 	require.NoError(t, err)
 	assert.JSONEq(t, serialized, string(out))
 }
