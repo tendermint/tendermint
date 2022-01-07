@@ -12,7 +12,7 @@ experience with Tendermint Core.
 
 Tendermint Core is a service that provides a Byzantine fault tolerant consensus engine
 for state-machine replication. The replicated state-machine, or "application", can be written 
-in any language that can send and receive protocol buffer messages. 
+in any language that can send and receive protocol buffer messages.
 
 This tutorial is written for Go and uses Tendermint as a library, but applications not
 written in Go can use Tendermint to drive state-machine replication in a client-server
@@ -26,8 +26,9 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core application
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest releasetd version.
-> Please, do not use master.
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest released version.
+> Be aware that they may not apply to unreleased changes on master.
+> We strongly advise against using unreleased commits for your development.
 
 ## 1.1 Installing Go
 
@@ -203,7 +204,7 @@ func (app *KVStoreApplication) validateTx(tx []byte) uint32 {
 	parts := bytes.SplitN(tx, []byte("="), 2)
 
 	// check that the transaction is not malformed
-	if len(parts) != 2 {
+	if len(parts) != 2 || len(parts[0]) == 0 {
 		return 1
 	}
 	return 0
@@ -497,7 +498,7 @@ Then we construct a logger:
 ...
 ```
 
-Now we have everything setup to run the Tendermint Core node. We construct
+Now we have everything setup to run the Tendermint node. We construct
 a node by passing it the configuration, the logger, a handle to our application and
 the genesis file:
 
@@ -535,7 +536,7 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 ## 1.5 Getting Up and Running
 
 Our application is almost ready to run.
-Let's instruct the `go` tooling to use the correct version of the Tendermint library.
+Let's install the latest release version of the Tendermint library.
 
 From inside of the project directory, run:
 
@@ -555,7 +556,7 @@ go run github.com/tendermint/tendermint/cmd/tendermint@v0.35.0 init validator --
 
 Next, build the application: 
 ```bash
-go build -mod=mod -o my-app
+go build -mod=mod -o my-app  # use -mod=mod to automatically update go.sum
 ```
 
 Everything is now in place to run your application.
