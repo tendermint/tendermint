@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"log"
 	"os"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestMain(m *testing.M) {
 	var err error
 	cfg, err = config.ResetTestRoot("consensus_height_vote_set_test")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	code := m.Run()
 	os.RemoveAll(cfg.RootDir)
@@ -71,11 +72,11 @@ func makeVoteHR(
 	valIndex, round int32,
 	privVals []types.PrivValidator,
 ) *types.Vote {
+	t.Helper()
+
 	privVal := privVals[valIndex]
 	pubKey, err := privVal.GetPubKey(ctx)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
