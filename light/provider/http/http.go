@@ -100,8 +100,14 @@ func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, opti
 	}
 }
 
-func (p *http) String() string {
+func (p *http) ID() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
+}
+
+// Ideally we want only one ID function. String is here to not break the Provider interface with another method
+// which would cause changes to BlockProvider in the internal/statesync
+func (p *http) String() string {
+	return p.ID()
 }
 
 // LightBlock fetches a LightBlock at the given height and checks the

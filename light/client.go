@@ -1149,7 +1149,7 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 		errors.Is(err, provider.ErrConnectionClosed)
 }
 
-func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
+func (c *Client) Status(ctx context.Context) (*coretypes.LightClientInfo, error) { // return only light client info
 
 	chunks := make([]string, len(c.witnesses))
 	for i, val := range c.witnesses {
@@ -1157,22 +1157,15 @@ func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	}
 
 	lightClientInfo := coretypes.LightClientInfo{}
-	// ToDo Add error handling
-	// lastTrustedHeight, _ := c.LastTrustedHeight()
-	lastTrustedBlock := c.latestTrustedBlock
-
+	lastTrustedHeight, err := c.LastTrustedHeight()
 	lightClientInfo = coretypes.LightClientInfo{
-		Primary:           c.primary.String(),
-		Witnesses:         chunks, //strings.Join(chunks, ","),
-		LastTrustedHeight: lastTrustedBlock.Height,
-		LastTrustedHash:   lastTrustedBlock.Hash(),
-	}
-	result := &coretypes.ResultStatus{
-		NodeInfo:        types.NodeInfo{},
-		SyncInfo:        coretypes.SyncInfo{},
-		ValidatorInfo:   coretypes.ValidatorInfo{},
-		LightClientInfo: lightClientInfo,
+		Primary:                c.primary.String(),
+		Witnesses:              chunks,
+		NumPeers:               len(chunks) + 1,
+		LastTrustedHeight:      lastTrustedHeight,
+		LastTrustedBlockHeight: c.latestTrustedBlock.Height,
+		LastTrustedHash:        c.latestTrustedBlock.Hash(),
 	}
 
-	return result, nil
+	return &lightClientInfo, err
 }

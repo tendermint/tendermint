@@ -32,7 +32,7 @@ type LightClient interface {
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
 	VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error)
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
-	Status(ctx context.Context) (*coretypes.ResultStatus, error)
+	Status(ctx context.Context) (*coretypes.LightClientInfo, error)
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -44,7 +44,7 @@ type Client struct {
 	service.BaseService
 
 	next rpcclient.Client
-	lc   LightClient
+	lc   LightClient //light.Client
 
 	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
@@ -126,7 +126,14 @@ func (c *Client) OnStop() {
 }
 
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
-	return c.lc.Status(ctx)
+	lightClientInfo, err := c.lc.Status(ctx)
+	result := &coretypes.ResultStatus{
+		NodeInfo:        types.NodeInfo{},
+		SyncInfo:        coretypes.SyncInfo{},
+		ValidatorInfo:   coretypes.ValidatorInfo{},
+		LightClientInfo: *lightClientInfo,
+	}
+	return result, err
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
