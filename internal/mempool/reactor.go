@@ -63,13 +63,19 @@ type Reactor struct {
 
 // NewReactor returns a reference to a new reactor.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
 	cfg *config.MempoolConfig,
 	peerMgr PeerManager,
 	txmp *TxMempool,
-	mempoolCh *p2p.Channel,
+	chCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
-) *Reactor {
+) (*Reactor, error) {
+
+	ch, err := chCreator(ctx, getChannelDescriptor(cfg))
+	if err != nil {
+		return nil, err
+	}
 
 	r := &Reactor{
 		logger:       logger,
@@ -77,21 +83,21 @@ func NewReactor(
 		peerMgr:      peerMgr,
 		mempool:      txmp,
 		ids:          NewMempoolIDs(),
-		mempoolCh:    mempoolCh,
+		mempoolCh:    ch,
 		peerUpdates:  peerUpdates,
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
 		observePanic: defaultObservePanic,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
-	return r
+	return r, nil
 }
 
 func defaultObservePanic(r interface{}) {}
 
-// GetChannelDescriptor produces an instance of a descriptor for this
+// getChannelDescriptor produces an instance of a descriptor for this
 // package's required channels.
-func GetChannelDescriptor(cfg *config.MempoolConfig) *p2p.ChannelDescriptor {
+func getChannelDescriptor(cfg *config.MempoolConfig) *p2p.ChannelDescriptor {
 	largestTx := make([]byte, cfg.MaxTxBytes)
 	batchMsg := protomem.Message{
 		Sum: &protomem.Message_Txs{
