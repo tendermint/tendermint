@@ -2,6 +2,7 @@ package quorum
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -74,6 +75,10 @@ type ValidatorConnExecutor struct {
 	// EventBusCapacity sets event bus buffer capacity, defaults to 10
 	EventBusCapacity int
 }
+
+var (
+	errPeerNotFound = fmt.Errorf("cannot stop peer: not found")
+)
 
 // NewValidatorConnExecutor creates a Service that connects to other validators within the same Validator Set.
 // Don't forget to Start() and Stop() the service.
@@ -313,7 +318,7 @@ func (vc *ValidatorConnExecutor) disconnectValidator(validator types.Validator) 
 
 	peer := vc.p2pSwitch.Peers().Get(id)
 	if peer == nil {
-		return fmt.Errorf("cannot stop peer %s: not found", id)
+		return errPeerNotFound
 	}
 
 	vc.Logger.Debug("stopping peer", "id", id, "address", address)
@@ -328,8 +333,13 @@ func (vc *ValidatorConnExecutor) disconnectValidators(exceptions validatorMap) e
 			continue
 		}
 		if err := vc.disconnectValidator(validator); err != nil {
-			vc.Logger.Error("cannot disconnect Validator", "error", err)
-			continue // no return, as we see it as non-fatal
+			if !errors.Is(err, errPeerNotFound) {
+				// no return, as we see it as non-fatal
+				vc.Logger.Error("cannot disconnect Validator", "error", err)
+				continue
+			}
+			vc.Logger.Debug("Validator already disconnected", "error", err)
+			// We still delete the validator from vc.connectedValidators
 		}
 		delete(vc.connectedValidators, currentKey)
 	}
