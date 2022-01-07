@@ -146,23 +146,38 @@ func setup(
 
 	cfg := config.DefaultStateSyncConfig()
 
-	rts.reactor = NewReactor(
+	chCreator := func(ctx context.Context, desc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		switch desc.ID {
+		case SnapshotChannel:
+			return rts.snapshotChannel, nil
+		case ChunkChannel:
+			return rts.chunkChannel, nil
+		case LightBlockChannel:
+			return rts.blockChannel, nil
+		case ParamsChannel:
+			return rts.paramsChannel, nil
+		default:
+			return nil, fmt.Errorf("invalid channel; %v", desc.ID)
+		}
+	}
+
+	var err error
+	rts.reactor, err = NewReactor(
+		ctx,
 		factory.DefaultTestChainID,
 		1,
 		*cfg,
 		log.TestingLogger(),
 		conn,
 		connQuery,
-		rts.snapshotChannel,
-		rts.chunkChannel,
-		rts.blockChannel,
-		rts.paramsChannel,
+		chCreator,
 		rts.peerUpdates,
 		rts.stateStore,
 		rts.blockStore,
 		"",
 		m,
 	)
+	require.NoError(t, err)
 
 	rts.syncer = newSyncer(
 		*cfg,
