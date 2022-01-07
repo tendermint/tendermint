@@ -163,7 +163,7 @@ Badger is a fast embedded key-value store.
 
 First, add Badger as a dependency of your go module using the `go get` command:
 
-`go get github.com/dgraph-io/badger@v2103.2`
+`go get github.com/dgraph-io/badger/v3`
 
 Next, let's update the application and its constructor to receive a handle to the 
 database. 
@@ -187,6 +187,15 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 The `pendingBlock` keeps track of the transactions that will update the application's
 state when a block is completed. Don't worry about it for now, we'll get to that later.
+
+Finally, update the `import` stanza at the top to include the `Badger` library:
+
+```go
+import(
+	"github.com/dgraph-io/badger/v3"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+```
 
 ### 1.3.1 CheckTx
 
@@ -234,10 +243,11 @@ Finally, make sure to add the `bytes` package to the your import stanza
 at the top of `app.go`:
 
 ```go
-import (
- "bytes"
+import(
+	"bytes"
 
- abcitypes "github.com/tendermint/tendermint/abci/types"
+	"github.com/dgraph-io/badger/v3"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 )
 ```
 
@@ -284,7 +294,7 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 	key, value := parts[0], parts[1]
 
 	if err := app.pendingBlock.Set(key, value); err != nil {
-		log.Panicf("Error reading database, unable to verify tx: %v", dbErr)
+		log.Panicf("Error reading database, unable to verify tx: %v", err)
 	}
 
 	return abcitypes.ResponseDeliverTx{Code: 0}
@@ -315,7 +325,19 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 }
 ```
 
-You may also have noticed that the application we are writing will _crash_ if it receives an
+Finally, make sure to add the `log` library to the `import` stanza as well:
+
+```go
+import (
+	"bytes"
+	"log"
+
+	"github.com/dgraph-io/badger/v3"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+```
+
+You may have noticed that the application we are writing will _crash_ if it receives an
 unexpected error from the database during the `DeliverTx` or `Commit` methods.
 This is not an accident. If the application received an error from the database,
 there is no deterministic way for it to make progress so the only safe option is to terminate.
@@ -361,7 +383,7 @@ applications in production but are not required for getting a very simple applic
 up and running. 
 
 To better understand these methods and why they are useful, check out the Tendermint 
-[specification on ABCI](https://github.com/tendermint/spec/tree/20b2abb5f9a83c2d9d97b53e555e4ea5a6bd7dc4/spec/abci)
+[specification on ABCI](https://github.com/tendermint/spec/tree/20b2abb5f9a83c2d9d97b53e555e4ea5a6bd7dc4/spec/abci).
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
@@ -376,15 +398,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/spf13/viper"
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/log"
+	tmlog "github.com/tendermint/tendermint/libs/log"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/types"
 )
@@ -420,7 +444,7 @@ func main() {
 	}
 
 	dbPath := filepath.Join(homeDir, "badger")
-	db, err := badger.Open(badger.DefaultOptions(dbPath).WithTruncate(true))
+	db, err := badger.Open(badger.DefaultOptions(dbPath))
 	if err != nil {
 		log.Fatalf("Opening database: %v", err)
 	}
@@ -432,7 +456,7 @@ func main() {
 	app := NewKVStoreApplication(db)
 	acc := abciclient.NewLocalCreator(app)
 
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger := tmlog.MustNewDefaultLogger(tmlog.LogFormatPlain, tmlog.LogLevelInfo, false)
 	node, err := nm.New(config, logger, acc, gf)
 	if err != nil {
 		log.Fatalf("Creating node: %v", err)
@@ -499,7 +523,7 @@ Next, we create a database handle and use it to construct our ABCI application:
 Then we construct a logger:
 ```go
 ...
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger := tmlog.MustNewDefaultLogger(tmlog.LogFormatPlain, tmlog.LogLevelInfo, false)
 ...
 ```
 
