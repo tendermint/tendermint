@@ -254,6 +254,11 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 	}
 }
 
+// ChannelCreator allows routers to construct their own channels,
+// either by receiving a reference to Router.OpenChannel or using some
+// kind shim for testing purposes.
+type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
+
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can

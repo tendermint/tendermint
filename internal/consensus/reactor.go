@@ -28,9 +28,9 @@ var (
 
 // GetChannelDescriptor produces an instance of a descriptor for this
 // package's required channels.
-func GetChannelDescriptors() []*p2p.ChannelDescriptor {
-	return []*p2p.ChannelDescriptor{
-		{
+func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
+	return map[p2p.ChannelID]*p2p.ChannelDescriptor{
+		StateChannel: {
 			ID:                  StateChannel,
 			MessageType:         new(tmcons.Message),
 			Priority:            8,
@@ -38,7 +38,7 @@ func GetChannelDescriptors() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: maxMsgSize,
 			RecvBufferCapacity:  128,
 		},
-		{
+		DataChannel: {
 			// TODO: Consider a split between gossiping current block and catchup
 			// stuff. Once we gossip the whole block there is nothing left to send
 			// until next height or round.
@@ -49,7 +49,7 @@ func GetChannelDescriptors() []*p2p.ChannelDescriptor {
 			RecvBufferCapacity:  512,
 			RecvMessageCapacity: maxMsgSize,
 		},
-		{
+		VoteChannel: {
 			ID:                  VoteChannel,
 			MessageType:         new(tmcons.Message),
 			Priority:            10,
@@ -57,7 +57,7 @@ func GetChannelDescriptors() []*p2p.ChannelDescriptor {
 			RecvBufferCapacity:  128,
 			RecvMessageCapacity: maxMsgSize,
 		},
-		{
+		VoteSetBitsChannel: {
 			ID:                  VoteSetBitsChannel,
 			MessageType:         new(tmcons.Message),
 			Priority:            5,
@@ -131,17 +131,34 @@ type Reactor struct {
 // to relevant p2p Channels and a channel to listen for peer updates on. The
 // reactor will close all p2p Channels when stopping.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
 	cs *State,
-	stateCh *p2p.Channel,
-	dataCh *p2p.Channel,
-	voteCh *p2p.Channel,
-	voteSetBitsCh *p2p.Channel,
+	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	waitSync bool,
 	metrics *Metrics,
-) *Reactor {
+) (*Reactor, error) {
+	chans := getChannelDescriptors()
+	stateCh, err := channelCreator(ctx, chans[StateChannel])
+	if err != nil {
+		return nil, err
+	}
 
+	dataCh, err := channelCreator(ctx, chans[DataChannel])
+	if err != nil {
+		return nil, err
+	}
+
+	voteCh, err := channelCreator(ctx, chans[VoteChannel])
+	if err != nil {
+		return nil, err
+	}
+
+	voteSetBitsCh, err := channelCreator(ctx, chans[VoteSetBitsChannel])
+	if err != nil {
+		return nil, err
+	}
 	r := &Reactor{
 		logger:        logger,
 		state:         cs,
@@ -156,7 +173,7 @@ func NewReactor(
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
 
-	return r
+	return r, nil
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
