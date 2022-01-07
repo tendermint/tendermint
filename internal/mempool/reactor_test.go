@@ -55,7 +55,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		peerUpdates:     make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	chDesc := GetChannelDescriptor(cfg.Mempool)
+	chDesc := getChannelDescriptor(cfg.Mempool)
 	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
@@ -68,15 +68,21 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
-		rts.reactors[nodeID] = NewReactor(
+		chCreator := func(ctx context.Context, chDesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			return rts.mempoolChannels[nodeID], nil
+		}
+
+		rts.reactors[nodeID], err = NewReactor(
+			ctx,
 			rts.logger.With("nodeID", nodeID),
 			cfg.Mempool,
 			rts.network.Nodes[nodeID].PeerManager,
 			mempool,
-			rts.mempoolChannels[nodeID],
+			chCreator,
 			rts.peerUpdates[nodeID],
 		)
 
+		require.NoError(t, err)
 		rts.nodes = append(rts.nodes, nodeID)
 
 		require.NoError(t, rts.reactors[nodeID].Start(ctx))
