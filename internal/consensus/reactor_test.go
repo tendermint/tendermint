@@ -110,6 +110,7 @@ func setup(
 			chCreator(nodeID),
 			node.MakePeerUpdates(ctx, t),
 			true,
+			NopMetrics(),
 		)
 		require.NoError(t, err)
 

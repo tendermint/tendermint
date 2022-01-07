@@ -320,7 +320,7 @@ func createConsensusReactor(
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		waitSync,
-		consensus.ReactorMetrics(csMetrics),
+		csMetrics,
 	)
 	if err != nil {
 		return nil, nil, err
