@@ -349,35 +349,24 @@ func makeNode(
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	ssChDesc := statesync.GetChannelDescriptors()
-	channels := make(map[p2p.ChannelID]*p2p.Channel, len(ssChDesc))
-	for idx := range ssChDesc {
-		chd := ssChDesc[idx]
-		ch, err := router.OpenChannel(ctx, chd)
-		if err != nil {
-			return nil, err
-		}
-
-		channels[ch.ID] = ch
-	}
-
-	stateSyncReactor := statesync.NewReactor(
+	stateSyncReactor, err := statesync.NewReactor(
+		ctx,
 		genDoc.ChainID,
 		genDoc.InitialHeight,
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
-		channels[statesync.SnapshotChannel],
-		channels[statesync.ChunkChannel],
-		channels[statesync.LightBlockChannel],
-		channels[statesync.ParamsChannel],
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		stateStore,
 		blockStore,
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 	)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
+	}
 
 	var pexReactor service.Service
 	if cfg.P2P.PexReactor {
