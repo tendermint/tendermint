@@ -16,6 +16,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -327,13 +328,20 @@ func makeNode(
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactor, err := createBlockchainReactor(ctx,
-		logger, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
+	bcReactor, err := blocksync.NewReactor(ctx,
+		logger.With("module", "blockchain"),
+		state.Copy(),
+		blockExec,
+		blockStore,
+		csReactor,
+		router.OpenChannel,
+		peerManager.Subscribe(ctx),
+		blockSync && !stateSync,
+		nodeMetrics.consensus,
 	)
 	if err != nil {
 		return nil, combineCloseError(
-			fmt.Errorf("could not create blockchain reactor: %w", err),
+			fmt.Errorf("could not create blocksync reactor: %w", err),
 			makeCloser(closers))
 	}
 
@@ -413,7 +421,7 @@ func makeNode(
 			ConsensusState: csState,
 
 			ConsensusReactor: csReactor,
-			BlockSyncReactor: bcReactor.(consensus.BlockSyncReactor),
+			BlockSyncReactor: bcReactor,
 
 			PeerManager: peerManager,
 

@@ -103,16 +103,18 @@ type Reactor struct {
 
 // NewReactor returns new reactor instance.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
 	consReactor consensusReactor,
-	blockSyncCh *p2p.Channel,
+	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
 	metrics *consensus.Metrics,
 ) (*Reactor, error) {
+
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
 	}
@@ -124,6 +126,11 @@ func NewReactor(
 
 	requestsCh := make(chan BlockRequest, maxTotalRequesters)
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
+
+	blockSyncCh, err := channelCreator(ctx, GetChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
 
 	r := &Reactor{
 		logger:               logger,
