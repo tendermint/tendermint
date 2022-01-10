@@ -28,7 +28,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := rpctypes.MapToRequest(
+	req, err := rpctypes.ParamsToRequest(
 		rpctypes.JSONRPCStringID("TestWebsocketManager"),
 		"c",
 		map[string]interface{}{"s": "a", "i": 10},

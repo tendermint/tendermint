@@ -217,7 +217,7 @@ func (c *WSClient) Send(ctx context.Context, request rpctypes.RPCRequest) error 
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := rpctypes.MapToRequest(c.nextRequestID(), method, params)
+	request, err := rpctypes.ParamsToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}

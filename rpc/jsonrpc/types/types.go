@@ -98,17 +98,27 @@ func (req RPCRequest) String() string {
 	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
 }
 
-func MapToRequest(id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
-	var paramsMap = make(map[string]json.RawMessage, len(params))
-	for name, value := range params {
-		valueJSON, err := tmjson.Marshal(value)
-		if err != nil {
-			return RPCRequest{}, err
+// ParamsToRequest constructs a new RPCRequest with the given ID, method, and parameters.
+func ParamsToRequest(id jsonrpcid, method string, params interface{}) (RPCRequest, error) {
+	var payload json.RawMessage
+	var err error
+	switch t := params.(type) {
+	case map[string]interface{}:
+		// TODO(creachadair): This special case preserves existing behavior that
+		// relies on the custom JSON encoding library. Remove it once that
+		// requirement has been removed.
+		paramsMap := make(map[string]json.RawMessage, len(t))
+		for name, value := range t {
+			valueJSON, err := tmjson.Marshal(value)
+			if err != nil {
+				return RPCRequest{}, err
+			}
+			paramsMap[name] = valueJSON
 		}
-		paramsMap[name] = valueJSON
+		payload, err = json.Marshal(paramsMap)
+	default:
+		payload, err = json.Marshal(params)
 	}
-
-	payload, err := json.Marshal(paramsMap)
 	if err != nil {
 		return RPCRequest{}, err
 	}

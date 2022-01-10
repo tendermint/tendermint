@@ -106,9 +106,15 @@ func (u parsedURL) GetTrimmedURL() string {
 
 //-------------------------------------------------------------
 
-// Caller implementers can facilitate calling the JSON-RPC endpoint.
+// A Caller handles the round trip of a single JSON-RPC request.  The
+// implementation is responsible for assigning request IDs, marshaling
+// parameters, and unmarshaling results.
 type Caller interface {
-	Call(ctx context.Context, method string, params map[string]interface{}, result interface{}) (interface{}, error)
+	// Call sends a new request for method to the server with the given
+	// parameters. If params == nil, the request has empty parameters.
+	// If result == nil, any result value must be discarded without error.
+	// Otherwise the concrete value of result must be a pointer.
+	Call(ctx context.Context, method string, params, result interface{}) error
 }
 
 //-------------------------------------------------------------
@@ -174,28 +180,23 @@ func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 
 // Call issues a POST HTTP request. Requests are JSON encoded. Content-Type:
 // application/json.
-func (c *Client) Call(
-	ctx context.Context,
-	method string,
-	params map[string]interface{},
-	result interface{},
-) (interface{}, error) {
+func (c *Client) Call(ctx context.Context, method string, params, result interface{}) error {
 	id := c.nextRequestID()
 
-	request, err := rpctypes.MapToRequest(id, method, params)
+	request, err := rpctypes.ParamsToRequest(id, method, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode params: %w", err)
+		return fmt.Errorf("failed to encode params: %w", err)
 	}
 
 	requestBytes, err := json.Marshal(request)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	requestBuf := bytes.NewBuffer(requestBytes)
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, requestBuf)
 	if err != nil {
-		return nil, fmt.Errorf("request setup failed: %w", err)
+		return fmt.Errorf("request setup failed: %w", err)
 	}
 
 	httpRequest.Header.Set("Content-Type", "application/json")
@@ -206,14 +207,14 @@ func (c *Client) Call(
 
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer httpResponse.Body.Close()
 
 	responseBytes, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	return unmarshalResponseBytes(responseBytes, id, result)
@@ -340,19 +341,14 @@ func (b *RequestBatch) Send(ctx context.Context) ([]interface{}, error) {
 
 // Call enqueues a request to call the given RPC method with the specified
 // parameters, in the same way that the `Client.Call` function would.
-func (b *RequestBatch) Call(
-	_ context.Context,
-	method string,
-	params map[string]interface{},
-	result interface{},
-) (interface{}, error) {
+func (b *RequestBatch) Call(_ context.Context, method string, params, result interface{}) error {
 	id := b.client.nextRequestID()
-	request, err := rpctypes.MapToRequest(id, method, params)
+	request, err := rpctypes.ParamsToRequest(id, method, params)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	b.enqueue(&jsonRPCBufferedRequest{request: request, result: result})
-	return result, nil
+	return nil
 }
 
 //-------------------------------------------------------------
