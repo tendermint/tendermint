@@ -628,7 +628,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" && n.config.Mode != config.ModeSeed {
+	if n.config.RPC.ListenAddress != "" {
 		listeners, err := n.startRPC(ctx)
 		if err != nil {
 			return err
@@ -646,30 +646,24 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	}
 	n.isListening = true
 
-	if n.config.Mode != config.ModeSeed {
-		if err := n.bcReactor.Start(ctx); err != nil {
-			return err
-		}
+	if err := n.bcReactor.Start(ctx); err != nil {
+		return err
+	}
 
-		// Start the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Start(ctx); err != nil {
-			return err
-		}
+	if err := n.consensusReactor.Start(ctx); err != nil {
+		return err
+	}
 
-		// Start the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Start(ctx); err != nil {
-			return err
-		}
+	if err := n.stateSyncReactor.Start(ctx); err != nil {
+		return err
+	}
 
-		// Start the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Start(ctx); err != nil {
-			return err
-		}
+	if err := n.mempoolReactor.Start(ctx); err != nil {
+		return err
+	}
 
-		// Start the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Start(ctx); err != nil {
-			return err
-		}
+	if err := n.evidenceReactor.Start(ctx); err != nil {
+		return err
 	}
 
 	if n.config.P2P.PexReactor {
@@ -768,13 +762,11 @@ func (n *nodeImpl) OnStop() {
 		}
 	}
 
-	if n.config.Mode != config.ModeSeed {
-		n.bcReactor.Wait()
-		n.consensusReactor.Wait()
-		n.stateSyncReactor.Wait()
-		n.mempoolReactor.Wait()
-		n.evidenceReactor.Wait()
-	}
+	n.bcReactor.Wait()
+	n.consensusReactor.Wait()
+	n.stateSyncReactor.Wait()
+	n.mempoolReactor.Wait()
+	n.evidenceReactor.Wait()
 	n.pexReactor.Wait()
 	n.router.Wait()
 	n.isListening = false
