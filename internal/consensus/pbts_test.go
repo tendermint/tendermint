@@ -71,19 +71,22 @@ type pbtsTestConfiguration struct {
 	// The setting to use for the TimeoutPropose configuration parameter.
 	timeoutPropose time.Duration
 
-	// The timestamp of the first block produced by the network.
+	// The genesis time
 	genesisTime time.Time
 
-	// The time at which the proposal at height 2 should be delivered.
-	height2ProposalDeliverTime time.Time
+	// The timestamp of the first block produced by the network.
+	height1Time time.Time
 
-	// The timestamp of the block proposed at height 2.
-	height2ProposedBlockTime time.Time
+	// The times offset from height 1 block time of the block proposed at height 2.
+	height2ProposedBlockOffset time.Duration
 
-	// The timestamp of the block proposed at height 4.
-	// At height 4, the proposed block time and the deliver time are the same so
+	// The time offset from height 1 block time at which the proposal at height 2 should be delivered.
+	height2ProposalTimeOffset time.Duration
+
+	// The time offset from height 1 block time of the block proposed at height 4.
+	// At height 4, the proposed block and the deliver offsets are the same so
 	// that timely-ness does not affect height 4.
-	height4ProposedBlockTime time.Time
+	height4ProposedBlockOffset time.Duration
 }
 
 func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfiguration) pbtsTestHarness {
@@ -91,14 +94,19 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	const validators = 4
 	cfg := configSetup(t)
 	clock := new(tmtimemocks.Source)
-	if tc.height4ProposedBlockTime.IsZero() {
 
-		// Set a default height4ProposedBlockTime.
+	if tc.genesisTime.IsZero() {
+		tc.genesisTime = time.Now()
+	}
+
+	if tc.height4ProposedBlockOffset == 0 {
+
+		// Set a default height4ProposedBlockOffset.
 		// Use a proposed block time that is greater than the time that the
 		// block at height 2 was delivered. Height 3 is not relevant for testing
 		// and always occurs blockTimeIota before height 4. If not otherwise specified,
 		// height 4 therefore occurs 2*blockTimeIota after height 2.
-		tc.height4ProposedBlockTime = tc.height2ProposalDeliverTime.Add(2 * blockTimeIota)
+		tc.height4ProposedBlockOffset = tc.height2ProposalTimeOffset + 20*blockTimeIota
 	}
 	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
 	consensusParams := types.DefaultConsensusParams()
@@ -144,7 +152,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 }
 
 func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time.Time) heightResult {
-	p.validatorClock.On("Now").Return(p.height2ProposedBlockTime).Times(6)
+	p.validatorClock.On("Now").Return(p.genesisTime.Add(p.height2ProposedBlockOffset)).Times(6)
 
 	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
 
@@ -172,21 +180,28 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time
 
 func (p *pbtsTestHarness) height2() heightResult {
 	signer := p.otherValidators[0].PrivValidator
-	height3BlockTime := p.height2ProposedBlockTime.Add(-blockTimeIota)
-	return p.nextHeight(signer, p.height2ProposalDeliverTime, p.height2ProposedBlockTime, height3BlockTime)
+	return p.nextHeight(signer,
+		p.height1Time.Add(p.height2ProposalTimeOffset),
+		p.height1Time.Add(p.height2ProposedBlockOffset),
+		p.height1Time.Add(p.height2ProposedBlockOffset+10*blockTimeIota))
 }
 
 func (p *pbtsTestHarness) intermediateHeights() {
 	signer := p.otherValidators[1].PrivValidator
-	blockTimeHeight3 := p.height4ProposedBlockTime.Add(-blockTimeIota)
-	p.nextHeight(signer, blockTimeHeight3, blockTimeHeight3, p.height4ProposedBlockTime)
+	p.nextHeight(signer,
+		p.height1Time.Add(p.height2ProposedBlockOffset+10*blockTimeIota),
+		p.height1Time.Add(p.height2ProposedBlockOffset+10*blockTimeIota),
+		p.height1Time.Add(p.height4ProposedBlockOffset))
 
 	signer = p.otherValidators[2].PrivValidator
-	p.nextHeight(signer, p.height4ProposedBlockTime, p.height4ProposedBlockTime, time.Now())
+	p.nextHeight(signer,
+		p.height1Time.Add(p.height4ProposedBlockOffset),
+		p.height1Time.Add(p.height4ProposedBlockOffset),
+		time.Now())
 }
 
 func (p *pbtsTestHarness) height5() heightResult {
-	return p.observedValidatorProposerHeight(p.height4ProposedBlockTime)
+	return p.observedValidatorProposerHeight(p.height1Time.Add(p.height4ProposedBlockOffset))
 }
 
 // nolint: lll
@@ -297,6 +312,7 @@ func (p *pbtsTestHarness) run() resultSet {
 	startTestRound(p.ctx, p.observedState, p.currentHeight, p.currentRound)
 
 	r1 := p.observedValidatorProposerHeight(p.genesisTime)
+	p.height1Time = r1.proposalIssuedAt
 	r2 := p.height2()
 	p.intermediateHeights()
 	r5 := p.height5()
@@ -339,8 +355,8 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 		},
 		timeoutPropose:             10 * time.Millisecond,
 		genesisTime:                initialTime,
-		height2ProposalDeliverTime: initialTime.Add(10 * time.Millisecond),
-		height2ProposedBlockTime:   initialTime.Add(10 * time.Millisecond),
+		height2ProposalTimeOffset:  10 * time.Millisecond,
+		height2ProposedBlockOffset: 10 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -367,9 +383,9 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 		},
 		timeoutPropose:             50 * time.Millisecond,
 		genesisTime:                initialTime,
-		height2ProposalDeliverTime: initialTime.Add(150 * time.Millisecond),
-		height2ProposedBlockTime:   initialTime.Add(100 * time.Millisecond),
-		height4ProposedBlockTime:   initialTime.Add(800 * time.Millisecond),
+		height2ProposalTimeOffset:  150 * time.Millisecond,
+		height2ProposedBlockOffset: 100 * time.Millisecond,
+		height4ProposedBlockOffset: 800 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -378,7 +394,7 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 	// the observed validator is the proposer at height 5.
 	// ensure that the observed validator did not propose a block until after
 	// the time configured for height 4.
-	assert.True(t, results.height5.proposalIssuedAt.After(cfg.height4ProposedBlockTime))
+	assert.True(t, results.height5.proposalIssuedAt.After(pbtsTest.height1Time.Add(cfg.height4ProposedBlockOffset)))
 
 	// Ensure that the validator issued a prevote for a non-nil block.
 	assert.NotNil(t, results.height5.prevote.BlockID.Hash)
@@ -436,8 +452,8 @@ func TestTimelyProposal(t *testing.T) {
 		},
 		timeoutPropose:             40 * time.Millisecond,
 		genesisTime:                initialTime,
-		height2ProposedBlockTime:   initialTime.Add(15 * time.Millisecond),
-		height2ProposalDeliverTime: initialTime.Add(30 * time.Millisecond),
+		height2ProposedBlockOffset: 15 * time.Millisecond,
+		height2ProposalTimeOffset:  30 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -449,18 +465,15 @@ func TestTooFarInThePastProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	initialTime := time.Now()
-
 	// localtime > proposedBlockTime + MsgDelay + Precision
 	cfg := pbtsTestConfiguration{
 		timingParams: types.TimingParams{
 			Precision:    1 * time.Millisecond,
-			MessageDelay: 1 * time.Millisecond,
+			MessageDelay: 10 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposedBlockTime:   initialTime.Add(15 * time.Millisecond),
-		height2ProposalDeliverTime: initialTime.Add(21 * time.Millisecond),
+		height2ProposedBlockOffset: 15 * time.Millisecond,
+		height2ProposalTimeOffset:  27 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -474,8 +487,6 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	initialTime := time.Now()
-
 	// localtime < proposedBlockTime - Precision
 	cfg := pbtsTestConfiguration{
 		timingParams: types.TimingParams{
@@ -483,10 +494,8 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 			MessageDelay: 10 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposedBlockTime:   initialTime.Add(100 * time.Millisecond),
-		height2ProposalDeliverTime: initialTime.Add(10 * time.Millisecond),
-		height4ProposedBlockTime:   initialTime.Add(150 * time.Millisecond),
+		height2ProposedBlockOffset: 15 * time.Millisecond,
+		height2ProposalTimeOffset:  13 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
