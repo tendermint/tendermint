@@ -106,12 +106,6 @@ func (u parsedURL) GetTrimmedURL() string {
 
 //-------------------------------------------------------------
 
-// HTTPClient is a common interface for JSON-RPC HTTP clients.
-type HTTPClient interface {
-	// Call calls the given method with the params and returns a result.
-	Call(ctx context.Context, method string, params map[string]interface{}, result interface{}) (interface{}, error)
-}
-
 // Caller implementers can facilitate calling the JSON-RPC endpoint.
 type Caller interface {
 	Call(ctx context.Context, method string, params map[string]interface{}, result interface{}) (interface{}, error)
@@ -133,8 +127,6 @@ type Client struct {
 	mtx       sync.Mutex
 	nextReqID int
 }
-
-var _ HTTPClient = (*Client)(nil)
 
 // Both Client and RequestBatch can facilitate calls to the JSON
 // RPC endpoint.

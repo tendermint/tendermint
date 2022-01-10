@@ -187,7 +187,7 @@ func echoDataBytesViaHTTP(ctx context.Context, cl client.Caller, bytes tmbytes.H
 	return result.Value, nil
 }
 
-func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.HTTPClient) {
+func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.Caller) {
 	val := testVal
 	got, err := echoViaHTTP(ctx, cl, val)
 	require.NoError(t, err)
