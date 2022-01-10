@@ -516,10 +516,12 @@ func TestClientMethodCalls(t *testing.T) {
 				t.Run("BraodcastDuplicateVote", func(t *testing.T) {
 					chainID := conf.ChainID()
 
-					correct, fakes := makeEvidences(t, pv, chainID)
-
 					// make sure that the node has produced enough blocks
 					waitForBlock(ctx, t, c, 2)
+					evidenceHeight := int64(1)
+					block, _ := c.Block(ctx, &evidenceHeight)
+					ts := block.Block.Time
+					correct, fakes := makeEvidences(t, pv, chainID, ts)
 
 					result, err := c.BroadcastEvidence(ctx, correct)
 					require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)

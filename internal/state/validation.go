@@ -117,8 +117,8 @@ func validateBlock(state State, block *types.Block) error {
 
 	case block.Height == state.InitialHeight:
 		genesisTime := state.LastBlockTime
-		if !block.Time.Equal(genesisTime) {
-			return fmt.Errorf("block time %v is not equal to genesis time %v",
+		if block.Time.Before(genesisTime) {
+			return fmt.Errorf("block time %v is before genesis time %v",
 				block.Time,
 				genesisTime,
 			)
