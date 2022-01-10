@@ -2,11 +2,7 @@ package http_test
 
 import (
 	"context"
-<<<<<<< HEAD
 	"errors"
-	"fmt"
-=======
->>>>>>> 7c866cdfe (Fixed linter errors in http_test)
 	"testing"
 	"time"
 
