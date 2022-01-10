@@ -15,7 +15,7 @@ var (
 	flagProfAddr    = "pprof-laddr"
 	flagFrequency   = "frequency"
 
-	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 )
 
 // DebugCmd defines the root command containing subcommands that assist in
