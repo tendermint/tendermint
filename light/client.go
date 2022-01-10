@@ -1152,8 +1152,13 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 func (c *Client) Status(ctx context.Context) (*coretypes.LightClientInfo, error) { // return only light client info
 
 	chunks := make([]string, len(c.witnesses))
+	// If primary is in witness list we do not want to count it twice in the number of peers
+	primaryNotInWitnessList := 1
 	for i, val := range c.witnesses {
 		chunks[i] = val.String()
+		if chunks[i] == c.primary.String() {
+			primaryNotInWitnessList = 0
+		}
 	}
 
 	lightClientInfo := coretypes.LightClientInfo{}
@@ -1161,7 +1166,7 @@ func (c *Client) Status(ctx context.Context) (*coretypes.LightClientInfo, error)
 	lightClientInfo = coretypes.LightClientInfo{
 		Primary:                c.primary.String(),
 		Witnesses:              chunks,
-		NumPeers:               len(chunks) + 1,
+		NumPeers:               len(chunks) + primaryNotInWitnessList,
 		LastTrustedHeight:      lastTrustedHeight,
 		LastTrustedBlockHeight: c.latestTrustedBlock.Height,
 		LastTrustedHash:        c.latestTrustedBlock.Hash(),
