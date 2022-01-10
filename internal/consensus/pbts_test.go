@@ -497,8 +497,9 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 			MessageDelay: 10 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
-		height2ProposedBlockOffset: 15 * time.Millisecond,
-		height2ProposalTimeOffset:  13 * time.Millisecond,
+		height2ProposedBlockOffset: 100 * time.Millisecond,
+		height2ProposalTimeOffset:  10 * time.Millisecond,
+		height4ProposedBlockOffset: 150 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
