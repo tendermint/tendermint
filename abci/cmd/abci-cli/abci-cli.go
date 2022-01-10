@@ -60,7 +60,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		if logger == nil {
-			logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+			logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 		}
 
 		if client == nil {
@@ -575,7 +575,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func cmdKVStore(cmd *cobra.Command, args []string) error {
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application

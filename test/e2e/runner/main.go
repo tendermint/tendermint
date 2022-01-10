@@ -16,7 +16,7 @@ import (
 
 const randomSeed = 2308084734268
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 func main() {
 	NewCLI().Run()

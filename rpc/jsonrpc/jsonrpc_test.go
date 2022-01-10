@@ -94,7 +94,7 @@ func TestMain(m *testing.M) {
 
 // launch unix and tcp servers
 func setup(ctx context.Context) error {
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 	cmd := exec.Command("rm", "-f", unixSocket)
 	err := cmd.Start()
