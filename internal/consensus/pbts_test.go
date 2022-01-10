@@ -436,7 +436,7 @@ func TestTimelyProposal(t *testing.T) {
 		},
 		timeoutPropose:             40 * time.Millisecond,
 		genesisTime:                initialTime,
-		height2ProposedBlockTime:   initialTime.Add(5 * time.Millisecond),
+		height2ProposedBlockTime:   initialTime.Add(15 * time.Millisecond),
 		height2ProposalDeliverTime: initialTime.Add(30 * time.Millisecond),
 	}
 
@@ -455,7 +455,7 @@ func TestTooFarInThePastProposal(t *testing.T) {
 	cfg := pbtsTestConfiguration{
 		timingParams: types.TimingParams{
 			Precision:    1 * time.Millisecond,
-			MessageDelay: 10 * time.Millisecond,
+			MessageDelay: 1 * time.Millisecond,
 		},
 		timeoutPropose:             50 * time.Millisecond,
 		genesisTime:                initialTime,
