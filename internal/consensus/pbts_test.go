@@ -99,6 +99,9 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		tc.genesisTime = time.Now()
 	}
 
+	// Set this temporarily. It will be overwritten with block 1 timestamp once it is known.
+	tc.height1Time = time.Now()
+
 	if tc.height4ProposedBlockOffset == 0 {
 
 		// Set a default height4ProposedBlockOffset.
