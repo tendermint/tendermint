@@ -41,7 +41,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, config, nValidators, false, 30)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -58,8 +58,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			defer os.RemoveAll(thisConfig.RootDir)
 
-			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-			app := appFunc()
+			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+			app := appFunc(t)
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -256,10 +256,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				}
 
 				msg, err := s.Next(ctx)
-				if !assert.NoError(t, err) {
+
+				assert.NoError(t, err)
+				if err != nil {
 					cancel()
 					return
 				}
+
 				require.NotNil(t, msg)
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {

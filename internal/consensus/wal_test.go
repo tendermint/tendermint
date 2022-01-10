@@ -140,7 +140,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	walFile := tempWALWithData(walBody)
+	walFile := tempWALWithData(t, walBody)
 
 	wal, err := NewWAL(log.TestingLogger(), walFile)
 	require.NoError(t, err)

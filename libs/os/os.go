@@ -1,35 +1,11 @@
 package os
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
-	"syscall"
 )
-
-type logger interface {
-	Info(msg string, keyvals ...interface{})
-}
-
-// TrapSignal catches SIGTERM and SIGINT, executes the cleanup function,
-// and exits with code 0.
-func TrapSignal(ctx context.Context, logger logger, cb func()) {
-	opctx, opcancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		defer opcancel()
-		defer opcancel()
-		<-opctx.Done()
-		logger.Info("captured signal, exiting...")
-		if cb != nil {
-			cb()
-		}
-		os.Exit(0)
-	}()
-}
 
 // EnsureDir ensures the given directory exists, creating it if necessary.
 // Errors if the path already exists as a non-directory.

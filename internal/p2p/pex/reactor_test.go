@@ -295,7 +295,13 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
+	chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		return pexCh, nil
+	}
+
+	reactor, err := pex.NewReactor(ctx, log.TestingLogger(), peerManager, chCreator, peerUpdates)
+	require.NoError(t, err)
+
 	require.NoError(t, reactor.Start(ctx))
 	t.Cleanup(reactor.Wait)
 
@@ -375,16 +381,23 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], chBuf)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			return rts.pexChannels[nodeID], nil
+		}
+
 		// the first nodes in the array are always mock nodes
 		if idx < opts.MockNodes {
 			rts.mocks = append(rts.mocks, nodeID)
 		} else {
-			rts.reactors[nodeID] = pex.NewReactor(
+			var err error
+			rts.reactors[nodeID], err = pex.NewReactor(
+				ctx,
 				rts.logger.With("nodeID", nodeID),
 				rts.network.Nodes[nodeID].PeerManager,
-				rts.pexChannels[nodeID],
+				chCreator,
 				rts.peerUpdates[nodeID],
 			)
+			require.NoError(t, err)
 		}
 		rts.nodes = append(rts.nodes, nodeID)
 
@@ -429,12 +442,20 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 		r.peerChans[nodeID] = make(chan p2p.PeerUpdate, r.opts.BufferSize)
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
 		r.network.Nodes[nodeID].PeerManager.Register(ctx, r.peerUpdates[nodeID])
-		r.reactors[nodeID] = pex.NewReactor(
+
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			return r.pexChannels[nodeID], nil
+		}
+
+		var err error
+		r.reactors[nodeID], err = pex.NewReactor(
+			ctx,
 			r.logger.With("nodeID", nodeID),
 			r.network.Nodes[nodeID].PeerManager,
-			r.pexChannels[nodeID],
+			chCreator,
 			r.peerUpdates[nodeID],
 		)
+		require.NoError(t, err)
 		r.nodes = append(r.nodes, nodeID)
 		r.total++
 	}

@@ -16,10 +16,12 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
@@ -347,13 +349,20 @@ func makeNode(
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactor, err := createBlockchainReactor(ctx,
-		logger, state, blockExec, blockStore, csReactor,
-		peerManager, router, blockSync && !stateSync, nodeMetrics.consensus,
+	bcReactor, err := blocksync.NewReactor(ctx,
+		logger.With("module", "blockchain"),
+		state.Copy(),
+		blockExec,
+		blockStore,
+		csReactor,
+		router.OpenChannel,
+		peerManager.Subscribe(ctx),
+		blockSync && !stateSync,
+		nodeMetrics.consensus,
 	)
 	if err != nil {
 		return nil, combineCloseError(
-			fmt.Errorf("could not create blockchain reactor: %w", err),
+			fmt.Errorf("could not create blocksync reactor: %w", err),
 			makeCloser(closers))
 	}
 
@@ -369,39 +378,28 @@ func makeNode(
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	ssChDesc := statesync.GetChannelDescriptors()
-	channels := make(map[p2p.ChannelID]*p2p.Channel, len(ssChDesc))
-	for idx := range ssChDesc {
-		chd := ssChDesc[idx]
-		ch, err := router.OpenChannel(ctx, chd)
-		if err != nil {
-			return nil, err
-		}
-
-		channels[ch.ID] = ch
-	}
-
-	stateSyncReactor := statesync.NewReactor(
+	stateSyncReactor, err := statesync.NewReactor(
+		ctx,
 		genDoc.ChainID,
 		genDoc.InitialHeight,
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
-		channels[statesync.SnapshotChannel],
-		channels[statesync.ChunkChannel],
-		channels[statesync.LightBlockChannel],
-		channels[statesync.ParamsChannel],
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		stateStore,
 		blockStore,
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 	)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
+	}
 
 	var pexReactor service.Service
 	if cfg.P2P.PexReactor {
-		pexReactor, err = createPEXReactor(ctx, logger, peerManager, router)
+		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 		if err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
@@ -444,7 +442,7 @@ func makeNode(
 			ConsensusState: csState,
 
 			ConsensusReactor: csReactor,
-			BlockSyncReactor: bcReactor.(consensus.BlockSyncReactor),
+			BlockSyncReactor: bcReactor,
 
 			PeerManager: peerManager,
 
@@ -510,7 +508,7 @@ func makeSeedNode(
 			closer)
 	}
 
-	pexReactor, err := createPEXReactor(ctx, logger, peerManager, router)
+	pexReactor, err := pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 	if err != nil {
 		return nil, combineCloseError(err, closer)
 	}

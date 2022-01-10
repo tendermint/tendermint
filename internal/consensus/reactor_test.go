@@ -83,20 +83,36 @@ func setup(
 	ctx, cancel := context.WithCancel(ctx)
 	// Canceled during cleanup (see below).
 
+	chCreator := func(nodeID types.NodeID) p2p.ChannelCreator {
+		return func(ctx context.Context, desc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			switch desc.ID {
+			case StateChannel:
+				return rts.stateChannels[nodeID], nil
+			case DataChannel:
+				return rts.dataChannels[nodeID], nil
+			case VoteChannel:
+				return rts.voteChannels[nodeID], nil
+			case VoteSetBitsChannel:
+				return rts.voteSetBitsChannels[nodeID], nil
+			default:
+				return nil, fmt.Errorf("invalid channel; %v", desc.ID)
+			}
+		}
+	}
+
 	i := 0
 	for nodeID, node := range rts.network.Nodes {
 		state := states[i]
 
-		reactor := NewReactor(
+		reactor, err := NewReactor(ctx,
 			state.logger.With("node", nodeID),
 			state,
-			rts.stateChannels[nodeID],
-			rts.dataChannels[nodeID],
-			rts.voteChannels[nodeID],
-			rts.voteSetBitsChannels[nodeID],
+			chCreator(nodeID),
 			node.MakePeerUpdates(ctx, t),
 			true,
+			NopMetrics(),
 		)
+		require.NoError(t, err)
 
 		reactor.SetEventBus(state.eventBus)
 
@@ -184,7 +200,7 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}))
+			require.NoError(t, assertMempool(t, states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}))
 		}
 	}
 
@@ -367,7 +383,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -381,8 +397,8 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		defer os.RemoveAll(thisConfig.RootDir)
 
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc()
+		ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		app := appFunc(t)
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -495,7 +511,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	// send a tx
 	require.NoError(
 		t,
-		assertMempool(states[3].txNotifier).CheckTx(
+		assertMempool(t, states[3].txNotifier).CheckTx(
 			ctx,
 			[]byte{1, 2, 3},
 			nil,
@@ -703,6 +719,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
+		t,
 		cfg,
 		nVals,
 		nPeers,
