@@ -104,7 +104,7 @@ func ParamsToRequest(id jsonrpcid, method string, params interface{}) (RPCReques
 	var err error
 	switch t := params.(type) {
 	case map[string]interface{}:
-		// TODO(creachadair): This special case preserves existing behaviour that
+		// TODO(creachadair): This special case preserves existing behavior that
 		// relies on the custom JSON encoding library. Remove it once that
 		// requirement has been removed.
 		paramsMap := make(map[string]json.RawMessage, len(t))
