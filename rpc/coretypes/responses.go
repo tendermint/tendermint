@@ -122,22 +122,12 @@ type ValidatorInfo struct {
 	VotingPower int64          `json:"voting_power"`
 }
 
-// Info about the status of the light client
-type LightClientInfo struct {
-	Primary                string         `json:"primary"`
-	Witnesses              []string       `json:"witnesses"`
-	NumPeers               int            `json:"number_of_peers"`
-	LastTrustedHeight      int64          `json:"last_trusted_height"`       // Last trusted height retrieved from store
-	LastTrustedBlockHeight int64          `json:"last_trusted_block_height"` // Height of last trusted block. Should match the value above
-	LastTrustedHash        bytes.HexBytes `json:"last_trusted_hash"`
-}
-
 // Node Status
 type ResultStatus struct {
-	NodeInfo        types.NodeInfo  `json:"node_info"`
-	SyncInfo        SyncInfo        `json:"sync_info"`
-	ValidatorInfo   ValidatorInfo   `json:"validator_info"`
-	LightClientInfo LightClientInfo `json:"light_client_info"`
+	NodeInfo        types.NodeInfo        `json:"node_info"`
+	SyncInfo        SyncInfo              `json:"sync_info"`
+	ValidatorInfo   ValidatorInfo         `json:"validator_info"`
+	LightClientInfo types.LightClientInfo `json:"light_client_info"`
 }
 
 // Is TxIndexing enabled

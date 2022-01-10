@@ -100,12 +100,12 @@ func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, opti
 	}
 }
 
+// Identifies the provider with an IP in string format
 func (p *http) ID() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
 }
 
-// Ideally we want only one ID function. String is here to not break the Provider interface with another method
-// which would cause changes to BlockProvider in the internal/statesync
+// Returns the ID function of the provider
 func (p *http) String() string {
 	return p.ID()
 }

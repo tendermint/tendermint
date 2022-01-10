@@ -213,7 +213,7 @@ func TestClientStatusRPC(t *testing.T) {
 
 	defer func() { require.NoError(t, c.Cleanup()) }()
 
-	lightStatus, err := c.Status(ctx)
+	lightStatus := c.Status(ctx)
 	require.NoError(t, err)
 	// Verify primary IP
 	require.True(t, lightStatus.Primary == primary.String())
@@ -222,11 +222,8 @@ func TestClientStatusRPC(t *testing.T) {
 	// ToDo - Add test with multiple witnesses
 	require.ElementsMatch(t, mapProviderArrayToIP(witnesses), lightStatus.Witnesses)
 
-	// Verify that the last trusted height of a block matches the last trusted height stored in the store
-	require.True(t, lightStatus.LastTrustedBlockHeight == lightStatus.LastTrustedHeight)
-
 	// Verify that the last trusted hash returned matches the stored hash of the trusted block at the last trusted height
-	blockAtTrustedHeight, err := c.TrustedLightBlock(lightStatus.LastTrustedBlockHeight)
+	blockAtTrustedHeight, err := c.TrustedLightBlock(lightStatus.LastTrustedHeight)
 	require.NoError(t, err)
 
 	require.EqualValues(t, lightStatus.LastTrustedHash, blockAtTrustedHeight.Hash())
