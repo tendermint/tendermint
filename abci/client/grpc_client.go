@@ -2,6 +2,7 @@ package abciclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -125,10 +126,14 @@ RETRY_LOOP:
 
 	ENSURE_CONNECTED:
 		for {
-			_, err := client.Echo(context.Background(), &types.RequestEcho{Message: "hello"}, grpc.WaitForReady(true))
+			_, err := client.Echo(ctx, &types.RequestEcho{Message: "hello"}, grpc.WaitForReady(true))
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return err
+			}
+
 			cli.logger.Error("Echo failed", "err", err)
 			time.Sleep(time.Second * echoRetryIntervalSeconds)
 		}
@@ -156,9 +161,9 @@ func (cli *grpcClient) StopForError(err error) {
 	}
 	cli.mtx.Unlock()
 
-	cli.logger.Error(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
+	cli.logger.Error("Stopping abci.grpcClient for error", "err", err)
 	if err := cli.Stop(); err != nil {
-		cli.logger.Error("Error stopping abci.grpcClient", "err", err)
+		cli.logger.Error("error stopping abci.grpcClient", "err", err)
 	}
 }
 

@@ -305,7 +305,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
 			if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)); err != nil {
-				wsc.Logger.Error("Error writing RPC response", "err", err)
+				wsc.Logger.Error("error writing RPC response", "err", err)
 			}
 			go wsc.readRoutine(ctx)
 		}
@@ -333,7 +333,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 					wsc.Logger.Error("Failed to read request", "err", err)
 				}
 				if err := wsc.Stop(); err != nil {
-					wsc.Logger.Error("Error closing websocket connection", "err", err)
+					wsc.Logger.Error("error closing websocket connection", "err", err)
 				}
 				close(wsc.readRoutineQuit)
 				return
@@ -345,7 +345,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			if err != nil {
 				if err := wsc.WriteRPCResponse(writeCtx,
 					rpctypes.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
-					wsc.Logger.Error("Error writing RPC response", "err", err)
+					wsc.Logger.Error("error writing RPC response", "err", err)
 				}
 				continue
 			}
@@ -364,7 +364,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
 				if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCMethodNotFoundError(request.ID)); err != nil {
-					wsc.Logger.Error("Error writing RPC response", "err", err)
+					wsc.Logger.Error("error writing RPC response", "err", err)
 				}
 				continue
 			}
@@ -377,7 +377,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 					if err := wsc.WriteRPCResponse(writeCtx,
 						rpctypes.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					); err != nil {
-						wsc.Logger.Error("Error writing RPC response", "err", err)
+						wsc.Logger.Error("error writing RPC response", "err", err)
 					}
 					continue
 				}
@@ -414,7 +414,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			}
 
 			if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
-				wsc.Logger.Error("Error writing RPC response", "err", err)
+				wsc.Logger.Error("error writing RPC response", "err", err)
 			}
 
 		}

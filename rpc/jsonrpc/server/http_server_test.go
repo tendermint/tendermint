@@ -31,6 +31,8 @@ func TestMaxOpenConnections(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	// Start the server.
 	var open int32
 	mux := http.NewServeMux()
@@ -46,7 +48,8 @@ func TestMaxOpenConnections(t *testing.T) {
 	l, err := Listen("tcp://127.0.0.1:0", max)
 	require.NoError(t, err)
 	defer l.Close()
-	go Serve(ctx, l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
+
+	go Serve(ctx, l, mux, logger, config) //nolint:errcheck // ignore for tests
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -87,9 +90,11 @@ func TestServeTLS(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	chErr := make(chan error, 1)
 	go func() {
-		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", logger, DefaultConfig())
 	}()
 
 	select {

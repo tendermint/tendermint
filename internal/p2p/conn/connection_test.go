@@ -55,7 +55,7 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 
 	clientConn := createTestMConnection(log.TestingLogger(), client)
 	err := clientConn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(clientConn))
 
 	msg := []byte("abc")
@@ -92,7 +92,7 @@ func TestMConnectionSend(t *testing.T) {
 
 	mconn := createTestMConnection(log.TestingLogger(), client)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	msg := []byte("Ant-Man")
@@ -139,12 +139,12 @@ func TestMConnectionReceive(t *testing.T) {
 
 	mconn1 := createMConnectionWithCallbacks(logger, client, onReceive, onError)
 	err := mconn1.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn1))
 
 	mconn2 := createTestMConnection(logger, server)
 	err = mconn2.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn2))
 
 	msg := []byte("Cyclops")
@@ -184,7 +184,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	serverGotPing := make(chan struct{})
@@ -232,7 +232,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	// sending 3 pongs in a row (abuse)
@@ -295,7 +295,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	// sending 3 pings in a row (abuse)
@@ -352,7 +352,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	serverGotPing := make(chan struct{})
@@ -418,7 +418,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	if err := client.Close(); err != nil {
@@ -455,7 +455,7 @@ func newClientAndServerConnsForReadErrors(
 
 	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
 	err := mconnClient.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// create server conn with 1 channel
 	// it fires on chOnErr when there's an error
@@ -469,7 +469,7 @@ func newClientAndServerConnsForReadErrors(
 
 	mconnServer := createMConnectionWithCallbacks(serverLogger, server, onReceive, onError)
 	err = mconnServer.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return mconnClient, mconnServer
 }
 
@@ -583,7 +583,7 @@ func TestMConnectionTrySend(t *testing.T) {
 
 	mconn := createTestMConnection(log.TestingLogger(), client)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
 	msg := []byte("Semicolon-Woman")

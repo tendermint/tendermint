@@ -41,7 +41,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, config, nValidators, false, 30)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -58,8 +58,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			defer os.RemoveAll(thisConfig.RootDir)
 
-			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-			app := appFunc()
+			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+			app := appFunc(t)
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -196,19 +196,20 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		if lazyNodeState.privValidatorPubKey == nil {
 			// If this node is a validator & proposer in the current round, it will
 			// miss the opportunity to create a block.
-			lazyNodeState.logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+			lazyNodeState.logger.Error("enterPropose", "err", errPubKeyIsNotSet)
 			return
 		}
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
 
-		block, blockParts := lazyNodeState.blockExec.CreateProposalBlock(
+		block, blockParts, err := lazyNodeState.blockExec.CreateProposalBlock(
 			lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr,
 		)
+		require.NoError(t, err)
 
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
 		// and the privValidator will refuse to sign anything.
 		if err := lazyNodeState.wal.FlushAndSync(); err != nil {
-			lazyNodeState.logger.Error("Error flushing to disk")
+			lazyNodeState.logger.Error("error flushing to disk")
 		}
 
 		// Make proposal
@@ -255,10 +256,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				}
 
 				msg, err := s.Next(ctx)
-				if !assert.NoError(t, err) {
+
+				assert.NoError(t, err)
+				if err != nil {
 					cancel()
 					return
 				}
+
 				require.NotNil(t, msg)
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {

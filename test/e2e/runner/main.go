@@ -61,7 +61,7 @@ func NewCLI() *CLI {
 					logger.Info("Preserving testnet that encountered error",
 						"err", err)
 				} else if err := Cleanup(cli.testnet); err != nil {
-					logger.Error("Error cleaning up testnet contents", "err", err)
+					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
 			if err = Setup(cli.testnet); err != nil {
@@ -302,7 +302,7 @@ Does not run any perbutations.
 			}
 			defer func() {
 				if err := Cleanup(cli.testnet); err != nil {
-					logger.Error("Error cleaning up testnet contents", "err", err)
+					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
 

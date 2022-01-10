@@ -10,15 +10,20 @@ const (
 
 // Str constructs a random alphanumeric string of given length
 // from math/rand's global default Source.
-func Str(length int) string {
+func Str(length int) string { return buildString(length, mrand.Int63) }
+
+// StrFromSource produces a random string of a specified length from
+// the specified random source.
+func StrFromSource(r *mrand.Rand, length int) string { return buildString(length, r.Int63) }
+
+func buildString(length int, picker func() int64) string {
 	if length <= 0 {
 		return ""
 	}
 
 	chars := make([]byte, 0, length)
 	for {
-		// nolint:gosec // G404: Use of weak random number generator
-		val := mrand.Int63()
+		val := picker()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars

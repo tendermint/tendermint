@@ -316,12 +316,12 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 	}
 
-	cfg.P2P.Seeds = ""
+	cfg.P2P.Seeds = "" //nolint: staticcheck
 	for _, seed := range node.Seeds {
-		if len(cfg.P2P.Seeds) > 0 {
-			cfg.P2P.Seeds += ","
+		if len(cfg.P2P.Seeds) > 0 { //nolint: staticcheck
+			cfg.P2P.Seeds += "," //nolint: staticcheck
 		}
-		cfg.P2P.Seeds += seed.AddressP2P(true)
+		cfg.P2P.Seeds += seed.AddressP2P(true) //nolint: staticcheck
 	}
 
 	cfg.P2P.PersistentPeers = ""

@@ -32,34 +32,38 @@ func init() {
 func TestKVStore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logger := log.NewTestingLogger(t)
 
-	fmt.Println("### Testing KVStore")
-	testStream(ctx, t, kvstore.NewApplication())
+	logger.Info("### Testing KVStore")
+	testStream(ctx, t, logger, kvstore.NewApplication())
 }
 
 func TestBaseApp(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	fmt.Println("### Testing BaseApp")
-	testStream(ctx, t, types.NewBaseApplication())
+	logger := log.NewTestingLogger(t)
+
+	logger.Info("### Testing BaseApp")
+	testStream(ctx, t, logger, types.NewBaseApplication())
 }
 
 func TestGRPC(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	fmt.Println("### Testing GRPC")
-	testGRPCSync(ctx, t, types.NewGRPCApplication(types.NewBaseApplication()))
+	logger := log.NewTestingLogger(t)
+
+	logger.Info("### Testing GRPC")
+	testGRPCSync(ctx, t, logger, types.NewGRPCApplication(types.NewBaseApplication()))
 }
 
-func testStream(ctx context.Context, t *testing.T, app types.Application) {
+func testStream(ctx context.Context, t *testing.T, logger log.Logger, app types.Application) {
 	t.Helper()
 
 	const numDeliverTxs = 20000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-	logger := log.TestingLogger()
 	// Start the listener
 	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
 	t.Cleanup(server.Wait)
@@ -67,7 +71,7 @@ func testStream(ctx context.Context, t *testing.T, app types.Application) {
 	require.NoError(t, err)
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(log.TestingLogger().With("module", "abci-client"), socket, false)
+	client := abciclient.NewSocketClient(logger.With("module", "abci-client"), socket, false)
 	t.Cleanup(client.Wait)
 
 	err = client.Start(ctx)
@@ -108,7 +112,7 @@ func testStream(ctx context.Context, t *testing.T, app types.Application) {
 
 		// Sometimes send flush messages
 		if counter%128 == 0 {
-			err = client.FlushSync(context.Background())
+			err = client.FlushSync(ctx)
 			require.NoError(t, err)
 		}
 	}
@@ -127,19 +131,17 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func testGRPCSync(ctx context.Context, t *testing.T, app types.ABCIApplicationServer) {
+func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app types.ABCIApplicationServer) {
+	t.Helper()
 	numDeliverTxs := 2000
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-	logger := log.TestingLogger()
+
 	// Start the listener
 	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
 
-	if err := server.Start(ctx); err != nil {
-		t.Fatalf("Error starting GRPC server: %v", err.Error())
-	}
-
+	require.NoError(t, server.Start(ctx))
 	t.Cleanup(func() { server.Wait() })
 
 	// Connect to the socket
@@ -147,9 +149,7 @@ func testGRPCSync(ctx context.Context, t *testing.T, app types.ABCIApplicationSe
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialerFunc),
 	)
-	if err != nil {
-		t.Fatalf("Error dialing GRPC server: %v", err.Error())
-	}
+	require.NoError(t, err, "Error dialing GRPC server")
 
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
@@ -162,10 +162,9 @@ func testGRPCSync(ctx context.Context, t *testing.T, app types.ABCIApplicationSe
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
-		if err != nil {
-			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
-		}
+		response, err := client.DeliverTx(ctx, &types.RequestDeliverTx{Tx: []byte("test")})
+		require.NoError(t, err, "Error in GRPC DeliverTx")
+
 		counter++
 		if response.Code != code.CodeTypeOK {
 			t.Error("DeliverTx failed with ret_code", response.Code)

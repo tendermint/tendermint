@@ -2,10 +2,11 @@ package types
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -21,7 +22,7 @@ func TestMain(m *testing.M) {
 	var err error
 	cfg, err = config.ResetTestRoot("consensus_height_vote_set_test")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	code := m.Run()
 	os.RemoveAll(cfg.RootDir)
@@ -32,7 +33,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	valSet, privVals := factory.RandValidatorSet(10, 1)
+	valSet, privVals := factory.RandValidatorSet(ctx, t, 10, 1)
 
 	hvs := NewHeightVoteSet(cfg.ChainID(), 1, valSet)
 
@@ -71,11 +72,11 @@ func makeVoteHR(
 	valIndex, round int32,
 	privVals []types.PrivValidator,
 ) *types.Vote {
+	t.Helper()
+
 	privVal := privVals[valIndex]
 	pubKey, err := privVal.GetPubKey(ctx)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
@@ -92,9 +93,7 @@ func makeVoteHR(
 
 	v := vote.ToProto()
 	err = privVal.SignVote(ctx, chainID, v)
-	if err != nil {
-		panic(fmt.Sprintf("Error signing vote: %v", err))
-	}
+	require.NoError(t, err, "Error signing vote")
 
 	vote.Signature = v.Signature
 

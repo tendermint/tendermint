@@ -9,6 +9,7 @@ import (
 )
 
 func MakeVote(
+	ctx context.Context,
 	val types.PrivValidator,
 	chainID string,
 	valIndex int32,
@@ -18,10 +19,11 @@ func MakeVote(
 	blockID types.BlockID,
 	time time.Time,
 ) (*types.Vote, error) {
-	pubKey, err := val.GetPubKey(context.Background())
+	pubKey, err := val.GetPubKey(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	v := &types.Vote{
 		ValidatorAddress: pubKey.Address(),
 		ValidatorIndex:   valIndex,
@@ -33,10 +35,10 @@ func MakeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(context.Background(), chainID, vpb)
-	if err != nil {
-		panic(err)
+	if err := val.SignVote(ctx, chainID, vpb); err != nil {
+		return nil, err
 	}
+
 	v.Signature = vpb.Signature
 	return v, nil
 }

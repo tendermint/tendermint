@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
@@ -27,7 +29,7 @@ type signerTestCase struct {
 	closer       context.CancelFunc
 }
 
-func getSignerTestCases(ctx context.Context, t *testing.T) []signerTestCase {
+func getSignerTestCases(ctx context.Context, t *testing.T, logger log.Logger) []signerTestCase {
 	t.Helper()
 
 	testCases := make([]signerTestCase, 0)
@@ -39,7 +41,7 @@ func getSignerTestCases(ctx context.Context, t *testing.T) []signerTestCase {
 
 		cctx, ccancel := context.WithCancel(ctx)
 		// get a pair of signer listener, signer dialer endpoints
-		sl, sd := getMockEndpoints(cctx, t, dtc.addr, dtc.dialer)
+		sl, sd := getMockEndpoints(cctx, t, logger, dtc.addr, dtc.dialer)
 		sc, err := NewSignerClient(cctx, sl, chainID)
 		require.NoError(t, err)
 		ss := NewSignerServer(sd, chainID, mockPV)
@@ -54,16 +56,21 @@ func getSignerTestCases(ctx context.Context, t *testing.T) []signerTestCase {
 			signerClient: sc,
 			signerServer: ss,
 		})
+		t.Cleanup(ss.Wait)
 	}
 
 	return testCases
 }
 
 func TestSignerClose(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	bctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
-	for _, tc := range getSignerTestCases(bctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(bctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
@@ -74,20 +81,28 @@ func TestSignerClose(t *testing.T) {
 }
 
 func TestSignerPing(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		err := tc.signerClient.Ping()
 		assert.NoError(t, err)
 	}
 }
 
 func TestSignerGetPubKey(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
@@ -110,10 +125,14 @@ func TestSignerGetPubKey(t *testing.T) {
 }
 
 func TestSignerProposal(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
@@ -146,10 +165,14 @@ func TestSignerProposal(t *testing.T) {
 }
 
 func TestSignerVote(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
@@ -185,10 +208,14 @@ func TestSignerVote(t *testing.T) {
 }
 
 func TestSignerVoteResetDeadline(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			ts := time.Now()
 			hash := tmrand.Bytes(tmhash.Size)
@@ -232,10 +259,14 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 }
 
 func TestSignerVoteKeepAlive(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
@@ -280,10 +311,14 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 }
 
 func TestSignerSignProposalErrors(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 			// Replace service with a mock that always fails
@@ -317,10 +352,14 @@ func TestSignerSignProposalErrors(t *testing.T) {
 }
 
 func TestSignerSignVoteErrors(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
@@ -379,10 +418,14 @@ func brokenHandler(ctx context.Context, privVal types.PrivValidator, request pri
 }
 
 func TestSignerUnexpectedResponse(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, tc := range getSignerTestCases(ctx, t) {
+	logger := log.NewTestingLogger(t)
+
+	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 

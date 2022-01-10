@@ -103,16 +103,18 @@ type Reactor struct {
 
 // NewReactor returns new reactor instance.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
 	consReactor consensusReactor,
-	blockSyncCh *p2p.Channel,
+	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
 	metrics *consensus.Metrics,
 ) (*Reactor, error) {
+
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
 	}
@@ -124,6 +126,11 @@ func NewReactor(
 
 	requestsCh := make(chan BlockRequest, maxTotalRequesters)
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
+
+	blockSyncCh, err := channelCreator(ctx, GetChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
 
 	r := &Reactor{
 		logger:               logger,
@@ -513,8 +520,15 @@ FOR_LOOP:
 				didProcessCh <- struct{}{}
 			}
 
+			firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
+			if err != nil {
+				r.logger.Error("failed to make ",
+					"height", first.Height,
+					"err", err.Error())
+				break FOR_LOOP
+			}
+
 			var (
-				firstParts         = first.MakePartSet(types.BlockPartSizeBytes)
 				firstPartSetHeader = firstParts.Header()
 				firstID            = types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			)
@@ -524,8 +538,7 @@ FOR_LOOP:
 			// NOTE: We can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
-			if err != nil {
+			if err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit); err != nil {
 				err = fmt.Errorf("invalid last commit: %w", err)
 				r.logger.Error(
 					err.Error(),

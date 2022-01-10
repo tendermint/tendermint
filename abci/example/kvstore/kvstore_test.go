@@ -289,7 +289,7 @@ func makeGRPCClientServer(
 func TestClientServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	// set up socket app
 	kvstore := NewApplication()
@@ -344,7 +344,7 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []b
 		Path: "/store",
 		Data: []byte(key),
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
@@ -356,7 +356,7 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []b
 		Data:  []byte(key),
 		Prove: true,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))

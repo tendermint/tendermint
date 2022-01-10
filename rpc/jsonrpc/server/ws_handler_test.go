@@ -13,7 +13,9 @@ import (
 )
 
 func TestWebsocketManagerHandler(t *testing.T) {
-	s := newWSServer()
+	logger := log.NewTestingLogger(t)
+
+	s := newWSServer(t, logger)
 	defer s.Close()
 
 	// check upgrader works
@@ -42,15 +44,20 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	dialResp.Body.Close()
 }
 
-func newWSServer() *httptest.Server {
+func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 	funcMap := map[string]*RPCFunc{
 		"c": NewWSRPCFunc(func(ctx *rpctypes.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
 	}
 	wm := NewWebsocketManager(funcMap)
-	wm.SetLogger(log.TestingLogger())
+
+	wm.SetLogger(logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
-	return httptest.NewServer(mux)
+	srv := httptest.NewServer(mux)
+
+	t.Cleanup(srv.Close)
+
+	return srv
 }

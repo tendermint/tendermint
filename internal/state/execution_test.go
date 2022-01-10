@@ -45,19 +45,22 @@ func TestApplyBlock(t *testing.T) {
 	defer cancel()
 
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(1, 1)
+	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(),
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// TODO check state and mempool
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
@@ -73,9 +76,9 @@ func TestBeginBlockValidators(t *testing.T) {
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
 
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(2, 2)
+	state, stateDB, _ := makeState(t, 2, 2)
 	stateStore := sm.NewStore(stateDB)
 
 	prevHash := state.LastBlockID.Hash
@@ -109,10 +112,11 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
-		block := sf.MakeBlock(state, 2, lastCommit)
+		block, err := sf.MakeBlock(state, 2, lastCommit)
+		require.NoError(t, err)
 
 		_, err = sm.ExecCommitBlock(ctx, nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
-		require.Nil(t, err, tc.desc)
+		require.NoError(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
 		ctr := 0
@@ -138,9 +142,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	cc := abciclient.NewLocalCreator(app)
 	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	state, stateDB, privVals := makeState(1, 1)
+	state, stateDB, privVals := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -164,7 +168,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
-	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID)
+	dve, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 3, defaultEvidenceTime, privVal, state.ChainID)
+	require.NoError(t, err)
 	dve.ValidatorPower = 1000
 	lcae := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -214,13 +219,17 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mmock.Mempool{}, evpool, blockStore)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
-	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+
+	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// TODO check state and mempool
 	assert.Equal(t, abciEv, app.ByzantineValidators)
@@ -366,9 +375,9 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(1, 1)
+	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -388,14 +397,17 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	blockExec.SetEventBus(eventBus)
 
-	updatesSub, err := eventBus.SubscribeWithArgs(context.Background(), pubsub.SubscribeArgs{
+	updatesSub, err := eventBus.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "TestEndBlockValidatorUpdates",
 		Query:    types.EventQueryValidatorSetUpdates,
 	})
 	require.NoError(t, err)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
 	pk, err := encoding.PubKeyToProto(pubkey)
@@ -405,7 +417,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
 		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
@@ -438,9 +450,9 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	logger := log.TestingLogger()
 	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(1, 1)
+	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
@@ -452,8 +464,11 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		blockStore,
 	)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	block, err := sf.MakeBlock(state, 1, new(types.Commit))
+	require.NoError(t, err)
+	bps, err := block.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	vp, err := encoding.PubKeyToProto(state.Validators.Validators[0].PubKey)
 	require.NoError(t, err)
@@ -463,7 +478,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	}
 
 	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(ctx, state, blockID, block) })
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }
 

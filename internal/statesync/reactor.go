@@ -71,9 +71,9 @@ const (
 	maxLightBlockRequestRetries = 20
 )
 
-func GetChannelDescriptors() []*p2p.ChannelDescriptor {
-	return []*p2p.ChannelDescriptor{
-		{
+func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
+	return map[p2p.ChannelID]*p2p.ChannelDescriptor{
+		SnapshotChannel: {
 
 			ID:                  SnapshotChannel,
 			MessageType:         new(ssproto.Message),
@@ -82,7 +82,7 @@ func GetChannelDescriptors() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: snapshotMsgSize,
 			RecvBufferCapacity:  128,
 		},
-		{
+		ChunkChannel: {
 			ID:                  ChunkChannel,
 			Priority:            3,
 			MessageType:         new(ssproto.Message),
@@ -90,7 +90,7 @@ func GetChannelDescriptors() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: chunkMsgSize,
 			RecvBufferCapacity:  128,
 		},
-		{
+		LightBlockChannel: {
 			ID:                  LightBlockChannel,
 			MessageType:         new(ssproto.Message),
 			Priority:            5,
@@ -98,7 +98,7 @@ func GetChannelDescriptors() []*p2p.ChannelDescriptor {
 			RecvMessageCapacity: lightBlockMsgSize,
 			RecvBufferCapacity:  128,
 		},
-		{
+		ParamsChannel: {
 			ID:                  ParamsChannel,
 			MessageType:         new(ssproto.Message),
 			Priority:            2,
@@ -166,19 +166,40 @@ type Reactor struct {
 // and querying, references to p2p Channels and a channel to listen for peer
 // updates on. Note, the reactor will close all p2p Channels when stopping.
 func NewReactor(
+	ctx context.Context,
 	chainID string,
 	initialHeight int64,
 	cfg config.StateSyncConfig,
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
-	snapshotCh, chunkCh, blockCh, paramsCh *p2p.Channel,
+	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
 	ssMetrics *Metrics,
-) *Reactor {
+) (*Reactor, error) {
+
+	chDesc := getChannelDescriptors()
+
+	snapshotCh, err := channelCreator(ctx, chDesc[SnapshotChannel])
+	if err != nil {
+		return nil, err
+	}
+	chunkCh, err := channelCreator(ctx, chDesc[ChunkChannel])
+	if err != nil {
+		return nil, err
+	}
+	blockCh, err := channelCreator(ctx, chDesc[LightBlockChannel])
+	if err != nil {
+		return nil, err
+	}
+	paramsCh, err := channelCreator(ctx, chDesc[ParamsChannel])
+	if err != nil {
+		return nil, err
+	}
+
 	r := &Reactor{
 		logger:        logger,
 		chainID:       chainID,
@@ -201,7 +222,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
-	return r
+	return r, nil
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for

@@ -18,17 +18,12 @@ import (
 )
 
 // clearConfig clears env vars, the given root dir, and resets viper.
-func clearConfig(dir string) {
-	if err := os.Unsetenv("TMHOME"); err != nil {
-		panic(err)
-	}
-	if err := os.Unsetenv("TM_HOME"); err != nil {
-		panic(err)
-	}
+func clearConfig(t *testing.T, dir string) {
+	t.Helper()
+	require.NoError(t, os.Unsetenv("TMHOME"))
+	require.NoError(t, os.Unsetenv("TM_HOME"))
+	require.NoError(t, os.RemoveAll(dir))
 
-	if err := os.RemoveAll(dir); err != nil {
-		panic(err)
-	}
 	viper.Reset()
 	config = cfg.DefaultConfig()
 }
@@ -46,8 +41,9 @@ func testRootCmd() *cobra.Command {
 	return rootCmd
 }
 
-func testSetup(rootDir string, args []string, env map[string]string) error {
-	clearConfig(rootDir)
+func testSetup(t *testing.T, rootDir string, args []string, env map[string]string) error {
+	t.Helper()
+	clearConfig(t, rootDir)
 
 	rootCmd := testRootCmd()
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", rootDir)
@@ -73,8 +69,8 @@ func TestRootHome(t *testing.T) {
 	for i, tc := range cases {
 		idxString := strconv.Itoa(i)
 
-		err := testSetup(defaultRoot, tc.args, tc.env)
-		require.Nil(t, err, idxString)
+		err := testSetup(t, defaultRoot, tc.args, tc.env)
+		require.NoError(t, err, idxString)
 
 		assert.Equal(t, tc.root, config.RootDir, idxString)
 		assert.Equal(t, tc.root, config.P2P.RootDir, idxString)
@@ -105,8 +101,8 @@ func TestRootFlagsEnv(t *testing.T) {
 	for i, tc := range cases {
 		idxString := strconv.Itoa(i)
 
-		err := testSetup(defaultRoot, tc.args, tc.env)
-		require.Nil(t, err, idxString)
+		err := testSetup(t, defaultRoot, tc.args, tc.env)
+		require.NoError(t, err, idxString)
 
 		assert.Equal(t, tc.logLevel, config.LogLevel, idxString)
 	}
@@ -134,17 +130,17 @@ func TestRootConfig(t *testing.T) {
 	for i, tc := range cases {
 		defaultRoot := t.TempDir()
 		idxString := strconv.Itoa(i)
-		clearConfig(defaultRoot)
+		clearConfig(t, defaultRoot)
 
 		// XXX: path must match cfg.defaultConfigPath
 		configFilePath := filepath.Join(defaultRoot, "config")
 		err := tmos.EnsureDir(configFilePath, 0700)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		// write the non-defaults to a different path
 		// TODO: support writing sub configs so we can test that too
 		err = WriteConfigVals(configFilePath, cvals)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		rootCmd := testRootCmd()
 		cmd := cli.PrepareBaseCmd(rootCmd, "TM", defaultRoot)
@@ -152,7 +148,7 @@ func TestRootConfig(t *testing.T) {
 		// run with the args and env
 		tc.args = append([]string{rootCmd.Use}, tc.args...)
 		err = cli.RunWithArgs(cmd, tc.args, tc.env)
-		require.Nil(t, err, idxString)
+		require.NoError(t, err, idxString)
 
 		assert.Equal(t, tc.logLvl, config.LogLevel, idxString)
 	}

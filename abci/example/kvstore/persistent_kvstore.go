@@ -113,7 +113,7 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 	for _, v := range req.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
-			app.logger.Error("Error updating validators", "r", r)
+			app.logger.Error("error updating validators", "r", r)
 		}
 	}
 	return types.ResponseInitChain{}
@@ -271,7 +271,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 		if err := types.WriteMessage(&v, value); err != nil {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
+				Log:  fmt.Sprintf("error encoding validator: %v", err)}
 		}
 		if err = app.app.state.db.Set(key, value.Bytes()); err != nil {
 			panic(err)

@@ -25,13 +25,13 @@ const (
 	base   int64 = 2
 )
 
-func setupReIndexEventCmd() *cobra.Command {
+func setupReIndexEventCmd(ctx context.Context) *cobra.Command {
 	reIndexEventCmd := &cobra.Command{
 		Use: ReIndexEventCmd.Use,
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
 
-	_ = reIndexEventCmd.ExecuteContext(context.Background())
+	_ = reIndexEventCmd.ExecuteContext(ctx)
 
 	return reIndexEventCmd
 }
@@ -177,11 +177,14 @@ func TestReIndexEvent(t *testing.T) {
 		{height, height, false},
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, tc := range testCases {
 		startHeight = tc.startHeight
 		endHeight = tc.endHeight
 
-		err := eventReIndex(setupReIndexEventCmd(), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
+		err := eventReIndex(setupReIndexEventCmd(ctx), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
 		if tc.reIndexErr {
 			require.Error(t, err)
 		} else {

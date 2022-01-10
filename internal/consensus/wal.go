@@ -194,7 +194,7 @@ func (wal *BaseWAL) Write(msg WALMessage) error {
 	}
 
 	if err := wal.enc.Encode(&TimedWALMessage{tmtime.Now(), msg}); err != nil {
-		wal.logger.Error("Error writing msg to consensus wal. WARNING: recover may not be possible for the current height",
+		wal.logger.Error("error writing msg to consensus wal. WARNING: recover may not be possible for the current height",
 			"err", err, "msg", msg)
 		return err
 	}
@@ -377,14 +377,14 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, err
 	}
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %w", err)}
 	}
 	crc := binary.BigEndian.Uint32(b)
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %w", err)}
 	}
 	length := binary.BigEndian.Uint32(b)
 
@@ -410,7 +410,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	var res = new(tmcons.TimedWALMessage)
 	err = proto.Unmarshal(data, res)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %w", err)}
 	}
 
 	walMsg, err := WALFromProto(res.Msg)

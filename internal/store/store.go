@@ -149,7 +149,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
-		panic(fmt.Sprintf("Error reading block: %v", err))
+		panic(fmt.Errorf("error reading block: %w", err))
 	}
 
 	block, err := types.BlockFromProto(pbb)
@@ -221,7 +221,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	}
 	part, err := types.PartFromProto(pbpart)
 	if err != nil {
-		panic(fmt.Sprintf("Error reading block part: %v", err))
+		panic(fmt.Errorf("error reading block part: %w", err))
 	}
 
 	return part
@@ -273,7 +273,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
-		panic(fmt.Sprintf("Error reading block commit: %v", err))
+		panic(fmt.Errorf("error reading block commit: %w", err))
 	}
 	return commit
 }
@@ -293,7 +293,7 @@ func (bs *BlockStore) LoadSeenCommit() *types.Commit {
 	}
 	err = proto.Unmarshal(bz, pbc)
 	if err != nil {
-		panic(fmt.Sprintf("error reading block seen commit: %v", err))
+		panic(fmt.Errorf("error reading block seen commit: %w", err))
 	}
 
 	commit, err := types.CommitFromProto(pbc)

@@ -21,7 +21,7 @@ func TestClientServerNoAddrPrefix(t *testing.T) {
 		transport = "socket"
 	)
 	app := kvstore.NewApplication()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	server, err := abciserver.NewServer(logger, addr, transport, app)
 	assert.NoError(t, err, "expected no error on NewServer")

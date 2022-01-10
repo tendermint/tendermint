@@ -31,7 +31,7 @@ func TestWSClientReconnectWithJitter(t *testing.T) {
 	logger := log.NewTMLogger(buf)
 	for i := 0; i < n; i++ {
 		c, err := NewWS("tcp://foo", "/websocket")
-		require.Nil(t, err)
+		require.NoError(t, err)
 		c.Dialer = func(string, string) (net.Conn, error) {
 			return nil, errNotConnected
 		}

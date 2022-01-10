@@ -55,7 +55,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	// event sink setup
 	pool, err := setupDB(t)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	store := dbm.NewMemDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
@@ -126,17 +126,17 @@ func readSchema() ([]*schema.Migration, error) {
 func resetDB(t *testing.T) {
 	q := "DROP TABLE IF EXISTS block_events,tx_events,tx_results"
 	_, err := psqldb.Exec(q)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	q = "DROP TYPE IF EXISTS block_event_type"
 	_, err = psqldb.Exec(q)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
@@ -156,7 +156,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 		}
 	})
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// Set the container to expire in a minute to avoid orphaned containers
 	// hanging around
@@ -178,11 +178,11 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	resetDB(t)
 
 	sm, err := readSchema()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	migrator := schema.NewMigrator()
 	err = migrator.Apply(psqldb, sm)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	return pool, nil
 }

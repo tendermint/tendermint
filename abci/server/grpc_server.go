@@ -58,7 +58,7 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 		}()
 
 		if err := s.server.Serve(s.listener); err != nil {
-			s.logger.Error("Error serving gRPC server", "err", err)
+			s.logger.Error("error serving gRPC server", "err", err)
 		}
 	}()
 	return nil
