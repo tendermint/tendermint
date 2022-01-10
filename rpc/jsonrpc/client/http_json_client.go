@@ -106,9 +106,15 @@ func (u parsedURL) GetTrimmedURL() string {
 
 //-------------------------------------------------------------
 
-// Caller implementers can facilitate calling the JSON-RPC endpoint.
+// A Caller handles the round trip of a single JSON-RPC request.  The
+// implementation is responsible for assigning request IDs, marshaling
+// parameters, and unmarshaling results.
 type Caller interface {
-	Call(ctx context.Context, method string, params map[string]interface{}, result interface{}) (interface{}, error)
+	// Call sends a new request for method to the server with the given
+	// parameters. If params == nil, the request has empty parameters.
+	// If result == nil, any result value must be discarded without error.
+	// Otherwise the concrete value of result must be a pointer.
+	Call(ctx context.Context, method string, params, result interface{}) error
 }
 
 //-------------------------------------------------------------
