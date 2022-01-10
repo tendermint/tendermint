@@ -1161,9 +1161,8 @@ func (c *Client) Status(ctx context.Context) (*coretypes.LightClientInfo, error)
 		}
 	}
 
-	lightClientInfo := coretypes.LightClientInfo{}
 	lastTrustedHeight, err := c.LastTrustedHeight()
-	lightClientInfo = coretypes.LightClientInfo{
+	lightClientInfo := coretypes.LightClientInfo{
 		Primary:                c.primary.String(),
 		Witnesses:              chunks,
 		NumPeers:               len(chunks) + primaryNotInWitnessList,
