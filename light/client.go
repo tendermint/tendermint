@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
 
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -1149,7 +1148,7 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 		errors.Is(err, provider.ErrConnectionClosed)
 }
 
-func (c *Client) Status(ctx context.Context) (*coretypes.LightClientInfo, error) { // return only light client info
+func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 
 	chunks := make([]string, len(c.witnesses))
 	// If primary is in witness list we do not want to count it twice in the number of peers
@@ -1160,16 +1159,13 @@ func (c *Client) Status(ctx context.Context) (*coretypes.LightClientInfo, error)
 			primaryNotInWitnessList = 0
 		}
 	}
-
-	lastTrustedHeight, err := c.LastTrustedHeight()
-	lightClientInfo := coretypes.LightClientInfo{
-		Primary:                c.primary.String(),
-		Witnesses:              chunks,
-		NumPeers:               len(chunks) + primaryNotInWitnessList,
-		LastTrustedHeight:      lastTrustedHeight,
-		LastTrustedBlockHeight: c.latestTrustedBlock.Height,
-		LastTrustedHash:        c.latestTrustedBlock.Hash(),
+	lightClientInfo := types.LightClientInfo{
+		Primary:           c.primary.String(),
+		Witnesses:         chunks,
+		NumPeers:          len(chunks) + primaryNotInWitnessList,
+		LastTrustedHeight: c.latestTrustedBlock.Height,
+		LastTrustedHash:   c.latestTrustedBlock.Hash(),
 	}
 
-	return &lightClientInfo, err
+	return &lightClientInfo
 }
