@@ -214,7 +214,7 @@ func TestClientStatusRPC(t *testing.T) {
 	defer func() { require.NoError(t, c.Cleanup()) }()
 
 	lightStatus, err := c.Status(ctx)
-
+	require.NoError(t, err)
 	// Verify primary IP
 	require.True(t, lightStatus.Primary == primary.String())
 
