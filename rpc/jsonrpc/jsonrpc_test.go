@@ -329,37 +329,6 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	assert.Equal(t, got, val)
 }
 
-func TestWSHandlesArrayParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.NoError(t, err)
-
-	cl.Logger = log.NewTestingLogger(t)
-	require.Nil(t, cl.Start(ctx))
-	t.Cleanup(func() {
-		if err := cl.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-
-	val := testVal
-	params := []interface{}{val}
-	err = cl.CallWithArrayParams(ctx, "echo_ws", params)
-	require.NoError(t, err)
-
-	msg := <-cl.ResponsesCh
-	if msg.Error != nil {
-		t.Fatalf("%+v", err)
-	}
-	result := new(ResultEcho)
-	err = json.Unmarshal(msg.Result, result)
-	require.NoError(t, err)
-	got := result.Value
-	assert.Equal(t, got, val)
-}
-
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
