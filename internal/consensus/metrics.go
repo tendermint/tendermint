@@ -64,6 +64,12 @@ type Metrics struct {
 
 	// Histogram of time taken per step annotated with reason that the step proceeded.
 	StepTime metrics.Histogram
+
+	// Number of proposals received by the node that were considered untimely.
+	// For more information on what a node considers timely, see the
+	// proposer-based timestamp specification:
+	// https://github.com/tendermint/spec/blob/20b2abb5f9a83c2d9d97b53e555e4ea5a6bd7dc4/spec/consensus/proposer-based-timestamp/pbts_001_draft.md#reception-step
+	UntimelyProposals metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -196,6 +202,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "step_time",
 			Help:      "Time spent per step.",
 		}, append(labels, "step", "reason")).With(labelsAndValues...),
+		UntimelyProposals: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "untimely_proposals",
+			Help:      "Number of proposals received by the node that were considered untimely.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -219,13 +231,14 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-		NumTxs:          discard.NewGauge(),
-		BlockSizeBytes:  discard.NewHistogram(),
-		TotalTxs:        discard.NewGauge(),
-		CommittedHeight: discard.NewGauge(),
-		BlockSyncing:    discard.NewGauge(),
-		StateSyncing:    discard.NewGauge(),
-		BlockParts:      discard.NewCounter(),
+		NumTxs:            discard.NewGauge(),
+		BlockSizeBytes:    discard.NewHistogram(),
+		TotalTxs:          discard.NewGauge(),
+		CommittedHeight:   discard.NewGauge(),
+		BlockSyncing:      discard.NewGauge(),
+		StateSyncing:      discard.NewGauge(),
+		BlockParts:        discard.NewCounter(),
+		UntimelyProposals: discard.NewCounter(),
 	}
 }
 

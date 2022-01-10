@@ -1345,6 +1345,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
+		cs.metrics.UntimelyProposals.Add(1)
 		logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
