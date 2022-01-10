@@ -52,6 +52,7 @@ Special thanks to external contributors on this release:
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 
+- [light] \#6200 rpc /status call returns info about the light client (@jmalicevic)
 ### BUG FIXES
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
