@@ -34,7 +34,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 // main is the binary entrypoint.
 func main() {
@@ -297,7 +297,7 @@ func setupNode() (*config.Config, log.Logger, error) {
 		return nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
 
-	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel, false)
+	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel)
 	if err != nil {
 		return nil, nil, err
 	}
