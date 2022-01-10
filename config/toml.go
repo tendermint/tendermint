@@ -550,7 +550,7 @@ func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) 
 	}
 
 	config := TestConfig().SetRoot(rootDir)
-	config.Instrumentation.Namespace = fmt.Sprintf("test-prom-%s-%s", testName, tmrand.Str(16))
+	config.Instrumentation.Namespace = fmt.Sprintf("%s_%s_%s", testName, chainID, tmrand.Str(16))
 	return config, nil
 }
 
