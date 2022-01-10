@@ -57,6 +57,7 @@ func getSignerTestCases(ctx context.Context, t *testing.T, logger log.Logger) []
 			signerServer: ss,
 		})
 		t.Cleanup(ss.Wait)
+		t.Cleanup(sc.endpoint.Wait)
 	}
 
 	return testCases
@@ -72,6 +73,8 @@ func TestSignerClose(t *testing.T) {
 
 	for _, tc := range getSignerTestCases(bctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(leaktest.Check(t))
+
 			defer tc.closer()
 
 			assert.NoError(t, tc.signerClient.Close())
