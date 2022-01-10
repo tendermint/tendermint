@@ -378,6 +378,15 @@ func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 	return voteSet.votes[valIndex]
 }
 
+// List returns a copy of the list of votes stored by the VoteSet.
+func (voteSet *VoteSet) List() []Vote {
+	votes := make([]Vote, len(voteSet.votes))
+	for i := range voteSet.votes {
+		votes[i] = *voteSet.votes[i]
+	}
+	return votes
+}
+
 func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
 	if voteSet == nil {
 		return nil
