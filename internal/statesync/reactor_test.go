@@ -161,13 +161,15 @@ func setup(
 		}
 	}
 
+	logger := log.NewTestingLogger(t)
+
 	var err error
 	rts.reactor, err = NewReactor(
 		ctx,
 		factory.DefaultTestChainID,
 		1,
 		*cfg,
-		log.TestingLogger(),
+		logger.With("component", "reactor"),
 		conn,
 		connQuery,
 		chCreator,
@@ -181,7 +183,7 @@ func setup(
 
 	rts.syncer = newSyncer(
 		*cfg,
-		log.NewNopLogger(),
+		logger.With("component", "syncer"),
 		conn,
 		connQuery,
 		stateProvider,
