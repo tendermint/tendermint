@@ -187,7 +187,7 @@ func echoDataBytesViaHTTP(ctx context.Context, cl client.Caller, bytes tmbytes.H
 	return result.Value, nil
 }
 
-func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.HTTPClient) {
+func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.Caller) {
 	val := testVal
 	got, err := echoViaHTTP(ctx, cl, val)
 	require.NoError(t, err)
@@ -321,37 +321,6 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
 		t.Fatal(err)
-	}
-	result := new(ResultEcho)
-	err = json.Unmarshal(msg.Result, result)
-	require.NoError(t, err)
-	got := result.Value
-	assert.Equal(t, got, val)
-}
-
-func TestWSHandlesArrayParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.NoError(t, err)
-
-	cl.Logger = log.NewTestingLogger(t)
-	require.Nil(t, cl.Start(ctx))
-	t.Cleanup(func() {
-		if err := cl.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-
-	val := testVal
-	params := []interface{}{val}
-	err = cl.CallWithArrayParams(ctx, "echo_ws", params)
-	require.NoError(t, err)
-
-	msg := <-cl.ResponsesCh
-	if msg.Error != nil {
-		t.Fatalf("%+v", err)
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
