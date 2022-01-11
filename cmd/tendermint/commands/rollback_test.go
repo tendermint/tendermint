@@ -23,18 +23,15 @@ func TestRollbackIntegration(t *testing.T) {
 	cfg.BaseConfig.DBBackend = "goleveldb"
 	app, err := e2e.NewApplication(e2e.DefaultConfig(dir))
 
-	t.Run("First run", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		require.NoError(t, err)
-		node, _, err := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
-		require.NoError(t, err)
+	cancelCtx, cancel := context.WithCancel(ctx)
+	require.NoError(t, err)
+	node, _, err := rpctest.StartTendermint(cancelCtx, cfg, app, rpctest.SuppressStdout)
+	require.NoError(t, err)
 
-		time.Sleep(3 * time.Second)
-		cancel()
-		node.Wait()
-		require.False(t, node.IsRunning())
-	})
+	time.Sleep(3 * time.Second)
+	cancel()
+	node.Wait()
+	require.False(t, node.IsRunning())
 
 	t.Run("Rollback", func(t *testing.T) {
 		require.NoError(t, app.Rollback())
