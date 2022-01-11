@@ -39,7 +39,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Debug("HTTP HANDLER", "req", dumpHTTPRequest(r))
 
-		ctx := &rpctypes.Context{HTTPReq: r}
+		ctx := rpctypes.WithCallInfo(r.Context(), &rpctypes.CallInfo{HTTPRequest: r})
 		args := []reflect.Value{reflect.ValueOf(ctx)}
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)

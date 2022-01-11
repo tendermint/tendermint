@@ -1,23 +1,24 @@
 package core
 
 import (
+	"context"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // ABCIQuery queries the application for some information.
 // More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_query
 func (env *Environment) ABCIQuery(
-	ctx *rpctypes.Context,
+	ctx context.Context,
 	path string,
 	data bytes.HexBytes,
 	height int64,
 	prove bool,
 ) (*coretypes.ResultABCIQuery, error) {
-	resQuery, err := env.ProxyAppQuery.QuerySync(ctx.Context(), abci.RequestQuery{
+	resQuery, err := env.ProxyAppQuery.QuerySync(ctx, abci.RequestQuery{
 		Path:   path,
 		Data:   data,
 		Height: height,
@@ -32,8 +33,8 @@ func (env *Environment) ABCIQuery(
 
 // ABCIInfo gets some info about the application.
 // More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_info
-func (env *Environment) ABCIInfo(ctx *rpctypes.Context) (*coretypes.ResultABCIInfo, error) {
-	resInfo, err := env.ProxyAppQuery.InfoSync(ctx.Context(), proxy.RequestInfo)
+func (env *Environment) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
+	resInfo, err := env.ProxyAppQuery.InfoSync(ctx, proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}

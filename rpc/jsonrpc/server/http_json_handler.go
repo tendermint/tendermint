@@ -206,10 +206,11 @@ func arrayParamsToArgs(
 // parseParams parses the JSON parameters of rpcReq into the arguments of fn,
 // returning the corresponding argument values or an error.
 func parseParams(fn *RPCFunc, httpReq *http.Request, rpcReq rpctypes.RPCRequest) ([]reflect.Value, error) {
-	args := []reflect.Value{reflect.ValueOf(&rpctypes.Context{
-		JSONReq: &rpcReq,
-		HTTPReq: httpReq,
-	})}
+	ctx := rpctypes.WithCallInfo(httpReq.Context(), &rpctypes.CallInfo{
+		RPCRequest:  &rpcReq,
+		HTTPRequest: httpReq,
+	})
+	args := []reflect.Value{reflect.ValueOf(ctx)}
 	if len(rpcReq.Params) == 0 {
 		return args, nil
 	}
@@ -224,7 +225,7 @@ func parseParams(fn *RPCFunc, httpReq *http.Request, rpcReq rpctypes.RPCRequest)
 // array.
 //
 // Example:
-//   rpcFunc.args = [rpctypes.Context string]
+//   rpcFunc.args = [context.Context string]
 //   rpcFunc.argNames = ["arg"]
 func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
 	const argsOffset = 1

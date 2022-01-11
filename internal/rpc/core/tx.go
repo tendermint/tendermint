@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -10,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -18,7 +18,7 @@ import (
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx
-func (env *Environment) Tx(ctx *rpctypes.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
+func (env *Environment) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
 	// if index is disabled, return error
 
 	// N.B. The hash parameter is HexBytes so that the reflective parameter
@@ -63,7 +63,7 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash bytes.HexBytes, prove boo
 // list of transactions (maximum ?per_page entries) and the total count.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
 func (env *Environment) TxSearch(
-	ctx *rpctypes.Context,
+	ctx context.Context,
 	query string,
 	prove bool,
 	pagePtr, perPagePtr *int,
@@ -83,7 +83,7 @@ func (env *Environment) TxSearch(
 
 	for _, sink := range env.EventSinks {
 		if sink.Type() == indexer.KV {
-			results, err := sink.SearchTxEvents(ctx.Context(), q)
+			results, err := sink.SearchTxEvents(ctx, q)
 			if err != nil {
 				return nil, err
 			}

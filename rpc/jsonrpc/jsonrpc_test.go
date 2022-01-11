@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -61,23 +60,23 @@ var Routes = map[string]*server.RPCFunc{
 	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg", false),
 }
 
-func EchoResult(ctx *rpctypes.Context, v string) (*ResultEcho, error) {
+func EchoResult(ctx context.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoWSResult(ctx *rpctypes.Context, v string) (*ResultEcho, error) {
+func EchoWSResult(ctx context.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoIntResult(ctx *rpctypes.Context, v int) (*ResultEchoInt, error) {
+func EchoIntResult(ctx context.Context, v int) (*ResultEchoInt, error) {
 	return &ResultEchoInt{v}, nil
 }
 
-func EchoBytesResult(ctx *rpctypes.Context, v []byte) (*ResultEchoBytes, error) {
+func EchoBytesResult(ctx context.Context, v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(ctx *rpctypes.Context, v tmbytes.HexBytes) (*ResultEchoDataBytes, error) {
+func EchoDataBytesResult(ctx context.Context, v tmbytes.HexBytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 

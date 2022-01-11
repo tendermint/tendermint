@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,7 +47,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 
 func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 	funcMap := map[string]*RPCFunc{
-		"c": NewWSRPCFunc(func(ctx *rpctypes.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"c": NewWSRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
 	}
 	wm := NewWebsocketManager(funcMap)
 
