@@ -152,7 +152,6 @@ func newSignerListenerEndpoint(t *testing.T, logger log.Logger, addr string, tim
 	proto, address := tmnet.ProtocolAndAddress(addr)
 
 	ln, err := net.Listen(proto, address)
-	logger.Info("SignerListener: Listening", "proto", proto, "address", address)
 	require.NoError(t, err)
 
 	var listener net.Listener

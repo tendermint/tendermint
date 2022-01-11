@@ -696,7 +696,6 @@ func TestMockProxyApp(t *testing.T) {
 				if txRes.Code == abci.CodeTypeOK {
 					validTxs++
 				} else {
-					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 					invalidTxs++
 				}
 				abciRes.DeliverTxs[txIndex] = txRes

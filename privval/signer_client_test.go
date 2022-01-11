@@ -303,9 +303,7 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 
 			// in this particular case, we use the dialer logger to ensure that
 			// test messages are properly interleaved in the test logs
-			tc.signerServer.endpoint.logger.Debug("TEST: Forced Wait -------------------------------------------------")
 			time.Sleep(testTimeoutReadWrite * 3)
-			tc.signerServer.endpoint.logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
 			require.NoError(t, tc.mockPV.SignVote(ctx, tc.chainID, want.ToProto()))
 			require.NoError(t, tc.signerClient.SignVote(ctx, tc.chainID, have.ToProto()))
