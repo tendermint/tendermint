@@ -181,12 +181,12 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	}
 
 	if params.Synchrony.MessageDelay <= 0 {
-		return fmt.Errorf("timing.MessageDelay must be greater than 0. Got: %d",
+		return fmt.Errorf("synchrony.MessageDelay must be greater than 0. Got: %d",
 			params.Synchrony.MessageDelay)
 	}
 
 	if params.Synchrony.Precision <= 0 {
-		return fmt.Errorf("timing.Precision must be greater than 0. Got: %d",
+		return fmt.Errorf("synchrony.Precision must be greater than 0. Got: %d",
 			params.Synchrony.Precision)
 	}
 

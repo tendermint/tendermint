@@ -569,7 +569,7 @@ var testGenesisFmt = `{
 			"max_gas": "-1",
 			"time_iota_ms": "10"
 		},
-		"timing": {
+		"synchrony": {
 			"message_delay": "500000000",
 			"precision": "10000000"
 		},

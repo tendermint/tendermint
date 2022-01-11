@@ -242,7 +242,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 			updatedParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 		},
 		{
-			// update timing params
+			// update synchrony params
 			intialParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: time.Second, messageDelay: 3 * time.Second}),
 			updates: &tmproto.ConsensusParams{
 				Synchrony: &tmproto.SynchronyParams{
