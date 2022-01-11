@@ -194,7 +194,7 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 		Validator: ValidatorParams{
 			PubKeyTypes: args.pubkeyTypes,
 		},
-		Timing: TimingParams{
+		Synchrony: SynchronyParams{
 			Precision:    args.precision,
 			MessageDelay: args.messageDelay,
 		},
@@ -245,7 +245,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 			// update timing params
 			intialParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: time.Second, messageDelay: 3 * time.Second}),
 			updates: &tmproto.ConsensusParams{
-				Timing: &tmproto.TimingParams{
+				Synchrony: &tmproto.SynchronyParams{
 					Precision:    time.Second * 2,
 					MessageDelay: time.Second * 4,
 				},

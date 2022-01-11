@@ -41,7 +41,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
-	Timing    TimingParams    `json:"timing"`
+	Synchrony SynchronyParams `json:"synchrony"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -76,9 +76,9 @@ type VersionParams struct {
 	AppVersion uint64 `json:"app_version"`
 }
 
-// TimingParams influence the validity of block timestamps.
+// SynchronyParams influence the validity of block timestamps.
 // TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
-type TimingParams struct {
+type SynchronyParams struct {
 	Precision    time.Duration `json:"precision"`
 	MessageDelay time.Duration `json:"message_delay"`
 }
@@ -90,7 +90,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
-		Timing:    DefaultTimingParams(),
+		Synchrony: DefaultSynchronyParams(),
 	}
 }
 
@@ -125,10 +125,10 @@ func DefaultVersionParams() VersionParams {
 	}
 }
 
-func DefaultTimingParams() TimingParams {
+func DefaultSynchronyParams() SynchronyParams {
 	// TODO(@wbanfield): Determine experimental values for these defaults
 	// https://github.com/tendermint/tendermint/issues/7202
-	return TimingParams{
+	return SynchronyParams{
 		Precision:    10 * time.Millisecond,
 		MessageDelay: 500 * time.Millisecond,
 	}
@@ -180,14 +180,14 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 			params.Evidence.MaxBytes)
 	}
 
-	if params.Timing.MessageDelay <= 0 {
+	if params.Synchrony.MessageDelay <= 0 {
 		return fmt.Errorf("timing.MessageDelay must be greater than 0. Got: %d",
-			params.Timing.MessageDelay)
+			params.Synchrony.MessageDelay)
 	}
 
-	if params.Timing.Precision <= 0 {
+	if params.Synchrony.Precision <= 0 {
 		return fmt.Errorf("timing.Precision must be greater than 0. Got: %d",
-			params.Timing.Precision)
+			params.Synchrony.Precision)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -234,7 +234,7 @@ func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.Block == params2.Block &&
 		params.Evidence == params2.Evidence &&
 		params.Version == params2.Version &&
-		params.Timing == params2.Timing &&
+		params.Synchrony == params2.Synchrony &&
 		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
@@ -265,9 +265,9 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	if params2.Version != nil {
 		res.Version.AppVersion = params2.Version.AppVersion
 	}
-	if params2.Timing != nil {
-		res.Timing.Precision = params2.Timing.Precision
-		res.Timing.MessageDelay = params2.Timing.MessageDelay
+	if params2.Synchrony != nil {
+		res.Synchrony.Precision = params2.Synchrony.Precision
+		res.Synchrony.MessageDelay = params2.Synchrony.MessageDelay
 	}
 	return res
 }
@@ -289,9 +289,9 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		Version: &tmproto.VersionParams{
 			AppVersion: params.Version.AppVersion,
 		},
-		Timing: &tmproto.TimingParams{
-			MessageDelay: params.Timing.MessageDelay,
-			Precision:    params.Timing.Precision,
+		Synchrony: &tmproto.SynchronyParams{
+			MessageDelay: params.Synchrony.MessageDelay,
+			Precision:    params.Synchrony.Precision,
 		},
 	}
 }
@@ -313,9 +313,9 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 		Version: VersionParams{
 			AppVersion: pbParams.Version.AppVersion,
 		},
-		Timing: TimingParams{
-			MessageDelay: pbParams.Timing.MessageDelay,
-			Precision:    pbParams.Timing.Precision,
+		Synchrony: SynchronyParams{
+			MessageDelay: pbParams.Synchrony.MessageDelay,
+			Precision:    pbParams.Synchrony.Precision,
 		},
 	}
 }
