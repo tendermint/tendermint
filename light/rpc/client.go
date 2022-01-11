@@ -615,11 +615,12 @@ func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (UNSAFE)!
 // TODO: verify data
-func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultSubscribe, error) {
+func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.ResultSubscribe, error) {
 	bctx, bcancel := context.WithCancel(context.Background())
 	c.closers = append(c.closers, bcancel)
 
-	out, err := c.next.Subscribe(bctx, ctx.RemoteAddr(), query)
+	callInfo := rpctypes.GetCallInfo(ctx)
+	out, err := c.next.Subscribe(bctx, callInfo.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -630,9 +631,9 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 			case resultEvent := <-out:
 				// We should have a switch here that performs a validation
 				// depending on the event's type.
-				ctx.WSConn.TryWriteRPCResponse(bctx,
+				callInfo.WSConn.TryWriteRPCResponse(bctx,
 					rpctypes.NewRPCSuccessResponse(
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", callInfo.RPCRequest.ID)),
 						resultEvent,
 					))
 			case <-bctx.Done():
@@ -646,8 +647,8 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
-func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+func (c *Client) UnsubscribeWS(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error) {
+	err := c.next.Unsubscribe(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -656,8 +657,8 @@ func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.
 
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
-func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+func (c *Client) UnsubscribeAllWS(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
+	err := c.next.UnsubscribeAll(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr())
 	if err != nil {
 		return nil, err
 	}

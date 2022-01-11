@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestBlockchainInfo(t *testing.T) {
@@ -108,8 +108,9 @@ func TestBlockResults(t *testing.T) {
 		}},
 	}
 
+	ctx := context.Background()
 	for _, tc := range testCases {
-		res, err := env.BlockResults(&rpctypes.Context{}, &tc.height)
+		res, err := env.BlockResults(ctx, &tc.height)
 		if tc.wantErr {
 			assert.Error(t, err)
 		} else {
