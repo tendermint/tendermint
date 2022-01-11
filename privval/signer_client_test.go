@@ -79,6 +79,8 @@ func TestSignerClose(t *testing.T) {
 
 			assert.NoError(t, tc.signerClient.Close())
 			assert.NoError(t, tc.signerServer.Stop())
+			t.Cleanup(tc.signerClient.endpoint.Wait)
+			t.Cleanup(tc.signerServer.Wait)
 		})
 	}
 }
