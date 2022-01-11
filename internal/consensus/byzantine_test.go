@@ -139,7 +139,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			i := 0
 			for _, ps := range bzReactor.peers {
 				if i < len(bzReactor.peers)/2 {
-					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote1, "peer", ps.peerID)
 					require.NoError(t, bzReactor.voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
@@ -148,7 +147,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 							},
 						}))
 				} else {
-					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote2, "peer", ps.peerID)
 					require.NoError(t, bzReactor.voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
@@ -161,7 +159,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				i++
 			}
 		} else {
-			bzNodeState.logger.Info("behaving normally")
 			bzNodeState.defaultDoPrevote(ctx, height, round)
 		}
 	}
@@ -173,7 +170,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	lazyNodeState := states[1]
 
 	lazyNodeState.decideProposal = func(ctx context.Context, height int64, round int32) {
-		lazyNodeState.logger.Info("Lazy Proposer proposing condensed commit")
 		require.NotNil(t, lazyNodeState.privValidator)
 
 		var commit *types.Commit
@@ -227,8 +223,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 					lazyNodeState.Height, lazyNodeState.Round, part,
 				}, ""})
 			}
-			lazyNodeState.logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-			lazyNodeState.logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
 		} else if !lazyNodeState.replayMode {
 			lazyNodeState.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}
