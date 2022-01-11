@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -41,7 +40,6 @@ backoff (10ms -> 20ms -> 40ms) until successful.
 type Local struct {
 	*eventbus.EventBus
 	Logger log.Logger
-	ctx    *rpctypes.Context
 	env    *rpccore.Environment
 }
 
@@ -61,7 +59,6 @@ func New(node NodeService) (*Local, error) {
 	return &Local{
 		EventBus: node.EventBus(),
 		Logger:   log.NewNopLogger(),
-		ctx:      &rpctypes.Context{},
 		env:      env,
 	}, nil
 }
@@ -74,11 +71,11 @@ func (c *Local) SetLogger(l log.Logger) {
 }
 
 func (c *Local) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
-	return c.env.Status(c.ctx)
+	return c.env.Status(ctx)
 }
 
 func (c *Local) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
-	return c.env.ABCIInfo(c.ctx)
+	return c.env.ABCIInfo(ctx)
 }
 
 func (c *Local) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
@@ -90,31 +87,31 @@ func (c *Local) ABCIQueryWithOptions(
 	path string,
 	data bytes.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
-	return c.env.ABCIQuery(c.ctx, path, data, opts.Height, opts.Prove)
+	return c.env.ABCIQuery(ctx, path, data, opts.Height, opts.Prove)
 }
 
 func (c *Local) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
-	return c.env.BroadcastTxCommit(c.ctx, tx)
+	return c.env.BroadcastTxCommit(ctx, tx)
 }
 
 func (c *Local) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	return c.env.BroadcastTxAsync(c.ctx, tx)
+	return c.env.BroadcastTxAsync(ctx, tx)
 }
 
 func (c *Local) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	return c.env.BroadcastTxSync(c.ctx, tx)
+	return c.env.BroadcastTxSync(ctx, tx)
 }
 
 func (c *Local) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	return c.env.UnconfirmedTxs(c.ctx, limit)
+	return c.env.UnconfirmedTxs(ctx, limit)
 }
 
 func (c *Local) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
-	return c.env.NumUnconfirmedTxs(c.ctx)
+	return c.env.NumUnconfirmedTxs(ctx)
 }
 
 func (c *Local) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
-	return c.env.CheckTx(c.ctx, tx)
+	return c.env.CheckTx(ctx, tx)
 }
 
 func (c *Local) RemoveTx(ctx context.Context, txKey types.TxKey) error {
@@ -122,91 +119,91 @@ func (c *Local) RemoveTx(ctx context.Context, txKey types.TxKey) error {
 }
 
 func (c *Local) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
-	return c.env.NetInfo(c.ctx)
+	return c.env.NetInfo(ctx)
 }
 
 func (c *Local) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error) {
-	return c.env.DumpConsensusState(c.ctx)
+	return c.env.DumpConsensusState(ctx)
 }
 
 func (c *Local) ConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error) {
-	return c.env.GetConsensusState(c.ctx)
+	return c.env.GetConsensusState(ctx)
 }
 
 func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
-	return c.env.ConsensusParams(c.ctx, height)
+	return c.env.ConsensusParams(ctx, height)
 }
 
 func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
-	return c.env.Health(c.ctx)
+	return c.env.Health(ctx)
 }
 
 func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-	return c.env.BlockchainInfo(c.ctx, minHeight, maxHeight)
+	return c.env.BlockchainInfo(ctx, minHeight, maxHeight)
 }
 
 func (c *Local) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
-	return c.env.Genesis(c.ctx)
+	return c.env.Genesis(ctx)
 }
 
 func (c *Local) GenesisChunked(ctx context.Context, id uint) (*coretypes.ResultGenesisChunk, error) {
-	return c.env.GenesisChunked(c.ctx, id)
+	return c.env.GenesisChunked(ctx, id)
 }
 
 func (c *Local) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
-	return c.env.Block(c.ctx, height)
+	return c.env.Block(ctx, height)
 }
 
 func (c *Local) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
-	return c.env.BlockByHash(c.ctx, hash)
+	return c.env.BlockByHash(ctx, hash)
 }
 
 func (c *Local) BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error) {
-	return c.env.BlockResults(c.ctx, height)
+	return c.env.BlockResults(ctx, height)
 }
 
 func (c *Local) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
-	return c.env.Header(c.ctx, height)
+	return c.env.Header(ctx, height)
 }
 
 func (c *Local) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
-	return c.env.HeaderByHash(c.ctx, hash)
+	return c.env.HeaderByHash(ctx, hash)
 }
 
 func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
-	return c.env.Commit(c.ctx, height)
+	return c.env.Commit(ctx, height)
 }
 
 func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
-	return c.env.Validators(c.ctx, height, page, perPage)
+	return c.env.Validators(ctx, height, page, perPage)
 }
 
 func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
-	return c.env.Tx(c.ctx, hash, prove)
+	return c.env.Tx(ctx, hash, prove)
 }
 
 func (c *Local) TxSearch(
-	_ context.Context,
+	ctx context.Context,
 	queryString string,
 	prove bool,
 	page,
 	perPage *int,
 	orderBy string,
 ) (*coretypes.ResultTxSearch, error) {
-	return c.env.TxSearch(c.ctx, queryString, prove, page, perPage, orderBy)
+	return c.env.TxSearch(ctx, queryString, prove, page, perPage, orderBy)
 }
 
 func (c *Local) BlockSearch(
-	_ context.Context,
+	ctx context.Context,
 	queryString string,
 	page, perPage *int,
 	orderBy string,
 ) (*coretypes.ResultBlockSearch, error) {
-	return c.env.BlockSearch(c.ctx, queryString, page, perPage, orderBy)
+	return c.env.BlockSearch(ctx, queryString, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
-	return c.env.BroadcastEvidence(c.ctx, ev)
+	return c.env.BroadcastEvidence(ctx, ev)
 }
 
 func (c *Local) Subscribe(

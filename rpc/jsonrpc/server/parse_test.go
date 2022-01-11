@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestParseJSONMap(t *testing.T) {
@@ -134,7 +134,7 @@ func TestParseJSONArray(t *testing.T) {
 }
 
 func TestParseJSONRPC(t *testing.T) {
-	demo := func(ctx *rpctypes.Context, height int, name string) {}
+	demo := func(ctx context.Context, height int, name string) {}
 	call := NewRPCFunc(demo, "height,name", false)
 
 	cases := []struct {
@@ -171,7 +171,7 @@ func TestParseJSONRPC(t *testing.T) {
 }
 
 func TestParseURI(t *testing.T) {
-	demo := func(ctx *rpctypes.Context, height int, name string) {}
+	demo := func(ctx context.Context, height int, name string) {}
 	call := NewRPCFunc(demo, "height,name", false)
 
 	cases := []struct {
