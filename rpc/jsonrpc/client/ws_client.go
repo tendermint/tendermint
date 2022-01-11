@@ -411,7 +411,6 @@ func (c *WSClient) writeRoutine(ctx context.Context) {
 			c.mtx.Lock()
 			c.sentLastPingAt = time.Now()
 			c.mtx.Unlock()
-			c.Logger.Debug("sent ping")
 		case <-c.readRoutineQuit:
 			return
 		case <-ctx.Done():
@@ -445,7 +444,6 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		c.mtx.RUnlock()
 		c.PingPongLatencyTimer.UpdateSince(t)
 
-		c.Logger.Debug("got pong")
 		return nil
 	})
 
