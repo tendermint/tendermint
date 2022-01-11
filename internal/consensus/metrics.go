@@ -249,13 +249,15 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-		NumTxs:          discard.NewGauge(),
-		BlockSizeBytes:  discard.NewHistogram(),
-		TotalTxs:        discard.NewGauge(),
-		CommittedHeight: discard.NewGauge(),
-		BlockSyncing:    discard.NewGauge(),
-		StateSyncing:    discard.NewGauge(),
-		BlockParts:      discard.NewCounter(),
+		NumTxs:                    discard.NewGauge(),
+		BlockSizeBytes:            discard.NewHistogram(),
+		TotalTxs:                  discard.NewGauge(),
+		CommittedHeight:           discard.NewGauge(),
+		BlockSyncing:              discard.NewGauge(),
+		StateSyncing:              discard.NewGauge(),
+		BlockParts:                discard.NewCounter(),
+		QuorumPrevoteMessageDelay: discard.NewGauge(),
+		FullPrevoteMessageDelay:   discard.NewGauge(),
 	}
 }
 
