@@ -51,6 +51,7 @@ Special thanks to external contributors on this release:
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [node] \#7521 Define concrete type for seed node implementation (@spacech1mp)
 
 ### BUG FIXES
 
