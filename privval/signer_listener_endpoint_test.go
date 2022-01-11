@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -89,6 +90,8 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 }
 
 func TestRetryConnToRemoteSigner(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -102,6 +105,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 			thisConnTimeout  = testTimeoutReadWrite
 			listenerEndpoint = newSignerListenerEndpoint(t, logger, tc.addr, thisConnTimeout)
 		)
+		t.Cleanup(listenerEndpoint.Wait)
 
 		dialerEndpoint := NewSignerDialerEndpoint(
 			logger,
@@ -116,6 +120,8 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 
 		require.NoError(t, signerServer.Start(ctx))
 		assert.True(t, signerServer.IsRunning())
+		t.Cleanup(signerServer.Wait)
+
 		<-endpointIsOpenCh
 		if err := signerServer.Stop(); err != nil {
 			t.Error(err)
@@ -130,6 +136,8 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		// let some pings pass
 		require.NoError(t, signerServer2.Start(ctx))
 		assert.True(t, signerServer2.IsRunning())
+		t.Cleanup(signerServer2.Wait)
+		t.Cleanup(func() { _ = signerServer2.Stop() })
 
 		// give the client some time to re-establish the conn to the remote signer
 		// should see sth like this in the logs:

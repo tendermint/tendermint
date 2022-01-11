@@ -74,20 +74,31 @@ func NewSignerDialerEndpoint(
 func (sd *SignerDialerEndpoint) OnStart(context.Context) error { return nil }
 func (sd *SignerDialerEndpoint) OnStop()                       {}
 
-func (sd *SignerDialerEndpoint) ensureConnection() error {
+func (sd *SignerDialerEndpoint) ensureConnection(ctx context.Context) error {
 	if sd.IsConnected() {
 		return nil
 	}
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 	retries := 0
 	for retries < sd.maxConnRetries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		conn, err := sd.dialer()
 
 		if err != nil {
 			retries++
 			sd.logger.Debug("SignerDialer: Reconnection failed", "retries", retries, "max", sd.maxConnRetries, "err", err)
+
 			// Wait between retries
-			time.Sleep(sd.retryWait)
+			timer.Reset(sd.retryWait)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+			}
 		} else {
 			sd.SetConnection(conn)
 			sd.logger.Debug("SignerDialer: Connection Ready")

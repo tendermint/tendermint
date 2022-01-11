@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -54,11 +55,13 @@ func (se *signerEndpoint) GetAvailableConnection(connectionAvailableCh chan net.
 }
 
 // TryGetConnection retrieves a connection if it is already available
-func (se *signerEndpoint) WaitConnection(connectionAvailableCh chan net.Conn, maxWait time.Duration) error {
+func (se *signerEndpoint) WaitConnection(ctx context.Context, connectionAvailableCh chan net.Conn, maxWait time.Duration) error {
 	se.connMtx.Lock()
 	defer se.connMtx.Unlock()
 
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case se.conn = <-connectionAvailableCh:
 	case <-time.After(maxWait):
 		return ErrConnectionTimeout
