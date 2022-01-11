@@ -20,7 +20,7 @@ type signerEndpoint struct {
 	service.BaseService
 	logger log.Logger
 
-	connMtx sync.MutexC
+	connMtx sync.Mutex
 	conn    net.Conn
 
 	timeoutReadWrite time.Duration
