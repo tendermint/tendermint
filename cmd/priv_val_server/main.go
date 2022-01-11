@@ -138,7 +138,6 @@ func main() {
 	defer opcancel()
 	go func() {
 		<-opctx.Done()
-		logger.Debug("SignerServer: calling Close")
 		if *prometheusAddr != "" {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
