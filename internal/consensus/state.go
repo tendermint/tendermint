@@ -1345,7 +1345,15 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
-		logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
+		logger.Debug("prevote step: Proposal is not timely; prevoting nil - ",
+			"proposed",
+			tmtime.Canonical(cs.Proposal.Timestamp).Format(time.RFC3339Nano),
+			"received",
+			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
+			"msg_delay",
+			cs.state.ConsensusParams.Timing.MessageDelay,
+			"precision",
+			cs.state.ConsensusParams.Timing.Precision)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
