@@ -167,6 +167,7 @@ func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*type
 		}
 	}
 }
+
 func TestClientStatusRPC(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -189,7 +190,6 @@ func TestClientStatusRPC(t *testing.T) {
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	require.NoError(t, err)
 
-	witnesses := []provider.Provider{primary}
 	// give Tendermint time to generate some blocks
 	block, err := waitForBlock(ctx, primary, 2)
 	require.NoError(t, err)
@@ -197,6 +197,7 @@ func TestClientStatusRPC(t *testing.T) {
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
 	require.NoError(t, err)
 
+	witnesses := []provider.Provider{primary}
 	c, err := light.NewClient(ctx,
 		chainID,
 		light.TrustOptions{
@@ -214,7 +215,6 @@ func TestClientStatusRPC(t *testing.T) {
 	defer func() { require.NoError(t, c.Cleanup()) }()
 
 	lightStatus := c.Status(ctx)
-	require.NoError(t, err)
 	// Verify primary IP
 	require.True(t, lightStatus.Primary == primary.String())
 
@@ -222,7 +222,8 @@ func TestClientStatusRPC(t *testing.T) {
 	// ToDo - Add test with multiple witnesses
 	require.ElementsMatch(t, mapProviderArrayToIP(witnesses), lightStatus.Witnesses)
 
-	// Verify that the last trusted hash returned matches the stored hash of the trusted block at the last trusted height
+	// Verify that the last trusted hash returned matches the stored hash of the trusted
+	// block at the last trusted height.
 	blockAtTrustedHeight, err := c.TrustedLightBlock(lightStatus.LastTrustedHeight)
 	require.NoError(t, err)
 
@@ -234,9 +235,9 @@ func TestClientStatusRPC(t *testing.T) {
 }
 
 func mapProviderArrayToIP(el []provider.Provider) []string {
-	tmpArray := make([]string, len(el))
+	ips := make([]string, len(el))
 	for i, v := range el {
-		tmpArray[i] = v.String()
+		ips[i] = v.String()
 	}
-	return tmpArray
+	return ips
 }

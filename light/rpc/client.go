@@ -127,13 +127,12 @@ func (c *Client) OnStop() {
 
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	lightClientInfo := c.lc.Status(ctx)
-	result := &coretypes.ResultStatus{
+	return &coretypes.ResultStatus{
 		NodeInfo:        types.NodeInfo{},
 		SyncInfo:        coretypes.SyncInfo{},
 		ValidatorInfo:   coretypes.ValidatorInfo{},
 		LightClientInfo: *lightClientInfo,
-	}
-	return result, nil
+	}, nil
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
