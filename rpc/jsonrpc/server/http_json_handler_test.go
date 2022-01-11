@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,8 +18,8 @@ import (
 
 func testMux() *http.ServeMux {
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx *rpctypes.Context, s string, i int) (string, error) { return "foo", nil }, "s,i", false),
-		"block": NewRPCFunc(func(ctx *rpctypes.Context, h int) (string, error) { return "block", nil }, "height", true),
+		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s,i", false),
+		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height", true),
 	}
 	mux := http.NewServeMux()
 	logger := log.NewNopLogger()

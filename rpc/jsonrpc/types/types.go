@@ -254,7 +254,7 @@ type WSRPCConnection interface {
 // JSON-RPC. It can be recovered from the context with GetCallInfo.
 type CallInfo struct {
 	RPCRequest  *RPCRequest     // non-nil for requests via HTTP or websocket
-	HTTPRequesg *http.Request   // non-nil for requests via HTTP
+	HTTPRequest *http.Request   // non-nil for requests via HTTP
 	WSConn      WSRPCConnection // non-nil for requests via websocket
 }
 
@@ -281,12 +281,12 @@ func GetCallInfo(ctx context.Context) *CallInfo {
 // WS:
 //		result of GetRemoteAddr
 func (ci *CallInfo) RemoteAddr() string {
-	if ctx == nil {
+	if ci == nil {
 		return ""
-	} else if ctx.HTTPRequest != nil {
-		return ctx.HTTPRequest.RemoteAddr
-	} else if ctx.WSConn != nil {
-		return ctx.WSConn.GetRemoteAddr()
+	} else if ci.HTTPRequest != nil {
+		return ci.HTTPRequest.RemoteAddr
+	} else if ci.WSConn != nil {
+		return ci.WSConn.GetRemoteAddr()
 	}
 	return ""
 }

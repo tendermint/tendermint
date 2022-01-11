@@ -22,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -76,11 +75,11 @@ func (c Call) GetResponse(args interface{}) (interface{}, error) {
 }
 
 func (c Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
-	return c.env.Status(&rpctypes.Context{})
+	return c.env.Status(ctx)
 }
 
 func (c Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
-	return c.env.ABCIInfo(&rpctypes.Context{})
+	return c.env.ABCIInfo(ctx)
 }
 
 func (c Client) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
@@ -92,69 +91,69 @@ func (c Client) ABCIQueryWithOptions(
 	path string,
 	data bytes.HexBytes,
 	opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
-	return c.env.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
+	return c.env.ABCIQuery(ctx, path, data, opts.Height, opts.Prove)
 }
 
 func (c Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
-	return c.env.BroadcastTxCommit(&rpctypes.Context{}, tx)
+	return c.env.BroadcastTxCommit(ctx, tx)
 }
 
 func (c Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	return c.env.BroadcastTxAsync(&rpctypes.Context{}, tx)
+	return c.env.BroadcastTxAsync(ctx, tx)
 }
 
 func (c Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	return c.env.BroadcastTxSync(&rpctypes.Context{}, tx)
+	return c.env.BroadcastTxSync(ctx, tx)
 }
 
 func (c Client) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
-	return c.env.CheckTx(&rpctypes.Context{}, tx)
+	return c.env.CheckTx(ctx, tx)
 }
 
 func (c Client) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
-	return c.env.NetInfo(&rpctypes.Context{})
+	return c.env.NetInfo(ctx)
 }
 
 func (c Client) ConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error) {
-	return c.env.GetConsensusState(&rpctypes.Context{})
+	return c.env.GetConsensusState(ctx)
 }
 
 func (c Client) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error) {
-	return c.env.DumpConsensusState(&rpctypes.Context{})
+	return c.env.DumpConsensusState(ctx)
 }
 
 func (c Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
-	return c.env.ConsensusParams(&rpctypes.Context{}, height)
+	return c.env.ConsensusParams(ctx, height)
 }
 
 func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
-	return c.env.Health(&rpctypes.Context{})
+	return c.env.Health(ctx)
 }
 
 func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-	return c.env.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
+	return c.env.BlockchainInfo(ctx, minHeight, maxHeight)
 }
 
 func (c Client) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
-	return c.env.Genesis(&rpctypes.Context{})
+	return c.env.Genesis(ctx)
 }
 
 func (c Client) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
-	return c.env.Block(&rpctypes.Context{}, height)
+	return c.env.Block(ctx, height)
 }
 
 func (c Client) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
-	return c.env.BlockByHash(&rpctypes.Context{}, hash)
+	return c.env.BlockByHash(ctx, hash)
 }
 
 func (c Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
-	return c.env.Commit(&rpctypes.Context{}, height)
+	return c.env.Commit(ctx, height)
 }
 
 func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
-	return c.env.Validators(&rpctypes.Context{}, height, page, perPage)
+	return c.env.Validators(ctx, height, page, perPage)
 }
 
 func (c Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
-	return c.env.BroadcastEvidence(&rpctypes.Context{}, ev)
+	return c.env.BroadcastEvidence(ctx, ev)
 }
