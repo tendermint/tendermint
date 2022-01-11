@@ -94,7 +94,7 @@ func TestSignerPing(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
-		err := tc.signerClient.Ping()
+		err := tc.signerClient.Ping(ctx)
 		assert.NoError(t, err)
 	}
 }
