@@ -183,7 +183,7 @@ func TestClientStatusRPC(t *testing.T) {
 
 	dbDir, err := os.MkdirTemp("", "light-client-test-status-example")
 	require.NoError(t, err)
-	defer os.RemoveAll(dbDir)
+	t.Cleanup(func() { os.RemoveAll(dbDir) })
 
 	chainID := conf.ChainID()
 
@@ -216,11 +216,11 @@ func TestClientStatusRPC(t *testing.T) {
 
 	lightStatus := c.Status(ctx)
 	// Verify primary IP
-	require.True(t, lightStatus.Primary == primary.String())
+	require.True(t, lightStatus.PrimaryID == primary.ID())
 
 	// Verify IPs of witnesses
 	// ToDo - Add test with multiple witnesses
-	require.ElementsMatch(t, mapProviderArrayToIP(witnesses), lightStatus.Witnesses)
+	require.ElementsMatch(t, mapProviderArrayToIP(witnesses), lightStatus.WitnessesID)
 
 	// Verify that the last trusted hash returned matches the stored hash of the trusted
 	// block at the last trusted height.
@@ -237,7 +237,7 @@ func TestClientStatusRPC(t *testing.T) {
 func mapProviderArrayToIP(el []provider.Provider) []string {
 	ips := make([]string, len(el))
 	for i, v := range el {
-		ips[i] = v.String()
+		ips[i] = v.ID()
 	}
 	return ips
 }

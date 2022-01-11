@@ -15,6 +15,20 @@ type Provider struct {
 	mock.Mock
 }
 
+// ID provides a mock function with given fields:
+func (_m *Provider) ID() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // LightBlock provides a mock function with given fields: ctx, height
 func (_m *Provider) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	ret := _m.Called(ctx, height)
@@ -47,20 +61,6 @@ func (_m *Provider) ReportEvidence(_a0 context.Context, _a1 types.Evidence) erro
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// String provides a mock function with given fields:
-func (_m *Provider) String() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
 	}
 
 	return r0

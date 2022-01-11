@@ -105,11 +105,6 @@ func (p *http) ID() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
 }
 
-// Returns the ID function of the provider
-func (p *http) String() string {
-	return p.ID()
-}
-
 // LightBlock fetches a LightBlock at the given height and checks the
 // chainID matches.
 func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {

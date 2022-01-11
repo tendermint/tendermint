@@ -5,8 +5,18 @@ import (
 	"errors"
 	"fmt"
 
+	tbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
+
+// Info about the status of the light client
+type LightClientInfo struct {
+	PrimaryID         string          `json:"primaryID"`
+	WitnessesID       []string        `json:"witnessesID"`
+	NumPeers          int             `json:"number_of_peers"`
+	LastTrustedHeight int64           `json:"last_trusted_height"`
+	LastTrustedHash   tbytes.HexBytes `json:"last_trusted_hash"`
+}
 
 // LightBlock is a SignedHeader and a ValidatorSet.
 // It is the basis of the light client

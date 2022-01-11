@@ -26,6 +26,7 @@ type Provider interface {
 	// ReportEvidence reports an evidence of misbehavior.
 	ReportEvidence(context.Context, types.Evidence) error
 
-	// Returns the IP address of the provider in string format
-	String() string
+	// Returns the ID of a provider. For RPC providers it returns the IP address of the client
+	// For p2p providers it returns a combination of NodeID and IP address
+	ID() string
 }
