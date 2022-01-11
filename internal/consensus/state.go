@@ -1325,7 +1325,7 @@ func (cs *State) proposalIsTimely() bool {
 func (cs *State) defaultDoPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
-	// We did not receive a proposal within this round. (and thus executing this from a timeout)
+	// Check that a proposed block was not received within this round (and thus executing this from a timeout).
 	if cs.ProposalBlock == nil {
 		logger.Debug("prevote step: ProposalBlock is nil; prevoting nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
@@ -1345,7 +1345,15 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	}
 
 	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
-		logger.Debug("prevote step: ProposalBlock is not timely; prevoting nil")
+		logger.Debug("prevote step: Proposal is not timely; prevoting nil - ",
+			"proposed",
+			tmtime.Canonical(cs.Proposal.Timestamp).Format(time.RFC3339Nano),
+			"received",
+			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
+			"msg_delay",
+			cs.state.ConsensusParams.Timing.MessageDelay,
+			"precision",
+			cs.state.ConsensusParams.Timing.Precision)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
