@@ -570,8 +570,8 @@ var testGenesisFmt = `{
 			"time_iota_ms": "10"
 		},
 		"timing": {
-			"message_delay": "200",
-			"precision": "50"
+			"message_delay": "500000000",
+			"precision": "10000000"
 		},
 		"evidence": {
 			"max_age_num_blocks": "100000",

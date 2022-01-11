@@ -84,18 +84,24 @@ func (p *Proposal) ValidateBasic() error {
 // configured Precision and MsgDelay parameters.
 // Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
 //
-// proposedBlockTime > validatorLocaltime - Precision && proposedBlockTime < validatorLocalTime + Precision + MsgDelay.
+// localtime >= proposedBlockTime - Precision
+// localtime <= proposedBlockTime + MsgDelay + Precision
 //
+// Note: If the proposal is for the `initialHeight` the second inequality is not checked. This is because
+// the timestamp in this case is set to the preconfigured genesis time.
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (p *Proposal) IsTimely(clock tmtime.Source, tp TimingParams) bool {
-	lt := clock.Now()
-	lhs := lt.Add(-tp.Precision)
-	rhs := lt.Add(tp.Precision).Add(tp.MessageDelay)
-	if lhs.Before(p.Timestamp) && rhs.After(p.Timestamp) {
-		return true
+func (p *Proposal) IsTimely(recvTime time.Time, tp TimingParams, initialHeight int64) bool {
+	// lhs is `proposedBlockTime - Precision` in the first inequality
+	lhs := p.Timestamp.Add(-tp.Precision)
+	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
+	rhs := p.Timestamp.Add(tp.MessageDelay).Add(tp.Precision)
+
+	if recvTime.Before(lhs) || (p.Height != initialHeight && recvTime.After(rhs)) {
+		return false
 	}
-	return false
+
+	return true
 }
 
 // String returns a string representation of the Proposal.
