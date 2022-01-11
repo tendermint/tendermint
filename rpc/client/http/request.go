@@ -5,7 +5,6 @@ package http
 
 import (
 	"github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/types"
 )
 
 type abciQueryArgs struct {
