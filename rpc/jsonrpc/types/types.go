@@ -274,12 +274,11 @@ func GetCallInfo(ctx context.Context) *CallInfo {
 	return nil
 }
 
-// RemoteAddr returns the remote address (usually a string "IP:port").
-// If neither HTTPReq nor WSConn is set, an empty string is returned.
-// HTTP:
-//		http.Request#RemoteAddr
-// WS:
-//		result of GetRemoteAddr
+// RemoteAddr returns the remote address (usually a string "IP:port").  If
+// neither HTTPRequest nor WSConn is set, an empty string is returned.
+//
+// For HTTP requests, this reports the request's RemoteAddr.
+// For websocket requests, this reports the connection's GetRemoteAddr.
 func (ci *CallInfo) RemoteAddr() string {
 	if ci == nil {
 		return ""
