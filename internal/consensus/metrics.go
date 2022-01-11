@@ -65,19 +65,20 @@ type Metrics struct {
 	// Histogram of time taken per step annotated with reason that the step proceeded.
 	StepTime metrics.Histogram
 
-	// QuroumPrevoteMessageDelay is the difference in seconds between the proposal
-	// timestamp and the timestamp of the prevote that achieved a quorum in the prevote step.
-	// The prevote that achieved a quorum in the prevote step is determined by first
-	// sorting all of the collected prevotes in a round in ascending order of
-	// timestamp and iterating over this list from lowest timestamp to highest.
-	// During iteration, the total represented by iterated prevotes is kept track of.
-	// The prevote that achieved a quorum is the prevote that brings the summed
-	// voting power in this iteration to above 2/3 of the power on the network.
+	// QuroumPrevoteMessageDelay is the interval in seconds between the proposal
+	// timestamp and the timestamp of the earliest prevote that achieved a quorum
+	// during the prevote step.
+	//
+	// To compute it, sum the voting power over each prevote received, in increasing
+	// order of timestamp. The timestamp of the first prevote to increase the sum to
+	// be above 2/3 of the total voting power of the network defines the endpoint
+	// the endpoint of the interval. Subtract the proposal timestamp from this endpoint
+	// to obtain the quorum delay.
 	QuorumPrevoteMessageDelay metrics.Gauge
 
-	// FullPrevoteMessageDelay is the difference in seconds between the proposal
-	// timestamp and the timestamp of the prevote that achieved 100% of the voting
-	// power on the network in the prevote step when prevotes are ordered by timestamp.
+	// FullPrevoteMessageDelay is the interval in seconds between the proposal
+	// timestamp and the timestamp of the latest prevote in a round where 100%
+	// of the voting power on the network issued prevotes.
 	FullPrevoteMessageDelay metrics.Gauge
 }
 
@@ -216,14 +217,14 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "quorum_prevote_message_delay",
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
-				"of the prevote that achieved a quorum in the prevote step.",
+				"of the latest prevote that achieved a quorum in the prevote step.",
 		}, labels).With(labelsAndValues...),
 		FullPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "complete_prevote_message_delay",
+			Name:      "full_prevote_message_delay",
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
-				"of the prevote that achieved 100% of the voting power in the prevote step.",
+				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
 		}, labels).With(labelsAndValues...),
 	}
 }
