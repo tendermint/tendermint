@@ -148,7 +148,7 @@ func echoViaHTTP(ctx context.Context, cl client.Caller, val string) (string, err
 		"arg": val,
 	}
 	result := new(ResultEcho)
-	if _, err := cl.Call(ctx, "echo", params, result); err != nil {
+	if err := cl.Call(ctx, "echo", params, result); err != nil {
 		return "", err
 	}
 	return result.Value, nil
@@ -159,7 +159,7 @@ func echoIntViaHTTP(ctx context.Context, cl client.Caller, val int) (int, error)
 		"arg": val,
 	}
 	result := new(ResultEchoInt)
-	if _, err := cl.Call(ctx, "echo_int", params, result); err != nil {
+	if err := cl.Call(ctx, "echo_int", params, result); err != nil {
 		return 0, err
 	}
 	return result.Value, nil
@@ -170,7 +170,7 @@ func echoBytesViaHTTP(ctx context.Context, cl client.Caller, bytes []byte) ([]by
 		"arg": bytes,
 	}
 	result := new(ResultEchoBytes)
-	if _, err := cl.Call(ctx, "echo_bytes", params, result); err != nil {
+	if err := cl.Call(ctx, "echo_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
 	return result.Value, nil
@@ -181,7 +181,7 @@ func echoDataBytesViaHTTP(ctx context.Context, cl client.Caller, bytes tmbytes.H
 		"arg": bytes,
 	}
 	result := new(ResultEchoDataBytes)
-	if _, err := cl.Call(ctx, "echo_data_bytes", params, result); err != nil {
+	if err := cl.Call(ctx, "echo_data_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
 	return result.Value, nil
