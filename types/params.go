@@ -129,8 +129,8 @@ func DefaultTimingParams() TimingParams {
 	// TODO(@wbanfield): Determine experimental values for these defaults
 	// https://github.com/tendermint/tendermint/issues/7202
 	return TimingParams{
-		Precision:    1 * time.Nanosecond,
-		MessageDelay: 1 * time.Nanosecond,
+		Precision:    10 * time.Millisecond,
+		MessageDelay: 500 * time.Millisecond,
 	}
 }
 
