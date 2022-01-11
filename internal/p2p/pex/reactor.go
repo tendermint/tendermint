@@ -181,7 +181,6 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on PEX channel; closing...")
 			return
 
 		// outbound requests for new peers
@@ -215,7 +214,6 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
