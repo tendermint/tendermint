@@ -1159,13 +1159,11 @@ func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 			primaryNotInWitnessList = 0
 		}
 	}
-	lightClientInfo := types.LightClientInfo{
+	return &types.LightClientInfo{
 		Primary:           c.primary.String(),
 		Witnesses:         chunks,
 		NumPeers:          len(chunks) + primaryNotInWitnessList,
 		LastTrustedHeight: c.latestTrustedBlock.Height,
 		LastTrustedHash:   c.latestTrustedBlock.Hash(),
 	}
-
-	return &lightClientInfo
 }
