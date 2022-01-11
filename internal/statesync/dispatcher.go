@@ -224,6 +224,9 @@ func (p *BlockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) e
 // String implements stringer interface
 func (p *BlockProvider) String() string { return string(p.peer) }
 
+// Returns the ID address of the provider (NodeID of peer)
+func (p *BlockProvider) ID() string { return string(p.peer) }
+
 //----------------------------------------------------------------
 
 // peerList is a rolling list of peers. This is used to distribute the load of

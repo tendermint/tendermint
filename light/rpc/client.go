@@ -44,7 +44,7 @@ type Client struct {
 	service.BaseService
 
 	next rpcclient.Client
-	lc   LightClient //light.Client
+	lc   LightClient
 
 	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime

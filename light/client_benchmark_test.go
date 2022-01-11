@@ -60,8 +60,11 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
 	return errors.New("not implemented")
 }
-func (impl *providerBenchmarkImpl) String() string {
-	return ""
+
+// provierBenchmarkImpl does not have an ID iteself.
+// Thus we return a sample string
+func (impl *providerBenchmarkImpl) ID() string {
+	return "ip-not-defined.com"
 }
 
 func BenchmarkSequence(b *testing.B) {

@@ -1154,14 +1154,14 @@ func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 	// If primary is in witness list we do not want to count it twice in the number of peers
 	primaryNotInWitnessList := 1
 	for i, val := range c.witnesses {
-		chunks[i] = val.String()
-		if chunks[i] == c.primary.String() {
+		chunks[i] = val.ID()
+		if chunks[i] == c.primary.ID() {
 			primaryNotInWitnessList = 0
 		}
 	}
 	return &types.LightClientInfo{
-		Primary:           c.primary.String(),
-		Witnesses:         chunks,
+		PrimaryID:         c.primary.ID(),
+		WitnessesID:       chunks,
 		NumPeers:          len(chunks) + primaryNotInWitnessList,
 		LastTrustedHeight: c.latestTrustedBlock.Height,
 		LastTrustedHash:   c.latestTrustedBlock.Hash(),
