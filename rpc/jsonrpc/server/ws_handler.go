@@ -369,7 +369,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 				continue
 			}
 
-			fctx := rpctypes.WithCallInfo(ctx, &rpctypes.CallInfo{
+			fctx := rpctypes.WithCallInfo(wsc.Context(), &rpctypes.CallInfo{
 				RPCRequest: &request,
 				WSConn:     wsc,
 			})
