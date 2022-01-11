@@ -32,7 +32,7 @@ func waitForRPC(ctx context.Context, conf *config.Config) {
 	}
 	result := new(coretypes.ResultStatus)
 	for {
-		_, err := client.Call(ctx, "status", map[string]interface{}{}, result)
+		err := client.Call(ctx, "status", map[string]interface{}{}, result)
 		if err == nil {
 			return
 		}

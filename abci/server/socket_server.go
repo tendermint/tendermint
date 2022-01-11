@@ -259,14 +259,26 @@ func (s *SocketServer) handleResponses(
 	responses <-chan *types.Response,
 ) {
 	bw := bufio.NewWriter(conn)
-	for res := range responses {
-		if err := types.WriteMessage(res, bw); err != nil {
-			closeConn <- fmt.Errorf("error writing message: %w", err)
+	for {
+		select {
+		case <-ctx.Done():
 			return
-		}
-		if err := bw.Flush(); err != nil {
-			closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
-			return
+		case res := <-responses:
+			if err := types.WriteMessage(res, bw); err != nil {
+				select {
+				case <-ctx.Done():
+				case closeConn <- fmt.Errorf("error writing message: %w", err):
+				}
+				return
+			}
+			if err := bw.Flush(); err != nil {
+				select {
+				case <-ctx.Done():
+				case closeConn <- fmt.Errorf("error flushing write buffer: %w", err):
+				}
+
+				return
+			}
 		}
 	}
 }
