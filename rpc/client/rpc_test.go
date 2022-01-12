@@ -34,14 +34,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func getHTTPClient(t *testing.T, conf *config.Config) *rpchttp.HTTP {
+func getHTTPClient(t *testing.T, logger log.Logger, conf *config.Config) *rpchttp.HTTP {
 	t.Helper()
 
 	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
-	c.Logger = log.NewTestingLogger(t)
+	c.Logger = logger
 	t.Cleanup(func() {
 		if c.IsRunning() {
 			require.NoError(t, c.Stop())
@@ -51,7 +51,7 @@ func getHTTPClient(t *testing.T, conf *config.Config) *rpchttp.HTTP {
 	return c
 }
 
-func getHTTPClientWithTimeout(t *testing.T, conf *config.Config, timeout time.Duration) *rpchttp.HTTP {
+func getHTTPClientWithTimeout(t *testing.T, logger log.Logger, conf *config.Config, timeout time.Duration) *rpchttp.HTTP {
 	t.Helper()
 
 	rpcAddr := conf.RPC.ListenAddress
@@ -60,7 +60,7 @@ func getHTTPClientWithTimeout(t *testing.T, conf *config.Config, timeout time.Du
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
 
-	c.Logger = log.NewTestingLogger(t)
+	c.Logger = logger
 	t.Cleanup(func() {
 		http.DefaultClient.Timeout = 0
 		if c.IsRunning() {
@@ -78,12 +78,13 @@ func GetClients(t *testing.T, ns service.Service, conf *config.Config) []client.
 	node, ok := ns.(rpclocal.NodeService)
 	require.True(t, ok)
 
-	ncl, err := rpclocal.New(node)
+	logger := log.NewTestingLogger(t)
+	ncl, err := rpclocal.New(logger, node)
 	require.NoError(t, err)
 
 	return []client.Client{
 		ncl,
-		getHTTPClient(t, conf),
+		getHTTPClient(t, logger, conf),
 	}
 }
 
@@ -91,7 +92,9 @@ func TestClientOperations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, conf := NodeSuite(t)
+	logger := log.NewTestingLogger(t)
+
+	_, conf := NodeSuite(t, logger)
 
 	t.Run("NilCustomHTTPClient", func(t *testing.T) {
 		_, err := rpchttp.NewWithClient("http://example.com", nil)
@@ -129,14 +132,16 @@ func TestClientOperations(t *testing.T) {
 	})
 	t.Run("Batching", func(t *testing.T) {
 		t.Run("JSONRPCCalls", func(t *testing.T) {
-			c := getHTTPClient(t, conf)
+			logger := log.NewTestingLogger(t)
+			c := getHTTPClient(t, logger, conf)
 			testBatchedJSONRPCCalls(ctx, t, c)
 		})
 		t.Run("JSONRPCCallsCancellation", func(t *testing.T) {
 			_, _, tx1 := MakeTxKV()
 			_, _, tx2 := MakeTxKV()
 
-			c := getHTTPClient(t, conf)
+			logger := log.NewTestingLogger(t)
+			c := getHTTPClient(t, logger, conf)
 			batch := c.NewBatch()
 			_, err := batch.BroadcastTxCommit(ctx, tx1)
 			require.NoError(t, err)
@@ -150,19 +155,25 @@ func TestClientOperations(t *testing.T) {
 			require.Equal(t, 0, batch.Count())
 		})
 		t.Run("SendingEmptyRequest", func(t *testing.T) {
-			c := getHTTPClient(t, conf)
+			logger := log.NewTestingLogger(t)
+
+			c := getHTTPClient(t, logger, conf)
 			batch := c.NewBatch()
 			_, err := batch.Send(ctx)
 			require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 		})
 		t.Run("ClearingEmptyRequest", func(t *testing.T) {
-			c := getHTTPClient(t, conf)
+			logger := log.NewTestingLogger(t)
+
+			c := getHTTPClient(t, logger, conf)
 			batch := c.NewBatch()
 			require.Zero(t, batch.Clear(), "clearing an empty batch of JSON RPC requests should result in a 0 result")
 		})
 		t.Run("ConcurrentJSONRPC", func(t *testing.T) {
+			logger := log.NewTestingLogger(t)
+
 			var wg sync.WaitGroup
-			c := getHTTPClient(t, conf)
+			c := getHTTPClient(t, logger, conf)
 			for i := 0; i < 50; i++ {
 				wg.Add(1)
 				go func() {
@@ -174,7 +185,9 @@ func TestClientOperations(t *testing.T) {
 		})
 	})
 	t.Run("HTTPReturnsErrorIfClientIsNotRunning", func(t *testing.T) {
-		c := getHTTPClientWithTimeout(t, conf, 100*time.Millisecond)
+		logger := log.NewTestingLogger(t)
+
+		c := getHTTPClientWithTimeout(t, logger, conf, 100*time.Millisecond)
 
 		// on Subscribe
 		_, err := c.Subscribe(ctx, "TestHeaderEvents",
@@ -196,7 +209,9 @@ func TestClientOperations(t *testing.T) {
 func TestClientMethodCalls(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	n, conf := NodeSuite(t)
+	logger := log.NewTestingLogger(t)
+
+	n, conf := NodeSuite(t, logger)
 
 	// for broadcast tx tests
 	pool := getMempool(t, n)
@@ -591,7 +606,9 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	n, conf := NodeSuite(t)
+	logger := log.NewTestingLogger(t)
+
+	n, conf := NodeSuite(t, logger)
 	pool := getMempool(t, n)
 
 	t.Run("UnconfirmedTxs", func(t *testing.T) {
@@ -654,7 +671,9 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 		pool.Flush()
 	})
 	t.Run("Tx", func(t *testing.T) {
-		c := getHTTPClient(t, conf)
+		logger := log.NewTestingLogger(t)
+
+		c := getHTTPClient(t, logger, conf)
 
 		// first we broadcast a tx
 		_, _, tx := MakeTxKV()
@@ -710,7 +729,9 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 		}
 	})
 	t.Run("TxSearchWithTimeout", func(t *testing.T) {
-		timeoutClient := getHTTPClientWithTimeout(t, conf, 10*time.Second)
+		logger := log.NewTestingLogger(t)
+
+		timeoutClient := getHTTPClientWithTimeout(t, logger, conf, 10*time.Second)
 
 		_, _, tx := MakeTxKV()
 		_, err := timeoutClient.BroadcastTxCommit(ctx, tx)
@@ -723,7 +744,9 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 	})
 	t.Run("TxSearch", func(t *testing.T) {
 		t.Skip("Test Asserts Non-Deterministic Results")
-		c := getHTTPClient(t, conf)
+		logger := log.NewTestingLogger(t)
+
+		c := getHTTPClient(t, logger, conf)
 
 		// first we broadcast a few txs
 		for i := 0; i < 10; i++ {

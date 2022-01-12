@@ -95,7 +95,7 @@ func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error
 
 	// 2) Allow websocket connections.
 	wmLogger := p.Logger.With("protocol", "websocket")
-	wm := rpcserver.NewWebsocketManager(r,
+	wm := rpcserver.NewWebsocketManager(wmLogger, r,
 		rpcserver.OnDisconnect(func(remoteAddr string) {
 			err := p.Client.UnsubscribeAll(context.Background(), remoteAddr)
 			if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -104,7 +104,7 @@ func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error
 		}),
 		rpcserver.ReadLimit(p.Config.MaxBodyBytes),
 	)
-	wm.SetLogger(wmLogger)
+
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
 	// 3) Start a client.

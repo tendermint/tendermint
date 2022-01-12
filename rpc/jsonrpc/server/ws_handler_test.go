@@ -49,9 +49,7 @@ func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 	funcMap := map[string]*RPCFunc{
 		"c": NewWSRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
 	}
-	wm := NewWebsocketManager(funcMap)
-
-	wm.SetLogger(logger)
+	wm := NewWebsocketManager(logger, funcMap)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)

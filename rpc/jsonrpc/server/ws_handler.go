@@ -41,6 +41,7 @@ type WebsocketManager struct {
 // NewWebsocketManager returns a new WebsocketManager that passes a map of
 // functions, connection options and logger to new WS connections.
 func NewWebsocketManager(
+	logger log.Logger,
 	funcMap map[string]*RPCFunc,
 	wsConnOptions ...func(*wsConnection),
 ) *WebsocketManager {
@@ -60,14 +61,9 @@ func NewWebsocketManager(
 				return true
 			},
 		},
-		logger:        log.NewNopLogger(),
+		logger:        logger,
 		wsConnOptions: wsConnOptions,
 	}
-}
-
-// SetLogger sets the logger.
-func (wm *WebsocketManager) SetLogger(l log.Logger) {
-	wm.logger = l
 }
 
 // WebsocketHandler upgrades the request/response (via http.Hijack) and starts

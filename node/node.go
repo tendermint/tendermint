@@ -666,7 +666,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 		mux := http.NewServeMux()
 		rpcLogger := n.logger.With("module", "rpc-server")
 		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(routes,
+		wm := rpcserver.NewWebsocketManager(wmLogger, routes,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
 				err := n.rpcEnv.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -675,7 +675,6 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 			}),
 			rpcserver.ReadLimit(cfg.MaxBodyBytes),
 		)
-		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(

@@ -66,10 +66,9 @@ func Handler(rpcConfig *config.RPCConfig, routes core.RoutesMap, logger log.Logg
 			wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 		}
 	}
-	wm := server.NewWebsocketManager(routes,
+	wm := server.NewWebsocketManager(logger, routes,
 		server.OnDisconnect(websocketDisconnectFn),
 		server.ReadLimit(rpcConfig.MaxBodyBytes))
-	wm.SetLogger(wmLogger)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
 	server.RegisterRPCFuncs(mux, routes, logger)
