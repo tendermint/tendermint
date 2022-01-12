@@ -380,6 +380,9 @@ func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 
 // List returns a copy of the list of votes stored by the VoteSet.
 func (voteSet *VoteSet) List() []Vote {
+	if voteSet == nil {
+		return nil
+	}
 	votes := make([]Vote, len(voteSet.votes))
 	for i := range voteSet.votes {
 		votes[i] = *voteSet.votes[i]
@@ -432,6 +435,9 @@ func (voteSet *VoteSet) HasTwoThirdsAny() bool {
 }
 
 func (voteSet *VoteSet) HasAll() bool {
+	if voteSet == nil {
+		return false
+	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.sum == voteSet.valSet.TotalVotingPower()
