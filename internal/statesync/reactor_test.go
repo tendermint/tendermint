@@ -194,7 +194,6 @@ func setup(
 	)
 
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	require.NoError(t, rts.reactor.Start(ctx))
 	require.True(t, rts.reactor.IsRunning())
