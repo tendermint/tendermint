@@ -297,12 +297,12 @@ func TestIsTimely(t *testing.T) {
 				Timestamp: testCase.proposalTime,
 			}
 
-			tp := TimingParams{
+			sp := SynchronyParams{
 				Precision:    testCase.precision,
 				MessageDelay: testCase.msgDelay,
 			}
 
-			ti := p.IsTimely(testCase.recvTime, tp, testCase.genesisHeight)
+			ti := p.IsTimely(testCase.recvTime, sp, testCase.genesisHeight)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}

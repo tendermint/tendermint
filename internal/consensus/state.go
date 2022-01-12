@@ -1362,12 +1362,12 @@ func (cs *State) enterPrevote(ctx context.Context, height int64, round int32) {
 }
 
 func (cs *State) proposalIsTimely() bool {
-	tp := types.TimingParams{
-		Precision:    cs.state.ConsensusParams.Timing.Precision,
-		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
+	sp := types.SynchronyParams{
+		Precision:    cs.state.ConsensusParams.Synchrony.Precision,
+		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 	}
 
-	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.state.InitialHeight)
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.state.InitialHeight)
 }
 
 func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32) {
@@ -1399,9 +1399,9 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 			"received",
 			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
 			"msg_delay",
-			cs.state.ConsensusParams.Timing.MessageDelay,
+			cs.state.ConsensusParams.Synchrony.MessageDelay,
 			"precision",
-			cs.state.ConsensusParams.Timing.Precision)
+			cs.state.ConsensusParams.Synchrony.Precision)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}

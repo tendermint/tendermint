@@ -203,7 +203,7 @@ func TestStateSyncVectors(t *testing.T) {
 					Version: &tmproto.VersionParams{
 						AppVersion: 11,
 					},
-					Timing: &tmproto.TimingParams{
+					Synchrony: &tmproto.SynchronyParams{
 						MessageDelay: 550,
 						Precision:    90,
 					},
