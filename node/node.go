@@ -63,23 +63,17 @@ type nodeImpl struct {
 	isListening bool
 
 	// services
-	eventBus         *eventbus.EventBus // pub/sub for services
 	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
-	blockStore       *store.BlockStore // store the blockchain to disk
-	bcReactor        service.Service   // for block-syncing
-	mempoolReactor   service.Service   // for gossipping transactions
-	mempool          mempool.Mempool
+	blockStore       *store.BlockStore  // store the blockchain to disk
 	stateSync        bool               // whether the node should state sync on startup
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-	consensusReactor *consensus.Reactor // for participating in the consensus
-	pexReactor       service.Service    // for exchanging peer addresses
-	evidenceReactor  service.Service
-	rpcListeners     []net.Listener // rpc servers
-	shutdownOps      closer
-	indexerService   service.Service
-	rpcEnv           *rpccore.Environment
-	prometheusSrv    *http.Server
+
+	services      []service.Service
+	rpcListeners  []net.Listener // rpc servers
+	shutdownOps   closer
+	rpcEnv        *rpccore.Environment
+	prometheusSrv *http.Server
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
@@ -339,6 +333,7 @@ func makeNode(
 		peerManager.Subscribe(ctx),
 		blockSync && !stateSync,
 		nodeMetrics.consensus,
+		eventBus,
 	)
 	if err != nil {
 		return nil, combineCloseError(
@@ -372,6 +367,7 @@ func makeNode(
 		blockStore,
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
+		eventBus,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -384,7 +380,6 @@ func makeNode(
 			return nil, combineCloseError(err, makeCloser(closers))
 		}
 	}
-
 	node := &nodeImpl{
 		config:        cfg,
 		logger:        logger,
@@ -396,19 +391,22 @@ func makeNode(
 		nodeInfo:    nodeInfo,
 		nodeKey:     nodeKey,
 
+		eventSinks: eventSinks,
+
+		services: []service.Service{
+			eventBus,
+			indexerService,
+			evReactor,
+			mpReactor,
+			csReactor,
+			bcReactor,
+			pexReactor,
+		},
+
 		stateStore:       stateStore,
 		blockStore:       blockStore,
-		bcReactor:        bcReactor,
-		mempoolReactor:   mpReactor,
-		mempool:          mp,
-		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
-		pexReactor:       pexReactor,
-		evidenceReactor:  evReactor,
-		indexerService:   indexerService,
-		eventBus:         eventBus,
-		eventSinks:       eventSinks,
 
 		shutdownOps: makeCloser(closers),
 
@@ -494,40 +492,25 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	}
 	n.isListening = true
 
-	if err := n.bcReactor.Start(ctx); err != nil {
-		return err
-	}
+	for _, reactor := range n.services {
+		if err := reactor.Start(ctx); err != nil {
+			if errors.Is(err, service.ErrAlreadyStarted) {
+				continue
+			}
 
-	if err := n.consensusReactor.Start(ctx); err != nil {
-		return err
+			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
+		}
 	}
 
 	if err := n.stateSyncReactor.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := n.mempoolReactor.Start(ctx); err != nil {
-		return err
-	}
-
-	if err := n.evidenceReactor.Start(ctx); err != nil {
-		return err
-	}
-
-	if n.config.P2P.PexReactor {
-		if err := n.pexReactor.Start(ctx); err != nil {
-			return err
-		}
-	}
-
 	// Run state sync
 	// TODO: We shouldn't run state sync if we already have state that has a
 	// LastBlockHeight that is not InitialHeight
 	if n.stateSync {
-		bcR, ok := n.bcReactor.(consensus.BlockSyncReactor)
-		if !ok {
-			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
-		}
+		bcR := n.rpcEnv.BlockSyncReactor
 
 		// we need to get the genesis state to get parameters such as
 		state, err := sm.MakeGenesisState(n.genesisDoc)
@@ -540,7 +523,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		// At the beginning of the statesync start, we use the initialHeight as the event height
 		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
 		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
-		if err := n.eventBus.PublishEventStateSyncStatus(ctx, d); err != nil {
+		if err := n.stateSyncReactor.PublishStatus(ctx, d); err != nil {
 			n.logger.Error("failed to emit the statesync start event", "err", err)
 		}
 
@@ -559,9 +542,9 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			return err
 		}
 
-		n.consensusReactor.SetStateSyncingMetrics(0)
+		n.rpcEnv.ConsensusReactor.SetStateSyncingMetrics(0)
 
-		if err := n.eventBus.PublishEventStateSyncStatus(ctx,
+		if err := n.stateSyncReactor.PublishStatus(ctx,
 			types.EventDataStateSyncStatus{
 				Complete: true,
 				Height:   ssState.LastBlockHeight,
@@ -574,13 +557,13 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		// advancing reactors to be able to control which one of the three
 		// is running
 		// FIXME Very ugly to have these metrics bleed through here.
-		n.consensusReactor.SetBlockSyncingMetrics(1)
+		n.rpcEnv.ConsensusReactor.SetBlockSyncingMetrics(1)
 		if err := bcR.SwitchToBlockSync(ctx, ssState); err != nil {
 			n.logger.Error("failed to switch to block sync", "err", err)
 			return err
 		}
 
-		if err := n.eventBus.PublishEventBlockSyncStatus(ctx,
+		if err := bcR.PublishStatus(ctx,
 			types.EventDataBlockSyncStatus{
 				Complete: false,
 				Height:   ssState.LastBlockHeight,
@@ -597,25 +580,17 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 func (n *nodeImpl) OnStop() {
 	n.logger.Info("Stopping Node")
 
-	if n.eventBus != nil {
-		n.eventBus.Wait()
-	}
-	if n.indexerService != nil {
-		n.indexerService.Wait()
-	}
-
 	for _, es := range n.eventSinks {
 		if err := es.Stop(); err != nil {
 			n.logger.Error("failed to stop event sink", "err", err)
 		}
 	}
 
-	n.bcReactor.Wait()
-	n.consensusReactor.Wait()
+	for _, reactor := range n.services {
+		reactor.Wait()
+	}
+
 	n.stateSyncReactor.Wait()
-	n.mempoolReactor.Wait()
-	n.evidenceReactor.Wait()
-	n.pexReactor.Wait()
 	n.router.Wait()
 	n.isListening = false
 
@@ -693,7 +668,7 @@ func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
 		wmLogger := rpcLogger.With("protocol", "websocket")
 		wm := rpcserver.NewWebsocketManager(routes,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
-				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+				err := n.rpcEnv.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
@@ -788,19 +763,9 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 	return srv
 }
 
-// ConsensusReactor returns the Node's ConsensusReactor.
-func (n *nodeImpl) ConsensusReactor() *consensus.Reactor {
-	return n.consensusReactor
-}
-
-// Mempool returns the Node's mempool.
-func (n *nodeImpl) Mempool() mempool.Mempool {
-	return n.mempool
-}
-
 // EventBus returns the Node's EventBus.
 func (n *nodeImpl) EventBus() *eventbus.EventBus {
-	return n.eventBus
+	return n.rpcEnv.EventBus
 }
 
 // PrivValidator returns the Node's PrivValidator.

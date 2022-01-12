@@ -101,9 +101,7 @@ func (env *Environment) GetConsensusState(ctx context.Context) (*coretypes.Resul
 // ConsensusParams gets the consensus parameters at the given block height.
 // If no height is provided, it will fetch the latest consensus params.
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
-func (env *Environment) ConsensusParams(
-	ctx context.Context,
-	heightPtr *int64) (*coretypes.ResultConsensusParams, error) {
+func (env *Environment) ConsensusParams(ctx context.Context, heightPtr *int64) (*coretypes.ResultConsensusParams, error) {
 
 	// The latest consensus params that we know is the consensus params after the
 	// last block.
