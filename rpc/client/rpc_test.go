@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/mempool"
+	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -576,10 +577,10 @@ func TestClientMethodCalls(t *testing.T) {
 func getMempool(t *testing.T, srv service.Service) mempool.Mempool {
 	t.Helper()
 	n, ok := srv.(interface {
-		Mempool() mempool.Mempool
+		RPCEnvironment() *rpccore.Environment
 	})
 	require.True(t, ok)
-	return n.Mempool()
+	return n.RPCEnvironment().Mempool
 }
 
 // these cases are roughly the same as the TestClientMethodCalls, but
