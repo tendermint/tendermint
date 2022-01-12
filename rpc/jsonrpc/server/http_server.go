@@ -178,69 +178,6 @@ func writeRPCResponse(w http.ResponseWriter, log log.Logger, rsps ...rpctypes.RP
 	w.Write(body)
 }
 
-// WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it
-// to w.
-//
-// Maps JSON RPC error codes to HTTP Status codes as follows:
-//
-// HTTP Status	code	message
-// 500	-32700	Parse error.
-// 400	-32600	Invalid Request.
-// 404	-32601	Method not found.
-// 500	-32602	Invalid params.
-// 500	-32603	Internal error.
-// 500	-32099..-32000	Server error.
-//
-// source: https://www.jsonrpc.org/historical/json-rpc-over-http.html
-func WriteRPCResponseHTTPError(
-	w http.ResponseWriter,
-	res rpctypes.RPCResponse,
-) error {
-	if res.Error == nil {
-		panic("tried to write http error response without RPC error")
-	}
-
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		return fmt.Errorf("json marshal: %w", err)
-	}
-
-	var httpCode int
-	switch res.Error.Code {
-	case -32600:
-		httpCode = http.StatusBadRequest
-	case -32601:
-		httpCode = http.StatusNotFound
-	default:
-		httpCode = http.StatusInternalServerError
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpCode)
-	_, err = w.Write(jsonBytes)
-	return err
-}
-
-// WriteRPCResponseHTTP marshals res as JSON (with indent) and writes it to w.
-// If the rpc response can be cached, add cache-control to the response header.
-func WriteRPCResponseHTTP(w http.ResponseWriter, res ...rpctypes.RPCResponse) error {
-	var v interface{}
-	if len(res) == 1 {
-		v = res[0]
-	} else {
-		v = res
-	}
-
-	jsonBytes, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return fmt.Errorf("json marshal: %w", err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(jsonBytes)
-	return err
-}
-
 //-----------------------------------------------------------------------------
 
 // RecoverAndLogHandler wraps an HTTP handler, adding error logging.
