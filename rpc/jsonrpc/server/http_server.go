@@ -169,7 +169,7 @@ func WriteRPCResponseHTTPError(
 
 // WriteRPCResponseHTTP marshals res as JSON (with indent) and writes it to w.
 // If the rpc response can be cached, add cache-control to the response header.
-func WriteRPCResponseHTTP(w http.ResponseWriter, c bool, res ...rpctypes.RPCResponse) error {
+func WriteRPCResponseHTTP(w http.ResponseWriter, res ...rpctypes.RPCResponse) error {
 	var v interface{}
 	if len(res) == 1 {
 		v = res[0]
@@ -182,10 +182,7 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, c bool, res ...rpctypes.RPCResp
 		return fmt.Errorf("json marshal: %w", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if c {
-		w.Header().Set("Cache-Control", "max-age=31536000") // expired after one year
-	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(jsonBytes)
 	return err
 }
@@ -225,7 +222,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 
 				// If RPCResponse
 				if res, ok := e.(rpctypes.RPCResponse); ok {
-					if wErr := WriteRPCResponseHTTP(rww, false, res); wErr != nil {
+					if wErr := WriteRPCResponseHTTP(rww, res); wErr != nil {
 						logger.Error("failed to write response", "res", res, "err", wErr)
 					}
 				} else {
