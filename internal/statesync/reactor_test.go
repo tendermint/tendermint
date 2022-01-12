@@ -193,13 +193,15 @@ func setup(
 		rts.reactor.metrics,
 	)
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	require.NoError(t, rts.reactor.Start(ctx))
 	require.True(t, rts.reactor.IsRunning())
 
-	t.Cleanup(func() {
-		rts.reactor.Wait()
-		require.False(t, rts.reactor.IsRunning())
-	})
+	t.Cleanup(cancel)
+	t.Cleanup(rts.reactor.Wait)
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }
