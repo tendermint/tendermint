@@ -162,7 +162,6 @@ func (bs *BaseService) Start(ctx context.Context) error {
 		return nil
 	}
 
-	bs.logger.Debug("not starting service; already started", "service", bs.name, "impl", bs.impl.String())
 	return ErrAlreadyStarted
 }
 
@@ -183,7 +182,6 @@ func (bs *BaseService) Stop() error {
 		return nil
 	}
 
-	bs.logger.Debug("not stopping service; already stopped", "service", bs.name, "impl", bs.impl.String())
 	return ErrAlreadyStopped
 }
 
