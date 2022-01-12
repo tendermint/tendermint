@@ -50,7 +50,7 @@ func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []index
 		"validators":       server.NewRPCFunc(env.Validators, "height,page,per_page"),
 		"tx":               server.NewRPCFunc(env.Tx, "hash,prove"),
 		"tx_search":        server.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by"),
-		"block_search":     server.NewRPCFunc(env.BlockSearch, "query,page,per_page,"),
+		"block_search":     server.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by"),
 	}
 }
 
