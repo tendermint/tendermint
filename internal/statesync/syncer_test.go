@@ -163,7 +163,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 				chunkRequests[msg.Index]++
 				chunkRequestsMtx.Unlock()
 				seen++
-				t.Logf("added chunk: %d", msg.Index)
+				t.Logf("added chunk (%d of 4): %d", seen, msg.Index)
 			}
 		}
 	}()
