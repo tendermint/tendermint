@@ -124,6 +124,60 @@ func ServeTLS(
 	return nil
 }
 
+// writeInternalError writes an internal server error (500) to w with the text
+// of err in the body. This is a fallback used when a handler is unable to
+// write the expected response.
+func writeInternalError(w http.ResponseWriter, err error) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintln(w, err.Error())
+}
+
+// writeHTTPResponse writes a JSON-RPC response to w. If rsp encodes an error,
+// the response body is its error object; otherwise its responses is the result.
+//
+// Unless there is an error encoding the response, the status is 200 OK.
+func writeHTTPResponse(w http.ResponseWriter, log log.Logger, rsp rpctypes.RPCResponse) {
+	var body []byte
+	var err error
+	if rsp.Error != nil {
+		body, err = json.Marshal(rsp.Error)
+	} else {
+		body = rsp.Result
+	}
+	if err != nil {
+		log.Error("Error encoding RPC response: %w", err)
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
+}
+
+// writeRPCResponse writes one or more JSON-RPC responses to w. A single
+// response is encoded as an object, otherwise the response is sent as a batch
+// (array) of response objects.
+//
+// Unless there is an error encoding the responses, the status is 200 OK.
+func writeRPCResponse(w http.ResponseWriter, log log.Logger, rsps ...rpctypes.RPCResponse) {
+	var body []byte
+	var err error
+	if len(rsps) == 1 {
+		body, err = json.Marshal(rsps[0])
+	} else {
+		body, err = json.Marshal(rsps)
+	}
+	if err != nil {
+		log.Error("Error encoding RPC response: %w", err)
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
+}
+
 // WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it
 // to w.
 //
