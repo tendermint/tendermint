@@ -8,14 +8,12 @@ import (
 	"github.com/rs/cors"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Server defines parameters for running an Inspector rpc server.
@@ -33,12 +31,11 @@ type eventBusUnsubscriber interface {
 // Routes returns the set of routes used by the Inspector server.
 func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink, logger log.Logger) core.RoutesMap {
 	env := &core.Environment{
-		Config:           cfg,
-		EventSinks:       es,
-		StateStore:       s,
-		BlockStore:       bs,
-		ConsensusReactor: waitSyncCheckerImpl{},
-		Logger:           logger,
+		Config:     cfg,
+		EventSinks: es,
+		StateStore: s,
+		BlockStore: bs,
+		Logger:     logger,
 	}
 	return core.RoutesMap{
 		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight"),
@@ -91,16 +88,6 @@ func addCORSHandler(rpcConfig *config.RPCConfig, h http.Handler) http.Handler {
 	})
 	h = corsMiddleware.Handler(h)
 	return h
-}
-
-type waitSyncCheckerImpl struct{}
-
-func (waitSyncCheckerImpl) WaitSync() bool {
-	return false
-}
-
-func (waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool) {
-	return nil, false
 }
 
 // ListenAndServe listens on the address specified in srv.Addr and handles any

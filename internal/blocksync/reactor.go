@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
@@ -96,7 +97,8 @@ type Reactor struct {
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
 
-	metrics *consensus.Metrics
+	metrics  *consensus.Metrics
+	eventBus *eventbus.EventBus
 
 	syncStartTime time.Time
 }
@@ -113,6 +115,7 @@ func NewReactor(
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
 	metrics *consensus.Metrics,
+	eventBus *eventbus.EventBus,
 ) (*Reactor, error) {
 
 	if state.LastBlockHeight != store.Height() {
@@ -146,6 +149,7 @@ func NewReactor(
 		blockSyncOutBridgeCh: make(chan p2p.Envelope),
 		peerUpdates:          peerUpdates,
 		metrics:              metrics,
+		eventBus:             eventBus,
 		syncStartTime:        time.Time{},
 	}
 
@@ -636,6 +640,13 @@ func (r *Reactor) GetRemainingSyncTime() time.Duration {
 	remain := float64(targetSyncs-currentSyncs) / lastSyncRate
 
 	return time.Duration(int64(remain * float64(time.Second)))
+}
+
+func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataBlockSyncStatus) error {
+	if r.eventBus == nil {
+		return errors.New("event bus is not configured")
+	}
+	return r.eventBus.PublishEventBlockSyncStatus(ctx, event)
 }
 
 // atomicBool is an atomic Boolean, safe for concurrent use by multiple

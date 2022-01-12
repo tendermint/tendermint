@@ -13,6 +13,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -156,6 +157,7 @@ type Reactor struct {
 	providers     map[types.NodeID]*BlockProvider
 	stateProvider StateProvider
 
+	eventBus           *eventbus.EventBus
 	metrics            *Metrics
 	backfillBlockTotal int64
 	backfilledBlocks   int64
@@ -179,6 +181,7 @@ func NewReactor(
 	blockStore *store.BlockStore,
 	tempDir string,
 	ssMetrics *Metrics,
+	eventBus *eventbus.EventBus,
 ) (*Reactor, error) {
 
 	chDesc := getChannelDescriptors()
@@ -219,6 +222,7 @@ func NewReactor(
 		dispatcher:    NewDispatcher(blockCh),
 		providers:     make(map[types.NodeID]*BlockProvider),
 		metrics:       ssMetrics,
+		eventBus:      eventBus,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -246,6 +250,14 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 func (r *Reactor) OnStop() {
 	// tell the dispatcher to stop sending any more requests
 	r.dispatcher.Close()
+}
+
+func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataStateSyncStatus) error {
+	if r.eventBus == nil {
+		return errors.New("event system is not configured")
+	}
+
+	return r.eventBus.PublishEventStateSyncStatus(ctx, event)
 }
 
 // Sync runs a state sync, fetching snapshots and providing chunks to the
