@@ -48,7 +48,7 @@ func TestABCIMock(t *testing.T) {
 
 	// now, let's try to make some calls
 	_, err := m.ABCIInfo(ctx)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "foobar", err.Error())
 
 	// query always returns the response
@@ -62,7 +62,7 @@ func TestABCIMock(t *testing.T) {
 
 	// non-commit calls always return errors
 	_, err = m.BroadcastTxSync(ctx, goodTx)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "must commit", err.Error())
 	_, err = m.BroadcastTxAsync(ctx, goodTx)
 	require.Error(t, err)
@@ -70,7 +70,7 @@ func TestABCIMock(t *testing.T) {
 
 	// commit depends on the input
 	_, err = m.BroadcastTxCommit(ctx, badTx)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "bad tx", err.Error())
 	bres, err := m.BroadcastTxCommit(ctx, goodTx)
 	require.NoError(t, err, "%+v", err)
@@ -106,7 +106,7 @@ func TestABCIRecorder(t *testing.T) {
 		bytes.HexBytes("data"),
 		client.ABCIQueryOptions{Prove: false},
 	)
-	assert.NoError(t, err, "expected error on query")
+	assert.Error(t, err, "expected error on query")
 	require.Equal(t, 2, len(r.Calls))
 
 	info := r.Calls[0]
