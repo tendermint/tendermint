@@ -48,7 +48,7 @@ More details on managing state across connections can be found in the section on
 ## Errors
 
 The `Query`, and `CheckTx` methods include a `Code` field in their `Response*`.
-The `Code` field is also included in type `DeliverTxResult`, used by
+The `Code` field is also included in type `TxResult`, used by
 method `FinalizeBlock`'s `Response*`.
 Field `Code` is meant to contain an application-specific response code.
 A response code of `0` indicates no error.  Any other response code
@@ -65,7 +65,7 @@ of these methods, the Application must crash to ensure that the error is safely
 handled by an operator.
 
 Method `FinalizeBlock` is a special case. It contains a number of
-`Code` and `Codespace` fields as part of type `DeliverTxResult`. Each of
+`Code` and `Codespace` fields as part of type `TxResult`. Each of
 these codes reports errors related to the transaction it is attached to.
 However, `FinalizeBlock` does not return errors at the top level, so the
 same considerations on critical issues made for `Echo`, `Info`, and
@@ -81,10 +81,10 @@ When Tendermint receives a `ResponseCheckTx` with a non-zero `Code`, the associa
 transaction will not be added to Tendermint's mempool or it will be removed if
 it is already included.
 
-### `DeliverTxResult` (as part of `FinalizeBlock`)
+### `TxResult` (as part of `FinalizeBlock`)
 
-The `DeliverTxResult` type delivers transactions from Tendermint to the Application.
-When Tendermint receives a `ResponseFinalizeBlock` containing a `DeliverTxResult`
+The `TxResult` type delivers transactions from Tendermint to the Application.
+When Tendermint receives a `ResponseFinalizeBlock` containing a `TxResult`
 with a non-zero `Code`, the response code is logged.
 The transaction was already included in a block, so the `Code` does not influence
 Tendermint consensus.

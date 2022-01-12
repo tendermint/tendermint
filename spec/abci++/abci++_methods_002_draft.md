@@ -305,7 +305,7 @@ From the App's perspective, they'll probably skip ProcessProposal
     | modified_tx             | bool                                             | The Application sets it to true to denote it made changes to transactions                   | 1            |
     | tx                      | repeated [TransactionRecord](#transactionrecord) | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
-    | tx_result               | repeated [DeliverTxResult](#delivertxresult)     | List of structures containing the data resulting from executing the transactions            | 4            |
+    | tx_result               | repeated [TxResult](#txresult)                   | List of structures containing the data resulting from executing the transactions            | 4            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
@@ -572,7 +572,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
     | block_events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
-    | tx_result               | repeated [DeliverTxResult](#delivertxresult)                | List of structures containing the data resulting from executing the transactions | 2            |
+    | tx_result               | repeated [TxResult](#txresult)                              | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 6            |
@@ -591,7 +591,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     * `ResponseFinalizeBlock.tx_result[i].Code == 0` only if the _i_-th transaction is fully valid.
     * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash`,
       `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates` as a result of executing the block.
+      `ResponseFinalizeBlock.consensus_param_updates` as a result of executing the block.
         * The values for `ResponseFinalizeBlock.validator_updates`, or
           `ResponseFinalizeBlock.consensus_param_updates` may be empty. In this case, Tendermint will keep
           the current values.
@@ -603,9 +603,9 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
           params for block `H+1`. For more information on the consensus parameters,
           see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
-    * In same-block execution mode, Tendermint will ignore values for `ResponseFinalizeBlock.app_hash`,
-      `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`, as those data have been provided by `PrepareProposal`.
+    * In same-block execution mode, Tendermint will log an error and ignore values for
+      `ResponseFinalizeBlock.app_hash`, `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`,
+      and `ResponsePrepareProposal.consensus_param_updates`, as those data have been provided by `PrepareProposal`.
     * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
     * `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state.
     * `ResponseFinalizeBlock.app_hash` is included
@@ -618,11 +618,10 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
           of `RequestFinalizeBlock` and the previous committed state.
     * Later calls to `Query` can return proofs about the application state anchored
       in this Merkle root hash.
-    * Use `retain_height` with caution! If all nodes in the network remove historical
-      blocks then this data is permanently lost, and no new nodes will be able to
-      join the network and bootstrap. Historical blocks may also be required for
-      other purposes, e.g. auditing, replay of non-persisted heights, light client
-      verification, and so on.
+    * Use `ResponseFinalizeBlock.retain_height` with caution! If all nodes in the network remove historical
+      blocks then this data is permanently lost, and no new nodes will be able to join the network and
+      bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of
+      non-persisted heights, light client verification, and so on.
     * Just as `ProcessProposal`, the implementation of `FinalizeBlock` MUST be deterministic, since it is
       making the Application's state evolve in the context of state machine replication.
     * Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
@@ -780,7 +779,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
 ## Data types introduced in ABCI++
 
-### DeliverTxResult
+### TxResult
 
 * **Fields**:
 

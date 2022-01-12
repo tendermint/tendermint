@@ -31,7 +31,11 @@ compute various hashes in the block header that will finally be part of the prop
   mode, $p$'s Application does not provide values for the following parameters in `ResponsePrepareProposal`:
   _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_.
 
-In practical terms, Requirement 2 implies that Tendermint will ignore those parameters in `ResponsePrepareProposal`.
+In practical terms, Requirements 1 and 2 imply that Tendermint will (a) panic if the Application is in
+same-block execution mode and _does not_ provide values for
+_AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorUpdates_, or
+(b) log an error if the Application is in next-block execution mode and _does_ provide values for
+_AppHash_, _TxResults_, _ConsensusParams_, or _ValidatorUpdates_ (the values provided will be ignored).
 
 * Requirement 3 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes $p$ and $q$,
   if $q$'s Tendermint calls `RequestProcessProposal` on $v'_p$,
