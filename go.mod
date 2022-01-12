@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.15
 
 require (
-	github.com/BurntSushi/toml v0.4.1
+	github.com/BurntSushi/toml v1.0.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.2.3
 	github.com/btcsuite/btcd v0.22.0-beta
