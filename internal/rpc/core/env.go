@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -52,11 +53,6 @@ type transport interface {
 	NodeInfo() types.NodeInfo
 }
 
-type consensusReactor interface {
-	WaitSync() bool
-	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
-}
-
 type peerManager interface {
 	Peers() []types.NodeID
 	Addresses(types.NodeID) []p2p.NodeAddress
@@ -75,7 +71,8 @@ type Environment struct {
 	BlockStore       sm.BlockStore
 	EvidencePool     sm.EvidencePool
 	ConsensusState   consensusState
-	ConsensusReactor consensusReactor
+	ConsensusReactor *consensus.Reactor
+	BlockSyncReactor *blocksync.Reactor
 
 	// Legacy p2p stack
 	P2PTransport transport
@@ -89,7 +86,6 @@ type Environment struct {
 	EventSinks        []indexer.EventSink
 	EventBus          *eventbus.EventBus // thread safe
 	Mempool           mempool.Mempool
-	BlockSyncReactor  consensus.BlockSyncReactor
 	StateSyncMetricer statesync.Metricer
 
 	Logger log.Logger
@@ -199,9 +195,13 @@ func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, 
 }
 
 func (env *Environment) latestUncommittedHeight() int64 {
-	nodeIsSyncing := env.ConsensusReactor.WaitSync()
-	if nodeIsSyncing {
-		return env.BlockStore.Height()
+	if env.ConsensusReactor != nil {
+		// consensus reactor can be nil in inspect mode.
+
+		nodeIsSyncing := env.ConsensusReactor.WaitSync()
+		if nodeIsSyncing {
+			return env.BlockStore.Height()
+		}
 	}
 	return env.BlockStore.Height() + 1
 }
