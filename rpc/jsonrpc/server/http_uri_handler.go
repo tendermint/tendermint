@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"reflect"
 	"regexp"
 	"strings"
@@ -213,13 +212,4 @@ func getParam(r *http.Request, param string) string {
 		s = r.FormValue(param)
 	}
 	return s
-}
-
-func dumpHTTPRequest(r *http.Request) string {
-	d, e := httputil.DumpRequest(r, true)
-	if e != nil {
-		return e.Error()
-	}
-
-	return string(d)
 }
