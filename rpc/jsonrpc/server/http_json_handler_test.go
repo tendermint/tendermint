@@ -18,8 +18,8 @@ import (
 
 func testMux() *http.ServeMux {
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s,i", false),
-		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height", true),
+		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height"),
 	}
 	mux := http.NewServeMux()
 	logger := log.NewNopLogger()
@@ -238,7 +238,7 @@ func TestRPCResponseCache(t *testing.T) {
 
 	// Always expecting back a JSONRPCResponse
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
-	require.Equal(t, "max-age=31536000", res.Header.Get("Cache-control"))
+	require.Equal(t, "", res.Header.Get("Cache-control"))
 
 	_, err := io.ReadAll(res.Body)
 	res.Body.Close()
