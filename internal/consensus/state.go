@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	"github.com/tendermint/tendermint/internal/libs/fail"
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
@@ -866,14 +865,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 				))
 			}
 
-			if _, ok := mi.Msg.(*VoteMessage); ok {
-				// we actually want to simulate failing during
-				// the previous WriteSync, but this isn't easy to do.
-				// Equivalent would be to fail here and manually remove
-				// some bytes from the end of the wal.
-				fail.Fail() // XXX
-			}
-
 			// handles proposals, block parts, votes
 			cs.handleMsg(ctx, mi)
 
@@ -1705,8 +1696,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 	)
 	logger.Debug(fmt.Sprintf("%v", block))
 
-	fail.Fail() // XXX
-
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
@@ -1718,8 +1707,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		// Happens during replay if we already saved the block but didn't commit
 		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
 	}
-
-	fail.Fail() // XXX
 
 	// Write EndHeightMessage{} for this height, implying that the blockstore
 	// has saved the block.
@@ -1742,8 +1729,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		))
 	}
 
-	fail.Fail() // XXX
-
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 
@@ -1762,15 +1747,11 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		return
 	}
 
-	fail.Fail() // XXX
-
 	// must be called before we update state
 	cs.RecordMetrics(height, block)
 
 	// NewHeightStep!
 	cs.updateToState(ctx, stateCopy)
-
-	fail.Fail() // XXX
 
 	// Private validator might have changed it's key pair => refetch pubkey.
 	if err := cs.updatePrivValidatorPubKey(ctx); err != nil {
