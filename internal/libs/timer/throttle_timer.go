@@ -55,13 +55,6 @@ func (t *ThrottleTimer) Set() {
 	}
 }
 
-func (t *ThrottleTimer) Unset() {
-	t.mtx.Lock()
-	defer t.mtx.Unlock()
-	t.isSet = false
-	t.timer.Stop()
-}
-
 // For ease of .Stop()'ing services before .Start()'ing them,
 // we ignore .Stop()'s on nil ThrottleTimers
 func (t *ThrottleTimer) Stop() bool {
