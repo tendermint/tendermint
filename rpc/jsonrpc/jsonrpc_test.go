@@ -53,11 +53,11 @@ type ResultEchoDataBytes struct {
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"echo":            server.NewRPCFunc(EchoResult, "arg", false),
+	"echo":            server.NewRPCFunc(EchoResult, "arg"),
 	"echo_ws":         server.NewWSRPCFunc(EchoWSResult, "arg"),
-	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg", false),
-	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg", false),
-	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg", false),
+	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg"),
+	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg"),
+	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
 
 func EchoResult(ctx context.Context, v string) (*ResultEcho, error) {
