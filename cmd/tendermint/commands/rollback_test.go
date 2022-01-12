@@ -21,14 +21,15 @@ func TestRollbackIntegration(t *testing.T) {
 	cfg, err := rpctest.CreateConfig(t.Name())
 	require.NoError(t, err)
 	cfg.BaseConfig.DBBackend = "goleveldb"
-	app, err := e2e.NewApplication(e2e.DefaultConfig(dir))
+	e2eCfg := e2e.DefaultConfig(dir)
+	app, err := e2e.NewApplication(e2eCfg)
 
 	cancelCtx, cancel := context.WithCancel(ctx)
 	require.NoError(t, err)
 	node, _, err := rpctest.StartTendermint(cancelCtx, cfg, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
+	// we run a height here.
 
-	time.Sleep(3 * time.Second)
 	cancel()
 	node.Wait()
 	require.False(t, node.IsRunning())
