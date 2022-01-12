@@ -604,13 +604,6 @@ func (n *nodeImpl) OnStop() {
 }
 
 func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
-	if n.config.Mode == config.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey(ctx)
-		if pubKey == nil || err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
-		}
-		n.rpcEnv.PubKey = pubKey
-	}
 	if err := n.rpcEnv.InitGenesisChunks(); err != nil {
 		return nil, err
 	}
