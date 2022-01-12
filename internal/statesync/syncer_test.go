@@ -68,7 +68,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerAID := types.NodeID("aa")
 	peerBID := types.NodeID("bb")
 	peerCID := types.NodeID("cc")
-	rts := setup(ctx, t, connSnapshot, connQuery, stateProvider, 3)
+	rts := setup(ctx, t, connSnapshot, connQuery, stateProvider, 4)
 
 	rts.reactor.syncer = rts.syncer
 
