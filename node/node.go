@@ -402,6 +402,10 @@ func makeNode(
 		},
 	}
 
+	if cfg.Mode == config.ModeValidator {
+		node.rpcEnv.PubKey = pubKey
+	}
+
 	node.rpcEnv.P2PTransport = node
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
