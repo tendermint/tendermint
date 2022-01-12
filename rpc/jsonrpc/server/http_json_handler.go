@@ -53,12 +53,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			return
 		}
 
-		// Set the default response cache to true unless
-		// 1. Any RPC request rrror.
-		// 2. Any RPC request doesn't allow to be cached.
-		// 3. Any RPC request has the height argument and the value is 0 (the default).
 		var responses []rpctypes.RPCResponse
-		mayCache := true
 		for _, req := range requests {
 			// Ignore notifications, which this service does not support.
 			if req.ID == nil {
@@ -69,23 +64,14 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			rpcFunc, ok := funcMap[req.Method]
 			if !ok || rpcFunc.ws {
 				responses = append(responses, rpctypes.RPCMethodNotFoundError(req.ID))
-				mayCache = false
 				continue
-			}
-			if !rpcFunc.cache {
-				mayCache = false
 			}
 
 			args, err := parseParams(rpcFunc, hreq, req)
 			if err != nil {
 				responses = append(responses, rpctypes.RPCInvalidParamsError(
 					req.ID, fmt.Errorf("converting JSON parameters: %w", err)))
-				mayCache = false
 				continue
-			}
-
-			if hasDefaultHeight(req, args) {
-				mayCache = false
 			}
 
 			returns := rpcFunc.f.Call(args)
@@ -99,24 +85,21 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			// if this already of type RPC error then forward that error
 			case *rpctypes.RPCError:
 				responses = append(responses, rpctypes.NewRPCErrorResponse(req.ID, e.Code, e.Message, e.Data))
-				mayCache = false
 			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
 				// check if the error was due to an invald request
 				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
 					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
 					responses = append(responses, rpctypes.RPCInvalidRequestError(req.ID, err))
-					mayCache = false
 				// lastly default all remaining errors as internal errors
 				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
 					responses = append(responses, rpctypes.RPCInternalError(req.ID, err))
-					mayCache = false
 				}
 			}
 		}
 
 		if len(responses) > 0 {
-			if wErr := WriteRPCResponseHTTP(w, mayCache, responses...); wErr != nil {
+			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
 				logger.Error("failed to write responses", "err", wErr)
 			}
 		}
@@ -287,13 +270,4 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	w.Write(buf.Bytes()) // nolint: errcheck
-}
-
-func hasDefaultHeight(r rpctypes.RPCRequest, h []reflect.Value) bool {
-	switch r.Method {
-	case "block", "block_results", "commit", "consensus_params", "validators":
-		return len(h) < 2 || h[1].IsZero()
-	default:
-		return false
-	}
 }
