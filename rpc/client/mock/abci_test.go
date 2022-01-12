@@ -62,7 +62,7 @@ func TestABCIMock(t *testing.T) {
 
 	// non-commit calls always return errors
 	_, err = m.BroadcastTxSync(ctx, goodTx)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "must commit", err.Error())
 	_, err = m.BroadcastTxAsync(ctx, goodTx)
 	require.Error(t, err)
