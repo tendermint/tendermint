@@ -181,7 +181,9 @@ func (rts *reactorTestSuite) addNode(
 		chCreator,
 		rts.peerUpdates[nodeID],
 		rts.blockSync,
-		consensus.NopMetrics())
+		consensus.NopMetrics(),
+		nil, // eventbus, can be nil
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, rts.reactors[nodeID].Start(ctx))

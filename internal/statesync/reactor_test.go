@@ -178,6 +178,7 @@ func setup(
 		rts.blockStore,
 		"",
 		m,
+		nil, // eventbus can be nil
 	)
 	require.NoError(t, err)
 
