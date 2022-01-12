@@ -21,7 +21,7 @@ func DefaultClientCreator(logger log.Logger, addr, transport, dbDir string) (abc
 	case "kvstore":
 		return abciclient.NewLocalCreator(kvstore.NewApplication()), noopCloser{}
 	case "persistent_kvstore":
-		app := kvstore.NewPersistentKVStoreApplication(dbDir)
+		app := kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 		return abciclient.NewLocalCreator(app), app
 	case "e2e":
 		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))

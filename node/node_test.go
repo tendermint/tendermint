@@ -556,7 +556,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	t.Cleanup(ns.Wait)
 
 	require.NoError(t, err)
-	n, ok := ns.(*nodeImpl)
+	n, ok := ns.(*seedNodeImpl)
 	require.True(t, ok)
 
 	err = n.Start(ctx)
@@ -717,7 +717,7 @@ func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 	require.NoError(t, err)
 	require.True(t, loadedState.IsEmpty())
 
-	genDoc, _ := factory.RandGenesisDoc(ctx, cfg, 0, false, 10)
+	genDoc, _ := factory.RandGenesisDoc(ctx, t, cfg, 0, false, 10)
 
 	state, err := loadStateFromDBOrGenesisDocProvider(
 		stateStore,

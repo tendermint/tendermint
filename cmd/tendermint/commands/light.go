@@ -102,7 +102,7 @@ func init() {
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	logger, err := log.NewDefaultLogger(logFormat, logLevel, false)
+	logger, err := log.NewDefaultLogger(logFormat, logLevel)
 	if err != nil {
 		return err
 	}

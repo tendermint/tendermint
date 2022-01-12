@@ -39,7 +39,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Debug("HTTP HANDLER", "req", dumpHTTPRequest(r))
 
-		ctx := &rpctypes.Context{HTTPReq: r}
+		ctx := rpctypes.WithCallInfo(r.Context(), &rpctypes.CallInfo{HTTPRequest: r})
 		args := []reflect.Value{reflect.ValueOf(ctx)}
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
@@ -62,7 +62,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		// if no error then return a success response
 		case nil:
 			res := rpctypes.NewRPCSuccessResponse(dummyID, result)
-			if wErr := WriteRPCResponseHTTP(w, rpcFunc.cache, res); wErr != nil {
+			if wErr := WriteRPCResponseHTTP(w, res); wErr != nil {
 				logger.Error("failed to write response", "res", res, "err", wErr)
 			}
 

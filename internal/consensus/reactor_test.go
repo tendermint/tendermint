@@ -383,7 +383,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, cfg, n, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -398,7 +398,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		defer os.RemoveAll(thisConfig.RootDir)
 
 		ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc(t)
+		app := appFunc(t, logger)
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 

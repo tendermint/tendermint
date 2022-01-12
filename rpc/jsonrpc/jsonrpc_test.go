@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -54,30 +53,30 @@ type ResultEchoDataBytes struct {
 
 // Define some routes
 var Routes = map[string]*server.RPCFunc{
-	"echo":            server.NewRPCFunc(EchoResult, "arg", false),
+	"echo":            server.NewRPCFunc(EchoResult, "arg"),
 	"echo_ws":         server.NewWSRPCFunc(EchoWSResult, "arg"),
-	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg", false),
-	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg", false),
-	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg", false),
+	"echo_bytes":      server.NewRPCFunc(EchoBytesResult, "arg"),
+	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg"),
+	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
 
-func EchoResult(ctx *rpctypes.Context, v string) (*ResultEcho, error) {
+func EchoResult(ctx context.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoWSResult(ctx *rpctypes.Context, v string) (*ResultEcho, error) {
+func EchoWSResult(ctx context.Context, v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
 }
 
-func EchoIntResult(ctx *rpctypes.Context, v int) (*ResultEchoInt, error) {
+func EchoIntResult(ctx context.Context, v int) (*ResultEchoInt, error) {
 	return &ResultEchoInt{v}, nil
 }
 
-func EchoBytesResult(ctx *rpctypes.Context, v []byte) (*ResultEchoBytes, error) {
+func EchoBytesResult(ctx context.Context, v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(ctx *rpctypes.Context, v tmbytes.HexBytes) (*ResultEchoDataBytes, error) {
+func EchoDataBytesResult(ctx context.Context, v tmbytes.HexBytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 
@@ -94,7 +93,7 @@ func TestMain(m *testing.M) {
 
 // launch unix and tcp servers
 func setup(ctx context.Context) error {
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 	cmd := exec.Command("rm", "-f", unixSocket)
 	err := cmd.Start()
@@ -108,8 +107,7 @@ func setup(ctx context.Context) error {
 	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
-	wm := server.NewWebsocketManager(Routes, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
-	wm.SetLogger(tcpLogger)
+	wm := server.NewWebsocketManager(tcpLogger, Routes, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	config := server.DefaultConfig()
 	listener1, err := server.Listen(tcpAddr, config.MaxOpenConnections)
@@ -125,8 +123,7 @@ func setup(ctx context.Context) error {
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
 	server.RegisterRPCFuncs(mux2, Routes, unixLogger)
-	wm = server.NewWebsocketManager(Routes)
-	wm.SetLogger(unixLogger)
+	wm = server.NewWebsocketManager(unixLogger, Routes)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	listener2, err := server.Listen(unixAddr, config.MaxOpenConnections)
 	if err != nil {
@@ -148,7 +145,7 @@ func echoViaHTTP(ctx context.Context, cl client.Caller, val string) (string, err
 		"arg": val,
 	}
 	result := new(ResultEcho)
-	if _, err := cl.Call(ctx, "echo", params, result); err != nil {
+	if err := cl.Call(ctx, "echo", params, result); err != nil {
 		return "", err
 	}
 	return result.Value, nil
@@ -159,7 +156,7 @@ func echoIntViaHTTP(ctx context.Context, cl client.Caller, val int) (int, error)
 		"arg": val,
 	}
 	result := new(ResultEchoInt)
-	if _, err := cl.Call(ctx, "echo_int", params, result); err != nil {
+	if err := cl.Call(ctx, "echo_int", params, result); err != nil {
 		return 0, err
 	}
 	return result.Value, nil
@@ -170,7 +167,7 @@ func echoBytesViaHTTP(ctx context.Context, cl client.Caller, bytes []byte) ([]by
 		"arg": bytes,
 	}
 	result := new(ResultEchoBytes)
-	if _, err := cl.Call(ctx, "echo_bytes", params, result); err != nil {
+	if err := cl.Call(ctx, "echo_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
 	return result.Value, nil
@@ -181,13 +178,13 @@ func echoDataBytesViaHTTP(ctx context.Context, cl client.Caller, bytes tmbytes.H
 		"arg": bytes,
 	}
 	result := new(ResultEchoDataBytes)
-	if _, err := cl.Call(ctx, "echo_data_bytes", params, result); err != nil {
+	if err := cl.Call(ctx, "echo_data_bytes", params, result); err != nil {
 		return []byte{}, err
 	}
 	return result.Value, nil
 }
 
-func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.HTTPClient) {
+func testWithHTTPClient(ctx context.Context, t *testing.T, cl client.Caller) {
 	val := testVal
 	got, err := echoViaHTTP(ctx, cl, val)
 	require.NoError(t, err)
@@ -321,37 +318,6 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
 		t.Fatal(err)
-	}
-	result := new(ResultEcho)
-	err = json.Unmarshal(msg.Result, result)
-	require.NoError(t, err)
-	got := result.Value
-	assert.Equal(t, got, val)
-}
-
-func TestWSHandlesArrayParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.NoError(t, err)
-
-	cl.Logger = log.NewTestingLogger(t)
-	require.Nil(t, cl.Start(ctx))
-	t.Cleanup(func() {
-		if err := cl.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-
-	val := testVal
-	params := []interface{}{val}
-	err = cl.CallWithArrayParams(ctx, "echo_ws", params)
-	require.NoError(t, err)
-
-	msg := <-cl.ResponsesCh
-	if msg.Error != nil {
-		t.Fatalf("%+v", err)
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)

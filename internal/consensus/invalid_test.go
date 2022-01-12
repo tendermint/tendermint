@@ -123,7 +123,6 @@ func invalidDoPrevoteFunc(
 		cs.mtx.Unlock()
 
 		for _, ps := range r.peers {
-			cs.logger.Info("sending bad vote", "block", blockHash, "peer", ps.peerID)
 			require.NoError(t, r.voteCh.Send(ctx, p2p.Envelope{
 				To: ps.peerID,
 				Message: &tmcons.Vote{

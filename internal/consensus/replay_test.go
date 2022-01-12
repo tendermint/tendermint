@@ -696,7 +696,6 @@ func TestMockProxyApp(t *testing.T) {
 				if txRes.Code == abci.CodeTypeOK {
 					validTxs++
 				} else {
-					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 					invalidTxs++
 				}
 				abciRes.DeliverTxs[txIndex] = txRes
@@ -764,7 +763,7 @@ func testHandshakeReplay(
 		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
-		walBody, err := WALWithNBlocks(ctx, t, numBlocks)
+		walBody, err := WALWithNBlocks(ctx, t, logger, numBlocks)
 		require.NoError(t, err)
 		walFile := tempWALWithData(t, walBody)
 		cfg.Consensus.SetWalFile(walFile)
@@ -806,7 +805,7 @@ func testHandshakeReplay(
 	latestAppHash := state.AppHash
 
 	// make a new client creator
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
@@ -960,7 +959,7 @@ func buildTMStateFromChain(
 	t.Helper()
 
 	// run the whole chain against this client to build up the tendermint state
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
 	defer kvstoreApp.Close()
 	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
@@ -1023,8 +1022,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks, err := sf.MakeBlocks(ctx, 3, &state, privVal)
-	require.NoError(t, err)
+	blocks := sf.MakeBlocks(ctx, t, 3, &state, privVal)
 
 	store.chain = blocks
 
@@ -1287,7 +1285,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	val, _ := factory.RandValidator(ctx, true, 10)
+	val, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)

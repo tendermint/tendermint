@@ -2,18 +2,18 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Status returns Tendermint status including node info, pubkey, latest block
 // hash, app hash, block height, current max peer block height, and time.
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
-func (env *Environment) Status(ctx *rpctypes.Context) (*coretypes.ResultStatus, error) {
+func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	var (
 		earliestBlockHeight   int64
 		earliestBlockHash     tmbytes.HexBytes

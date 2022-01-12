@@ -34,7 +34,7 @@ func TestLast_FirstLightBlockHeight(t *testing.T) {
 	assert.EqualValues(t, -1, height)
 
 	// 1 key
-	err = dbStore.SaveLightBlock(randLightBlock(ctx, int64(1)))
+	err = dbStore.SaveLightBlock(randLightBlock(ctx, t, int64(1)))
 	require.NoError(t, err)
 
 	height, err = dbStore.LastLightBlockHeight()
@@ -58,7 +58,7 @@ func Test_SaveLightBlock(t *testing.T) {
 	assert.Nil(t, h)
 
 	// 1 key
-	err = dbStore.SaveLightBlock(randLightBlock(ctx, 1))
+	err = dbStore.SaveLightBlock(randLightBlock(ctx, t, 1))
 	require.NoError(t, err)
 
 	size := dbStore.Size()
@@ -90,7 +90,7 @@ func Test_LightBlockBefore(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := dbStore.SaveLightBlock(randLightBlock(ctx, int64(2)))
+	err := dbStore.SaveLightBlock(randLightBlock(ctx, t, int64(2)))
 	require.NoError(t, err)
 
 	h, err := dbStore.LightBlockBefore(3)
@@ -115,7 +115,7 @@ func Test_Prune(t *testing.T) {
 	require.NoError(t, err)
 
 	// One header
-	err = dbStore.SaveLightBlock(randLightBlock(ctx, 2))
+	err = dbStore.SaveLightBlock(randLightBlock(ctx, t, 2))
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 1, dbStore.Size())
@@ -130,7 +130,7 @@ func Test_Prune(t *testing.T) {
 
 	// Multiple headers
 	for i := 1; i <= 10; i++ {
-		err = dbStore.SaveLightBlock(randLightBlock(ctx, int64(i)))
+		err = dbStore.SaveLightBlock(randLightBlock(ctx, t, int64(i)))
 		require.NoError(t, err)
 	}
 
@@ -155,7 +155,7 @@ func Test_Concurrency(t *testing.T) {
 		go func(i int64) {
 			defer wg.Done()
 
-			err := dbStore.SaveLightBlock(randLightBlock(ctx, i))
+			err := dbStore.SaveLightBlock(randLightBlock(ctx, t, i))
 			require.NoError(t, err)
 
 			_, err = dbStore.LightBlock(i)
@@ -198,8 +198,9 @@ func Test_Concurrency(t *testing.T) {
 	wg.Wait()
 }
 
-func randLightBlock(ctx context.Context, height int64) *types.LightBlock {
-	vals, _ := factory.RandValidatorSet(ctx, 2, 1)
+func randLightBlock(ctx context.Context, t *testing.T, height int64) *types.LightBlock {
+	t.Helper()
+	vals, _ := factory.RandValidatorSet(ctx, t, 2, 1)
 	return &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
 			Header: &types.Header{
