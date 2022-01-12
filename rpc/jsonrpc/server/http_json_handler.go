@@ -271,12 +271,3 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	w.WriteHeader(200)
 	w.Write(buf.Bytes()) // nolint: errcheck
 }
-
-func hasDefaultHeight(r rpctypes.RPCRequest, h []reflect.Value) bool {
-	switch r.Method {
-	case "block", "block_results", "commit", "consensus_params", "validators":
-		return len(h) < 2 || h[1].IsZero()
-	default:
-		return false
-	}
-}
