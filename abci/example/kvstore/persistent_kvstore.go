@@ -35,7 +35,7 @@ type PersistentKVStoreApplication struct {
 	logger log.Logger
 }
 
-func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
+func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *PersistentKVStoreApplication {
 	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)
 	if err != nil {
@@ -47,16 +47,12 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	return &PersistentKVStoreApplication{
 		app:                &Application{state: state},
 		valAddrToPubKeyMap: make(map[string]cryptoproto.PublicKey),
-		logger:             log.NewNopLogger(),
+		logger:             logger,
 	}
 }
 
 func (app *PersistentKVStoreApplication) Close() error {
 	return app.app.state.db.Close()
-}
-
-func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
-	app.logger = l
 }
 
 func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.ResponseInfo {

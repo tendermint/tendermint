@@ -582,8 +582,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	if flagPersist == "" {
 		app = kvstore.NewApplication()
 	} else {
-		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
-		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
+		app = kvstore.NewPersistentKVStoreApplication(logger, flagPersist)
 	}
 
 	// Start the listener

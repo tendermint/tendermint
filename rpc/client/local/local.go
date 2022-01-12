@@ -51,24 +51,19 @@ type NodeService interface {
 }
 
 // New configures a client that calls the Node directly.
-func New(node NodeService) (*Local, error) {
+func New(logger log.Logger, node NodeService) (*Local, error) {
 	env := node.RPCEnvironment()
 	if env == nil {
 		return nil, errors.New("rpc is nil")
 	}
 	return &Local{
 		EventBus: node.EventBus(),
-		Logger:   log.NewNopLogger(),
+		Logger:   logger,
 		env:      env,
 	}, nil
 }
 
 var _ rpcclient.Client = (*Local)(nil)
-
-// SetLogger allows to set a logger on the client.
-func (c *Local) SetLogger(l log.Logger) {
-	c.Logger = l
-}
 
 func (c *Local) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	return c.env.Status(ctx)
