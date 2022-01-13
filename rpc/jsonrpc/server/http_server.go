@@ -215,7 +215,7 @@ func recoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 				"method", r.Method,
 				"url", r.URL,
 				"status", httpStatus,
-				"duration", int(elapsed/time.Millisecond),
+				"duration-sec", elapsed.Seconds(),
 				"remoteAddr", r.RemoteAddr,
 			)
 		}()
