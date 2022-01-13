@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 	"reflect"
-	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -35,26 +34,22 @@ type RPCFunc struct {
 
 // NewRPCFunc wraps a function for introspection.
 // f is the function, args are comma separated argument names
-func NewRPCFunc(f interface{}, args string) *RPCFunc {
-	return newRPCFunc(f, args, false)
+func NewRPCFunc(f interface{}, argNames ...string) *RPCFunc {
+	return newRPCFunc(f, argNames, false)
 }
 
 // NewWSRPCFunc wraps a function for introspection and use in the websockets.
-func NewWSRPCFunc(f interface{}, args string) *RPCFunc {
-	return newRPCFunc(f, args, true)
+func NewWSRPCFunc(f interface{}, argNames ...string) *RPCFunc {
+	return newRPCFunc(f, argNames, true)
 }
 
-func newRPCFunc(f interface{}, args string, ws bool) *RPCFunc {
-	var argNames []string
-	if args != "" {
-		argNames = strings.Split(args, ",")
-	}
+func newRPCFunc(f interface{}, argNames []string, wsOnly bool) *RPCFunc {
 	return &RPCFunc{
 		f:        reflect.ValueOf(f),
 		args:     funcArgTypes(f),
 		returns:  funcReturnTypes(f),
 		argNames: argNames,
-		ws:       ws,
+		ws:       wsOnly,
 	}
 }
 
