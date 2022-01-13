@@ -783,10 +783,7 @@ func (cs *State) newStep(ctx context.Context) {
 
 	// newStep is called by updateToState in NewState before the eventBus is set!
 	if cs.eventBus != nil {
-		if err := cs.eventBus.PublishEventNewRoundStep(ctx, rs); err != nil {
-			cs.logger.Error("failed publishing new round step", "err", err)
-		}
-
+		_ = cs.eventBus.PublishEventNewRoundStep(ctx, rs)
 		cs.evsw.FireEvent(ctx, types.EventNewRoundStepValue, &cs.RoundState)
 	}
 }
@@ -818,7 +815,13 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			cs.logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
+			if ctx.Err() == nil {
+				// if we're not shutting down, log
+				// more.
+				cs.logger.Error("CONSENSUS FAILURE!!!",
+					"err", r,
+					"stack", string(debug.Stack()))
+			}
 			// stop gracefully
 			//
 			// NOTE: We most probably shouldn't be running any further when there is

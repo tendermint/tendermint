@@ -262,6 +262,10 @@ func (app *localClient) CommitSync(ctx context.Context) (*types.ResponseCommit, 
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	res := app.Application.Commit()
 	return &res, nil
 }
