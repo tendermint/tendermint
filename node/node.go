@@ -30,12 +30,10 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
-	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
-	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 
@@ -98,15 +96,9 @@ func newDefaultNode(
 			logger,
 		)
 	}
-
-	var pval *privval.FilePV
-	if cfg.Mode == config.ModeValidator {
-		pval, err = privval.LoadOrGenFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		pval = nil
+	pval, err := makeDefaultPrivval(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
@@ -127,7 +119,7 @@ func newDefaultNode(
 func makeNode(
 	ctx context.Context,
 	cfg *config.Config,
-	privValidator types.PrivValidator,
+	filePrivval *privval.FilePV,
 	nodeKey types.NodeKey,
 	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
@@ -188,33 +180,11 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	// If an address is provided, listen on the socket for a connection from an
-	// external signing process.
-	if cfg.PrivValidator.ListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(cfg.PrivValidator.ListenAddr)
-		// FIXME: we should start services inside OnStart
-		switch protocol {
-		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(ctx, cfg, genDoc.ChainID, logger)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator grpc client: %w", err),
-					makeCloser(closers))
-			}
-		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(
-				ctx,
-				cfg.PrivValidator.ListenAddr,
-				genDoc.ChainID,
-				logger,
-			)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator socket client: %w", err),
-					makeCloser(closers))
-			}
-		}
+	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
 	}
+
 	var pubKey crypto.PubKey
 	if cfg.Mode == config.ModeValidator {
 		pubKey, err = privValidator.GetPubKey(ctx)
@@ -433,6 +403,10 @@ func makeNode(
 		},
 	}
 
+	if cfg.Mode == config.ModeValidator {
+		node.rpcEnv.PubKey = pubKey
+	}
+
 	node.rpcEnv.P2PTransport = node
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -631,13 +605,6 @@ func (n *nodeImpl) OnStop() {
 }
 
 func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
-	if n.config.Mode == config.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey(ctx)
-		if pubKey == nil || err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
-		}
-		n.rpcEnv.PubKey = pubKey
-	}
 	if err := n.rpcEnv.InitGenesisChunks(); err != nil {
 		return nil, err
 	}
@@ -767,12 +734,6 @@ func (n *nodeImpl) EventBus() *eventbus.EventBus {
 	return n.rpcEnv.EventBus
 }
 
-// PrivValidator returns the Node's PrivValidator.
-// XXX: for convenience only!
-func (n *nodeImpl) PrivValidator() types.PrivValidator {
-	return n.privValidator
-}
-
 // GenesisDoc returns the Node's GenesisDoc.
 func (n *nodeImpl) GenesisDoc() *types.GenesisDoc {
 	return n.genesisDoc
@@ -878,63 +839,6 @@ func loadStateFromDBOrGenesisDocProvider(
 	}
 
 	return state, nil
-}
-
-func createAndStartPrivValidatorSocketClient(
-	ctx context.Context,
-	listenAddr, chainID string,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-
-	pve, err := privval.NewSignerListener(listenAddr, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-
-	const (
-		retries = 50 // 50 * 100ms = 5s total
-		timeout = 100 * time.Millisecond
-	)
-	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
-
-	return pvscWithRetries, nil
-}
-
-func createAndStartPrivValidatorGRPCClient(
-	ctx context.Context,
-	cfg *config.Config,
-	chainID string,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-	pvsc, err := tmgrpc.DialRemoteSigner(
-		ctx,
-		cfg.PrivValidator,
-		chainID,
-		logger,
-		cfg.Instrumentation.Prometheus,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-
-	return pvsc, nil
 }
 
 func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
