@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -180,72 +179,51 @@ func writeRPCResponse(w http.ResponseWriter, log log.Logger, rsps ...rpctypes.RP
 
 //-----------------------------------------------------------------------------
 
-// RecoverAndLogHandler wraps an HTTP handler, adding error logging.
-// If the inner function panics, the outer function recovers, logs, sends an
-// HTTP 500 error response.
+// RecoverAndLogHandler wraps an HTTP handler, adding error logging.  If the
+// inner handler panics, the wrapper recovers, logs, sends an HTTP 500 error
+// response to the client.
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wrap the ResponseWriter to remember the status
 		rww := &responseWriterWrapper{-1, w}
-		begin := time.Now()
 
-		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
-
+		// Recover panics from inside handler and try to send the client
+		// 500 Internal server error. If the handler panicked after already
+		// sending a (partial) response, this is a no-op.
 		defer func() {
-			// Handle any panics in the panic handler below. Does not use the logger, since we want
-			// to avoid any further panics. However, we try to return a 500, since it otherwise
-			// defaults to 200 and there is no other way to terminate the connection. If that
-			// should panic for whatever reason then the Go HTTP server will handle it and
-			// terminate the connection - panicing is the de-facto and only way to get the Go HTTP
-			// server to terminate the request and close the connection/stream:
-			// https://github.com/golang/go/issues/17790#issuecomment-258481416
-			if e := recover(); e != nil {
-				fmt.Fprintf(os.Stderr, "Panic during RPC panic recovery: %v\n%v\n", e, string(debug.Stack()))
-				w.WriteHeader(500)
+			if v := recover(); v != nil {
+				var err error
+				switch e := v.(type) {
+				case error:
+					err = e
+				case string:
+					err = errors.New(e)
+				case fmt.Stringer:
+					err = errors.New(e.String())
+				default:
+					err = fmt.Errorf("panic with value %v", v)
+				}
+
+				logger.Error("Panic in RPC HTTP handler",
+					"err", err, "stack", string(debug.Stack()))
+				writeInternalError(rww, err)
 			}
 		}()
 
+		// Log timing and response information from the handler.
+		begin := time.Now()
 		defer func() {
-			// Send a 500 error if a panic happens during a handler.
-			// Without this, Chrome & Firefox were retrying aborted ajax requests,
-			// at least to my localhost.
-			if e := recover(); e != nil {
-
-				// If RPCResponse
-				if res, ok := e.(rpctypes.RPCResponse); ok {
-					writeRPCResponse(rww, logger, res)
-				} else {
-					// Panics can contain anything, attempt to normalize it as an error.
-					var err error
-					switch e := e.(type) {
-					case error:
-						err = e
-					case string:
-						err = errors.New(e)
-					case fmt.Stringer:
-						err = errors.New(e.String())
-					default:
-					}
-
-					logger.Error("Panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
-					writeInternalError(rww, err)
-				}
-			}
-
-			// Finally, log.
-			durationMS := time.Since(begin).Nanoseconds() / 1000000
-			if rww.Status == -1 {
-				rww.Status = 200
-			}
+			elapsed := time.Since(begin)
 			logger.Debug("served RPC HTTP response",
 				"method", r.Method,
 				"url", r.URL,
 				"status", rww.Status,
-				"duration", durationMS,
+				"duration", int(elapsed/time.Millisecond),
 				"remoteAddr", r.RemoteAddr,
 			)
 		}()
 
+		rww.Header().Set("X-Server-Time", fmt.Sprintf("%v", begin.Unix()))
 		handler.ServeHTTP(rww, r)
 	})
 }
