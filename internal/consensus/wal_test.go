@@ -173,7 +173,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	require.NoError(t, err)
 
 	wal.SetFlushInterval(walTestFlushInterval)
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	// Generate some data
 	err = WALGenerateNBlocks(ctx, t, logger, wal.Group(), 5)
