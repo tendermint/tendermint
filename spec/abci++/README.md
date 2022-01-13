@@ -29,7 +29,7 @@ This specification is split as follows:
 - [Methods](./abci++_methods_002_draft.md) - complete details on all ABCI++ methods
   and message types.
 - [Requirements for the Application](./abci++_app_requirements_002_draft.md) - formal requirements
-  on the Application's logic to ensure liveness of Tendermint. These requirements define what
+  on the Application's logic to ensure Tendermint properties such as liveness. These requirements define what
   Tendermint expects from the Application.
 - [Tendermint's expected behavior](./abci++_tmint_expected_behavior_002_draft.md) - specification of
   how the different ABCI++ methods may be called by Tendermint. This explains what the Application
