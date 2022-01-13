@@ -151,11 +151,17 @@ func (q *Queue) Wait(ctx context.Context) (interface{}, error) {
 		if q.closed {
 			return nil, ErrQueueClosed
 		}
+
+		sig := make(chan struct{})
+		go func() {
+			defer close(sig)
+			q.nempty.Wait()
+		}()
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		default:
-			q.nempty.Wait()
+		case <-sig:
 		}
 	}
 	return q.popFront(), nil
