@@ -2,7 +2,6 @@
 package server
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -58,8 +57,9 @@ func Serve(
 	config *Config,
 ) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
+	h := RecoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		Handler:        h,
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
@@ -98,8 +98,9 @@ func ServeTLS(
 ) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
+	h := RecoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		Handler:        h,
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
@@ -184,8 +185,9 @@ func writeRPCResponse(w http.ResponseWriter, log log.Logger, rsps ...rpctypes.RP
 // response to the client.
 func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Wrap the ResponseWriter to remember the status
-		rww := &responseWriterWrapper{-1, w}
+		// Capture the HTTP status written by the handler.
+		var httpStatus int
+		rww := StatusWriter(w, &httpStatus)
 
 		// Recover panics from inside handler and try to send the client
 		// 500 Internal server error. If the handler panicked after already
@@ -217,7 +219,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 			logger.Debug("served RPC HTTP response",
 				"method", r.Method,
 				"url", r.URL,
-				"status", rww.Status,
+				"status", httpStatus,
 				"duration", int(elapsed/time.Millisecond),
 				"remoteAddr", r.RemoteAddr,
 			)
@@ -228,30 +230,50 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 	})
 }
 
-// Remember the status for logging
-type responseWriterWrapper struct {
-	Status int
-	http.ResponseWriter
-}
-
-func (w *responseWriterWrapper) WriteHeader(status int) {
-	w.Status = status
-	w.ResponseWriter.WriteHeader(status)
-}
-
-// implements http.Hijacker
-func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return w.ResponseWriter.(http.Hijacker).Hijack()
+// MaxBytesHandler wraps h in a handler that limits the size of the request
+// body to at most maxBytes. If maxBytes <= 0, the request body is not limited.
+func MaxBytesHandler(h http.Handler, maxBytes int64) http.Handler {
+	if maxBytes <= 0 {
+		return h
+	}
+	return maxBytesHandler{handler: h, maxBytes: maxBytes}
 }
 
 type maxBytesHandler struct {
-	h http.Handler
-	n int64
+	handler  http.Handler
+	maxBytes int64
 }
 
-func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, h.n)
-	h.h.ServeHTTP(w, r)
+func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	req.Body = http.MaxBytesReader(w, req.Body, h.maxBytes)
+	h.handler.ServeHTTP(w, req)
+}
+
+// StatusWriter wraps an http.ResponseWriter to capture the HTTP status code in
+// *code.
+func StatusWriter(w http.ResponseWriter, code *int) statusWriter {
+	return statusWriter{
+		ResponseWriter: w,
+		Hijacker:       w.(http.Hijacker),
+		code:           code,
+	}
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	http.Hijacker // to support websocket upgrade
+
+	code *int
+}
+
+// WriteHeader implements part of http.ResponseWriter. It delegates to the
+// wrapped writer, and as a side effect captures the written code.
+//
+// Note that if a request does not explicitly call WriteHeader, the code will
+// not be updated.
+func (w statusWriter) WriteHeader(code int) {
+	*w.code = code
+	w.ResponseWriter.WriteHeader(code)
 }
 
 // Listen starts a new net.Listener on the given address.
