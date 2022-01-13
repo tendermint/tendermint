@@ -114,12 +114,12 @@ by applied.
 #### Add a new `UpgradeChain` method
 
 An additional method for allowing chains to update the consensus parameters that
-do not yet exist is to add a new `UpgradeChain` method to ABCI. The upgrade chain
+do not yet exist is to add a new `UpgradeChain` method to `ABCI`. The upgrade chain
 method would be called when the chain detects that the version of block that it
 is about to produce does not match the previous block. This method would be called
-after `EndBlock` and would return the set of ConsensusParameters to use at the
+after `EndBlock` and would return the set of consensus parameters to use at the
 next height. It would therefore give an application the chance to set the new
-Consensus parameters before running a height with these new parameter.
+consensus parameters before running a height with these new parameter.
 
 ### References
 
