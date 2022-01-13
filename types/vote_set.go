@@ -380,7 +380,7 @@ func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 
 // List returns a copy of the list of votes stored by the VoteSet.
 func (voteSet *VoteSet) List() []Vote {
-	if voteSet == nil {
+	if voteSet == nil || voteSet.votes == nil {
 		return nil
 	}
 	votes := make([]Vote, len(voteSet.votes))
