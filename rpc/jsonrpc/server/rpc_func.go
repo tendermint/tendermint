@@ -68,13 +68,7 @@ var (
 	errType = reflect.TypeOf((*error)(nil)).Elem()
 )
 
-// newRPCFunc constructs an RPCFunc for f, which must be a function whose type
-// signature matches the scheme:
-//
-//     func(context.Context, T1, T2, ...) (R, error)
-//
-// for arbitrary types T_i and R. If f is not a function or does not have this
-// format, an error is reported.
+// newRPCFunc constructs an RPCFunc for f. See the comment at NewRPCFunc.
 func newRPCFunc(f interface{}, argNames []string) (*RPCFunc, error) {
 	if f == nil {
 		return nil, errors.New("nil function")
