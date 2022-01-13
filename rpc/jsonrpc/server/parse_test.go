@@ -134,7 +134,7 @@ func TestParseJSONArray(t *testing.T) {
 }
 
 func TestParseJSONRPC(t *testing.T) {
-	demo := func(ctx context.Context, height int, name string) {}
+	demo := func(ctx context.Context, height int, name string) error { return nil }
 	call := NewRPCFunc(demo, "height", "name")
 
 	cases := []struct {
@@ -171,7 +171,7 @@ func TestParseJSONRPC(t *testing.T) {
 }
 
 func TestParseURI(t *testing.T) {
-	demo := func(ctx context.Context, height int, name string) {}
+	demo := func(ctx context.Context, height int, name string) error { return nil }
 	call := NewRPCFunc(demo, "height", "name")
 
 	cases := []struct {
