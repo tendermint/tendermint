@@ -3,6 +3,7 @@
 ## Changelog
 
 - 03-Jan-2022: Initial draft (@williambanfield)
+- 13-Jan-2022: Updated to indicate work on upgrade path needed (@williambanfield)
 
 ## Status
 
