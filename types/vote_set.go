@@ -383,10 +383,10 @@ func (voteSet *VoteSet) List() []Vote {
 	if voteSet == nil || voteSet.votes == nil {
 		return nil
 	}
-	votes := make([]Vote, len(voteSet.votes))
+	votes := make([]Vote, 0, len(voteSet.votes))
 	for i := range voteSet.votes {
 		if voteSet.votes[i] != nil {
-			votes[i] = *voteSet.votes[i]
+			votes = append(votes, *voteSet.votes[i])
 		}
 	}
 	return votes
