@@ -130,6 +130,14 @@ func parseArgValue(atype reflect.Type, text string) (reflect.Value, error) {
 			return reflect.Value{}, err
 		}
 		out.Elem().Set(reflect.ValueOf(dec).Convert(baseType))
+
+	} else if baseType.Kind() == reflect.Bool {
+		b, err := strconv.ParseBool(text)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("invalid boolean: %w", err)
+		}
+		out.Elem().Set(reflect.ValueOf(b))
+
 	} else {
 		// We don't know how to represent other types.
 		return reflect.Value{}, fmt.Errorf("unsupported argument type %v", baseType)
