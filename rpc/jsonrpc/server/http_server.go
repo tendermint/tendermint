@@ -124,67 +124,58 @@ func ServeTLS(
 	return nil
 }
 
-// WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it
-// to w.
-//
-// Maps JSON RPC error codes to HTTP Status codes as follows:
-//
-// HTTP Status	code	message
-// 500	-32700	Parse error.
-// 400	-32600	Invalid Request.
-// 404	-32601	Method not found.
-// 500	-32602	Invalid params.
-// 500	-32603	Internal error.
-// 500	-32099..-32000	Server error.
-//
-// source: https://www.jsonrpc.org/historical/json-rpc-over-http.html
-func WriteRPCResponseHTTPError(
-	w http.ResponseWriter,
-	res rpctypes.RPCResponse,
-) error {
-	if res.Error == nil {
-		panic("tried to write http error response without RPC error")
-	}
-
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		return fmt.Errorf("json marshal: %w", err)
-	}
-
-	var httpCode int
-	switch res.Error.Code {
-	case -32600:
-		httpCode = http.StatusBadRequest
-	case -32601:
-		httpCode = http.StatusNotFound
-	default:
-		httpCode = http.StatusInternalServerError
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpCode)
-	_, err = w.Write(jsonBytes)
-	return err
+// writeInternalError writes an internal server error (500) to w with the text
+// of err in the body. This is a fallback used when a handler is unable to
+// write the expected response.
+func writeInternalError(w http.ResponseWriter, err error) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintln(w, err.Error())
 }
 
-// WriteRPCResponseHTTP marshals res as JSON (with indent) and writes it to w.
-// If the rpc response can be cached, add cache-control to the response header.
-func WriteRPCResponseHTTP(w http.ResponseWriter, res ...rpctypes.RPCResponse) error {
-	var v interface{}
-	if len(res) == 1 {
-		v = res[0]
+// writeHTTPResponse writes a JSON-RPC response to w. If rsp encodes an error,
+// the response body is its error object; otherwise its responses is the result.
+//
+// Unless there is an error encoding the response, the status is 200 OK.
+func writeHTTPResponse(w http.ResponseWriter, log log.Logger, rsp rpctypes.RPCResponse) {
+	var body []byte
+	var err error
+	if rsp.Error != nil {
+		body, err = json.Marshal(rsp.Error)
 	} else {
-		v = res
+		body = rsp.Result
 	}
-
-	jsonBytes, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		return fmt.Errorf("json marshal: %w", err)
+		log.Error("Error encoding RPC response: %w", err)
+		writeInternalError(w, err)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(jsonBytes)
-	return err
+	_, _ = w.Write(body)
+}
+
+// writeRPCResponse writes one or more JSON-RPC responses to w. A single
+// response is encoded as an object, otherwise the response is sent as a batch
+// (array) of response objects.
+//
+// Unless there is an error encoding the responses, the status is 200 OK.
+func writeRPCResponse(w http.ResponseWriter, log log.Logger, rsps ...rpctypes.RPCResponse) {
+	var body []byte
+	var err error
+	if len(rsps) == 1 {
+		body, err = json.Marshal(rsps[0])
+	} else {
+		body, err = json.Marshal(rsps)
+	}
+	if err != nil {
+		log.Error("Error encoding RPC response: %w", err)
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
 }
 
 //-----------------------------------------------------------------------------
@@ -222,9 +213,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 
 				// If RPCResponse
 				if res, ok := e.(rpctypes.RPCResponse); ok {
-					if wErr := WriteRPCResponseHTTP(rww, res); wErr != nil {
-						logger.Error("failed to write response", "res", res, "err", wErr)
-					}
+					writeRPCResponse(rww, logger, res)
 				} else {
 					// Panics can contain anything, attempt to normalize it as an error.
 					var err error
@@ -238,12 +227,8 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					default:
 					}
 
-					logger.Error("panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
-
-					res := rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)
-					if wErr := WriteRPCResponseHTTPError(rww, res); wErr != nil {
-						logger.Error("failed to write response", "res", res, "err", wErr)
-					}
+					logger.Error("Panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
+					writeInternalError(rww, err)
 				}
 			}
 
