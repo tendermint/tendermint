@@ -34,20 +34,21 @@ Application design should consider _any_ of these possible sequences.
 
 The following grammar, written in case-sensitive Augmented Backus–Naur form (ABNF, specified
 in [IETF rfc7405](https://datatracker.ietf.org/doc/html/rfc7405)), specifies all possible
-sequences of calls to ABCI++ across all heights from the genesis block, including recovery runs,
-from the point of view of the Application.
+sequences of calls to ABCI++, taken by a correct process, across all heights from the genesis block,
+including recovery runs, from the point of view of the Application.
 
 ```abnf
 start               = clean-start / recovery
 
-clean-start         = init-chain [state-sync] *consensus-height
+clean-start         = init-chain [state-sync] consensus-exec
 state-sync          = *state-sync-attempt success-sync info
 state-sync-attempt  = offer-snapshot *apply-chunk
 success-sync        = offer-snapshot 1*apply-chunk
 
-recovery            = info *consensus-replay *consensus-height
+recovery            = info *consensus-replay consensus-exec
 consensus-replay    = decide
 
+consensus-exec      = (inf)consensus-height
 consensus-height    = *consensus-round decide
 consensus-round     = proposer / non-proposer
 
@@ -67,8 +68,6 @@ extend-vote         = %s"<ExtendVote>"
 got-vote            = %s"<VerifyVoteExtension>"
 decide              = %s"<FinalizeBlock>"
 ```
-
->**TODO** We need to get the grammar reviewed by the people that know block-execution inside out.
 
 >**TODO** Still hesitating... introduce _n_ as total number of validators, so that we can bound the occurrences of
 >`got-vote` in a round.
@@ -107,10 +106,10 @@ Let us now examine the grammar line by line, providing further details.
 
 * If the process is starting from scratch, Tendermint first calls `InitChain`, then it may optionally
   start a _state-sync_ mechanism to catch up with other processes. Finally, it enters normal
-  consensus execution, which is a sequence of zero or more consensus heights.
+  consensus execution.
 
 >```abnf
->clean-start         = init-chain [state-sync] *consensus-height
+>clean-start         = init-chain [state-sync] consensus-exec
 >```
 
 * In _state-sync_ mode, Tendermint makes one or more attempts at synchronizing the Application's state.
@@ -129,11 +128,20 @@ Let us now examine the grammar line by line, providing further details.
 
 * In recovery mode, Tendermint first calls `Info` to know from which height it needs to replay decisions
   to the Application. To replay a decision, Tendermint simply calls `FinalizeBlock` with the decided
-  block at that height. After this, Tendermint enters nomal consensus execution: zero or more consensus heights.
+  block at that height. After this, Tendermint enters nomal consensus execution.
 
 >```abnf
->recovery            = info *consensus-replay *consensus-height
+>recovery            = info *consensus-replay consensus-exec
 >consensus-replay    = decide
+>```
+
+* The non-terminal `consensus-exec` is a key point in this grammar. It is an infinite sequence of
+  consensus heights. The grammar is thus an
+  [omega-grammar](https://dl.acm.org/doi/10.5555/2361476.2361481), since it produces infinite
+  sequences of terminals (i.e., the API calls).
+
+>```abnf
+>consensus-exec      = (inf)consensus-height
 >```
 
 * A consensus height consists of zero or more rounds before deciding via a call to `FinalizeBlock`.
