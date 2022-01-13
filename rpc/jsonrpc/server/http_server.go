@@ -45,10 +45,7 @@ func DefaultConfig() *Config {
 }
 
 // Serve creates a http.Server and calls Serve with the given listener. It
-// wraps handler with RecoverAndLogHandler and a handler, which limits the max
-// body size to config.MaxBodyBytes.
-//
-// NOTE: This function blocks - you may want to call it in a go-routine.
+// wraps handler to recover panics and limit the request body size.
 func Serve(
 	ctx context.Context,
 	listener net.Listener,
@@ -57,7 +54,7 @@ func Serve(
 	config *Config,
 ) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
-	h := RecoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
+	h := recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
 	s := &http.Server{
 		Handler:        h,
 		ReadTimeout:    config.ReadTimeout,
@@ -84,10 +81,8 @@ func Serve(
 }
 
 // Serve creates a http.Server and calls ServeTLS with the given listener,
-// certFile and keyFile. It wraps handler with RecoverAndLogHandler and a
-// handler, which limits the max body size to config.MaxBodyBytes.
-//
-// NOTE: This function blocks - you may want to call it in a go-routine.
+// certFile and keyFile. It wraps handler to recover panics and limit the
+// request body size.
 func ServeTLS(
 	ctx context.Context,
 	listener net.Listener,
@@ -98,7 +93,7 @@ func ServeTLS(
 ) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
-	h := RecoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
+	h := recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
 	s := &http.Server{
 		Handler:        h,
 		ReadTimeout:    config.ReadTimeout,
@@ -180,10 +175,10 @@ func writeRPCResponse(w http.ResponseWriter, log log.Logger, rsps ...rpctypes.RP
 
 //-----------------------------------------------------------------------------
 
-// RecoverAndLogHandler wraps an HTTP handler, adding error logging.  If the
+// recoverAndLogHandler wraps an HTTP handler, adding error logging.  If the
 // inner handler panics, the wrapper recovers, logs, sends an HTTP 500 error
 // response to the client.
-func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
+func recoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Capture the HTTP status written by the handler.
 		var httpStatus int
