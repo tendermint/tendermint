@@ -21,22 +21,18 @@ import (
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, hreq *http.Request) {
-		fail := func(res rpctypes.RPCResponse) {
-			if err := WriteRPCResponseHTTPError(w, res); err != nil {
-				logger.Error("Failed writing error response", "res", res, "err", err)
-			}
-		}
-
 		// For POST requests, reject a non-root URL path. This should not happen
 		// in the standard configuration, since the wrapper checks the path.
 		if hreq.URL.Path != "/" {
-			fail(rpctypes.RPCInvalidRequestError(nil, fmt.Errorf("invalid path: %q", hreq.URL.Path)))
+			writeRPCResponse(w, logger, rpctypes.RPCInvalidRequestError(
+				nil, fmt.Errorf("invalid path: %q", hreq.URL.Path)))
 			return
 		}
 
 		b, err := io.ReadAll(hreq.Body)
 		if err != nil {
-			fail(rpctypes.RPCInvalidRequestError(nil, fmt.Errorf("reading request body: %w", err)))
+			writeRPCResponse(w, logger, rpctypes.RPCInvalidRequestError(
+				nil, fmt.Errorf("reading request body: %w", err)))
 			return
 		}
 
@@ -49,7 +45,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 
 		requests, err := parseRequests(b)
 		if err != nil {
-			fail(rpctypes.RPCParseError(fmt.Errorf("decoding request: %w", err)))
+			writeRPCResponse(w, logger, rpctypes.RPCParseError(fmt.Errorf("decoding request: %w", err)))
 			return
 		}
 
@@ -98,11 +94,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			}
 		}
 
-		if len(responses) > 0 {
-			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
-				logger.Error("failed to write responses", "err", wErr)
-			}
+		if len(responses) == 0 {
+			return
 		}
+		writeRPCResponse(w, logger, responses...)
 	}
 }
 

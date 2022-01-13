@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"reflect"
 	"regexp"
 	"strings"
@@ -26,30 +25,24 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	dummyID := rpctypes.JSONRPCIntID(-1) // URIClientRequestID
 
 	// Exception for websocket endpoints
+	//
+	// TODO(creachadair): Rather than reporting errors for these, we should
+	// remove them from the routing list entirely on this endpoint.
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			res := rpctypes.RPCMethodNotFoundError(dummyID)
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}
 
 	// All other endpoints
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Debug("HTTP HANDLER", "req", dumpHTTPRequest(r))
-
 		ctx := rpctypes.WithCallInfo(r.Context(), &rpctypes.CallInfo{HTTPRequest: r})
 		args := []reflect.Value{reflect.ValueOf(ctx)}
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			res := rpctypes.RPCInvalidParamsError(dummyID,
-				fmt.Errorf("error converting http params to arguments: %w", err),
-			)
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
+			writeHTTPResponse(w, logger, rpctypes.RPCInvalidParamsError(
+				dummyID, fmt.Errorf("error converting http params to arguments: %w", err)))
 			return
 		}
 		args = append(args, fnArgs...)
@@ -61,36 +54,23 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		switch e := err.(type) {
 		// if no error then return a success response
 		case nil:
-			res := rpctypes.NewRPCSuccessResponse(dummyID, result)
-			if wErr := WriteRPCResponseHTTP(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
+			writeHTTPResponse(w, logger, rpctypes.NewRPCSuccessResponse(dummyID, result))
 
 		// if this already of type RPC error then forward that error.
 		case *rpctypes.RPCError:
-			res := rpctypes.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data)
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
+			writeHTTPResponse(w, logger, rpctypes.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
 
 		default: // we need to unwrap the error and parse it accordingly
-			var res rpctypes.RPCResponse
-
 			switch errors.Unwrap(err) {
 			case coretypes.ErrZeroOrNegativeHeight,
 				coretypes.ErrZeroOrNegativePerPage,
 				coretypes.ErrPageOutOfRange,
 				coretypes.ErrInvalidRequest:
-				res = rpctypes.RPCInvalidRequestError(dummyID, err)
+				writeHTTPResponse(w, logger, rpctypes.RPCInvalidRequestError(dummyID, err))
 			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				res = rpctypes.RPCInternalError(dummyID, err)
-			}
-
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
+				writeHTTPResponse(w, logger, rpctypes.RPCInternalError(dummyID, err))
 			}
 		}
-
 	}
 }
 
@@ -232,13 +212,4 @@ func getParam(r *http.Request, param string) string {
 		s = r.FormValue(param)
 	}
 	return s
-}
-
-func dumpHTTPRequest(r *http.Request) string {
-	d, e := httputil.DumpRequest(r, true)
-	if e != nil {
-		return e.Error()
-	}
-
-	return string(d)
 }
