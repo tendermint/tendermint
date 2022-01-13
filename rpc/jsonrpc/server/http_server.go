@@ -187,7 +187,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Capture the HTTP status written by the handler.
 		var httpStatus int
-		rww := StatusWriter(w, &httpStatus)
+		rww := newStatusWriter(w, &httpStatus)
 
 		// Recover panics from inside handler and try to send the client
 		// 500 Internal server error. If the handler panicked after already
@@ -249,9 +249,9 @@ func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h.handler.ServeHTTP(w, req)
 }
 
-// StatusWriter wraps an http.ResponseWriter to capture the HTTP status code in
-// *code.
-func StatusWriter(w http.ResponseWriter, code *int) statusWriter {
+// newStatusWriter wraps an http.ResponseWriter to capture the HTTP status code
+// in *code.
+func newStatusWriter(w http.ResponseWriter, code *int) statusWriter {
 	return statusWriter{
 		ResponseWriter: w,
 		Hijacker:       w.(http.Hijacker),
