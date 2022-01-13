@@ -18,7 +18,7 @@ import (
 
 func testMux() *http.ServeMux {
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s", "i"),
 		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height"),
 	}
 	mux := http.NewServeMux()
