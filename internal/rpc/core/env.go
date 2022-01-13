@@ -223,11 +223,9 @@ func (env *Environment) StartService(ctx context.Context, conf *config.Config) (
 	}
 
 	listenAddrs := strings.SplitAndTrimEmpty(conf.RPC.ListenAddress, ",", " ")
-	routes := env.GetRoutes()
-
-	if conf.RPC.Unsafe {
-		env.AddUnsafe(routes)
-	}
+	routes := NewRoutesMap(env, &RouteOptions{
+		Unsafe: conf.RPC.Unsafe,
+	})
 
 	cfg := rpcserver.DefaultConfig()
 	cfg.MaxBodyBytes = conf.RPC.MaxBodyBytes
