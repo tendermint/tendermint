@@ -13,17 +13,6 @@ import (
 
 type RoutesMap map[string]*rpc.RPCFunc
 
-// Routes returns a map of available routes.
-func (env *Environment) GetRoutes() RoutesMap {
-	return NewRoutesMap(env, nil)
-}
-
-// AddUnsafeRoutes adds unsafe routes to the given map.
-func (env *Environment) AddUnsafe(routes RoutesMap) {
-	// control API
-	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "")
-}
-
 // RouteOptions provide optional settings to NewRoutesMap.  A nil *RouteOptions
 // is ready for use and provides defaults as specified.
 type RouteOptions struct {
