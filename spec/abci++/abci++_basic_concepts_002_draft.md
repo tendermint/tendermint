@@ -313,8 +313,8 @@ parameters in `FinalizeBlockResponse` are included in the header of the next blo
 
 With ABCI++ predecessor, ABCI, the only moment when the Application had access to a
 block was when it was decided. This led to a block execution model, called _next-block
-execution_, where some fields in a block refer to the execution of the previous block,
-namely:
+execution_, where some fields hashed in a block header refer to the execution of the
+previous block, namely:
 
 * the merkle root of the Application's state
 * the transaction results
@@ -324,10 +324,10 @@ namely:
 With ABCI++, an Application may decide to keep using the next-block execution model;
 however the new methods introduced, `PrepareProposal` and `ProcessProposal` allow
 for a new execution model, called _same-block execution_. An Application implementing
-this execution model, upon receiving a raw proposal via `PrepareProposal` and
-potentially modifying the list of transactions, the Application fully executes the
-resulting prepared proposal as though it was the decided block. The results of the
-block execution are used as follows:
+this execution model, upon receiving a raw proposal via `RequestPrepareProposal`
+and potentially modifying its transaction list,
+fully executes the resulting prepared proposal as though it was the decided block.
+The results of the block execution are used as follows:
 
 * the Application keeps the events generated and provides them if `FinalizeBlock`
   is finally called on this prepared proposal.
@@ -347,11 +347,34 @@ If the Application decides to keep the next-block execution model, it will not
 provide any data in `ResponsePrepareProposal`, other than an optionally modified
 transaction list.
 
-The execution model is set in boolean parameter _same_block_ in ConsensusParameters.
+In the long term, the execution model will be set in a new boolean parameter
+_same_block_ in `ConsensusParams`.
 It should **not** be changed once the blockchain has started, unless the Application
 developers _really_ know what they are doing.
+However, modifying `ConsensusParams` structure cannot be done lightly if we are to
+preserve blockchain compatibility. Therefore we need an interim solution until
+soft upgrades are specified and implemented in Tendermint. This somewhat _unsafe_
+solution consists in Tendermint assuming same-block execution if the Application
+fills the above mentioned fields in `ResponsePrepareProposal`.
 
->**TODO**: Update ConsensusParams struct with "same_block"
+## Tendermint timeouts in same-block execution
+
+The new same-block execution mode requires the Application to fully execute the
+prepared block at `PrepareProposal` time. This execution is synchronous, so
+Tendermint cannot make progress until the Application returns from `PrepareProposal`.
+This stands on Tendermint's critical path: if the Application takes a long time
+executing the block, the default value of _TimeoutPropose_ might not be sufficient
+to accomodate the long block execution time and non-proposer processes might time
+out and prevote `nil`, thus starting a further round unnecessarily.
+
+The application is the best suited to provide a value for _TimeoutPropose_ so
+that the block execution time upon `PrepareProposal` fits well in the propose
+timeout interval.
+
+Currently, the Application can override the value of _TimeoutPropose_ via the
+`config.toml` file. In the future, `ConsensusParams` may have an extra field
+with the current _TimeoutPropose_ value so that the Application has the possibility
+to adapt it at every height.
 
 ## State Sync
 

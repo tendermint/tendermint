@@ -310,7 +310,7 @@ From the App's perspective, they'll probably skip ProcessProposal
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
 * **Usage**:
-    * Contains a preliminary block to be proposed, which the Application can modify.
+    * Contains a preliminary block to be proposed, called _raw block_, which the Application can modify.
     * The parameters and types of `RequestPrepareProposal` are the same as `RequestProcessProposal`
       and `RequestFinalizeBlock`.
     * The header contains the height, timestamp, and more - it exactly matches the
@@ -321,7 +321,7 @@ From the App's perspective, they'll probably skip ProcessProposal
       `ResponsePrepareProposal.tx`.
     * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_result`, `ResponsePrepareProposal.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`, as a result of executing the block.
+      `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
       * The values for `ResponsePrepareProposal.validator_updates`, or
         `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
         the current values.
@@ -333,6 +333,9 @@ From the App's perspective, they'll probably skip ProcessProposal
       * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
         params for the same block `H`. For more information on the consensus parameters,
         see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+      * It is the responsibility of the Application to set the right value for _TimeoutPropose_ so that
+        the (synchronous) execution of the block does not cause other processes to prevote `nil` because
+        their propose timeout goes off.
     * In next-block execution mode, Tendermint will ignore parameters `ResponsePrepareProposal.tx_result`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * As a result of executing the prepared proposal, the Application may produce header events or transaction events.

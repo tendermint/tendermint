@@ -188,21 +188,6 @@ Let us now examine the grammar line by line, providing further details.
 >decide              = %s"<FinalizeBlock>"
 >```
 
-## `ProcessProposal`'s timeout (a.k.a. Zarko's Github comment in Issue#351)
-
->**TODO** (to discuss): `PrepareProposal` is called synchronously. `ProcessProposal` may also want to fully process the block synchronously.
->However, they stand on Tendermint's critical path, so the Tendermint's Propose timeout needs to accomodate that.
->
->Idea: Make propose timestamp (currently hardcoded to 3 secs in the Tendermint Go implementation) part of ConsensusParams,
->so the App can adjust it with its knowledge of the time may take to prepare/process the proposal.
->
->This should probably go elsewhere in the spec.
->Also, see tendermint/tendermint#7274
-
-## Failure modes
-
->**TODO** Is it worth explaining the failure modes? Since we're going for halt, and can't configure them...
-
 ## Adapting existing Applications that use ABCI
 
 In some cases, an existing Application using the legacy ABCI may need to be adapted to work with ABCI++
