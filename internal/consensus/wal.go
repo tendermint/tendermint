@@ -171,6 +171,7 @@ func (wal *BaseWAL) OnStop() {
 			wal.logger.Error("error trying to stop wal", "error", err)
 		}
 	}
+	wal.group.Wait()
 	wal.group.Close()
 }
 
