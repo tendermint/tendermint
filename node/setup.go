@@ -509,12 +509,12 @@ func createAndStartPrivValidatorSocketClient(
 
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
+		return nil, fmt.Errorf("starting validator listener: %w", err)
 	}
 
 	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
+		return nil, fmt.Errorf("starting validator client: %w", err)
 	}
 
 	// try to get a pubkey from private validate first time
@@ -524,8 +524,9 @@ func createAndStartPrivValidatorSocketClient(
 	}
 
 	const (
-		retries = 50 // 50 * 100ms = 5s total
 		timeout = 100 * time.Millisecond
+		maxTime = 5 * time.Second
+		retries = int(maxTime / timeout)
 	)
 	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
 
