@@ -136,7 +136,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	walBody, err := WALWithNBlocks(ctx, t, logger, 6)
 	if err != nil {
