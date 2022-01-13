@@ -74,7 +74,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 func parseURLParams(ctx context.Context, rf *RPCFunc, req *http.Request) ([]reflect.Value, error) {
 	if err := req.ParseForm(); err != nil {
-		return nil, fmt.Errorf("invalid HTTP request: %ww", err)
+		return nil, fmt.Errorf("invalid HTTP request: %w", err)
 	}
 	getArg := func(name string) (string, bool) {
 		if req.Form.Has(name) {
