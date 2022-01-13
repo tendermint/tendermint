@@ -1,10 +1,14 @@
 package core
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
+	"net"
+	"net/http"
 	"time"
 
+	"github.com/rs/cors"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
@@ -13,12 +17,15 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/rpc/coretypes"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -204,4 +211,100 @@ func (env *Environment) latestUncommittedHeight() int64 {
 		}
 	}
 	return env.BlockStore.Height() + 1
+}
+
+// StartService constructs and starts listeners for the RPC service
+// according to the config object, returning an error if the service
+// cannot be constructed or started. The listeners, which provide
+// access to the service, run until the context is canceled.
+func (env *Environment) StartService(ctx context.Context, conf *config.Config) ([]net.Listener, error) {
+	if err := env.InitGenesisChunks(); err != nil {
+		return nil, err
+	}
+
+	listenAddrs := strings.SplitAndTrimEmpty(conf.RPC.ListenAddress, ",", " ")
+	routes := env.GetRoutes()
+
+	if conf.RPC.Unsafe {
+		env.AddUnsafe(routes)
+	}
+
+	cfg := rpcserver.DefaultConfig()
+	cfg.MaxBodyBytes = conf.RPC.MaxBodyBytes
+	cfg.MaxHeaderBytes = conf.RPC.MaxHeaderBytes
+	cfg.MaxOpenConnections = conf.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if cfg.WriteTimeout <= conf.RPC.TimeoutBroadcastTxCommit {
+		cfg.WriteTimeout = conf.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
+	// we may expose the rpc over both a unix and tcp socket
+	listeners := make([]net.Listener, len(listenAddrs))
+	for i, listenAddr := range listenAddrs {
+		mux := http.NewServeMux()
+		rpcLogger := env.Logger.With("module", "rpc-server")
+		wmLogger := rpcLogger.With("protocol", "websocket")
+		wm := rpcserver.NewWebsocketManager(wmLogger, routes,
+			rpcserver.OnDisconnect(func(remoteAddr string) {
+				err := env.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
+				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
+					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+				}
+			}),
+			rpcserver.ReadLimit(cfg.MaxBodyBytes),
+		)
+		mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
+		listener, err := rpcserver.Listen(
+			listenAddr,
+			cfg.MaxOpenConnections,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var rootHandler http.Handler = mux
+		if conf.RPC.IsCorsEnabled() {
+			corsMiddleware := cors.New(cors.Options{
+				AllowedOrigins: conf.RPC.CORSAllowedOrigins,
+				AllowedMethods: conf.RPC.CORSAllowedMethods,
+				AllowedHeaders: conf.RPC.CORSAllowedHeaders,
+			})
+			rootHandler = corsMiddleware.Handler(mux)
+		}
+		if conf.RPC.IsTLSEnabled() {
+			go func() {
+				if err := rpcserver.ServeTLS(
+					ctx,
+					listener,
+					rootHandler,
+					conf.RPC.CertFile(),
+					conf.RPC.KeyFile(),
+					rpcLogger,
+					cfg,
+				); err != nil {
+					env.Logger.Error("error serving server with TLS", "err", err)
+				}
+			}()
+		} else {
+			go func() {
+				if err := rpcserver.Serve(
+					ctx,
+					listener,
+					rootHandler,
+					rpcLogger,
+					cfg,
+				); err != nil {
+					env.Logger.Error("error serving server", "err", err)
+				}
+			}()
+		}
+
+		listeners[i] = listener
+	}
+
+	return listeners, nil
+
 }
