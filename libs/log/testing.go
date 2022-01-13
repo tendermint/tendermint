@@ -1,43 +1,18 @@
 package log
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/rs/zerolog"
 )
 
-var (
-	// reuse the same logger across all tests
-	testingLoggerMtx = sync.Mutex{}
-	testingLogger    Logger
-)
-
-// TestingLogger returns a Logger which writes to STDOUT if test(s) are being
-// run with the verbose (-v) flag, NopLogger otherwise.
-//
-// NOTE:
-// - A call to NewTestingLogger() must be made inside a test (not in the init func)
-// because verbose flag only set at the time of testing.
-// - Repeated calls to this function within a single process will
-// produce a single test log instance, and while the logger is safe
-// for parallel use it it doesn't produce meaningful feedback for
-// parallel tests.
+// TestingLogger was a legacy constructor that wrote logging output to
+// standardoutput when in verbose mode, and no-op'ed test logs
+// otherwise. Now it always no-ops, but if you need to see logs from
+// tests, you can replace this call with `NewTestingLogger`
+// constructor.
 func TestingLogger() Logger {
-	testingLoggerMtx.Lock()
-	defer testingLoggerMtx.Unlock()
-
-	if testingLogger != nil {
-		return testingLogger
-	}
-
-	if testing.Verbose() {
-		testingLogger = MustNewDefaultLogger(LogFormatText, LogLevelDebug)
-	} else {
-		testingLogger = NewNopLogger()
-	}
-
-	return testingLogger
+	return NewNopLogger()
 }
 
 type testingWriter struct {
@@ -56,7 +31,12 @@ func (tw testingWriter) Write(in []byte) (int, error) {
 // loggers ONCE for each *testing.T instance that you interact with.
 //
 // By default it collects only ERROR messages, or DEBUG messages in
-// verbose mode, and relies on the underlying behavior of testing.T.Log()
+// verbose mode, and relies on the underlying behavior of
+// testing.T.Log()
+//
+// Users should be careful to ensure that no calls to this logger are
+// made in goroutines that are running after (which, by the rules of
+// testing.TB will panic.)
 func NewTestingLogger(t testing.TB) Logger {
 	level := LogLevelError
 	if testing.Verbose() {
