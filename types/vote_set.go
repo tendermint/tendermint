@@ -385,7 +385,9 @@ func (voteSet *VoteSet) List() []Vote {
 	}
 	votes := make([]Vote, len(voteSet.votes))
 	for i := range voteSet.votes {
-		votes[i] = *voteSet.votes[i]
+		if voteSet.votes[i] != nil {
+			votes[i] = *voteSet.votes[i]
+		}
 	}
 	return votes
 }
