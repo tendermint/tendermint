@@ -34,7 +34,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// empirically, this test either passes in <1s or hits some
 	// kind of deadlock and hit the larger timeout. This timeout
 	// can be extended a bunch if needed, but it's good to avoid
-	// falling back to a much courser timeout
+	// falling back to a much coarser timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
