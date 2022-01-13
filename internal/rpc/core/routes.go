@@ -31,14 +31,14 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 		// subscribe/unsubscribe are reserved for websocket events.
 		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe, "query"),
 		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe, "query"),
-		"unsubscribe_all": rpc.NewWSRPCFunc(svc.UnsubscribeAll, ""),
+		"unsubscribe_all": rpc.NewWSRPCFunc(svc.UnsubscribeAll),
 
 		// info API
-		"health":               rpc.NewRPCFunc(svc.Health, ""),
-		"status":               rpc.NewRPCFunc(svc.Status, ""),
-		"net_info":             rpc.NewRPCFunc(svc.NetInfo, ""),
-		"blockchain":           rpc.NewRPCFunc(svc.BlockchainInfo, "minHeight,maxHeight"),
-		"genesis":              rpc.NewRPCFunc(svc.Genesis, ""),
+		"health":               rpc.NewRPCFunc(svc.Health),
+		"status":               rpc.NewRPCFunc(svc.Status),
+		"net_info":             rpc.NewRPCFunc(svc.NetInfo),
+		"blockchain":           rpc.NewRPCFunc(svc.BlockchainInfo, "minHeight", "maxHeight"),
+		"genesis":              rpc.NewRPCFunc(svc.Genesis),
 		"genesis_chunked":      rpc.NewRPCFunc(svc.GenesisChunked, "chunk"),
 		"header":               rpc.NewRPCFunc(svc.Header, "height"),
 		"header_by_hash":       rpc.NewRPCFunc(svc.HeaderByHash, "hash"),
@@ -48,15 +48,15 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 		"commit":               rpc.NewRPCFunc(svc.Commit, "height"),
 		"check_tx":             rpc.NewRPCFunc(svc.CheckTx, "tx"),
 		"remove_tx":            rpc.NewRPCFunc(svc.RemoveTx, "txkey"),
-		"tx":                   rpc.NewRPCFunc(svc.Tx, "hash,prove"),
-		"tx_search":            rpc.NewRPCFunc(svc.TxSearch, "query,prove,page,per_page,order_by"),
-		"block_search":         rpc.NewRPCFunc(svc.BlockSearch, "query,page,per_page,order_by"),
-		"validators":           rpc.NewRPCFunc(svc.Validators, "height,page,per_page"),
-		"dump_consensus_state": rpc.NewRPCFunc(svc.DumpConsensusState, ""),
-		"consensus_state":      rpc.NewRPCFunc(svc.GetConsensusState, ""),
+		"tx":                   rpc.NewRPCFunc(svc.Tx, "hash", "prove"),
+		"tx_search":            rpc.NewRPCFunc(svc.TxSearch, "query", "prove", "page", "per_page", "order_by"),
+		"block_search":         rpc.NewRPCFunc(svc.BlockSearch, "query", "page", "per_page", "order_by"),
+		"validators":           rpc.NewRPCFunc(svc.Validators, "height", "page", "per_page"),
+		"dump_consensus_state": rpc.NewRPCFunc(svc.DumpConsensusState),
+		"consensus_state":      rpc.NewRPCFunc(svc.GetConsensusState),
 		"consensus_params":     rpc.NewRPCFunc(svc.ConsensusParams, "height"),
 		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs, "limit"),
-		"num_unconfirmed_txs":  rpc.NewRPCFunc(svc.NumUnconfirmedTxs, ""),
+		"num_unconfirmed_txs":  rpc.NewRPCFunc(svc.NumUnconfirmedTxs),
 
 		// tx broadcast API
 		"broadcast_tx_commit": rpc.NewRPCFunc(svc.BroadcastTxCommit, "tx"),
@@ -64,14 +64,14 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 		"broadcast_tx_async":  rpc.NewRPCFunc(svc.BroadcastTxAsync, "tx"),
 
 		// abci API
-		"abci_query": rpc.NewRPCFunc(svc.ABCIQuery, "path,data,height,prove"),
-		"abci_info":  rpc.NewRPCFunc(svc.ABCIInfo, ""),
+		"abci_query": rpc.NewRPCFunc(svc.ABCIQuery, "path", "data", "height", "prove"),
+		"abci_info":  rpc.NewRPCFunc(svc.ABCIInfo),
 
 		// evidence API
 		"broadcast_evidence": rpc.NewRPCFunc(svc.BroadcastEvidence, "evidence"),
 	}
 	if u, ok := svc.(RPCUnsafe); ok && opts.Unsafe {
-		out["unsafe_flush_mempool"] = rpc.NewRPCFunc(u.UnsafeFlushMempool, "")
+		out["unsafe_flush_mempool"] = rpc.NewRPCFunc(u.UnsafeFlushMempool)
 	}
 	return out
 }
