@@ -72,6 +72,14 @@ parameters but does not verify that they are the same across all validators by
 referencing them in the hash. This seems reasonably safe given the fact that
 only a very far subset of the consensus parameters are currently verified at all.
 
+#### Version The Consensus Parameter Hash Scheme
+
+The upcoming work on [soft upgrades](https://github.com/tendermint/spec/pull/222)
+proposes applying different hashing rules depending on the active block version.
+The consensus parameter hash could be versioned in the same way. When different
+block versions are used, a different set of consensus parameters will be included
+in the hash.
+
 ### Developer Defined Values
 
 This section discusses possible solutions to the problem of allowing application
@@ -102,6 +110,16 @@ values. Additionally, great care is being taken to ensure that logic governed by
 consensus parameters is not liveness-breaking. This means that, at worst-case, 
 chains will experience a single slow height while waiting for the new values to
 by applied.
+
+#### Add a new `UpgradeChain` method
+
+An additional method for allowing chains to update the consensus parameters that
+do not yet exist is to add a new `UpgradeChain` method to ABCI. The upgrade chain
+method would be called when the chain detects that the version of block that it
+is about to produce does not match the previous block. This method would be called
+after `EndBlock` and would return the set of ConsensusParameters to use at the
+next height. It would therefore give an application the chance to set the new
+Consensus parameters before running a height with these new parameter.
 
 ### References
 
