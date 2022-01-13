@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
@@ -90,7 +91,7 @@ func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error
 	mux := http.NewServeMux()
 
 	// 1) Register regular routes.
-	r := RPCRoutes(p.Client)
+	r := rpccore.NewRoutesMap(proxyService{Client: p.Client}, nil)
 	rpcserver.RegisterRPCFuncs(mux, r, p.Logger)
 
 	// 2) Allow websocket connections.
