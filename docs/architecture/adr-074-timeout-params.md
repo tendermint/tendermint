@@ -107,7 +107,7 @@ completed execution of the block. Allowing the network to proceed as soon as the
 leaving slower validators unable to participate in consensus at all. `TimeoutCommit`
 therefore allows networks to have greater variability in hardware. Additional
 discussion of this can be found in [tendermint issue 5911][tendermint-issue-5911-comment]
-and [spec issue 359][spec-359].
+and [spec issue 359][spec-issue-359].
 
 ## Alternative Approaches
 
@@ -130,14 +130,10 @@ how long the `Commit` phase may take. Applications that perform more work during
 require a longer `TimeoutCommit` to allow the application to complete its work
 and be prepared for the next height.
 
-* From https://github.com/tendermint/spec/issues/359 it looks like `TimeoutCommit` really only exists for the purpose of allowing
-precommits to be collected after the +2/3 has initially been seen. Not much more value to it than that.
-
-* allowing long timeout commit discussed here: https://github.com/tendermint/tendermint/issues/5911#issuecomment-973560381
-
 ## Decision
 
-None
+The decision has been made to implement this work, with the caveat that the
+specific mechanism for introducing the new parameters to chains is still ongoing.
 
 ## Detailed Design
 
