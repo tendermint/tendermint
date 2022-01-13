@@ -35,7 +35,7 @@ func (tw testingWriter) Write(in []byte) (int, error) {
 // testing.T.Log()
 //
 // Users should be careful to ensure that no calls to this logger are
-// made in go routines that are running after (which, by the rules of
+// made in goroutines that are running after (which, by the rules of
 // testing.TB will panic.)
 func NewTestingLogger(t testing.TB) Logger {
 	level := LogLevelError
