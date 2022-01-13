@@ -89,10 +89,17 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 		rts.nodes = append(rts.nodes, rts.network.Nodes[nodeID])
 
-		rts.reactors[nodeID] = evidence.NewReactor(logger,
-			rts.evidenceChannels[nodeID],
+		chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			return rts.evidenceChannels[nodeID], nil
+		}
+
+		rts.reactors[nodeID], err = evidence.NewReactor(
+			ctx,
+			logger,
+			chCreator,
 			rts.peerUpdates[nodeID],
 			rts.pools[nodeID])
+		require.NoError(t, err)
 
 		require.NoError(t, rts.reactors[nodeID].Start(ctx))
 		require.True(t, rts.reactors[nodeID].IsRunning())

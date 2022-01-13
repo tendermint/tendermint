@@ -113,7 +113,7 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 
 func setupStateStore(ctx context.Context, t *testing.T, height int64) state.Store {
 	stateStore := state.NewStore(dbm.NewMemDB())
-	valSet, _ := factory.RandValidatorSet(ctx, 5, 10)
+	valSet, _ := factory.RandValidatorSet(ctx, t, 5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = 10

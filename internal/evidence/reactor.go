@@ -61,11 +61,17 @@ type Reactor struct {
 // service.Service interface. It accepts a p2p Channel dedicated for handling
 // envelopes with EvidenceList messages.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
-	evidenceCh *p2p.Channel,
+	chCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	evpool *Pool,
-) *Reactor {
+) (*Reactor, error) {
+	evidenceCh, err := chCreator(ctx, GetChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
+
 	r := &Reactor{
 		logger:       logger,
 		evpool:       evpool,
@@ -75,7 +81,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
-	return r
+	return r, err
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
@@ -249,7 +255,6 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}

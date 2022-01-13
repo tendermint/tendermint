@@ -9,33 +9,27 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-func unmarshalResponseBytes(
-	responseBytes []byte,
-	expectedID rpctypes.JSONRPCIntID,
-	result interface{},
-) (interface{}, error) {
-
+func unmarshalResponseBytes(responseBytes []byte, expectedID rpctypes.JSONRPCIntID, result interface{}) error {
 	// Read response.  If rpc/core/types is imported, the result will unmarshal
 	// into the correct type.
 	response := &rpctypes.RPCResponse{}
 	if err := json.Unmarshal(responseBytes, response); err != nil {
-		return nil, fmt.Errorf("error unmarshaling: %w", err)
+		return fmt.Errorf("error unmarshaling: %w", err)
 	}
 
 	if response.Error != nil {
-		return nil, response.Error
+		return response.Error
 	}
 
 	if err := validateAndVerifyID(response, expectedID); err != nil {
-		return nil, fmt.Errorf("wrong ID: %w", err)
+		return fmt.Errorf("wrong ID: %w", err)
 	}
 
 	// Unmarshal the RawMessage into the result.
 	if err := tmjson.Unmarshal(response.Result, result); err != nil {
-		return nil, fmt.Errorf("error unmarshaling result: %w", err)
+		return fmt.Errorf("error unmarshaling result: %w", err)
 	}
-
-	return result, nil
+	return nil
 }
 
 func unmarshalResponseBytesArray(

@@ -4,21 +4,61 @@ import (
 	"bytes"
 	"encoding/hex"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func toHex(bits []byte) string {
 	return hex.EncodeToString(bits)
 }
 
-func fromHex(bits string) []byte {
+func fromHex(bits string) ([]byte, error) {
 	b, err := hex.DecodeString(bits)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return b
+	return b, nil
+}
+
+func check(t *testing.T, fn func(string) ([]byte, error), hex string) []byte {
+	t.Helper()
+
+	res, err := fn(hex)
+	require.NoError(t, err)
+	return res
 }
 
 func TestHChaCha20(t *testing.T) {
+	var hChaCha20Vectors = []struct {
+		key, nonce, keystream []byte
+	}{
+		{
+			check(t, fromHex, "0000000000000000000000000000000000000000000000000000000000000000"),
+			check(t, fromHex, "000000000000000000000000000000000000000000000000"),
+			check(t, fromHex, "1140704c328d1d5d0e30086cdf209dbd6a43b8f41518a11cc387b669b2ee6586"),
+		},
+		{
+			check(t, fromHex, "8000000000000000000000000000000000000000000000000000000000000000"),
+			check(t, fromHex, "000000000000000000000000000000000000000000000000"),
+			check(t, fromHex, "7d266a7fd808cae4c02a0a70dcbfbcc250dae65ce3eae7fc210f54cc8f77df86"),
+		},
+		{
+			check(t, fromHex, "0000000000000000000000000000000000000000000000000000000000000001"),
+			check(t, fromHex, "000000000000000000000000000000000000000000000002"),
+			check(t, fromHex, "e0c77ff931bb9163a5460c02ac281c2b53d792b1c43fea817e9ad275ae546963"),
+		},
+		{
+			check(t, fromHex, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"),
+			check(t, fromHex, "000102030405060708090a0b0c0d0e0f1011121314151617"),
+			check(t, fromHex, "51e3ff45a895675c4b33b46c64f4a9ace110d34df6a2ceab486372bacbd3eff6"),
+		},
+		{
+			check(t, fromHex, "24f11cce8a1b3d61e441561a696c1c1b7e173d084fd4812425435a8896a013dc"),
+			check(t, fromHex, "d9660c5900ae19ddad28d6e06e45fe5e"),
+			check(t, fromHex, "5966b3eec3bff1189f831f06afe4d4e3be97fa9235ec8c20d08acfbbb4e851e3"),
+		},
+	}
+
 	for i, v := range hChaCha20Vectors {
 		var key [32]byte
 		var nonce [16]byte
@@ -30,36 +70,6 @@ func TestHChaCha20(t *testing.T) {
 			t.Errorf("test %d: keystream mismatch:\n \t got:  %s\n \t want: %s", i, toHex(key[:]), toHex(v.keystream))
 		}
 	}
-}
-
-var hChaCha20Vectors = []struct {
-	key, nonce, keystream []byte
-}{
-	{
-		fromHex("0000000000000000000000000000000000000000000000000000000000000000"),
-		fromHex("000000000000000000000000000000000000000000000000"),
-		fromHex("1140704c328d1d5d0e30086cdf209dbd6a43b8f41518a11cc387b669b2ee6586"),
-	},
-	{
-		fromHex("8000000000000000000000000000000000000000000000000000000000000000"),
-		fromHex("000000000000000000000000000000000000000000000000"),
-		fromHex("7d266a7fd808cae4c02a0a70dcbfbcc250dae65ce3eae7fc210f54cc8f77df86"),
-	},
-	{
-		fromHex("0000000000000000000000000000000000000000000000000000000000000001"),
-		fromHex("000000000000000000000000000000000000000000000002"),
-		fromHex("e0c77ff931bb9163a5460c02ac281c2b53d792b1c43fea817e9ad275ae546963"),
-	},
-	{
-		fromHex("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"),
-		fromHex("000102030405060708090a0b0c0d0e0f1011121314151617"),
-		fromHex("51e3ff45a895675c4b33b46c64f4a9ace110d34df6a2ceab486372bacbd3eff6"),
-	},
-	{
-		fromHex("24f11cce8a1b3d61e441561a696c1c1b7e173d084fd4812425435a8896a013dc"),
-		fromHex("d9660c5900ae19ddad28d6e06e45fe5e"),
-		fromHex("5966b3eec3bff1189f831f06afe4d4e3be97fa9235ec8c20d08acfbbb4e851e3"),
-	},
 }
 
 func TestVectors(t *testing.T) {

@@ -32,7 +32,7 @@ func TestingLogger() Logger {
 	}
 
 	if testing.Verbose() {
-		testingLogger = MustNewDefaultLogger(LogFormatText, LogLevelDebug, true)
+		testingLogger = MustNewDefaultLogger(LogFormatText, LogLevelDebug)
 	} else {
 		testingLogger = NewNopLogger()
 	}
@@ -73,13 +73,8 @@ func NewTestingLoggerWithLevel(t testing.TB, level string) Logger {
 	if err != nil {
 		t.Fatalf("failed to parse log level (%s): %v", level, err)
 	}
-	trace := false
-	if testing.Verbose() {
-		trace = true
-	}
 
 	return defaultLogger{
 		Logger: zerolog.New(newSyncWriter(testingWriter{t})).Level(logLevel),
-		trace:  trace,
 	}
 }

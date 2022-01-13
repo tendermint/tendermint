@@ -369,8 +369,11 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 				continue
 			}
 
-			ctx := &rpctypes.Context{JSONReq: &request, WSConn: wsc}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
+			fctx := rpctypes.WithCallInfo(wsc.Context(), &rpctypes.CallInfo{
+				RPCRequest: &request,
+				WSConn:     wsc,
+			})
+			args := []reflect.Value{reflect.ValueOf(fctx)}
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {

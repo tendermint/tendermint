@@ -683,7 +683,6 @@ func TestP2PConfig() *P2PConfig {
 	cfg.ListenAddress = "tcp://127.0.0.1:36656"
 	cfg.AllowDuplicateIP = true
 	cfg.FlushThrottleTimeout = 10 * time.Millisecond
-
 	return cfg
 }
 

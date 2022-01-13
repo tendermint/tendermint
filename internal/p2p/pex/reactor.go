@@ -113,16 +113,22 @@ type Reactor struct {
 
 // NewReactor returns a reference to a new reactor.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
-	pexCh *p2p.Channel,
+	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
-) *Reactor {
+) (*Reactor, error) {
+
+	channel, err := channelCreator(ctx, ChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
 
 	r := &Reactor{
 		logger:               logger,
 		peerManager:          peerManager,
-		pexCh:                pexCh,
+		pexCh:                channel,
 		peerUpdates:          peerUpdates,
 		availablePeers:       make(map[types.NodeID]struct{}),
 		requestsSent:         make(map[types.NodeID]struct{}),
@@ -130,7 +136,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "PEX", r)
-	return r
+	return r, nil
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
@@ -175,7 +181,6 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on PEX channel; closing...")
 			return
 
 		// outbound requests for new peers
@@ -209,7 +214,6 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)

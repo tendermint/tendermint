@@ -3,7 +3,6 @@ package bits
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"testing"
 
@@ -149,9 +148,8 @@ func TestBytes(t *testing.T) {
 	bA := NewBitArray(4)
 	bA.SetIndex(0, true)
 	check := func(bA *BitArray, bz []byte) {
-		if !bytes.Equal(bA.Bytes(), bz) {
-			panic(fmt.Sprintf("Expected %X but got %X", bz, bA.Bytes()))
-		}
+		require.True(t, bytes.Equal(bA.Bytes(), bz),
+			"Expected %X but got %X", bz, bA.Bytes())
 	}
 	check(bA, []byte{0x01})
 	bA.SetIndex(3, true)

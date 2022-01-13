@@ -57,6 +57,7 @@ func getSignerTestCases(ctx context.Context, t *testing.T, logger log.Logger) []
 			signerServer: ss,
 		})
 		t.Cleanup(ss.Wait)
+		t.Cleanup(sc.endpoint.Wait)
 	}
 
 	return testCases
@@ -72,10 +73,14 @@ func TestSignerClose(t *testing.T) {
 
 	for _, tc := range getSignerTestCases(bctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(leaktest.Check(t))
+
 			defer tc.closer()
 
 			assert.NoError(t, tc.signerClient.Close())
 			assert.NoError(t, tc.signerServer.Stop())
+			t.Cleanup(tc.signerClient.endpoint.Wait)
+			t.Cleanup(tc.signerServer.Wait)
 		})
 	}
 }
@@ -89,7 +94,7 @@ func TestSignerPing(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
-		err := tc.signerClient.Ping()
+		err := tc.signerClient.Ping(ctx)
 		assert.NoError(t, err)
 	}
 }
@@ -298,9 +303,7 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 
 			// in this particular case, we use the dialer logger to ensure that
 			// test messages are properly interleaved in the test logs
-			tc.signerServer.endpoint.logger.Debug("TEST: Forced Wait -------------------------------------------------")
 			time.Sleep(testTimeoutReadWrite * 3)
-			tc.signerServer.endpoint.logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
 			require.NoError(t, tc.mockPV.SignVote(ctx, tc.chainID, want.ToProto()))
 			require.NoError(t, tc.signerClient.SignVote(ctx, tc.chainID, have.ToProto()))

@@ -3,6 +3,7 @@ package privval
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -72,7 +73,7 @@ func (pvKey FilePVKey) Save() error {
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
-	Height    int64            `json:"height"`
+	Height    int64            `json:"height,string"`
 	Round     int32            `json:"round"`
 	Step      int8             `json:"step"`
 	Signature []byte           `json:"signature,omitempty"`
@@ -128,7 +129,7 @@ func (lss *FilePVLastSignState) Save() error {
 	if outFile == "" {
 		return errors.New("cannot save FilePVLastSignState: filePath not set")
 	}
-	jsonBytes, err := tmjson.MarshalIndent(lss, "", "  ")
+	jsonBytes, err := json.MarshalIndent(lss, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -215,7 +216,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, err
 		if err != nil {
 			return nil, err
 		}
-		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
+		err = json.Unmarshal(stateJSONBytes, &pvState)
 		if err != nil {
 			return nil, fmt.Errorf("error reading PrivValidator state from %v: %w", stateFilePath, err)
 		}
