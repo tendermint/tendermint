@@ -179,8 +179,13 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	}()
 	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
-	n := getTestNode(ctx, t, cfg, logger)
-	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
+	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
+	require.NoError(t, err)
+
+	pval, err := createPrivval(ctx, logger, cfg, genDoc, nil)
+	require.NoError(t, err)
+
+	assert.IsType(t, &privval.RetrySignerClient{}, pval)
 }
 
 // address without a protocol must result in error
@@ -237,8 +242,13 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	defer pvsc.Stop() //nolint:errcheck // ignore for tests
-	n := getTestNode(ctx, t, cfg, logger)
-	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
+	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
+	require.NoError(t, err)
+
+	pval, err := createPrivval(ctx, logger, cfg, genDoc, nil)
+	require.NoError(t, err)
+
+	assert.IsType(t, &privval.RetrySignerClient{}, pval)
 }
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
