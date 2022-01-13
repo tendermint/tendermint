@@ -213,6 +213,10 @@ func (env *Environment) latestUncommittedHeight() int64 {
 	return env.BlockStore.Height() + 1
 }
 
+// StartService constructs and starts listeners for the RPC service
+// according to the config object, returning an error if the service
+// cannot be constructed or started. The listeners, which provide
+// access to the service, run until the context is canceled.
 func (env *Environment) StartService(ctx context.Context, conf *config.Config) ([]net.Listener, error) {
 	if err := env.InitGenesisChunks(); err != nil {
 		return nil, err
