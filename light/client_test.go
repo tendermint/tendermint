@@ -26,7 +26,15 @@ const (
 	chainID = "test"
 )
 
-var bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+var bTime time.Time
+
+func init() {
+	var err error
+	bTime, err = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+	if err != nil {
+		panic(err)
+	}
+}
 
 func TestClient(t *testing.T) {
 	var (
