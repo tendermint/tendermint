@@ -222,16 +222,8 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *socketClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestEcho(msg))
-}
-
 func (cli *socketClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestFlush())
-}
-
-func (cli *socketClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestInfo(req))
 }
 
 func (cli *socketClient) DeliverTxAsync(ctx context.Context, req types.RequestDeliverTx) (*ReqRes, error) {
@@ -242,51 +234,9 @@ func (cli *socketClient) CheckTxAsync(ctx context.Context, req types.RequestChec
 	return cli.queueRequestAsync(ctx, types.ToRequestCheckTx(req))
 }
 
-func (cli *socketClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestQuery(req))
-}
-
-func (cli *socketClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestCommit())
-}
-
-func (cli *socketClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestInitChain(req))
-}
-
-func (cli *socketClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestBeginBlock(req))
-}
-
-func (cli *socketClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestEndBlock(req))
-}
-
-func (cli *socketClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestListSnapshots(req))
-}
-
-func (cli *socketClient) OfferSnapshotAsync(ctx context.Context, req types.RequestOfferSnapshot) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestOfferSnapshot(req))
-}
-
-func (cli *socketClient) LoadSnapshotChunkAsync(
-	ctx context.Context,
-	req types.RequestLoadSnapshotChunk,
-) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestLoadSnapshotChunk(req))
-}
-
-func (cli *socketClient) ApplySnapshotChunkAsync(
-	ctx context.Context,
-	req types.RequestApplySnapshotChunk,
-) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
-}
-
 //----------------------------------------
 
-func (cli *socketClient) FlushSync(ctx context.Context) error {
+func (cli *socketClient) Flush(ctx context.Context) error {
 	reqRes, err := cli.queueRequest(ctx, types.ToRequestFlush(), true)
 	if err != nil {
 		return queueErr(err)
@@ -311,7 +261,7 @@ func (cli *socketClient) FlushSync(ctx context.Context) error {
 	}
 }
 
-func (cli *socketClient) EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+func (cli *socketClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestEcho(msg))
 	if err != nil {
 		return nil, err
@@ -319,7 +269,7 @@ func (cli *socketClient) EchoSync(ctx context.Context, msg string) (*types.Respo
 	return reqres.Response.GetEcho(), nil
 }
 
-func (cli *socketClient) InfoSync(
+func (cli *socketClient) Info(
 	ctx context.Context,
 	req types.RequestInfo,
 ) (*types.ResponseInfo, error) {
@@ -330,7 +280,7 @@ func (cli *socketClient) InfoSync(
 	return reqres.Response.GetInfo(), nil
 }
 
-func (cli *socketClient) DeliverTxSync(
+func (cli *socketClient) DeliverTx(
 	ctx context.Context,
 	req types.RequestDeliverTx,
 ) (*types.ResponseDeliverTx, error) {
@@ -342,7 +292,7 @@ func (cli *socketClient) DeliverTxSync(
 	return reqres.Response.GetDeliverTx(), nil
 }
 
-func (cli *socketClient) CheckTxSync(
+func (cli *socketClient) CheckTx(
 	ctx context.Context,
 	req types.RequestCheckTx,
 ) (*types.ResponseCheckTx, error) {
@@ -353,7 +303,7 @@ func (cli *socketClient) CheckTxSync(
 	return reqres.Response.GetCheckTx(), nil
 }
 
-func (cli *socketClient) QuerySync(
+func (cli *socketClient) Query(
 	ctx context.Context,
 	req types.RequestQuery,
 ) (*types.ResponseQuery, error) {
@@ -364,7 +314,7 @@ func (cli *socketClient) QuerySync(
 	return reqres.Response.GetQuery(), nil
 }
 
-func (cli *socketClient) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
+func (cli *socketClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestCommit())
 	if err != nil {
 		return nil, err
@@ -372,7 +322,7 @@ func (cli *socketClient) CommitSync(ctx context.Context) (*types.ResponseCommit,
 	return reqres.Response.GetCommit(), nil
 }
 
-func (cli *socketClient) InitChainSync(
+func (cli *socketClient) InitChain(
 	ctx context.Context,
 	req types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
@@ -384,7 +334,7 @@ func (cli *socketClient) InitChainSync(
 	return reqres.Response.GetInitChain(), nil
 }
 
-func (cli *socketClient) BeginBlockSync(
+func (cli *socketClient) BeginBlock(
 	ctx context.Context,
 	req types.RequestBeginBlock,
 ) (*types.ResponseBeginBlock, error) {
@@ -396,7 +346,7 @@ func (cli *socketClient) BeginBlockSync(
 	return reqres.Response.GetBeginBlock(), nil
 }
 
-func (cli *socketClient) EndBlockSync(
+func (cli *socketClient) EndBlock(
 	ctx context.Context,
 	req types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
@@ -408,7 +358,7 @@ func (cli *socketClient) EndBlockSync(
 	return reqres.Response.GetEndBlock(), nil
 }
 
-func (cli *socketClient) ListSnapshotsSync(
+func (cli *socketClient) ListSnapshots(
 	ctx context.Context,
 	req types.RequestListSnapshots,
 ) (*types.ResponseListSnapshots, error) {
@@ -420,7 +370,7 @@ func (cli *socketClient) ListSnapshotsSync(
 	return reqres.Response.GetListSnapshots(), nil
 }
 
-func (cli *socketClient) OfferSnapshotSync(
+func (cli *socketClient) OfferSnapshot(
 	ctx context.Context,
 	req types.RequestOfferSnapshot,
 ) (*types.ResponseOfferSnapshot, error) {
@@ -432,7 +382,7 @@ func (cli *socketClient) OfferSnapshotSync(
 	return reqres.Response.GetOfferSnapshot(), nil
 }
 
-func (cli *socketClient) LoadSnapshotChunkSync(
+func (cli *socketClient) LoadSnapshotChunk(
 	ctx context.Context,
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 
@@ -443,7 +393,7 @@ func (cli *socketClient) LoadSnapshotChunkSync(
 	return reqres.Response.GetLoadSnapshotChunk(), nil
 }
 
-func (cli *socketClient) ApplySnapshotChunkSync(
+func (cli *socketClient) ApplySnapshotChunk(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 
@@ -507,7 +457,7 @@ func (cli *socketClient) queueRequestAndFlushSync(
 		return nil, queueErr(err)
 	}
 
-	if err := cli.FlushSync(ctx); err != nil {
+	if err := cli.Flush(ctx); err != nil {
 		return nil, err
 	}
 

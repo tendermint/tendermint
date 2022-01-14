@@ -18,12 +18,12 @@ type AppConnConsensus interface {
 	SetResponseCallback(abciclient.Callback)
 	Error() error
 
-	InitChainSync(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
+	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
-	BeginBlockSync(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
+	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*abciclient.ReqRes, error)
-	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
-	CommitSync(context.Context) (*types.ResponseCommit, error)
+	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	Commit(context.Context) (*types.ResponseCommit, error)
 }
 
 type AppConnMempool interface {
@@ -31,27 +31,27 @@ type AppConnMempool interface {
 	Error() error
 
 	CheckTxAsync(context.Context, types.RequestCheckTx) (*abciclient.ReqRes, error)
-	CheckTxSync(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
+	CheckTx(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
 
 	FlushAsync(context.Context) (*abciclient.ReqRes, error)
-	FlushSync(context.Context) error
+	Flush(context.Context) error
 }
 
 type AppConnQuery interface {
 	Error() error
 
-	EchoSync(context.Context, string) (*types.ResponseEcho, error)
-	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
-	QuerySync(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
+	Echo(context.Context, string) (*types.ResponseEcho, error)
+	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+	Query(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
 }
 
 type AppConnSnapshot interface {
 	Error() error
 
-	ListSnapshotsSync(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
-	OfferSnapshotSync(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
-	LoadSnapshotChunkSync(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
-	ApplySnapshotChunkSync(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	ListSnapshots(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
+	OfferSnapshot(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
+	LoadSnapshotChunk(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
+	ApplySnapshotChunk(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
 }
 
 //-----------------------------------------------------------------------------------------
@@ -77,20 +77,20 @@ func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnConsensus) InitChainSync(
+func (app *appConnConsensus) InitChain(
 	ctx context.Context,
 	req types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "init_chain", "type", "sync"))()
-	return app.appConn.InitChainSync(ctx, req)
+	return app.appConn.InitChain(ctx, req)
 }
 
-func (app *appConnConsensus) BeginBlockSync(
+func (app *appConnConsensus) BeginBlock(
 	ctx context.Context,
 	req types.RequestBeginBlock,
 ) (*types.ResponseBeginBlock, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "begin_block", "type", "sync"))()
-	return app.appConn.BeginBlockSync(ctx, req)
+	return app.appConn.BeginBlock(ctx, req)
 }
 
 func (app *appConnConsensus) DeliverTxAsync(
@@ -101,17 +101,17 @@ func (app *appConnConsensus) DeliverTxAsync(
 	return app.appConn.DeliverTxAsync(ctx, req)
 }
 
-func (app *appConnConsensus) EndBlockSync(
+func (app *appConnConsensus) EndBlock(
 	ctx context.Context,
 	req types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "sync"))()
-	return app.appConn.EndBlockSync(ctx, req)
+	return app.appConn.EndBlock(ctx, req)
 }
 
-func (app *appConnConsensus) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
+func (app *appConnConsensus) Commit(ctx context.Context) (*types.ResponseCommit, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "commit", "type", "sync"))()
-	return app.appConn.CommitSync(ctx)
+	return app.appConn.Commit(ctx)
 }
 
 //------------------------------------------------
@@ -142,9 +142,9 @@ func (app *appConnMempool) FlushAsync(ctx context.Context) (*abciclient.ReqRes, 
 	return app.appConn.FlushAsync(ctx)
 }
 
-func (app *appConnMempool) FlushSync(ctx context.Context) error {
+func (app *appConnMempool) Flush(ctx context.Context) error {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "sync"))()
-	return app.appConn.FlushSync(ctx)
+	return app.appConn.Flush(ctx)
 }
 
 func (app *appConnMempool) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*abciclient.ReqRes, error) {
@@ -152,9 +152,9 @@ func (app *appConnMempool) CheckTxAsync(ctx context.Context, req types.RequestCh
 	return app.appConn.CheckTxAsync(ctx, req)
 }
 
-func (app *appConnMempool) CheckTxSync(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (app *appConnMempool) CheckTx(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "check_tx", "type", "sync"))()
-	return app.appConn.CheckTxSync(ctx, req)
+	return app.appConn.CheckTx(ctx, req)
 }
 
 //------------------------------------------------
@@ -176,19 +176,19 @@ func (app *appConnQuery) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnQuery) EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+func (app *appConnQuery) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "echo", "type", "sync"))()
-	return app.appConn.EchoSync(ctx, msg)
+	return app.appConn.Echo(ctx, msg)
 }
 
-func (app *appConnQuery) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *appConnQuery) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "info", "type", "sync"))()
-	return app.appConn.InfoSync(ctx, req)
+	return app.appConn.Info(ctx, req)
 }
 
-func (app *appConnQuery) QuerySync(ctx context.Context, reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
+func (app *appConnQuery) Query(ctx context.Context, reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "query", "type", "sync"))()
-	return app.appConn.QuerySync(ctx, reqQuery)
+	return app.appConn.Query(ctx, reqQuery)
 }
 
 //------------------------------------------------
@@ -210,34 +210,34 @@ func (app *appConnSnapshot) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnSnapshot) ListSnapshotsSync(
+func (app *appConnSnapshot) ListSnapshots(
 	ctx context.Context,
 	req types.RequestListSnapshots,
 ) (*types.ResponseListSnapshots, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "list_snapshots", "type", "sync"))()
-	return app.appConn.ListSnapshotsSync(ctx, req)
+	return app.appConn.ListSnapshots(ctx, req)
 }
 
-func (app *appConnSnapshot) OfferSnapshotSync(
+func (app *appConnSnapshot) OfferSnapshot(
 	ctx context.Context,
 	req types.RequestOfferSnapshot,
 ) (*types.ResponseOfferSnapshot, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "offer_snapshot", "type", "sync"))()
-	return app.appConn.OfferSnapshotSync(ctx, req)
+	return app.appConn.OfferSnapshot(ctx, req)
 }
 
-func (app *appConnSnapshot) LoadSnapshotChunkSync(
+func (app *appConnSnapshot) LoadSnapshotChunk(
 	ctx context.Context,
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "load_snapshot_chunk", "type", "sync"))()
-	return app.appConn.LoadSnapshotChunkSync(ctx, req)
+	return app.appConn.LoadSnapshotChunk(ctx, req)
 }
 
-func (app *appConnSnapshot) ApplySnapshotChunkSync(
+func (app *appConnSnapshot) ApplySnapshotChunk(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "apply_snapshot_chunk", "type", "sync"))()
-	return app.appConn.ApplySnapshotChunkSync(ctx, req)
+	return app.appConn.ApplySnapshotChunk(ctx, req)
 }
 
 // addTimeSample returns a function that, when called, adds an observation to m.
