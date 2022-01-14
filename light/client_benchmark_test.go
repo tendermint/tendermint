@@ -65,7 +65,7 @@ func BenchmarkSequence(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	headers, vals, _ := genLightBlocksWithKeys(chainID, 1000, 100, 1, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(b, chainID, 1000, 100, 1, bTime)
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
 	genesisBlock, _ := benchmarkFullNode.LightBlock(ctx, 1)
 
@@ -102,7 +102,7 @@ func BenchmarkBisection(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	headers, vals, _ := genLightBlocksWithKeys(chainID, 1000, 100, 1, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(b, chainID, 1000, 100, 1, bTime)
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
 	genesisBlock, _ := benchmarkFullNode.LightBlock(ctx, 1)
 
@@ -138,7 +138,7 @@ func BenchmarkBackwards(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	headers, vals, _ := genLightBlocksWithKeys(chainID, 1000, 100, 1, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(b, chainID, 1000, 100, 1, bTime)
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
 	trustedBlock, _ := benchmarkFullNode.LightBlock(ctx, 0)
 
