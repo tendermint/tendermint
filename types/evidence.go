@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -28,6 +29,9 @@ type Evidence interface {
 	String() string        // string format of the evidence
 	Time() time.Time       // time of the infraction
 	ValidateBasic() error  // basic consistency check
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
 }
 
 //--------------------------------------------------------------------------------------
@@ -38,10 +42,13 @@ type DuplicateVoteEvidence struct {
 	VoteB *Vote `json:"vote_b"`
 
 	// abci specific information
-	TotalVotingPower int64
-	ValidatorPower   int64
+	TotalVotingPower int64 `json:",string"`
+	ValidatorPower   int64 `json:",string"`
 	Timestamp        time.Time
 }
+
+// TypeTag implements the jsontypes.Tagged interface.
+func (*DuplicateVoteEvidence) TypeTag() string { return "tendermint/DuplicateVoteEvidence" }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
@@ -236,13 +243,16 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 // height, then nodes will treat this as of the Lunatic form, else it is of the Equivocation form.
 type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
-	CommonHeight     int64
+	CommonHeight     int64 `json:",string"`
 
 	// abci specific information
 	ByzantineValidators []*Validator // validators in the validator set that misbehaved in creating the conflicting block
-	TotalVotingPower    int64        // total voting power of the validator set at the common height
+	TotalVotingPower    int64        `json:",string"` // total voting power of the validator set at the common height
 	Timestamp           time.Time    // timestamp of the block at the common height
 }
+
+// TypeTag implements the jsontypes.Tagged interface.
+func (*LightClientAttackEvidence) TypeTag() string { return "tendermint/LightClientAttackEvidence" }
 
 var _ Evidence = &LightClientAttackEvidence{}
 
@@ -365,10 +375,10 @@ func (l *LightClientAttackEvidence) Height() int64 {
 // String returns a string representation of LightClientAttackEvidence
 func (l *LightClientAttackEvidence) String() string {
 	return fmt.Sprintf(`LightClientAttackEvidence{
-		ConflictingBlock: %v, 
-		CommonHeight: %d, 
-		ByzatineValidators: %v, 
-		TotalVotingPower: %d, 
+		ConflictingBlock: %v,
+		CommonHeight: %d,
+		ByzatineValidators: %v,
+		TotalVotingPower: %d,
 		Timestamp: %v}#%X`,
 		l.ConflictingBlock.String(), l.CommonHeight, l.ByzantineValidators,
 		l.TotalVotingPower, l.Timestamp, l.Hash())
@@ -630,6 +640,9 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 func init() {
 	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
 	tmjson.RegisterType(&LightClientAttackEvidence{}, "tendermint/LightClientAttackEvidence")
+
+	jsontypes.MustRegister((*DuplicateVoteEvidence)(nil))
+	jsontypes.MustRegister((*LightClientAttackEvidence)(nil))
 }
 
 //-------------------------------------------- ERRORS --------------------------------------
