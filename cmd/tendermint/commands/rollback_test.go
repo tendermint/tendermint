@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/client/local"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	e2e "github.com/tendermint/tendermint/test/e2e/app"
@@ -49,7 +50,9 @@ func TestRollbackIntegration(t *testing.T) {
 		node2, _, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err2)
 
-		client, err := local.New(node2.(local.NodeService))
+		logger := log.NewTestingLogger(t)
+
+		client, err := local.New(logger, node2.(local.NodeService))
 		require.NoError(t, err)
 
 		ticker := time.NewTicker(200 * time.Millisecond)

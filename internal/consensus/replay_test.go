@@ -73,17 +73,17 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 		blockStore,
 	)
 
-	bytes, _ := os.ReadFile(cs.config.WalFile())
-	t.Logf("====== WAL: \n\r%X\n", bytes)
-
-	err = cs.Start(ctx)
+	bytes, err := os.ReadFile(cs.config.WalFile())
 	require.NoError(t, err)
+	require.NotNil(t, bytes)
+
+	require.NoError(t, cs.Start(ctx))
 	defer func() {
 		if err := cs.Stop(); err != nil {
 			t.Error(err)
 		}
 	}()
-
+	t.Cleanup(cs.Wait)
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
@@ -157,8 +157,6 @@ func crashWALandCheckLiveness(rctx context.Context, t *testing.T, consensusRepla
 	i := 1
 LOOP:
 	for {
-		t.Logf("====== LOOP %d\n", i)
-
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
@@ -204,8 +202,6 @@ LOOP:
 
 		select {
 		case err := <-walPanicked:
-			t.Logf("WAL panicked: %v", err)
-
 			// make sure we can make blocks after a crash
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
 
@@ -763,7 +759,7 @@ func testHandshakeReplay(
 		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
-		walBody, err := WALWithNBlocks(ctx, t, numBlocks)
+		walBody, err := WALWithNBlocks(ctx, t, logger, numBlocks)
 		require.NoError(t, err)
 		walFile := tempWALWithData(t, walBody)
 		cfg.Consensus.SetWalFile(walFile)
@@ -805,7 +801,7 @@ func testHandshakeReplay(
 	latestAppHash := state.AppHash
 
 	// make a new client creator
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
@@ -959,7 +955,7 @@ func buildTMStateFromChain(
 	t.Helper()
 
 	// run the whole chain against this client to build up the tendermint state
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
 	defer kvstoreApp.Close()
 	clientCreator := abciclient.NewLocalCreator(kvstoreApp)

@@ -41,6 +41,7 @@ type WebsocketManager struct {
 // NewWebsocketManager returns a new WebsocketManager that passes a map of
 // functions, connection options and logger to new WS connections.
 func NewWebsocketManager(
+	logger log.Logger,
 	funcMap map[string]*RPCFunc,
 	wsConnOptions ...func(*wsConnection),
 ) *WebsocketManager {
@@ -60,14 +61,9 @@ func NewWebsocketManager(
 				return true
 			},
 		},
-		logger:        log.NewNopLogger(),
+		logger:        logger,
 		wsConnOptions: wsConnOptions,
 	}
-}
-
-// SetLogger sets the logger.
-func (wm *WebsocketManager) SetLogger(l log.Logger) {
-	wm.logger = l
 }
 
 // WebsocketHandler upgrades the request/response (via http.Hijack) and starts
@@ -75,7 +71,8 @@ func (wm *WebsocketManager) SetLogger(l log.Logger) {
 func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	wsConn, err := wm.Upgrade(w, r, nil)
 	if err != nil {
-		// TODO - return http error
+		// The upgrader has already reported an HTTP error to the client, so we
+		// need only log it.
 		wm.logger.Error("Failed to upgrade connection", "err", err)
 		return
 	}
@@ -93,6 +90,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	// starting the conn is blocking
 	if err = conn.Start(r.Context()); err != nil {
 		wm.logger.Error("Failed to start connection", "err", err)
+		writeInternalError(w, err)
 		return
 	}
 
@@ -457,13 +455,13 @@ func (wsc *wsConnection) writeRoutine(ctx context.Context) {
 				return
 			}
 		case msg := <-wsc.writeChan:
-			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
+			data, err := json.Marshal(msg)
 			if err != nil {
-				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
+				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "msg", msg, "err", err)
 				continue
 			}
-			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-				wsc.Logger.Error("Failed to write response", "err", err, "msg", msg)
+			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, data); err != nil {
+				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
 				return
 			}
 		}

@@ -10,11 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func NodeSuite(t *testing.T) (service.Service, *config.Config) {
+func NodeSuite(t *testing.T, logger log.Logger) (service.Service, *config.Config) {
 	t.Helper()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -26,7 +27,7 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	dir, err := os.MkdirTemp("/tmp", fmt.Sprint("rpc-client-test-", t.Name()))
 	require.NoError(t, err)
 
-	app := kvstore.NewPersistentKVStoreApplication(dir)
+	app := kvstore.NewPersistentKVStoreApplication(logger, dir)
 
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)

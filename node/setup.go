@@ -27,8 +27,11 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	"github.com/tendermint/tendermint/privval"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
@@ -496,4 +499,104 @@ func makeSeedNodeInfo(
 	}
 
 	return nodeInfo, nodeInfo.Validate()
+}
+
+func createAndStartPrivValidatorSocketClient(
+	ctx context.Context,
+	listenAddr, chainID string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+
+	pve, err := privval.NewSignerListener(listenAddr, logger)
+	if err != nil {
+		return nil, fmt.Errorf("starting validator listener: %w", err)
+	}
+
+	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("starting validator client: %w", err)
+	}
+
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	const (
+		timeout = 100 * time.Millisecond
+		maxTime = 5 * time.Second
+		retries = int(maxTime / timeout)
+	)
+	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+
+	return pvscWithRetries, nil
+}
+
+func createAndStartPrivValidatorGRPCClient(
+	ctx context.Context,
+	cfg *config.Config,
+	chainID string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+	pvsc, err := tmgrpc.DialRemoteSigner(
+		ctx,
+		cfg.PrivValidator,
+		chainID,
+		logger,
+		cfg.Instrumentation.Prometheus,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
+	}
+
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	return pvsc, nil
+}
+
+func makeDefaultPrivval(conf *config.Config) (*privval.FilePV, error) {
+	if conf.Mode == config.ModeValidator {
+		pval, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+		if err != nil {
+			return nil, err
+		}
+		return pval, nil
+	}
+
+	return nil, nil
+}
+
+func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, genDoc *types.GenesisDoc, defaultPV *privval.FilePV) (types.PrivValidator, error) {
+	if conf.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(conf.PrivValidator.ListenAddr)
+		// FIXME: we should return un-started services and
+		// then start them later.
+		switch protocol {
+		case "grpc":
+			privValidator, err := createAndStartPrivValidatorGRPCClient(ctx, conf, genDoc.ChainID, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
+			}
+			return privValidator, nil
+		default:
+			privValidator, err := createAndStartPrivValidatorSocketClient(
+				ctx,
+				conf.PrivValidator.ListenAddr,
+				genDoc.ChainID,
+				logger,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+
+			}
+			return privValidator, nil
+		}
+	}
+
+	return defaultPV, nil
 }

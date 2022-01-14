@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -737,7 +736,7 @@ func randConsensusState(
 	nValidators int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func(t *testing.T) abci.Application,
+	appFunc func(t *testing.T, logger log.Logger) abci.Application,
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 
@@ -764,7 +763,7 @@ func randConsensusState(
 
 		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 
-		app := appFunc(t)
+		app := appFunc(t, logger)
 
 		if appCloser, ok := app.(io.Closer); ok {
 			closeFuncs = append(closeFuncs, appCloser.Close)
@@ -797,7 +796,7 @@ func randConsensusNetWithPeers(
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func(string) abci.Application,
+	appFunc func(log.Logger, string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
 	t.Helper()
 
@@ -831,7 +830,7 @@ func randConsensusNetWithPeers(
 			require.NoError(t, err)
 		}
 
-		app := appFunc(path.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
+		app := appFunc(logger, filepath.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
 			// simulate handshake, receive app version. If don't do this, replay test will fail
@@ -912,21 +911,21 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func (*mockTicker) SetLogger(log.Logger) {}
 
-func newPersistentKVStore(t *testing.T) abci.Application {
+func newPersistentKVStore(t *testing.T, logger log.Logger) abci.Application {
 	t.Helper()
 
 	dir, err := os.MkdirTemp("", "persistent-kvstore")
 	require.NoError(t, err)
 
-	return kvstore.NewPersistentKVStoreApplication(dir)
+	return kvstore.NewPersistentKVStoreApplication(logger, dir)
 }
 
-func newKVStore(_ *testing.T) abci.Application {
+func newKVStore(_ *testing.T, _ log.Logger) abci.Application {
 	return kvstore.NewApplication()
 }
 
-func newPersistentKVStoreWithPath(dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(dbDir)
+func newPersistentKVStoreWithPath(logger log.Logger, dbDir string) abci.Application {
+	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 }
 
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
