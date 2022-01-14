@@ -1,6 +1,7 @@
 package autofile
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -12,6 +13,9 @@ import (
 )
 
 func TestSIGHUP(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -30,7 +34,7 @@ func TestSIGHUP(t *testing.T) {
 
 	// Create an AutoFile in the temporary directory
 	name := "sighup_test"
-	af, err := OpenAutoFile(name)
+	af, err := OpenAutoFile(ctx, name)
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(af.Path))
 
@@ -104,13 +108,16 @@ func TestSIGHUP(t *testing.T) {
 // }
 
 func TestAutoFileSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// First, create an AutoFile writing to a tempfile dir
 	f, err := os.CreateTemp("", "sighup_test")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
 	// Here is the actual AutoFile.
-	af, err := OpenAutoFile(f.Name())
+	af, err := OpenAutoFile(ctx, f.Name())
 	require.NoError(t, err)
 
 	// 1. Empty file
