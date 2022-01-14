@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,10 +18,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	"github.com/tendermint/tendermint/internal/libs/fail"
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -253,14 +252,14 @@ func (cs *State) GetRoundState() *cstypes.RoundState {
 func (cs *State) GetRoundStateJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-	return tmjson.Marshal(cs.RoundState)
+	return json.Marshal(cs.RoundState)
 }
 
 // GetRoundStateSimpleJSON returns a json of RoundStateSimple
 func (cs *State) GetRoundStateSimpleJSON() ([]byte, error) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
-	return tmjson.Marshal(cs.RoundState.RoundStateSimple())
+	return json.Marshal(cs.RoundState.RoundStateSimple())
 }
 
 // GetValidators returns a copy of the current validators.
@@ -866,14 +865,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 				))
 			}
 
-			if _, ok := mi.Msg.(*VoteMessage); ok {
-				// we actually want to simulate failing during
-				// the previous WriteSync, but this isn't easy to do.
-				// Equivalent would be to fail here and manually remove
-				// some bytes from the end of the wal.
-				fail.Fail() // XXX
-			}
-
 			// handles proposals, block parts, votes
 			cs.handleMsg(ctx, mi)
 
@@ -1230,8 +1221,9 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
-		block, blockParts = cs.createProposalBlock()
-		if block == nil {
+		var err error
+		block, blockParts, err = cs.createProposalBlock()
+		if block == nil || err != nil {
 			return
 		}
 	}
@@ -1290,9 +1282,9 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
+func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet, err error) {
 	if cs.privValidator == nil {
-		panic("entered createProposalBlock with privValidator being nil")
+		return nil, nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
 	var commit *types.Commit
@@ -1508,7 +1500,7 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
-			panic(fmt.Sprintf("precommit step; +2/3 prevoted for an invalid block: %v", err))
+			panic(fmt.Errorf("precommit step; +2/3 prevoted for an invalid block: %w", err))
 		}
 
 		cs.LockedRound = round
@@ -1704,8 +1696,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 	)
 	logger.Debug(fmt.Sprintf("%v", block))
 
-	fail.Fail() // XXX
-
 	// Save to blockStore.
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
@@ -1717,8 +1707,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		// Happens during replay if we already saved the block but didn't commit
 		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
 	}
-
-	fail.Fail() // XXX
 
 	// Write EndHeightMessage{} for this height, implying that the blockstore
 	// has saved the block.
@@ -1741,8 +1729,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		))
 	}
 
-	fail.Fail() // XXX
-
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 
@@ -1761,15 +1747,11 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		return
 	}
 
-	fail.Fail() // XXX
-
 	// must be called before we update state
 	cs.RecordMetrics(height, block)
 
 	// NewHeightStep!
 	cs.updateToState(ctx, stateCopy)
-
-	fail.Fail() // XXX
 
 	// Private validator might have changed it's key pair => refetch pubkey.
 	if err := cs.updatePrivValidatorPubKey(ctx); err != nil {
@@ -1814,7 +1796,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 		if cs.privValidator != nil {
 			if cs.privValidatorPubKey == nil {
 				// Metrics won't be updated, but it's not critical.
-				cs.logger.Error(fmt.Sprintf("recordMetrics: %v", errPubKeyIsNotSet))
+				cs.logger.Error("recordMetrics", "err", errPubKeyIsNotSet)
 			} else {
 				address = cs.privValidatorPubKey.Address()
 			}
@@ -2335,7 +2317,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 
 	if cs.privValidatorPubKey == nil {
 		// Vote won't be signed, but it's not critical.
-		cs.logger.Error(fmt.Sprintf("signAddVote: %v", errPubKeyIsNotSet))
+		cs.logger.Error("signAddVote", "err", errPubKeyIsNotSet)
 		return nil
 	}
 

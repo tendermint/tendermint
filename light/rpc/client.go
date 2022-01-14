@@ -565,7 +565,7 @@ func (c *Client) Validators(
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(int(perPage), totalCount-skipCount)]
 
 	return &coretypes.ResultValidators{
 		BlockHeight: l.Height,
@@ -615,11 +615,12 @@ func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (UNSAFE)!
 // TODO: verify data
-func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultSubscribe, error) {
+func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.ResultSubscribe, error) {
 	bctx, bcancel := context.WithCancel(context.Background())
 	c.closers = append(c.closers, bcancel)
 
-	out, err := c.next.Subscribe(bctx, ctx.RemoteAddr(), query)
+	callInfo := rpctypes.GetCallInfo(ctx)
+	out, err := c.next.Subscribe(bctx, callInfo.RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -630,9 +631,9 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 			case resultEvent := <-out:
 				// We should have a switch here that performs a validation
 				// depending on the event's type.
-				ctx.WSConn.TryWriteRPCResponse(bctx,
+				callInfo.WSConn.TryWriteRPCResponse(bctx,
 					rpctypes.NewRPCSuccessResponse(
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
+						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", callInfo.RPCRequest.ID)),
 						resultEvent,
 					))
 			case <-bctx.Done():
@@ -646,8 +647,8 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
-func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+func (c *Client) UnsubscribeWS(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error) {
+	err := c.next.Unsubscribe(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -656,8 +657,8 @@ func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.
 
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
-func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+func (c *Client) UnsubscribeAllWS(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
+	err := c.next.UnsubscribeAll(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr())
 	if err != nil {
 		return nil, err
 	}
@@ -671,16 +672,13 @@ const (
 	maxPerPage     = 100
 )
 
-func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
-	if perPage < 1 {
-		panic(fmt.Errorf("%w (%d)", coretypes.ErrZeroOrNegativePerPage, perPage))
-	}
+func validatePage(pagePtr *int, perPage uint, totalCount int) (int, error) {
 
 	if pagePtr == nil { // no page parameter
 		return 1, nil
 	}
 
-	pages := ((totalCount - 1) / perPage) + 1
+	pages := ((totalCount - 1) / int(perPage)) + 1
 	if pages == 0 {
 		pages = 1 // one page (even if it's empty)
 	}
@@ -692,7 +690,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	return page, nil
 }
 
-func validatePerPage(perPagePtr *int) int {
+func validatePerPage(perPagePtr *int) uint {
 	if perPagePtr == nil { // no per_page parameter
 		return defaultPerPage
 	}
@@ -703,11 +701,11 @@ func validatePerPage(perPagePtr *int) int {
 	} else if perPage > maxPerPage {
 		return maxPerPage
 	}
-	return perPage
+	return uint(perPage)
 }
 
-func validateSkipCount(page, perPage int) int {
-	skipCount := (page - 1) * perPage
+func validateSkipCount(page int, perPage uint) int {
+	skipCount := (page - 1) * int(perPage)
 	if skipCount < 0 {
 		return 0
 	}

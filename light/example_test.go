@@ -26,7 +26,10 @@ func ExampleClient() {
 		stdlog.Fatal(err)
 	}
 
-	logger := log.TestingLogger()
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -88,7 +91,7 @@ func ExampleClient() {
 	time.Sleep(2 * time.Second)
 
 	// veify the block at height 3
-	_, err = c.VerifyLightBlockAtHeight(context.Background(), 3, time.Now())
+	_, err = c.VerifyLightBlockAtHeight(ctx, 3, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}

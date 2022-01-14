@@ -254,6 +254,11 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 	}
 }
 
+// ChannelCreator allows routers to construct their own channels,
+// either by receiving a reference to Router.OpenChannel or using some
+// kind shim for testing purposes.
+type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
+
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can
@@ -467,8 +472,6 @@ func (r *Router) dialSleep(ctx context.Context) {
 // acceptPeers accepts inbound connections from peers on the given transport,
 // and spawns goroutines that route messages to/from them.
 func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
-	r.logger.Debug("starting accept routine", "transport", transport)
-
 	for {
 		conn, err := transport.Accept(ctx)
 		switch err {
@@ -550,8 +553,6 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 
 // dialPeers maintains outbound connections to peers by dialing them.
 func (r *Router) dialPeers(ctx context.Context) {
-	r.logger.Debug("starting dial routine")
-
 	addresses := make(chan NodeAddress)
 	wg := &sync.WaitGroup{}
 
@@ -582,7 +583,6 @@ LOOP:
 		address, err := r.peerManager.DialNext(ctx)
 		switch {
 		case errors.Is(err, context.Canceled):
-			r.logger.Debug("stopping dial routine")
 			break LOOP
 		case err != nil:
 			r.logger.Error("failed to find next peer to dial", "err", err)
@@ -912,16 +912,12 @@ func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connect
 
 // evictPeers evicts connected peers as requested by the peer manager.
 func (r *Router) evictPeers(ctx context.Context) {
-	r.logger.Debug("starting evict routine")
-
 	for {
 		peerID, err := r.peerManager.EvictNext(ctx)
 
 		switch {
 		case errors.Is(err, context.Canceled):
-			r.logger.Debug("stopping evict routine")
 			return
-
 		case err != nil:
 			r.logger.Error("failed to find next peer to evict", "err", err)
 			return

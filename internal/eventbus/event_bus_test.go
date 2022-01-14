@@ -80,7 +80,9 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()}
+	bps, err := block.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
@@ -307,7 +309,8 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	ev := types.NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id")
+	require.NoError(t, err)
 
 	const query = `tm.event='NewEvidence'`
 	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{

@@ -23,8 +23,9 @@ const (
 
 // Subscribe for events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
-func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretypes.ResultSubscribe, error) {
-	addr := ctx.RemoteAddr()
+func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes.ResultSubscribe, error) {
+	callInfo := rpctypes.GetCallInfo(ctx)
+	addr := callInfo.RemoteAddr()
 
 	if env.EventBus.NumClients() >= env.Config.MaxSubscriptionClients {
 		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
@@ -41,7 +42,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
 
-	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
+	subCtx, cancel := context.WithTimeout(ctx, SubscribeTimeout)
 	defer cancel()
 
 	sub, err := env.EventBus.SubscribeWithArgs(subCtx, tmpubsub.SubscribeArgs{
@@ -54,7 +55,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 	}
 
 	// Capture the current ID, since it can change in the future.
-	subscriptionID := ctx.JSONReq.ID
+	subscriptionID := callInfo.RPCRequest.ID
 	go func() {
 		opctx, opcancel := context.WithCancel(context.Background())
 		defer opcancel()
@@ -67,7 +68,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 			} else if errors.Is(err, tmpubsub.ErrTerminated) {
 				// The subscription was terminated by the publisher.
 				resp := rpctypes.RPCServerError(subscriptionID, err)
-				ok := ctx.WSConn.TryWriteRPCResponse(opctx, resp)
+				ok := callInfo.WSConn.TryWriteRPCResponse(opctx, resp)
 				if !ok {
 					env.Logger.Info("Unable to write response (slow client)",
 						"to", addr, "subscriptionID", subscriptionID, "err", err)
@@ -82,7 +83,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 				Events: msg.Events(),
 			})
 			wctx, cancel := context.WithTimeout(opctx, 10*time.Second)
-			err = ctx.WSConn.WriteRPCResponse(wctx, resp)
+			err = callInfo.WSConn.WriteRPCResponse(wctx, resp)
 			cancel()
 			if err != nil {
 				env.Logger.Info("Unable to write response (slow client)",
@@ -96,8 +97,8 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*coretyp
 
 // Unsubscribe from events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe
-func (env *Environment) Unsubscribe(ctx *rpctypes.Context, query string) (*coretypes.ResultUnsubscribe, error) {
-	args := tmpubsub.UnsubscribeArgs{Subscriber: ctx.RemoteAddr()}
+func (env *Environment) Unsubscribe(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error) {
+	args := tmpubsub.UnsubscribeArgs{Subscriber: rpctypes.GetCallInfo(ctx).RemoteAddr()}
 	env.Logger.Info("Unsubscribe from query", "remote", args.Subscriber, "subscription", query)
 
 	var err error
@@ -107,7 +108,7 @@ func (env *Environment) Unsubscribe(ctx *rpctypes.Context, query string) (*coret
 		args.ID = query
 	}
 
-	err = env.EventBus.Unsubscribe(ctx.Context(), args)
+	err = env.EventBus.Unsubscribe(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -116,10 +117,10 @@ func (env *Environment) Unsubscribe(ctx *rpctypes.Context, query string) (*coret
 
 // UnsubscribeAll from all events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe_all
-func (env *Environment) UnsubscribeAll(ctx *rpctypes.Context) (*coretypes.ResultUnsubscribe, error) {
-	addr := ctx.RemoteAddr()
+func (env *Environment) UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
+	addr := rpctypes.GetCallInfo(ctx).RemoteAddr()
 	env.Logger.Info("Unsubscribe from all", "remote", addr)
-	err := env.EventBus.UnsubscribeAll(ctx.Context(), addr)
+	err := env.EventBus.UnsubscribeAll(ctx, addr)
 	if err != nil {
 		return nil, err
 	}

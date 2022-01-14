@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
@@ -96,23 +97,27 @@ type Reactor struct {
 	// stopping the p2p Channel(s).
 	poolWG sync.WaitGroup
 
-	metrics *consensus.Metrics
+	metrics  *consensus.Metrics
+	eventBus *eventbus.EventBus
 
 	syncStartTime time.Time
 }
 
 // NewReactor returns new reactor instance.
 func NewReactor(
+	ctx context.Context,
 	logger log.Logger,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
 	consReactor consensusReactor,
-	blockSyncCh *p2p.Channel,
+	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	blockSync bool,
 	metrics *consensus.Metrics,
+	eventBus *eventbus.EventBus,
 ) (*Reactor, error) {
+
 	if state.LastBlockHeight != store.Height() {
 		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
 	}
@@ -124,6 +129,11 @@ func NewReactor(
 
 	requestsCh := make(chan BlockRequest, maxTotalRequesters)
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
+
+	blockSyncCh, err := channelCreator(ctx, GetChannelDescriptor())
+	if err != nil {
+		return nil, err
+	}
 
 	r := &Reactor{
 		logger:               logger,
@@ -139,6 +149,7 @@ func NewReactor(
 		blockSyncOutBridgeCh: make(chan p2p.Envelope),
 		peerUpdates:          peerUpdates,
 		metrics:              metrics,
+		eventBus:             eventBus,
 		syncStartTime:        time.Time{},
 	}
 
@@ -347,7 +358,6 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
@@ -513,8 +523,15 @@ FOR_LOOP:
 				didProcessCh <- struct{}{}
 			}
 
+			firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
+			if err != nil {
+				r.logger.Error("failed to make ",
+					"height", first.Height,
+					"err", err.Error())
+				break FOR_LOOP
+			}
+
 			var (
-				firstParts         = first.MakePartSet(types.BlockPartSizeBytes)
 				firstPartSetHeader = firstParts.Header()
 				firstID            = types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			)
@@ -524,8 +541,7 @@ FOR_LOOP:
 			// NOTE: We can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
-			if err != nil {
+			if err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit); err != nil {
 				err = fmt.Errorf("invalid last commit: %w", err)
 				r.logger.Error(
 					err.Error(),
@@ -624,6 +640,13 @@ func (r *Reactor) GetRemainingSyncTime() time.Duration {
 	remain := float64(targetSyncs-currentSyncs) / lastSyncRate
 
 	return time.Duration(int64(remain * float64(time.Second)))
+}
+
+func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataBlockSyncStatus) error {
+	if r.eventBus == nil {
+		return errors.New("event bus is not configured")
+	}
+	return r.eventBus.PublishEventBlockSyncStatus(ctx, event)
 }
 
 // atomicBool is an atomic Boolean, safe for concurrent use by multiple

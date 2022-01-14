@@ -295,7 +295,13 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	reactor := pex.NewReactor(log.TestingLogger(), peerManager, pexCh, peerUpdates)
+	chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		return pexCh, nil
+	}
+
+	reactor, err := pex.NewReactor(ctx, log.TestingLogger(), peerManager, chCreator, peerUpdates)
+	require.NoError(t, err)
+
 	require.NoError(t, reactor.Start(ctx))
 	t.Cleanup(reactor.Wait)
 
@@ -375,16 +381,23 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], chBuf)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			return rts.pexChannels[nodeID], nil
+		}
+
 		// the first nodes in the array are always mock nodes
 		if idx < opts.MockNodes {
 			rts.mocks = append(rts.mocks, nodeID)
 		} else {
-			rts.reactors[nodeID] = pex.NewReactor(
+			var err error
+			rts.reactors[nodeID], err = pex.NewReactor(
+				ctx,
 				rts.logger.With("nodeID", nodeID),
 				rts.network.Nodes[nodeID].PeerManager,
-				rts.pexChannels[nodeID],
+				chCreator,
 				rts.peerUpdates[nodeID],
 			)
+			require.NoError(t, err)
 		}
 		rts.nodes = append(rts.nodes, nodeID)
 
@@ -429,12 +442,20 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 		r.peerChans[nodeID] = make(chan p2p.PeerUpdate, r.opts.BufferSize)
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
 		r.network.Nodes[nodeID].PeerManager.Register(ctx, r.peerUpdates[nodeID])
-		r.reactors[nodeID] = pex.NewReactor(
+
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+			return r.pexChannels[nodeID], nil
+		}
+
+		var err error
+		r.reactors[nodeID], err = pex.NewReactor(
+			ctx,
 			r.logger.With("nodeID", nodeID),
 			r.network.Nodes[nodeID].PeerManager,
-			r.pexChannels[nodeID],
+			chCreator,
 			r.peerUpdates[nodeID],
 		)
+		require.NoError(t, err)
 		r.nodes = append(r.nodes, nodeID)
 		r.total++
 	}
@@ -466,7 +487,6 @@ func (r *reactorTestSuite) listenFor(
 }
 
 func (r *reactorTestSuite) listenForRequest(ctx context.Context, t *testing.T, fromNode, toNode int, waitPeriod time.Duration) {
-	r.logger.Info("Listening for request", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
 	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexRequest)
@@ -487,7 +507,7 @@ func (r *reactorTestSuite) pingAndlistenForNAddresses(
 	addresses int,
 ) {
 	t.Helper()
-	r.logger.Info("Listening for addresses", "from", fromNode, "to", toNode)
+
 	to, from := r.checkNodePair(t, toNode, fromNode)
 	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
@@ -520,11 +540,9 @@ func (r *reactorTestSuite) listenForResponse(
 	waitPeriod time.Duration,
 	addresses []p2pproto.PexAddress,
 ) {
-	r.logger.Info("Listening for response", "from", fromNode, "to", toNode)
 	to, from := r.checkNodePair(t, toNode, fromNode)
 	conditional := func(msg *p2p.Envelope) bool {
 		_, ok := msg.Message.(*p2pproto.PexResponse)
-		r.logger.Info("message", msg, "ok", ok)
 		return ok && msg.From == from
 	}
 	assertion := func(t *testing.T, msg *p2p.Envelope) bool {
@@ -637,7 +655,6 @@ func (r *reactorTestSuite) connectN(ctx context.Context, t *testing.T, n int) {
 func (r *reactorTestSuite) connectPeers(ctx context.Context, t *testing.T, sourceNode, targetNode int) {
 	t.Helper()
 	node1, node2 := r.checkNodePair(t, sourceNode, targetNode)
-	r.logger.Info("connecting peers", "sourceNode", sourceNode, "targetNode", targetNode)
 
 	n1 := r.network.Nodes[node1]
 	if n1 == nil {
@@ -655,16 +672,12 @@ func (r *reactorTestSuite) connectPeers(ctx context.Context, t *testing.T, sourc
 	targetSub := n2.PeerManager.Subscribe(ctx)
 
 	sourceAddress := n1.NodeAddress
-	r.logger.Debug("source address", "address", sourceAddress)
 	targetAddress := n2.NodeAddress
-	r.logger.Debug("target address", "address", targetAddress)
 
 	added, err := n1.PeerManager.Add(targetAddress)
 	require.NoError(t, err)
 
 	if !added {
-		r.logger.Debug("nodes already know about one another",
-			"sourceNode", sourceNode, "targetNode", targetNode)
 		return
 	}
 
@@ -674,19 +687,16 @@ func (r *reactorTestSuite) connectPeers(ctx context.Context, t *testing.T, sourc
 			NodeID: node1,
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
-		r.logger.Debug("target connected with source")
 	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 			targetNode, sourceNode)
 	}
-
 	select {
 	case peerUpdate := <-sourceSub.Updates():
 		require.Equal(t, p2p.PeerUpdate{
 			NodeID: node2,
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
-		r.logger.Debug("source connected with target")
 	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 			sourceNode, targetNode)

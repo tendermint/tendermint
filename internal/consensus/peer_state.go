@@ -23,8 +23,8 @@ var (
 
 // peerStateStats holds internal statistics for a peer.
 type peerStateStats struct {
-	Votes      int `json:"votes"`
-	BlockParts int `json:"block_parts"`
+	Votes      int `json:"votes,string"`
+	BlockParts int `json:"block_parts,string"`
 }
 
 func (pss peerStateStats) String() string {

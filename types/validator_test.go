@@ -2,7 +2,6 @@ package types
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,7 +10,12 @@ import (
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val, _ := randValidator(true, 100)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	val, _, err := randValidator(ctx, true, 100)
+	require.NoError(t, err)
+
 	testCases := []struct {
 		msg      string
 		v1       *Validator
@@ -42,8 +46,11 @@ func TestValidatorProtoBuf(t *testing.T) {
 }
 
 func TestValidatorValidateBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey(context.Background())
+	pubKey, _ := priv.GetPubKey(ctx)
 	testCases := []struct {
 		val *Validator
 		err bool
@@ -105,14 +112,13 @@ func TestValidatorValidateBasic(t *testing.T) {
 
 // deterministicValidator returns a deterministic validator, useful for testing.
 // UNSTABLE
-func deterministicValidator(ctx context.Context, key crypto.PrivKey) (*Validator, PrivValidator) {
+func deterministicValidator(ctx context.Context, t *testing.T, key crypto.PrivKey) (*Validator, PrivValidator) {
+	t.Helper()
 	privVal := NewMockPV()
 	privVal.PrivKey = key
 	var votePower int64 = 50
 	pubKey, err := privVal.GetPubKey(ctx)
-	if err != nil {
-		panic(fmt.Errorf("could not retrieve pubkey %w", err))
-	}
+	require.NoError(t, err, "could not retrieve pubkey")
 	val := NewValidator(pubKey, votePower)
 	return val, privVal
 }

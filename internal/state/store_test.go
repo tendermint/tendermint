@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -26,15 +27,20 @@ const (
 )
 
 func TestStoreBootstrap(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
+	val, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
+	val2, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
+	val3, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
-	err := stateStore.Bootstrap(bootstrapState)
-	require.NoError(t, err)
+	require.NoError(t, stateStore.Bootstrap(bootstrapState))
 
 	// bootstrap should also save the previous validator
 	_, err = stateStore.LoadValidators(99)
@@ -52,19 +58,23 @@ func TestStoreBootstrap(t *testing.T) {
 }
 
 func TestStoreLoadValidators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _ := factory.RandValidator(true, 10)
-	val2, _ := factory.RandValidator(true, 10)
-	val3, _ := factory.RandValidator(true, 10)
+	val, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
+	val2, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
+	val3, _, err := factory.RandValidator(ctx, true, 10)
+	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// Note that only the next validators at height h + 1 are saved
-	err := stateStore.Save(makeRandomStateFromValidatorSet(vals, 1, 1))
-	require.NoError(t, err)
-	err = stateStore.Save(makeRandomStateFromValidatorSet(vals.CopyIncrementProposerPriority(1), 2, 1))
-	require.NoError(t, err)
+	require.NoError(t, stateStore.Save(makeRandomStateFromValidatorSet(vals, 1, 1)))
+	require.NoError(t, stateStore.Save(makeRandomStateFromValidatorSet(vals.CopyIncrementProposerPriority(1), 2, 1)))
 	loadedVals, err := stateStore.LoadValidators(3)
 	require.NoError(t, err)
 	require.Equal(t, vals.CopyIncrementProposerPriority(3), loadedVals)
@@ -141,9 +151,12 @@ func BenchmarkLoadValidators(b *testing.B) {
 }
 
 func TestStoreLoadConsensusParams(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
+	err := stateStore.Save(makeRandomStateFromConsensusParams(ctx, t, types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
 	params, err := stateStore.LoadConsensusParams(1)
 	require.NoError(t, err)
@@ -153,7 +166,7 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	// it should save a pointer to the params at height 1
 	differentParams := types.DefaultConsensusParams()
 	differentParams.Block.MaxBytes = 20000
-	err = stateStore.Save(makeRandomStateFromConsensusParams(differentParams, 10, 1))
+	err = stateStore.Save(makeRandomStateFromConsensusParams(ctx, t, differentParams, 10, 1))
 	require.NoError(t, err)
 	res, err := stateStore.LoadConsensusParams(10)
 	require.NoError(t, err)

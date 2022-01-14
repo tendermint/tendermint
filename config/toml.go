@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	tmos "github.com/tendermint/tendermint/libs/os"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
@@ -549,6 +550,7 @@ func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) 
 	}
 
 	config := TestConfig().SetRoot(rootDir)
+	config.Instrumentation.Namespace = fmt.Sprintf("%s_%s_%s", testName, chainID, tmrand.Str(16))
 	return config, nil
 }
 

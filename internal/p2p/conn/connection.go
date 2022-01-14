@@ -295,7 +295,7 @@ func (c *MConnection) _recover(ctx context.Context) {
 
 func (c *MConnection) stopForError(ctx context.Context, r interface{}) {
 	if err := c.Stop(); err != nil {
-		c.logger.Error("Error stopping connection", "err", err)
+		c.logger.Error("error stopping connection", "err", err)
 	}
 
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
@@ -353,7 +353,6 @@ FOR_LOOP:
 				channel.updateStats()
 			}
 		case <-c.pingTimer.C:
-			c.logger.Debug("Send Ping")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 			if err != nil {
 				c.logger.Error("Failed to send PacketPing", "err", err)
@@ -370,13 +369,11 @@ FOR_LOOP:
 			c.flush()
 		case timeout := <-c.pongTimeoutCh:
 			if timeout {
-				c.logger.Debug("Pong timeout")
 				err = errors.New("pong timeout")
 			} else {
 				c.stopPongTimer()
 			}
 		case <-c.pong:
-			c.logger.Debug("Send Pong")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
 				c.logger.Error("Failed to send PacketPong", "err", err)
@@ -490,7 +487,7 @@ FOR_LOOP:
 				if err == nil {
 					// return
 				} else {
-					c.logger.Debug("Error peeking connection buffer", "err", err)
+					c.logger.Debug("error peeking connection buffer", "err", err)
 					// return nil
 				}
 				c.logger.Info("Peek connection buffer", "numBytes", numBytes, "bz", bz)
@@ -528,14 +525,12 @@ FOR_LOOP:
 		case *tmp2p.Packet_PacketPing:
 			// TODO: prevent abuse, as they cause flush()'s.
 			// https://github.com/tendermint/tendermint/issues/1190
-			c.logger.Debug("Receive Ping")
 			select {
 			case c.pong <- struct{}{}:
 			default:
 				// never block
 			}
 		case *tmp2p.Packet_PacketPong:
-			c.logger.Debug("Receive Pong")
 			select {
 			case c.pongTimeoutCh <- false:
 			default:

@@ -114,7 +114,7 @@ func TestWriteFileAtomicManyDuplicates(t *testing.T) {
 		fileRand := randWriteFileSuffix()
 		fname := "/tmp/" + atomicWriteFilePrefix + fileRand
 		f, err := os.OpenFile(fname, atomicWriteFileFlag, 0777)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		_, err = f.WriteString(fmt.Sprintf(testString, i))
 		require.NoError(t, err)
 		defer os.Remove(fname)
@@ -132,13 +132,13 @@ func TestWriteFileAtomicManyDuplicates(t *testing.T) {
 		fileRand := randWriteFileSuffix()
 		fname := "/tmp/" + atomicWriteFilePrefix + fileRand
 		firstAtomicFileBytes, err := os.ReadFile(fname)
-		require.Nil(t, err, "Error reading first atomic file")
+		require.NoError(t, err, "Error reading first atomic file")
 		require.Equal(t, []byte(fmt.Sprintf(testString, i)), firstAtomicFileBytes,
 			"atomic write file %d was overwritten", i)
 	}
 
 	// Check that the resultant file is correct
 	resultantFileBytes, err := os.ReadFile(fileToWrite)
-	require.Nil(t, err, "Error reading resultant file")
+	require.NoError(t, err, "Error reading resultant file")
 	require.Equal(t, []byte(expectedString), resultantFileBytes, "Written file had incorrect bytes")
 }

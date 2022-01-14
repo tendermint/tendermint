@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -24,6 +25,9 @@ import (
 )
 
 func TestMsgToProto(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	psh := types.PartSetHeader{
 		Total: 1,
 		Hash:  tmrand.Bytes(32),
@@ -62,7 +66,7 @@ func TestMsgToProto(t *testing.T) {
 	pbProposal := proposal.ToProto()
 
 	pv := types.NewMockPV()
-	vote, err := factory.MakeVote(pv, factory.DefaultTestChainID,
+	vote, err := factory.MakeVote(ctx, pv, factory.DefaultTestChainID,
 		0, 1, 0, 2, types.BlockID{}, time.Now())
 	require.NoError(t, err)
 	pbVote := vote.ToProto()

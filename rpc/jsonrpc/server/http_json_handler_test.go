@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,8 +18,8 @@ import (
 
 func testMux() *http.ServeMux {
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx *rpctypes.Context, s string, i int) (string, error) { return "foo", nil }, "s,i", false),
-		"block": NewRPCFunc(func(ctx *rpctypes.Context, h int) (string, error) { return "block", nil }, "height", true),
+		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s", "i"),
+		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height"),
 	}
 	mux := http.NewServeMux()
 	logger := log.NewNopLogger()
@@ -121,7 +122,7 @@ func TestJSONRPCID(t *testing.T) {
 
 		recv := new(rpctypes.RPCResponse)
 		err = json.Unmarshal(blob, recv)
-		assert.Nil(t, err, "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
+		assert.NoError(t, err, "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
 		if !tt.wantErr {
 			assert.NotEqual(t, recv, new(rpctypes.RPCResponse), "#%d: not expecting a blank RPCResponse", i)
 			assert.Equal(t, tt.expectedID, recv.ID, "#%d: expected ID not matched in RPCResponse", i)
@@ -144,7 +145,7 @@ func TestRPCNotification(t *testing.T) {
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
 	blob, err := io.ReadAll(res.Body)
 	res.Body.Close()
-	require.Nil(t, err, "reading from the body should not give back an error")
+	require.NoError(t, err, "reading from the body should not give back an error")
 	require.Equal(t, len(blob), 0, "a notification SHOULD NOT be responded to by the server")
 }
 
@@ -237,11 +238,11 @@ func TestRPCResponseCache(t *testing.T) {
 
 	// Always expecting back a JSONRPCResponse
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
-	require.Equal(t, "max-age=31536000", res.Header.Get("Cache-control"))
+	require.Equal(t, "", res.Header.Get("Cache-control"))
 
 	_, err := io.ReadAll(res.Body)
 	res.Body.Close()
-	require.Nil(t, err, "reading from the body should not give back an error")
+	require.NoError(t, err, "reading from the body should not give back an error")
 
 	// send a request with default height.
 	body = strings.NewReader(`{"jsonrpc": "2.0","method":"block","id": 0, "params": ["0"]}`)
@@ -256,5 +257,5 @@ func TestRPCResponseCache(t *testing.T) {
 
 	_, err = io.ReadAll(res.Body)
 	res.Body.Close()
-	require.Nil(t, err, "reading from the body should not give back an error")
+	require.NoError(t, err, "reading from the body should not give back an error")
 }

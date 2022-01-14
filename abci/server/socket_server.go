@@ -61,7 +61,7 @@ func (s *SocketServer) OnStart(ctx context.Context) error {
 
 func (s *SocketServer) OnStop() {
 	if err := s.listener.Close(); err != nil {
-		s.logger.Error("Error closing listener", "err", err)
+		s.logger.Error("error closing listener", "err", err)
 	}
 
 	s.connsMtx.Lock()
@@ -70,7 +70,7 @@ func (s *SocketServer) OnStop() {
 	for id, conn := range s.conns {
 		delete(s.conns, id)
 		if err := conn.Close(); err != nil {
-			s.logger.Error("Error closing connection", "id", id, "conn", conn, "err", err)
+			s.logger.Error("error closing connection", "id", id, "conn", conn, "err", err)
 		}
 	}
 }
@@ -139,7 +139,7 @@ func (s *SocketServer) waitForClose(ctx context.Context, closeConn chan error, c
 	defer func() {
 		// Close the connection
 		if err := s.rmConn(connID); err != nil {
-			s.logger.Error("Error closing connection", "err", err)
+			s.logger.Error("error closing connection", "err", err)
 		}
 	}()
 
@@ -259,14 +259,26 @@ func (s *SocketServer) handleResponses(
 	responses <-chan *types.Response,
 ) {
 	bw := bufio.NewWriter(conn)
-	for res := range responses {
-		if err := types.WriteMessage(res, bw); err != nil {
-			closeConn <- fmt.Errorf("error writing message: %w", err)
+	for {
+		select {
+		case <-ctx.Done():
 			return
-		}
-		if err := bw.Flush(); err != nil {
-			closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
-			return
+		case res := <-responses:
+			if err := types.WriteMessage(res, bw); err != nil {
+				select {
+				case <-ctx.Done():
+				case closeConn <- fmt.Errorf("error writing message: %w", err):
+				}
+				return
+			}
+			if err := bw.Flush(); err != nil {
+				select {
+				case <-ctx.Done():
+				case closeConn <- fmt.Errorf("error flushing write buffer: %w", err):
+				}
+
+				return
+			}
 		}
 	}
 }

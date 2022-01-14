@@ -382,7 +382,7 @@ func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evide
 
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixKey))
 	if err != nil {
-		return nil, totalSize, fmt.Errorf("database error: %v", err)
+		return nil, totalSize, fmt.Errorf("database error: %w", err)
 	}
 
 	defer iter.Close()

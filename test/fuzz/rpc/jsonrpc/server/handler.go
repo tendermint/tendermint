@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,13 +14,15 @@ import (
 )
 
 var rpcFuncMap = map[string]*rs.RPCFunc{
-	"c": rs.NewRPCFunc(func(s string, i int) (string, int) { return "foo", 200 }, "s,i", false),
+	"c": rs.NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) {
+		return "foo", nil
+	}, "s", "i"),
 }
 var mux *http.ServeMux
 
 func init() {
 	mux = http.NewServeMux()
-	lgr := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	lgr := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	rs.RegisterRPCFuncs(mux, rpcFuncMap, lgr)
 }
 

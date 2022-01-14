@@ -27,8 +27,11 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
+	"github.com/tendermint/tendermint/privval"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
@@ -175,13 +178,7 @@ func createMempoolReactor(
 	router *p2p.Router,
 	logger log.Logger,
 ) (service.Service, mempool.Mempool, error) {
-
 	logger = logger.With("module", "mempool")
-
-	ch, err := router.OpenChannel(ctx, mempool.GetChannelDescriptor(cfg.Mempool))
-	if err != nil {
-		return nil, nil, err
-	}
 
 	mp := mempool.NewTxMempool(
 		logger,
@@ -193,14 +190,18 @@ func createMempoolReactor(
 		mempool.WithPostCheck(sm.TxPostCheck(state)),
 	)
 
-	reactor := mempool.NewReactor(
+	reactor, err := mempool.NewReactor(
+		ctx,
 		logger,
 		cfg.Mempool,
 		peerManager,
 		mp,
-		ch,
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if cfg.Consensus.WaitForTxs() {
 		mp.EnableTxsAvailable()
@@ -231,53 +232,18 @@ func createEvidenceReactor(
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
 
-	ch, err := router.OpenChannel(ctx, evidence.GetChannelDescriptor())
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating evidence channel: %w", err)
-	}
-
-	evidenceReactor := evidence.NewReactor(
+	evidenceReactor, err := evidence.NewReactor(
+		ctx,
 		logger,
-		ch,
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		evidencePool,
 	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating evidence reactor: %w", err)
+	}
 
 	return evidenceReactor, evidencePool, nil
-}
-
-func createBlockchainReactor(
-	ctx context.Context,
-	logger log.Logger,
-	state sm.State,
-	blockExec *sm.BlockExecutor,
-	blockStore *store.BlockStore,
-	csReactor *consensus.Reactor,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	blockSync bool,
-	metrics *consensus.Metrics,
-) (service.Service, error) {
-
-	logger = logger.With("module", "blockchain")
-
-	ch, err := router.OpenChannel(ctx, blocksync.GetChannelDescriptor())
-	if err != nil {
-		return nil, err
-	}
-
-	peerUpdates := peerManager.Subscribe(ctx)
-
-	reactor, err := blocksync.NewReactor(
-		logger, state.Copy(), blockExec, blockStore, csReactor,
-		ch, peerUpdates, blockSync,
-		metrics,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return reactor, nil
 }
 
 func createConsensusReactor(
@@ -313,29 +279,18 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 
-	csChDesc := consensus.GetChannelDescriptors()
-	channels := make(map[p2p.ChannelID]*p2p.Channel, len(csChDesc))
-	for idx := range csChDesc {
-		chd := csChDesc[idx]
-		ch, err := router.OpenChannel(ctx, chd)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		channels[ch.ID] = ch
-	}
-
-	reactor := consensus.NewReactor(
+	reactor, err := consensus.NewReactor(
+		ctx,
 		logger,
 		consensusState,
-		channels[consensus.StateChannel],
-		channels[consensus.DataChannel],
-		channels[consensus.VoteChannel],
-		channels[consensus.VoteSetBitsChannel],
+		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		waitSync,
-		consensus.ReactorMetrics(csMetrics),
+		csMetrics,
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor.
@@ -456,21 +411,6 @@ func createRouter(
 	)
 }
 
-func createPEXReactor(
-	ctx context.Context,
-	logger log.Logger,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-) (service.Service, error) {
-
-	channel, err := router.OpenChannel(ctx, pex.ChannelDescriptor())
-	if err != nil {
-		return nil, err
-	}
-
-	return pex.NewReactor(logger, peerManager, channel, peerManager.Subscribe(ctx)), nil
-}
-
 func makeNodeInfo(
 	cfg *config.Config,
 	nodeKey types.NodeKey,
@@ -559,4 +499,104 @@ func makeSeedNodeInfo(
 	}
 
 	return nodeInfo, nodeInfo.Validate()
+}
+
+func createAndStartPrivValidatorSocketClient(
+	ctx context.Context,
+	listenAddr, chainID string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+
+	pve, err := privval.NewSignerListener(listenAddr, logger)
+	if err != nil {
+		return nil, fmt.Errorf("starting validator listener: %w", err)
+	}
+
+	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("starting validator client: %w", err)
+	}
+
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	const (
+		timeout = 100 * time.Millisecond
+		maxTime = 5 * time.Second
+		retries = int(maxTime / timeout)
+	)
+	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+
+	return pvscWithRetries, nil
+}
+
+func createAndStartPrivValidatorGRPCClient(
+	ctx context.Context,
+	cfg *config.Config,
+	chainID string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+	pvsc, err := tmgrpc.DialRemoteSigner(
+		ctx,
+		cfg.PrivValidator,
+		chainID,
+		logger,
+		cfg.Instrumentation.Prometheus,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
+	}
+
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	return pvsc, nil
+}
+
+func makeDefaultPrivval(conf *config.Config) (*privval.FilePV, error) {
+	if conf.Mode == config.ModeValidator {
+		pval, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+		if err != nil {
+			return nil, err
+		}
+		return pval, nil
+	}
+
+	return nil, nil
+}
+
+func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, genDoc *types.GenesisDoc, defaultPV *privval.FilePV) (types.PrivValidator, error) {
+	if conf.PrivValidator.ListenAddr != "" {
+		protocol, _ := tmnet.ProtocolAndAddress(conf.PrivValidator.ListenAddr)
+		// FIXME: we should return un-started services and
+		// then start them later.
+		switch protocol {
+		case "grpc":
+			privValidator, err := createAndStartPrivValidatorGRPCClient(ctx, conf, genDoc.ChainID, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
+			}
+			return privValidator, nil
+		default:
+			privValidator, err := createAndStartPrivValidatorSocketClient(
+				ctx,
+				conf.PrivValidator.ListenAddr,
+				genDoc.ChainID,
+				logger,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+
+			}
+			return privValidator, nil
+		}
+	}
+
+	return defaultPV, nil
 }

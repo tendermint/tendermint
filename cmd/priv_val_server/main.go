@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -19,7 +21,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/privval"
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
@@ -45,7 +46,7 @@ func main() {
 		rootCA           = flag.String("rootcafile", "", "absolute path to root CA")
 		prometheusAddr   = flag.String("prometheus-addr", "", "address for prometheus endpoint (host:port)")
 
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false).
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo).
 			With("module", "priv_val")
 	)
 	flag.Parse()
@@ -133,9 +134,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(ctx, logger, func() {
-		logger.Debug("SignerServer: calling Close")
+	opctx, opcancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer opcancel()
+	go func() {
+		<-opctx.Done()
 		if *prometheusAddr != "" {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
@@ -145,7 +147,7 @@ func main() {
 			}
 		}
 		s.GracefulStop()
-	})
+	}()
 
 	// Run forever.
 	select {}

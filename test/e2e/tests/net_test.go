@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ func TestNet_Peers(t *testing.T) {
 	// FIXME Skip test since nodes aren't always able to fully mesh
 	t.SkipNow()
 
-	testNode(t, func(t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		netInfo, err := client.NetInfo(ctx)

@@ -53,7 +53,7 @@ func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger)
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
-		logger.Error("Error removing all blockchain history", "dir", dbDir, "err", err)
+		logger.Error("error removing all blockchain history", "dir", dbDir, "err", err)
 	}
 	// recreate the dbDir since the privVal state needs to live there
 	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
