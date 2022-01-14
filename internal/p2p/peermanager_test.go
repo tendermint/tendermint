@@ -1828,6 +1828,23 @@ func TestPeerManager_Advertise(t *testing.T) {
 	}, peerManager.Advertise(dID, 2))
 }
 
+func TestPeerManager_Advertise_Self(t *testing.T) {
+	dID := types.NodeID(strings.Repeat("d", 40))
+
+	self := p2p.NodeAddress{Protocol: "tcp", NodeID: selfID, Hostname: "2001:db8::1", Port: 26657}
+
+	// Create a peer manager with SelfAddress defined.
+	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
+		SelfAddress: self,
+	})
+	require.NoError(t, err)
+
+	// peer manager should always advertise its SelfAddress.
+	require.ElementsMatch(t, []p2p.NodeAddress{
+		self,
+	}, peerManager.Advertise(dID, 100))
+}
+
 func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
