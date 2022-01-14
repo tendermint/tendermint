@@ -585,15 +585,14 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 * **Response**:
 
-    | Name                    | Type                                                        | Description                                                                             | Field Number |
-    |-------------------------|-------------------------------------------------------------|-----------------------------------------------------------------------------------------|--------------|
-    | block_events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                                    | 1            |
-    | tx_result               | repeated [TxResult](#txresult)                              | List of structures containing the data resulting from executing the transactions        | 2            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                             | 3            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                          | 4            |
-    | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                          | 6            |
-    | need_new_block          | bool                                                        | If _true_, the App wants a new block to be produced, even if no transactions in mempool | 7            |
-    | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).                  | 8            |
+    | Name                    | Type                                                        | Description                                                                      | Field Number |
+    |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
+    | block_events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | tx_result               | repeated [TxResult](#txresult)                              | List of structures containing the data resulting from executing the transactions | 2            |
+    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
+    | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 6            |
+    | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 7            |
 
 * **Usage**:
     * Contains a newly decided block.
@@ -639,9 +638,6 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
       blocks then this data is permanently lost, and no new nodes will be able to join the network and
       bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of
       non-persisted heights, light client verification, and so on.
-    * Parameter `need_new_block` signals the Application's desire to see a new block being proposed even if
-      there are no outstanding transactions or evidences in Tendermint's mempool (i.e. empty block). If there
-      are outstanding transactions, the value set here has no effect.
     * Just as `ProcessProposal`, the implementation of `FinalizeBlock` MUST be deterministic, since it is
       making the Application's state evolve in the context of state machine replication.
     * Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
