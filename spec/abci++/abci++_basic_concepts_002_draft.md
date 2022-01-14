@@ -348,7 +348,7 @@ provide any data in `ResponsePrepareProposal`, other than an optionally modified
 transaction list.
 
 In the long term, the execution model will be set in a new boolean parameter
-_same_block_ in `ConsensusParams`.
+*same_block* in `ConsensusParams`.
 It should **not** be changed once the blockchain has started, unless the Application
 developers _really_ know what they are doing.
 However, modifying `ConsensusParams` structure cannot be done lightly if we are to
@@ -367,7 +367,7 @@ executing the block, the default value of _TimeoutPropose_ might not be sufficie
 to accomodate the long block execution time and non-proposer processes might time
 out and prevote `nil`, thus starting a further round unnecessarily.
 
-The application is the best suited to provide a value for _TimeoutPropose_ so
+The Application is the best suited to provide a value for _TimeoutPropose_ so
 that the block execution time upon `PrepareProposal` fits well in the propose
 timeout interval.
 

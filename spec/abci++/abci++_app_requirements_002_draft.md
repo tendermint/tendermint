@@ -32,15 +32,15 @@ compute various hashes in the block header that will finally be part of the prop
   _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_.
 
 In practical terms, Requirements 1 and 2 imply that Tendermint will (a) panic if the Application is in
-same-block execution mode and _does not_ provide values for
+same-block execution mode and _does_ _not_ provide values for
 _AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorUpdates_, or
 (b) log an error if the Application is in next-block execution mode and _does_ provide values for
 _AppHash_, _TxResults_, _ConsensusParams_, or _ValidatorUpdates_ (the values provided will be ignored).
 
 * Requirement 3 [`PrepareProposal`, timeliness] If $p$'s Application fully executes prepared blocks in
-  `PrepareProposal` and the network is in a synchronous period while processes $p$ and $q$ are in $r_p$,
-  then the value of _TimeoutPropose_ at $q$ must be such that $q$'s propose timer does not time out (which would result in $q$ prevoting _nil_ in $r_p$).
-  .
+  `PrepareProposal` and the network is in a synchronous period while processes $p$ and $q$ are in $r_p$, then
+  the value of *TimeoutPropose* at $q$ must be such that $q$'s propose timer does not time out
+  (which would result in $q$ prevoting *nil* in $r_p$).
 
 Full execution of blocks at `PrepareProposal` time stands on Tendermint's critical path. Thus,
 Requirement 3 ensures the Application will set a value for _TimeoutPropose_ such that the time it takes

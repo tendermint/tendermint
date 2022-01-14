@@ -8,7 +8,7 @@ parent:
 
 # Tendermint Spec
 
-This is a markdown specification of the Tendermint blockchain.
+This is a Markdown specification of the Tendermint blockchain.
 It defines the base data structures, how they are validated,
 and how they are communicated over the network.
 

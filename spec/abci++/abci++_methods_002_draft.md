@@ -322,20 +322,20 @@ From the App's perspective, they'll probably skip ProcessProposal
     * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_result`, `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
-      * The values for `ResponsePrepareProposal.validator_updates`, or
-        `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
-        the current values.
-      * `ResponsePrepareProposal.validator_updates`, triggered by block `H`, affect validation
-        for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
-          * `H`: `NextValidatorsHash` includes the new `validator_updates` value.
-          * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
-          * `H+2`: `last_commit_info` is changed to include the altered validator set.
-      * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-        params for the same block `H`. For more information on the consensus parameters,
-        see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
-      * It is the responsibility of the Application to set the right value for _TimeoutPropose_ so that
-        the (synchronous) execution of the block does not cause other processes to prevote `nil` because
-        their propose timeout goes off.
+        * The values for `ResponsePrepareProposal.validator_updates`, or
+          `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
+          the current values.
+        * `ResponsePrepareProposal.validator_updates`, triggered by block `H`, affect validation
+          for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
+            * `H`: `NextValidatorsHash` includes the new `validator_updates` value.
+            * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
+            * `H+2`: `last_commit_info` is changed to include the altered validator set.
+        * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
+          params for the same block `H`. For more information on the consensus parameters,
+          see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+        * It is the responsibility of the Application to set the right value for _TimeoutPropose_ so that
+          the (synchronous) execution of the block does not cause other processes to prevote `nil` because
+          their propose timeout goes off.
     * In next-block execution mode, Tendermint will ignore parameters `ResponsePrepareProposal.tx_result`,
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * As a result of executing the prepared proposal, the Application may produce header events or transaction events.
@@ -441,7 +441,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     * If `ResponseProcessProposal.accept` is _false_, Tendermint assumes the proposal received
       is not valid.
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
-      `ResponseProcessProposal.accept` MUST *exclusively* depend on the parameters passed in
+      `ResponseProcessProposal.accept` MUST **exclusively** depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
       (see [Requirements](abci++_app_requirements_002_draft.md) section).
     * Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_,
@@ -534,7 +534,7 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
       See the [Requirements](abci++_app_requirements_002_draft.md) section to understand the potential
       liveness implications of this.
     * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
-      `ResponseVerifyVoteExtension.accept` MUST *exclusively* depend on the parameters passed in
+      `ResponseVerifyVoteExtension.accept` MUST **exclusively** depend on the parameters passed in
       the call to `RequestVerifyVoteExtension`, and the last committed Application state
       (see [Requirements](abci++_app_requirements_002_draft.md) section).
     * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_,
@@ -601,9 +601,9 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
           the current values.
         * `ResponseFinalizeBlock.validator_updates`, triggered by block `H`, affect validation
           for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
-              * `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
-              * `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
-              * `H+3`: `last_commit_info` is changed to include the altered validator set.
+              - Height `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
+              - Height `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
+              - Height `H+3`: `last_commit_info` is changed to include the altered validator set.
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
           params for block `H+1`. For more information on the consensus parameters,
           see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).

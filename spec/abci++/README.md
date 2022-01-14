@@ -37,7 +37,8 @@ This specification is split as follows:
   how the different ABCI++ methods may be called by Tendermint. This explains what the Application
   is to expect from Tendermint.
 
->**TODO** Re-read these and remove redundant in fo
+>**TODO** Re-read these and remove redundant info
+
 - [Applications](../abci/apps.md) - how to manage ABCI application state and other
   details about building ABCI applications
 - [Client and Server](../abci/client-server.md) - for those looking to implement their
