@@ -77,6 +77,8 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 
 // signHeader properly signs the header with all keys from first to last exclusive.
 func (pkz privKeys) signHeader(t testing.TB, header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
+	t.Helper()
+
 	commitSigs := make([]types.CommitSig, len(pkz))
 	for i := 0; i < len(pkz); i++ {
 		commitSigs[i] = types.NewCommitSigAbsent()
@@ -146,6 +148,8 @@ func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 func (pkz privKeys) GenSignedHeader(t testing.TB, chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) *types.SignedHeader {
 
+	t.Helper()
+
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	return &types.SignedHeader{
 		Header: header,
@@ -157,6 +161,8 @@ func (pkz privKeys) GenSignedHeader(t testing.TB, chainID string, height int64, 
 func (pkz privKeys) GenSignedHeaderLastBlockID(t testing.TB, chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
 	lastBlockID types.BlockID) *types.SignedHeader {
+
+	t.Helper()
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	header.LastBlockID = lastBlockID
@@ -182,6 +188,7 @@ func genLightBlocksWithKeys(
 	valVariation float32,
 	bTime time.Time,
 ) (map[int64]*types.SignedHeader, map[int64]*types.ValidatorSet, map[int64]privKeys) {
+	t.Helper()
 
 	var (
 		headers         = make(map[int64]*types.SignedHeader, numBlocks)
