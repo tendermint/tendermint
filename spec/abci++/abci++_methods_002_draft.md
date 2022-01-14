@@ -74,7 +74,7 @@ title: Methods
 
     | Name             | Type                                         | Description                                     | Field Number |
     |------------------|----------------------------------------------|-------------------------------------------------|--------------|
-    | consensus_params | [ConsensusParams](#consensusparams)          | Initial consensus-critical parameters (optional | 1            |
+    | consensus_params | [ConsensusParams](#consensusparams)          | Initial consensus-critical parameters (optional) | 1            |
     | validators       | repeated [ValidatorUpdate](#validatorupdate) | Initial validator set (optional).               | 2            |
     | app_hash         | bytes                                        | Initial application hash.                       | 3            |
 
