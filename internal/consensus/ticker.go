@@ -81,7 +81,6 @@ func (t *timeoutTicker) stopTimer() {
 		select {
 		case <-t.timer.C:
 		default:
-			t.logger.Debug("Timer already stopped")
 		}
 	}
 }
@@ -90,7 +89,6 @@ func (t *timeoutTicker) stopTimer() {
 // timers are interupted and replaced by new ticks from later steps
 // timeouts of 0 on the tickChan will be immediately relayed to the tockChan
 func (t *timeoutTicker) timeoutRoutine(ctx context.Context) {
-	t.logger.Debug("Starting timeout routine")
 	var ti timeoutInfo
 	for {
 		select {

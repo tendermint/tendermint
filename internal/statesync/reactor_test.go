@@ -161,13 +161,15 @@ func setup(
 		}
 	}
 
+	logger := log.NewTestingLogger(t)
+
 	var err error
 	rts.reactor, err = NewReactor(
 		ctx,
 		factory.DefaultTestChainID,
 		1,
 		*cfg,
-		log.TestingLogger(),
+		logger.With("component", "reactor"),
 		conn,
 		connQuery,
 		chCreator,
@@ -176,12 +178,13 @@ func setup(
 		rts.blockStore,
 		"",
 		m,
+		nil, // eventbus can be nil
 	)
 	require.NoError(t, err)
 
 	rts.syncer = newSyncer(
 		*cfg,
-		log.NewNopLogger(),
+		logger.With("component", "syncer"),
 		conn,
 		connQuery,
 		stateProvider,
@@ -191,13 +194,14 @@ func setup(
 		rts.reactor.metrics,
 	)
 
+	ctx, cancel := context.WithCancel(ctx)
+
 	require.NoError(t, rts.reactor.Start(ctx))
 	require.True(t, rts.reactor.IsRunning())
 
-	t.Cleanup(func() {
-		rts.reactor.Wait()
-		require.False(t, rts.reactor.IsRunning())
-	})
+	t.Cleanup(cancel)
+	t.Cleanup(rts.reactor.Wait)
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }

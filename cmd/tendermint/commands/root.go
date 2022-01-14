@@ -13,7 +13,7 @@ import (
 
 var (
 	config     = cfg.DefaultConfig()
-	logger     = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+	logger     = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	ctxTimeout = 4 * time.Second
 )
 
@@ -55,7 +55,7 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
-		logger, err = log.NewDefaultLogger(config.LogFormat, config.LogLevel, false)
+		logger, err = log.NewDefaultLogger(config.LogFormat, config.LogLevel)
 		if err != nil {
 			return err
 		}

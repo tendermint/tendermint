@@ -99,18 +99,18 @@ func (sl *SignerListenerEndpoint) OnStop() {
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
-func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error {
+func (sl *SignerListenerEndpoint) WaitForConnection(ctx context.Context, maxWait time.Duration) error {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
-	return sl.ensureConnection(maxWait)
+	return sl.ensureConnection(ctx, maxWait)
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
-func (sl *SignerListenerEndpoint) SendRequest(request privvalproto.Message) (*privvalproto.Message, error) {
+func (sl *SignerListenerEndpoint) SendRequest(ctx context.Context, request privvalproto.Message) (*privvalproto.Message, error) {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
 
-	err := sl.ensureConnection(sl.timeoutAccept)
+	err := sl.ensureConnection(ctx, sl.timeoutAccept)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (sl *SignerListenerEndpoint) SendRequest(request privvalproto.Message) (*pr
 	return &res, nil
 }
 
-func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
+func (sl *SignerListenerEndpoint) ensureConnection(ctx context.Context, maxWait time.Duration) error {
 	if sl.IsConnected() {
 		return nil
 	}
@@ -144,7 +144,7 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 	// block until connected or timeout
 	sl.logger.Info("SignerListener: Blocking for connection")
 	sl.triggerConnect()
-	return sl.WaitConnection(sl.connectionAvailableCh, maxWait)
+	return sl.WaitConnection(ctx, sl.connectionAvailableCh, maxWait)
 }
 
 func (sl *SignerListenerEndpoint) acceptNewConnection() (net.Conn, error) {
@@ -207,7 +207,7 @@ func (sl *SignerListenerEndpoint) pingLoop(ctx context.Context) {
 		select {
 		case <-sl.pingTimer.C:
 			{
-				_, err := sl.SendRequest(mustWrapMsg(&privvalproto.PingRequest{}))
+				_, err := sl.SendRequest(ctx, mustWrapMsg(&privvalproto.PingRequest{}))
 				if err != nil {
 					sl.logger.Error("SignerListener: Ping timeout")
 					sl.triggerReconnect()

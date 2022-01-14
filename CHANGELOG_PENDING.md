@@ -12,7 +12,8 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
-  - [rpc] Remove the deprecated gRPC interface to the RPC service. (@creachadair)
+  - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
+  - [rpc] \#7121 Remove the deprecated gRPC interface to the RPC service. (@creachadair)
   - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
   - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
 
@@ -51,6 +52,7 @@ Special thanks to external contributors on this release:
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [node] \#7521 Define concrete type for seed node implementation (@spacech1mp)
 
 ### BUG FIXES
 

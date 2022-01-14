@@ -217,17 +217,7 @@ func (c *WSClient) Send(ctx context.Context, request rpctypes.RPCRequest) error 
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := rpctypes.MapToRequest(c.nextRequestID(), method, params)
-	if err != nil {
-		return err
-	}
-	return c.Send(ctx, request)
-}
-
-// CallWithArrayParams enqueues a call request onto the Send queue. Params are
-// in a form of array (e.g. []interface{}{"abcd"}). Requests are JSON encoded.
-func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := rpctypes.ArrayToRequest(c.nextRequestID(), method, params)
+	request, err := rpctypes.ParamsToRequest(c.nextRequestID(), method, params)
 	if err != nil {
 		return err
 	}
@@ -421,7 +411,6 @@ func (c *WSClient) writeRoutine(ctx context.Context) {
 			c.mtx.Lock()
 			c.sentLastPingAt = time.Now()
 			c.mtx.Unlock()
-			c.Logger.Debug("sent ping")
 		case <-c.readRoutineQuit:
 			return
 		case <-ctx.Done():
@@ -455,7 +444,6 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		c.mtx.RUnlock()
 		c.PingPongLatencyTimer.UpdateSince(t)
 
-		c.Logger.Debug("got pong")
 		return nil
 	})
 

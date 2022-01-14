@@ -255,7 +255,6 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(ctx, peerUpdate)
 		case <-ctx.Done():
-			r.logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}

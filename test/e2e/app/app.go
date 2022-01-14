@@ -89,7 +89,7 @@ func NewApplication(cfg *Config) (*Application, error) {
 		return nil, err
 	}
 	return &Application{
-		logger:    log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false),
+		logger:    log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo),
 		state:     state,
 		snapshots: snapshots,
 		cfg:       cfg,

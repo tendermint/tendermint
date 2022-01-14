@@ -7,6 +7,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,11 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	// empirically, this test either passes in <1s or hits some
+	// kind of deadlock and hit the larger timeout. This timeout
+	// can be extended a bunch if needed, but it's good to avoid
+	// falling back to a much coarser timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	config := configSetup(t)
@@ -59,7 +64,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			defer os.RemoveAll(thisConfig.RootDir)
 
 			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-			app := appFunc(t)
+			app := appFunc(t, logger)
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -139,7 +144,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			i := 0
 			for _, ps := range bzReactor.peers {
 				if i < len(bzReactor.peers)/2 {
-					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote1, "peer", ps.peerID)
 					require.NoError(t, bzReactor.voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
@@ -148,7 +152,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 							},
 						}))
 				} else {
-					bzNodeState.logger.Info("signed and pushed vote", "vote", prevote2, "peer", ps.peerID)
 					require.NoError(t, bzReactor.voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
@@ -161,7 +164,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				i++
 			}
 		} else {
-			bzNodeState.logger.Info("behaving normally")
 			bzNodeState.defaultDoPrevote(ctx, height, round)
 		}
 	}
@@ -173,7 +175,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	lazyNodeState := states[1]
 
 	lazyNodeState.decideProposal = func(ctx context.Context, height int64, round int32) {
-		lazyNodeState.logger.Info("Lazy Proposer proposing condensed commit")
 		require.NotNil(t, lazyNodeState.privValidator)
 
 		var commit *types.Commit
@@ -227,8 +228,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 					lazyNodeState.Height, lazyNodeState.Round, part,
 				}, ""})
 			}
-			lazyNodeState.logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-			lazyNodeState.logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
 		} else if !lazyNodeState.replayMode {
 			lazyNodeState.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}
@@ -281,12 +280,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
-		if assert.NotNil(t, ev, idx) {
-			ev, ok := ev.(*types.DuplicateVoteEvidence)
-			assert.True(t, ok)
-			assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
-			assert.Equal(t, prevoteHeight, ev.Height())
-		}
+		require.NotNil(t, ev, idx)
+		ev, ok := ev.(*types.DuplicateVoteEvidence)
+		require.True(t, ok)
+		assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+		assert.Equal(t, prevoteHeight, ev.Height())
 	}
 }
 

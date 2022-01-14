@@ -97,7 +97,7 @@ func (ss *SignerServer) serviceLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			if err := ss.endpoint.ensureConnection(); err != nil {
+			if err := ss.endpoint.ensureConnection(ctx); err != nil {
 				return
 			}
 			ss.servicePendingRequest(ctx)
