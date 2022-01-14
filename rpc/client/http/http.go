@@ -510,7 +510,9 @@ func (c *baseRPCClient) BroadcastEvidence(
 	ev types.Evidence,
 ) (*coretypes.ResultBroadcastEvidence, error) {
 	result := new(coretypes.ResultBroadcastEvidence)
-	if err := c.caller.Call(ctx, "broadcast_evidence", map[string]interface{}{"evidence": ev}, result); err != nil {
+	if err := c.caller.Call(ctx, "broadcast_evidence", evidenceArgs{
+		Evidence: ev,
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
