@@ -403,8 +403,8 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 			}
 			proposal.Timestamp = timestamp
 			proposal.Signature = lss.Signature
-			return nil
 		}
+		return nil
 	}
 
 	// It passed the checks. Sign the proposal
