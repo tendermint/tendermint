@@ -73,17 +73,17 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 		blockStore,
 	)
 
-	bytes, _ := os.ReadFile(cs.config.WalFile())
-	t.Logf("====== WAL: \n\r%X\n", bytes)
-
-	err = cs.Start(ctx)
+	bytes, err := os.ReadFile(cs.config.WalFile())
 	require.NoError(t, err)
+	require.NotNil(t, bytes)
+
+	require.NoError(t, cs.Start(ctx))
 	defer func() {
 		if err := cs.Stop(); err != nil {
 			t.Error(err)
 		}
 	}()
-
+	t.Cleanup(cs.Wait)
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
 	// WAL, including the empty one, should eventually be followed by a new
@@ -157,8 +157,6 @@ func crashWALandCheckLiveness(rctx context.Context, t *testing.T, consensusRepla
 	i := 1
 LOOP:
 	for {
-		t.Logf("====== LOOP %d\n", i)
-
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
@@ -204,8 +202,6 @@ LOOP:
 
 		select {
 		case err := <-walPanicked:
-			t.Logf("WAL panicked: %v", err)
-
 			// make sure we can make blocks after a crash
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
 
