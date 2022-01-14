@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -57,7 +58,7 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 }
 
 func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
-	panic("not implemented")
+	return errors.New("not implemented")
 }
 
 func BenchmarkSequence(b *testing.B) {
