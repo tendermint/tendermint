@@ -346,7 +346,7 @@ From the App's perspective, they'll probably skip ProcessProposal
     * The Application can change the transaction list via `ResponsePrepareProposal.tx`.
       See [TransactionRecord](#transactionrecord) for further information on how to use it. Some notes:
         * To remove a transaction from the proposed block the Application _marks_ the transaction as
-          "REMOVE". It does not remove it from the list.
+          "REMOVE". It does not remove it from the list. The transaction will also be removed from the mempool.
         * Removing a transaction from the list means it is too early to propose that transaction,
           so it will be excluded from the proposal but will stay in the mempool for later proposals.
           The Application should be extra-careful, as abusing this feature may cause transactions to
@@ -419,9 +419,13 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
 
 * **Response**:
 
-    | Name   | Type | Description                                      | Field Number |
-    |--------|------|--------------------------------------------------|--------------|
-    | accept | bool | If false, the received block failed verification | 1            |
+    | Name                    | Type                                             | Description                                                                      | Field Number |
+    |-------------------------|--------------------------------------------------|----------------------------------------------------------------------------------|--------------|
+    | accept                  | bool                                             | If false, the received block failed verification                                 | 1            |
+    | app_hash                | bytes                                            | The Merkle root hash of the application state.                                   | 2            |
+    | tx_result               | repeated [TxResult](#txresult)                   | List of structures containing the data resulting from executing the transactions | 3            |
+    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                      | 4            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                   | 5            |
 
 * **Usage**:
     * Contains a full proposed block.
@@ -440,6 +444,15 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
           resulted in the block being passed in the `Request*` call to this method)
     * If `ResponseProcessProposal.accept` is _false_, Tendermint assumes the proposal received
       is not valid.
+    * In same-block execution mode, the Application is required to fully execute the block and provide values
+      for parameters `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_result`,
+      `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`,
+      so that Tendermint can then verify the hashes in the block's header are correct.
+      If the hashes mismatch, Tendermint will reject the block even if `ResponseProcessProposal.accept`
+      was set to _true_.
+    * In next-block execution mode, the Application should *not* provide values for parameters
+      `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_result`,
+      `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`.
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
       `ResponseProcessProposal.accept` MUST **exclusively** depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
@@ -817,7 +830,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * If `Action` is UNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool. Field `new_hashes` is ignored.
     * If `Action` is ADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped. Field `new_hashes` is ignored.
     * If `Action` is REMOVED, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
-      similar to `CheckTx` returning _false_. Tendermint can use field `new_hashes` to help client trace transactions that have been modified into other transactions.
+      similar to `CheckTx` returning _false_. Tendermint can use field `new_hashes` to help clients trace transactions that have been modified into other transactions.
 
 ### TransactionRecord
 
