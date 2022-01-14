@@ -43,7 +43,6 @@ func VerifyNonAdjacent(
 
 	if err := checkRequiredHeaderFields(trustedHeader); err != nil {
 		return err
-
 	}
 
 	if untrustedHeader.Height == trustedHeader.Height+1 {
