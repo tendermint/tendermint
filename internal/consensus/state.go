@@ -488,7 +488,7 @@ func (cs *State) Wait() {
 // OpenWAL opens a file to log all consensus messages and timeouts for
 // deterministic accountability.
 func (cs *State) OpenWAL(ctx context.Context, walFile string) (WAL, error) {
-	wal, err := NewWAL(cs.logger.With("wal", walFile), walFile)
+	wal, err := NewWAL(ctx, cs.logger.With("wal", walFile), walFile)
 	if err != nil {
 		cs.logger.Error("failed to open WAL", "file", walFile, "err", err)
 		return nil, err
