@@ -302,7 +302,7 @@ title: Methods
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
     | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
-    | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
+    | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions            | 4            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
@@ -414,7 +414,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
     | status                  | [ProposalStatus](#proposalstatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
-    | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions. | 3            |
+    | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions. | 3            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
 
@@ -582,7 +582,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
     | events                  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
-    | tx_results              | repeated [ExecTxResult](#txresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
+    | tx_results              | repeated [ExecTxResult](#exectxresult)                      | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
