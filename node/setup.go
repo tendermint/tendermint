@@ -423,6 +423,11 @@ func createPeerManager(
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
 
+	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse ExternalAddress %q: %w", cfg.P2P.ExternalAddress, err)
+	}
+
 	var maxConns uint16
 
 	switch {
@@ -452,6 +457,7 @@ func createPeerManager(
 	}
 
 	options := p2p.PeerManagerOptions{
+		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    4,
 		MaxPeers:               1000,
