@@ -80,7 +80,7 @@ func TestDispatcherReturnsNoBlock(t *testing.T) {
 
 	go func() {
 		<-chans.Out
-		require.NoError(t, d.Respond(nil, peer))
+		require.NoError(t, d.Respond(ctx, nil, peer))
 		cancel()
 	}()
 
@@ -309,7 +309,7 @@ func handleRequests(ctx context.Context, t *testing.T, d *Dispatcher, ch chan p2
 			peer := request.To
 			resp := mockLBResp(ctx, t, peer, int64(height), time.Now())
 			block, _ := resp.block.ToProto()
-			require.NoError(t, d.Respond(block, resp.peer))
+			require.NoError(t, d.Respond(ctx, block, resp.peer))
 		case <-ctx.Done():
 			return
 		}
