@@ -35,7 +35,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, latestHeight, valSize, 2, bTime)
+	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID, latestHeight, valSize, 2, bTime)
 
 	forgedKeys := chainKeys[divergenceHeight-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
 	forgedVals := forgedKeys.ToValidators(2, 0)
@@ -46,7 +46,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 			primaryValidators[height] = witnessValidators[height]
 			continue
 		}
-		primaryHeaders[height] = forgedKeys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		primaryHeaders[height] = forgedKeys.GenSignedHeader(t, chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil, forgedVals, forgedVals, hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(forgedKeys))
 		primaryValidators[height] = forgedVals
 	}
@@ -152,7 +152,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				// validators don't change in this network (however we still use a map just for convenience)
 				primaryValidators = make(map[int64]*types.ValidatorSet, testCase.latestHeight)
 			)
-			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID,
+			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID,
 				testCase.latestHeight+1, valSize, 2, bTime)
 			for height := int64(1); height <= testCase.latestHeight; height++ {
 				if height < testCase.divergenceHeight {
@@ -162,7 +162,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				}
 				// we don't have a network partition so we will make 4/5 (greater than 2/3) malicious and vote again for
 				// a different block (which we do by adding txs)
-				primaryHeaders[height] = chainKeys[height].GenSignedHeader(chainID, height,
+				primaryHeaders[height] = chainKeys[height].GenSignedHeader(t, chainID, height,
 					bTime.Add(time.Duration(height)*time.Minute), []types.Tx{[]byte("abcd")},
 					witnessValidators[height], witnessValidators[height+1], hash("app_hash"),
 					hash("cons_hash"), hash("results_hash"), 0, len(chainKeys[height])-1)
@@ -246,7 +246,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	defer cancel()
 	logger := log.NewTestingLogger(t)
 
-	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(chainID, latestHeight, valSize, 2, bTime)
+	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID, latestHeight, valSize, 2, bTime)
 	for _, unusedHeader := range []int64{3, 5, 6, 8} {
 		delete(witnessHeaders, unusedHeader)
 	}
@@ -262,7 +262,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	}
 	forgedKeys := chainKeys[latestHeight].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
 	primaryValidators[forgedHeight] = forgedKeys.ToValidators(2, 0)
-	primaryHeaders[forgedHeight] = forgedKeys.GenSignedHeader(
+	primaryHeaders[forgedHeight] = forgedKeys.GenSignedHeader(t,
 		chainID,
 		forgedHeight,
 		bTime.Add(time.Duration(latestHeight+1)*time.Minute), // 11 mins
@@ -326,7 +326,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	// to prove that there was an attack
 	vals := chainKeys[latestHeight].ToValidators(2, 0)
 	newLb := &types.LightBlock{
-		SignedHeader: chainKeys[latestHeight].GenSignedHeader(
+		SignedHeader: chainKeys[latestHeight].GenSignedHeader(t,
 			chainID,
 			proofHeight,
 			bTime.Add(time.Duration(proofHeight+1)*time.Minute), // 12 mins
@@ -395,11 +395,11 @@ func TestClientDivergentTraces1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	headers, vals, _ := genLightBlocksWithKeys(chainID, 1, 5, 2, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(t, chainID, 1, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(headers, vals)
 	firstBlock, err := mockPrimary.LightBlock(ctx, 1)
 	require.NoError(t, err)
-	headers, vals, _ = genLightBlocksWithKeys(chainID, 1, 5, 2, bTime)
+	headers, vals, _ = genLightBlocksWithKeys(t, chainID, 1, 5, 2, bTime)
 	mockWitness := mockNodeFromHeadersAndVals(headers, vals)
 
 	logger := log.NewTestingLogger(t)
@@ -430,7 +430,7 @@ func TestClientDivergentTraces2(t *testing.T) {
 	defer cancel()
 	logger := log.NewTestingLogger(t)
 
-	headers, vals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
 	mockPrimaryNode := mockNodeFromHeadersAndVals(headers, vals)
 	mockDeadNode := &provider_mocks.Provider{}
 	mockDeadNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrNoResponse)
@@ -465,7 +465,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	//
-	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
+	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -474,7 +474,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 	firstBlock, err := mockPrimary.LightBlock(ctx, 1)
 	require.NoError(t, err)
 
-	mockHeaders, mockVals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
+	mockHeaders, mockVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
 	mockHeaders[1] = primaryHeaders[1]
 	mockVals[1] = primaryVals[1]
 	mockWitness := mockNodeFromHeadersAndVals(mockHeaders, mockVals)
@@ -508,7 +508,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	//
-	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
+	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -517,7 +517,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 	firstBlock, err := mockPrimary.LightBlock(ctx, 1)
 	require.NoError(t, err)
 
-	witnessHeaders, witnessVals, _ := genLightBlocksWithKeys(chainID, 2, 5, 2, bTime)
+	witnessHeaders, witnessVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
 	primaryHeaders[2] = witnessHeaders[2]
 	primaryVals[2] = witnessVals[2]
 	mockWitness := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
