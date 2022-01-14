@@ -34,6 +34,16 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatal("Registration should not have succeeded")
 	})
 
+	t.Run("MarshalNil", func(t *testing.T) {
+		bits, err := jsontypes.Marshal(nil)
+		if err != nil {
+			t.Fatalf("Marshal failed: %v", err)
+		}
+		if got := string(bits); got != "null" {
+			t.Errorf("Marshal nil: got %#q, want null", got)
+		}
+	})
+
 	t.Run("RoundTrip", func(t *testing.T) {
 		obj := testType{Field: "hello"}
 		bits, err := jsontypes.Marshal(&obj)

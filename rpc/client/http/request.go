@@ -69,15 +69,9 @@ type evidenceArgs struct {
 // MarshalJSON implements json.Marshaler to encode the evidence using the
 // wrapped concrete type of the implementation.
 func (e evidenceArgs) MarshalJSON() ([]byte, error) {
-	var ev json.RawMessage
-	if e.Evidence == nil {
-		ev = json.RawMessage("null")
-	} else {
-		var err error
-		ev, err = jsontypes.Marshal(e.Evidence)
-		if err != nil {
-			return nil, err
-		}
+	ev, err := jsontypes.Marshal(e.Evidence)
+	if err != nil {
+		return nil, err
 	}
 	return json.Marshal(struct {
 		Evidence json.RawMessage `json:"evidence"`

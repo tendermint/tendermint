@@ -60,8 +60,12 @@ type wrapper struct {
 	Value json.RawMessage `json:"value"`
 }
 
-// Marshal marshals a JSON wrapper object containing v.
+// Marshal marshals a JSON wrapper object containing v. If v == nil, Marshal
+// returns the JSON "null" value without error.
 func Marshal(v Tagged) ([]byte, error) {
+	if v == nil {
+		return []byte("null"), nil
+	}
 	data, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
