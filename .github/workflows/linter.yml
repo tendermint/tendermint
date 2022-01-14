@@ -27,3 +27,4 @@ jobs:
           MARKDOWN_CONFIG_FILE: .markdownlint.yml
           VALIDATE_PROTOBUF: false
           VALIDATE_JSCPD: false
+          VALIDATE_NATURAL_LANGUAGE: false
