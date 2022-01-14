@@ -17,9 +17,9 @@ import (
 type Validator struct {
 	Address     Address       `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	VotingPower int64         `json:"voting_power,string"`
 
-	ProposerPriority int64 `json:"proposer_priority"`
+	ProposerPriority int64 `json:"proposer_priority,string"`
 }
 
 // NewValidator returns a new validator with the given pubkey and voting power.
