@@ -39,8 +39,8 @@ _AppHash_, _TxResults_, _ConsensusParams_, or _ValidatorUpdates_ (the values pro
 
 * Requirement 3 [`PrepareProposal`, timeliness] If $p$'s Application fully executes prepared blocks in
   `PrepareProposal` and the network is in a synchronous period while processes $p$ and $q$ are in $r_p$,
-  then the value of _TimeoutPropose_ at $q$ must be such that $q$ does not prevote _nil_ in $r_p$ due to
-  $q$'s propose timer timing out.
+  then the value of _TimeoutPropose_ at $q$ must be such that $q$'s propose timer does not time out (which would result in $q$ prevoting _nil_ in $r_p$).
+  .
 
 Full execution of blocks at `PrepareProposal` time stands on Tendermint's critical path. Thus,
 Requirement 3 ensures the Application will set a value for _TimeoutPropose_ such that the time it takes
