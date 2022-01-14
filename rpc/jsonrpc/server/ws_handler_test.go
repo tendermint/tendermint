@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
@@ -14,10 +15,12 @@ import (
 )
 
 func TestWebsocketManagerHandler(t *testing.T) {
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	s := newWSServer(t, logger)
 	defer s.Close()
+
+	t.Cleanup(leaktest.Check(t))
 
 	// check upgrader works
 	d := websocket.Dialer{}
