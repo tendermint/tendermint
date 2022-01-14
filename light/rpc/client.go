@@ -565,7 +565,7 @@ func (c *Client) Validators(
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(int(perPage), totalCount-skipCount)]
 
 	return &coretypes.ResultValidators{
 		BlockHeight: l.Height,
@@ -672,16 +672,13 @@ const (
 	maxPerPage     = 100
 )
 
-func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
-	if perPage < 1 {
-		panic(fmt.Errorf("%w (%d)", coretypes.ErrZeroOrNegativePerPage, perPage))
-	}
+func validatePage(pagePtr *int, perPage uint, totalCount int) (int, error) {
 
 	if pagePtr == nil { // no page parameter
 		return 1, nil
 	}
 
-	pages := ((totalCount - 1) / perPage) + 1
+	pages := ((totalCount - 1) / int(perPage)) + 1
 	if pages == 0 {
 		pages = 1 // one page (even if it's empty)
 	}
@@ -693,7 +690,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	return page, nil
 }
 
-func validatePerPage(perPagePtr *int) int {
+func validatePerPage(perPagePtr *int) uint {
 	if perPagePtr == nil { // no per_page parameter
 		return defaultPerPage
 	}
@@ -704,11 +701,11 @@ func validatePerPage(perPagePtr *int) int {
 	} else if perPage > maxPerPage {
 		return maxPerPage
 	}
-	return perPage
+	return uint(perPage)
 }
 
-func validateSkipCount(page, perPage int) int {
-	skipCount := (page - 1) * perPage
+func validateSkipCount(page int, perPage uint) int {
+	skipCount := (page - 1) * int(perPage)
 	if skipCount < 0 {
 		return 0
 	}

@@ -1,6 +1,7 @@
 package autofile
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -57,7 +58,7 @@ type AutoFile struct {
 // OpenAutoFile creates an AutoFile in the path (with random ID). If there is
 // an error, it will be of type *PathError or *ErrPermissionsChanged (if file's
 // permissions got changed (should be 0600)).
-func OpenAutoFile(path string) (*AutoFile, error) {
+func OpenAutoFile(ctx context.Context, path string) (*AutoFile, error) {
 	var err error
 	path, err = filepath.Abs(path)
 	if err != nil {
@@ -78,12 +79,17 @@ func OpenAutoFile(path string) (*AutoFile, error) {
 	af.hupc = make(chan os.Signal, 1)
 	signal.Notify(af.hupc, syscall.SIGHUP)
 	go func() {
-		for range af.hupc {
-			_ = af.closeFile()
+		for {
+			select {
+			case <-af.hupc:
+				_ = af.closeFile()
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
-	go af.closeFileRoutine()
+	go af.closeFileRoutine(ctx)
 
 	return af, nil
 }
@@ -99,9 +105,12 @@ func (af *AutoFile) Close() error {
 	return af.closeFile()
 }
 
-func (af *AutoFile) closeFileRoutine() {
+func (af *AutoFile) closeFileRoutine(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			_ = af.closeFile()
+			return
 		case <-af.closeTicker.C:
 			_ = af.closeFile()
 		case <-af.closeTickerStopc:

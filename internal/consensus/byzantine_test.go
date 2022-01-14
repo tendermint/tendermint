@@ -7,6 +7,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,11 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	// empirically, this test either passes in <1s or hits some
+	// kind of deadlock and hit the larger timeout. This timeout
+	// can be extended a bunch if needed, but it's good to avoid
+	// falling back to a much coarser timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	config := configSetup(t)
@@ -275,12 +280,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
-		if assert.NotNil(t, ev, idx) {
-			ev, ok := ev.(*types.DuplicateVoteEvidence)
-			assert.True(t, ok)
-			assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
-			assert.Equal(t, prevoteHeight, ev.Height())
-		}
+		require.NotNil(t, ev, idx)
+		ev, ok := ev.(*types.DuplicateVoteEvidence)
+		require.True(t, ok)
+		assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+		assert.Equal(t, prevoteHeight, ev.Height())
 	}
 }
 

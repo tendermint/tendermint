@@ -11,7 +11,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/cors"
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -23,20 +22,16 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
-	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
-	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
-	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
@@ -98,15 +93,9 @@ func newDefaultNode(
 			logger,
 		)
 	}
-
-	var pval *privval.FilePV
-	if cfg.Mode == config.ModeValidator {
-		pval, err = privval.LoadOrGenFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		pval = nil
+	pval, err := makeDefaultPrivval(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
@@ -127,7 +116,7 @@ func newDefaultNode(
 func makeNode(
 	ctx context.Context,
 	cfg *config.Config,
-	privValidator types.PrivValidator,
+	filePrivval *privval.FilePV,
 	nodeKey types.NodeKey,
 	clientCreator abciclient.Creator,
 	genesisDocProvider genesisDocProvider,
@@ -188,33 +177,11 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	// If an address is provided, listen on the socket for a connection from an
-	// external signing process.
-	if cfg.PrivValidator.ListenAddr != "" {
-		protocol, _ := tmnet.ProtocolAndAddress(cfg.PrivValidator.ListenAddr)
-		// FIXME: we should start services inside OnStart
-		switch protocol {
-		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(ctx, cfg, genDoc.ChainID, logger)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator grpc client: %w", err),
-					makeCloser(closers))
-			}
-		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(
-				ctx,
-				cfg.PrivValidator.ListenAddr,
-				genDoc.ChainID,
-				logger,
-			)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator socket client: %w", err),
-					makeCloser(closers))
-			}
-		}
+	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
 	}
+
 	var pubKey crypto.PubKey
 	if cfg.Mode == config.ModeValidator {
 		pubKey, err = privValidator.GetPubKey(ctx)
@@ -433,6 +400,10 @@ func makeNode(
 		},
 	}
 
+	if cfg.Mode == config.ModeValidator {
+		node.rpcEnv.PubKey = pubKey
+	}
+
 	node.rpcEnv.P2PTransport = node
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -475,11 +446,11 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC(ctx)
+		var err error
+		n.rpcListeners, err = n.rpcEnv.StartService(ctx, n.config)
 		if err != nil {
 			return err
 		}
-		n.rpcListeners = listeners
 	}
 
 	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
@@ -630,104 +601,6 @@ func (n *nodeImpl) OnStop() {
 	}
 }
 
-func (n *nodeImpl) startRPC(ctx context.Context) ([]net.Listener, error) {
-	if n.config.Mode == config.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey(ctx)
-		if pubKey == nil || err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
-		}
-		n.rpcEnv.PubKey = pubKey
-	}
-	if err := n.rpcEnv.InitGenesisChunks(); err != nil {
-		return nil, err
-	}
-
-	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
-	routes := n.rpcEnv.GetRoutes()
-
-	if n.config.RPC.Unsafe {
-		n.rpcEnv.AddUnsafe(routes)
-	}
-
-	cfg := rpcserver.DefaultConfig()
-	cfg.MaxBodyBytes = n.config.RPC.MaxBodyBytes
-	cfg.MaxHeaderBytes = n.config.RPC.MaxHeaderBytes
-	cfg.MaxOpenConnections = n.config.RPC.MaxOpenConnections
-	// If necessary adjust global WriteTimeout to ensure it's greater than
-	// TimeoutBroadcastTxCommit.
-	// See https://github.com/tendermint/tendermint/issues/3435
-	if cfg.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
-		cfg.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
-	}
-
-	// we may expose the rpc over both a unix and tcp socket
-	listeners := make([]net.Listener, len(listenAddrs))
-	for i, listenAddr := range listenAddrs {
-		mux := http.NewServeMux()
-		rpcLogger := n.logger.With("module", "rpc-server")
-		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(wmLogger, routes,
-			rpcserver.OnDisconnect(func(remoteAddr string) {
-				err := n.rpcEnv.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
-				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
-				}
-			}),
-			rpcserver.ReadLimit(cfg.MaxBodyBytes),
-		)
-		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
-		listener, err := rpcserver.Listen(
-			listenAddr,
-			cfg.MaxOpenConnections,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		var rootHandler http.Handler = mux
-		if n.config.RPC.IsCorsEnabled() {
-			corsMiddleware := cors.New(cors.Options{
-				AllowedOrigins: n.config.RPC.CORSAllowedOrigins,
-				AllowedMethods: n.config.RPC.CORSAllowedMethods,
-				AllowedHeaders: n.config.RPC.CORSAllowedHeaders,
-			})
-			rootHandler = corsMiddleware.Handler(mux)
-		}
-		if n.config.RPC.IsTLSEnabled() {
-			go func() {
-				if err := rpcserver.ServeTLS(
-					ctx,
-					listener,
-					rootHandler,
-					n.config.RPC.CertFile(),
-					n.config.RPC.KeyFile(),
-					rpcLogger,
-					cfg,
-				); err != nil {
-					n.logger.Error("error serving server with TLS", "err", err)
-				}
-			}()
-		} else {
-			go func() {
-				if err := rpcserver.Serve(
-					ctx,
-					listener,
-					rootHandler,
-					rpcLogger,
-					cfg,
-				); err != nil {
-					n.logger.Error("error serving server", "err", err)
-				}
-			}()
-		}
-
-		listeners[i] = listener
-	}
-
-	return listeners, nil
-}
-
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
 // collectors on addr.
 func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http.Server {
@@ -765,12 +638,6 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 // EventBus returns the Node's EventBus.
 func (n *nodeImpl) EventBus() *eventbus.EventBus {
 	return n.rpcEnv.EventBus
-}
-
-// PrivValidator returns the Node's PrivValidator.
-// XXX: for convenience only!
-func (n *nodeImpl) PrivValidator() types.PrivValidator {
-	return n.privValidator
 }
 
 // GenesisDoc returns the Node's GenesisDoc.
@@ -878,63 +745,6 @@ func loadStateFromDBOrGenesisDocProvider(
 	}
 
 	return state, nil
-}
-
-func createAndStartPrivValidatorSocketClient(
-	ctx context.Context,
-	listenAddr, chainID string,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-
-	pve, err := privval.NewSignerListener(listenAddr, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-
-	const (
-		retries = 50 // 50 * 100ms = 5s total
-		timeout = 100 * time.Millisecond
-	)
-	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
-
-	return pvscWithRetries, nil
-}
-
-func createAndStartPrivValidatorGRPCClient(
-	ctx context.Context,
-	cfg *config.Config,
-	chainID string,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-	pvsc, err := tmgrpc.DialRemoteSigner(
-		ctx,
-		cfg.PrivValidator,
-		chainID,
-		logger,
-		cfg.Instrumentation.Prometheus,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-
-	return pvsc, nil
 }
 
 func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
