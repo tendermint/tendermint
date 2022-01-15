@@ -1208,7 +1208,7 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 // new block if a proposal was not seen for that block.
 func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.NewTestingLogger(t)
+	logger := log.TestingLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

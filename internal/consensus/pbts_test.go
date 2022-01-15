@@ -109,7 +109,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		Time:       tc.genesisTime,
 		Validators: validators,
 	})
-	cs := newState(ctx, t, log.NewTestingLogger(t), state, privVals[0], kvstore.NewApplication())
+	cs := newState(ctx, t, log.TestingLogger(), state, privVals[0], kvstore.NewApplication())
 	vss := make([]*validatorStub, validators)
 	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
