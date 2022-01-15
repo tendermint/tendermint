@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	"github.com/tendermint/tendermint/libs/bytes"
 )
 
@@ -25,6 +26,9 @@ type PubKey interface {
 	VerifySignature(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
 	Type() string
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
 }
 
 type PrivKey interface {
@@ -33,6 +37,9 @@ type PrivKey interface {
 	PubKey() PubKey
 	Equals(PrivKey) bool
 	Type() string
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
 }
 
 type Symmetric interface {

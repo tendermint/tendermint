@@ -107,7 +107,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, peer types.NodeID, height int
 // Respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block. A nil response is used to
 // represent that the receiver of the request does not have a light block at that height.
-func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
+func (d *Dispatcher) Respond(ctx context.Context, lb *tmproto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -121,8 +121,12 @@ func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 	// If lb is nil we take that to mean that the peer didn't have the requested light
 	// block and thus pass on the nil to the caller.
 	if lb == nil {
-		answerCh <- nil
-		return nil
+		select {
+		case answerCh <- nil:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	block, err := types.LightBlockFromProto(lb)
@@ -130,8 +134,12 @@ func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 		return err
 	}
 
-	answerCh <- block
-	return nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case answerCh <- block:
+		return nil
+	}
 }
 
 // Close shuts down the dispatcher and cancels any pending calls awaiting responses.
@@ -139,9 +147,11 @@ func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 func (d *Dispatcher) Close() {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	for peer, call := range d.calls {
+	for peer := range d.calls {
 		delete(d.calls, peer)
-		close(call)
+		// don't close the channel here as it's closed in
+		// other handlers, and would otherwise get garbage
+		// collected.
 	}
 }
 

@@ -4,7 +4,11 @@ package http
 // from the client to the server.
 
 import (
+	"encoding/json"
+
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/types"
 )
 
 type abciQueryArgs struct {
@@ -56,4 +60,20 @@ type validatorArgs struct {
 	Height  *int64 `json:"height,string,omitempty"`
 	Page    *int   `json:"page,string,omitempty"`
 	PerPage *int   `json:"per_page,string,omitempty"`
+}
+
+type evidenceArgs struct {
+	Evidence types.Evidence
+}
+
+// MarshalJSON implements json.Marshaler to encode the evidence using the
+// wrapped concrete type of the implementation.
+func (e evidenceArgs) MarshalJSON() ([]byte, error) {
+	ev, err := jsontypes.Marshal(e.Evidence)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Evidence json.RawMessage `json:"evidence"`
+	}{Evidence: ev})
 }

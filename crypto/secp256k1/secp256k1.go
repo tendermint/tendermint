@@ -10,6 +10,7 @@ import (
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	// necessary for Bitcoin address format
@@ -28,12 +29,18 @@ const (
 func init() {
 	tmjson.RegisterType(PubKey{}, PubKeyName)
 	tmjson.RegisterType(PrivKey{}, PrivKeyName)
+
+	jsontypes.MustRegister(PubKey{})
+	jsontypes.MustRegister(PrivKey{})
 }
 
 var _ crypto.PrivKey = PrivKey{}
 
 // PrivKey implements PrivKey.
 type PrivKey []byte
+
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PrivKey) TypeTag() string { return PrivKeyName }
 
 // Bytes marshalls the private key using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
@@ -137,6 +144,9 @@ const PubKeySize = 33
 // the x-coordinate. Otherwise the first byte is a 0x03.
 // This prefix is followed with the x-coordinate.
 type PubKey []byte
+
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PubKey) TypeTag() string { return PubKeyName }
 
 // Address returns a Bitcoin style addresses: RIPEMD160(SHA256(pubkey))
 func (pubKey PubKey) Address() crypto.Address {
