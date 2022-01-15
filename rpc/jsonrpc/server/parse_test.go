@@ -187,8 +187,15 @@ func TestParseURI(t *testing.T) {
 		// can parse numbers quoted, too
 		{[]string{`"7"`, `"flew"`}, 7, "flew", false},
 		{[]string{`"-10"`, `"bob"`}, -10, "bob", false},
-		// cant parse strings uquoted
-		{[]string{`"-10"`, `bob`}, -10, "bob", true},
+		// can parse strings hex-escaped, in either case
+		{[]string{`-9`, `0x626f62`}, -9, "bob", false},
+		{[]string{`-9`, `0X646F7567`}, -9, "doug", false},
+		// can parse strings unquoted (as per OpenAPI docs)
+		{[]string{`0`, `hey you`}, 0, "hey you", false},
+		// fail for invalid numbers, strings, hex
+		{[]string{`"-xx"`, `bob`}, 0, "", true},  // bad number
+		{[]string{`"95""`, `"bob`}, 0, "", true}, // bad string
+		{[]string{`15`, `0xa`}, 0, "", true},     // bad hex
 	}
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
@@ -198,14 +205,14 @@ func TestParseURI(t *testing.T) {
 			tc.raw[0], tc.raw[1])
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(t, err)
-		vals, err := httpParamsToArgs(call, req)
+		vals, err := parseURLParams(context.Background(), call, req)
 		if tc.fail {
 			assert.Error(t, err, i)
 		} else {
 			assert.NoError(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 2, len(vals), i) {
-				assert.Equal(t, tc.height, vals[0].Int(), i)
-				assert.Equal(t, tc.name, vals[1].String(), i)
+			if assert.Equal(t, 3, len(vals), i) {
+				assert.Equal(t, tc.height, vals[1].Int(), i)
+				assert.Equal(t, tc.name, vals[2].String(), i)
 			}
 		}
 

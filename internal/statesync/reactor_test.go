@@ -161,7 +161,7 @@ func setup(
 		}
 	}
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	var err error
 	rts.reactor, err = NewReactor(
