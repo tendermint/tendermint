@@ -95,7 +95,7 @@ func iotest(t *testing.T, writer protoio.WriteCloser, reader protoio.ReadCloser)
 		}
 		i++
 	}
-	require.NotEqual(t, size, i)
+	require.Equal(t, size, i, "messages read ≠ messages written")
 	if err := reader.Close(); err != nil {
 		return err
 	}
