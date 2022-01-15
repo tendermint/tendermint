@@ -38,9 +38,12 @@ func VerifyNonAdjacent(
 	trustingPeriod time.Duration,
 	now time.Time,
 	maxClockDrift time.Duration,
-	trustLevel tmmath.Fraction) error {
+	trustLevel tmmath.Fraction,
+) error {
 
-	checkRequiredHeaderFields(trustedHeader)
+	if err := checkRequiredHeaderFields(trustedHeader); err != nil {
+		return err
+	}
 
 	if untrustedHeader.Height == trustedHeader.Height+1 {
 		return errors.New("headers must be non adjacent in height")
@@ -106,12 +109,15 @@ func VerifyAdjacent(
 	untrustedVals *types.ValidatorSet, // height=X+1
 	trustingPeriod time.Duration,
 	now time.Time,
-	maxClockDrift time.Duration) error {
+	maxClockDrift time.Duration,
+) error {
 
-	checkRequiredHeaderFields(trustedHeader)
+	if err := checkRequiredHeaderFields(trustedHeader); err != nil {
+		return err
+	}
 
 	if len(trustedHeader.NextValidatorsHash) == 0 {
-		panic("next validators hash in trusted header is empty")
+		return errors.New("next validators hash in trusted header is empty")
 	}
 
 	if untrustedHeader.Height != trustedHeader.Height+1 {
@@ -268,17 +274,18 @@ func verifyNewHeaderAndVals(
 	return nil
 }
 
-func checkRequiredHeaderFields(h *types.SignedHeader) {
+func checkRequiredHeaderFields(h *types.SignedHeader) error {
 	if h.Height == 0 {
-		panic("height in trusted header must be set (non zero")
+		return errors.New("height in trusted header must be set (non zero")
 	}
 
 	zeroTime := time.Time{}
 	if h.Time == zeroTime {
-		panic("time in trusted header must be set")
+		return errors.New("time in trusted header must be set")
 	}
 
 	if h.ChainID == "" {
-		panic("chain ID in trusted header must be set")
+		return errors.New("chain ID in trusted header must be set")
 	}
+	return nil
 }
