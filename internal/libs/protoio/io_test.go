@@ -94,9 +94,13 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 		}
 		i++
 	}
+<<<<<<< HEAD
 	if i != size {
 		panic("not enough messages read")
 	}
+=======
+	require.Equal(t, size, i, "messages read ≠ messages written")
+>>>>>>> c24f003b5 (protoio: fix incorrect test assertion (#7606))
 	if err := reader.Close(); err != nil {
 		return err
 	}
