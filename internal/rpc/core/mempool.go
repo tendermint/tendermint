@@ -10,6 +10,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
@@ -117,19 +118,30 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 	}
 }
 
-// UnconfirmedTxs gets unconfirmed transactions (maximum ?limit entries)
+// UnconfirmedTxs gets unconfirmed transactions
 // including their number.
 // More: https://docs.tendermint.com/master/rpc/#/Info/unconfirmed_txs
-func (env *Environment) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*coretypes.ResultUnconfirmedTxs, error) {
+func (env *Environment) UnconfirmedTxs(ctx context.Context, pagePtr, perPagePtr *int) (*coretypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
-	limit := env.validatePerPage(limitPtr)
 
-	txs := env.Mempool.ReapMaxTxs(limit)
+	txs := env.Mempool.ReapMaxTxs(-1)
+
+	totalCount := len(txs)
+	perPage := env.validatePerPage(perPagePtr)
+	page, err := validatePage(pagePtr, perPage, totalCount)
+	if err != nil {
+		return nil, err
+	}
+
+	skipCount := validateSkipCount(page, perPage)
+
+	result := txs[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+
 	return &coretypes.ResultUnconfirmedTxs{
-		Count:      len(txs),
+		Count:      len(result),
 		Total:      env.Mempool.Size(),
 		TotalBytes: env.Mempool.SizeBytes(),
-		Txs:        txs}, nil
+		Txs:        result}, nil
 }
 
 // NumUnconfirmedTxs gets number of unconfirmed transactions.

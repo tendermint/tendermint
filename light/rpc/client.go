@@ -211,8 +211,8 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.R
 	return c.next.BroadcastTxSync(ctx, tx)
 }
 
-func (c *Client) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	return c.next.UnconfirmedTxs(ctx, limit)
+func (c *Client) UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
+	return c.next.UnconfirmedTxs(ctx, page, perPage)
 }
 
 func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {

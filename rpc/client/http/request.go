@@ -23,7 +23,8 @@ type txKeyArgs struct {
 }
 
 type unconfirmedArgs struct {
-	Limit *int `json:"limit,string,omitempty"`
+	Page    *int `json:"page,string,omitempty"`
+	PerPage *int `json:"per_page,string,omitempty"`
 }
 
 type heightArgs struct {

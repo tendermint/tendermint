@@ -97,8 +97,8 @@ func (c *Local) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.Re
 	return c.env.BroadcastTxSync(ctx, tx)
 }
 
-func (c *Local) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	return c.env.UnconfirmedTxs(ctx, limit)
+func (c *Local) UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
+	return c.env.UnconfirmedTxs(ctx, page, perPage)
 }
 
 func (c *Local) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
