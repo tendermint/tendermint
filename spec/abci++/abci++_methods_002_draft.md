@@ -331,7 +331,8 @@ From the App's perspective, they'll probably skip ProcessProposal
             * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
             * `H+2`: `last_commit_info` is changed to include the altered validator set.
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-          params for the same block `H`. For more information on the consensus parameters,
+          params for block `H+1` even if the change is agreed in block `H`.
+          For more information on the consensus parameters,
           see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
         * It is the responsibility of the Application to set the right value for _TimeoutPropose_ so that
           the (synchronous) execution of the block does not cause other processes to prevote `nil` because
@@ -621,7 +622,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
           see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
     * In same-block execution mode, Tendermint will log an error and ignore values for
       `ResponseFinalizeBlock.app_hash`, `ResponseFinalizeBlock.tx_result`, `ResponseFinalizeBlock.validator_updates`,
-      and `ResponsePrepareProposal.consensus_param_updates`, as those data have been provided by `PrepareProposal`.
+      and `ResponsePrepareProposal.consensus_param_updates`, as those must have been provided by `PrepareProposal`.
     * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
     * `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state.
     * `ResponseFinalizeBlock.app_hash` is included
