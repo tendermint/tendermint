@@ -167,7 +167,11 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 				return nil, fmt.Errorf("timed out waiting for %v to reach height %v", node.Name, height)
 			case errors.Is(err, context.Canceled):
 				return nil, err
-			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
+				// If the client is a LightClient, we want to query its trusted height
+			case err == nil && (node.Mode == e2e.ModeLight && status.LightClientInfo.LastTrustedHeight >= height):
+				return status, nil
+				// Otherwise we rely on the height reported in SyncInfo
+			case err == nil && (node.Mode != e2e.ModeLight && status.SyncInfo.LatestBlockHeight >= height):
 				return status, nil
 			case counter%500 == 0:
 				switch {

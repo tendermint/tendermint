@@ -125,14 +125,26 @@ func (c *Client) OnStop() {
 	}
 }
 
+// Returns the status of the light client. Previously this was querying the primary connected to the client
+// As a consequence of this change, running /status on the light client will return nil for SyncInfo, NodeInfo
+// and ValdiatorInfo.
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	lightClientInfo := c.lc.Status(ctx)
+
+	// The light client status should still return the current SyncInfo that can be obtained
+	// from the Primary
+	fullNodeInfo, err := c.next.Status(ctx)
+
+	syncInfo := coretypes.SyncInfo{}
+	if err == nil {
+		syncInfo = fullNodeInfo.SyncInfo
+	}
 	return &coretypes.ResultStatus{
 		NodeInfo:        types.NodeInfo{},
-		SyncInfo:        coretypes.SyncInfo{},
+		SyncInfo:        syncInfo,
 		ValidatorInfo:   coretypes.ValidatorInfo{},
 		LightClientInfo: *lightClientInfo,
-	}, nil
+	}, err
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
