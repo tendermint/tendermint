@@ -100,10 +100,8 @@ func TestProvider(t *testing.T) {
 
 	time.Sleep(10 * time.Second)
 	lb, err = p.LightBlock(ctx, lower+2)
-	// Either the connection should be refused, or the context canceled.
+	// we should see a connection refused
 	require.Error(t, err)
 	require.Nil(t, lb)
-	if !errors.Is(err, provider.ErrConnectionClosed) && !errors.Is(err, context.Canceled) {
-		assert.Fail(t, "Incorrect error", "wanted connection closed or context canceled, got %v", err)
-	}
+	assert.Equal(t, provider.ErrConnectionClosed, err)
 }
