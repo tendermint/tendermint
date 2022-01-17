@@ -615,31 +615,23 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 		// populate mempool with 5 tx
 		txs := make([]types.Tx, 5)
 		ch := make(chan error, 5)
-		go func() {
-			for i := 0; i < 5; i++ {
-				_, _, tx := MakeTxKV()
+		for i := 0; i < 5; i++ {
+			_, _, tx := MakeTxKV()
 
-				txs[i] = tx
-				err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { ch <- nil }, mempool.TxInfo{})
+			txs[i] = tx
+			err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { ch <- nil }, mempool.TxInfo{})
 
-				require.NoError(t, err)
-			}
-		}()
+			require.NoError(t, err)
+		}
 		// wait for tx to arrive in mempoool.
-		count := 0
-		for {
+		for i := 0; i < 5; i++ {
 			select {
 			case <-ch:
-				count++
 			case <-time.After(5 * time.Second):
 				t.Error("Timed out waiting for CheckTx callback")
 			}
-
-			if count == 5 {
-				close(ch)
-				break
-			}
 		}
+		close(ch)
 
 		for _, c := range GetClients(t, n, conf) {
 			for i := 1; i <= 2; i++ {
