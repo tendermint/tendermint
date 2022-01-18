@@ -31,6 +31,9 @@ type pbtsTestHarness struct {
 	// configuration options set by the user of the test harness.
 	pbtsTestConfiguration
 
+	// The timestamp of the first block produced by the network.
+	height1Time time.Time
+
 	// The Tendermint consensus state machine being run during
 	// a run of the pbtsTestHarness.
 	observedState *State
@@ -74,14 +77,11 @@ type pbtsTestConfiguration struct {
 	// The genesis time
 	genesisTime time.Time
 
-	// The timestamp of the first block produced by the network.
-	height1Time time.Time
-
 	// The times offset from height 1 block time of the block proposed at height 2.
 	height2ProposedBlockOffset time.Duration
 
 	// The time offset from height 1 block time at which the proposal at height 2 should be delivered.
-	height2ProposalTimeOffset time.Duration
+	height2ProposalTimeDeliveryOffset time.Duration
 
 	// The time offset from height 1 block time of the block proposed at height 4.
 	// At height 4, the proposed block and the deliver offsets are the same so
@@ -99,9 +99,6 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		tc.genesisTime = time.Now()
 	}
 
-	// Set this temporarily. It will be overwritten with block 1 timestamp once it is known.
-	tc.height1Time = time.Now()
-
 	if tc.height4ProposedBlockOffset == 0 {
 
 		// Set a default height4ProposedBlockOffset.
@@ -109,7 +106,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		// block at height 2 was delivered. Height 3 is not relevant for testing
 		// and always occurs blockTimeIota before height 4. If not otherwise specified,
 		// height 4 therefore occurs 2*blockTimeIota after height 2.
-		tc.height4ProposedBlockOffset = tc.height2ProposalTimeOffset + 20*blockTimeIota
+		tc.height4ProposedBlockOffset = tc.height2ProposalTimeDeliveryOffset + 20*blockTimeIota
 	}
 	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
 	consensusParams := types.DefaultConsensusParams()
@@ -154,7 +151,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	}
 }
 
-func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time.Time) heightResult {
+func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time.Time) (heightResult, time.Time) {
 	p.validatorClock.On("Now").Return(p.genesisTime.Add(p.height2ProposedBlockOffset)).Times(6)
 
 	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
@@ -178,13 +175,13 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time
 
 	p.currentHeight++
 	incrementHeight(p.otherValidators...)
-	return res
+	return res, rs.ProposalBlock.Time
 }
 
 func (p *pbtsTestHarness) height2() heightResult {
 	signer := p.otherValidators[0].PrivValidator
 	return p.nextHeight(signer,
-		p.height1Time.Add(p.height2ProposalTimeOffset),
+		p.height1Time.Add(p.height2ProposalTimeDeliveryOffset),
 		p.height1Time.Add(p.height2ProposedBlockOffset),
 		p.height1Time.Add(p.height2ProposedBlockOffset+10*blockTimeIota))
 }
@@ -203,7 +200,7 @@ func (p *pbtsTestHarness) intermediateHeights() {
 		time.Now())
 }
 
-func (p *pbtsTestHarness) height5() heightResult {
+func (p *pbtsTestHarness) height5() (heightResult, time.Time) {
 	return p.observedValidatorProposerHeight(p.height1Time.Add(p.height4ProposedBlockOffset))
 }
 
@@ -314,11 +311,11 @@ type timestampedEvent struct {
 func (p *pbtsTestHarness) run() resultSet {
 	startTestRound(p.ctx, p.observedState, p.currentHeight, p.currentRound)
 
-	r1 := p.observedValidatorProposerHeight(p.genesisTime)
-	p.height1Time = r1.proposalIssuedAt
+	r1, proposalBlockTime := p.observedValidatorProposerHeight(p.genesisTime)
+	p.height1Time = proposalBlockTime
 	r2 := p.height2()
 	p.intermediateHeights()
-	r5 := p.height5()
+	r5, _ := p.height5()
 	return resultSet{
 		genesisHeight: r1,
 		height2:       r2,
@@ -356,10 +353,10 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 			Precision:    10 * time.Millisecond,
 			MessageDelay: 10 * time.Millisecond,
 		},
-		timeoutPropose:             10 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposalTimeOffset:  10 * time.Millisecond,
-		height2ProposedBlockOffset: 10 * time.Millisecond,
+		timeoutPropose:                    10 * time.Millisecond,
+		genesisTime:                       initialTime,
+		height2ProposalTimeDeliveryOffset: 10 * time.Millisecond,
+		height2ProposedBlockOffset:        10 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -384,11 +381,11 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 			Precision:    100 * time.Millisecond,
 			MessageDelay: 500 * time.Millisecond,
 		},
-		timeoutPropose:             50 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposalTimeOffset:  150 * time.Millisecond,
-		height2ProposedBlockOffset: 100 * time.Millisecond,
-		height4ProposedBlockOffset: 800 * time.Millisecond,
+		timeoutPropose:                    50 * time.Millisecond,
+		genesisTime:                       initialTime,
+		height2ProposalTimeDeliveryOffset: 150 * time.Millisecond,
+		height2ProposedBlockOffset:        100 * time.Millisecond,
+		height4ProposedBlockOffset:        800 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -453,10 +450,10 @@ func TestTimelyProposal(t *testing.T) {
 			Precision:    10 * time.Millisecond,
 			MessageDelay: 140 * time.Millisecond,
 		},
-		timeoutPropose:             40 * time.Millisecond,
-		genesisTime:                initialTime,
-		height2ProposedBlockOffset: 15 * time.Millisecond,
-		height2ProposalTimeOffset:  30 * time.Millisecond,
+		timeoutPropose:                    40 * time.Millisecond,
+		genesisTime:                       initialTime,
+		height2ProposedBlockOffset:        15 * time.Millisecond,
+		height2ProposalTimeDeliveryOffset: 30 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -474,9 +471,9 @@ func TestTooFarInThePastProposal(t *testing.T) {
 			Precision:    1 * time.Millisecond,
 			MessageDelay: 10 * time.Millisecond,
 		},
-		timeoutPropose:             50 * time.Millisecond,
-		height2ProposedBlockOffset: 15 * time.Millisecond,
-		height2ProposalTimeOffset:  27 * time.Millisecond,
+		timeoutPropose:                    50 * time.Millisecond,
+		height2ProposedBlockOffset:        15 * time.Millisecond,
+		height2ProposalTimeDeliveryOffset: 27 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
@@ -496,10 +493,10 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 			Precision:    1 * time.Millisecond,
 			MessageDelay: 10 * time.Millisecond,
 		},
-		timeoutPropose:             50 * time.Millisecond,
-		height2ProposedBlockOffset: 100 * time.Millisecond,
-		height2ProposalTimeOffset:  10 * time.Millisecond,
-		height4ProposedBlockOffset: 150 * time.Millisecond,
+		timeoutPropose:                    50 * time.Millisecond,
+		height2ProposedBlockOffset:        100 * time.Millisecond,
+		height2ProposalTimeDeliveryOffset: 10 * time.Millisecond,
+		height4ProposedBlockOffset:        150 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
