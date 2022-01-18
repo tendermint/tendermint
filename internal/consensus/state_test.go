@@ -2131,7 +2131,11 @@ func subscribe(
 				t.Errorf("Subscription for %v unexpectedly terminated: %v", q, err)
 				return
 			}
-			ch <- next
+			select {
+			case ch <- next:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 	return ch
