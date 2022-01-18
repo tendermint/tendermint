@@ -106,7 +106,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		// block at height 2 was delivered. Height 3 is not relevant for testing
 		// and always occurs blockTimeIota before height 4. If not otherwise specified,
 		// height 4 therefore occurs 2*blockTimeIota after height 2.
-		tc.height4ProposedBlockOffset = tc.height2ProposalTimeDeliveryOffset + 20*blockTimeIota
+		tc.height4ProposedBlockOffset = tc.height2ProposalTimeDeliveryOffset + 2*blockTimeIota
 	}
 	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
 	consensusParams := types.DefaultConsensusParams()
@@ -357,6 +357,7 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 		genesisTime:                       initialTime,
 		height2ProposalTimeDeliveryOffset: 10 * time.Millisecond,
 		height2ProposedBlockOffset:        10 * time.Millisecond,
+		height4ProposedBlockOffset:        30 * time.Millisecond,
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
