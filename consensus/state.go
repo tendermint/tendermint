@@ -7,6 +7,11 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
+<<<<<<< HEAD:consensus/state.go
+=======
+	"sort"
+	"sync"
+>>>>>>> 0c82ceaa5 (consensus: calculate prevote message delay metric (#7551)):internal/consensus/state.go
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -1558,6 +1563,8 @@ func (cs *State) finalizeCommit(height int64) {
 		return
 	}
 
+	cs.calculatePrevoteMessageDelayMetrics()
+
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
@@ -2272,6 +2279,26 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 	}
 
 	return nil
+}
+
+func (cs *State) calculatePrevoteMessageDelayMetrics() {
+	ps := cs.Votes.Prevotes(cs.Round)
+	pl := ps.List()
+	sort.Slice(pl, func(i, j int) bool {
+		return pl[i].Timestamp.Before(pl[j].Timestamp)
+	})
+	var votingPowerSeen int64
+	for _, v := range pl {
+		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
+		votingPowerSeen += val.VotingPower
+		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
+			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			break
+		}
+	}
+	if ps.HasAll() {
+		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+	}
 }
 
 //---------------------------------------------------------
