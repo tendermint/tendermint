@@ -656,7 +656,7 @@ func TestStateLock_NoPOL(t *testing.T) {
 	ensurePrecommit(t, voteCh, height, round)
 }
 
-// TestStateLock_POLUpdateLock tests that a validator maintains updates its locked
+// TestStateLock_POLUpdateLock tests that a validator updates its locked
 // block if the following conditions are met within a round:
 // 1. The validator received a valid proposal for the block
 // 2. The validator received prevotes representing greater than 2/3 of the voting
