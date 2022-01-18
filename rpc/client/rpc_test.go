@@ -619,7 +619,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 			_, _, tx := MakeTxKV()
 
 			txs[i] = tx
-			err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { ch <- nil }, mempool.TxInfo{})
+			err := pool.CheckTx(ctx, tx, func(_ *abci.ResponseCheckTx) { ch <- nil }, mempool.TxInfo{})
 
 			require.NoError(t, err)
 		}
@@ -661,7 +661,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 		_, _, tx := MakeTxKV()
 
-		err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { close(ch) }, mempool.TxInfo{})
+		err := pool.CheckTx(ctx, tx, func(_ *abci.ResponseCheckTx) { close(ch) }, mempool.TxInfo{})
 		require.NoError(t, err)
 
 		// wait for tx to arrive in mempoool.

@@ -565,14 +565,12 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 			_, err := rng.Read(tx)
 			require.NoError(t, err)
 
-			callback := func(res *abci.Response) {
-				checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-				require.True(t, ok)
+			callback := func(res *abci.ResponseCheckTx) {
 				expectedErrString := ""
 				if testCase.err != nil {
 					expectedErrString = testCase.err.Error()
 				}
-				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
+				require.Equal(t, expectedErrString, res.MempoolError)
 			}
 			require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
 		})
