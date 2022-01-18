@@ -51,8 +51,9 @@ type AutoFile struct {
 	closeTickerStopc chan struct{} // closed when closeTicker is stopped
 	hupc             chan os.Signal
 
-	mtx  sync.Mutex
-	file *os.File
+	mtx      sync.Mutex
+	isClosed bool
+	file     *os.File
 }
 
 // OpenAutoFile creates an AutoFile in the path (with random ID). If there is
@@ -82,7 +83,7 @@ func OpenAutoFile(ctx context.Context, path string) (*AutoFile, error) {
 		for {
 			select {
 			case <-af.hupc:
-				_ = af.closeFile()
+				_ = af.closeFile(false)
 			case <-ctx.Done():
 				return
 			}
@@ -102,26 +103,34 @@ func (af *AutoFile) Close() error {
 	if af.hupc != nil {
 		close(af.hupc)
 	}
-	return af.closeFile()
+	return af.closeFile(true)
 }
 
 func (af *AutoFile) closeFileRoutine(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			_ = af.closeFile()
+			_ = af.closeFile(true)
 			return
 		case <-af.closeTicker.C:
-			_ = af.closeFile()
+			_ = af.closeFile(false)
 		case <-af.closeTickerStopc:
 			return
 		}
 	}
 }
 
-func (af *AutoFile) closeFile() (err error) {
+func (af *AutoFile) closeFile(forGood bool) (err error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
+	defer func() {
+		if forGood {
+			af.isClosed = true
+		}
+	}()
+	if af.isClosed {
+		return os.ErrClosed
+	}
 
 	file := af.file
 	if file == nil {
@@ -129,7 +138,9 @@ func (af *AutoFile) closeFile() (err error) {
 	}
 
 	af.file = nil
-	return file.Close()
+	err = file.Close()
+
+	return
 }
 
 // Write writes len(b) bytes to the AutoFile. It returns the number of bytes
@@ -167,6 +178,10 @@ func (af *AutoFile) Sync() error {
 }
 
 func (af *AutoFile) openFile() error {
+	if af.isClosed {
+		return os.ErrClosed
+	}
+
 	file, err := os.OpenFile(af.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, autoFilePerms)
 	if err != nil {
 		return err
@@ -193,6 +208,10 @@ func (af *AutoFile) Size() (int64, error) {
 		if err := af.openFile(); err != nil {
 			return -1, err
 		}
+	}
+
+	if af.isClosed {
+		return -1, os.ErrClosed
 	}
 
 	stat, err := af.file.Stat()

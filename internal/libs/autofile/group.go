@@ -168,7 +168,7 @@ func (g *Group) Close() {
 	}
 
 	g.mtx.Lock()
-	_ = g.Head.closeFile()
+	_ = g.Head.closeFile(true)
 	g.mtx.Unlock()
 }
 
@@ -319,7 +319,7 @@ func (g *Group) RotateFile() {
 		panic(err)
 	}
 
-	if err := g.Head.closeFile(); err != nil {
+	if err := g.Head.closeFile(false); err != nil {
 		panic(err)
 	}
 
