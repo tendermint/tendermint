@@ -29,6 +29,9 @@ type PrivKey struct {
 	kp  *sr25519.KeyPair
 }
 
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PrivKey) TypeTag() string { return PrivKeyName }
+
 // Bytes returns the byte-encoded PrivKey.
 func (privKey PrivKey) Bytes() []byte {
 	if privKey.kp == nil {

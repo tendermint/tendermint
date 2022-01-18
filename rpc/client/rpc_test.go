@@ -612,29 +612,44 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 	pool := getMempool(t, n)
 
 	t.Run("UnconfirmedTxs", func(t *testing.T) {
-		_, _, tx := MakeTxKV()
-		ch := make(chan struct{})
+		// populate mempool with 5 tx
+		txs := make([]types.Tx, 5)
+		ch := make(chan error, 5)
+		for i := 0; i < 5; i++ {
+			_, _, tx := MakeTxKV()
 
-		err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { close(ch) }, mempool.TxInfo{})
-		require.NoError(t, err)
+			txs[i] = tx
+			err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { ch <- nil }, mempool.TxInfo{})
 
-		// wait for tx to arrive in mempoool.
-		select {
-		case <-ch:
-		case <-time.After(5 * time.Second):
-			t.Error("Timed out waiting for CheckTx callback")
+			require.NoError(t, err)
 		}
+		// wait for tx to arrive in mempoool.
+		for i := 0; i < 5; i++ {
+			select {
+			case <-ch:
+			case <-time.After(5 * time.Second):
+				t.Error("Timed out waiting for CheckTx callback")
+			}
+		}
+		close(ch)
 
 		for _, c := range GetClients(t, n, conf) {
-			mc := c.(client.MempoolClient)
-			limit := 1
-			res, err := mc.UnconfirmedTxs(ctx, &limit)
-			require.NoError(t, err)
+			for i := 1; i <= 2; i++ {
+				mc := c.(client.MempoolClient)
+				page, perPage := i, 3
+				res, err := mc.UnconfirmedTxs(ctx, &page, &perPage)
+				require.NoError(t, err)
 
-			assert.Equal(t, 1, res.Count)
-			assert.Equal(t, 1, res.Total)
-			assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
-			assert.Exactly(t, types.Txs{tx}, types.Txs(res.Txs))
+				if i == 2 {
+					perPage = 2
+				}
+				assert.Equal(t, perPage, res.Count)
+				assert.Equal(t, 5, res.Total)
+				assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
+				for _, tx := range res.Txs {
+					assert.Contains(t, txs, tx)
+				}
+			}
 		}
 
 		pool.Flush()

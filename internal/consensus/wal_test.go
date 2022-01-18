@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"path/filepath"
 
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -185,7 +187,9 @@ func TestWALPeriodicSync(t *testing.T) {
 	require.NoError(t, wal.Start(ctx))
 	t.Cleanup(func() {
 		if err := wal.Stop(); err != nil {
-			t.Error(err)
+			if !errors.Is(err, service.ErrAlreadyStopped) {
+				t.Error(err)
+			}
 		}
 		wal.Wait()
 	})

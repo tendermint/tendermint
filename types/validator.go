@@ -2,12 +2,14 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -15,11 +17,23 @@ import (
 // NOTE: The ProposerPriority is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 type Validator struct {
-	Address     Address       `json:"address"`
-	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	Address          Address       `json:"address"`
+	PubKey           crypto.PubKey `json:"pub_key"`
+	VotingPower      int64         `json:"voting_power,string"`
+	ProposerPriority int64         `json:"proposer_priority,string"`
+}
 
-	ProposerPriority int64 `json:"proposer_priority"`
+func (v Validator) MarshalJSON() ([]byte, error) {
+	pk, err := jsontypes.Marshal(v.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Addr     Address         `json:"address"`
+		PubKey   json.RawMessage `json:"pub_key"`
+		Power    int64           `json:"voting_power,string"`
+		Priority int64           `json:"proposer_priority,string"`
+	}{Addr: v.Address, PubKey: pk, Power: v.VotingPower, Priority: v.ProposerPriority})
 }
 
 // NewValidator returns a new validator with the given pubkey and voting power.
