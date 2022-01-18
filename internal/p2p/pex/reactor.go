@@ -196,7 +196,6 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 		// reactor
 		case envelope, ok := <-incoming:
 			if !ok {
-				r.logger.Debug("incoming channel closed", "ch_id", r.pexCh.ID)
 				return
 			}
 			duration, err = r.handleMessage(ctx, r.pexCh.ID, envelope)
