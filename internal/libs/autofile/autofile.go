@@ -91,7 +91,7 @@ func OpenAutoFile(ctx context.Context, path string) (*AutoFile, error) {
 		for {
 			select {
 			case <-hupc:
-				_ = af.Close()
+				_ = af.closeFile()
 			case <-ctx.Done():
 				return
 			}
