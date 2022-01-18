@@ -57,8 +57,6 @@ Special thanks to external contributors on this release:
 
 - [light] [\#7536](https://github.com/tendermint/tendermint/pull/7536) rpc /status call returns info about the light client (@jmalicevic)
 
-- [light] [\#7536](https://github.com/tendermint/tendermint/pull/7536) rpc /status call returns info about the light client (@jmalicevic)
-
 ### BUG FIXES
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
