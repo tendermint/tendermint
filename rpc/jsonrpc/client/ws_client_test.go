@@ -220,6 +220,9 @@ func TestNotBlockingOnStop(t *testing.T) {
 
 func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	t.Helper()
+
+	t.Cleanup(leaktest.Check(t))
+
 	opts := DefaultWSOptions()
 	opts.SkipMetrics = true
 	c, err := NewWSWithOptions(addr, "/websocket", opts)
@@ -227,7 +230,7 @@ func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	require.NoError(t, err)
 	err = c.Start(ctx)
 	require.NoError(t, err)
-	c.Logger = log.NewTestingLogger(t)
+	c.Logger = log.NewNopLogger()
 	return c
 }
 

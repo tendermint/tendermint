@@ -255,7 +255,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				}
 
 				msg, err := s.Next(ctx)
-
 				assert.NoError(t, err)
 				if err != nil {
 					cancel()
