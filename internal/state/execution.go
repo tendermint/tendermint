@@ -302,26 +302,6 @@ func execBlockOnProxyApp(
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
 	abciResponses.DeliverTxs = dtxs
 
-	// Execute transactions and get hash.
-	proxyCb := func(req *abci.Request, res *abci.Response) {
-		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
-			// TODO: make use of res.Log
-			// TODO: make use of this info
-			// Blocks may include invalid txs.
-			txRes := r.DeliverTx
-			if txRes.Code == abci.CodeTypeOK {
-				validTxs++
-			} else {
-				logger.Debug("invalid tx", "code", txRes.Code, "log", txRes.Log)
-				invalidTxs++
-			}
-
-			abciResponses.DeliverTxs[txIndex] = txRes
-			txIndex++
-		}
-	}
-	proxyAppConn.SetResponseCallback(proxyCb)
-
 	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
 	byzVals := make([]abci.Evidence, 0)
@@ -352,10 +332,19 @@ func execBlockOnProxyApp(
 
 	// run txs of block
 	for _, tx := range block.Txs {
-		_, err = proxyAppConn.DeliverTxAsync(ctx, abci.RequestDeliverTx{Tx: tx})
+		resp, err := proxyAppConn.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: tx})
 		if err != nil {
 			return nil, err
 		}
+		if resp.Code == abci.CodeTypeOK {
+			validTxs++
+		} else {
+			logger.Debug("invalid tx", "code", resp.Code, "log", resp.Log)
+			invalidTxs++
+		}
+
+		abciResponses.DeliverTxs[txIndex] = resp
+		txIndex++
 	}
 
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(ctx, abci.RequestEndBlock{Height: block.Height})
