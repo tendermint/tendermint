@@ -2,6 +2,7 @@ package http_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -99,8 +100,10 @@ func TestProvider(t *testing.T) {
 
 	time.Sleep(10 * time.Second)
 	lb, err = p.LightBlock(ctx, lower+2)
-	// we should see a connection refused
+	// Either the connection should be refused, or the context canceled.
 	require.Error(t, err)
 	require.Nil(t, lb)
-	assert.Equal(t, provider.ErrConnectionClosed, err)
+	if !errors.Is(err, provider.ErrConnectionClosed) && !errors.Is(err, context.Canceled) {
+		assert.Fail(t, "Incorrect error", "wanted connection closed or context canceled, got %v", err)
+	}
 }
