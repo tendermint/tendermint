@@ -83,7 +83,8 @@ func OpenAutoFile(ctx context.Context, path string) (*AutoFile, error) {
 		return nil, err
 	}
 
-	// Close file on SIGHUP.
+	// Set up a SIGHUP handler to forcibly flush and close the filehandle.
+	// This forces the next operation to re-open the underlying path.
 	hupc := make(chan os.Signal, 1)
 	signal.Notify(hupc, syscall.SIGHUP)
 	go func() {
