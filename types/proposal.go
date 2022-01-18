@@ -23,13 +23,14 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type      tmproto.SignedMsgType
-	Height    int64     `json:"height"`
-	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
-	POLRound  int32     `json:"pol_round"` // -1 if null.
-	BlockID   BlockID   `json:"block_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Signature []byte    `json:"signature"`
+	Type                tmproto.SignedMsgType
+	Height              int64     `json:"height"`
+	Round               int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
+	POLRound            int32     `json:"pol_round"` // -1 if null.
+	BlockID             BlockID   `json:"block_id"`
+	Timestamp           time.Time `json:"timestamp"`
+	ProposalReceiveTime time.Time `json:"received_timestamp"`
+	Signature           []byte    `json:"signature"`
 }
 
 // NewProposal returns a new Proposal.

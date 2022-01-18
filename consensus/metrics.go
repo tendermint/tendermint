@@ -60,6 +60,11 @@ type Metrics struct {
 
 	// Number of blockparts transmitted by peer.
 	BlockParts metrics.Counter
+
+	// ProposalTimestampDifference is the difference between the timestamp in
+	// the proposal message and the local time of the validator at the time
+	// that the validator received the message.
+	ProposalTimestampDifference metrics.Histogram
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -186,6 +191,15 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+		ProposalTimestampDifference: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "proposal_timestamp_difference",
+			Help: "Difference in seconds between the timestamp in the proposal " +
+				"message and the local time when the message was received. " +
+				"Only calculated when a new block is proposed.",
+			Buckets: []float64{-10, -.5, -.025, 0, .1, .5, 1, 1.5, 2, 10},
+		}, append(labels, "is_timely")).With(labelsAndValues...),
 	}
 }
 
@@ -209,12 +223,13 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-		NumTxs:          discard.NewGauge(),
-		BlockSizeBytes:  discard.NewGauge(),
-		TotalTxs:        discard.NewGauge(),
-		CommittedHeight: discard.NewGauge(),
-		FastSyncing:     discard.NewGauge(),
-		StateSyncing:    discard.NewGauge(),
-		BlockParts:      discard.NewCounter(),
+		NumTxs:                      discard.NewGauge(),
+		BlockSizeBytes:              discard.NewGauge(),
+		TotalTxs:                    discard.NewGauge(),
+		CommittedHeight:             discard.NewGauge(),
+		FastSyncing:                 discard.NewGauge(),
+		StateSyncing:                discard.NewGauge(),
+		BlockParts:                  discard.NewCounter(),
+		ProposalTimestampDifference: discard.NewHistogram(),
 	}
 }
