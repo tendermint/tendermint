@@ -142,7 +142,7 @@ type EventsClient interface {
 
 // MempoolClient shows us data about current mempool state.
 type MempoolClient interface {
-	UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error)
+	UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs(context.Context) (*coretypes.ResultUnconfirmedTxs, error)
 	CheckTx(context.Context, types.Tx) (*coretypes.ResultCheckTx, error)
 	RemoveTx(context.Context, types.TxKey) error
