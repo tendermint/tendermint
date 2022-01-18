@@ -661,6 +661,7 @@ func (cs *State) updateToState(state sm.State) {
 
 	cs.Validators = validators
 	cs.Proposal = nil
+	cs.ProposalReceiveTime = time.Time{}
 	cs.ProposalBlock = nil
 	cs.ProposalBlockParts = nil
 	cs.LockedRound = -1
@@ -993,6 +994,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	} else {
 		logger.Debug("resetting proposal info")
 		cs.Proposal = nil
+		cs.ProposalReceiveTime = time.Time{}
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
 	}
@@ -1787,6 +1789,8 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 //-----------------------------------------------------------------------------
 
 func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
+	recvTime := tmtime.Now()
+
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
@@ -1814,6 +1818,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
+	cs.ProposalReceiveTime = recvTime
+	cs.calculateProposalTimestampDifferenceMetric()
+
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
@@ -2329,4 +2336,12 @@ func repairWalFile(src, dst string) error {
 	}
 
 	return nil
+}
+
+func (cs *State) calculateProposalTimestampDifferenceMetric() {
+	if cs.Proposal != nil && cs.Proposal.POLRound == -1 {
+		isTimely := true
+		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
+			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
+	}
 }
