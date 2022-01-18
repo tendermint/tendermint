@@ -1158,7 +1158,6 @@ func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 		chunks[i] = val.ID()
 		if chunks[i] == c.primary.ID() {
 			primaryNotInWitnessList = 0
-			break
 		}
 	}
 	return &types.LightClientInfo{
