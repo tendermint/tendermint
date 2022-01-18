@@ -13,8 +13,8 @@ import (
 type LightClientInfo struct {
 	PrimaryID         string          `json:"primaryID"`
 	WitnessesID       []string        `json:"witnessesID"`
-	NumPeers          int             `json:"number_of_peers"`
-	LastTrustedHeight int64           `json:"last_trusted_height"`
+	NumPeers          int             `json:"number_of_peers,string"`
+	LastTrustedHeight int64           `json:"last_trusted_height,string"`
 	LastTrustedHash   tbytes.HexBytes `json:"last_trusted_hash"`
 }
 

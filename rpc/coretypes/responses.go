@@ -127,7 +127,7 @@ type ResultStatus struct {
 	NodeInfo        types.NodeInfo        `json:"node_info"`
 	SyncInfo        SyncInfo              `json:"sync_info"`
 	ValidatorInfo   ValidatorInfo         `json:"validator_info"`
-	LightClientInfo types.LightClientInfo `json:"light_client_info"`
+	LightClientInfo types.LightClientInfo `json:"light_client_info,omitempty"`
 }
 
 // Is TxIndexing enabled
