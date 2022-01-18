@@ -158,10 +158,13 @@ func (r *Reactor) OnStop() {}
 func (r *Reactor) processPexCh(ctx context.Context) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
+
+	r.mtx.Lock()
 	var (
 		duration = r.calculateNextRequestTime()
 		err      error
 	)
+	r.mtx.Unlock()
 
 	incoming := make(chan *p2p.Envelope)
 	go func() {
@@ -191,7 +194,10 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 			}
 		// inbound requests for new peers or responses to requests sent by this
 		// reactor
-		case envelope := <-incoming:
+		case envelope, ok := <-incoming:
+			if !ok {
+				return
+			}
 			duration, err = r.handleMessage(ctx, r.pexCh.ID, envelope)
 			if err != nil {
 				r.logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
@@ -377,7 +383,8 @@ func (r *Reactor) sendRequestForPeers(ctx context.Context) (time.Duration, error
 // as possible. As the node becomes more familiar with the network the ratio of
 // new nodes will plummet to a very small number, meaning the interval expands
 // to its upper bound.
-// CONTRACT: Must use a write lock as nextRequestTime is updated
+//
+// CONTRACT: The caller must hold r.mtx exclusively when calling this method.
 func (r *Reactor) calculateNextRequestTime() time.Duration {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -29,8 +30,21 @@ const (
 type GenesisValidator struct {
 	Address Address       `json:"address"`
 	PubKey  crypto.PubKey `json:"pub_key"`
-	Power   int64         `json:"power"`
+	Power   int64         `json:"power,string"`
 	Name    string        `json:"name"`
+}
+
+func (g GenesisValidator) MarshalJSON() ([]byte, error) {
+	pk, err := jsontypes.Marshal(g.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Address Address         `json:"address"`
+		PubKey  json.RawMessage `json:"pub_key"`
+		Power   int64           `json:"power,string"`
+		Name    string          `json:"name"`
+	}{Address: g.Address, PubKey: pk, Power: g.Power, Name: g.Name})
 }
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.

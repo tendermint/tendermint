@@ -281,11 +281,12 @@ func (c *baseRPCClient) broadcastTX(
 
 func (c *baseRPCClient) UnconfirmedTxs(
 	ctx context.Context,
-	limit *int,
+	page *int,
+	perPage *int,
 ) (*coretypes.ResultUnconfirmedTxs, error) {
 	result := new(coretypes.ResultUnconfirmedTxs)
 
-	if err := c.caller.Call(ctx, "unconfirmed_txs", unconfirmedArgs{Limit: limit}, result); err != nil {
+	if err := c.caller.Call(ctx, "unconfirmed_txs", unconfirmedArgs{Page: page, PerPage: perPage}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -510,7 +511,9 @@ func (c *baseRPCClient) BroadcastEvidence(
 	ev types.Evidence,
 ) (*coretypes.ResultBroadcastEvidence, error) {
 	result := new(coretypes.ResultBroadcastEvidence)
-	if err := c.caller.Call(ctx, "broadcast_evidence", map[string]interface{}{"evidence": ev}, result); err != nil {
+	if err := c.caller.Call(ctx, "broadcast_evidence", evidenceArgs{
+		Evidence: ev,
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil

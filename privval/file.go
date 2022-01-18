@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/internal/libs/tempfile"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -53,6 +54,22 @@ type FilePVKey struct {
 	PrivKey crypto.PrivKey `json:"priv_key"`
 
 	filePath string
+}
+
+func (pvKey FilePVKey) MarshalJSON() ([]byte, error) {
+	pubk, err := jsontypes.Marshal(pvKey.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	privk, err := jsontypes.Marshal(pvKey.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Address types.Address   `json:"address"`
+		PubKey  json.RawMessage `json:"pub_key"`
+		PrivKey json.RawMessage `json:"priv_key"`
+	}{Address: pvKey.Address, PubKey: pubk, PrivKey: privk})
 }
 
 // Save persists the FilePVKey to its filePath.

@@ -195,7 +195,7 @@ func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	case errPeerAlreadyBusy:
 		return nil, provider.ErrLightBlockNotFound
 	default:
-		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
+		return nil, provider.ErrUnreliableProvider{Reason: err}
 	}
 
 	// check that the height requested is the same one returned
