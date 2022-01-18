@@ -276,10 +276,6 @@ func (txmp *TxMempool) CheckTx(
 		return err
 	}
 
-	if txmp.recheckCursor != nil {
-		panic("recheck cursor is non-nil in CheckTx callback")
-	}
-
 	wtx := &WrappedTx{
 		tx:        tx,
 		hash:      txHash,
