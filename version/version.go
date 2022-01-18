@@ -28,8 +28,8 @@ var (
 )
 
 type Consensus struct {
-	Block uint64 `json:"block"`
-	App   uint64 `json:"app"`
+	Block uint64 `json:"block,string"`
+	App   uint64 `json:"app,string"`
 }
 
 func (c Consensus) ToProto() tmversion.Consensus {

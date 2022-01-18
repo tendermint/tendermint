@@ -1,10 +1,12 @@
 package types
 
 import (
+	"encoding/json"
 	"os"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
@@ -22,14 +24,25 @@ type NodeKey struct {
 	PrivKey crypto.PrivKey `json:"priv_key"`
 }
 
+func (nk NodeKey) MarshalJSON() ([]byte, error) {
+	pk, err := jsontypes.Marshal(nk.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		ID      NodeID          `json:"id"`
+		PrivKey json.RawMessage `json:"priv_key"`
+	}{ID: nk.ID, PrivKey: pk})
+}
+
 // PubKey returns the peer's PubKey
-func (nodeKey NodeKey) PubKey() crypto.PubKey {
-	return nodeKey.PrivKey.PubKey()
+func (nk NodeKey) PubKey() crypto.PubKey {
+	return nk.PrivKey.PubKey()
 }
 
 // SaveAs persists the NodeKey to filePath.
-func (nodeKey NodeKey) SaveAs(filePath string) error {
-	jsonBytes, err := tmjson.Marshal(nodeKey)
+func (nk NodeKey) SaveAs(filePath string) error {
+	jsonBytes, err := tmjson.Marshal(nk)
 	if err != nil {
 		return err
 	}
