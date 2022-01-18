@@ -89,11 +89,11 @@ func (p *Proposal) ValidateBasic() error {
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (p *Proposal) IsTimely(recvTime time.Time, tp TimingParams) bool {
+func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams) bool {
 	// lhs is `proposedBlockTime - Precision` in the first inequality
-	lhs := p.Timestamp.Add(-tp.Precision)
+	lhs := p.Timestamp.Add(-sp.Precision)
 	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
-	rhs := p.Timestamp.Add(tp.MessageDelay).Add(tp.Precision)
+	rhs := p.Timestamp.Add(sp.MessageDelay).Add(sp.Precision)
 
 	if recvTime.Before(lhs) || recvTime.After(rhs) {
 		return false

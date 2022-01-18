@@ -1314,12 +1314,12 @@ func (cs *State) enterPrevote(height int64, round int32) {
 }
 
 func (cs *State) proposalIsTimely() bool {
-	tp := types.TimingParams{
-		Precision:    cs.state.ConsensusParams.Timing.Precision,
-		MessageDelay: cs.state.ConsensusParams.Timing.MessageDelay,
+	sp := types.SynchronyParams{
+		Precision:    cs.state.ConsensusParams.Synchrony.Precision,
+		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 	}
 
-	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp)
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp)
 }
 
 func (cs *State) defaultDoPrevote(height int64, round int32) {
@@ -1351,9 +1351,9 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 			"received",
 			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
 			"msg_delay",
-			cs.state.ConsensusParams.Timing.MessageDelay,
+			cs.state.ConsensusParams.Synchrony.MessageDelay,
 			"precision",
-			cs.state.ConsensusParams.Timing.Precision)
+			cs.state.ConsensusParams.Synchrony.Precision)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -2284,7 +2284,7 @@ func (cs *State) signVote(
 		ValidatorIndex:   valIdx,
 		Height:           cs.Height,
 		Round:            cs.Round,
-		Timestamp:        cs.voteTime(),
+		Timestamp:        tmtime.Now(),
 		Type:             msgType,
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
@@ -2312,30 +2312,6 @@ func (cs *State) signVote(
 	vote.Timestamp = v.Timestamp
 
 	return vote, err
-}
-
-// voteTime ensures monotonicity of the time a validator votes on.
-// It ensures that for a prior block with a BFT-timestamp of T,
-// any vote from this validator will have time at least time T + 1ms.
-// This is needed, as monotonicity of time is a guarantee that BFT time provides.
-func (cs *State) voteTime() time.Time {
-	now := tmtime.Now()
-	minVoteTime := now
-	// Minimum time increment between blocks
-	const timeIota = time.Millisecond
-	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
-	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
-	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
-	}
-
-	if now.After(minVoteTime) {
-		return now
-	}
-	return minVoteTime
 }
 
 // sign the vote and publish on internalMsgQueue

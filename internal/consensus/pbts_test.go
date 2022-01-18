@@ -66,7 +66,7 @@ type pbtsTestHarness struct {
 
 type pbtsTestConfiguration struct {
 	// The timestamp consensus parameters to be used by the state machine under test.
-	timingParams types.TimingParams
+	synchronyParams types.SynchronyParams
 
 	// The setting to use for the TimeoutPropose configuration parameter.
 	timeoutPropose time.Duration
@@ -113,7 +113,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	}
 	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
 	consensusParams := types.DefaultConsensusParams()
-	consensusParams.Timing = tc.timingParams
+	consensusParams.Synchrony = tc.synchronyParams
 
 	state, privVals := makeGenesisState(cfg, genesisStateArgs{
 		Params:     consensusParams,
@@ -352,7 +352,7 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 	// create a genesis time far (enough) in the future.
 	initialTime := time.Now().Add(800 * time.Millisecond)
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
+		synchronyParams: types.SynchronyParams{
 			Precision:    10 * time.Millisecond,
 			MessageDelay: 10 * time.Millisecond,
 		},
@@ -380,7 +380,7 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 	defer cancel()
 	initialTime := time.Now().Add(time.Millisecond * 50)
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
+		synchronyParams: types.SynchronyParams{
 			Precision:    100 * time.Millisecond,
 			MessageDelay: 500 * time.Millisecond,
 		},
@@ -449,7 +449,7 @@ func TestTimelyProposal(t *testing.T) {
 	initialTime := time.Now()
 
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
+		synchronyParams: types.SynchronyParams{
 			Precision:    10 * time.Millisecond,
 			MessageDelay: 140 * time.Millisecond,
 		},
@@ -470,7 +470,7 @@ func TestTooFarInThePastProposal(t *testing.T) {
 
 	// localtime > proposedBlockTime + MsgDelay + Precision
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
+		synchronyParams: types.SynchronyParams{
 			Precision:    1 * time.Millisecond,
 			MessageDelay: 10 * time.Millisecond,
 		},
@@ -492,7 +492,7 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 
 	// localtime < proposedBlockTime - Precision
 	cfg := pbtsTestConfiguration{
-		timingParams: types.TimingParams{
+		synchronyParams: types.SynchronyParams{
 			Precision:    1 * time.Millisecond,
 			MessageDelay: 10 * time.Millisecond,
 		},

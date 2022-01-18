@@ -71,7 +71,7 @@ func TestBasicGenesisDoc(t *testing.T) {
 			"app_hash":"",
 			"app_state":{"account_owner": "Bob"},
 			"consensus_params": {
-				"timing":  {"precision": "1", "message_delay": "10"},
+				"synchrony":  {"precision": "1", "message_delay": "10"},
 				"validator": {"pub_key_types":["ed25519"]},
 				"block": {"max_bytes": "100"},
 				"evidence": {"max_age_num_blocks": "100", "max_age_duration": "10"}
