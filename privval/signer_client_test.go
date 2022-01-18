@@ -69,7 +69,7 @@ func TestSignerClose(t *testing.T) {
 	bctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(bctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestSignerPing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		err := tc.signerClient.Ping(ctx)
@@ -105,7 +105,7 @@ func TestSignerGetPubKey(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestSignerProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestSignerVote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -218,7 +218,7 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -269,7 +269,7 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -319,7 +319,7 @@ func TestSignerSignProposalErrors(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -360,7 +360,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -426,7 +426,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getSignerTestCases(ctx, t, logger) {
 		t.Run(tc.name, func(t *testing.T) {

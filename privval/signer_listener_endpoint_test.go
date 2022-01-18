@@ -40,10 +40,12 @@ func TestSignerRemoteRetryTCPOnly(t *testing.T) {
 		retries   = 10
 	)
 
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -95,7 +97,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	for _, tc := range getDialerTestCases(t) {
 		var (

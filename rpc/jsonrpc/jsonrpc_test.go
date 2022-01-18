@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -265,8 +266,13 @@ func testWithWSClient(ctx context.Context, t *testing.T, cl *client.WSClient) {
 //-------------
 
 func TestServersAndClientsBasic(t *testing.T) {
-	bctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// TODO: reenable the leak detector once the test fixture is
+	// managed in the context of this test.
+	//
+	// t.Cleanup(leaktest.Check(t))
+
+	bctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
 
 	serverAddrs := [...]string{tcpAddr, unixAddr}
 	for _, addr := range serverAddrs {
@@ -274,14 +280,16 @@ func TestServersAndClientsBasic(t *testing.T) {
 			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
-			logger := log.NewTestingLogger(t)
+			logger := log.NewNopLogger()
 
 			cl2, err := client.New(addr)
 			require.NoError(t, err)
 			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
 			testWithHTTPClient(ctx, t, cl2)
 
-			cl3, err := client.NewWS(addr, websocketEndpoint)
+			opts := client.DefaultWSOptions()
+			opts.SkipMetrics = true
+			cl3, err := client.NewWSWithOptions(addr, websocketEndpoint, opts)
 			require.NoError(t, err)
 			cl3.Logger = logger
 			err = cl3.Start(ctx)
@@ -294,12 +302,16 @@ func TestServersAndClientsBasic(t *testing.T) {
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
+	opts := client.DefaultWSOptions()
+	opts.SkipMetrics = true
+	cl, err := client.NewWSWithOptions(tcpAddr, websocketEndpoint, opts)
 	require.NoError(t, err)
-	cl.Logger = log.NewTestingLogger(t)
+	cl.Logger = log.NewNopLogger()
 	err = cl.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -329,12 +341,16 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
+	opts := client.DefaultWSOptions()
+	opts.SkipMetrics = true
+	cl, err := client.NewWSWithOptions(tcpAddr, websocketEndpoint, opts)
 	require.NoError(t, err)
-	cl.Logger = log.NewTestingLogger(t)
+	cl.Logger = log.NewNopLogger()
 	err = cl.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {

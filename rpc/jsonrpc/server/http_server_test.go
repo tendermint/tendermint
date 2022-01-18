@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,10 +29,12 @@ type sampleResult struct {
 func TestMaxOpenConnections(t *testing.T) {
 	const max = 5 // max simultaneous connections
 
+	t.Cleanup(leaktest.Check(t))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	// Start the server.
 	var open int32
@@ -78,6 +81,8 @@ func TestMaxOpenConnections(t *testing.T) {
 }
 
 func TestServeTLS(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
 	ln, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 	defer ln.Close()
@@ -90,11 +95,14 @@ func TestServeTLS(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	chErr := make(chan error, 1)
 	go func() {
-		chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", logger, DefaultConfig())
+		select {
+		case chErr <- ServeTLS(ctx, ln, mux, "test.crt", "test.key", logger, DefaultConfig()):
+		case <-ctx.Done():
+		}
 	}()
 
 	select {
@@ -122,7 +130,7 @@ func TestWriteRPCResponse(t *testing.T) {
 
 	// one argument
 	w := httptest.NewRecorder()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 	writeRPCResponse(w, logger,
 		rpctypes.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
 	resp := w.Result()
@@ -153,7 +161,7 @@ func TestWriteRPCResponse(t *testing.T) {
 
 func TestWriteHTTPResponse(t *testing.T) {
 	w := httptest.NewRecorder()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 	writeHTTPResponse(w, logger,
 		rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), errors.New("foo")))
 	resp := w.Result()
