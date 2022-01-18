@@ -407,21 +407,9 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	// If signbytes are the same, use the last signature.
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
-	if sameHRS {
-		if bytes.Equal(signBytes, lss.SignBytes) {
-			proposal.Signature = lss.Signature
-		} else {
-			timestamp, ok, err := checkProposalsOnlyDifferByTimestamp(lss.SignBytes, signBytes)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return errors.New("conflicting data")
-			}
-			proposal.Timestamp = timestamp
-			proposal.Signature = lss.Signature
-			return nil
-		}
+	if sameHRS && bytes.Equal(signBytes, lss.SignBytes) {
+		proposal.Signature = lss.Signature
+		return nil
 	}
 
 	// It passed the checks. Sign the proposal
@@ -466,24 +454,4 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	newVote.Timestamp = now
 
 	return lastTime, proto.Equal(&newVote, &lastVote), nil
-}
-
-// returns the timestamp from the lastSignBytes.
-// returns true if the only difference in the proposals is their timestamp
-func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool, error) {
-	var lastProposal, newProposal tmproto.CanonicalProposal
-	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastProposal); err != nil {
-		return time.Time{}, false, fmt.Errorf("LastSignBytes cannot be unmarshalled into proposal: %w", err)
-	}
-	if err := protoio.UnmarshalDelimited(newSignBytes, &newProposal); err != nil {
-		return time.Time{}, false, fmt.Errorf("signBytes cannot be unmarshalled into proposal: %w", err)
-	}
-
-	lastTime := lastProposal.Timestamp
-	// set the times to the same value and check equality
-	now := tmtime.Now()
-	lastProposal.Timestamp = now
-	newProposal.Timestamp = now
-
-	return lastTime, proto.Equal(&newProposal, &lastProposal), nil
 }
