@@ -106,7 +106,7 @@ type FilePVLastSignState struct {
 // it returns true if the HRS matches the arguments and the SignBytes are not empty (indicating
 // we have already signed for this HRS, and can reuse the existing signature).
 // It panics if the HRS matches the arguments, there's a SignBytes, but no Signature.
-func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (bool, error) {
+func (lss *FilePVLastSignState) checkHRS(height int64, round int32, step int8) (bool, error) {
 
 	if lss.Height > height {
 		return false, fmt.Errorf("height regression. Got %v, last height %v", height, lss.Height)
@@ -345,7 +345,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	round := vote.Round
 	lss := pv.LastSignState
 
-	sameHRS, err := lss.CheckHRS(height, round, step)
+	sameHRS, err := lss.checkHRS(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -395,7 +395,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 
 	lss := pv.LastSignState
 
-	sameHRS, err := lss.CheckHRS(height, round, step)
+	sameHRS, err := lss.checkHRS(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -407,7 +407,10 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	// If signbytes are the same, use the last signature.
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
-	if sameHRS && bytes.Equal(signBytes, lss.SignBytes) {
+	if sameHRS {
+		if !bytes.Equal(signBytes, lss.SignBytes) {
+			return errors.New("conflicting data")
+		}
 		proposal.Signature = lss.Signature
 		return nil
 	}
