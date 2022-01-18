@@ -718,7 +718,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
 		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+			_, err := txmp.proxyAppConn.CheckTxSync(ctx, abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
 			})
@@ -729,7 +729,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		}
 	}
 
-	if _, err := txmp.proxyAppConn.FlushAsync(ctx); err != nil {
+	if err := txmp.proxyAppConn.FlushSync(ctx); err != nil {
 		txmp.logger.Error("failed to flush transactions during rechecking", "err", err)
 	}
 }
