@@ -172,7 +172,9 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 // data to disk.
 func (af *AutoFile) Sync() error {
 	return af.withLock(func() error {
-		if af.file == nil {
+		if af.closed {
+			return fmt.Errorf("sync: %w", errAutoFileClosed)
+		} else if af.file == nil {
 			return nil // nothing to sync
 		}
 		return af.file.Sync()
