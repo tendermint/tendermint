@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -120,8 +119,6 @@ func NewTxMempool(
 	if cfg.CacheSize > 0 {
 		txmp.cache = NewLRUTxCache(cfg.CacheSize)
 	}
-
-	proxyAppConn.SetResponseCallback(txmp.defaultTxCallback)
 
 	for _, opt := range options {
 		opt(txmp)
@@ -288,6 +285,7 @@ func (txmp *TxMempool) CheckTx(
 		cb(res)
 	}
 
+	txmp.notifiedTxsAvailable()
 	return nil
 }
 
@@ -601,23 +599,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 // and Recheck is enabled, then all remaining transactions will be rechecked via
 // CheckTxAsync. The order transactions are rechecked must be the same as the
 // order in which this callback is called.
-func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) {
-	if txmp.recheckCursor == nil {
-		return
-	}
-
+func (txmp *TxMempool) defaultTxCallback(tx types.Tx, wtx *WrappedTx, resp *abci.ResponseCheckTx) {
 	txmp.metrics.RecheckTimes.Add(1)
-
-	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-	if !ok {
-		txmp.logger.Error("received incorrect type in mempool callback",
-			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
-			"got", reflect.TypeOf(res.Value).Name(),
-		)
-		return
-	}
-	tx := req.GetCheckTx().Tx
-	wtx := txmp.recheckCursor.Value.(*WrappedTx)
 
 	// Search through the remaining list of tx to recheck for a transaction that matches
 	// the one we received from the ABCI application.
@@ -642,7 +625,6 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 			txmp.recheckCursor = nil
 			return
 		}
-
 		txmp.recheckCursor = txmp.recheckCursor.Next()
 		wtx = txmp.recheckCursor.Value.(*WrappedTx)
 	}
@@ -653,18 +635,18 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 	if !txmp.txStore.IsTxRemoved(wtx.hash) {
 		var err error
 		if txmp.postCheck != nil {
-			err = txmp.postCheck(tx, checkTxRes.CheckTx)
+			err = txmp.postCheck(tx, resp)
 		}
 
-		if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
-			wtx.priority = checkTxRes.CheckTx.Priority
+		if resp.Code == abci.CodeTypeOK && err == nil {
+			wtx.priority = resp.Priority
 		} else {
 			txmp.logger.Debug(
 				"existing transaction no longer valid; failed re-CheckTx callback",
 				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err,
-				"code", checkTxRes.CheckTx.Code,
+				"code", resp.Code,
 			)
 
 			if wtx.gossipEl != txmp.recheckCursor {
