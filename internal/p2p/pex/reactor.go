@@ -171,10 +171,14 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 		defer close(incoming)
 		iter := r.pexCh.Receive(ctx)
 		for iter.Next(ctx) {
+			env := iter.Envelope()
+			if env == nil {
+				break
+			}
 			select {
 			case <-ctx.Done():
 				return
-			case incoming <- iter.Envelope():
+			case incoming <- env:
 			}
 		}
 	}()
