@@ -1151,12 +1151,14 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 
 	chunks := make([]string, len(c.witnesses))
+
 	// If primary is in witness list we do not want to count it twice in the number of peers
 	primaryNotInWitnessList := 1
 	for i, val := range c.witnesses {
 		chunks[i] = val.ID()
 		if chunks[i] == c.primary.ID() {
 			primaryNotInWitnessList = 0
+			break
 		}
 	}
 	return &types.LightClientInfo{

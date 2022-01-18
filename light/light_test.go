@@ -197,7 +197,11 @@ func TestClientStatusRPC(t *testing.T) {
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
 	require.NoError(t, err)
 
-	witnesses := []provider.Provider{primary}
+	// In order to not create a full testnet to verify whether we get the correct IPs
+	// if we have more than one witness, we add the primary multiple times
+	// TODO This should be buggy behavior, we should not be allowed to add the same nodes as witnesses
+	witnesses := []provider.Provider{primary, primary, primary}
+
 	c, err := light.NewClient(ctx,
 		chainID,
 		light.TrustOptions{
@@ -215,12 +219,15 @@ func TestClientStatusRPC(t *testing.T) {
 	defer func() { require.NoError(t, c.Cleanup()) }()
 
 	lightStatus := c.Status(ctx)
+
 	// Verify primary IP
 	require.True(t, lightStatus.PrimaryID == primary.ID())
 
 	// Verify IPs of witnesses
-	// ToDo - Add test with multiple witnesses
 	require.ElementsMatch(t, mapProviderArrayToIP(witnesses), lightStatus.WitnessesID)
+
+	// Verify that number of peers is equal to number of witnesses  (+ 1 if the primary is not a witness)
+	require.Equal(t, len(witnesses)+1*primaryNotInWitnessList(witnesses, primary), lightStatus.NumPeers)
 
 	// Verify that the last trusted hash returned matches the stored hash of the trusted
 	// block at the last trusted height.
@@ -229,15 +236,24 @@ func TestClientStatusRPC(t *testing.T) {
 
 	require.EqualValues(t, lightStatus.LastTrustedHash, blockAtTrustedHeight.Hash())
 
-	// Verify that number of peers is equal to number of witnesses  (+ 1 if the primary is not a witness)
-	require.Equal(t, 1, lightStatus.NumPeers)
-
 }
 
+// Extract the IP address of all the providers within an array
 func mapProviderArrayToIP(el []provider.Provider) []string {
 	ips := make([]string, len(el))
 	for i, v := range el {
 		ips[i] = v.ID()
 	}
 	return ips
+}
+
+// If the primary is not in the witness list, we will return 1
+// Otherwise, return 0
+func primaryNotInWitnessList(witnesses []provider.Provider, primary provider.Provider) int {
+	for _, el := range witnesses {
+		if el == primary {
+			return 0
+		}
+	}
+	return 1
 }
