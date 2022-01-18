@@ -201,6 +201,8 @@ LOOP:
 		i++
 
 		select {
+		case <-rctx.Done():
+			t.Fatal("context canceled before test completed")
 		case err := <-walPanicked:
 			// make sure we can make blocks after a crash
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
