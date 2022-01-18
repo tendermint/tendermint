@@ -334,7 +334,7 @@ type Header struct {
 	// basic block info
 	Version version.Consensus `json:"version"`
 	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
+	Height  int64             `json:"height,string"`
 	Time    time.Time         `json:"time"`
 
 	// prev block info
@@ -748,7 +748,7 @@ type Commit struct {
 	// ValidatorSet order.
 	// Any peer with a block can gossip signatures by index with a peer without
 	// recalculating the active ValidatorSet.
-	Height     int64       `json:"height"`
+	Height     int64       `json:"height,string"`
 	Round      int32       `json:"round"`
 	BlockID    BlockID     `json:"block_id"`
 	Signatures []CommitSig `json:"signatures"`

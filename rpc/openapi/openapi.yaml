@@ -1062,13 +1062,21 @@ paths:
       operationId: unconfirmed_txs
       parameters:
         - in: query
-          name: limit
-          description: Maximum number of unconfirmed transactions to return (max 100)
+          name: page
+          description: "Page number (1-based)"
           required: false
           schema:
             type: integer
-            default: 30
+            default: 1
             example: 1
+        - in: query
+          name: per_page
+          description: "Number of entries per page (max: 100)"
+          required: false
+          schema:
+            type: integer
+            example: 100
+            default: 30
       tags:
         - Info
       description: |

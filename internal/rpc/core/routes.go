@@ -55,7 +55,7 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 		"dump_consensus_state": rpc.NewRPCFunc(svc.DumpConsensusState),
 		"consensus_state":      rpc.NewRPCFunc(svc.GetConsensusState),
 		"consensus_params":     rpc.NewRPCFunc(svc.ConsensusParams, "height"),
-		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs, "limit"),
+		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs, "page", "per_page"),
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(svc.NumUnconfirmedTxs),
 
 		// tx broadcast API
@@ -107,7 +107,7 @@ type RPCService interface {
 	Subscribe(ctx context.Context, query string) (*coretypes.ResultSubscribe, error)
 	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error)
 	TxSearch(ctx context.Context, query string, prove bool, pagePtr, perPagePtr *int, orderBy string) (*coretypes.ResultTxSearch, error)
-	UnconfirmedTxs(ctx context.Context, limitPtr *int) (*coretypes.ResultUnconfirmedTxs, error)
+	UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error)
 	Unsubscribe(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error)
 	UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsubscribe, error)
 	Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*coretypes.ResultValidators, error)
