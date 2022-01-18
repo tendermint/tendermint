@@ -65,13 +65,13 @@ type AutoFile struct {
 // an error, it will be of type *PathError or *ErrPermissionsChanged (if file's
 // permissions got changed (should be 0600)).
 func OpenAutoFile(ctx context.Context, path string) (*AutoFile, error) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	var err error
 	path, err = filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
+
+	ctx, cancel := context.WithCancel(ctx)
 	af := &AutoFile{
 		ID:          tmrand.Str(12) + ":" + path,
 		Path:        path,
