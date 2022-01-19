@@ -18,7 +18,7 @@ on:
       - "proto/*"
   schedule:
     # run this job once a month to recieve any go or buf updates
-    - cron: "* * 1 * *"
+    - cron: "0 9 1 * *"
 
 env:
   REGISTRY: ghcr.io
@@ -34,16 +34,16 @@ jobs:
         run: |
           DOCKER_IMAGE="${REGISTRY}/${IMAGE_NAME}"
           VERSION=noop
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          elif [[ $GITHUB_REF == refs/heads/* ]]; then
-            VERSION=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
-            if [ "${{ github.event.repository.default_branch }}" = "$VERSION" ]; then
+          if [[ "$GITHUB_REF" == "refs/tags/*" ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          elif [[ "$GITHUB_REF" == "refs/heads/*" ]]; then
+            VERSION="$(echo "${GITHUB_REF#refs/heads/}" | sed -r 's#/+#-#g')"
+            if [[ "${{ github.event.repository.default_branch }}" = "$VERSION" ]]; then
               VERSION=latest
             fi
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION}"
-          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=tags::"${TAGS}"
 
       - name: Set up docker buildx
         uses: docker/setup-buildx-action@v1.6.0
