@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
+	"sort"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -2274,8 +2275,6 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 	return nil
 }
 
-<<<<<<< HEAD:consensus/state.go
-=======
 func (cs *State) calculatePrevoteMessageDelayMetrics() {
 	if cs.Proposal == nil {
 		return
@@ -2301,7 +2300,6 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 	}
 }
 
->>>>>>> b6307c42e (consensus: check proposal non-nil in prevote message delay metric (#7625)):internal/consensus/state.go
 //---------------------------------------------------------
 
 func CompareHRS(h1 int64, r1 int32, s1 cstypes.RoundStepType, h2 int64, r2 int32, s2 cstypes.RoundStepType) int {
