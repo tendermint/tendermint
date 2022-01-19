@@ -60,11 +60,6 @@ type Metrics struct {
 
 	// Number of blockparts transmitted by peer.
 	BlockParts metrics.Counter
-<<<<<<< HEAD:consensus/metrics.go
-=======
-
-	// Histogram of time taken per step annotated with reason that the step proceeded.
-	StepTime metrics.Histogram
 
 	// QuroumPrevoteMessageDelay is the interval in seconds between the proposal
 	// timestamp and the timestamp of the earliest prevote that achieved a quorum
@@ -81,7 +76,6 @@ type Metrics struct {
 	// timestamp and the timestamp of the latest prevote in a round where 100%
 	// of the voting power on the network issued prevotes.
 	FullPrevoteMessageDelay metrics.Gauge
->>>>>>> 0c82ceaa5 (consensus: calculate prevote message delay metric (#7551)):internal/consensus/metrics.go
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -208,14 +202,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-<<<<<<< HEAD:consensus/metrics.go
-=======
-		StepTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "step_time",
-			Help:      "Time spent per step.",
-		}, append(labels, "step", "reason")).With(labelsAndValues...),
 		QuorumPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -230,7 +216,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
 		}, labels).With(labelsAndValues...),
->>>>>>> 0c82ceaa5 (consensus: calculate prevote message delay metric (#7551)):internal/consensus/metrics.go
 	}
 }
 
@@ -254,24 +239,14 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-<<<<<<< HEAD:consensus/metrics.go
-		NumTxs:          discard.NewGauge(),
-		BlockSizeBytes:  discard.NewGauge(),
-		TotalTxs:        discard.NewGauge(),
-		CommittedHeight: discard.NewGauge(),
-		FastSyncing:     discard.NewGauge(),
-		StateSyncing:    discard.NewGauge(),
-		BlockParts:      discard.NewCounter(),
-=======
 		NumTxs:                    discard.NewGauge(),
-		BlockSizeBytes:            discard.NewHistogram(),
+		BlockSizeBytes:            discard.NewGauge(),
 		TotalTxs:                  discard.NewGauge(),
 		CommittedHeight:           discard.NewGauge(),
-		BlockSyncing:              discard.NewGauge(),
+		FastSyncing:               discard.NewGauge(),
 		StateSyncing:              discard.NewGauge(),
 		BlockParts:                discard.NewCounter(),
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
->>>>>>> 0c82ceaa5 (consensus: calculate prevote message delay metric (#7551)):internal/consensus/metrics.go
 	}
 }

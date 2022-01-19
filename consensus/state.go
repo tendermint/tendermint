@@ -7,11 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
-<<<<<<< HEAD:consensus/state.go
-=======
 	"sort"
-	"sync"
->>>>>>> 0c82ceaa5 (consensus: calculate prevote message delay metric (#7551)):internal/consensus/state.go
 	"time"
 
 	"github.com/gogo/protobuf/proto"
