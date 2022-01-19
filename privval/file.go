@@ -99,7 +99,7 @@ type FilePVLastSignState struct {
 	filePath string
 }
 
-// CheckHRS checks the given height, round, step (HRS) against that of the
+// checkHRS checks the given height, round, step (HRS) against that of the
 // FilePVLastSignState. It returns an error if the arguments constitute a regression,
 // or if they match but the SignBytes are empty.
 // The returned boolean indicates whether the last Signature should be reused -
