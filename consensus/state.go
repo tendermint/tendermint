@@ -1559,6 +1559,8 @@ func (cs *State) finalizeCommit(height int64) {
 		return
 	}
 
+	cs.calculatePrevoteMessageDelayMetrics()
+
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
@@ -2279,6 +2281,7 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 	if cs.Proposal == nil {
 		return
 	}
+
 	ps := cs.Votes.Prevotes(cs.Round)
 	pl := ps.List()
 
