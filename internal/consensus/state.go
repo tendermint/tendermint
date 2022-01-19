@@ -8,11 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
-<<<<<<< HEAD
-=======
 	"sort"
-	"sync"
->>>>>>> 0c82ceaa5 (consensus: calculate prevote message delay metric (#7551))
 	"time"
 
 	"github.com/gogo/protobuf/proto"
