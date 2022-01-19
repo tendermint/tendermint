@@ -18,7 +18,7 @@ func (env *Environment) ABCIQuery(
 	height int64,
 	prove bool,
 ) (*coretypes.ResultABCIQuery, error) {
-	resQuery, err := env.ProxyAppQuery.QuerySync(ctx, abci.RequestQuery{
+	resQuery, err := env.ProxyAppQuery.Query(ctx, abci.RequestQuery{
 		Path:   path,
 		Data:   data,
 		Height: height,
@@ -34,7 +34,7 @@ func (env *Environment) ABCIQuery(
 // ABCIInfo gets some info about the application.
 // More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_info
 func (env *Environment) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
-	resInfo, err := env.ProxyAppQuery.InfoSync(ctx, proxy.RequestInfo)
+	resInfo, err := env.ProxyAppQuery.Info(ctx, proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}

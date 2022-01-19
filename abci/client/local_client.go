@@ -58,27 +58,6 @@ func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 	return newLocalReqRes(types.ToRequestFlush(), nil), nil
 }
 
-func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	return app.callback(
-		types.ToRequestEcho(msg),
-		types.ToResponseEcho(msg),
-	), nil
-}
-
-func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.Info(req)
-	return app.callback(
-		types.ToRequestInfo(req),
-		types.ToResponseInfo(res),
-	), nil
-}
-
 func (app *localClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -101,122 +80,17 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheck
 	), nil
 }
 
-func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.Query(req)
-	return app.callback(
-		types.ToRequestQuery(req),
-		types.ToResponseQuery(res),
-	), nil
-}
-
-func (app *localClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.Commit()
-	return app.callback(
-		types.ToRequestCommit(),
-		types.ToResponseCommit(res),
-	), nil
-}
-
-func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.InitChain(req)
-	return app.callback(
-		types.ToRequestInitChain(req),
-		types.ToResponseInitChain(res),
-	), nil
-}
-
-func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.BeginBlock(req)
-	return app.callback(
-		types.ToRequestBeginBlock(req),
-		types.ToResponseBeginBlock(res),
-	), nil
-}
-
-func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.EndBlock(req)
-	return app.callback(
-		types.ToRequestEndBlock(req),
-		types.ToResponseEndBlock(res),
-	), nil
-}
-
-func (app *localClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.ListSnapshots(req)
-	return app.callback(
-		types.ToRequestListSnapshots(req),
-		types.ToResponseListSnapshots(res),
-	), nil
-}
-
-func (app *localClient) OfferSnapshotAsync(ctx context.Context, req types.RequestOfferSnapshot) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.OfferSnapshot(req)
-	return app.callback(
-		types.ToRequestOfferSnapshot(req),
-		types.ToResponseOfferSnapshot(res),
-	), nil
-}
-
-func (app *localClient) LoadSnapshotChunkAsync(
-	ctx context.Context,
-	req types.RequestLoadSnapshotChunk,
-) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.LoadSnapshotChunk(req)
-	return app.callback(
-		types.ToRequestLoadSnapshotChunk(req),
-		types.ToResponseLoadSnapshotChunk(res),
-	), nil
-}
-
-func (app *localClient) ApplySnapshotChunkAsync(
-	ctx context.Context,
-	req types.RequestApplySnapshotChunk,
-) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.ApplySnapshotChunk(req)
-	return app.callback(
-		types.ToRequestApplySnapshotChunk(req),
-		types.ToResponseApplySnapshotChunk(res),
-	), nil
-}
-
 //-------------------------------------------------------
 
-func (app *localClient) FlushSync(ctx context.Context) error {
+func (app *localClient) Flush(ctx context.Context) error {
 	return nil
 }
 
-func (app *localClient) EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+func (app *localClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: msg}, nil
 }
 
-func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -224,7 +98,7 @@ func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*t
 	return &res, nil
 }
 
-func (app *localClient) DeliverTxSync(
+func (app *localClient) DeliverTx(
 	ctx context.Context,
 	req types.RequestDeliverTx,
 ) (*types.ResponseDeliverTx, error) {
@@ -236,7 +110,7 @@ func (app *localClient) DeliverTxSync(
 	return &res, nil
 }
 
-func (app *localClient) CheckTxSync(
+func (app *localClient) CheckTx(
 	ctx context.Context,
 	req types.RequestCheckTx,
 ) (*types.ResponseCheckTx, error) {
@@ -247,7 +121,7 @@ func (app *localClient) CheckTxSync(
 	return &res, nil
 }
 
-func (app *localClient) QuerySync(
+func (app *localClient) Query(
 	ctx context.Context,
 	req types.RequestQuery,
 ) (*types.ResponseQuery, error) {
@@ -258,7 +132,7 @@ func (app *localClient) QuerySync(
 	return &res, nil
 }
 
-func (app *localClient) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
+func (app *localClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -266,7 +140,7 @@ func (app *localClient) CommitSync(ctx context.Context) (*types.ResponseCommit, 
 	return &res, nil
 }
 
-func (app *localClient) InitChainSync(
+func (app *localClient) InitChain(
 	ctx context.Context,
 	req types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
@@ -278,7 +152,7 @@ func (app *localClient) InitChainSync(
 	return &res, nil
 }
 
-func (app *localClient) BeginBlockSync(
+func (app *localClient) BeginBlock(
 	ctx context.Context,
 	req types.RequestBeginBlock,
 ) (*types.ResponseBeginBlock, error) {
@@ -290,7 +164,7 @@ func (app *localClient) BeginBlockSync(
 	return &res, nil
 }
 
-func (app *localClient) EndBlockSync(
+func (app *localClient) EndBlock(
 	ctx context.Context,
 	req types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
@@ -302,7 +176,7 @@ func (app *localClient) EndBlockSync(
 	return &res, nil
 }
 
-func (app *localClient) ListSnapshotsSync(
+func (app *localClient) ListSnapshots(
 	ctx context.Context,
 	req types.RequestListSnapshots,
 ) (*types.ResponseListSnapshots, error) {
@@ -314,7 +188,7 @@ func (app *localClient) ListSnapshotsSync(
 	return &res, nil
 }
 
-func (app *localClient) OfferSnapshotSync(
+func (app *localClient) OfferSnapshot(
 	ctx context.Context,
 	req types.RequestOfferSnapshot,
 ) (*types.ResponseOfferSnapshot, error) {
@@ -326,7 +200,7 @@ func (app *localClient) OfferSnapshotSync(
 	return &res, nil
 }
 
-func (app *localClient) LoadSnapshotChunkSync(
+func (app *localClient) LoadSnapshotChunk(
 	ctx context.Context,
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 
@@ -337,7 +211,7 @@ func (app *localClient) LoadSnapshotChunkSync(
 	return &res, nil
 }
 
-func (app *localClient) ApplySnapshotChunkSync(
+func (app *localClient) ApplySnapshotChunk(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 
