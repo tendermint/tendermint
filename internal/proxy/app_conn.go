@@ -96,7 +96,7 @@ func (app *appConnConsensus) DeliverTxSync(
 	ctx context.Context,
 	req types.RequestDeliverTx,
 ) (*types.ResponseDeliverTx, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "sync"))()
 	return app.appConn.DeliverTxSync(ctx, req)
 }
 
