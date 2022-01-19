@@ -2274,6 +2274,34 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 	return nil
 }
 
+<<<<<<< HEAD:consensus/state.go
+=======
+func (cs *State) calculatePrevoteMessageDelayMetrics() {
+	if cs.Proposal == nil {
+		return
+	}
+	ps := cs.Votes.Prevotes(cs.Round)
+	pl := ps.List()
+
+	sort.Slice(pl, func(i, j int) bool {
+		return pl[i].Timestamp.Before(pl[j].Timestamp)
+	})
+
+	var votingPowerSeen int64
+	for _, v := range pl {
+		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
+		votingPowerSeen += val.VotingPower
+		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
+			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			break
+		}
+	}
+	if ps.HasAll() {
+		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+	}
+}
+
+>>>>>>> b6307c42e (consensus: check proposal non-nil in prevote message delay metric (#7625)):internal/consensus/state.go
 //---------------------------------------------------------
 
 func CompareHRS(h1 int64, r1 int32, s1 cstypes.RoundStepType, h2 int64, r2 int32, s2 cstypes.RoundStepType) int {
