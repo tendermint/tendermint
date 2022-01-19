@@ -686,7 +686,7 @@ func TestMockProxyApp(t *testing.T) {
 		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
 
 		someTx := []byte("tx")
-		resp, err := mock.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: someTx})
+		resp, err := mock.DeliverTx(ctx, abci.RequestDeliverTx{Tx: someTx})
 		// TODO: make use of res.Log
 		// TODO: make use of this info
 		// Blocks may include invalid txs.
@@ -838,7 +838,7 @@ func testHandshakeReplay(
 	require.NoError(t, err, "Error on abci handshake")
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync(ctx, abci.RequestInfo{Version: ""})
+	res, err := proxyApp.Query().Info(ctx, abci.RequestInfo{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -904,7 +904,7 @@ func buildAppStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := proxyApp.Consensus().InitChainSync(ctx, abci.RequestInitChain{
+	_, err := proxyApp.Consensus().InitChain(ctx, abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)
@@ -961,7 +961,7 @@ func buildTMStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := proxyApp.Consensus().InitChainSync(ctx, abci.RequestInitChain{
+	_, err := proxyApp.Consensus().InitChain(ctx, abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)

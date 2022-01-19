@@ -255,9 +255,9 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.CommitSync(ctx)
+	res, err := blockExec.proxyApp.Commit(ctx)
 	if err != nil {
-		blockExec.logger.Error("client error during proxyAppConn.CommitSync", "err", err)
+		blockExec.logger.Error("client error during proxyAppConn.Commit", "err", err)
 		return nil, 0, err
 	}
 
@@ -316,7 +316,7 @@ func execBlockOnProxyApp(
 		return nil, errors.New("nil header")
 	}
 
-	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(
+	abciResponses.BeginBlock, err = proxyAppConn.BeginBlock(
 		ctx,
 		abci.RequestBeginBlock{
 			Hash:                block.Hash(),
@@ -332,7 +332,7 @@ func execBlockOnProxyApp(
 
 	// run txs of block
 	for _, tx := range block.Txs {
-		resp, err := proxyAppConn.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: tx})
+		resp, err := proxyAppConn.DeliverTx(ctx, abci.RequestDeliverTx{Tx: tx})
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func execBlockOnProxyApp(
 		txIndex++
 	}
 
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(ctx, abci.RequestEndBlock{Height: block.Height})
+	abciResponses.EndBlock, err = proxyAppConn.EndBlock(ctx, abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
@@ -593,9 +593,9 @@ func ExecCommitBlock(
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync(ctx)
+	res, err := appConnConsensus.Commit(ctx)
 	if err != nil {
-		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
+		logger.Error("client error during proxyAppConn.Commit", "err", res)
 		return nil, err
 	}
 

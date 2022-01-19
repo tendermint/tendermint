@@ -21,7 +21,7 @@ func InitChain(ctx context.Context, client abciclient.Client) error {
 		power := mrand.Int()
 		vals[i] = types.UpdateValidator(pubkey, int64(power), "")
 	}
-	_, err := client.InitChainSync(ctx, types.RequestInitChain{
+	_, err := client.InitChain(ctx, types.RequestInitChain{
 		Validators: vals,
 	})
 	if err != nil {
@@ -33,7 +33,7 @@ func InitChain(ctx context.Context, client abciclient.Client) error {
 }
 
 func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error {
-	res, err := client.CommitSync(ctx)
+	res, err := client.Commit(ctx)
 	data := res.Data
 	if err != nil {
 		fmt.Println("Failed test: Commit")
@@ -50,7 +50,7 @@ func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error
 }
 
 func DeliverTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: txBytes})
+	res, _ := client.DeliverTx(ctx, types.RequestDeliverTx{Tx: txBytes})
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: DeliverTx")
@@ -69,7 +69,7 @@ func DeliverTx(ctx context.Context, client abciclient.Client, txBytes []byte, co
 }
 
 func CheckTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.CheckTxSync(ctx, types.RequestCheckTx{Tx: txBytes})
+	res, _ := client.CheckTx(ctx, types.RequestCheckTx{Tx: txBytes})
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: CheckTx")
