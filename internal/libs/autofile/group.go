@@ -56,6 +56,7 @@ assuming that marker lines are written occasionally.
 type Group struct {
 	service.BaseService
 	logger log.Logger
+	ctx    context.Context
 
 	ID                 string
 	Head               *AutoFile // The head AutoFile to write to
@@ -92,6 +93,7 @@ func OpenGroup(ctx context.Context, logger log.Logger, headPath string, groupOpt
 
 	g := &Group{
 		logger:             logger,
+		ctx:                ctx,
 		ID:                 "group:" + head.ID,
 		Head:               head,
 		headBuf:            bufio.NewWriterSize(head, 4096*10),
@@ -168,7 +170,7 @@ func (g *Group) Close() {
 	}
 
 	g.mtx.Lock()
-	_ = g.Head.closeFile()
+	_ = g.Head.Close()
 	g.mtx.Unlock()
 }
 
@@ -304,7 +306,6 @@ func (g *Group) checkTotalSizeLimit() {
 }
 
 // RotateFile causes group to close the current head and assign it some index.
-// Note it does not create a new head.
 func (g *Group) RotateFile() {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
@@ -314,20 +315,20 @@ func (g *Group) RotateFile() {
 	if err := g.headBuf.Flush(); err != nil {
 		panic(err)
 	}
-
 	if err := g.Head.Sync(); err != nil {
 		panic(err)
 	}
+	err := g.Head.withLock(func() error {
+		if err := g.Head.unsyncCloseFile(); err != nil {
+			return err
+		}
 
-	if err := g.Head.closeFile(); err != nil {
+		indexPath := filePathForIndex(headPath, g.maxIndex, g.maxIndex+1)
+		return os.Rename(headPath, indexPath)
+	})
+	if err != nil {
 		panic(err)
 	}
-
-	indexPath := filePathForIndex(headPath, g.maxIndex, g.maxIndex+1)
-	if err := os.Rename(headPath, indexPath); err != nil {
-		panic(err)
-	}
-
 	g.maxIndex++
 }
 
