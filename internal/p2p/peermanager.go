@@ -136,6 +136,10 @@ type PeerManagerOptions struct {
 	// consider private and never gossip.
 	PrivatePeers map[types.NodeID]struct{}
 
+	// SelfAddress is the address that will be advertised to peers for them to dial back to us.
+	// If Hostname and Port are unset, Advertise() will include no self-announcement
+	SelfAddress NodeAddress
+
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[types.NodeID]bool
@@ -791,6 +795,13 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	defer m.mtx.Unlock()
 
 	addresses := make([]NodeAddress, 0, limit)
+
+	// advertise ourselves, to let everyone know how to dial us back
+	// and enable mutual address discovery
+	if m.options.SelfAddress.Hostname != "" && m.options.SelfAddress.Port != 0 {
+		addresses = append(addresses, m.options.SelfAddress)
+	}
+
 	for _, peer := range m.store.Ranked() {
 		if peer.ID == peerID {
 			continue
