@@ -63,16 +63,16 @@ func (_m *AppConnConsensus) Commit(_a0 context.Context) (*types.ResponseCommit, 
 	return r0, r1
 }
 
-// DeliverTxAsync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnConsensus) DeliverTxAsync(_a0 context.Context, _a1 types.RequestDeliverTx) (*abciclient.ReqRes, error) {
+// DeliverTx provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) DeliverTx(_a0 context.Context, _a1 types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 *abciclient.ReqRes
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *abciclient.ReqRes); ok {
+	var r0 *types.ResponseDeliverTx
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *types.ResponseDeliverTx); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abciclient.ReqRes)
+			r0 = ret.Get(0).(*types.ResponseDeliverTx)
 		}
 	}
 

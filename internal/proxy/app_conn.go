@@ -21,7 +21,7 @@ type AppConnConsensus interface {
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*abciclient.ReqRes, error)
+	DeliverTx(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
 	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	Commit(context.Context) (*types.ResponseCommit, error)
 }
@@ -93,12 +93,12 @@ func (app *appConnConsensus) BeginBlock(
 	return app.appConn.BeginBlock(ctx, req)
 }
 
-func (app *appConnConsensus) DeliverTxAsync(
+func (app *appConnConsensus) DeliverTx(
 	ctx context.Context,
 	req types.RequestDeliverTx,
-) (*abciclient.ReqRes, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "async"))()
-	return app.appConn.DeliverTxAsync(ctx, req)
+) (*types.ResponseDeliverTx, error) {
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "sync"))()
+	return app.appConn.DeliverTx(ctx, req)
 }
 
 func (app *appConnConsensus) EndBlock(
