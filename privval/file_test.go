@@ -234,7 +234,8 @@ func TestSignProposal(t *testing.T) {
 	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
-	proposal := newProposal(height, round, block1)
+	ts := tmtime.Now()
+	proposal := newProposal(height, round, block1, ts)
 	pbp := proposal.ToProto()
 
 	err = privVal.SignProposal(ctx, "mychainid", pbp)
@@ -246,23 +247,17 @@ func TestSignProposal(t *testing.T) {
 
 	// now try some bad Proposals
 	cases := []*types.Proposal{
-		newProposal(height, round-1, block1),   // round regression
-		newProposal(height-1, round, block1),   // height regression
-		newProposal(height-2, round+4, block1), // height regression and different round
-		newProposal(height, round, block2),     // different block
+		newProposal(height, round-1, block1, ts),                // round regression
+		newProposal(height-1, round, block1, ts),                // height regression
+		newProposal(height-2, round+4, block1, ts),              // height regression and different round
+		newProposal(height, round, block2, ts),                  // different block
+		newProposal(height, round, block1, ts.Add(time.Second)), // different timestamp
 	}
 
 	for _, c := range cases {
-		assert.Error(t, privVal.SignProposal(ctx, "mychainid", c.ToProto()),
+		assert.Errorf(t, privVal.SignProposal(ctx, "mychainid", c.ToProto()),
 			"expected error on signing conflicting proposal")
 	}
-
-	// try signing a proposal with a different time stamp
-	sig := proposal.Signature
-	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignProposal(ctx, "mychainid", pbp)
-	assert.NoError(t, err)
-	assert.Equal(t, sig, proposal.Signature)
 }
 
 func TestDifferByTimestamp(t *testing.T) {
@@ -277,32 +272,8 @@ func TestDifferByTimestamp(t *testing.T) {
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
 	randbytes := tmrand.Bytes(tmhash.Size)
-	block1 := types.BlockID{Hash: randbytes, PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
 	height, round := int64(10), int32(1)
 	chainID := "mychainid"
-
-	// test proposal
-	{
-		proposal := newProposal(height, round, block1)
-		pb := proposal.ToProto()
-		err := privVal.SignProposal(ctx, chainID, pb)
-		require.NoError(t, err, "expected no error signing proposal")
-		signBytes := types.ProposalSignBytes(chainID, pb)
-
-		sig := proposal.Signature
-		timeStamp := proposal.Timestamp
-
-		// manipulate the timestamp. should get changed back
-		pb.Timestamp = pb.Timestamp.Add(time.Millisecond)
-		var emptySig []byte
-		proposal.Signature = emptySig
-		err = privVal.SignProposal(ctx, "mychainid", pb)
-		require.NoError(t, err, "expected no error on signing same proposal")
-
-		assert.Equal(t, timeStamp, pb.Timestamp)
-		assert.Equal(t, signBytes, types.ProposalSignBytes(chainID, pb))
-		assert.Equal(t, sig, proposal.Signature)
-	}
 
 	// test vote
 	{
@@ -343,11 +314,11 @@ func newVote(addr types.Address, idx int32, height int64, round int32,
 	}
 }
 
-func newProposal(height int64, round int32, blockID types.BlockID) *types.Proposal {
+func newProposal(height int64, round int32, blockID types.BlockID, t time.Time) *types.Proposal {
 	return &types.Proposal{
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
-		Timestamp: tmtime.Now(),
+		Timestamp: t,
 	}
 }
