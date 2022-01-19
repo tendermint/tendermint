@@ -1,5 +1,6 @@
 // Temporarily disabled pending ttps://github.com/tendermint/tendermint/issues/7626.
 //go:build issue7626
+//+build issue7626
 
 package pex_test
 
