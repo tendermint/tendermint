@@ -388,8 +388,6 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
-// It may need to set the timestamp as well if the proposal is otherwise the same as
-// a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
@@ -405,8 +403,6 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
-	// If they only differ by timestamp, use last timestamp and signature
-	// Otherwise, return error
 	if sameHRS {
 		if !bytes.Equal(signBytes, lss.SignBytes) {
 			return errors.New("conflicting data")
