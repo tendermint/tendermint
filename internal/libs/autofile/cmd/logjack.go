@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// Open Group
-	group, err := auto.OpenGroup(log.NewNopLogger(), headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
+	group, err := auto.OpenGroup(ctx, log.NewNopLogger(), headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
 	if err != nil {
 		fmt.Printf("logjack couldn't create output file %v\n", headPath)
 		os.Exit(1)

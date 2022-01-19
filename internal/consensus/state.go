@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"runtime/debug"
+	"sort"
 	"sync"
 	"time"
 
@@ -488,7 +489,7 @@ func (cs *State) Wait() {
 // OpenWAL opens a file to log all consensus messages and timeouts for
 // deterministic accountability.
 func (cs *State) OpenWAL(ctx context.Context, walFile string) (WAL, error) {
-	wal, err := NewWAL(cs.logger.With("wal", walFile), walFile)
+	wal, err := NewWAL(ctx, cs.logger.With("wal", walFile), walFile)
 	if err != nil {
 		cs.logger.Error("failed to open WAL", "file", walFile, "err", err)
 		return nil, err
@@ -1671,6 +1672,8 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		return
 	}
 
+	cs.calculatePrevoteMessageDelayMetrics()
+
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
@@ -2393,6 +2396,31 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 	}
 
 	return nil
+}
+
+func (cs *State) calculatePrevoteMessageDelayMetrics() {
+	if cs.Proposal == nil {
+		return
+	}
+	ps := cs.Votes.Prevotes(cs.Round)
+	pl := ps.List()
+
+	sort.Slice(pl, func(i, j int) bool {
+		return pl[i].Timestamp.Before(pl[j].Timestamp)
+	})
+
+	var votingPowerSeen int64
+	for _, v := range pl {
+		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
+		votingPowerSeen += val.VotingPower
+		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
+			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			break
+		}
+	}
+	if ps.HasAll() {
+		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+	}
 }
 
 //---------------------------------------------------------

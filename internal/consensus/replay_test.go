@@ -201,6 +201,8 @@ LOOP:
 		i++
 
 		select {
+		case <-rctx.Done():
+			t.Fatal("context canceled before test completed")
 		case err := <-walPanicked:
 			// make sure we can make blocks after a crash
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
@@ -767,7 +769,7 @@ func testHandshakeReplay(
 		privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
 		require.NoError(t, err)
 
-		wal, err := NewWAL(logger, walFile)
+		wal, err := NewWAL(ctx, logger, walFile)
 		require.NoError(t, err)
 		err = wal.Start(ctx)
 		require.NoError(t, err)

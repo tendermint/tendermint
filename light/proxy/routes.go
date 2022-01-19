@@ -16,9 +16,7 @@ type proxyService struct {
 	*lrpc.Client
 }
 
-func (p proxyService) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes,
-	height int64, prove bool) (*coretypes.ResultABCIQuery, error) {
-
+func (p proxyService) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes, height int64, prove bool) (*coretypes.ResultABCIQuery, error) {
 	return p.ABCIQueryWithOptions(ctx, path, data, rpcclient.ABCIQueryOptions{
 		Height: height,
 		Prove:  prove,

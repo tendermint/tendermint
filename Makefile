@@ -299,9 +299,11 @@ NUM_SPLIT ?= 4
 $(BUILDDIR):
 	mkdir -p $@
 
-# the format statement filters out all packages that don't have tests.
+# The format statement filters out all packages that don't have tests.
+# Note we need to check for both in-package tests (.TestGoFiles) and
+# out-of-package tests (.XTestGoFiles).
 $(BUILDDIR)/packages.txt:$(GO_TEST_FILES) $(BUILDDIR)
-	go list -f "{{ if .TestGoFiles }}{{ .ImportPath }}{{ end }}" ./... | sort > $@
+	go list -f "{{ if (or .TestGoFiles .XTestGoFiles) }}{{ .ImportPath }}{{ end }}" ./... | sort > $@
 
 split-test-packages:$(BUILDDIR)/packages.txt
 	split -d -n l/$(NUM_SPLIT) $< $<.

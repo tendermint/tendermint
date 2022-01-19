@@ -18,7 +18,7 @@ This section dives into the internals of Go-Tendermint.
 - [Mempool](./mempool/README.md)
 - [Light Client](./light-client.md)
 - [Consensus](./consensus/README.md)
-- [Peer Exachange (PEX)](./pex/README.md)
+- [Peer Exchange (PEX)](./pex/README.md)
 - [Evidence](./evidence/README.md)
 
 For full specifications refer to the [spec repo](https://github.com/tendermint/spec).
