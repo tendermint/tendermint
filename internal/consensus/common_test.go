@@ -285,6 +285,9 @@ func validatePrevote(
 ) {
 	t.Helper()
 
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
 	prevotes := cs.Votes.Prevotes(round)
 	pubKey, err := privVal.GetPubKey(ctx)
 	require.NoError(t, err)
