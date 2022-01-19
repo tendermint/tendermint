@@ -134,7 +134,7 @@ func TestAutoFileSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// 3. Not existing file
-	require.NoError(t, af.Close())
+	require.NoError(t, af.closeFile())
 	require.NoError(t, os.Remove(f.Name()))
 	size, err = af.Size()
 	require.EqualValues(t, 0, size, "Expected a new file to be empty")
