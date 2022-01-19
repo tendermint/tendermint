@@ -64,6 +64,22 @@ type Metrics struct {
 
 	// Histogram of time taken per step annotated with reason that the step proceeded.
 	StepTime metrics.Histogram
+
+	// QuroumPrevoteMessageDelay is the interval in seconds between the proposal
+	// timestamp and the timestamp of the earliest prevote that achieved a quorum
+	// during the prevote step.
+	//
+	// To compute it, sum the voting power over each prevote received, in increasing
+	// order of timestamp. The timestamp of the first prevote to increase the sum to
+	// be above 2/3 of the total voting power of the network defines the endpoint
+	// the endpoint of the interval. Subtract the proposal timestamp from this endpoint
+	// to obtain the quorum delay.
+	QuorumPrevoteMessageDelay metrics.Gauge
+
+	// FullPrevoteMessageDelay is the interval in seconds between the proposal
+	// timestamp and the timestamp of the latest prevote in a round where 100%
+	// of the voting power on the network issued prevotes.
+	FullPrevoteMessageDelay metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -196,6 +212,20 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "step_time",
 			Help:      "Time spent per step.",
 		}, append(labels, "step", "reason")).With(labelsAndValues...),
+		QuorumPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "quorum_prevote_message_delay",
+			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
+				"of the latest prevote that achieved a quorum in the prevote step.",
+		}, labels).With(labelsAndValues...),
+		FullPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "full_prevote_message_delay",
+			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
+				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -219,13 +249,15 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-		NumTxs:          discard.NewGauge(),
-		BlockSizeBytes:  discard.NewHistogram(),
-		TotalTxs:        discard.NewGauge(),
-		CommittedHeight: discard.NewGauge(),
-		BlockSyncing:    discard.NewGauge(),
-		StateSyncing:    discard.NewGauge(),
-		BlockParts:      discard.NewCounter(),
+		NumTxs:                    discard.NewGauge(),
+		BlockSizeBytes:            discard.NewHistogram(),
+		TotalTxs:                  discard.NewGauge(),
+		CommittedHeight:           discard.NewGauge(),
+		BlockSyncing:              discard.NewGauge(),
+		StateSyncing:              discard.NewGauge(),
+		BlockParts:                discard.NewCounter(),
+		QuorumPrevoteMessageDelay: discard.NewGauge(),
+		FullPrevoteMessageDelay:   discard.NewGauge(),
 	}
 }
 
