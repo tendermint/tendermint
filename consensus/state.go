@@ -2278,11 +2278,17 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 }
 
 func (cs *State) calculatePrevoteMessageDelayMetrics() {
+	if cs.Proposal == nil {
+		return
+	}
+
 	ps := cs.Votes.Prevotes(cs.Round)
 	pl := ps.List()
+
 	sort.Slice(pl, func(i, j int) bool {
 		return pl[i].Timestamp.Before(pl[j].Timestamp)
 	})
+
 	var votingPowerSeen int64
 	for _, v := range pl {
 		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
