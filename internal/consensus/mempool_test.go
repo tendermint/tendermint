@@ -40,7 +40,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := makeGenesisState(t, ctx, baseConfig, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
 	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
@@ -67,7 +67,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
-	state, privVals := makeGenesisState(t, ctx, baseConfig, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
 	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
@@ -92,7 +92,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := makeGenesisState(t, ctx, baseConfig, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
 	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
@@ -143,7 +143,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 	config := configSetup(t)
 	logger := log.TestingLogger()
-	state, privVals := makeGenesisState(t, ctx, config, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
 	stateStore := sm.NewStore(dbm.NewMemDB())
@@ -178,7 +178,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	state, privVals := makeGenesisState(t, ctx, config, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
 	app := NewCounterApplication()

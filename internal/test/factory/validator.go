@@ -20,7 +20,7 @@ func Validator(ctx context.Context, votingPower int64) (*types.Validator, types.
 	return val, privVal, nil
 }
 
-func ValidatorSet(t *testing.T, ctx context.Context, numValidators int, votingPower int64) (*types.ValidatorSet, []types.PrivValidator) {
+func ValidatorSet(ctx context.Context, t *testing.T, numValidators int, votingPower int64) (*types.ValidatorSet, []types.PrivValidator) {
 	var (
 		valz           = make([]*types.Validator, numValidators)
 		privValidators = make([]types.PrivValidator, numValidators)

@@ -106,7 +106,7 @@ func setupStateStore(t *testing.T, height int64) state.Store {
 	stateStore := state.NewStore(dbm.NewMemDB())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	valSet, _ := factory.ValidatorSet(t, ctx, 5, 10)
+	valSet, _ := factory.ValidatorSet(ctx, t, 5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = 10

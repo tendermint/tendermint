@@ -104,7 +104,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	consensusParams := types.DefaultConsensusParams()
 	consensusParams.Synchrony = tc.synchronyParams
 
-	state, privVals := makeGenesisState(t, ctx, cfg, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, cfg, genesisStateArgs{
 		Params:     consensusParams,
 		Time:       tc.genesisTime,
 		Validators: validators,

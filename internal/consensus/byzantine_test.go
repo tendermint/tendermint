@@ -46,7 +46,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	valSet, privVals := factory.ValidatorSet(t, ctx, nValidators, 30)
+	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
 	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
 	states := make([]*State, nValidators)
 
