@@ -59,9 +59,6 @@ type pbtsTestHarness struct {
 
 	currentHeight int64
 	currentRound  int32
-
-	t   *testing.T
-	ctx context.Context
 }
 
 type pbtsTestConfiguration struct {
@@ -137,98 +134,96 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		blockCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),
 		ensureVoteCh:          subscribeToVoterBuffered(ctx, t, cs, pubKey.Address()),
 		eventCh:               eventCh,
-		t:                     t,
-		ctx:                   ctx,
 	}
 }
 
-func (p *pbtsTestHarness) observedValidatorProposerHeight(previousBlockTime time.Time) heightResult {
+func (p *pbtsTestHarness) observedValidatorProposerHeight(ctx context.Context, t *testing.T, previousBlockTime time.Time) heightResult {
 	p.validatorClock.On("Now").Return(p.height2ProposedBlockTime).Times(6)
 
-	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
+	ensureNewRound(t, p.roundCh, p.currentHeight, p.currentRound)
 
 	timeout := time.Until(previousBlockTime.Add(ensureTimeout))
-	ensureProposalWithTimeout(p.t, p.ensureProposalCh, p.currentHeight, p.currentRound, nil, timeout)
+	ensureProposalWithTimeout(t, p.ensureProposalCh, p.currentHeight, p.currentRound, nil, timeout)
 
 	rs := p.observedState.GetRoundState()
 	bid := types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}
-	ensurePrevote(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
-	signAddVotes(p.ctx, p.t, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
+	ensurePrevote(t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	signAddVotes(ctx, t, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
 
-	signAddVotes(p.ctx, p.t, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
-	ensurePrecommit(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	signAddVotes(ctx, t, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
+	ensurePrecommit(t, p.ensureVoteCh, p.currentHeight, p.currentRound)
 
-	ensureNewBlock(p.t, p.blockCh, p.currentHeight)
+	ensureNewBlock(t, p.blockCh, p.currentHeight)
 
-	vk, err := p.observedValidator.GetPubKey(context.Background())
-	require.NoError(p.t, err)
-	res := collectHeightResults(p.ctx, p.t, p.eventCh, p.currentHeight, vk.Address())
+	vk, err := p.observedValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	res := collectHeightResults(ctx, t, p.eventCh, p.currentHeight, vk.Address())
 
 	p.currentHeight++
 	incrementHeight(p.otherValidators...)
 	return res
 }
 
-func (p *pbtsTestHarness) height2() heightResult {
+func (p *pbtsTestHarness) height2(ctx context.Context, t *testing.T) heightResult {
 	signer := p.otherValidators[0].PrivValidator
 	height3BlockTime := p.height2ProposedBlockTime.Add(-blockTimeIota)
-	return p.nextHeight(signer, p.height2ProposalDeliverTime, p.height2ProposedBlockTime, height3BlockTime)
+	return p.nextHeight(ctx, t, signer, p.height2ProposalDeliverTime, p.height2ProposedBlockTime, height3BlockTime)
 }
 
-func (p *pbtsTestHarness) intermediateHeights() {
+func (p *pbtsTestHarness) intermediateHeights(ctx context.Context, t *testing.T) {
 	signer := p.otherValidators[1].PrivValidator
 	blockTimeHeight3 := p.height4ProposedBlockTime.Add(-blockTimeIota)
-	p.nextHeight(signer, blockTimeHeight3, blockTimeHeight3, p.height4ProposedBlockTime)
+	p.nextHeight(ctx, t, signer, blockTimeHeight3, blockTimeHeight3, p.height4ProposedBlockTime)
 
 	signer = p.otherValidators[2].PrivValidator
-	p.nextHeight(signer, p.height4ProposedBlockTime, p.height4ProposedBlockTime, time.Now())
+	p.nextHeight(ctx, t, signer, p.height4ProposedBlockTime, p.height4ProposedBlockTime, time.Now())
 }
 
-func (p *pbtsTestHarness) height5() heightResult {
-	return p.observedValidatorProposerHeight(p.height4ProposedBlockTime)
+func (p *pbtsTestHarness) height5(ctx context.Context, t *testing.T) heightResult {
+	return p.observedValidatorProposerHeight(ctx, t, p.height4ProposedBlockTime)
 }
 
-func (p *pbtsTestHarness) nextHeight(proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
+func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
 	p.validatorClock.On("Now").Return(nextProposedTime).Times(6)
 
-	ensureNewRound(p.t, p.roundCh, p.currentHeight, p.currentRound)
+	ensureNewRound(t, p.roundCh, p.currentHeight, p.currentRound)
 
 	b, _, err := p.observedState.createProposalBlock()
-	require.NoError(p.t, err)
+	require.NoError(t, err)
 	b.Height = p.currentHeight
 	b.Header.Height = p.currentHeight
 	b.Header.Time = proposedTime
 
-	k, err := proposer.GetPubKey(context.Background())
-	require.NoError(p.t, err)
+	k, err := proposer.GetPubKey(ctx)
+	require.NoError(t, err)
 	b.Header.ProposerAddress = k.Address()
 	ps, err := b.MakePartSet(types.BlockPartSizeBytes)
-	require.NoError(p.t, err)
+	require.NoError(t, err)
 	bid := types.BlockID{Hash: b.Hash(), PartSetHeader: ps.Header()}
 	prop := types.NewProposal(p.currentHeight, 0, -1, bid, proposedTime)
 	tp := prop.ToProto()
 
-	if err := proposer.SignProposal(context.Background(), p.observedState.state.ChainID, tp); err != nil {
-		p.t.Fatalf("error signing proposal: %s", err)
+	if err := proposer.SignProposal(ctx, p.observedState.state.ChainID, tp); err != nil {
+		t.Fatalf("error signing proposal: %s", err)
 	}
 
 	time.Sleep(time.Until(deliverTime))
 	prop.Signature = tp.Signature
-	if err := p.observedState.SetProposalAndBlock(p.ctx, prop, b, ps, "peerID"); err != nil {
-		p.t.Fatal(err)
+	if err := p.observedState.SetProposalAndBlock(ctx, prop, b, ps, "peerID"); err != nil {
+		t.Fatal(err)
 	}
-	ensureProposal(p.t, p.ensureProposalCh, p.currentHeight, 0, bid)
+	ensureProposal(t, p.ensureProposalCh, p.currentHeight, 0, bid)
 
-	ensurePrevote(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
-	signAddVotes(p.ctx, p.t, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
+	ensurePrevote(t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	signAddVotes(ctx, t, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)
 
-	signAddVotes(p.ctx, p.t, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
-	ensurePrecommit(p.t, p.ensureVoteCh, p.currentHeight, p.currentRound)
+	signAddVotes(ctx, t, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
+	ensurePrecommit(t, p.ensureVoteCh, p.currentHeight, p.currentRound)
 
-	vk, err := p.observedValidator.GetPubKey(context.Background())
-	require.NoError(p.t, err)
-	res := collectHeightResults(p.ctx, p.t, p.eventCh, p.currentHeight, vk.Address())
-	ensureNewBlock(p.t, p.blockCh, p.currentHeight)
+	vk, err := p.observedValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	res := collectHeightResults(ctx, t, p.eventCh, p.currentHeight, vk.Address())
+	ensureNewBlock(t, p.blockCh, p.currentHeight)
 
 	p.currentHeight++
 	incrementHeight(p.otherValidators...)
@@ -292,13 +287,13 @@ type timestampedEvent struct {
 	m  tmpubsub.Message
 }
 
-func (p *pbtsTestHarness) run() resultSet {
-	startTestRound(p.ctx, p.observedState, p.currentHeight, p.currentRound)
+func (p *pbtsTestHarness) run(ctx context.Context, t *testing.T) resultSet {
+	startTestRound(ctx, p.observedState, p.currentHeight, p.currentRound)
 
-	r1 := p.observedValidatorProposerHeight(p.genesisTime)
-	r2 := p.height2()
-	p.intermediateHeights()
-	r5 := p.height5()
+	r1 := p.observedValidatorProposerHeight(ctx, t, p.genesisTime)
+	r2 := p.height2(ctx, t)
+	p.intermediateHeights(ctx, t)
+	r5 := p.height5(ctx, t)
 	return resultSet{
 		genesisHeight: r1,
 		height2:       r2,
@@ -343,7 +338,7 @@ func TestProposerWaitsForGenesisTime(t *testing.T) {
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
+	results := pbtsTest.run(ctx, t)
 
 	// ensure that the proposal was issued after the genesis time.
 	assert.True(t, results.genesisHeight.proposalIssuedAt.After(cfg.genesisTime))
@@ -372,7 +367,7 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
+	results := pbtsTest.run(ctx, t)
 
 	// the observed validator is the proposer at height 5.
 	// ensure that the observed validator did not propose a block until after
@@ -440,7 +435,7 @@ func TestTimelyProposal(t *testing.T) {
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
+	results := pbtsTest.run(ctx, t)
 	require.NotNil(t, results.height2.prevote.BlockID.Hash)
 }
 
@@ -463,7 +458,7 @@ func TestTooFarInThePastProposal(t *testing.T) {
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
+	results := pbtsTest.run(ctx, t)
 
 	require.Nil(t, results.height2.prevote.BlockID.Hash)
 }
@@ -488,7 +483,7 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 	}
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
-	results := pbtsTest.run()
+	results := pbtsTest.run(ctx, t)
 
 	require.Nil(t, results.height2.prevote.BlockID.Hash)
 }
