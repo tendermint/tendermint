@@ -17,8 +17,8 @@ type AppConnConsensus struct {
 	mock.Mock
 }
 
-// BeginBlockSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnConsensus) BeginBlockSync(_a0 context.Context, _a1 types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+// BeginBlock provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) BeginBlock(_a0 context.Context, _a1 types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseBeginBlock
@@ -40,8 +40,8 @@ func (_m *AppConnConsensus) BeginBlockSync(_a0 context.Context, _a1 types.Reques
 	return r0, r1
 }
 
-// CommitSync provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) CommitSync(_a0 context.Context) (*types.ResponseCommit, error) {
+// Commit provides a mock function with given fields: _a0
+func (_m *AppConnConsensus) Commit(_a0 context.Context) (*types.ResponseCommit, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *types.ResponseCommit
@@ -63,16 +63,16 @@ func (_m *AppConnConsensus) CommitSync(_a0 context.Context) (*types.ResponseComm
 	return r0, r1
 }
 
-// DeliverTxAsync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnConsensus) DeliverTxAsync(_a0 context.Context, _a1 types.RequestDeliverTx) (*abciclient.ReqRes, error) {
+// DeliverTx provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) DeliverTx(_a0 context.Context, _a1 types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 *abciclient.ReqRes
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *abciclient.ReqRes); ok {
+	var r0 *types.ResponseDeliverTx
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *types.ResponseDeliverTx); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abciclient.ReqRes)
+			r0 = ret.Get(0).(*types.ResponseDeliverTx)
 		}
 	}
 
@@ -86,8 +86,8 @@ func (_m *AppConnConsensus) DeliverTxAsync(_a0 context.Context, _a1 types.Reques
 	return r0, r1
 }
 
-// EndBlockSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnConsensus) EndBlockSync(_a0 context.Context, _a1 types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+// EndBlock provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) EndBlock(_a0 context.Context, _a1 types.RequestEndBlock) (*types.ResponseEndBlock, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseEndBlock
@@ -123,8 +123,8 @@ func (_m *AppConnConsensus) Error() error {
 	return r0
 }
 
-// InitChainSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnConsensus) InitChainSync(_a0 context.Context, _a1 types.RequestInitChain) (*types.ResponseInitChain, error) {
+// InitChain provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) InitChain(_a0 context.Context, _a1 types.RequestInitChain) (*types.ResponseInitChain, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseInitChain

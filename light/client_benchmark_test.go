@@ -61,6 +61,10 @@ func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evi
 	return errors.New("not implemented")
 }
 
+// provierBenchmarkImpl does not have an ID iteself.
+// Thus we return a sample string
+func (impl *providerBenchmarkImpl) ID() string { return "ip-not-defined.com" }
+
 func BenchmarkSequence(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -168,4 +172,5 @@ func BenchmarkBackwards(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
 }
