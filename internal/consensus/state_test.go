@@ -66,7 +66,7 @@ func TestStateProposerSelection0(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cs1, vss := makeState(ctx, t, config, logger, 4)
 	height, round := cs1.Height, cs1.Round
@@ -108,7 +108,7 @@ func TestStateProposerSelection0(t *testing.T) {
 // Now let's do it all again, but starting from round 2 instead of 0
 func TestStateProposerSelection2(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -147,7 +147,7 @@ func TestStateProposerSelection2(t *testing.T) {
 // a non-validator should timeout into the prevote round
 func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -171,7 +171,7 @@ func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 // a validator should not timeout of the prevote round (TODO: unless the block is really big!)
 func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -206,7 +206,7 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 
 func TestStateBadProposal(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -269,7 +269,7 @@ func TestStateBadProposal(t *testing.T) {
 
 func TestStateOversizedBlock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -336,7 +336,7 @@ func TestStateOversizedBlock(t *testing.T) {
 // propose, prevote, and precommit a block
 func TestStateFullRound1(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -381,7 +381,7 @@ func TestStateFullRound1(t *testing.T) {
 // nil is proposed, so prevote and precommit nil
 func TestStateFullRoundNil(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -404,7 +404,7 @@ func TestStateFullRoundNil(t *testing.T) {
 // where the first validator has to wait for votes from the second
 func TestStateFullRound2(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -449,7 +449,7 @@ func TestStateFullRound2(t *testing.T) {
 // two vals take turns proposing. val1 locks on first one, precommits nil on everything else
 func TestStateLock_NoPOL(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -655,7 +655,7 @@ func TestStateLock_NoPOL(t *testing.T) {
 // power on the network for the block.
 func TestStateLock_POLUpdateLock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -769,7 +769,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cs1, vss := makeState(ctx, t, config, logger, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -869,7 +869,7 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cs1, vss := makeState(ctx, t, config, logger, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -951,7 +951,7 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	config := configSetup(t)
 	/*
 		All of the assertions in this test occur on the `cs1` validator.
@@ -1052,7 +1052,7 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 // that it has been completely removed.
 func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	/*
@@ -1194,7 +1194,7 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 // new block if a proposal was not seen for that block.
 func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1288,7 +1288,7 @@ func TestStateLock_DoesNotLockOnOldProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cs1, vss := makeState(ctx, t, config, logger, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -1364,7 +1364,7 @@ func TestStateLock_DoesNotLockOnOldProposal(t *testing.T) {
 // then we see the polka from round 1 but shouldn't unlock
 func TestStateLock_POLSafety1(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1489,7 +1489,7 @@ func TestStateLock_POLSafety1(t *testing.T) {
 // dont see P0, lock on P1 at R1, dont unlock using P0 at R2
 func TestStateLock_POLSafety2(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1588,7 +1588,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cs1, vss := makeState(ctx, t, config, logger, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -1729,7 +1729,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 // P0 proposes B0 at R3.
 func TestProposeValidBlock(t *testing.T) {
 	cfg := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1826,7 +1826,7 @@ func TestProposeValidBlock(t *testing.T) {
 // P0 miss to lock B but set valid block to B after receiving delayed prevote.
 func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1897,7 +1897,7 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 // receiving delayed Block Proposal.
 func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1965,7 +1965,7 @@ func TestWaitingTimeoutOnNilPolka(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cs1, vss := makeState(ctx, t, config, logger, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -1989,7 +1989,7 @@ func TestWaitingTimeoutOnNilPolka(t *testing.T) {
 // P0 waits for timeoutPropose in the next round before entering prevote
 func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2030,7 +2030,7 @@ func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
 // P0 jump to higher round, precommit and start precommit wait
 func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2071,7 +2071,7 @@ func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 // P0 wait for timeoutPropose to expire before sending prevote.
 func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2103,7 +2103,7 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 // P0 emit NewValidBlock event upon receiving 2/3+ Precommit for B but hasn't received block B yet
 func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2146,7 +2146,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 // After receiving block, it executes block and moves to the next height.
 func TestCommitFromPreviousRound(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2208,7 +2208,7 @@ func (n *fakeTxNotifier) Notify() {
 // start of the next round
 func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2276,7 +2276,7 @@ func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 
 func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2348,7 +2348,7 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 // we receive a final precommit after going into next round, but others might have gone to commit already!
 func TestStateHalt1(t *testing.T) {
 	cfg := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2424,7 +2424,7 @@ func TestStateHalt1(t *testing.T) {
 
 func TestStateOutputsBlockPartsStats(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2473,7 +2473,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 
 func TestStateOutputVoteStats(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2515,7 +2515,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 func TestSignSameVoteTwice(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2556,7 +2556,7 @@ func TestSignSameVoteTwice(t *testing.T) {
 // corresponding proposal message.
 func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -2605,7 +2605,7 @@ func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 // corresponding proposal message.
 func TestStateTimestamp_ProposalMatch(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
