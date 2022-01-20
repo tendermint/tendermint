@@ -128,6 +128,8 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 
 // waitForNode waits for a node to become available and catch up to the given block height.
 func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.ResultStatus, error) {
+	// If the node is the light client or seed note, we do not check for the last height.
+	// The light client and seed note can be behind the full node and validator
 	if node.Mode == e2e.ModeSeed {
 		return nil, nil
 	}
@@ -167,7 +169,10 @@ func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.R
 				return nil, fmt.Errorf("timed out waiting for %v to reach height %v", node.Name, height)
 			case errors.Is(err, context.Canceled):
 				return nil, err
-			case err == nil && status.SyncInfo.LatestBlockHeight >= height:
+				// If the node is the light client, it is not essential to wait for it to catch up, but we must return status info
+			case err == nil && node.Mode == e2e.ModeLight:
+				return status, nil
+			case err == nil && node.Mode != e2e.ModeLight && status.SyncInfo.LatestBlockHeight >= height:
 				return status, nil
 			case counter%500 == 0:
 				switch {

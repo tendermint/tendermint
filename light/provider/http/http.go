@@ -100,7 +100,8 @@ func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, opti
 	}
 }
 
-func (p *http) String() string {
+// Identifies the provider with an IP in string format
+func (p *http) ID() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
 }
 
