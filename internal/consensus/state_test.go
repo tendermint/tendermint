@@ -353,7 +353,7 @@ func TestStateOversizedBlock(t *testing.T) {
 // propose, prevote, and precommit a block
 func TestStateFullRound1(t *testing.T) {
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -372,7 +372,9 @@ func TestStateFullRound1(t *testing.T) {
 		t.Error(err)
 	}
 
-	voteCh := subscribe(ctx, t, cs.eventBus, types.EventQueryVote)
+	pv, err := cs.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	voteCh := subscribeToVoter(ctx, t, cs, pv.Address())
 	propCh := subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)
 
@@ -384,8 +386,7 @@ func TestStateFullRound1(t *testing.T) {
 	ensureNewProposal(t, propCh, height, round)
 	propBlockHash := cs.GetRoundState().ProposalBlock.Hash()
 
-	ensurePrevote(t, voteCh, height, round) // wait for prevote
-	validatePrevote(ctx, t, cs, round, vss[0], propBlockHash)
+	ensurePrevoteMatch(t, voteCh, height, round, propBlockHash) // wait for prevote
 
 	ensurePrecommit(t, voteCh, height, round) // wait for precommit
 
