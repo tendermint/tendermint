@@ -3,7 +3,6 @@ package http_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -22,15 +21,15 @@ import (
 func TestNewProvider(t *testing.T) {
 	c, err := lighthttp.New("chain-test", "192.168.0.1:26657")
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf("%s", c), "http{http://192.168.0.1:26657}")
+	require.Equal(t, c.ID(), "http{http://192.168.0.1:26657}")
 
 	c, err = lighthttp.New("chain-test", "http://153.200.0.1:26657")
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1:26657}")
+	require.Equal(t, c.ID(), "http{http://153.200.0.1:26657}")
 
 	c, err = lighthttp.New("chain-test", "153.200.0.1")
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
+	require.Equal(t, c.ID(), "http{http://153.200.0.1}")
 }
 
 func TestProvider(t *testing.T) {

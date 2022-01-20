@@ -618,7 +618,7 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		resp, err := r.conn.LoadSnapshotChunkSync(ctx, abci.RequestLoadSnapshotChunk{
+		resp, err := r.conn.LoadSnapshotChunk(ctx, abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
@@ -911,7 +911,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(ctx context.Context, n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshotsSync(ctx, abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshots(ctx, abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

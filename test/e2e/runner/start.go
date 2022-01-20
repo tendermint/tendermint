@@ -118,8 +118,17 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 		wcancel()
 
 		node.HasStarted = true
+
+		var lastNodeHeight int64
+
+		// If the node is a light client, we fetch its current height
+		if node.Mode == e2e.ModeLight {
+			lastNodeHeight = status.LightClientInfo.LastTrustedHeight
+		} else {
+			lastNodeHeight = status.SyncInfo.LatestBlockHeight
+		}
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v at height %v",
-			node.Name, node.ProxyPort, status.SyncInfo.LatestBlockHeight))
+			node.Name, node.ProxyPort, lastNodeHeight))
 	}
 
 	return nil

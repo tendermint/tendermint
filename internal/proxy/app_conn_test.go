@@ -18,9 +18,9 @@ import (
 //----------------------------------------
 
 type appConnTestI interface {
-	EchoAsync(ctx context.Context, msg string) (*abciclient.ReqRes, error)
-	FlushSync(context.Context) error
-	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+	Echo(context.Context, string) (*types.ResponseEcho, error)
+	Flush(context.Context) error
+	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
 }
 
 type appConnTest struct {
@@ -31,16 +31,16 @@ func newAppConnTest(appConn abciclient.Client) appConnTestI {
 	return &appConnTest{appConn}
 }
 
-func (app *appConnTest) EchoAsync(ctx context.Context, msg string) (*abciclient.ReqRes, error) {
-	return app.appConn.EchoAsync(ctx, msg)
+func (app *appConnTest) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+	return app.appConn.Echo(ctx, msg)
 }
 
-func (app *appConnTest) FlushSync(ctx context.Context) error {
-	return app.appConn.FlushSync(ctx)
+func (app *appConnTest) Flush(ctx context.Context) error {
+	return app.appConn.Flush(ctx)
 }
 
-func (app *appConnTest) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	return app.appConn.InfoSync(ctx, req)
+func (app *appConnTest) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+	return app.appConn.Info(ctx, req)
 }
 
 //----------------------------------------
@@ -70,18 +70,18 @@ func TestEcho(t *testing.T) {
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
-		_, err = proxy.EchoAsync(ctx, fmt.Sprintf("echo-%v", i))
+		_, err = proxy.Echo(ctx, fmt.Sprintf("echo-%v", i))
 		if err != nil {
 			t.Error(err)
 		}
 		// flush sometimes
 		if i%128 == 0 {
-			if err := proxy.FlushSync(ctx); err != nil {
+			if err := proxy.Flush(ctx); err != nil {
 				t.Error(err)
 			}
 		}
 	}
-	if err := proxy.FlushSync(ctx); err != nil {
+	if err := proxy.Flush(ctx); err != nil {
 		t.Error(err)
 	}
 }
@@ -112,23 +112,23 @@ func BenchmarkEcho(b *testing.B) {
 	b.StartTimer() // Start benchmarking tests
 
 	for i := 0; i < b.N; i++ {
-		_, err = proxy.EchoAsync(ctx, echoString)
+		_, err = proxy.Echo(ctx, echoString)
 		if err != nil {
 			b.Error(err)
 		}
 		// flush sometimes
 		if i%128 == 0 {
-			if err := proxy.FlushSync(ctx); err != nil {
+			if err := proxy.Flush(ctx); err != nil {
 				b.Error(err)
 			}
 		}
 	}
-	if err := proxy.FlushSync(ctx); err != nil {
+	if err := proxy.Flush(ctx); err != nil {
 		b.Error(err)
 	}
 
 	b.StopTimer()
-	// info := proxy.InfoSync(types.RequestInfo{""})
+	// info := proxy.Info(types.RequestInfo{""})
 	// b.Log("N: ", b.N, info)
 }
 
@@ -154,7 +154,7 @@ func TestInfo(t *testing.T) {
 	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
-	resInfo, err := proxy.InfoSync(ctx, RequestInfo)
+	resInfo, err := proxy.Info(ctx, RequestInfo)
 	require.NoError(t, err)
 
 	if resInfo.Data != "{\"size\":0}" {

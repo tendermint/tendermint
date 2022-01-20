@@ -442,7 +442,7 @@ func cmdEcho(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		msg = args[0]
 	}
-	res, err := client.EchoSync(cmd.Context(), msg)
+	res, err := client.Echo(cmd.Context(), msg)
 	if err != nil {
 		return err
 	}
@@ -460,7 +460,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.InfoSync(cmd.Context(), types.RequestInfo{Version: version})
+	res, err := client.Info(cmd.Context(), types.RequestInfo{Version: version})
 	if err != nil {
 		return err
 	}
@@ -485,7 +485,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(cmd.Context(), types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.DeliverTx(cmd.Context(), types.RequestDeliverTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -511,7 +511,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(cmd.Context(), types.RequestCheckTx{Tx: txBytes})
+	res, err := client.CheckTx(cmd.Context(), types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -526,7 +526,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res, err := client.CommitSync(cmd.Context())
+	res, err := client.Commit(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -551,7 +551,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resQuery, err := client.QuerySync(cmd.Context(), types.RequestQuery{
+	resQuery, err := client.Query(cmd.Context(), types.RequestQuery{
 		Data:   queryBytes,
 		Path:   flagPath,
 		Height: int64(flagHeight),
