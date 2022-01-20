@@ -15,8 +15,8 @@ type AppConnQuery struct {
 	mock.Mock
 }
 
-// EchoSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnQuery) EchoSync(_a0 context.Context, _a1 string) (*types.ResponseEcho, error) {
+// Echo provides a mock function with given fields: _a0, _a1
+func (_m *AppConnQuery) Echo(_a0 context.Context, _a1 string) (*types.ResponseEcho, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseEcho
@@ -52,8 +52,8 @@ func (_m *AppConnQuery) Error() error {
 	return r0
 }
 
-// InfoSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnQuery) InfoSync(_a0 context.Context, _a1 types.RequestInfo) (*types.ResponseInfo, error) {
+// Info provides a mock function with given fields: _a0, _a1
+func (_m *AppConnQuery) Info(_a0 context.Context, _a1 types.RequestInfo) (*types.ResponseInfo, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseInfo
@@ -75,8 +75,8 @@ func (_m *AppConnQuery) InfoSync(_a0 context.Context, _a1 types.RequestInfo) (*t
 	return r0, r1
 }
 
-// QuerySync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnQuery) QuerySync(_a0 context.Context, _a1 types.RequestQuery) (*types.ResponseQuery, error) {
+// Query provides a mock function with given fields: _a0, _a1
+func (_m *AppConnQuery) Query(_a0 context.Context, _a1 types.RequestQuery) (*types.ResponseQuery, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseQuery

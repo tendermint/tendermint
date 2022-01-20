@@ -33,35 +33,24 @@ type Client interface {
 
 	// Asynchronous requests
 	FlushAsync(context.Context) (*ReqRes, error)
-	EchoAsync(ctx context.Context, msg string) (*ReqRes, error)
-	InfoAsync(context.Context, types.RequestInfo) (*ReqRes, error)
 	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*ReqRes, error)
 	CheckTxAsync(context.Context, types.RequestCheckTx) (*ReqRes, error)
-	QueryAsync(context.Context, types.RequestQuery) (*ReqRes, error)
-	CommitAsync(context.Context) (*ReqRes, error)
-	InitChainAsync(context.Context, types.RequestInitChain) (*ReqRes, error)
-	BeginBlockAsync(context.Context, types.RequestBeginBlock) (*ReqRes, error)
-	EndBlockAsync(context.Context, types.RequestEndBlock) (*ReqRes, error)
-	ListSnapshotsAsync(context.Context, types.RequestListSnapshots) (*ReqRes, error)
-	OfferSnapshotAsync(context.Context, types.RequestOfferSnapshot) (*ReqRes, error)
-	LoadSnapshotChunkAsync(context.Context, types.RequestLoadSnapshotChunk) (*ReqRes, error)
-	ApplySnapshotChunkAsync(context.Context, types.RequestApplySnapshotChunk) (*ReqRes, error)
 
 	// Synchronous requests
-	FlushSync(context.Context) error
-	EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error)
-	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
-	DeliverTxSync(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
-	CheckTxSync(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
-	QuerySync(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
-	CommitSync(context.Context) (*types.ResponseCommit, error)
-	InitChainSync(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
-	BeginBlockSync(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
-	ListSnapshotsSync(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
-	OfferSnapshotSync(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
-	LoadSnapshotChunkSync(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
-	ApplySnapshotChunkSync(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	Flush(context.Context) error
+	Echo(ctx context.Context, msg string) (*types.ResponseEcho, error)
+	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+	DeliverTx(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
+	CheckTx(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
+	Query(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
+	Commit(context.Context) (*types.ResponseCommit, error)
+	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
+	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
+	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	ListSnapshots(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
+	OfferSnapshot(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
+	LoadSnapshotChunk(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
+	ApplySnapshotChunk(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
 }
 
 //----------------------------------------

@@ -684,26 +684,20 @@ func TestMockProxyApp(t *testing.T) {
 
 		abciRes := new(tmstate.ABCIResponses)
 		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
-		// Execute transactions and get hash.
-		proxyCb := func(req *abci.Request, res *abci.Response) {
-			if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
-				// TODO: make use of res.Log
-				// TODO: make use of this info
-				// Blocks may include invalid txs.
-				txRes := r.DeliverTx
-				if txRes.Code == abci.CodeTypeOK {
-					validTxs++
-				} else {
-					invalidTxs++
-				}
-				abciRes.DeliverTxs[txIndex] = txRes
-				txIndex++
-			}
-		}
-		mock.SetResponseCallback(proxyCb)
 
 		someTx := []byte("tx")
-		_, err = mock.DeliverTxAsync(ctx, abci.RequestDeliverTx{Tx: someTx})
+		resp, err := mock.DeliverTx(ctx, abci.RequestDeliverTx{Tx: someTx})
+		// TODO: make use of res.Log
+		// TODO: make use of this info
+		// Blocks may include invalid txs.
+		if resp.Code == abci.CodeTypeOK {
+			validTxs++
+		} else {
+			invalidTxs++
+		}
+		abciRes.DeliverTxs[txIndex] = resp
+		txIndex++
+
 		assert.NoError(t, err)
 	})
 	assert.True(t, validTxs == 1)
@@ -844,7 +838,7 @@ func testHandshakeReplay(
 	require.NoError(t, err, "Error on abci handshake")
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync(ctx, abci.RequestInfo{Version: ""})
+	res, err := proxyApp.Query().Info(ctx, abci.RequestInfo{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -910,7 +904,7 @@ func buildAppStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := proxyApp.Consensus().InitChainSync(ctx, abci.RequestInitChain{
+	_, err := proxyApp.Consensus().InitChain(ctx, abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)
@@ -967,7 +961,7 @@ func buildTMStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := proxyApp.Consensus().InitChainSync(ctx, abci.RequestInitChain{
+	_, err := proxyApp.Consensus().InitChain(ctx, abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)
