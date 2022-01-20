@@ -869,7 +869,8 @@ func makeGenesisState(t *testing.T, cfg *config.Config, args genesisStateArgs) (
 		args.Time = time.Now()
 	}
 	genDoc := factory.GenesisDoc(cfg, args.Time, valSet.Validators, args.Params)
-	s0, _ := sm.MakeGenesisState(genDoc)
+	s0, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 	return s0, privValidators
 }
 

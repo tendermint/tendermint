@@ -441,7 +441,7 @@ func TestTimelyProposal(t *testing.T) {
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
 	results := pbtsTest.run()
-	assert.True(t, results.height2.prevote.BlockID.Hash != nil)
+	require.NotNil(t, results.height2.prevote.BlockID.Hash)
 }
 
 func TestTooFarInThePastProposal(t *testing.T) {
@@ -464,9 +464,8 @@ func TestTooFarInThePastProposal(t *testing.T) {
 
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
 	results := pbtsTest.run()
-	time.Sleep(1 * time.Second)
 
-	assert.True(t, results.height2.prevote.BlockID.Hash == nil)
+	require.Nil(t, results.height2.prevote.BlockID.Hash)
 }
 
 func TestTooFarInTheFutureProposal(t *testing.T) {
@@ -491,5 +490,5 @@ func TestTooFarInTheFutureProposal(t *testing.T) {
 	pbtsTest := newPBTSTestHarness(ctx, t, cfg)
 	results := pbtsTest.run()
 
-	assert.True(t, results.height2.prevote.BlockID.Hash == nil)
+	require.Nil(t, results.height2.prevote.BlockID.Hash)
 }
