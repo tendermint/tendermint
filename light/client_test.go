@@ -37,6 +37,8 @@ func init() {
 }
 
 func TestClient(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var (
 		keys        = genPrivKeys(4)
 		vals        = keys.ToValidators(20, 10)

@@ -294,11 +294,10 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 }
 
 func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
-	var height int64 = 10
-	conflictingVals, conflictingPrivVals := factory.ValidatorSet(ctx, t, 5, 10)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	var height int64 = 10
+	conflictingVals, conflictingPrivVals := factory.ValidatorSet(ctx, t, 5, 10)
 
 	conflictingHeader := factory.MakeHeader(t, &types.Header{
 		ChainID:        evidenceChainID,
