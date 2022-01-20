@@ -361,24 +361,6 @@ func validatePrecommit(
 	}
 }
 
-func validatePrevoteAndPrecommit(
-	ctx context.Context,
-	t *testing.T,
-	cs *State,
-	thisRound,
-	lockRound int32,
-	privVal *validatorStub,
-	votedBlockHash,
-	lockedBlockHash []byte,
-) {
-	// verify the prevote
-	validatePrevote(ctx, t, cs, thisRound, privVal, votedBlockHash)
-	// verify precommit
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-	validatePrecommit(ctx, t, cs, thisRound, lockRound, privVal, votedBlockHash, lockedBlockHash)
-}
-
 func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
 	t.Helper()
 
@@ -686,10 +668,17 @@ func ensurePrevote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, r
 	t.Helper()
 	ensureVote(t, voteCh, height, round, tmproto.PrevoteType)
 }
+
 func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
 	t.Helper()
 	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
 }
+
+func ensurePrecommitMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrecommitType)
+}
+
 func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
 	t.Helper()
 	select {
