@@ -81,7 +81,7 @@ func setup(
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc(VoteSetBitsChannel, size))
 
 	ctx, cancel := context.WithCancel(ctx)
-	// Canceled during cleanup (see below).
+	t.Cleanup(cancel)
 
 	chCreator := func(nodeID types.NodeID) p2p.ChannelCreator {
 		return func(ctx context.Context, desc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
@@ -142,6 +142,7 @@ func setup(
 
 		require.NoError(t, reactor.Start(ctx))
 		require.True(t, reactor.IsRunning())
+		t.Cleanup(reactor.Wait)
 
 		i++
 	}
@@ -151,10 +152,7 @@ func setup(
 	// start the in-memory network and connect all peers with each other
 	rts.network.Start(ctx, t)
 
-	t.Cleanup(func() {
-		cancel()
-		leaktest.Check(t)
-	})
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }

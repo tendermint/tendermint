@@ -45,7 +45,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
 	rts := &reactorTestSuite{
-		logger:          log.TestingLogger().With("testCase", t.Name()),
+		logger:          log.NewNopLogger().With("testCase", t.Name()),
 		network:         p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:        make(map[types.NodeID]*Reactor, numNodes),
 		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
@@ -95,8 +95,10 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		for nodeID := range rts.reactors {
 			if rts.reactors[nodeID].IsRunning() {
 				require.NoError(t, rts.reactors[nodeID].Stop())
+				rts.reactors[nodeID].Wait()
 				require.False(t, rts.reactors[nodeID].IsRunning())
 			}
+
 		}
 	})
 
