@@ -1200,11 +1200,11 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 
 	// if not a validator, we're done
 	if !cs.Validators.HasAddress(addr) {
-		logger.Debug("node is not a validator", "addr", addr, "vals", cs.Validators)
+		logger.Debug("propose step; not proposing since node is not a validator",
+			"addr", addr,
+			"vals", cs.Validators)
 		return
 	}
-
-	logger.Debug("node is a validator")
 
 	if cs.isProposer(addr) {
 		logger.Debug(
