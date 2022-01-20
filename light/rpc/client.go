@@ -131,20 +131,12 @@ func (c *Client) OnStop() {
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
 	lightClientInfo := c.lc.Status(ctx)
 
-	// The light client status should still return the current SyncInfo that can be obtained
-	// from the Primary
-	fullNodeInfo, err := c.next.Status(ctx)
-
-	syncInfo := coretypes.SyncInfo{}
-	if err == nil {
-		syncInfo = fullNodeInfo.SyncInfo
-	}
 	return &coretypes.ResultStatus{
 		NodeInfo:        types.NodeInfo{},
-		SyncInfo:        syncInfo,
+		SyncInfo:        coretypes.SyncInfo{},
 		ValidatorInfo:   coretypes.ValidatorInfo{},
 		LightClientInfo: *lightClientInfo,
-	}, err
+	}, nil
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {

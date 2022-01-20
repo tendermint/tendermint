@@ -1159,11 +1159,17 @@ func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 			primaryNotInWitnessList = 0
 		}
 	}
+
 	return &types.LightClientInfo{
 		PrimaryID:         c.primary.ID(),
 		WitnessesID:       chunks,
 		NumPeers:          len(chunks) + primaryNotInWitnessList,
 		LastTrustedHeight: c.latestTrustedBlock.Height,
 		LastTrustedHash:   c.latestTrustedBlock.Hash(),
+		LatestBlockTime:   c.latestTrustedBlock.Time,
+		TrustingPeriod:    c.trustingPeriod.String(),
+		// The caller of /status can deduce this from the two variables above
+		// Having a boolean flag improves readbility
+		TrustedBlockExpired: HeaderExpired(c.latestTrustedBlock.SignedHeader, c.trustingPeriod, time.Now()),
 	}
 }
