@@ -167,3 +167,93 @@ func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*type
 		}
 	}
 }
+
+func TestClientStatusRPC(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	conf, err := rpctest.CreateConfig(t.Name())
+	require.NoError(t, err)
+
+	// Start a test application
+	app := kvstore.NewApplication()
+
+	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, closer(ctx)) }()
+
+	dbDir, err := os.MkdirTemp("", "light-client-test-status-example")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(dbDir) })
+
+	chainID := conf.ChainID()
+
+	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
+	require.NoError(t, err)
+
+	// give Tendermint time to generate some blocks
+	block, err := waitForBlock(ctx, primary, 2)
+	require.NoError(t, err)
+
+	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+	require.NoError(t, err)
+
+	// In order to not create a full testnet to verify whether we get the correct IPs
+	// if we have more than one witness, we add the primary multiple times
+	// TODO This should be buggy behavior, we should not be allowed to add the same nodes as witnesses
+	witnesses := []provider.Provider{primary, primary, primary}
+
+	c, err := light.NewClient(ctx,
+		chainID,
+		light.TrustOptions{
+			Period: 504 * time.Hour, // 21 days
+			Height: 2,
+			Hash:   block.Hash(),
+		},
+		primary,
+		witnesses,
+		dbs.New(db),
+		light.Logger(log.TestingLogger()),
+	)
+	require.NoError(t, err)
+
+	defer func() { require.NoError(t, c.Cleanup()) }()
+
+	lightStatus := c.Status(ctx)
+
+	// Verify primary IP
+	require.True(t, lightStatus.PrimaryID == primary.ID())
+
+	// Verify IPs of witnesses
+	require.ElementsMatch(t, mapProviderArrayToIP(witnesses), lightStatus.WitnessesID)
+
+	// Verify that number of peers is equal to number of witnesses  (+ 1 if the primary is not a witness)
+	require.Equal(t, len(witnesses)+1*primaryNotInWitnessList(witnesses, primary), lightStatus.NumPeers)
+
+	// Verify that the last trusted hash returned matches the stored hash of the trusted
+	// block at the last trusted height.
+	blockAtTrustedHeight, err := c.TrustedLightBlock(lightStatus.LastTrustedHeight)
+	require.NoError(t, err)
+
+	require.EqualValues(t, lightStatus.LastTrustedHash, blockAtTrustedHeight.Hash())
+
+}
+
+// Extract the IP address of all the providers within an array
+func mapProviderArrayToIP(el []provider.Provider) []string {
+	ips := make([]string, len(el))
+	for i, v := range el {
+		ips[i] = v.ID()
+	}
+	return ips
+}
+
+// If the primary is not in the witness list, we will return 1
+// Otherwise, return 0
+func primaryNotInWitnessList(witnesses []provider.Provider, primary provider.Provider) int {
+	for _, el := range witnesses {
+		if el == primary {
+			return 0
+		}
+	}
+	return 1
+}

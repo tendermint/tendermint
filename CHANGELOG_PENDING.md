@@ -25,6 +25,7 @@ Special thanks to external contributors on this release:
 
   - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
   - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+  - [p2p] [\#7594](https://github.com/tendermint/tendermint/pull/7594) always advertise self, to enable mutual address discovery. (@altergui)
 
 - Go API
 
@@ -59,6 +60,7 @@ Special thanks to external contributors on this release:
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 - [node] \#7521 Define concrete type for seed node implementation (@spacech1mp)
 - [rpc] \#7612 paginate mempool /unconfirmed_txs rpc endpoint (@spacech1mp)
+- [light] [\#7536](https://github.com/tendermint/tendermint/pull/7536) rpc /status call returns info about the light client (@jmalicevic)
 
 ### BUG FIXES
 

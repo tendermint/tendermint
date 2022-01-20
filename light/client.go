@@ -13,6 +13,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -1145,4 +1146,30 @@ func (c *Client) providerShouldBeRemoved(err error) bool {
 	return errors.As(err, &provider.ErrUnreliableProvider{}) ||
 		errors.As(err, &provider.ErrBadLightBlock{}) ||
 		errors.Is(err, provider.ErrConnectionClosed)
+}
+
+func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
+	chunks := make([]string, len(c.witnesses))
+
+	// If primary is in witness list we do not want to count it twice in the number of peers
+	primaryNotInWitnessList := 1
+	for i, val := range c.witnesses {
+		chunks[i] = val.ID()
+		if chunks[i] == c.primary.ID() {
+			primaryNotInWitnessList = 0
+		}
+	}
+
+	return &types.LightClientInfo{
+		PrimaryID:         c.primary.ID(),
+		WitnessesID:       chunks,
+		NumPeers:          len(chunks) + primaryNotInWitnessList,
+		LastTrustedHeight: c.latestTrustedBlock.Height,
+		LastTrustedHash:   c.latestTrustedBlock.Hash(),
+		LatestBlockTime:   c.latestTrustedBlock.Time,
+		TrustingPeriod:    c.trustingPeriod.String(),
+		// The caller of /status can deduce this from the two variables above
+		// Having a boolean flag improves readbility
+		TrustedBlockExpired: HeaderExpired(c.latestTrustedBlock.SignedHeader, c.trustingPeriod, time.Now()),
+	}
 }

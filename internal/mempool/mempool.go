@@ -176,7 +176,7 @@ func (txmp *TxMempool) SizeBytes() int64 {
 //
 // NOTE: The caller must obtain a write-lock prior to execution.
 func (txmp *TxMempool) FlushAppConn(ctx context.Context) error {
-	return txmp.proxyAppConn.FlushSync(ctx)
+	return txmp.proxyAppConn.Flush(ctx)
 }
 
 // WaitForNextTx returns a blocking channel that will be closed when the next
