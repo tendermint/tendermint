@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -103,7 +104,9 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 
 func setupStateStore(t *testing.T, height int64) state.Store {
 	stateStore := state.NewStore(dbm.NewMemDB())
-	valSet, _ := factory.ValidatorSet(t, 5, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	valSet, _ := factory.ValidatorSet(t, ctx, 5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = 10

@@ -383,7 +383,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	valSet, privVals := factory.ValidatorSet(t, n, 30)
+	valSet, privVals := factory.ValidatorSet(t, ctx, n, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	states := make([]*State, n)
 	logger := consensusLogger()

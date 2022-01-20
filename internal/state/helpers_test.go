@@ -267,7 +267,7 @@ func makeRandomStateFromConsensusParams(
 	lastHeightConsensusParamsChanged int64,
 ) sm.State {
 	t.Helper()
-	val, _, err := factory.Validator(10 + int64(rand.Uint32()))
+	val, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{

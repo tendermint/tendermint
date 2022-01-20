@@ -522,7 +522,7 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub) {
 	t.Helper()
 	// Get State
-	state, privVals := makeGenesisState(t, cfg, genesisStateArgs{
+	state, privVals := makeGenesisState(t, ctx, cfg, genesisStateArgs{
 		Validators: nValidators,
 	})
 
@@ -734,7 +734,7 @@ func makeConsensusState(
 ) ([]*State, cleanupFunc) {
 	t.Helper()
 
-	valSet, privVals := factory.ValidatorSet(t, nValidators, 30)
+	valSet, privVals := factory.ValidatorSet(t, ctx, nValidators, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
@@ -795,7 +795,7 @@ func randConsensusNetWithPeers(
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
 	t.Helper()
 
-	valSet, privVals := factory.ValidatorSet(t, nValidators, testMinPower)
+	valSet, privVals := factory.ValidatorSet(t, ctx, nValidators, testMinPower)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	css := make([]*State, nPeers)
 	t.Helper()
@@ -853,7 +853,7 @@ type genesisStateArgs struct {
 	Time       time.Time
 }
 
-func makeGenesisState(t *testing.T, cfg *config.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
+func makeGenesisState(t *testing.T, ctx context.Context, cfg *config.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
 	t.Helper()
 	if args.Power == 0 {
 		args.Power = 1
@@ -861,7 +861,7 @@ func makeGenesisState(t *testing.T, cfg *config.Config, args genesisStateArgs) (
 	if args.Validators == 0 {
 		args.Power = 4
 	}
-	valSet, privValidators := factory.ValidatorSet(t, args.Validators, args.Power)
+	valSet, privValidators := factory.ValidatorSet(t, ctx, args.Validators, args.Power)
 	if args.Params == nil {
 		args.Params = types.DefaultConsensusParams()
 	}

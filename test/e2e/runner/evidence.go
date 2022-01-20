@@ -290,7 +290,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 
 func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
 ) ([]types.PrivValidator, *types.ValidatorSet, error) {
-	newVal, newPrivVal, err := factory.Validator(10)
+	newVal, newPrivVal, err := factory.Validator(ctx, 10)
 	if err != nil {
 		return nil, nil, err
 	}
