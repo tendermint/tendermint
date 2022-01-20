@@ -23,7 +23,7 @@ func TestProperSyncCalls(t *testing.T) {
 	defer cancel()
 
 	app := slowApp{}
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	_, c := setupClientServer(ctx, t, logger, app)
 
@@ -33,7 +33,10 @@ func TestProperSyncCalls(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, c.Flush(ctx))
 		assert.NotNil(t, rsp)
-		resp <- c.Error()
+		select {
+		case <-ctx.Done():
+		case resp <- c.Error():
+		}
 	}()
 
 	select {

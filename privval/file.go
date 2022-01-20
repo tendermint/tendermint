@@ -371,8 +371,8 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 
 			vote.Timestamp = timestamp
 			vote.Signature = lss.Signature
-			return nil
 		}
+		return nil
 	}
 
 	// It passed the checks. Sign the vote
