@@ -84,9 +84,7 @@ func TestStateProposerSelection0(t *testing.T) {
 	pv, err := cs1.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 	address := pv.Address()
-	if !bytes.Equal(prop.Address, address) {
-		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
-	}
+	require.Truef(t, bytes.Equal(prop.Address, address), "expected proposer to be validator %d. Got %X", 0, prop.Address)
 
 	// Wait for complete proposal.
 	ensureNewProposal(t, proposalCh, height, round)
@@ -240,16 +238,14 @@ func TestStateBadProposal(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
+	err = vs2.SignProposal(ctx, config.ChainID(), p)
+	require.NoError(t, err)
 
 	proposal.Signature = p.Signature
 
 	// set the proposal block
-	if err := cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer")
+	require.NoError(t, err)
 
 	// start the machine
 	startTestRound(ctx, cs1, height, round)
@@ -301,9 +297,8 @@ func TestStateOversizedBlock(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
+	err = vs2.SignProposal(ctx, config.ChainID(), p)
+	require.NoError(t, err)
 	proposal.Signature = p.Signature
 
 	totalBytes := 0
@@ -312,9 +307,8 @@ func TestStateOversizedBlock(t *testing.T) {
 		totalBytes += len(part.Bytes)
 	}
 
-	if err := cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer")
+	require.NoError(t, err)
 
 	// start the machine
 	startTestRound(ctx, cs1, height, round)
@@ -606,9 +600,8 @@ func TestStateLock_NoPOL(t *testing.T) {
 	cs2, _ := makeState(ctx, t, config, logger, 2) // needed so generated block is different than locked block
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round+1)
-	if prop == nil || propBlock == nil {
-		t.Fatal("Failed to create proposal block with vs2")
-	}
+	require.NotNil(t, propBlock, "Failed to create proposal block with vs2")
+	require.NotNil(t, prop, "Failed to create proposal block with vs2")
 	propBlockID := types.BlockID{
 		Hash:          propBlock.Hash(),
 		PartSetHeader: partSet.Header(),
@@ -627,9 +620,8 @@ func TestStateLock_NoPOL(t *testing.T) {
 	// so set the proposal block
 	bps3, err := propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, bps3, ""); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, bps3, "")
+	require.NoError(t, err)
 
 	ensureNewProposal(t, proposalCh, height, round)
 
@@ -745,9 +737,8 @@ func TestStateLock_POLUpdateLock(t *testing.T) {
 		PartSetHeader: propBlockR1Parts.Header(),
 	}
 	require.NotEqual(t, propBlockR1Hash, initialBlockID.Hash)
-	if err := cs1.SetProposalAndBlock(ctx, propR1, propBlockR1, propBlockR1Parts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, propR1, propBlockR1, propBlockR1Parts, "some peer")
+	require.NoError(t, err)
 
 	ensureNewRound(t, newRoundCh, height, round)
 
@@ -845,13 +836,11 @@ func TestStateLock_POLRelock(t *testing.T) {
 	round++
 	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID, theBlock.Header.Time)
 	p := propR1.ToProto()
-	if err := vs2.SignProposal(ctx, cs1.state.ChainID, p); err != nil {
-		t.Fatalf("error signing proposal: %s", err)
-	}
+	err = vs2.SignProposal(ctx, cs1.state.ChainID, p)
+	require.NoError(t, err)
 	propR1.Signature = p.Signature
-	if err := cs1.SetProposalAndBlock(ctx, propR1, theBlock, theBlockParts, ""); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, propR1, theBlock, theBlockParts, "")
+	require.NoError(t, err)
 
 	ensureNewRound(t, newRoundCh, height, round)
 
@@ -1038,9 +1027,8 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 	require.NoError(t, err)
 	propBlockR1Hash := propBlockR1.Hash()
 	require.NotEqual(t, propBlockR1Hash, blockID.Hash)
-	if err := cs1.SetProposalAndBlock(ctx, propR1, propBlockR1, propBlockR1Parts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, propR1, propBlockR1, propBlockR1Parts, "some peer")
+	require.NoError(t, err)
 
 	ensureNewRound(t, newRoundCh, height, round)
 	ensureNewProposal(t, proposalCh, height, round)
@@ -1146,9 +1134,8 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	propBlockParts, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	require.NotEqual(t, propBlock.Hash(), blockID.Hash)
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, ""); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "")
+	require.NoError(t, err)
 
 	ensureNewRound(t, newRoundCh, height, round)
 
@@ -1182,9 +1169,8 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	prop, propBlock = decideProposal(ctx, t, cs3, vs3, vs3.Height, vs3.Round)
 	propBlockParts, err = propBlock.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, ""); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "")
+	require.NoError(t, err)
 
 	ensureNewRound(t, newRoundCh, height, round)
 
@@ -1271,9 +1257,8 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
 	require.NoError(t, err)
 	prop, propBlock := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round)
-	if prop == nil || propBlock == nil {
-		t.Fatal("Failed to create proposal block with vs2")
-	}
+	require.NotNil(t, propBlock, "Failed to create proposal block with vs2")
+	require.NotNil(t, prop, "Failed to create proposal block with vs2")
 	partSet, err := propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
 	secondBlockID := types.BlockID{
@@ -1438,9 +1423,8 @@ func TestStateLock_POLSafety1(t *testing.T) {
 	ensureNewRound(t, newRoundCh, height, round)
 
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer")
+	require.NoError(t, err)
 	/*Round2
 	// we timeout and prevote our lock
 	// a polka happened but we didn't see it!
@@ -1548,9 +1532,8 @@ func TestStateLock_POLSafety2(t *testing.T) {
 	startTestRound(ctx, cs1, height, round)
 	ensureNewRound(t, newRoundCh, height, round)
 
-	if err := cs1.SetProposalAndBlock(ctx, prop1, propBlock1, propBlockParts1, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop1, propBlock1, propBlockParts1, "some peer")
+	require.NoError(t, err)
 	ensureNewProposal(t, proposalCh, height, round)
 
 	ensurePrevote(t, voteCh, height, round)
@@ -1575,15 +1558,13 @@ func TestStateLock_POLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, round, 0, propBlockID0, propBlock0.Header.Time)
 	p := newProp.ToProto()
-	if err := vs3.SignProposal(ctx, config.ChainID(), p); err != nil {
-		t.Fatal(err)
-	}
+	err = vs3.SignProposal(ctx, config.ChainID(), p)
+	require.NoError(t, err)
 
 	newProp.Signature = p.Signature
 
-	if err := cs1.SetProposalAndBlock(ctx, newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, newProp, propBlock0, propBlockParts0, "some peer")
+	require.NoError(t, err)
 
 	// Add the pol votes
 	addVotes(cs1, prevotes...)
@@ -1716,15 +1697,13 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	round++
 	propR2 := types.NewProposal(height, round, 1, r1BlockID, propBlockR1.Header.Time)
 	p := propR2.ToProto()
-	if err := vs3.SignProposal(ctx, cs1.state.ChainID, p); err != nil {
-		t.Fatalf("error signing proposal: %s", err)
-	}
+	err = vs3.SignProposal(ctx, cs1.state.ChainID, p)
+	require.NoError(t, err)
 	propR2.Signature = p.Signature
 
 	// cs1 receives a proposal for D, the block that received a POL in round 1.
-	if err := cs1.SetProposalAndBlock(ctx, propR2, propBlockR1, propBlockR1Parts, ""); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, propR2, propBlockR1, propBlockR1Parts, "")
+	require.NoError(t, err)
 
 	ensureNewRound(t, newRoundCh, height, round)
 
@@ -1968,9 +1947,8 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 
 	partSet, err = propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, partSet, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, partSet, "some peer")
+	require.NoError(t, err)
 
 	ensureNewProposal(t, proposalCh, height, round)
 	rs := cs1.GetRoundState()
@@ -2206,9 +2184,8 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(blockID.PartSetHeader))
 	partSet, err = propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, partSet, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, partSet, "some peer")
+	require.NoError(t, err)
 
 	ensureNewProposal(t, proposalCh, height, round)
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -2350,9 +2327,8 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	propBlockParts, err := propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
 
-	if err := cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
+	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer")
+	require.NoError(t, err)
 	ensureNewProposal(t, proposalCh, height+1, 0)
 
 	rs = cs1.GetRoundState()
@@ -2361,67 +2337,6 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 		rs.TriggeredTimeoutPrecommit,
 		"triggeredTimeoutPrecommit should be false at the beginning of each height")
 }
-
-//------------------------------------------------------------------------------------------
-// SlashingSuite
-// TODO: Slashing
-
-/*
-func TestStateSlashing_Prevotes(t *testing.T) {
-	cs1, vss := randState(2)
-	vs2 := vss[1]
-
-
-	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	timeoutWaitCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryTimeoutWait)
-	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
-	voteCh := subscribeToVoter(ctx, t, cs1, cs1.privValidator.GetAddress())
-
-	// start round and wait for propose and prevote
-	startTestRound(ctx, cs1, cs1.Height, 0)
-	<-newRoundCh
-	re := <-proposalCh
-	<-voteCh // prevote
-
-	rs := re.(types.EventDataRoundState).RoundState.(*cstypes.RoundState)
-
-	// we should now be stuck in limbo forever, waiting for more prevotes
-	// add one for a different block should cause us to go into prevote wait
-	hash := rs.ProposalBlock.Hash()
-	hash[0] = byte(hash[0]+1) % 255
-	signAddVotes(tmproto.PrevoteType, hash, config.ChainID(), blockID,
-		rs.ProposalBlock.Hash(), config.ChainID(), rs.ProposalBlockParts.Header(), vs2)
-
-	// XXX: Check for existence of Dupeout info
-}
-
-func TestStateSlashing_Precommits(t *testing.T) {
-	cs1, vss := randState(2)
-	vs2 := vss[1]
-
-
-	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	timeoutWaitCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryTimeoutWait)
-	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
-	voteCh := subscribeToVoter(ctx, t, cs1, cs1.privValidator.GetAddress())
-
-	// start round and wait for propose and prevote
-	startTestRound(ctx, cs1, cs1.Height, 0)
-	<-newRoundCh
-	re := <-proposalCh
-	<-voteCh // prevote
-
-	// add prevote from vs2
-	signAddVotes(tmproto.PrevoteType, rs.ProposalBlock.Hash(),config.ChainID(), blockID, waiting for more prevotes
-	// add one for a different block should cause us to go into prevote wait
-	hash := rs.ProposalBlock.Hash()
-	hash[0] = byte(hash[0]+1) % 255
-	signAddVotes(tmproto.PrecommitType, hash, config.ChainID(), blockID,
-		rs.ProposalBlock.Hash(), config.ChainID(), rs.ProposalBlockParts.Header(), vs2)
-
-	// XXX: Check for existence of Dupeout info
-}
-*/
 
 //------------------------------------------------------------------------------------------
 // CatchupSuite
@@ -2667,9 +2582,8 @@ func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 	// Create a proposal with a timestamp that does not match the timestamp of the block.
 	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time.Add(time.Millisecond))
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
+	err = vs2.SignProposal(ctx, config.ChainID(), p)
+	require.NoError(t, err)
 	proposal.Signature = p.Signature
 	require.NoError(t, cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"))
 
@@ -2717,9 +2631,8 @@ func TestStateTimestamp_ProposalMatch(t *testing.T) {
 	// Create a proposal with a timestamp that matches the timestamp of the block.
 	proposal := types.NewProposal(vs2.Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(ctx, config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
+	err = vs2.SignProposal(ctx, config.ChainID(), p)
+	require.NoError(t, err)
 	proposal.Signature = p.Signature
 	require.NoError(t, cs1.SetProposalAndBlock(ctx, proposal, propBlock, propBlockParts, "some peer"))
 
@@ -2748,9 +2661,7 @@ func subscribe(
 		ClientID: testSubscriber,
 		Query:    q,
 	})
-	if err != nil {
-		t.Fatalf("Failed to subscribe %q to %v: %v", testSubscriber, q, err)
-	}
+	require.NoErrorf(t, err, "Failed to subscribe %q to %v: %v", testSubscriber, q, err)
 	ch := make(chan tmpubsub.Message)
 	go func() {
 		for {
