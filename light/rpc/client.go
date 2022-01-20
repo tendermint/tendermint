@@ -32,6 +32,7 @@ type LightClient interface {
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
 	VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error)
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
+	Status(ctx context.Context) *types.LightClientInfo
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -124,8 +125,18 @@ func (c *Client) OnStop() {
 	}
 }
 
+// Returns the status of the light client. Previously this was querying the primary connected to the client
+// As a consequence of this change, running /status on the light client will return nil for SyncInfo, NodeInfo
+// and ValdiatorInfo.
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
-	return c.next.Status(ctx)
+	lightClientInfo := c.lc.Status(ctx)
+
+	return &coretypes.ResultStatus{
+		NodeInfo:        types.NodeInfo{},
+		SyncInfo:        coretypes.SyncInfo{},
+		ValidatorInfo:   coretypes.ValidatorInfo{},
+		LightClientInfo: *lightClientInfo,
+	}, nil
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {

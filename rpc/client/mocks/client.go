@@ -713,13 +713,13 @@ func (_m *Client) TxSearch(ctx context.Context, query string, prove bool, page *
 	return r0, r1
 }
 
-// UnconfirmedTxs provides a mock function with given fields: ctx, limit
-func (_m *Client) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	ret := _m.Called(ctx, limit)
+// UnconfirmedTxs provides a mock function with given fields: ctx, page, perPage
+func (_m *Client) UnconfirmedTxs(ctx context.Context, page *int, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
+	ret := _m.Called(ctx, page, perPage)
 
 	var r0 *coretypes.ResultUnconfirmedTxs
-	if rf, ok := ret.Get(0).(func(context.Context, *int) *coretypes.ResultUnconfirmedTxs); ok {
-		r0 = rf(ctx, limit)
+	if rf, ok := ret.Get(0).(func(context.Context, *int, *int) *coretypes.ResultUnconfirmedTxs); ok {
+		r0 = rf(ctx, page, perPage)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*coretypes.ResultUnconfirmedTxs)
@@ -727,8 +727,8 @@ func (_m *Client) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.Re
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *int) error); ok {
-		r1 = rf(ctx, limit)
+	if rf, ok := ret.Get(1).(func(context.Context, *int, *int) error); ok {
+		r1 = rf(ctx, page, perPage)
 	} else {
 		r1 = ret.Error(1)
 	}

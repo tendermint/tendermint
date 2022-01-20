@@ -99,14 +99,14 @@ type FilePVLastSignState struct {
 	filePath string
 }
 
-// CheckHRS checks the given height, round, step (HRS) against that of the
+// checkHRS checks the given height, round, step (HRS) against that of the
 // FilePVLastSignState. It returns an error if the arguments constitute a regression,
 // or if they match but the SignBytes are empty.
 // The returned boolean indicates whether the last Signature should be reused -
 // it returns true if the HRS matches the arguments and the SignBytes are not empty (indicating
 // we have already signed for this HRS, and can reuse the existing signature).
 // It panics if the HRS matches the arguments, there's a SignBytes, but no Signature.
-func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (bool, error) {
+func (lss *FilePVLastSignState) checkHRS(height int64, round int32, step int8) (bool, error) {
 
 	if lss.Height > height {
 		return false, fmt.Errorf("height regression. Got %v, last height %v", height, lss.Height)
@@ -345,7 +345,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	round := vote.Round
 	lss := pv.LastSignState
 
-	sameHRS, err := lss.CheckHRS(height, round, step)
+	sameHRS, err := lss.checkHRS(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -388,14 +388,12 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
-// It may need to set the timestamp as well if the proposal is otherwise the same as
-// a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
 	lss := pv.LastSignState
 
-	sameHRS, err := lss.CheckHRS(height, round, step)
+	sameHRS, err := lss.checkHRS(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -405,23 +403,12 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
-	// If they only differ by timestamp, use last timestamp and signature
-	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, lss.SignBytes) {
-			proposal.Signature = lss.Signature
-		} else {
-			timestamp, ok, err := checkProposalsOnlyDifferByTimestamp(lss.SignBytes, signBytes)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return errors.New("conflicting data")
-			}
-			proposal.Timestamp = timestamp
-			proposal.Signature = lss.Signature
-			return nil
+		if !bytes.Equal(signBytes, lss.SignBytes) {
+			return errors.New("conflicting data")
 		}
+		proposal.Signature = lss.Signature
+		return nil
 	}
 
 	// It passed the checks. Sign the proposal
@@ -466,24 +453,4 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	newVote.Timestamp = now
 
 	return lastTime, proto.Equal(&newVote, &lastVote), nil
-}
-
-// returns the timestamp from the lastSignBytes.
-// returns true if the only difference in the proposals is their timestamp
-func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool, error) {
-	var lastProposal, newProposal tmproto.CanonicalProposal
-	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastProposal); err != nil {
-		return time.Time{}, false, fmt.Errorf("LastSignBytes cannot be unmarshalled into proposal: %w", err)
-	}
-	if err := protoio.UnmarshalDelimited(newSignBytes, &newProposal); err != nil {
-		return time.Time{}, false, fmt.Errorf("signBytes cannot be unmarshalled into proposal: %w", err)
-	}
-
-	lastTime := lastProposal.Timestamp
-	// set the times to the same value and check equality
-	now := tmtime.Now()
-	lastProposal.Timestamp = now
-	newProposal.Timestamp = now
-
-	return lastTime, proto.Equal(&newProposal, &lastProposal), nil
 }
