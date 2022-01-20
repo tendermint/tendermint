@@ -71,7 +71,7 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{}
 	err := vals.updateWithChangeSet(valz, false)
 	if err != nil {
-		panic(fmt.Sprintf("Cannot create validator set: %v", err))
+		panic(fmt.Errorf("cannot create validator set: %w", err))
 	}
 	if len(valz) > 0 {
 		vals.IncrementProposerPriority(1)

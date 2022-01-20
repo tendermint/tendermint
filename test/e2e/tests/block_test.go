@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,8 +12,11 @@ import (
 
 // Tests that block headers are identical across nodes where present.
 func TestBlock_Header(t *testing.T) {
-	blocks := fetchBlockChain(t)
-	testNode(t, func(t *testing.T, node e2e.Node) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blocks := fetchBlockChain(ctx, t)
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
@@ -50,7 +54,7 @@ func TestBlock_Header(t *testing.T) {
 
 // Tests that the node contains the expected block range.
 func TestBlock_Range(t *testing.T) {
-	testNode(t, func(t *testing.T, node e2e.Node) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)

@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -28,7 +28,7 @@ type chunk struct {
 // iterator over all chunks, but callers can request chunks to be retried, optionally after
 // refetching.
 type chunkQueue struct {
-	tmsync.Mutex
+	sync.Mutex
 	snapshot       *snapshot                  // if this is nil, the queue has been closed
 	dir            string                     // temp dir for on-disk chunk storage
 	chunkFiles     map[uint32]string          // path to temporary chunk file

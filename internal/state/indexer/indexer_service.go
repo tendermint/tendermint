@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -15,6 +15,7 @@ import (
 // order to index transactions and blocks coming from the event bus.
 type Service struct {
 	service.BaseService
+	logger log.Logger
 
 	eventSinks []EventSink
 	eventBus   *eventbus.EventBus
@@ -30,6 +31,7 @@ type Service struct {
 // NewService constructs a new indexer service from the given arguments.
 func NewService(args ServiceArgs) *Service {
 	is := &Service{
+		logger:     args.Logger,
 		eventSinks: args.Sinks,
 		eventBus:   args.EventBus,
 		metrics:    args.Metrics,
@@ -70,7 +72,7 @@ func (is *Service) publish(msg pubsub.Message) error {
 		// GATHER: Accumulate a transaction into the current block's batch.
 		txResult := msg.Data().(types.EventDataTx).TxResult
 		if err := curr.Add(&txResult); err != nil {
-			is.Logger.Error("failed to add tx to batch",
+			is.logger.Error("failed to add tx to batch",
 				"height", is.currentBlock.height, "index", txResult.Index, "err", err)
 		}
 
@@ -83,12 +85,12 @@ func (is *Service) publish(msg pubsub.Message) error {
 		for _, sink := range is.eventSinks {
 			start := time.Now()
 			if err := sink.IndexBlockEvents(is.currentBlock.header); err != nil {
-				is.Logger.Error("failed to index block header",
+				is.logger.Error("failed to index block header",
 					"height", is.currentBlock.height, "err", err)
 			} else {
 				is.metrics.BlockEventsSeconds.Observe(time.Since(start).Seconds())
 				is.metrics.BlocksIndexed.Add(1)
-				is.Logger.Debug("indexed block",
+				is.logger.Debug("indexed block",
 					"height", is.currentBlock.height, "sink", sink.Type())
 			}
 
@@ -96,12 +98,12 @@ func (is *Service) publish(msg pubsub.Message) error {
 				start := time.Now()
 				err := sink.IndexTxEvents(curr.Ops)
 				if err != nil {
-					is.Logger.Error("failed to index block txs",
+					is.logger.Error("failed to index block txs",
 						"height", is.currentBlock.height, "err", err)
 				} else {
 					is.metrics.TxEventsSeconds.Observe(time.Since(start).Seconds())
 					is.metrics.TransactionsIndexed.Add(float64(curr.Size()))
-					is.Logger.Debug("indexed txs",
+					is.logger.Debug("indexed txs",
 						"height", is.currentBlock.height, "sink", sink.Type())
 				}
 			}
@@ -120,7 +122,7 @@ func (is *Service) OnStart(ctx context.Context) error {
 	// If the event sinks support indexing, register an observer to capture
 	// block header data for the indexer.
 	if IndexingEnabled(is.eventSinks) {
-		err := is.eventBus.Observe(context.TODO(), is.publish,
+		err := is.eventBus.Observe(ctx, is.publish,
 			types.EventQueryNewBlockHeader, types.EventQueryTx)
 		if err != nil {
 			return err
@@ -133,7 +135,7 @@ func (is *Service) OnStart(ctx context.Context) error {
 func (is *Service) OnStop() {
 	for _, sink := range is.eventSinks {
 		if err := sink.Stop(); err != nil {
-			is.Logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
+			is.logger.Error("failed to close eventsink", "eventsink", sink.Type(), "err", err)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestParseJSONMap(t *testing.T) {
@@ -19,7 +19,7 @@ func TestParseJSONMap(t *testing.T) {
 	// naive is float,string
 	var p1 map[string]interface{}
 	err := json.Unmarshal(input, &p1)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		h, ok := p1["height"].(float64)
 		if assert.True(t, ok, "%#v", p1["height"]) {
 			assert.EqualValues(t, 22, h)
@@ -37,7 +37,7 @@ func TestParseJSONMap(t *testing.T) {
 		"height": &tmp,
 	}
 	err = json.Unmarshal(input, &p2)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		h, ok := p2["height"].(float64)
 		if assert.True(t, ok, "%#v", p2["height"]) {
 			assert.EqualValues(t, 22, h)
@@ -59,7 +59,7 @@ func TestParseJSONMap(t *testing.T) {
 		Value:  &bytes.HexBytes{},
 	}
 	err = json.Unmarshal(input, &p3)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		h, ok := p3.Height.(*int)
 		if assert.True(t, ok, "%#v", p3.Height) {
 			assert.Equal(t, 22, *h)
@@ -76,7 +76,7 @@ func TestParseJSONMap(t *testing.T) {
 		Height int            `json:"height"`
 	}{}
 	err = json.Unmarshal(input, &p4)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		assert.EqualValues(t, 22, p4.Height)
 		assert.EqualValues(t, []byte{0x12, 0x34}, p4.Value)
 	}
@@ -85,16 +85,16 @@ func TestParseJSONMap(t *testing.T) {
 	// dynamic keys on map, and we can deserialize to the desired types
 	var p5 map[string]*json.RawMessage
 	err = json.Unmarshal(input, &p5)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		var h int
 		err = json.Unmarshal(*p5["height"], &h)
-		if assert.Nil(t, err) {
+		if assert.NoError(t, err) {
 			assert.Equal(t, 22, h)
 		}
 
 		var v bytes.HexBytes
 		err = json.Unmarshal(*p5["value"], &v)
-		if assert.Nil(t, err) {
+		if assert.NoError(t, err) {
 			assert.Equal(t, bytes.HexBytes{0x12, 0x34}, v)
 		}
 	}
@@ -106,7 +106,7 @@ func TestParseJSONArray(t *testing.T) {
 	// naive is float,string
 	var p1 []interface{}
 	err := json.Unmarshal(input, &p1)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		v, ok := p1[0].(string)
 		if assert.True(t, ok, "%#v", p1[0]) {
 			assert.EqualValues(t, "1234", v)
@@ -121,7 +121,7 @@ func TestParseJSONArray(t *testing.T) {
 	tmp := 0
 	p2 := []interface{}{&bytes.HexBytes{}, &tmp}
 	err = json.Unmarshal(input, &p2)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		v, ok := p2[0].(*bytes.HexBytes)
 		if assert.True(t, ok, "%#v", p2[0]) {
 			assert.EqualValues(t, []byte{0x12, 0x34}, *v)
@@ -134,8 +134,8 @@ func TestParseJSONArray(t *testing.T) {
 }
 
 func TestParseJSONRPC(t *testing.T) {
-	demo := func(ctx *rpctypes.Context, height int, name string) {}
-	call := NewRPCFunc(demo, "height,name", false)
+	demo := func(ctx context.Context, height int, name string) error { return nil }
+	call := NewRPCFunc(demo, "height", "name")
 
 	cases := []struct {
 		raw    string
@@ -158,9 +158,9 @@ func TestParseJSONRPC(t *testing.T) {
 		data := []byte(tc.raw)
 		vals, err := jsonParamsToArgs(call, data)
 		if tc.fail {
-			assert.NotNil(t, err, i)
+			assert.Error(t, err, i)
 		} else {
-			assert.Nil(t, err, "%s: %+v", i, err)
+			assert.NoError(t, err, "%s: %+v", i, err)
 			if assert.Equal(t, 2, len(vals), i) {
 				assert.Equal(t, tc.height, vals[0].Int(), i)
 				assert.Equal(t, tc.name, vals[1].String(), i)
@@ -171,8 +171,8 @@ func TestParseJSONRPC(t *testing.T) {
 }
 
 func TestParseURI(t *testing.T) {
-	demo := func(ctx *rpctypes.Context, height int, name string) {}
-	call := NewRPCFunc(demo, "height,name", false)
+	demo := func(ctx context.Context, height int, name string) error { return nil }
+	call := NewRPCFunc(demo, "height", "name")
 
 	cases := []struct {
 		raw    []string
@@ -187,8 +187,15 @@ func TestParseURI(t *testing.T) {
 		// can parse numbers quoted, too
 		{[]string{`"7"`, `"flew"`}, 7, "flew", false},
 		{[]string{`"-10"`, `"bob"`}, -10, "bob", false},
-		// cant parse strings uquoted
-		{[]string{`"-10"`, `bob`}, -10, "bob", true},
+		// can parse strings hex-escaped, in either case
+		{[]string{`-9`, `0x626f62`}, -9, "bob", false},
+		{[]string{`-9`, `0X646F7567`}, -9, "doug", false},
+		// can parse strings unquoted (as per OpenAPI docs)
+		{[]string{`0`, `hey you`}, 0, "hey you", false},
+		// fail for invalid numbers, strings, hex
+		{[]string{`"-xx"`, `bob`}, 0, "", true},  // bad number
+		{[]string{`"95""`, `"bob`}, 0, "", true}, // bad string
+		{[]string{`15`, `0xa`}, 0, "", true},     // bad hex
 	}
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
@@ -198,14 +205,14 @@ func TestParseURI(t *testing.T) {
 			tc.raw[0], tc.raw[1])
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(t, err)
-		vals, err := httpParamsToArgs(call, req)
+		vals, err := parseURLParams(context.Background(), call, req)
 		if tc.fail {
-			assert.NotNil(t, err, i)
+			assert.Error(t, err, i)
 		} else {
-			assert.Nil(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 2, len(vals), i) {
-				assert.Equal(t, tc.height, vals[0].Int(), i)
-				assert.Equal(t, tc.name, vals[1].String(), i)
+			assert.NoError(t, err, "%s: %+v", i, err)
+			if assert.Equal(t, 3, len(vals), i) {
+				assert.Equal(t, tc.height, vals[1].Int(), i)
+				assert.Equal(t, tc.name, vals[2].String(), i)
 			}
 		}
 

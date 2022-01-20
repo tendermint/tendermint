@@ -11,8 +11,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,6 +38,8 @@ type EventSink struct {
 func NewEventSink(connStr, chainID string) (*EventSink, error) {
 	db, err := sql.Open(driverName, connStr)
 	if err != nil {
+		return nil, err
+	} else if err := db.Ping(); err != nil {
 		return nil, err
 	}
 

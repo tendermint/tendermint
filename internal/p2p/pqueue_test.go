@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -19,12 +20,15 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 
 	for i := 0; i < enqueueLength; i++ {
 		pqueue.enqueue() <- Envelope{
-			channelID: 0x01,
+			ChannelID: 0x01,
 			Message:   &testMessage{Value: "foo"}, // 5 bytes
 		}
 	}
 
-	go pqueue.process()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go pqueue.process(ctx)
 
 	// sleep to allow context switch for process() to run
 	time.Sleep(10 * time.Millisecond)

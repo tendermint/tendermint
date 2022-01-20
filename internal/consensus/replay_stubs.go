@@ -29,6 +29,7 @@ func (emptyMempool) RemoveTxByKey(txKey types.TxKey) error   { return nil }
 func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
 func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
 func (emptyMempool) Update(
+	_ context.Context,
 	_ int64,
 	_ types.Txs,
 	_ []*abci.ResponseDeliverTx,
@@ -37,11 +38,11 @@ func (emptyMempool) Update(
 ) error {
 	return nil
 }
-func (emptyMempool) Flush()                        {}
-func (emptyMempool) FlushAppConn() error           { return nil }
-func (emptyMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
-func (emptyMempool) EnableTxsAvailable()           {}
-func (emptyMempool) SizeBytes() int64              { return 0 }
+func (emptyMempool) Flush()                                 {}
+func (emptyMempool) FlushAppConn(ctx context.Context) error { return nil }
+func (emptyMempool) TxsAvailable() <-chan struct{}          { return make(chan struct{}) }
+func (emptyMempool) EnableTxsAvailable()                    {}
+func (emptyMempool) SizeBytes() int64                       { return 0 }
 
 func (emptyMempool) TxsFront() *clist.CElement    { return nil }
 func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
@@ -60,17 +61,22 @@ func newMockProxyApp(
 	logger log.Logger,
 	appHash []byte,
 	abciResponses *tmstate.ABCIResponses,
-) proxy.AppConnConsensus {
+) (proxy.AppConnConsensus, error) {
+
 	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
 	})
-	cli, _ := clientCreator(logger)
-	err := cli.Start(ctx)
+	cli, err := clientCreator(logger)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return proxy.NewAppConnConsensus(cli, proxy.NopMetrics())
+
+	if err = cli.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	return proxy.NewAppConnConsensus(cli, proxy.NopMetrics()), nil
 }
 
 type mockProxyApp struct {

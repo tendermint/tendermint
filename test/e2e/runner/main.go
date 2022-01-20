@@ -16,7 +16,7 @@ import (
 
 const randomSeed = 2308084734268
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 func main() {
 	NewCLI().Run()
@@ -61,7 +61,7 @@ func NewCLI() *CLI {
 					logger.Info("Preserving testnet that encountered error",
 						"err", err)
 				} else if err := Cleanup(cli.testnet); err != nil {
-					logger.Error("Error cleaning up testnet contents", "err", err)
+					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
 			if err = Setup(cli.testnet); err != nil {
@@ -302,7 +302,7 @@ Does not run any perbutations.
 			}
 			defer func() {
 				if err := Cleanup(cli.testnet); err != nil {
-					logger.Error("Error cleaning up testnet contents", "err", err)
+					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
 
@@ -319,8 +319,7 @@ Does not run any perbutations.
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(lctx, r, cli.testnet)
-				chLoadResult <- err
+				chLoadResult <- Load(lctx, r, cli.testnet)
 			}()
 
 			if err := Start(ctx, cli.testnet); err != nil {

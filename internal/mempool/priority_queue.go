@@ -3,15 +3,14 @@ package mempool
 import (
 	"container/heap"
 	"sort"
-
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"sync"
 )
 
 var _ heap.Interface = (*TxPriorityQueue)(nil)
 
 // TxPriorityQueue defines a thread-safe priority queue for valid transactions.
 type TxPriorityQueue struct {
-	mtx tmsync.RWMutex
+	mtx sync.RWMutex
 	txs []*WrappedTx
 }
 

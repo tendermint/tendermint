@@ -43,7 +43,7 @@ func TestHTTPSimple(t *testing.T) {
 
 	// Broadcast the transaction and wait for it to commit (rather use
 	// c.BroadcastTxSync though in production).
-	bres, err := c.BroadcastTxCommit(context.Background(), tx)
+	bres, err := c.BroadcastTxCommit(ctx, tx)
 	require.NoError(t, err)
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +53,7 @@ func TestHTTPSimple(t *testing.T) {
 	}
 
 	// Now try to fetch the value for the key
-	qres, err := c.ABCIQuery(context.Background(), "/key", k)
+	qres, err := c.ABCIQuery(ctx, "/key", k)
 	require.NoError(t, err)
 	require.False(t, qres.Response.IsErr(), "ABCIQuery failed")
 	require.True(t, bytes.Equal(qres.Response.Key, k),
@@ -118,7 +118,7 @@ func TestHTTPBatching(t *testing.T) {
 			// Now let's query for the original results as a batch
 			exists := 0
 			for _, key := range [][]byte{k1, k2} {
-				_, err := batch.ABCIQuery(context.Background(), "/key", key)
+				_, err := batch.ABCIQuery(ctx, "/key", key)
 				if err == nil {
 					exists++
 

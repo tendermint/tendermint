@@ -367,7 +367,7 @@ func main() {
 
  flag.Parse()
 
- logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+ logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
  server := abciserver.NewSocketServer(socketAddr, app)
  server.SetLogger(logger)
@@ -438,7 +438,7 @@ This should create a `go.mod` file. The current tutorial only works with
 the master branch of Tendermint, so let's make sure we're using the latest version:
 
 ```sh
-go get github.com/tendermint/tendermint@master
+go get github.com/tendermint/tendermint@97a3e44e0724f2017079ce24d36433f03124c09e
 ```
 
 This will populate the `go.mod` with a release number followed by a hash for Tendermint.

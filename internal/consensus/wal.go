@@ -76,6 +76,7 @@ type WAL interface {
 // again.
 type BaseWAL struct {
 	service.BaseService
+	logger log.Logger
 
 	group *auto.Group
 
@@ -89,17 +90,18 @@ var _ WAL = &BaseWAL{}
 
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
-func NewWAL(logger log.Logger, walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
+func NewWAL(ctx context.Context, logger log.Logger, walFile string, groupOptions ...func(*auto.Group)) (*BaseWAL, error) {
 	err := tmos.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure WAL directory is in place: %w", err)
 	}
 
-	group, err := auto.OpenGroup(walFile, groupOptions...)
+	group, err := auto.OpenGroup(ctx, logger, walFile, groupOptions...)
 	if err != nil {
 		return nil, err
 	}
 	wal := &BaseWAL{
+		logger:        logger,
 		group:         group,
 		enc:           NewWALEncoder(group),
 		flushInterval: walDefaultFlushInterval,
@@ -131,18 +133,18 @@ func (wal *BaseWAL) OnStart(ctx context.Context) error {
 		return err
 	}
 	wal.flushTicker = time.NewTicker(wal.flushInterval)
-	go wal.processFlushTicks()
+	go wal.processFlushTicks(ctx)
 	return nil
 }
 
-func (wal *BaseWAL) processFlushTicks() {
+func (wal *BaseWAL) processFlushTicks(ctx context.Context) {
 	for {
 		select {
 		case <-wal.flushTicker.C:
 			if err := wal.FlushAndSync(); err != nil {
-				wal.Logger.Error("Periodic WAL flush failed", "err", err)
+				wal.logger.Error("Periodic WAL flush failed", "err", err)
 			}
-		case <-wal.Quit():
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -161,12 +163,12 @@ func (wal *BaseWAL) OnStop() {
 	wal.flushTicker.Stop()
 	if err := wal.FlushAndSync(); err != nil {
 		if !errors.Is(err, service.ErrAlreadyStopped) {
-			wal.Logger.Error("error on flush data to disk", "error", err)
+			wal.logger.Error("error on flush data to disk", "error", err)
 		}
 	}
 	if err := wal.group.Stop(); err != nil {
 		if !errors.Is(err, service.ErrAlreadyStopped) {
-			wal.Logger.Error("error trying to stop wal", "error", err)
+			wal.logger.Error("error trying to stop wal", "error", err)
 		}
 	}
 	wal.group.Close()
@@ -175,7 +177,12 @@ func (wal *BaseWAL) OnStop() {
 // Wait for the underlying autofile group to finish shutting down
 // so it's safe to cleanup files.
 func (wal *BaseWAL) Wait() {
-	wal.group.Wait()
+	if wal.IsRunning() {
+		wal.BaseService.Wait()
+	}
+	if wal.group.IsRunning() {
+		wal.group.Wait()
+	}
 }
 
 // Write is called in newStep and for each receive on the
@@ -187,7 +194,7 @@ func (wal *BaseWAL) Write(msg WALMessage) error {
 	}
 
 	if err := wal.enc.Encode(&TimedWALMessage{tmtime.Now(), msg}); err != nil {
-		wal.Logger.Error("Error writing msg to consensus wal. WARNING: recover may not be possible for the current height",
+		wal.logger.Error("error writing msg to consensus wal. WARNING: recover may not be possible for the current height",
 			"err", err, "msg", msg)
 		return err
 	}
@@ -208,7 +215,7 @@ func (wal *BaseWAL) WriteSync(msg WALMessage) error {
 	}
 
 	if err := wal.FlushAndSync(); err != nil {
-		wal.Logger.Error(`WriteSync failed to flush consensus wal.
+		wal.logger.Error(`WriteSync failed to flush consensus wal.
 		WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted`,
 			"err", err)
 		return err
@@ -240,7 +247,7 @@ func (wal *BaseWAL) SearchForEndHeight(
 	// NOTE: starting from the last file in the group because we're usually
 	// searching for the last height. See replay.go
 	min, max := wal.group.MinIndex(), wal.group.MaxIndex()
-	wal.Logger.Info("Searching for height", "height", height, "min", min, "max", max)
+	wal.logger.Info("Searching for height", "height", height, "min", min, "max", max)
 	for index := max; index >= min; index-- {
 		gr, err = wal.group.NewReader(index)
 		if err != nil {
@@ -260,7 +267,7 @@ func (wal *BaseWAL) SearchForEndHeight(
 				break
 			}
 			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
-				wal.Logger.Error("Corrupted entry. Skipping...", "err", err)
+				wal.logger.Error("Corrupted entry. Skipping...", "err", err)
 				// do nothing
 				continue
 			} else if err != nil {
@@ -271,7 +278,7 @@ func (wal *BaseWAL) SearchForEndHeight(
 			if m, ok := msg.Msg.(EndHeightMessage); ok {
 				lastHeightFound = m.Height
 				if m.Height == height { // found
-					wal.Logger.Info("Found", "height", height, "index", index)
+					wal.logger.Info("Found", "height", height, "index", index)
 					return gr, true, nil
 				}
 			}
@@ -370,14 +377,14 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, err
 	}
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read checksum: %w", err)}
 	}
 	crc := binary.BigEndian.Uint32(b)
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to read length: %w", err)}
 	}
 	length := binary.BigEndian.Uint32(b)
 
@@ -403,7 +410,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	var res = new(tmcons.TimedWALMessage)
 	err = proto.Unmarshal(data, res)
 	if err != nil {
-		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
+		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %w", err)}
 	}
 
 	walMsg, err := WALFromProto(res.Msg)

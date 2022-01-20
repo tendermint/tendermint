@@ -29,13 +29,10 @@ func TestProperSyncCalls(t *testing.T) {
 
 	resp := make(chan error, 1)
 	go func() {
-		// This is BeginBlockSync unrolled....
-		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
+		rsp, err := c.BeginBlock(ctx, types.RequestBeginBlock{})
 		assert.NoError(t, err)
-		err = c.FlushSync(ctx)
-		assert.NoError(t, err)
-		res := reqres.Response.GetBeginBlock()
-		assert.NotNil(t, res)
+		assert.NoError(t, c.Flush(ctx))
+		assert.NotNil(t, rsp)
 		resp <- c.Error()
 	}()
 

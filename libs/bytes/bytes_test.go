@@ -14,12 +14,12 @@ func TestMarshal(t *testing.T) {
 	bz := []byte("hello world")
 	dataB := HexBytes(bz)
 	bz2, err := dataB.Marshal()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, bz, bz2)
 
 	var dataB2 HexBytes
 	err = (&dataB2).Unmarshal(bz)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, dataB, dataB2)
 }
 

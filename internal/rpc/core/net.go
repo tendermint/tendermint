@@ -1,16 +1,16 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // NetInfo returns network info.
 // More: https://docs.tendermint.com/master/rpc/#/Info/net_info
-func (env *Environment) NetInfo(ctx *rpctypes.Context) (*coretypes.ResultNetInfo, error) {
+func (env *Environment) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
 	peerList := env.PeerManager.Peers()
 
 	peers := make([]coretypes.Peer, 0, len(peerList))
@@ -36,7 +36,7 @@ func (env *Environment) NetInfo(ctx *rpctypes.Context) (*coretypes.ResultNetInfo
 
 // Genesis returns genesis file.
 // More: https://docs.tendermint.com/master/rpc/#/Info/genesis
-func (env *Environment) Genesis(ctx *rpctypes.Context) (*coretypes.ResultGenesis, error) {
+func (env *Environment) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
 	if len(env.genChunks) > 1 {
 		return nil, errors.New("genesis response is large, please use the genesis_chunked API instead")
 	}
@@ -44,7 +44,7 @@ func (env *Environment) Genesis(ctx *rpctypes.Context) (*coretypes.ResultGenesis
 	return &coretypes.ResultGenesis{Genesis: env.GenDoc}, nil
 }
 
-func (env *Environment) GenesisChunked(ctx *rpctypes.Context, chunk uint) (*coretypes.ResultGenesisChunk, error) {
+func (env *Environment) GenesisChunked(ctx context.Context, chunk uint) (*coretypes.ResultGenesisChunk, error) {
 	if env.genChunks == nil {
 		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
 	}

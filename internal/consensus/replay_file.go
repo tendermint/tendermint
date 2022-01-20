@@ -15,10 +15,10 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/proxy"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -74,7 +74,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 	defer func() {
 		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
 		if err := cs.eventBus.Unsubscribe(ctx, args); err != nil {
-			cs.Logger.Error("Error unsubscribing to event bus", "err", err)
+			cs.logger.Error("error unsubscribing to event bus", "err", err)
 		}
 	}()
 
@@ -91,7 +91,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 	var msg *TimedWALMessage
 	for {
 		if nextN == 0 && console {
-			nextN, err = pb.replayConsoleLoop()
+			nextN, err = pb.replayConsoleLoop(ctx)
 			if err != nil {
 				return err
 			}
@@ -104,7 +104,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 			return err
 		}
 
-		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
+		if err := pb.cs.readReplayMessage(ctx, msg, newStepSub); err != nil {
 			return err
 		}
 
@@ -141,13 +141,13 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) error {
+func (pb *playback) replayReset(ctx context.Context, count int, newStepSub eventbus.Subscription) error {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
 	pb.cs.Wait()
 
-	newCS := NewState(pb.cs.Logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
+	newCS := NewState(ctx, pb.cs.logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -173,7 +173,7 @@ func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) err
 		} else if err != nil {
 			return err
 		}
-		if err := pb.cs.readReplayMessage(msg, newStepSub); err != nil {
+		if err := pb.cs.readReplayMessage(ctx, msg, newStepSub); err != nil {
 			return err
 		}
 		pb.count++
@@ -182,23 +182,12 @@ func (pb *playback) replayReset(count int, newStepSub eventbus.Subscription) err
 }
 
 func (cs *State) startForReplay() {
-	cs.Logger.Error("Replay commands are disabled until someone updates them and writes tests")
-	/* TODO:!
-	// since we replay tocks we just ignore ticks
-		go func() {
-			for {
-				select {
-				case <-cs.tickChan:
-				case <-cs.Quit:
-					return
-				}
-			}
-		}()*/
+	cs.logger.Error("Replay commands are disabled until someone updates them and writes tests")
 }
 
 // console function for parsing input and running commands. The integer
 // return value is invalid unless the error is nil.
-func (pb *playback) replayConsoleLoop() (int, error) {
+func (pb *playback) replayConsoleLoop(ctx context.Context) (int, error) {
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
@@ -236,7 +225,6 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 			// NOTE: "back" is not supported in the state machine design,
 			// so we restart and replay up to
 
-			ctx := context.TODO()
 			// ensure all new step events are regenerated as expected
 
 			newStepSub, err := pb.cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
@@ -249,13 +237,13 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 			defer func() {
 				args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: types.EventQueryNewRoundStep}
 				if err := pb.cs.eventBus.Unsubscribe(ctx, args); err != nil {
-					pb.cs.Logger.Error("Error unsubscribing from eventBus", "err", err)
+					pb.cs.logger.Error("error unsubscribing from eventBus", "err", err)
 				}
 			}()
 
 			if len(tokens) == 1 {
-				if err := pb.replayReset(1, newStepSub); err != nil {
-					pb.cs.Logger.Error("Replay reset error", "err", err)
+				if err := pb.replayReset(ctx, 1, newStepSub); err != nil {
+					pb.cs.logger.Error("Replay reset error", "err", err)
 				}
 			} else {
 				i, err := strconv.Atoi(tokens[1])
@@ -263,8 +251,8 @@ func (pb *playback) replayConsoleLoop() (int, error) {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
-				} else if err := pb.replayReset(i, newStepSub); err != nil {
-					pb.cs.Logger.Error("Replay reset error", "err", err)
+				} else if err := pb.replayReset(ctx, i, newStepSub); err != nil {
+					pb.cs.logger.Error("Replay reset error", "err", err)
 				}
 			}
 
@@ -359,7 +347,7 @@ func newConsensusStateForReplay(
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
 
-	consensusState := NewState(logger, csConfig, state.Copy(), blockExec,
+	consensusState := NewState(ctx, logger, csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)

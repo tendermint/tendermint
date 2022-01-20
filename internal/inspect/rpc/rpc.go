@@ -8,14 +8,12 @@ import (
 	"github.com/rs/cors"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Server defines parameters for running an Inspector rpc server.
@@ -31,28 +29,25 @@ type eventBusUnsubscriber interface {
 }
 
 // Routes returns the set of routes used by the Inspector server.
-//
-//nolint: lll
 func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink, logger log.Logger) core.RoutesMap {
 	env := &core.Environment{
-		Config:           cfg,
-		EventSinks:       es,
-		StateStore:       s,
-		BlockStore:       bs,
-		ConsensusReactor: waitSyncCheckerImpl{},
-		Logger:           logger,
+		Config:     cfg,
+		EventSinks: es,
+		StateStore: s,
+		BlockStore: bs,
+		Logger:     logger,
 	}
 	return core.RoutesMap{
-		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
-		"consensus_params": server.NewRPCFunc(env.ConsensusParams, "height", true),
-		"block":            server.NewRPCFunc(env.Block, "height", true),
-		"block_by_hash":    server.NewRPCFunc(env.BlockByHash, "hash", true),
-		"block_results":    server.NewRPCFunc(env.BlockResults, "height", true),
-		"commit":           server.NewRPCFunc(env.Commit, "height", true),
-		"validators":       server.NewRPCFunc(env.Validators, "height,page,per_page", true),
-		"tx":               server.NewRPCFunc(env.Tx, "hash,prove", true),
-		"tx_search":        server.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by", false),
-		"block_search":     server.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by", false),
+		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight", "maxHeight"),
+		"consensus_params": server.NewRPCFunc(env.ConsensusParams, "height"),
+		"block":            server.NewRPCFunc(env.Block, "height"),
+		"block_by_hash":    server.NewRPCFunc(env.BlockByHash, "hash"),
+		"block_results":    server.NewRPCFunc(env.BlockResults, "height"),
+		"commit":           server.NewRPCFunc(env.Commit, "height"),
+		"validators":       server.NewRPCFunc(env.Validators, "height", "page", "per_page"),
+		"tx":               server.NewRPCFunc(env.Tx, "hash", "prove"),
+		"tx_search":        server.NewRPCFunc(env.TxSearch, "query", "prove", "page", "per_page", "order_by"),
+		"block_search":     server.NewRPCFunc(env.BlockSearch, "query", "page", "per_page", "order_by"),
 	}
 }
 
@@ -71,10 +66,9 @@ func Handler(rpcConfig *config.RPCConfig, routes core.RoutesMap, logger log.Logg
 			wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
 		}
 	}
-	wm := server.NewWebsocketManager(routes,
+	wm := server.NewWebsocketManager(logger, routes,
 		server.OnDisconnect(websocketDisconnectFn),
 		server.ReadLimit(rpcConfig.MaxBodyBytes))
-	wm.SetLogger(wmLogger)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
 	server.RegisterRPCFuncs(mux, routes, logger)
@@ -95,16 +89,6 @@ func addCORSHandler(rpcConfig *config.RPCConfig, h http.Handler) http.Handler {
 	return h
 }
 
-type waitSyncCheckerImpl struct{}
-
-func (waitSyncCheckerImpl) WaitSync() bool {
-	return false
-}
-
-func (waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool) {
-	return nil, false
-}
-
 // ListenAndServe listens on the address specified in srv.Addr and handles any
 // incoming requests over HTTP using the Inspector rpc handler specified on the server.
 func (srv *Server) ListenAndServe(ctx context.Context) error {
@@ -116,7 +100,8 @@ func (srv *Server) ListenAndServe(ctx context.Context) error {
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return server.Serve(listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
+
+	return server.Serve(ctx, listener, srv.Handler, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 // ListenAndServeTLS listens on the address specified in srv.Addr. ListenAndServeTLS handles
@@ -130,7 +115,7 @@ func (srv *Server) ListenAndServeTLS(ctx context.Context, certFile, keyFile stri
 		<-ctx.Done()
 		listener.Close()
 	}()
-	return server.ServeTLS(listener, srv.Handler, certFile, keyFile, srv.Logger, serverRPCConfig(srv.Config))
+	return server.ServeTLS(ctx, listener, srv.Handler, certFile, keyFile, srv.Logger, serverRPCConfig(srv.Config))
 }
 
 func serverRPCConfig(r *config.RPCConfig) *server.Config {

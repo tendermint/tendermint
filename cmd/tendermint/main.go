@@ -17,7 +17,6 @@ func main() {
 		cmd.GenValidatorCmd,
 		cmd.ReIndexEventCmd,
 		cmd.InitFilesCmd,
-		cmd.ProbeUpnpCmd,
 		cmd.LightCmd,
 		cmd.ReplayCmd,
 		cmd.ReplayConsoleCmd,

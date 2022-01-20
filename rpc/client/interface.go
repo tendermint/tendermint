@@ -37,9 +37,6 @@ type Client interface {
 	// Start the client. Start must report an error if the client is running.
 	Start(context.Context) error
 
-	// Stop the client. Stop must report an error if the client is not running.
-	Stop() error
-
 	// IsRunning reports whether the client is running.
 	IsRunning() bool
 
@@ -78,6 +75,8 @@ type SignClient interface {
 	Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error)
 	BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error)
 	BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error)
+	Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error)
+	HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error)
 	Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error)
 	Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error)
 	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error)
@@ -134,7 +133,7 @@ type EventsClient interface {
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
-	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) //nolint:lll
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error)
 	// Unsubscribe unsubscribes given subscriber from query.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.
@@ -143,7 +142,7 @@ type EventsClient interface {
 
 // MempoolClient shows us data about current mempool state.
 type MempoolClient interface {
-	UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error)
+	UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs(context.Context) (*coretypes.ResultUnconfirmedTxs, error)
 	CheckTx(context.Context, types.Tx) (*coretypes.ResultCheckTx, error)
 	RemoveTx(context.Context, types.TxKey) error

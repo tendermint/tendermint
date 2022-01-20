@@ -12,7 +12,6 @@ Tendermint has some tools that are associated with it for:
 - [Debugging](./debugging/pro.md)
 - [Benchmarking](#benchmarking)
 - [Testnets](#testnets)
-- [Validation of remote signers](./remote-signer-validation.md)
 
 ## Benchmarking
 

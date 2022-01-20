@@ -15,6 +15,9 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
+
+	_ "github.com/lib/pq" // for the psql sink
 )
 
 const (
@@ -22,13 +25,13 @@ const (
 	base   int64 = 2
 )
 
-func setupReIndexEventCmd() *cobra.Command {
+func setupReIndexEventCmd(ctx context.Context) *cobra.Command {
 	reIndexEventCmd := &cobra.Command{
 		Use: ReIndexEventCmd.Use,
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
 
-	_ = reIndexEventCmd.ExecuteContext(context.Background())
+	_ = reIndexEventCmd.ExecuteContext(ctx)
 
 	return reIndexEventCmd
 }
@@ -107,12 +110,29 @@ func TestLoadEventSink(t *testing.T) {
 }
 
 func TestLoadBlockStore(t *testing.T) {
-	bs, ss, err := loadStateAndBlockStore(tmcfg.TestConfig())
+	testCfg, err := tmcfg.ResetTestRoot(t.Name())
+	require.NoError(t, err)
+	testCfg.DBBackend = "goleveldb"
+	_, _, err = loadStateAndBlockStore(testCfg)
+	// we should return an error because the state store and block store
+	// don't yet exist
+	require.Error(t, err)
+
+	dbType := dbm.BackendType(testCfg.DBBackend)
+	bsdb, err := dbm.NewDB("blockstore", dbType, testCfg.DBDir())
+	require.NoError(t, err)
+	bsdb.Close()
+
+	ssdb, err := dbm.NewDB("state", dbType, testCfg.DBDir())
+	require.NoError(t, err)
+	ssdb.Close()
+
+	bs, ss, err := loadStateAndBlockStore(testCfg)
 	require.NoError(t, err)
 	require.NotNil(t, bs)
 	require.NotNil(t, ss)
-
 }
+
 func TestReIndexEvent(t *testing.T) {
 	mockBlockStore := &mocks.BlockStore{}
 	mockStateStore := &mocks.Store{}
@@ -157,11 +177,14 @@ func TestReIndexEvent(t *testing.T) {
 		{height, height, false},
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, tc := range testCases {
 		startHeight = tc.startHeight
 		endHeight = tc.endHeight
 
-		err := eventReIndex(setupReIndexEventCmd(), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
+		err := eventReIndex(setupReIndexEventCmd(ctx), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
 		if tc.reIndexErr {
 			require.Error(t, err)
 		} else {

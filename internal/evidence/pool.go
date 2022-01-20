@@ -261,6 +261,10 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
+func (evpool *Pool) Close() error {
+	return evpool.evidenceStore.Close()
+}
+
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
 // than set by the evidence consensus parameters
 func (evpool *Pool) isExpired(height int64, time time.Time) bool {
@@ -378,7 +382,7 @@ func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evide
 
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixKey))
 	if err != nil {
-		return nil, totalSize, fmt.Errorf("database error: %v", err)
+		return nil, totalSize, fmt.Errorf("database error: %w", err)
 	}
 
 	defer iter.Close()

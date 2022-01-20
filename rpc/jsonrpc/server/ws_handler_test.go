@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
@@ -13,8 +15,12 @@ import (
 )
 
 func TestWebsocketManagerHandler(t *testing.T) {
-	s := newWSServer()
+	logger := log.NewNopLogger()
+
+	s := newWSServer(t, logger)
 	defer s.Close()
+
+	t.Cleanup(leaktest.Check(t))
 
 	// check upgrader works
 	d := websocket.Dialer{}
@@ -26,7 +32,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := rpctypes.MapToRequest(
+	req, err := rpctypes.ParamsToRequest(
 		rpctypes.JSONRPCStringID("TestWebsocketManager"),
 		"c",
 		map[string]interface{}{"s": "a", "i": 10},
@@ -42,15 +48,18 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	dialResp.Body.Close()
 }
 
-func newWSServer() *httptest.Server {
+func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 	funcMap := map[string]*RPCFunc{
-		"c": NewWSRPCFunc(func(ctx *rpctypes.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"c": NewWSRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s", "i"),
 	}
-	wm := NewWebsocketManager(funcMap)
-	wm.SetLogger(log.TestingLogger())
+	wm := NewWebsocketManager(logger, funcMap)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
-	return httptest.NewServer(mux)
+	srv := httptest.NewServer(mux)
+
+	t.Cleanup(srv.Close)
+
+	return srv
 }

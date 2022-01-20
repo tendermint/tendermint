@@ -34,15 +34,15 @@ func (sc *RetrySignerClient) IsConnected() bool {
 	return sc.next.IsConnected()
 }
 
-func (sc *RetrySignerClient) WaitForConnection(maxWait time.Duration) error {
-	return sc.next.WaitForConnection(maxWait)
+func (sc *RetrySignerClient) WaitForConnection(ctx context.Context, maxWait time.Duration) error {
+	return sc.next.WaitForConnection(ctx, maxWait)
 }
 
 //--------------------------------------------------------
 // Implement PrivValidator
 
-func (sc *RetrySignerClient) Ping() error {
-	return sc.next.Ping()
+func (sc *RetrySignerClient) Ping(ctx context.Context) error {
+	return sc.next.Ping(ctx)
 }
 
 func (sc *RetrySignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, error) {

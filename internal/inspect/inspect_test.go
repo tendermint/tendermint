@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -16,11 +17,11 @@ import (
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/inspect"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	indexermocks "github.com/tendermint/tendermint/internal/state/indexer/mocks"
 	statemocks "github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/proto/tendermint/state"
 	httpclient "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/types"
@@ -52,13 +53,14 @@ func TestInspectRun(t *testing.T) {
 		logger := testLogger.With(t.Name())
 		d, err := inspect.NewFromConfig(logger, cfg)
 		require.NoError(t, err)
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		stoppedWG := &sync.WaitGroup{}
 		stoppedWG.Add(1)
 		go func() {
+			defer stoppedWG.Done()
 			require.NoError(t, d.Run(ctx))
-			stoppedWG.Done()
 		}()
+		time.Sleep(100 * time.Millisecond)
 		cancel()
 		stoppedWG.Wait()
 	})
@@ -88,16 +90,13 @@ func TestBlock(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	startedWG := &sync.WaitGroup{}
-	startedWG.Add(1)
 	go func() {
-		startedWG.Done()
 		defer wg.Done()
 		require.NoError(t, d.Run(ctx))
 	}()
 	// FIXME: used to induce context switch.
 	// Determine more deterministic method for prompting a context switch
-	startedWG.Wait()
+	runtime.Gosched()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
@@ -115,7 +114,7 @@ func TestBlock(t *testing.T) {
 func TestTxSearch(t *testing.T) {
 	testHash := []byte("test")
 	testTx := []byte("tx")
-	testQuery := fmt.Sprintf("tx.hash='%s'", string(testHash))
+	testQuery := fmt.Sprintf("tx.hash = '%s'", string(testHash))
 	testTxResult := &abcitypes.TxResult{
 		Height: 1,
 		Index:  100,

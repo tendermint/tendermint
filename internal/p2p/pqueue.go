@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"container/heap"
+	"context"
 	"sort"
 	"strconv"
 	"time"
@@ -140,8 +141,8 @@ func (s *pqScheduler) closed() <-chan struct{} {
 }
 
 // start starts non-blocking process that starts the priority queue scheduler.
-func (s *pqScheduler) start() {
-	go s.process()
+func (s *pqScheduler) start(ctx context.Context) {
+	go s.process(ctx)
 }
 
 // process starts a block process where we listen for Envelopes to enqueue. If
@@ -153,17 +154,17 @@ func (s *pqScheduler) start() {
 //
 // After we attempt to enqueue the incoming Envelope, if the priority queue is
 // non-empty, we pop the top Envelope and send it on the dequeueCh.
-func (s *pqScheduler) process() {
+func (s *pqScheduler) process(ctx context.Context) {
 	defer s.done.Close()
 
 	for {
 		select {
 		case e := <-s.enqueueCh:
-			chIDStr := strconv.Itoa(int(e.channelID))
+			chIDStr := strconv.Itoa(int(e.ChannelID))
 			pqEnv := &pqEnvelope{
 				envelope:  e,
 				size:      uint(proto.Size(e.Message)),
-				priority:  s.chPriorities[e.channelID],
+				priority:  s.chPriorities[e.ChannelID],
 				timestamp: time.Now().UTC(),
 			}
 
@@ -202,7 +203,7 @@ func (s *pqScheduler) process() {
 							if tmpSize+pqEnv.size <= s.capacity {
 								canEnqueue = true
 							} else {
-								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.channelID))
+								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.ChannelID))
 								s.metrics.PeerQueueDroppedMsgs.With("ch_id", pqEnvTmpChIDStr).Add(1)
 								s.logger.Debug(
 									"dropped envelope",
@@ -267,7 +268,8 @@ func (s *pqScheduler) process() {
 					return
 				}
 			}
-
+		case <-ctx.Done():
+			return
 		case <-s.closer.Done():
 			return
 		}
@@ -275,7 +277,7 @@ func (s *pqScheduler) process() {
 }
 
 func (s *pqScheduler) push(pqEnv *pqEnvelope) {
-	chIDStr := strconv.Itoa(int(pqEnv.envelope.channelID))
+	chIDStr := strconv.Itoa(int(pqEnv.envelope.ChannelID))
 
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)

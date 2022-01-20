@@ -3,7 +3,6 @@ package bits
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"testing"
 
@@ -99,11 +98,11 @@ func TestSub(t *testing.T) {
 	for _, tc := range testCases {
 		var bA *BitArray
 		err := json.Unmarshal([]byte(tc.initBA), &bA)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		var o *BitArray
 		err = json.Unmarshal([]byte(tc.subtractingBA), &o)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		got, _ := json.Marshal(bA.Sub(o))
 		require.Equal(
@@ -149,9 +148,8 @@ func TestBytes(t *testing.T) {
 	bA := NewBitArray(4)
 	bA.SetIndex(0, true)
 	check := func(bA *BitArray, bz []byte) {
-		if !bytes.Equal(bA.Bytes(), bz) {
-			panic(fmt.Sprintf("Expected %X but got %X", bz, bA.Bytes()))
-		}
+		require.True(t, bytes.Equal(bA.Bytes(), bz),
+			"Expected %X but got %X", bz, bA.Bytes())
 	}
 	check(bA, []byte{0x01})
 	bA.SetIndex(3, true)

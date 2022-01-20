@@ -8,7 +8,7 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	indexer "github.com/tendermint/tendermint/internal/state/indexer"
 
-	query "github.com/tendermint/tendermint/libs/pubsub/query"
+	query "github.com/tendermint/tendermint/internal/pubsub/query"
 
 	tenderminttypes "github.com/tendermint/tendermint/types"
 

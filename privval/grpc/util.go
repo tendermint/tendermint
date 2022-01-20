@@ -15,6 +15,7 @@ import (
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -87,6 +88,7 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 
 // DialRemoteSigner is  a generalized function to dial the gRPC server.
 func DialRemoteSigner(
+	ctx context.Context,
 	cfg *config.PrivValidatorConfig,
 	chainID string,
 	logger log.Logger,
@@ -97,7 +99,7 @@ func DialRemoteSigner(
 		transportSecurity = GenerateTLS(cfg.ClientCertificateFile(),
 			cfg.ClientKeyFile(), cfg.RootCAFile(), logger)
 	} else {
-		transportSecurity = grpc.WithInsecure()
+		transportSecurity = grpc.WithTransportCredentials(insecure.NewCredentials())
 		logger.Info("Using an insecure gRPC connection!")
 	}
 
@@ -109,7 +111,6 @@ func DialRemoteSigner(
 
 	dialOptions = append(dialOptions, transportSecurity)
 
-	ctx := context.TODO()
 	_, address := tmnet.ProtocolAndAddress(cfg.ListenAddr)
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {

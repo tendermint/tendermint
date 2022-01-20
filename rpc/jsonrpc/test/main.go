@@ -1,21 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 var routes = map[string]*rpcserver.RPCFunc{
-	"hello_world": rpcserver.NewRPCFunc(HelloWorld, "name,num", false),
+	"hello_world": rpcserver.NewRPCFunc(HelloWorld, "name", "num"),
 }
 
-func HelloWorld(ctx *rpctypes.Context, name string, num int) (Result, error) {
+func HelloWorld(ctx context.Context, name string, num int) (Result, error) {
 	return Result{fmt.Sprintf("hi %s %d", name, num)}, nil
 }
 
@@ -26,11 +27,11 @@ type Result struct {
 func main() {
 	var (
 		mux    = http.NewServeMux()
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	)
 
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {})
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
 	rpcserver.RegisterRPCFuncs(mux, routes, logger)
 	config := rpcserver.DefaultConfig()
@@ -40,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = rpcserver.Serve(listener, mux, logger, config); err != nil {
+	if err = rpcserver.Serve(ctx, listener, mux, logger, config); err != nil {
 		logger.Error("rpc serve", "err", err)
 		os.Exit(1)
 	}

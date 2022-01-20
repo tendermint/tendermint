@@ -29,7 +29,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	for i := 0; i < 4; i++ {
-		ticker := NewTimeoutTicker(states[i].Logger)
+		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
@@ -50,7 +50,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// block and otherwise disable the priv validator.
 	byzState.mtx.Lock()
 	privVal := byzState.privValidator
-	byzState.doPrevote = func(height int64, round int32) {
+	byzState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, privVal)
 	}
 	byzState.mtx.Unlock()
@@ -123,14 +123,12 @@ func invalidDoPrevoteFunc(
 		cs.mtx.Unlock()
 
 		for _, ps := range r.peers {
-			cs.Logger.Info("sending bad vote", "block", blockHash, "peer", ps.peerID)
-
-			r.voteCh.Out <- p2p.Envelope{
+			require.NoError(t, r.voteCh.Send(ctx, p2p.Envelope{
 				To: ps.peerID,
 				Message: &tmcons.Vote{
 					Vote: precommit.ToProto(),
 				},
-			}
+			}))
 		}
 	}()
 }

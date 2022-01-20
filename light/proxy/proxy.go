@@ -6,8 +6,9 @@ import (
 	"net"
 	"net/http"
 
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -40,7 +41,7 @@ func NewProxy(
 	return &Proxy{
 		Addr:   listenAddr,
 		Config: config,
-		Client: lrpc.NewClient(rpcClient, lightClient, opts...),
+		Client: lrpc.NewClient(logger, rpcClient, lightClient, opts...),
 		Logger: logger,
 	}, nil
 }
@@ -57,6 +58,7 @@ func (p *Proxy) ListenAndServe(ctx context.Context) error {
 	p.Listener = listener
 
 	return rpcserver.Serve(
+		ctx,
 		listener,
 		mux,
 		p.Logger,
@@ -75,6 +77,7 @@ func (p *Proxy) ListenAndServeTLS(ctx context.Context, certFile, keyFile string)
 	p.Listener = listener
 
 	return rpcserver.ServeTLS(
+		ctx,
 		listener,
 		mux,
 		certFile,
@@ -88,12 +91,12 @@ func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error
 	mux := http.NewServeMux()
 
 	// 1) Register regular routes.
-	r := RPCRoutes(p.Client)
+	r := rpccore.NewRoutesMap(proxyService{Client: p.Client}, nil)
 	rpcserver.RegisterRPCFuncs(mux, r, p.Logger)
 
 	// 2) Allow websocket connections.
 	wmLogger := p.Logger.With("protocol", "websocket")
-	wm := rpcserver.NewWebsocketManager(r,
+	wm := rpcserver.NewWebsocketManager(wmLogger, r,
 		rpcserver.OnDisconnect(func(remoteAddr string) {
 			err := p.Client.UnsubscribeAll(context.Background(), remoteAddr)
 			if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -102,7 +105,7 @@ func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error
 		}),
 		rpcserver.ReadLimit(p.Config.MaxBodyBytes),
 	)
-	wm.SetLogger(wmLogger)
+
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
 	// 3) Start a client.

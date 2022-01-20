@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -23,18 +25,18 @@ const maxPingPongPacketSize = 1024 // bytes
 func createTestMConnection(logger log.Logger, conn net.Conn) *MConnection {
 	return createMConnectionWithCallbacks(logger, conn,
 		// onRecieve
-		func(chID ChannelID, msgBytes []byte) {
+		func(ctx context.Context, chID ChannelID, msgBytes []byte) {
 		},
 		// onError
-		func(r interface{}) {
+		func(ctx context.Context, r interface{}) {
 		})
 }
 
 func createMConnectionWithCallbacks(
 	logger log.Logger,
 	conn net.Conn,
-	onReceive func(chID ChannelID, msgBytes []byte),
-	onError func(r interface{}),
+	onReceive func(ctx context.Context, chID ChannelID, msgBytes []byte),
+	onError func(ctx context.Context, r interface{}),
 ) *MConnection {
 	cfg := DefaultMConnConfig()
 	cfg.PingInterval = 90 * time.Millisecond
@@ -53,8 +55,8 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 
 	clientConn := createTestMConnection(log.TestingLogger(), client)
 	err := clientConn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, clientConn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(clientConn))
 
 	msg := []byte("abc")
 	assert.True(t, clientConn.Send(0x01, msg))
@@ -90,8 +92,8 @@ func TestMConnectionSend(t *testing.T) {
 
 	mconn := createTestMConnection(log.TestingLogger(), client)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	msg := []byte("Ant-Man")
 	assert.True(t, mconn.Send(0x01, msg))
@@ -118,11 +120,17 @@ func TestMConnectionReceive(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-		receivedCh <- msgBytes
+	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case receivedCh <- msgBytes:
+		case <-ctx.Done():
+		}
 	}
-	onError := func(r interface{}) {
-		errorsCh <- r
+	onError := func(ctx context.Context, r interface{}) {
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
 	logger := log.TestingLogger()
 
@@ -131,13 +139,13 @@ func TestMConnectionReceive(t *testing.T) {
 
 	mconn1 := createMConnectionWithCallbacks(logger, client, onReceive, onError)
 	err := mconn1.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn1))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn1))
 
 	mconn2 := createTestMConnection(logger, server)
 	err = mconn2.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn2))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn2))
 
 	msg := []byte("Cyclops")
 	assert.True(t, mconn2.Send(0x01, msg))
@@ -158,11 +166,17 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-		receivedCh <- msgBytes
+	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case receivedCh <- msgBytes:
+		case <-ctx.Done():
+		}
 	}
-	onError := func(r interface{}) {
-		errorsCh <- r
+	onError := func(ctx context.Context, r interface{}) {
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -170,8 +184,8 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	serverGotPing := make(chan struct{})
 	go func() {
@@ -200,19 +214,26 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-		receivedCh <- msgBytes
+	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case receivedCh <- msgBytes:
+		case <-ctx.Done():
+		}
 	}
-	onError := func(r interface{}) {
-		errorsCh <- r
+	onError := func(ctx context.Context, r interface{}) {
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	// sending 3 pongs in a row (abuse)
 	protoWriter := protoio.NewDelimitedWriter(server)
@@ -257,19 +278,25 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-		receivedCh <- msgBytes
+	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case receivedCh <- msgBytes:
+		case <-ctx.Done():
+		}
 	}
-	onError := func(r interface{}) {
-		errorsCh <- r
+	onError := func(ctx context.Context, r interface{}) {
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
@@ -307,11 +334,17 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-		receivedCh <- msgBytes
+	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case receivedCh <- msgBytes:
+		case <-ctx.Done():
+		}
 	}
-	onError := func(r interface{}) {
-		errorsCh <- r
+	onError := func(ctx context.Context, r interface{}) {
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -319,8 +352,8 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	serverGotPing := make(chan struct{})
 	go func() {
@@ -368,19 +401,25 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
-	onReceive := func(chID ChannelID, msgBytes []byte) {
-		receivedCh <- msgBytes
+	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case receivedCh <- msgBytes:
+		case <-ctx.Done():
+		}
 	}
-	onError := func(r interface{}) {
-		errorsCh <- r
+	onError := func(ctx context.Context, r interface{}) {
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	if err := client.Close(); err != nil {
 		t.Error(err)
@@ -404,8 +443,8 @@ func newClientAndServerConnsForReadErrors(
 ) (*MConnection, *MConnection) {
 	server, client := NetPipe()
 
-	onReceive := func(chID ChannelID, msgBytes []byte) {}
-	onError := func(r interface{}) {}
+	onReceive := func(context.Context, ChannelID, []byte) {}
+	onError := func(context.Context, interface{}) {}
 
 	// create client conn with two channels
 	chDescs := []*ChannelDescriptor{
@@ -416,18 +455,21 @@ func newClientAndServerConnsForReadErrors(
 
 	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
 	err := mconnClient.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// create server conn with 1 channel
 	// it fires on chOnErr when there's an error
 	serverLogger := logger.With("module", "server")
-	onError = func(r interface{}) {
-		chOnErr <- struct{}{}
+	onError = func(ctx context.Context, r interface{}) {
+		select {
+		case <-ctx.Done():
+		case chOnErr <- struct{}{}:
+		}
 	}
 
 	mconnServer := createMConnectionWithCallbacks(serverLogger, server, onReceive, onError)
 	err = mconnServer.Start(ctx)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	return mconnClient, mconnServer
 }
 
@@ -454,7 +496,7 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	_, err := client.Write([]byte{1, 2, 3, 4, 5})
 	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
-	t.Cleanup(stopAll(t, mconnClient, mconnServer))
+	t.Cleanup(waitAll(mconnClient, mconnServer))
 }
 
 func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
@@ -473,7 +515,7 @@ func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
 	// should cause an error
 	assert.True(t, mconnClient.Send(0x02, msg))
 	assert.True(t, expectSend(chOnErr), "unknown channel")
-	t.Cleanup(stopAll(t, mconnClient, mconnServer))
+	t.Cleanup(waitAll(mconnClient, mconnServer))
 }
 
 func TestMConnectionReadErrorLongMessage(t *testing.T) {
@@ -484,10 +526,13 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	defer cancel()
 
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(ctx, t, chOnErr)
-	t.Cleanup(stopAll(t, mconnClient, mconnServer))
+	t.Cleanup(waitAll(mconnClient, mconnServer))
 
-	mconnServer.onReceive = func(chID ChannelID, msgBytes []byte) {
-		chOnRcv <- struct{}{}
+	mconnServer.onReceive = func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case <-ctx.Done():
+		case chOnRcv <- struct{}{}:
+		}
 	}
 
 	client := mconnClient.conn
@@ -522,7 +567,7 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(ctx, t, chOnErr)
-	t.Cleanup(stopAll(t, mconnClient, mconnServer))
+	t.Cleanup(waitAll(mconnClient, mconnServer))
 
 	// send msg with unknown msg type
 	_, err := protoio.NewDelimitedWriter(mconnClient.conn).WriteMsg(&types.Header{ChainID: "x"})
@@ -538,8 +583,8 @@ func TestMConnectionTrySend(t *testing.T) {
 
 	mconn := createTestMConnection(log.TestingLogger(), client)
 	err := mconn.Start(ctx)
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	t.Cleanup(waitAll(mconn))
 
 	msg := []byte("Semicolon-Woman")
 	resultCh := make(chan string, 2)
@@ -555,7 +600,6 @@ func TestMConnectionTrySend(t *testing.T) {
 	assert.Equal(t, "TrySend", <-resultCh)
 }
 
-// nolint:lll //ignore line length for tests
 func TestConnVectors(t *testing.T) {
 
 	testCases := []struct {
@@ -587,10 +631,13 @@ func TestMConnectionChannelOverflow(t *testing.T) {
 	defer cancel()
 
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(ctx, t, chOnErr)
-	t.Cleanup(stopAll(t, mconnClient, mconnServer))
+	t.Cleanup(waitAll(mconnClient, mconnServer))
 
-	mconnServer.onReceive = func(chID ChannelID, msgBytes []byte) {
-		chOnRcv <- struct{}{}
+	mconnServer.onReceive = func(ctx context.Context, chID ChannelID, msgBytes []byte) {
+		select {
+		case <-ctx.Done():
+		case chOnRcv <- struct{}{}:
+		}
 	}
 
 	client := mconnClient.conn
@@ -612,16 +659,26 @@ func TestMConnectionChannelOverflow(t *testing.T) {
 
 }
 
-type stopper interface {
-	Stop() error
-}
-
-func stopAll(t *testing.T, stoppers ...stopper) func() {
+func waitAll(waiters ...service.Service) func() {
 	return func() {
-		for _, s := range stoppers {
-			if err := s.Stop(); err != nil {
-				t.Log(err)
+		switch len(waiters) {
+		case 0:
+			return
+		case 1:
+			waiters[0].Wait()
+			return
+		default:
+			wg := &sync.WaitGroup{}
+
+			for _, w := range waiters {
+				wg.Add(1)
+				go func(s service.Service) {
+					defer wg.Done()
+					s.Wait()
+				}(w)
 			}
+
+			wg.Wait()
 		}
 	}
 }

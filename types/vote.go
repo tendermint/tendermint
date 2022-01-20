@@ -49,7 +49,7 @@ type Address = crypto.Address
 // consensus.
 type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
-	Height           int64                 `json:"height"`
+	Height           int64                 `json:"height,string"`
 	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
 	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time             `json:"timestamp"`
@@ -172,7 +172,7 @@ func (vote *Vote) ValidateBasic() error {
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a

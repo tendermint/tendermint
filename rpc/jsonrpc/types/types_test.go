@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type SampleResult struct {
@@ -30,41 +31,40 @@ var responseTests = []responseTest{
 }
 
 func TestResponses(t *testing.T) {
-	assert := assert.New(t)
 	for _, tt := range responseTests {
 		jsonid := tt.id
 		a := NewRPCSuccessResponse(jsonid, &SampleResult{"hello"})
 		b, _ := json.Marshal(a)
 		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
-		assert.Equal(s, string(b))
+		assert.Equal(t, s, string(b))
 
 		d := RPCParseError(errors.New("hello world"))
 		e, _ := json.Marshal(d)
 		f := `{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":"hello world"}}`
-		assert.Equal(f, string(e))
+		assert.Equal(t, f, string(e))
 
 		g := RPCMethodNotFoundError(jsonid)
 		h, _ := json.Marshal(g)
 		i := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32601,"message":"Method not found"}}`, tt.expected)
-		assert.Equal(string(h), i)
+		assert.Equal(t, string(h), i)
 	}
 }
 
 func TestUnmarshallResponses(t *testing.T) {
-	assert := assert.New(t)
 	for _, tt := range responseTests {
 		response := &RPCResponse{}
 		err := json.Unmarshal(
 			[]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)),
 			response,
 		)
-		assert.Nil(err)
+		require.NoError(t, err)
+
 		a := NewRPCSuccessResponse(tt.id, &SampleResult{"hello"})
-		assert.Equal(*response, a)
+		assert.Equal(t, *response, a)
 	}
 	response := &RPCResponse{}
 	err := json.Unmarshal([]byte(`{"jsonrpc":"2.0","id":true,"result":{"Value":"hello"}}`), response)
-	assert.NotNil(err)
+	require.Error(t, err)
 }
 
 func TestRPCError(t *testing.T) {

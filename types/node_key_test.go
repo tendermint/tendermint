@@ -7,23 +7,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestLoadOrGenNodeKey(t *testing.T) {
-	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
+	filePath := filepath.Join(t.TempDir(), "peer_id.json")
 
 	nodeKey, err := types.LoadOrGenNodeKey(filePath)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	nodeKey2, err := types.LoadOrGenNodeKey(filePath)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, nodeKey, nodeKey2)
 }
 
 func TestLoadNodeKey(t *testing.T) {
-	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
+	filePath := filepath.Join(t.TempDir(), "peer_id.json")
 
 	_, err := types.LoadNodeKey(filePath)
 	require.True(t, os.IsNotExist(err))
@@ -37,7 +36,7 @@ func TestLoadNodeKey(t *testing.T) {
 }
 
 func TestNodeKeySaveAs(t *testing.T) {
-	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
+	filePath := filepath.Join(t.TempDir(), "peer_id.json")
 	require.NoFileExists(t, filePath)
 
 	nodeKey := types.GenNodeKey()

@@ -76,7 +76,9 @@ func TestPersistentKVStoreKV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	kvstore := NewPersistentKVStoreApplication(dir)
+	logger := log.NewTestingLogger(t)
+
+	kvstore := NewPersistentKVStoreApplication(logger, dir)
 	key := testKey
 	value := key
 	tx := []byte(key)
@@ -92,7 +94,9 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	kvstore := NewPersistentKVStoreApplication(dir)
+	logger := log.NewTestingLogger(t)
+
+	kvstore := NewPersistentKVStoreApplication(logger, dir)
 	InitKVStore(kvstore)
 	height := int64(0)
 
@@ -124,7 +128,9 @@ func TestValUpdates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	kvstore := NewPersistentKVStoreApplication(dir)
+	logger := log.NewTestingLogger(t)
+
+	kvstore := NewPersistentKVStoreApplication(logger, dir)
 
 	// init with some validators
 	total := 10
@@ -289,7 +295,7 @@ func makeGRPCClientServer(
 func TestClientServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 
 	// set up socket app
 	kvstore := NewApplication()
@@ -324,39 +330,39 @@ func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client)
 }
 
 func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
-	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err := app.DeliverTx(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar, err = app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err = app.DeliverTx(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// commit
-	_, err = app.CommitSync(ctx)
+	_, err = app.Commit(ctx)
 	require.NoError(t, err)
 
-	info, err := app.InfoSync(ctx, types.RequestInfo{})
+	info, err := app.Info(ctx, types.RequestInfo{})
 	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery, err := app.QuerySync(ctx, types.RequestQuery{
+	resQuery, err := app.Query(ctx, types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery, err = app.QuerySync(ctx, types.RequestQuery{
+	resQuery, err = app.Query(ctx, types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))

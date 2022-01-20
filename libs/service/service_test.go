@@ -6,13 +6,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type testService struct {
 	BaseService
 }
 
-func (testService) OnReset() error {
+func (testService) OnStop() {}
+func (testService) OnStart(context.Context) error {
 	return nil
 }
 
@@ -20,8 +22,10 @@ func TestBaseServiceWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	ts := &testService{}
-	ts.BaseService = *NewBaseService(nil, "TestService", ts)
+	ts.BaseService = *NewBaseService(logger, "TestService", ts)
 	err := ts.Start(ctx)
 	require.NoError(t, err)
 
@@ -31,7 +35,7 @@ func TestBaseServiceWait(t *testing.T) {
 		waitFinished <- struct{}{}
 	}()
 
-	go ts.Stop() //nolint:errcheck // ignore for tests
+	go cancel()
 
 	select {
 	case <-waitFinished:

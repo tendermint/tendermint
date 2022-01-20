@@ -149,7 +149,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
-		panic(fmt.Sprintf("Error reading block: %v", err))
+		panic(fmt.Errorf("error reading block: %w", err))
 	}
 
 	block, err := types.BlockFromProto(pbb)
@@ -181,6 +181,26 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.LoadBlock(height)
 }
 
+// LoadBlockMetaByHash returns the blockmeta who's header corresponds to the given
+// hash. If none is found, returns nil.
+func (bs *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
+	bz, err := bs.db.Get(blockHashKey(hash))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
+		return nil
+	}
+
+	s := string(bz)
+	height, err := strconv.ParseInt(s, 10, 64)
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
+	}
+	return bs.LoadBlockMeta(height)
+}
+
 // LoadBlockPart returns the Part at the given index
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
@@ -201,7 +221,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	}
 	part, err := types.PartFromProto(pbpart)
 	if err != nil {
-		panic(fmt.Sprintf("Error reading block part: %v", err))
+		panic(fmt.Errorf("error reading block part: %w", err))
 	}
 
 	return part
@@ -253,7 +273,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
-		panic(fmt.Sprintf("Error reading block commit: %v", err))
+		panic(fmt.Errorf("error reading block commit: %w", err))
 	}
 	return commit
 }
@@ -273,7 +293,7 @@ func (bs *BlockStore) LoadSeenCommit() *types.Commit {
 	}
 	err = proto.Unmarshal(bz, pbc)
 	if err != nil {
-		panic(fmt.Sprintf("error reading block seen commit: %v", err))
+		panic(fmt.Errorf("error reading block seen commit: %w", err))
 	}
 
 	commit, err := types.CommitFromProto(pbc)
@@ -550,6 +570,10 @@ func (bs *BlockStore) SaveSignedHeader(sh *types.SignedHeader, blockID types.Blo
 	}
 
 	return batch.Close()
+}
+
+func (bs *BlockStore) Close() error {
+	return bs.db.Close()
 }
 
 //---------------------------------- KEY ENCODING -----------------------------------------

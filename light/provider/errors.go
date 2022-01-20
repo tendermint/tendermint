@@ -28,16 +28,20 @@ type ErrBadLightBlock struct {
 }
 
 func (e ErrBadLightBlock) Error() string {
-	return fmt.Sprintf("client provided bad signed header: %s", e.Reason.Error())
+	return fmt.Sprintf("client provided bad signed header: %v", e.Reason)
 }
+
+func (e ErrBadLightBlock) Unwrap() error { return e.Reason }
 
 // ErrUnreliableProvider is a generic error that indicates that the provider isn't
 // behaving in a reliable manner to the light client. The light client will
 // remove the provider
 type ErrUnreliableProvider struct {
-	Reason string
+	Reason error
 }
 
 func (e ErrUnreliableProvider) Error() string {
-	return fmt.Sprintf("client deemed unreliable: %s", e.Reason)
+	return fmt.Sprintf("client deemed unreliable: %v", e.Reason)
 }
+
+func (e ErrUnreliableProvider) Unwrap() error { return e.Reason }

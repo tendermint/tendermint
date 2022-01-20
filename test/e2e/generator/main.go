@@ -17,7 +17,7 @@ const (
 	randomSeed int64 = 4827085738
 )
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 
 func main() {
 	NewCLI().Run()

@@ -1,5 +1,7 @@
 package events
 
+import "context"
+
 // An EventCache buffers events for a Fireable
 // All events are cached. Filtering happens on Flush
 type EventCache struct {
@@ -28,9 +30,9 @@ func (evc *EventCache) FireEvent(event string, data EventData) {
 
 // Fire events by running evsw.FireEvent on all cached events. Blocks.
 // Clears cached events
-func (evc *EventCache) Flush() {
+func (evc *EventCache) Flush(ctx context.Context) {
 	for _, ei := range evc.events {
-		evc.evsw.FireEvent(ei.event, ei.data)
+		evc.evsw.FireEvent(ctx, ei.event, ei.data)
 	}
 	// Clear the buffer, since we only add to it with append it's safe to just set it to nil and maybe safe an allocation
 	evc.events = nil

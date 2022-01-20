@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	auto "github.com/tendermint/tendermint/internal/libs/autofile"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const Version = "0.0.1"
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	// Open Group
-	group, err := auto.OpenGroup(headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
+	group, err := auto.OpenGroup(ctx, log.NewNopLogger(), headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
 	if err != nil {
 		fmt.Printf("logjack couldn't create output file %v\n", headPath)
 		os.Exit(1)
@@ -63,14 +64,10 @@ func main() {
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
-			if err := group.Stop(); err != nil {
-				fmt.Fprintf(os.Stderr, "logjack stopped with error %v\n", headPath)
-				os.Exit(1)
-			}
 			if err == io.EOF {
 				os.Exit(0)
 			} else {
-				fmt.Println("logjack errored")
+				fmt.Println("logjack errored:", err.Error())
 				os.Exit(1)
 			}
 		}

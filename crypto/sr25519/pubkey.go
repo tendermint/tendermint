@@ -23,6 +23,9 @@ const (
 // PubKey implements crypto.PubKey.
 type PubKey []byte
 
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PubKey) TypeTag() string { return PubKeyName }
+
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKey) Address() crypto.Address {
 	if len(pubKey) != PubKeySize {

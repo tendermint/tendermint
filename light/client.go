@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/light/provider"
@@ -134,7 +133,7 @@ type Client struct {
 	providerTimeout  time.Duration
 
 	// Mutex for locking during changes of the light clients providers
-	providerMutex tmsync.Mutex
+	providerMutex sync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
 	// Providers used to "witness" new headers.
@@ -168,7 +167,8 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	options ...Option) (*Client, error) {
+	options ...Option,
+) (*Client, error) {
 
 	// Check whether the trusted store already has a trusted block. If so, then create
 	// a new client from the trusted store instead of the trust options.
@@ -1023,7 +1023,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			defer wg.Done()
 
 			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
-			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
+			select {
+			case witnessResponsesC <- witnessResponse{lb, witnessIndex, err}:
+			case <-ctx.Done():
+			}
+
 		}(index, witnessResponsesC)
 	}
 

@@ -71,7 +71,7 @@ func setup(
 	}
 
 	chDesc := &p2p.ChannelDescriptor{ID: BlockSyncChannel, MessageType: new(bcproto.Message)}
-	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(t, chDesc)
+	rts.blockSyncChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 
 	i := 0
 	for nodeID := range rts.network.Nodes {
@@ -82,8 +82,6 @@ func setup(
 	t.Cleanup(func() {
 		cancel()
 		for _, nodeID := range rts.nodes {
-			rts.peerUpdates[nodeID].Close()
-
 			if rts.reactors[nodeID].IsRunning() {
 				rts.reactors[nodeID].Wait()
 				rts.app[nodeID].Wait()
@@ -138,6 +136,7 @@ func (rts *reactorTestSuite) addNode(
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
 			vote, err := factory.MakeVote(
+				ctx,
 				privVal,
 				lastBlock.Header.ChainID, 0,
 				lastBlock.Header.Height, 0, 2,
@@ -145,7 +144,6 @@ func (rts *reactorTestSuite) addNode(
 				time.Now(),
 			)
 			require.NoError(t, err)
-
 			lastCommit = types.NewCommit(
 				vote.Height,
 				vote.Round,
@@ -154,11 +152,13 @@ func (rts *reactorTestSuite) addNode(
 			)
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit)
+		require.NoError(t, err)
+		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
@@ -166,26 +166,33 @@ func (rts *reactorTestSuite) addNode(
 
 	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-	rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+	rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
+
+	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		return rts.blockSyncChannels[nodeID], nil
+	}
 	rts.reactors[nodeID], err = NewReactor(
+		ctx,
 		rts.logger.With("nodeID", nodeID),
 		state.Copy(),
 		blockExec,
 		blockStore,
 		nil,
-		rts.blockSyncChannels[nodeID],
+		chCreator,
 		rts.peerUpdates[nodeID],
 		rts.blockSync,
-		consensus.NopMetrics())
+		consensus.NopMetrics(),
+		nil, // eventbus, can be nil
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, rts.reactors[nodeID].Start(ctx))
 	require.True(t, rts.reactors[nodeID].IsRunning())
 }
 
-func (rts *reactorTestSuite) start(t *testing.T) {
+func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
 	t.Helper()
-	rts.network.Start(t)
+	rts.network.Start(ctx, t)
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
 		len(rts.nodes)-1,
@@ -200,14 +207,14 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	maxBlockHeight := int64(64)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	secondaryPool := rts.reactors[rts.nodes[1]].pool
 
@@ -228,7 +235,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		NodeID: rts.nodes[0],
 	}
-	rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(rts.nodes[0])
+	rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(ctx, rts.nodes[0])
 }
 
 func TestReactor_SyncTime(t *testing.T) {
@@ -239,12 +246,12 @@ func TestReactor_SyncTime(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	maxBlockHeight := int64(101)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
-	rts.start(t)
+	rts.start(ctx, t)
 
 	require.Eventually(
 		t,
@@ -267,14 +274,14 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	maxBlockHeight := int64(65)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	testCases := []struct {
 		height   int64
@@ -319,13 +326,13 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 
 	maxBlockHeight := int64(48)
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
-	rts.start(t)
+	rts.start(ctx, t)
 
 	require.Eventually(
 		t,
@@ -353,7 +360,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	//
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
-	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(ctx, t, cfg, 1, false, 30)
 	newNode := rts.network.MakeNode(ctx, t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),

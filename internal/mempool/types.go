@@ -63,6 +63,7 @@ type Mempool interface {
 	// 1. This should be called *after* block is committed by consensus.
 	// 2. Lock/Unlock must be managed by the caller.
 	Update(
+		ctx context.Context,
 		blockHeight int64,
 		blockTxs types.Txs,
 		deliverTxResponses []*abci.ResponseDeliverTx,
@@ -75,7 +76,7 @@ type Mempool interface {
 	//
 	// NOTE:
 	// 1. Lock/Unlock must be managed by caller.
-	FlushAppConn() error
+	FlushAppConn(context.Context) error
 
 	// Flush removes all transactions from the mempool and caches.
 	Flush()

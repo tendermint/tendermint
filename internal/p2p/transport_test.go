@@ -46,21 +46,23 @@ func TestTransport_AcceptClose(t *testing.T) {
 
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
+		opctx, opcancel := context.WithCancel(ctx)
 
 		// In-progress Accept should error on concurrent close.
 		errCh := make(chan error, 1)
 		go func() {
 			time.Sleep(200 * time.Millisecond)
+			opcancel()
 			errCh <- a.Close()
 		}()
 
-		_, err := a.Accept()
+		_, err := a.Accept(opctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 		require.NoError(t, <-errCh)
 
 		// Closed transport should return error immediately.
-		_, err = a.Accept()
+		_, err = a.Accept(opctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 	})
@@ -93,7 +95,7 @@ func TestTransport_DialEndpoints(t *testing.T) {
 		// Spawn a goroutine to simply accept any connections until closed.
 		go func() {
 			for {
-				conn, err := a.Accept()
+				conn, err := a.Accept(ctx)
 				if err != nil {
 					return
 				}
@@ -177,7 +179,6 @@ func TestTransport_Dial(t *testing.T) {
 		cancel()
 		_, err := a.Dial(cancelCtx, bEndpoint)
 		require.Error(t, err)
-		require.Equal(t, err, context.Canceled)
 
 		// Unavailable endpoint should error.
 		err = b.Close()
@@ -188,7 +189,7 @@ func TestTransport_Dial(t *testing.T) {
 		// Dialing from a closed transport should still work.
 		errCh := make(chan error, 1)
 		go func() {
-			conn, err := a.Accept()
+			conn, err := a.Accept(ctx)
 			if err == nil {
 				_ = conn.Close()
 			}
@@ -351,13 +352,12 @@ func TestConnection_FlushClose(t *testing.T) {
 		err := ab.Close()
 		require.NoError(t, err)
 
-		_, _, err = ab.ReceiveMessage()
+		_, _, err = ab.ReceiveMessage(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		err = ab.SendMessage(chID, []byte("closed"))
+		err = ab.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
-		require.Equal(t, io.EOF, err)
 	})
 }
 
@@ -388,19 +388,19 @@ func TestConnection_SendReceive(t *testing.T) {
 		ab, ba := dialAcceptHandshake(ctx, t, a, b)
 
 		// Can send and receive a to b.
-		err := ab.SendMessage(chID, []byte("foo"))
+		err := ab.SendMessage(ctx, chID, []byte("foo"))
 		require.NoError(t, err)
 
-		ch, msg, err := ba.ReceiveMessage()
+		ch, msg, err := ba.ReceiveMessage(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []byte("foo"), msg)
 		require.Equal(t, chID, ch)
 
 		// Can send and receive b to a.
-		err = ba.SendMessage(chID, []byte("bar"))
+		err = ba.SendMessage(ctx, chID, []byte("bar"))
 		require.NoError(t, err)
 
-		_, msg, err = ab.ReceiveMessage()
+		_, msg, err = ab.ReceiveMessage(ctx)
 		require.NoError(t, err)
 		require.Equal(t, []byte("bar"), msg)
 
@@ -410,9 +410,9 @@ func TestConnection_SendReceive(t *testing.T) {
 		err = b.Close()
 		require.NoError(t, err)
 
-		err = ab.SendMessage(chID, []byte("still here"))
+		err = ab.SendMessage(ctx, chID, []byte("still here"))
 		require.NoError(t, err)
-		ch, msg, err = ba.ReceiveMessage()
+		ch, msg, err = ba.ReceiveMessage(ctx)
 		require.NoError(t, err)
 		require.Equal(t, chID, ch)
 		require.Equal(t, []byte("still here"), msg)
@@ -422,21 +422,20 @@ func TestConnection_SendReceive(t *testing.T) {
 		err = ba.Close()
 		require.NoError(t, err)
 
-		_, _, err = ab.ReceiveMessage()
+		_, _, err = ab.ReceiveMessage(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		err = ab.SendMessage(chID, []byte("closed"))
+		err = ab.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		_, _, err = ba.ReceiveMessage()
+		_, _, err = ba.ReceiveMessage(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 
-		err = ba.SendMessage(chID, []byte("closed"))
+		err = ba.SendMessage(ctx, chID, []byte("closed"))
 		require.Error(t, err)
-		require.Equal(t, io.EOF, err)
 	})
 }
 
@@ -606,7 +605,7 @@ func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Conn
 	acceptCh := make(chan p2p.Connection, 1)
 	errCh := make(chan error, 1)
 	go func() {
-		conn, err := b.Accept()
+		conn, err := b.Accept(ctx)
 		errCh <- err
 		acceptCh <- conn
 	}()

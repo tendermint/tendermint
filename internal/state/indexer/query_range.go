@@ -3,7 +3,7 @@ package indexer
 import (
 	"time"
 
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query/syntax"
 )
 
 // QueryRanges defines a mapping between a composite event key and a QueryRange.
@@ -77,32 +77,32 @@ func (qr QueryRange) UpperBoundValue() interface{} {
 
 // LookForRanges returns a mapping of QueryRanges and the matching indexes in
 // the provided query conditions.
-func LookForRanges(conditions []query.Condition) (ranges QueryRanges, indexes []int) {
+func LookForRanges(conditions []syntax.Condition) (ranges QueryRanges, indexes []int) {
 	ranges = make(QueryRanges)
 	for i, c := range conditions {
 		if IsRangeOperation(c.Op) {
-			r, ok := ranges[c.CompositeKey]
+			r, ok := ranges[c.Tag]
 			if !ok {
-				r = QueryRange{Key: c.CompositeKey}
+				r = QueryRange{Key: c.Tag}
 			}
 
 			switch c.Op {
-			case query.OpGreater:
-				r.LowerBound = c.Operand
+			case syntax.TGt:
+				r.LowerBound = conditionArg(c)
 
-			case query.OpGreaterEqual:
+			case syntax.TGeq:
 				r.IncludeLowerBound = true
-				r.LowerBound = c.Operand
+				r.LowerBound = conditionArg(c)
 
-			case query.OpLess:
-				r.UpperBound = c.Operand
+			case syntax.TLt:
+				r.UpperBound = conditionArg(c)
 
-			case query.OpLessEqual:
+			case syntax.TLeq:
 				r.IncludeUpperBound = true
-				r.UpperBound = c.Operand
+				r.UpperBound = conditionArg(c)
 			}
 
-			ranges[c.CompositeKey] = r
+			ranges[c.Tag] = r
 			indexes = append(indexes, i)
 		}
 	}
@@ -112,12 +112,26 @@ func LookForRanges(conditions []query.Condition) (ranges QueryRanges, indexes []
 
 // IsRangeOperation returns a boolean signifying if a query Operator is a range
 // operation or not.
-func IsRangeOperation(op query.Operator) bool {
+func IsRangeOperation(op syntax.Token) bool {
 	switch op {
-	case query.OpGreater, query.OpGreaterEqual, query.OpLess, query.OpLessEqual:
+	case syntax.TGt, syntax.TGeq, syntax.TLt, syntax.TLeq:
 		return true
 
 	default:
 		return false
+	}
+}
+
+func conditionArg(c syntax.Condition) interface{} {
+	if c.Arg == nil {
+		return nil
+	}
+	switch c.Arg.Type {
+	case syntax.TNumber:
+		return int64(c.Arg.Number())
+	case syntax.TTime, syntax.TDate:
+		return c.Arg.Time()
+	default:
+		return c.Arg.Value() // string
 	}
 }

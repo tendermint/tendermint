@@ -12,8 +12,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query/syntax"
 	indexer "github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -52,7 +53,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	txResult := new(abci.TxResult)
 	err = proto.Unmarshal(rawBytes, txResult)
 	if err != nil {
-		return nil, fmt.Errorf("error reading TxResult: %v", err)
+		return nil, fmt.Errorf("error reading TxResult: %w", err)
 	}
 
 	return txResult, nil
@@ -148,10 +149,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	filteredHashes := make(map[string][]byte)
 
 	// get a list of conditions (like "tx.height > 5")
-	conditions, err := q.Conditions()
-	if err != nil {
-		return nil, fmt.Errorf("error during parsing conditions from query: %w", err)
-	}
+	conditions := q.Syntax()
 
 	// if there is a hash condition, return the result immediately
 	hash, ok, err := lookForHash(conditions)
@@ -238,10 +236,10 @@ hashes:
 	return results, nil
 }
 
-func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error) {
+func lookForHash(conditions []syntax.Condition) (hash []byte, ok bool, err error) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.TxHashKey {
-			decoded, err := hex.DecodeString(c.Operand.(string))
+		if c.Tag == types.TxHashKey {
+			decoded, err := hex.DecodeString(c.Arg.Value())
 			return decoded, true, err
 		}
 	}
@@ -249,10 +247,10 @@ func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error)
 }
 
 // lookForHeight returns a height if there is an "height=X" condition.
-func lookForHeight(conditions []query.Condition) (height int64) {
+func lookForHeight(conditions []syntax.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.TxHeightKey && c.Op == query.OpEqual {
-			return c.Operand.(int64)
+		if c.Tag == types.TxHeightKey && c.Op == syntax.TEq {
+			return int64(c.Arg.Number())
 		}
 	}
 	return 0
@@ -265,7 +263,7 @@ func lookForHeight(conditions []query.Condition) (height int64) {
 // NOTE: filteredHashes may be empty if no previous condition has matched.
 func (txi *TxIndex) match(
 	ctx context.Context,
-	c query.Condition,
+	c syntax.Condition,
 	startKeyBz []byte,
 	filteredHashes map[string][]byte,
 	firstRun bool,
@@ -279,7 +277,7 @@ func (txi *TxIndex) match(
 	tmpHashes := make(map[string][]byte)
 
 	switch {
-	case c.Op == query.OpEqual:
+	case c.Op == syntax.TEq:
 		it, err := dbm.IteratePrefix(txi.store, startKeyBz)
 		if err != nil {
 			panic(err)
@@ -301,10 +299,10 @@ func (txi *TxIndex) match(
 			panic(err)
 		}
 
-	case c.Op == query.OpExists:
+	case c.Op == syntax.TExists:
 		// XXX: can't use startKeyBz here because c.Operand is nil
 		// (e.g. "account.owner/<nil>/" won't match w/ a single row)
-		it, err := dbm.IteratePrefix(txi.store, prefixFromCompositeKey(c.CompositeKey))
+		it, err := dbm.IteratePrefix(txi.store, prefixFromCompositeKey(c.Tag))
 		if err != nil {
 			panic(err)
 		}
@@ -325,11 +323,11 @@ func (txi *TxIndex) match(
 			panic(err)
 		}
 
-	case c.Op == query.OpContains:
+	case c.Op == syntax.TContains:
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
-		it, err := dbm.IteratePrefix(txi.store, prefixFromCompositeKey(c.CompositeKey))
+		it, err := dbm.IteratePrefix(txi.store, prefixFromCompositeKey(c.Tag))
 		if err != nil {
 			panic(err)
 		}
@@ -341,7 +339,7 @@ func (txi *TxIndex) match(
 			if err != nil {
 				continue
 			}
-			if strings.Contains(value, c.Operand.(string)) {
+			if strings.Contains(value, c.Arg.Value()) {
 				tmpHashes[string(it.Value())] = it.Value()
 			}
 
@@ -577,8 +575,8 @@ func prefixFromCompositeKeyAndValue(compositeKey, value string) []byte {
 }
 
 // a small utility function for getting a keys prefix based on a condition and a height
-func prefixForCondition(c query.Condition, height int64) []byte {
-	key := prefixFromCompositeKeyAndValue(c.CompositeKey, fmt.Sprintf("%v", c.Operand))
+func prefixForCondition(c syntax.Condition, height int64) []byte {
+	key := prefixFromCompositeKeyAndValue(c.Tag, c.Arg.Value())
 	if height > 0 {
 		var err error
 		key, err = orderedcode.Append(key, height)

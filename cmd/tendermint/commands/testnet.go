@@ -122,7 +122,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 	}
 
 	genVals := make([]types.GenesisValidator, nValidators)
-
+	ctx := cmd.Context()
 	for i := 0; i < nValidators; i++ {
 		nodeDirName := fmt.Sprintf("%s%d", nodeDirPrefix, i)
 		nodeDir := filepath.Join(outputDir, nodeDirName)
@@ -139,7 +139,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err := initFilesWithConfig(config); err != nil {
+		if err := initFilesWithConfig(ctx, config); err != nil {
 			return err
 		}
 
@@ -150,7 +150,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 		defer cancel()
 
 		pubKey, err := pv.GetPubKey(ctx)
@@ -181,7 +181,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err := initFilesWithConfig(config); err != nil {
+		if err := initFilesWithConfig(ctx, config); err != nil {
 			return err
 		}
 	}

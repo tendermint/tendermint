@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
@@ -107,9 +108,7 @@ func TestListenerTimeoutReadWrite(t *testing.T) {
 	for _, tc := range listenerTestCases(t, timeoutAccept, timeoutReadWrite) {
 		go func(dialer SocketDialer) {
 			_, err := dialer()
-			if err != nil {
-				panic(err)
-			}
+			require.NoError(t, err)
 		}(tc.dialer)
 
 		c, err := tc.listener.Accept()

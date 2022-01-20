@@ -34,14 +34,18 @@ func TestGetPubKey(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			logger := log.NewTestingLogger(t)
+
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
 
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
-			resp, err := s.GetPubKey(context.Background(), req)
+			resp, err := s.GetPubKey(ctx, req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
-				pk, err := tc.pv.GetPubKey(context.Background())
+				pk, err := tc.pv.GetPubKey(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, resp.PubKey.GetEd25519(), pk.Bytes())
 			}
@@ -105,16 +109,20 @@ func TestSignVote(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			logger := log.NewTestingLogger(t)
+
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
 
 			req := &privvalproto.SignVoteRequest{ChainId: ChainID, Vote: tc.have.ToProto()}
-			resp, err := s.SignVote(context.Background(), req)
+			resp, err := s.SignVote(ctx, req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbVote := tc.want.ToProto()
 
-				require.NoError(t, tc.pv.SignVote(context.Background(), ChainID, pbVote))
+				require.NoError(t, tc.pv.SignVote(ctx, ChainID, pbVote))
 
 				assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
 			}
@@ -172,15 +180,19 @@ func TestSignProposal(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			logger := log.NewTestingLogger(t)
+
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
 
 			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
-			resp, err := s.SignProposal(context.Background(), req)
+			resp, err := s.SignProposal(ctx, req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbProposal := tc.want.ToProto()
-				require.NoError(t, tc.pv.SignProposal(context.Background(), ChainID, pbProposal))
+				require.NoError(t, tc.pv.SignProposal(ctx, ChainID, pbProposal))
 				assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
 			}
 		})

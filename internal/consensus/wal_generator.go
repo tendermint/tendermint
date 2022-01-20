@@ -31,13 +31,12 @@ import (
 // persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created.
 // If the node fails to produce given numBlocks, it returns an error.
-func WALGenerateNBlocks(ctx context.Context, t *testing.T, wr io.Writer, numBlocks int) (err error) {
+func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr io.Writer, numBlocks int) (err error) {
 	cfg := getConfig(t)
 
-	app := kvstore.NewPersistentKVStoreApplication(filepath.Join(cfg.DBDir(), "wal_generator"))
+	app := kvstore.NewPersistentKVStoreApplication(logger, filepath.Join(cfg.DBDir(), "wal_generator"))
 	t.Cleanup(func() { require.NoError(t, app.Close()) })
 
-	logger := log.TestingLogger().With("wal_generator", "wal_generator")
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
 
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
@@ -80,10 +79,10 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, wr io.Writer, numBloc
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
-	consensusState := NewState(logger, cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
+	consensusState := NewState(ctx, logger, cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
-		consensusState.SetPrivValidator(privValidator)
+		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 	// END OF COPY PASTE
 
@@ -116,11 +115,11 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, wr io.Writer, numBloc
 }
 
 // WALWithNBlocks returns a WAL content with numBlocks.
-func WALWithNBlocks(ctx context.Context, t *testing.T, numBlocks int) (data []byte, err error) {
+func WALWithNBlocks(ctx context.Context, t *testing.T, logger log.Logger, numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 
-	if err := WALGenerateNBlocks(ctx, t, wr, numBlocks); err != nil {
+	if err := WALGenerateNBlocks(ctx, t, logger, wr, numBlocks); err != nil {
 		return []byte{}, err
 	}
 
