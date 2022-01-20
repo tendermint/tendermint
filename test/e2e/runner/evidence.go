@@ -157,7 +157,7 @@ func generateLightClientAttackEvidence(
 
 	// add a new bogus validator and remove an existing one to
 	// vary the validator set slightly
-	pv, conflictingVals, err := mutateValidatorSet(privVals, vals)
+	pv, conflictingVals, err := mutateValidatorSet(ctx, privVals, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +288,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 	}
 }
 
-func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
+func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet,
 ) ([]types.PrivValidator, *types.ValidatorSet, error) {
 	newVal, newPrivVal, err := factory.Validator(ctx, 10)
 	if err != nil {
