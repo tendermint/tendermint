@@ -358,18 +358,6 @@ func TestStateFullRound1(t *testing.T) {
 	cs, vss := randState(ctx, t, config, logger, 1)
 	height, round := cs.Height, cs.Round
 
-	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
-	// before consensus can move to the next height (and cause a race condition)
-	if err := cs.eventBus.Stop(); err != nil {
-		t.Error(err)
-	}
-	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-
-	cs.SetEventBus(eventBus)
-	if err := eventBus.Start(ctx); err != nil {
-		t.Error(err)
-	}
-
 	pv, err := cs.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 	voteCh := subscribeToVoter(ctx, t, cs, pv.Address())
