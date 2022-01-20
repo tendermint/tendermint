@@ -64,7 +64,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Even calling checkHeadSizeLimit manually won't rotate it.
-	g.checkHeadSizeLimit()
+	g.checkHeadSizeLimit(ctx)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Write 1000 more bytes.
@@ -74,7 +74,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Calling checkHeadSizeLimit this time rolls it.
-	g.checkHeadSizeLimit()
+	g.checkHeadSizeLimit(ctx)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 1000000, 0)
 
 	// Write 1000 more bytes.
@@ -84,7 +84,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	// Calling checkHeadSizeLimit does nothing.
-	g.checkHeadSizeLimit()
+	g.checkHeadSizeLimit(ctx)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 1001000, 1000)
 
 	// Write 1000 bytes 999 times.
@@ -97,7 +97,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 2000000, 1000000)
 
 	// Calling checkHeadSizeLimit rolls it again.
-	g.checkHeadSizeLimit()
+	g.checkHeadSizeLimit(ctx)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2000000, 0)
 
 	// Write 1000 more bytes.
@@ -108,7 +108,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
 	// Calling checkHeadSizeLimit does nothing.
-	g.checkHeadSizeLimit()
+	g.checkHeadSizeLimit(ctx)
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
 	// Cleanup
@@ -150,7 +150,7 @@ func TestRotateFile(t *testing.T) {
 	require.NoError(t, err)
 	err = g.FlushAndSync()
 	require.NoError(t, err)
-	g.RotateFile()
+	g.rotateFile(ctx)
 	err = g.WriteLine("Line 4")
 	require.NoError(t, err)
 	err = g.WriteLine("Line 5")
@@ -224,7 +224,7 @@ func TestGroupReaderRead(t *testing.T) {
 	require.NoError(t, err)
 	err = g.FlushAndSync()
 	require.NoError(t, err)
-	g.RotateFile()
+	g.rotateFile(ctx)
 	frankenstein := []byte("Frankenstein's Monster")
 	_, err = g.Write(frankenstein)
 	require.NoError(t, err)
@@ -262,7 +262,7 @@ func TestGroupReaderRead2(t *testing.T) {
 	require.NoError(t, err)
 	err = g.FlushAndSync()
 	require.NoError(t, err)
-	g.RotateFile()
+	g.rotateFile(ctx)
 	frankenstein := []byte("Frankenstein's Monster")
 	frankensteinPart := []byte("Frankenstein")
 	_, err = g.Write(frankensteinPart) // note writing only a part
@@ -315,7 +315,7 @@ func TestMaxIndex(t *testing.T) {
 	require.NoError(t, err)
 	err = g.FlushAndSync()
 	require.NoError(t, err)
-	g.RotateFile()
+	g.rotateFile(ctx)
 
 	assert.Equal(t, 1, g.MaxIndex(), "MaxIndex should point to the last file")
 
