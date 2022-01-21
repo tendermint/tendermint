@@ -3,6 +3,7 @@ package mempool
 import (
 	"context"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -214,7 +215,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
 func TestReactorConcurrency(t *testing.T) {
-	numTxs := 5
+	numTxs := 10
 	numNodes := 2
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -229,7 +230,7 @@ func TestReactorConcurrency(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < runtime.NumCPU()*2; i++ {
 		wg.Add(2)
 
 		// 1. submit a bunch of txs
@@ -266,9 +267,6 @@ func TestReactorConcurrency(t *testing.T) {
 			err := mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
 			require.NoError(t, err)
 		}()
-
-		// flush the mempool
-		rts.mempools[secondary].Flush()
 	}
 
 	wg.Wait()
