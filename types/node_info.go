@@ -24,9 +24,9 @@ func MaxNodeInfoSize() int {
 
 // ProtocolVersion contains the protocol versions for the software.
 type ProtocolVersion struct {
-	P2P   uint64 `json:"p2p"`
-	Block uint64 `json:"block"`
-	App   uint64 `json:"app"`
+	P2P   uint64 `json:"p2p,string"`
+	Block uint64 `json:"block,string"`
+	App   uint64 `json:"app,string"`
 }
 
 //-------------------------------------------------------------

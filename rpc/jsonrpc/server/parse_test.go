@@ -153,17 +153,17 @@ func TestParseJSONRPC(t *testing.T) {
 		{`[7,"flew",100]`, 0, "", true},
 		{`{"name": -12, "height": "fred"}`, 0, "", true},
 	}
+	ctx := context.Background()
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
-		data := []byte(tc.raw)
-		vals, err := jsonParamsToArgs(call, data)
+		vals, err := parseParams(ctx, call, []byte(tc.raw))
 		if tc.fail {
 			assert.Error(t, err, i)
 		} else {
 			assert.NoError(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 2, len(vals), i) {
-				assert.Equal(t, tc.height, vals[0].Int(), i)
-				assert.Equal(t, tc.name, vals[1].String(), i)
+			if assert.Equal(t, 3, len(vals), i) { // ctx, height, name
+				assert.Equal(t, tc.height, vals[1].Int(), i)
+				assert.Equal(t, tc.name, vals[2].String(), i)
 			}
 		}
 

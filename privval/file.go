@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/internal/libs/tempfile"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -49,11 +48,17 @@ func voteToStep(vote *tmproto.Vote) (int8, error) {
 
 // FilePVKey stores the immutable part of PrivValidator.
 type FilePVKey struct {
-	Address types.Address  `json:"address"`
-	PubKey  crypto.PubKey  `json:"pub_key"`
-	PrivKey crypto.PrivKey `json:"priv_key"`
+	Address types.Address
+	PubKey  crypto.PubKey
+	PrivKey crypto.PrivKey
 
 	filePath string
+}
+
+type filePVKeyJSON struct {
+	Address types.Address   `json:"address"`
+	PubKey  json.RawMessage `json:"pub_key"`
+	PrivKey json.RawMessage `json:"priv_key"`
 }
 
 func (pvKey FilePVKey) MarshalJSON() ([]byte, error) {
@@ -65,11 +70,24 @@ func (pvKey FilePVKey) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
-		Address types.Address   `json:"address"`
-		PubKey  json.RawMessage `json:"pub_key"`
-		PrivKey json.RawMessage `json:"priv_key"`
-	}{Address: pvKey.Address, PubKey: pubk, PrivKey: privk})
+	return json.Marshal(filePVKeyJSON{
+		Address: pvKey.Address, PubKey: pubk, PrivKey: privk,
+	})
+}
+
+func (pvKey *FilePVKey) UnmarshalJSON(data []byte) error {
+	var key filePVKeyJSON
+	if err := json.Unmarshal(data, &key); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(key.PubKey, &pvKey.PubKey); err != nil {
+		return fmt.Errorf("decoding PubKey: %w", err)
+	}
+	if err := jsontypes.Unmarshal(key.PrivKey, &pvKey.PrivKey); err != nil {
+		return fmt.Errorf("decoding PrivKey: %w", err)
+	}
+	pvKey.Address = key.Address
+	return nil
 }
 
 // Save persists the FilePVKey to its filePath.
@@ -79,11 +97,11 @@ func (pvKey FilePVKey) Save() error {
 		return errors.New("cannot save PrivValidator key: filePath not set")
 	}
 
-	jsonBytes, err := tmjson.MarshalIndent(pvKey, "", "  ")
+	data, err := json.MarshalIndent(pvKey, "", "  ")
 	if err != nil {
 		return err
 	}
-	return tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
+	return tempfile.WriteFileAtomic(outFile, data, 0600)
 }
 
 //-------------------------------------------------------------------------------
@@ -216,7 +234,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, err
 		return nil, err
 	}
 	pvKey := FilePVKey{}
-	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
+	err = json.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
 		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
