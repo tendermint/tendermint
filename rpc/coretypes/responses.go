@@ -119,9 +119,9 @@ type SyncInfo struct {
 
 // Info about the node's validator
 type ValidatorInfo struct {
-	Address     bytes.HexBytes `json:"address"`
-	PubKey      crypto.PubKey  `json:"pub_key"`
-	VotingPower int64          `json:"voting_power,string"`
+	Address     bytes.HexBytes
+	PubKey      crypto.PubKey
+	VotingPower int64
 }
 
 type validatorInfoJSON struct {
