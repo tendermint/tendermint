@@ -25,8 +25,7 @@ type Tagged interface {
 	TypeTag() string
 }
 
-// registry records the mapping from type tags to value types.  Values in this
-// map must be normalized to non-pointer types.
+// registry records the mapping from type tags to value types.
 var registry = struct {
 	types map[string]reflect.Type
 }{types: make(map[string]reflect.Type)}
@@ -38,11 +37,7 @@ func register(v Tagged) error {
 	if t, ok := registry.types[tag]; ok {
 		return fmt.Errorf("type tag %q already registered to %v", tag, t)
 	}
-	typ := reflect.TypeOf(v)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	registry.types[tag] = typ
+	registry.types[tag] = reflect.TypeOf(v)
 	return nil
 }
 
@@ -85,7 +80,10 @@ func Unmarshal(data []byte, v interface{}) error {
 	target := reflect.ValueOf(v)
 	if target.Kind() != reflect.Ptr {
 		return fmt.Errorf("target %T is not a pointer", v)
+	} else if target.IsZero() {
+		return fmt.Errorf("target is a nil %T", v)
 	}
+	baseType := target.Type().Elem()
 
 	var w wrapper
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -96,11 +94,16 @@ func Unmarshal(data []byte, v interface{}) error {
 	typ, ok := registry.types[w.Type]
 	if !ok {
 		return fmt.Errorf("unknown type tag: %q", w.Type)
-	} else if !typ.AssignableTo(target.Elem().Type()) {
-		return fmt.Errorf("type %v not assignable to %T", typ, v)
 	}
-
-	obj := reflect.New(typ)
+	if typ.AssignableTo(baseType) {
+		// ok: registered type is directly assignable to the target
+	} else if typ.Kind() == reflect.Ptr && typ.Elem().AssignableTo(baseType) {
+		typ = typ.Elem()
+		// ok: registered type is a pointer to a value assignable to the target
+	} else {
+		return fmt.Errorf("type %v is not assignable to %v", typ, baseType)
+	}
+	obj := reflect.New(typ) // we need a pointer to unmarshal
 	if err := json.Unmarshal(w.Value, obj.Interface()); err != nil {
 		return fmt.Errorf("decoding wrapped value: %w", err)
 	}
