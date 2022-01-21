@@ -64,6 +64,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				continue
 			}
 
+			req := req
 			ctx := rpctypes.WithCallInfo(hreq.Context(), &rpctypes.CallInfo{
 				RPCRequest:  &req,
 				HTTPRequest: hreq,
