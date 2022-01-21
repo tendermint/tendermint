@@ -46,8 +46,9 @@ var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg    Message      `json:"msg"`
-	PeerID types.NodeID `json:"peer_key"`
+	Msg         Message      `json:"msg"`
+	PeerID      types.NodeID `json:"peer_key"`
+	ReceiveTime time.Time    `json:"receive_time"`
 }
 
 // internally generated messages which may update the state
@@ -133,7 +134,7 @@ type State struct {
 	// some functions can be overwritten for testing
 	decideProposal func(ctx context.Context, height int64, round int32)
 	doPrevote      func(ctx context.Context, height int64, round int32)
-	setProposal    func(proposal *types.Proposal) error
+	setProposal    func(proposal *types.Proposal, t time.Time) error
 
 	// closed when we finish shutting down
 	done chan struct{}
@@ -516,14 +517,14 @@ func (cs *State) AddVote(ctx context.Context, vote *types.Vote, peerID types.Nod
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}:
+		case cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, "", tmtime.Now()}:
 			return nil
 		}
 	} else {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID}:
+		case cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID, tmtime.Now()}:
 			return nil
 		}
 	}
@@ -538,14 +539,14 @@ func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peer
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}:
+		case cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()}:
 			return nil
 		}
 	} else {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID}:
+		case cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID, tmtime.Now()}:
 			return nil
 		}
 	}
@@ -559,14 +560,14 @@ func (cs *State) AddProposalBlockPart(ctx context.Context, height int64, round i
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}:
+		case cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, "", tmtime.Now()}:
 			return nil
 		}
 	} else {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID}:
+		case cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID, tmtime.Now()}:
 			return nil
 		}
 	}
@@ -904,7 +905,7 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		err = cs.setProposal(msg.Proposal)
+		err = cs.setProposal(msg.Proposal, mi.ReceiveTime)
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
@@ -1260,11 +1261,11 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
-		cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, ""})
+		cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()})
 
 		for i := 0; i < int(blockParts.Total()); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
+			cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, "", tmtime.Now()})
 		}
 
 		cs.logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
@@ -1394,7 +1395,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	}
 
 	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
-		logger.Debug("prevote step: Proposal is not timely; prevoting nil - ",
+		logger.Debug("prevote step: Proposal is not timely; prevoting nil",
 			"proposed",
 			tmtime.Canonical(cs.Proposal.Timestamp).Format(time.RFC3339Nano),
 			"received",
@@ -1956,9 +1957,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 
 //-----------------------------------------------------------------------------
 
-func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
-	recvTime := tmtime.Now()
-
+func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time) error {
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil || proposal == nil {
@@ -2384,7 +2383,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(ctx, msgType, hash, header)
 	if err == nil {
-		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, ""})
+		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
 		cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}

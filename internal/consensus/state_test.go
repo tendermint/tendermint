@@ -17,6 +17,7 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -2408,26 +2409,26 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	}
 
 	cs.ProposalBlockParts = types.NewPartSetFromHeader(parts.Header())
-	cs.handleMsg(ctx, msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID, tmtime.Now()})
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, msg, statsMessage.Msg, "")
 	require.Equal(t, peerID, statsMessage.PeerID, "")
 
 	// sending the same part from different peer
-	cs.handleMsg(ctx, msgInfo{msg, "peer2"})
+	cs.handleMsg(ctx, msgInfo{msg, "peer2", tmtime.Now()})
 
 	// sending the part with the same height, but different round
 	msg.Round = 1
-	cs.handleMsg(ctx, msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID, tmtime.Now()})
 
 	// sending the part from the smaller height
 	msg.Height = 0
-	cs.handleMsg(ctx, msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID, tmtime.Now()})
 
 	// sending the part from the bigger height
 	msg.Height = 3
-	cs.handleMsg(ctx, msgInfo{msg, peerID})
+	cs.handleMsg(ctx, msgInfo{msg, peerID, tmtime.Now()})
 
 	select {
 	case <-cs.statsMsgQueue:
@@ -2456,20 +2457,20 @@ func TestStateOutputVoteStats(t *testing.T) {
 	vote := signVote(ctx, t, vss[1], tmproto.PrecommitType, config.ChainID(), blockID)
 
 	voteMessage := &VoteMessage{vote}
-	cs.handleMsg(ctx, msgInfo{voteMessage, peerID})
+	cs.handleMsg(ctx, msgInfo{voteMessage, peerID, tmtime.Now()})
 
 	statsMessage := <-cs.statsMsgQueue
 	require.Equal(t, voteMessage, statsMessage.Msg, "")
 	require.Equal(t, peerID, statsMessage.PeerID, "")
 
 	// sending the same part from different peer
-	cs.handleMsg(ctx, msgInfo{&VoteMessage{vote}, "peer2"})
+	cs.handleMsg(ctx, msgInfo{&VoteMessage{vote}, "peer2", tmtime.Now()})
 
 	// sending the vote for the bigger height
 	incrementHeight(vss[1])
 	vote = signVote(ctx, t, vss[1], tmproto.PrecommitType, config.ChainID(), blockID)
 
-	cs.handleMsg(ctx, msgInfo{&VoteMessage{vote}, peerID})
+	cs.handleMsg(ctx, msgInfo{&VoteMessage{vote}, peerID, tmtime.Now()})
 
 	select {
 	case <-cs.statsMsgQueue:

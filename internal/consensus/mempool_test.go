@@ -101,13 +101,13 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
 	newRoundCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)
 	timeoutCh := subscribe(ctx, t, cs.eventBus, types.EventQueryTimeoutPropose)
-	cs.setProposal = func(proposal *types.Proposal) error {
+	cs.setProposal = func(proposal *types.Proposal, recvTime time.Time) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
 			// go to next round
 			return nil
 		}
-		return cs.defaultSetProposal(proposal)
+		return cs.defaultSetProposal(proposal, recvTime)
 	}
 	startTestRound(ctx, cs, height, round)
 

@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -222,12 +223,12 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
-			lazyNodeState.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, ""})
+			lazyNodeState.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()})
 			for i := 0; i < int(blockParts.Total()); i++ {
 				part := blockParts.GetPart(i)
 				lazyNodeState.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{
 					lazyNodeState.Height, lazyNodeState.Round, part,
-				}, ""})
+				}, "", tmtime.Now()})
 			}
 		} else if !lazyNodeState.replayMode {
 			lazyNodeState.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
