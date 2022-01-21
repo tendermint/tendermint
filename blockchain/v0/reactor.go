@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -394,7 +395,6 @@ FOR_LOOP:
 
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
-				var err error
 				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
@@ -409,6 +409,7 @@ FOR_LOOP:
 					lastHundred = time.Now()
 				}
 			}
+
 			continue FOR_LOOP
 
 		case <-bcR.Quit():
