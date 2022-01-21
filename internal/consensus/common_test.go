@@ -361,24 +361,6 @@ func validatePrecommit(
 	}
 }
 
-func validatePrevoteAndPrecommit(
-	ctx context.Context,
-	t *testing.T,
-	cs *State,
-	thisRound,
-	lockRound int32,
-	privVal *validatorStub,
-	votedBlockHash,
-	lockedBlockHash []byte,
-) {
-	// verify the prevote
-	validatePrevote(ctx, t, cs, thisRound, privVal, votedBlockHash)
-	// verify precommit
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-	validatePrecommit(ctx, t, cs, thisRound, lockRound, privVal, votedBlockHash, lockedBlockHash)
-}
-
 func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
 	t.Helper()
 
@@ -687,6 +669,38 @@ func ensurePrevote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, r
 	ensureVote(t, voteCh, height, round, tmproto.PrevoteType)
 }
 
+func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
+}
+
+func ensurePrecommitMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrecommitType)
+}
+
+func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
+	t.Helper()
+	select {
+	case <-time.After(ensureTimeout):
+		t.Fatal("Timeout expired while waiting for NewVote event")
+	case msg := <-voteCh:
+		voteEvent, ok := msg.Data().(types.EventDataVote)
+		require.True(t, ok, "expected a EventDataVote, got %T. Wrong subscription channel?",
+			msg.Data())
+
+		vote := voteEvent.Vote
+		require.Equal(t, height, vote.Height)
+		require.Equal(t, round, vote.Round)
+
+		require.Equal(t, voteType, vote.Type)
+		if hash == nil {
+			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
+		} else {
+			require.True(t, bytes.Equal(vote.BlockID.Hash, hash), "Expected prevote to be for %X, got %X", hash, vote.BlockID.Hash)
+		}
+	}
+}
 func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, voteType tmproto.SignedMsgType) {
 	t.Helper()
 	select {
