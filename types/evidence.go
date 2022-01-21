@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -552,6 +553,33 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
+
+func (evl EvidenceList) MarshalJSON() ([]byte, error) {
+	lst := make([]json.RawMessage, len(evl))
+	for i, ev := range evl {
+		bits, err := jsontypes.Marshal(ev)
+		if err != nil {
+			return nil, err
+		}
+		lst[i] = bits
+	}
+	return json.Marshal(lst)
+}
+
+func (evl *EvidenceList) UnmarshalJSON(data []byte) error {
+	var lst []json.RawMessage
+	if err := json.Unmarshal(data, &lst); err != nil {
+		return err
+	}
+	out := make([]Evidence, len(lst))
+	for i, elt := range lst {
+		if err := jsontypes.Unmarshal(elt, &out[i]); err != nil {
+			return err
+		}
+	}
+	*evl = EvidenceList(out)
+	return nil
+}
 
 // Hash returns the simple merkle root hash of the EvidenceList.
 func (evl EvidenceList) Hash() []byte {
