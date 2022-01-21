@@ -587,7 +587,7 @@ func ensureNewTimeout(t *testing.T, timeoutCh <-chan tmpubsub.Message, height in
 		"Timeout expired while waiting for NewTimeout event")
 }
 
-func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32) types.BlockID {
 	t.Helper()
 	select {
 	case <-time.After(ensureTimeout):
@@ -599,7 +599,9 @@ func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height 
 
 		require.Equal(t, height, proposalEvent.Height)
 		require.Equal(t, round, proposalEvent.Round)
+		return proposalEvent.BlockID
 	}
+	return types.BlockID{}
 }
 
 func ensureNewValidBlock(t *testing.T, validBlockCh <-chan tmpubsub.Message, height int64, round int32) {

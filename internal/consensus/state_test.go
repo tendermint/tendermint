@@ -367,18 +367,16 @@ func TestStateFullRound1(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	ensureNewProposal(t, propCh, height, round)
-	propBlockHash := cs.GetRoundState().ProposalBlock.Hash()
-	require.NotNil(t, propBlockHash)
+	propBlock := ensureNewProposal(t, propCh, height, round)
 
-	ensurePrevoteMatch(t, voteCh, height, round, propBlockHash) // wait for prevote
+	ensurePrevoteMatch(t, voteCh, height, round, propBlock.Hash) // wait for prevote
 
 	ensurePrecommit(t, voteCh, height, round) // wait for precommit
 
 	// we're going to roll right into new height
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
-	validateLastPrecommit(ctx, t, cs, vss[0], propBlockHash)
+	validateLastPrecommit(ctx, t, cs, vss[0], propBlock.Hash)
 }
 
 // nil is proposed, so prevote and precommit nil
