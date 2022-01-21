@@ -729,6 +729,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	rts := setup(ctx, t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
+		reactor.state.logger = log.NewTestingLogger(t)
 		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(ctx, state, false)
 	}
