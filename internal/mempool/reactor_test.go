@@ -3,6 +3,7 @@ package mempool
 import (
 	"context"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -209,6 +211,65 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
 	rts.waitForTxns(t, convertTex(txs), secondaries...)
+}
+
+// regression test for https://github.com/tendermint/tendermint/issues/5408
+func TestReactorConcurrency(t *testing.T) {
+	numTxs := 10
+	numNodes := 2
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	rts := setupReactors(ctx, t, numNodes, 0)
+
+	primary := rts.nodes[0]
+	secondary := rts.nodes[1]
+
+	rts.start(ctx, t)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < runtime.NumCPU()*2; i++ {
+		wg.Add(2)
+
+		// 1. submit a bunch of txs
+		// 2. update the whole mempool
+
+		txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+		go func() {
+			defer wg.Done()
+
+			mempool := rts.mempools[primary]
+
+			mempool.Lock()
+			defer mempool.Unlock()
+
+			deliverTxResponses := make([]*abci.ResponseDeliverTx, len(txs))
+			for i := range txs {
+				deliverTxResponses[i] = &abci.ResponseDeliverTx{Code: 0}
+			}
+
+			require.NoError(t, mempool.Update(ctx, 1, convertTex(txs), deliverTxResponses, nil, nil))
+		}()
+
+		// 1. submit a bunch of txs
+		// 2. update none
+		_ = checkTxs(ctx, t, rts.reactors[secondary].mempool, numTxs, UnknownPeerID)
+		go func() {
+			defer wg.Done()
+
+			mempool := rts.mempools[secondary]
+
+			mempool.Lock()
+			defer mempool.Unlock()
+
+			err := mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
+			require.NoError(t, err)
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestReactorNoBroadcastToSender(t *testing.T) {
