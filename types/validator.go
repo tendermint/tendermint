@@ -17,10 +17,17 @@ import (
 // NOTE: The ProposerPriority is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 type Validator struct {
-	Address          Address       `json:"address"`
-	PubKey           crypto.PubKey `json:"pub_key"`
-	VotingPower      int64         `json:"voting_power,string"`
-	ProposerPriority int64         `json:"proposer_priority,string"`
+	Address          Address
+	PubKey           crypto.PubKey
+	VotingPower      int64
+	ProposerPriority int64
+}
+
+type validatorJSON struct {
+	Address          Address         `json:"address"`
+	PubKey           json.RawMessage `json:"pub_key"`
+	VotingPower      int64           `json:"voting_power,string"`
+	ProposerPriority int64           `json:"proposer_priority,string"`
 }
 
 func (v Validator) MarshalJSON() ([]byte, error) {
@@ -28,12 +35,26 @@ func (v Validator) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
-		Addr     Address         `json:"address"`
-		PubKey   json.RawMessage `json:"pub_key"`
-		Power    int64           `json:"voting_power,string"`
-		Priority int64           `json:"proposer_priority,string"`
-	}{Addr: v.Address, PubKey: pk, Power: v.VotingPower, Priority: v.ProposerPriority})
+	return json.Marshal(validatorJSON{
+		Address:          v.Address,
+		PubKey:           pk,
+		VotingPower:      v.VotingPower,
+		ProposerPriority: v.ProposerPriority,
+	})
+}
+
+func (v *Validator) UnmarshalJSON(data []byte) error {
+	var val validatorJSON
+	if err := json.Unmarshal(data, &val); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(val.PubKey, &v.PubKey); err != nil {
+		return err
+	}
+	v.Address = val.Address
+	v.VotingPower = val.VotingPower
+	v.ProposerPriority = val.ProposerPriority
+	return nil
 }
 
 // NewValidator returns a new validator with the given pubkey and voting power.
