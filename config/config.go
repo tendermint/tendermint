@@ -950,7 +950,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		DontAutoPropose:             false,
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0 * time.Second,
-		CreateProofBlockRange:       2,
+		CreateProofBlockRange:       1,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
