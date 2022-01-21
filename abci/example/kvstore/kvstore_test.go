@@ -330,23 +330,23 @@ func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client)
 }
 
 func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
-	ar, err := app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err := app.DeliverTx(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar, err = app.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err = app.DeliverTx(ctx, types.RequestDeliverTx{Tx: tx})
 	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// commit
-	_, err = app.CommitSync(ctx)
+	_, err = app.Commit(ctx)
 	require.NoError(t, err)
 
-	info, err := app.InfoSync(ctx, types.RequestInfo{})
+	info, err := app.Info(ctx, types.RequestInfo{})
 	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery, err := app.QuerySync(ctx, types.RequestQuery{
+	resQuery, err := app.Query(ctx, types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -357,7 +357,7 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []b
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery, err = app.QuerySync(ctx, types.RequestQuery{
+	resQuery, err = app.Query(ctx, types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,

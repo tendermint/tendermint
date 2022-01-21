@@ -112,7 +112,7 @@ func testStream(ctx context.Context, t *testing.T, logger log.Logger, app types.
 
 		// Sometimes send flush messages
 		if counter%128 == 0 {
-			err = client.FlushSync(ctx)
+			err = client.Flush(ctx)
 			require.NoError(t, err)
 		}
 	}

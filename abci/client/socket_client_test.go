@@ -23,20 +23,20 @@ func TestProperSyncCalls(t *testing.T) {
 	defer cancel()
 
 	app := slowApp{}
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	_, c := setupClientServer(ctx, t, logger, app)
 
 	resp := make(chan error, 1)
 	go func() {
-		// This is BeginBlockSync unrolled....
-		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
+		rsp, err := c.BeginBlock(ctx, types.RequestBeginBlock{})
 		assert.NoError(t, err)
-		err = c.FlushSync(ctx)
-		assert.NoError(t, err)
-		res := reqres.Response.GetBeginBlock()
-		assert.NotNil(t, res)
-		resp <- c.Error()
+		assert.NoError(t, c.Flush(ctx))
+		assert.NotNil(t, rsp)
+		select {
+		case <-ctx.Done():
+		case resp <- c.Error():
+		}
 	}()
 
 	select {

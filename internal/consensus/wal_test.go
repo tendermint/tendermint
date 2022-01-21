@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -49,6 +50,10 @@ func TestWALTruncate(t *testing.T) {
 	// time, RotateFile is called, truncate content exist in each file.
 	err = WALGenerateNBlocks(ctx, t, logger, wal.Group(), 60)
 	require.NoError(t, err)
+
+	// put the leakcheck here so it runs after other cleanup
+	// functions.
+	t.Cleanup(leaktest.CheckTimeout(t, 500*time.Millisecond))
 
 	time.Sleep(1 * time.Millisecond) // wait groupCheckDuration, make sure RotateFile run
 
