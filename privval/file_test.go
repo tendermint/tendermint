@@ -152,7 +152,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	assert.EqualValues(t, privKey, val.PrivKey)
 
 	// export it and make sure it is the same
-	out, err := tmjson.Marshal(val)
+	out, err := json.Marshal(val)
 	require.NoError(t, err)
 	assert.JSONEq(t, serialized, string(out))
 }
