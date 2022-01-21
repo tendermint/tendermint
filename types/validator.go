@@ -25,22 +25,25 @@ type Validator struct {
 
 type validatorJSON struct {
 	Address          Address         `json:"address"`
-	PubKey           json.RawMessage `json:"pub_key"`
+	PubKey           json.RawMessage `json:"pub_key,omitempty"`
 	VotingPower      int64           `json:"voting_power,string"`
 	ProposerPriority int64           `json:"proposer_priority,string"`
 }
 
 func (v Validator) MarshalJSON() ([]byte, error) {
-	pk, err := jsontypes.Marshal(v.PubKey)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(validatorJSON{
+	val := validatorJSON{
 		Address:          v.Address,
-		PubKey:           pk,
 		VotingPower:      v.VotingPower,
 		ProposerPriority: v.ProposerPriority,
-	})
+	}
+	if v.PubKey != nil {
+		pk, err := jsontypes.Marshal(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		val.PubKey = pk
+	}
+	return json.Marshal(val)
 }
 
 func (v *Validator) UnmarshalJSON(data []byte) error {
@@ -48,8 +51,10 @@ func (v *Validator) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &val); err != nil {
 		return err
 	}
-	if err := jsontypes.Unmarshal(val.PubKey, &v.PubKey); err != nil {
-		return err
+	if len(val.PubKey) != 0 {
+		if err := jsontypes.Unmarshal(val.PubKey, &v.PubKey); err != nil {
+			return err
+		}
 	}
 	v.Address = val.Address
 	v.VotingPower = val.VotingPower
