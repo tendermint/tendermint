@@ -86,7 +86,7 @@ type RPCService interface {
 	BlockResults(ctx context.Context, heightPtr *int64) (*coretypes.ResultBlockResults, error)
 	BlockSearch(ctx context.Context, query string, pagePtr, perPagePtr *int, orderBy string) (*coretypes.ResultBlockSearch, error)
 	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error)
-	BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error)
+	BroadcastEvidence(ctx context.Context, ev coretypes.Evidence) (*coretypes.ResultBroadcastEvidence, error)
 	BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error)
 	BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error)
 	BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error)
