@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
@@ -46,17 +47,46 @@ var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg    Message      `json:"msg"`
-	PeerID types.NodeID `json:"peer_key"`
+	Msg    Message
+	PeerID types.NodeID
+}
+
+func (msgInfo) TypeTag() string { return "tendermint/wal/MsgInfo" }
+
+type msgInfoJSON struct {
+	Msg    json.RawMessage `json:"msg"`
+	PeerID types.NodeID    `json:"peer_key"`
+}
+
+func (m msgInfo) MarshalJSON() ([]byte, error) {
+	msg, err := jsontypes.Marshal(m.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(msgInfoJSON{Msg: msg, PeerID: m.PeerID})
+}
+
+func (m *msgInfo) UnmarshalJSON(data []byte) error {
+	var msg msgInfoJSON
+	if err := json.Unmarshal(data, &msg); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(msg.Msg, &m.Msg); err != nil {
+		return err
+	}
+	m.PeerID = msg.PeerID
+	return nil
 }
 
 // internally generated messages which may update the state
 type timeoutInfo struct {
-	Duration time.Duration         `json:"duration"`
-	Height   int64                 `json:"height"`
+	Duration time.Duration         `json:"duration,string"`
+	Height   int64                 `json:"height,string"`
 	Round    int32                 `json:"round"`
 	Step     cstypes.RoundStepType `json:"step"`
 }
+
+func (timeoutInfo) TypeTag() string { return "tendermint/wal/TimeoutInfo" }
 
 func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
