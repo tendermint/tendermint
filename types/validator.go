@@ -51,10 +51,8 @@ func (v *Validator) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &val); err != nil {
 		return err
 	}
-	if len(val.PubKey) != 0 {
-		if err := jsontypes.Unmarshal(val.PubKey, &v.PubKey); err != nil {
-			return err
-		}
+	if err := jsontypes.Unmarshal(val.PubKey, &v.PubKey); err != nil {
+		return err
 	}
 	v.Address = val.Address
 	v.VotingPower = val.VotingPower

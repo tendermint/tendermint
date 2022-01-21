@@ -84,6 +84,10 @@ func Unmarshal(data []byte, v interface{}) error {
 		return fmt.Errorf("target is a nil %T", v)
 	}
 	baseType := target.Type().Elem()
+	if isNull(data) {
+		target.Elem().Set(reflect.Zero(baseType))
+		return nil
+	}
 
 	var w wrapper
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -109,4 +113,9 @@ func Unmarshal(data []byte, v interface{}) error {
 	}
 	target.Elem().Set(obj.Elem())
 	return nil
+}
+
+// isNull reports true if data is empty or is the JSON "null" value.
+func isNull(data []byte) bool {
+	return len(data) == 0 || bytes.Equal(data, []byte("null"))
 }
