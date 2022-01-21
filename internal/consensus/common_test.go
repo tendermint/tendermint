@@ -893,7 +893,7 @@ func makeGenesisState(ctx context.Context, t *testing.T, cfg *config.Config, arg
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	return func() TimeoutTicker {
 		return &mockTicker{
-			c:        make(chan timeoutInfo, 10),
+			c:        make(chan timeoutInfo, 100),
 			onlyOnce: onlyOnce,
 		}
 	}
