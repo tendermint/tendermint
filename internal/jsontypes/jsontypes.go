@@ -93,7 +93,7 @@ func Unmarshal(data []byte, v interface{}) error {
 	}
 	typ, ok := registry.types[w.Type]
 	if !ok {
-		return fmt.Errorf("unknown type tag: %q", w.Type)
+		return fmt.Errorf("unknown type tag for %T: %q", v, w.Type)
 	}
 	if typ.AssignableTo(baseType) {
 		// ok: registered type is directly assignable to the target
