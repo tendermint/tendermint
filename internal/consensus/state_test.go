@@ -358,9 +358,7 @@ func TestStateFullRound1(t *testing.T) {
 	cs, vss := randState(ctx, t, config, logger, 1)
 	height, round := cs.Height, cs.Round
 
-	pv, err := cs.privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
-	voteCh := subscribeToVoter(ctx, t, cs, pv.Address())
+	voteCh := subscribe(ctx, t, cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)
 
