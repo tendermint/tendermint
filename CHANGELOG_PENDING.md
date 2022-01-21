@@ -39,7 +39,7 @@ Special thanks to external contributors on this release:
   - [p2p] \#7064 Remove WDRR queue implementation. (@tychoish)
   - [config] \#7169 `WriteConfigFile` now returns an error. (@tychoish)
   - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychoish)
-
+  - [abci/client] \#7607 Simplify client interface (removes most "async" methods). (@creachadair)
 
 - Blockchain Protocol
 
