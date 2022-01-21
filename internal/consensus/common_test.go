@@ -848,6 +848,7 @@ func randConsensusNetWithPeers(
 		}
 
 		app := appFunc(logger, filepath.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
+
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
 			// simulate handshake, receive app version. If don't do this, replay test will fail
@@ -943,6 +944,10 @@ func newKVStore(_ *testing.T, _ log.Logger) abci.Application {
 
 func newPersistentKVStoreWithPath(logger log.Logger, dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
+}
+
+func newEphemeralKVStore(_ log.Logger, _ string) abci.Application {
+	return kvstore.NewApplication()
 }
 
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {

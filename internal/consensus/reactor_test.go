@@ -723,7 +723,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		nPeers,
 		"consensus_val_set_changes_test",
 		newMockTickerFunc(true),
-		newPersistentKVStoreWithPath,
+		newEphemeralKVStore,
 	)
 	t.Cleanup(cleanup)
 

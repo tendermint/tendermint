@@ -341,7 +341,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		nPeers,
 		"replay_test",
 		newMockTickerFunc(true),
-		newPersistentKVStoreWithPath)
+		newEphemeralKVStore)
 	sim.Config = cfg
 
 	var err error
