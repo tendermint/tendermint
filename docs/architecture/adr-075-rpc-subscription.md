@@ -525,6 +525,12 @@ crashes and connectivity issues:
     necessary, by pruning length "more aggressively" than the configuration
     requires (e.g., reducing to 3/4 of the maximum rather than 1/1).
 
+    The state of the event log before the publisher acquires the lock:
+    ![Before publish and pruning](./img/adr-075-log-before.png)
+
+	After the publisher has added a new item and pruned old ones:
+    ![After publish and pruning](./img/adr-075-log-after.png)
+
 ### Migration Plan
 
 This design requires that clients eventually migrate to the new event
