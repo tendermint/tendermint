@@ -404,9 +404,6 @@ type EventItem struct {
         Type  string          `json:"type"`
         Value json.RawMessage `json:"value"`
     } `json:"data"`
-
-    // The ABCI events for this item, possibly empty.
-    Events []abci.Event `json:"events,omitempty"`
 }
 ```
 
@@ -417,13 +414,9 @@ of the reply, or are `""` if the log is empty.
 The `data` field contains the type-specific event datum, and `events` contain
 the ABCI events, if any were defined.
 
-> **Discussion point**: Based on [issue #7273][i7273], we may want to eliminate
-> this field from the response, since it duplicates data already stored
-> elsewhere in the event data.
->
-> Alternatively, if clients need these data separately, we could require the
-> server to _move_ the events from the data message to this field, rather than
-> merely copying them.
+> **Discussion point**: Based on [issue #7273][i7273], I did not include a
+> separate field in the response for the ABCI events, since it duplicates data
+> already stored elsewhere in the event data.
 
 The semantics of the reply are as follows:
 
