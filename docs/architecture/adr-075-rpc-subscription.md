@@ -283,20 +283,12 @@ log.
 
 The event log is shared among all subscribers to the node.
 
-> **Open question:** Should events persist across node restarts?
+> **Discussion point:** Should events persist across node restarts?
 >
-> The current event API does not persist events. Some events may be _indexed_,
-> but the node does not keep a complete record: Only BeginBlock and EndBlock
-> events are passed to the indexer, if an indexer is configured at all.
->
-> The initial implementation will not persist events across restarts.
-
-> **Open question:** The node already stores some event data persistently,
-> notably the events that correspond with block updates. I'm not sure whether
-> it persists other intermediate events, but I think it does not. The event log
-> could be combined with other storage (e.g., reuse the database shared by the
-> blockstore and statestore). Unless we need events to persist, however, it is
-> simpler, easier, and faster to buffer in memory.
+> The current event API does not persist events across restarts, so this new
+> design does not either. Note, however, that we may "spill" older event data
+> to disk as a way of controlling memory use. Such usage is ephemeral, however,
+> and does not need to be tracked as node data (e.g., it could be temp files).
 
 ### Query API
 
@@ -565,10 +557,21 @@ the new API, to remove a disincentive to upgrading.
 
 ### Future Work
 
-This design does not immediately address the problem of allowing the client to
-control which data are reported back for event items. That concern is deferred
-to future work. However, it would be straightforward to extend the filter
-and/or the request parameters to allow more control.
+- This design does not immediately address the problem of allowing the client
+  to control which data are reported back for event items. That concern is
+  deferred to future work. However, it would be straightforward to extend the
+  filter and/or the request parameters to allow more control.
+
+- The node currently stores a subset of event data (specifically the block and
+  transaction events) for use in reindexing. While these data are redundant
+  with the event log described in this document, they are not sufficient to
+  cover event subscription, as they omit other event types.
+
+  In the future we should investigate consolidating or removing event data from
+  the state store entirely. For now this issue is out of scope for purposes of
+  updating the RPC API. We may be able to piggyback on the database unification
+  plans (see [RFC 001][rfc001]) to store the event log separately, so its
+  pruning policy does not need to be tied to the block and state stores.
 
 ---
 ## Consequences
@@ -643,6 +646,7 @@ The following alternative approaches were considered:
    - [Proxying websockets][rp-ws]
    - [Extension modules][ng-xm]
 - [FastCGI][fcgi]
+- [RFC 001: Storage Engines & Database Layer][rfc001]
 - [RFC 002: Interprocess Communication in Tendermint][rfc002]
 - Issues:
    - [rpc/client: test that client resubscribes upon disconnect][i3380] (#3380)
@@ -661,6 +665,7 @@ The following alternative approaches were considered:
 [rp-ws]:         https://nginx.org/en/docs/http/websocket.html
 [ng-xm]:         https://www.nginx.com/resources/wiki/extending/
 [abci-event]:    https://pkg.go.dev/github.com/tendermint/tendermint/abci/types#Event
+[rfc001]:        https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-001-storage-engine.rst
 [rfc002]:        https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-002-ipc-ecosystem.md
 [i3380]:         https://github.com/tendermint/tendermint/issues/3380
 [i6439]:         https://github.com/tendermint/tendermint/issues/6439
