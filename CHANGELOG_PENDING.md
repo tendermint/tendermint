@@ -40,6 +40,7 @@ Special thanks to external contributors on this release:
   - [config] \#7169 `WriteConfigFile` now returns an error. (@tychoish)
   - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychoish)
   - [abci/client] \#7607 Simplify client interface (removes most "async" methods). (@creachadair)
+  - [libs/json] \#7673 Remove the libs/json (tmjson) library. (@creachadair)
 
 - Blockchain Protocol
 

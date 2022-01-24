@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 )
 
@@ -82,7 +82,7 @@ func TestGenesisGood(t *testing.T) {
 		ChainID:    "abc",
 		Validators: []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 	}
-	genDocBytes, err = tmjson.Marshal(baseGenDoc)
+	genDocBytes, err = json.Marshal(baseGenDoc)
 	assert.NoError(t, err, "error marshaling genDoc")
 
 	// test base gendoc and check consensus params were filled
@@ -94,14 +94,14 @@ func TestGenesisGood(t *testing.T) {
 	assert.NotNil(t, genDoc.Validators[0].Address, "expected validator's address to be filled in")
 
 	// create json with consensus params filled
-	genDocBytes, err = tmjson.Marshal(genDoc)
+	genDocBytes, err = json.Marshal(genDoc)
 	assert.NoError(t, err, "error marshaling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for valid genDoc json")
 
 	// test with invalid consensus params
 	genDoc.ConsensusParams.Block.MaxBytes = 0
-	genDocBytes, err = tmjson.Marshal(genDoc)
+	genDocBytes, err = json.Marshal(genDoc)
 	assert.NoError(t, err, "error marshaling genDoc")
 	_, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
