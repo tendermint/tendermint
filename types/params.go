@@ -55,15 +55,15 @@ type HashedParams struct {
 // BlockParams define limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
-	MaxBytes int64 `json:"max_bytes"`
-	MaxGas   int64 `json:"max_gas"`
+	MaxBytes int64 `json:"max_bytes,string"`
+	MaxGas   int64 `json:"max_gas,string"`
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
 type EvidenceParams struct {
-	MaxAgeNumBlocks int64         `json:"max_age_num_blocks"` // only accept new evidence more recent than this
-	MaxAgeDuration  time.Duration `json:"max_age_duration"`
-	MaxBytes        int64         `json:"max_bytes"`
+	MaxAgeNumBlocks int64         `json:"max_age_num_blocks,string"` // only accept new evidence more recent than this
+	MaxAgeDuration  time.Duration `json:"max_age_duration,string"`
+	MaxBytes        int64         `json:"max_bytes,string"`
 }
 
 // ValidatorParams restrict the public key types validators can use.
@@ -73,14 +73,14 @@ type ValidatorParams struct {
 }
 
 type VersionParams struct {
-	AppVersion uint64 `json:"app_version"`
+	AppVersion uint64 `json:"app_version,string"`
 }
 
 // SynchronyParams influence the validity of block timestamps.
 // TODO (@wbanfield): add link to proposer-based timestamp spec when completed.
 type SynchronyParams struct {
-	Precision    time.Duration `json:"precision"`
-	MessageDelay time.Duration `json:"message_delay"`
+	Precision    time.Duration `json:"precision,string"`
+	MessageDelay time.Duration `json:"message_delay,string"`
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.

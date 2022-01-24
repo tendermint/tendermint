@@ -12,8 +12,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	auto "github.com/tendermint/tendermint/internal/libs/autofile"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
@@ -41,15 +41,17 @@ type TimedWALMessage struct {
 // EndHeightMessage marks the end of the given height inside WAL.
 // @internal used by scripts/wal2json util.
 type EndHeightMessage struct {
-	Height int64 `json:"height"`
+	Height int64 `json:"height,string"`
 }
+
+func (EndHeightMessage) TypeTag() string { return "tendermint/wal/EndHeightMessage" }
 
 type WALMessage interface{}
 
 func init() {
-	tmjson.RegisterType(msgInfo{}, "tendermint/wal/MsgInfo")
-	tmjson.RegisterType(timeoutInfo{}, "tendermint/wal/TimeoutInfo")
-	tmjson.RegisterType(EndHeightMessage{}, "tendermint/wal/EndHeightMessage")
+	jsontypes.MustRegister(msgInfo{})
+	jsontypes.MustRegister(timeoutInfo{})
+	jsontypes.MustRegister(EndHeightMessage{})
 }
 
 //--------------------------------------------------------

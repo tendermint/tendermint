@@ -149,11 +149,23 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 }
 
 // ABCIQueryWithOptions returns an error if opts.Prove is false.
+// ABCIQueryWithOptions returns the result for the given height (opts.Height).
+// If no height is provided, the results of the block preceding the latest are returned.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 
 	// always request the proof
 	opts.Prove = true
+
+	// Can't return the latest block results because we won't be able to
+	// prove them. Return the results for the previous block instead.
+	if opts.Height == 0 {
+		res, err := c.next.Status(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can't get latest height: %w", err)
+		}
+		opts.Height = res.SyncInfo.LatestBlockHeight - 1
+	}
 
 	res, err := c.next.ABCIQueryWithOptions(ctx, path, data, opts)
 	if err != nil {

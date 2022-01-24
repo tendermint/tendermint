@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -13,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -241,7 +241,7 @@ func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {
 		return nil, err
 	}
 	pvKey := privval.FilePVKey{}
-	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
+	err = json.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
 		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
