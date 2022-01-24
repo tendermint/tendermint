@@ -279,7 +279,8 @@ will be given two configuration settings.  Note, these names are provisional:
 The node will retain all events within the time window, provided they do not
 exceed the maximum number.  These config parameters allow the operator to
 loosely regulate how much memory and storage the node allocates to the event
-log.
+log. The client can use the server reply to tell whether the events it wants
+are still available from the event log.
 
 The event log is shared among all subscribers to the node.
 
