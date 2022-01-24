@@ -60,8 +60,8 @@ for the p2p stack to easily identify specialized nodes, (e.g. light clients)
 thus obviating many of the design challenges with providing this feature in
 the context of the current stack.
 
-Similarly, libp2p makes it possible for project to be able back their non-Go
-light clients, without the major task of first implementing tendermint's p2p
+Similarly, libp2p makes it possible for a project to be able back their non-Go
+light clients, without the major task of first implementing Tendermint's p2p
 connection handling. We should identify if there exist users (e.g. the go IBC
 relayer, it's maintainers, and operators) who would be able to take advantage
 of p2p light client, before switching to libp2p. To our knowledge there are no
@@ -77,15 +77,15 @@ clients in tendermint.
 One of the most active use cases for light clients is in the implementation of
 the IBC relayer. Thus, we expect that providing P2P light clients might
 increase the reliability of relayers and reduce the cost of running a relayer,
-because relayer operators won't have to decide between rely on public RPC
+because relayer operators won't have to decide between relying on public RPC
 endpoints (unreliable) or running their own full nodes (expensive.) This
 also assumes that there are *no* other uses of the RPC in the relayer, and
 unless the relayers have the option of dropping all RPC use, it's unclear if a
 P2P light client will actually be able to successfully remove the dependency
 on the RPC system.
 
-Given that the primary relayer implementation, is hermes (rust,) it might be
-safe to deliver a version of tendermint that adds a light client rector in
+Given that the primary relayer implementation is Hermes (rust,) it might be
+safe to deliver a version of Tendermint that adds a light client rector in
 the full nodes, but that does not provide an implementation of a Go light
 client. This either means that the rust implementation would need support for
 the legacy P2P connection protocol or wait for the libp2p implementation.
