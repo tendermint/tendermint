@@ -165,13 +165,19 @@ function generateChangelog {
         --unreleased
 }
 
+function updateVersionGo {
+    sed -i'' -e "s/TMVersionDefault = \"[^\"]*\"\s*\$/TMVersionDefault = \"${NEW_PACKAGE_VERSION}\"/g" "${REPO_DIR}/version/version.go"
+}
+
 function createReleasePR {
     debug "Creating release branch ${RELEASE_BRANCH}"
     git pull -q
     git checkout -q -b "${RELEASE_BRANCH}"
 
     # commit changes
-    git commit -m "chore(release): update changelog and version to $NEW_PACKAGE_VERSION" "$REPO_DIR/CHANGELOG.md"
+    git commit -m "chore(release): update changelog and version to $NEW_PACKAGE_VERSION" \
+        "$REPO_DIR/CHANGELOG.md" \
+        "$REPO_DIR/version/version.go"
 
     # push changes
     git push --force -u origin "${RELEASE_BRANCH}"
@@ -212,6 +218,7 @@ fi
 
 validate
 generateChangelog
+updateVersionGo
 createReleasePR
 
 cleanup

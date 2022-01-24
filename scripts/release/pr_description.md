@@ -25,6 +25,8 @@ None
 ## Checklist:
 <!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
 - [ ] I have performed a self-review of the generated changelog
+- [ ] I have checked that P2PProtocol in version/version.go is bumped if needed
+- [ ] I have checked that BlockProtocol in version/version.go is bumped if needed
 
 **For repository code-owners and collaborators only**
 - [ ] I have assigned this pull request to a milestone
