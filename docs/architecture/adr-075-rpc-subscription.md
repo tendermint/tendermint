@@ -575,6 +575,12 @@ the new API, to remove a disincentive to upgrading.
   the future we may want to use a more structured and/or expressive query.  The
   Filter object can be extended with more fields as needed to support this.
 
+- Some users have trouble communicating with the RPC service because of
+  configuration problems like improperly-set CORS policies. While this design
+  does not address those issues directly, we might want to revisit how we set
+  policies in the RPC service to make it less susceptible to confusing errors
+  caused by misconfiguration.
+
 ---
 ## Consequences
 
