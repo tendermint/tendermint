@@ -464,6 +464,17 @@ crashes and connectivity issues:
 
 ### Other Notes
 
+- The new API supports two general "modes" of operation:
+
+  1. In ordinary operation, clients will **long-poll** the head of the event
+     log for new events matching their criteria (by setting a `wait_time` and
+     no `before_item`).
+
+  2. If there are more events than the client requested, or if the client needs
+     to to read older events to recover from a stall or crash , clients will
+     **page** backward through the event log (by setting `before_item` and
+     possibly `after_item`).
+
 - While the new API requires explicit polling by the client, it makes better
   use of the node's existing HTTP infrastructure (e.g., connection pools).
   Moreover, the direct implementation is easier to use from standard tools and
