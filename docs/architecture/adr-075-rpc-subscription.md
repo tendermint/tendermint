@@ -265,7 +265,8 @@ Specific goals of this design include:
 The node maintains an **event log**, a shared ordered record of the events
 published to its event bus within an operator-configurable time window.  The
 initial implementation will store the event log in-memory, and the operator
-will be given two configuration settings.  Note, these names are provisional:
+will be given two per-node configuration settings.  Note, these names are
+provisional:
 
 - `[event-subscription] time-window`: A duration before present during which the
   node will retain event items published. Setting this value to zero disables
