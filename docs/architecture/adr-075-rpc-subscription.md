@@ -193,14 +193,11 @@ To address the described problems, we will:
 3. The streaming API will be entirely removed in release v0.37, which will
    require all users of event subscription to switch to the new API.
 
-> **Point for discussion:** Given that we already have ABCI++ and PBTS for
-> v0.36, it would be reasonable to suggest postponing this work until v0.37 and
-> its successor instead. The reason I proposed v0.36 for the first step is that
-> the proposed design can be added _alongside_ the existing implementation, so
-> it would not break existing usage.
->
-> The plumbing changes would be mostly independent of the pieces that will
-> change for ABCI++ and PBTS, so working them concurrently is feasible.
+> **Point for discussion:** Given that ABCI++ and PBTS are the main priorities
+> for v0.36, it would be fine to slip the first phase of this work to v0.37.
+> Unless there is a time problem, however, the proposed design does not disrupt
+> the work on ABCI++ or PBTS, and will not increase the scope of breaking
+> changes. Therefore the plan is to begin in v0.36 and slip only if necessary.
 
 ---
 ## Detailed Design
