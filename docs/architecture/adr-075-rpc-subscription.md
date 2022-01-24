@@ -544,13 +544,14 @@ the new API, to remove a disincentive to upgrading.
 - Possibly also: Spend some time writing clients for JS, Rust, et al.
 - Release: Delete the old implementation and all the websocket support code.
 
-> **Open question**: Even though the plan is to keep the existing service, we
-> might take the opportunity to restrict the websocket endpoint to _only_ the
-> event streaming service, removing the other endpoints.
+> **Discussion point**: Even though the plan is to keep the existing service,
+> we might take the opportunity to restrict the websocket endpoint to _only_
+> the event streaming service, removing the other endpoints. To minimize the
+> disruption for users in the v0.36 cycle, I have decided not to do this for
+> the first phase.
 >
-> This would be a breaking change, but would not require changes for event
-> consumers, and it would be easy for other RPC calls to be moved to the normal
-> HTTP endpoints (as their APIs do not change).
+> If we wind up pushing this design into v0.37, however, we should re-evaulate
+> this partial turn-down of the websocket.
 
 ### Future Work
 
