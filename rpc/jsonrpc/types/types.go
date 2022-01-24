@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
-
-	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -100,29 +98,10 @@ func (req RPCRequest) String() string {
 
 // ParamsToRequest constructs a new RPCRequest with the given ID, method, and parameters.
 func ParamsToRequest(id jsonrpcid, method string, params interface{}) (RPCRequest, error) {
-	var payload json.RawMessage
-	var err error
-	switch t := params.(type) {
-	case map[string]interface{}:
-		// TODO(creachadair): This special case preserves existing behavior that
-		// relies on the custom JSON encoding library. Remove it once that
-		// requirement has been removed.
-		paramsMap := make(map[string]json.RawMessage, len(t))
-		for name, value := range t {
-			valueJSON, err := tmjson.Marshal(value)
-			if err != nil {
-				return RPCRequest{}, err
-			}
-			paramsMap[name] = valueJSON
-		}
-		payload, err = json.Marshal(paramsMap)
-	default:
-		payload, err = json.Marshal(params)
-	}
+	payload, err := json.Marshal(params)
 	if err != nil {
 		return RPCRequest{}, err
 	}
-
 	return NewRPCRequest(id, method, payload), nil
 }
 
@@ -162,6 +141,7 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	resp.JSONRPC = unsafeResp.JSONRPC
 	resp.Error = unsafeResp.Error
 	resp.Result = unsafeResp.Result
@@ -177,18 +157,11 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 }
 
 func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
-	var rawMsg json.RawMessage
-
-	if res != nil {
-		var js []byte
-		js, err := tmjson.Marshal(res)
-		if err != nil {
-			return RPCInternalError(id, fmt.Errorf("error marshaling response: %w", err))
-		}
-		rawMsg = json.RawMessage(js)
+	result, err := json.Marshal(res)
+	if err != nil {
+		return RPCInternalError(id, fmt.Errorf("error marshaling response: %w", err))
 	}
-
-	return RPCResponse{JSONRPC: "2.0", ID: id, Result: rawMsg}
+	return RPCResponse{JSONRPC: "2.0", ID: id, Result: result}
 }
 
 func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCResponse {

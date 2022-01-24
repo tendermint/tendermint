@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/jsontypes"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -554,6 +554,33 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
 
+func (evl EvidenceList) MarshalJSON() ([]byte, error) {
+	lst := make([]json.RawMessage, len(evl))
+	for i, ev := range evl {
+		bits, err := jsontypes.Marshal(ev)
+		if err != nil {
+			return nil, err
+		}
+		lst[i] = bits
+	}
+	return json.Marshal(lst)
+}
+
+func (evl *EvidenceList) UnmarshalJSON(data []byte) error {
+	var lst []json.RawMessage
+	if err := json.Unmarshal(data, &lst); err != nil {
+		return err
+	}
+	out := make([]Evidence, len(lst))
+	for i, elt := range lst {
+		if err := jsontypes.Unmarshal(elt, &out[i]); err != nil {
+			return err
+		}
+	}
+	*evl = EvidenceList(out)
+	return nil
+}
+
 // Hash returns the simple merkle root hash of the EvidenceList.
 func (evl EvidenceList) Hash() []byte {
 	// These allocations are required because Evidence is not of type Bytes, and
@@ -638,9 +665,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 }
 
 func init() {
-	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
-	tmjson.RegisterType(&LightClientAttackEvidence{}, "tendermint/LightClientAttackEvidence")
-
 	jsontypes.MustRegister((*DuplicateVoteEvidence)(nil))
 	jsontypes.MustRegister((*LightClientAttackEvidence)(nil))
 }

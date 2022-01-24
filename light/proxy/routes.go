@@ -38,3 +38,7 @@ func (p proxyService) Unsubscribe(ctx context.Context, query string) (*coretypes
 func (p proxyService) UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
 	return p.UnsubscribeAllWS(ctx)
 }
+
+func (p proxyService) BroadcastEvidence(ctx context.Context, ev coretypes.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
+	return p.Client.BroadcastEvidence(ctx, ev.Value)
+}
