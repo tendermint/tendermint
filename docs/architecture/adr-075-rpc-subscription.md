@@ -632,7 +632,8 @@ The following alternative approaches were considered:
    and clients seems too large for this to be the best option.
 
    Publishing to an external event broker might be a worthwhile future project,
-   if there is any demand for it.
+   if there is any demand for it. That decision is out of scope for this design,
+   as it interacts with the design of the indexer as well.
 
 ---
 ## References
