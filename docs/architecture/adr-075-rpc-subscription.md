@@ -334,7 +334,7 @@ type Filter struct {
 
 > **Open question:** For the initial implementation, the server will not cache
 > filter queries for the client. If this turns out to be a problem, we can add
-> methods to and and remove stored queries. If necessary, the Query type can be
+> methods to save and remove stored queries. If necessary, the Query type can be
 > extended to include a query ID option.
 
 > **Open question:** For the initial implementation, I am planning to keep the
