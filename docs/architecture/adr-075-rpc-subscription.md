@@ -322,20 +322,15 @@ type Filter struct {
 }
 ```
 
-> **Open question:** For the initial implementation, the server will not cache
-> filter queries for the client. If this turns out to be a problem, we can add
-> methods to save and remove stored queries. If necessary, the Query type can be
-> extended to include a query ID option.
+> **Discussion point:** The initial implementation will not cache filter
+> queries for the client. If this turns out to be a performance issue in
+> production, the service can keep a small shared cache of compiled queries.
+> Given the improvements from #7319 et seq., this should not be necessary.
 
-> **Open question:** For the initial implementation, I am planning to keep the
-> existing query language as-is. Another option would be to compile queries on
-> the client side, and provide a more structured representation in the request
-> than just a plain string.
->
-> I think this is probably worth doing, even if only to offload the parsing
-> step onto the client. For now, though, I've stuck to the existing format to
-> make migration easier. The service can keep a small shared cache of compiled
-> queries if performance turns out to be an issue.
+> **Discussion point:** For the initial implementation, the new API will use
+> the existing query language as-is. Future work may extend the Filter message
+> with a more structured and/or expressive query surface, but that is beyond
+> the scope of this design.
 
 The semantics of the request are as follows: An item in the event log is
 **eligible** for a query if:
@@ -573,6 +568,10 @@ the new API, to remove a disincentive to upgrading.
   updating the RPC API. We may be able to piggyback on the database unification
   plans (see [RFC 001][rfc001]) to store the event log separately, so its
   pruning policy does not need to be tied to the block and state stores.
+
+- This design reuses the existing filter query language from the old API.  In
+  the future we may want to use a more structured and/or expressive query.  The
+  Filter object can be extended with more fields as needed to support this.
 
 ---
 ## Consequences
