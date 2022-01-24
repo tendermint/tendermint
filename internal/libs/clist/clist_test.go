@@ -67,7 +67,7 @@ func TestSmall(t *testing.T) {
 
 func TestGCFifo(t *testing.T) {
 
-	const numElements = 1000000
+	const numElements = 10000
 	l := New()
 	gcCount := 0
 
@@ -100,7 +100,7 @@ func TestGCFifo(t *testing.T) {
 	tickerDoneCh := make(chan struct{})
 	go func() {
 		defer close(tickerDoneCh)
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(250 * time.Millisecond)
 		for {
 			select {
 			case <-ticker.C:
@@ -127,7 +127,7 @@ func TestGCFifo(t *testing.T) {
 
 func TestGCRandom(t *testing.T) {
 
-	const numElements = 1000000
+	const numElements = 10000
 	l := New()
 	gcCount := 0
 
@@ -163,7 +163,7 @@ func TestGCRandom(t *testing.T) {
 	tickerDoneCh := make(chan struct{})
 	go func() {
 		defer close(tickerDoneCh)
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(250 * time.Millisecond)
 		for {
 			select {
 			case <-ticker.C:
@@ -282,14 +282,14 @@ func TestWaitChan(t *testing.T) {
 	done := make(chan struct{})
 	pushed := 0
 	go func() {
+		defer close(done)
 		for i := 1; i < 100; i++ {
 			l.PushBack(i)
 			pushed++
-			time.Sleep(time.Duration(mrand.Intn(25)) * time.Millisecond)
+			time.Sleep(time.Duration(mrand.Intn(20)) * time.Millisecond)
 		}
 		// apply a deterministic pause so the counter has time to catch up
-		time.Sleep(25 * time.Millisecond)
-		close(done)
+		time.Sleep(20 * time.Millisecond)
 	}()
 
 	next := el
@@ -305,7 +305,7 @@ FOR_LOOP:
 			}
 		case <-done:
 			break FOR_LOOP
-		case <-time.After(10 * time.Second):
+		case <-time.After(2 * time.Second):
 			t.Fatal("max execution time")
 		}
 	}
@@ -326,7 +326,11 @@ FOR_LOOP2:
 			if prev == nil {
 				t.Fatal("expected PrevWaitChan to block forever on nil when reached first elem")
 			}
-		case <-time.After(3 * time.Second):
+			if pushed == seen {
+				break FOR_LOOP2
+			}
+
+		case <-time.After(250 * time.Millisecond):
 			break FOR_LOOP2
 		}
 	}
