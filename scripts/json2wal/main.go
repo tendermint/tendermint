@@ -9,13 +9,13 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/tendermint/tendermint/internal/consensus"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -56,7 +56,7 @@ func main() {
 		}
 
 		var msg consensus.TimedWALMessage
-		err = tmjson.Unmarshal(msgJSON, &msg)
+		err = json.Unmarshal(msgJSON, &msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %w", err))
 		}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +10,8 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
+	"strconv"
 
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -63,7 +64,12 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				continue
 			}
 
-			args, err := parseParams(rpcFunc, hreq, req)
+			req := req
+			ctx := rpctypes.WithCallInfo(hreq.Context(), &rpctypes.CallInfo{
+				RPCRequest:  &req,
+				HTTPRequest: hreq,
+			})
+			args, err := parseParams(ctx, rpcFunc, req.Params)
 			if err != nil {
 				responses = append(responses, rpctypes.RPCInvalidParamsError(
 					req.ID, fmt.Errorf("converting JSON parameters: %w", err)))
@@ -132,99 +138,101 @@ func parseRequests(data []byte) ([]rpctypes.RPCRequest, error) {
 	return reqs, nil
 }
 
-func mapParamsToArgs(
-	rpcFunc *RPCFunc,
-	params map[string]json.RawMessage,
-	argsOffset int,
-) ([]reflect.Value, error) {
-
-	values := make([]reflect.Value, len(rpcFunc.argNames))
-	for i, argName := range rpcFunc.argNames {
-		argType := rpcFunc.args[i+argsOffset]
-
-		if p, ok := params[argName]; ok && p != nil && len(p) > 0 {
-			val := reflect.New(argType)
-			err := tmjson.Unmarshal(p, val.Interface())
-			if err != nil {
-				return nil, err
-			}
-			values[i] = val.Elem()
-		} else { // use default for that type
-			values[i] = reflect.Zero(argType)
-		}
-	}
-
-	return values, nil
-}
-
-func arrayParamsToArgs(
-	rpcFunc *RPCFunc,
-	params []json.RawMessage,
-	argsOffset int,
-) ([]reflect.Value, error) {
-
-	if len(rpcFunc.argNames) != len(params) {
-		return nil, fmt.Errorf("expected %v parameters (%v), got %v (%v)",
-			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
-	}
-
-	values := make([]reflect.Value, len(params))
-	for i, p := range params {
-		argType := rpcFunc.args[i+argsOffset]
-		val := reflect.New(argType)
-		err := tmjson.Unmarshal(p, val.Interface())
-		if err != nil {
-			return nil, err
-		}
-		values[i] = val.Elem()
-	}
-	return values, nil
-}
-
 // parseParams parses the JSON parameters of rpcReq into the arguments of fn,
 // returning the corresponding argument values or an error.
-func parseParams(fn *RPCFunc, httpReq *http.Request, rpcReq rpctypes.RPCRequest) ([]reflect.Value, error) {
-	ctx := rpctypes.WithCallInfo(httpReq.Context(), &rpctypes.CallInfo{
-		RPCRequest:  &rpcReq,
-		HTTPRequest: httpReq,
-	})
-	args := []reflect.Value{reflect.ValueOf(ctx)}
-	if len(rpcReq.Params) == 0 {
-		return args, nil
-	}
-	fargs, err := jsonParamsToArgs(fn, rpcReq.Params)
+func parseParams(ctx context.Context, fn *RPCFunc, paramData []byte) ([]reflect.Value, error) {
+	params, err := parseJSONParams(fn, paramData)
 	if err != nil {
 		return nil, err
 	}
-	return append(args, fargs...), nil
+
+	args := make([]reflect.Value, 1+len(params))
+	args[0] = reflect.ValueOf(ctx)
+	for i, param := range params {
+		ptype := fn.args[i+1]
+		if len(param) == 0 {
+			args[i+1] = reflect.Zero(ptype)
+			continue
+		}
+
+		var pval reflect.Value
+		isPtr := ptype.Kind() == reflect.Ptr
+		if isPtr {
+			pval = reflect.New(ptype.Elem())
+		} else {
+			pval = reflect.New(ptype)
+		}
+		baseType := pval.Type().Elem()
+
+		if isIntType(baseType) && isStringValue(param) {
+			var z int64String
+			if err := json.Unmarshal(param, &z); err != nil {
+				return nil, fmt.Errorf("decoding string %q: %w", fn.argNames[i], err)
+			}
+			pval.Elem().Set(reflect.ValueOf(z).Convert(baseType))
+		} else if err := json.Unmarshal(param, pval.Interface()); err != nil {
+			return nil, fmt.Errorf("decoding %q: %w", fn.argNames[i], err)
+		}
+
+		if isPtr {
+			args[i+1] = pval
+		} else {
+			args[i+1] = pval.Elem()
+		}
+	}
+	return args, nil
 }
 
-// raw is unparsed json (from json.RawMessage) encoding either a map or an
-// array.
-//
-// Example:
-//   rpcFunc.args = [context.Context string]
-//   rpcFunc.argNames = ["arg"]
-func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
-	const argsOffset = 1
+// parseJSONParams parses data and returns a slice of JSON values matching the
+// positional parameters of fn. It reports an error if data is not "null" and
+// does not encode an object or an array, or if the number of array parameters
+// does not match the argument list of fn (excluding the context).
+func parseJSONParams(fn *RPCFunc, data []byte) ([]json.RawMessage, error) {
+	base := bytes.TrimSpace(data)
+	if bytes.HasPrefix(base, []byte("{")) {
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(base, &m); err != nil {
+			return nil, fmt.Errorf("decoding parameter object: %w", err)
+		}
+		out := make([]json.RawMessage, len(fn.argNames))
+		for i, name := range fn.argNames {
+			if p, ok := m[name]; ok {
+				out[i] = p
+			}
+		}
+		return out, nil
 
-	// TODO: Make more efficient, perhaps by checking the first character for '{' or '['?
-	// First, try to get the map.
-	var m map[string]json.RawMessage
-	err := json.Unmarshal(raw, &m)
-	if err == nil {
-		return mapParamsToArgs(rpcFunc, m, argsOffset)
+	} else if bytes.HasPrefix(base, []byte("[")) {
+		var m []json.RawMessage
+		if err := json.Unmarshal(base, &m); err != nil {
+			return nil, fmt.Errorf("decoding parameter array: %w", err)
+		}
+		if len(m) != len(fn.argNames) {
+			return nil, fmt.Errorf("got %d parameters, want %d", len(m), len(fn.argNames))
+		}
+		return m, nil
+
+	} else if bytes.Equal(base, []byte("null")) {
+		return make([]json.RawMessage, len(fn.argNames)), nil
 	}
 
-	// Otherwise, try an array.
-	var a []json.RawMessage
-	err = json.Unmarshal(raw, &a)
-	if err == nil {
-		return arrayParamsToArgs(rpcFunc, a, argsOffset)
-	}
+	return nil, errors.New("parameters must be an object or an array")
+}
 
-	// Otherwise, bad format, we cannot parse
-	return nil, fmt.Errorf("unknown type for JSON params: %v. Expected map or array", err)
+// isStringValue reports whether data is a JSON string value.
+func isStringValue(data json.RawMessage) bool {
+	return len(data) != 0 && data[0] == '"'
+}
+
+type int64String int64
+
+func (z *int64String) UnmarshalText(data []byte) error {
+	v, err := strconv.ParseInt(string(data), 10, 64)
+	if err != nil {
+		return err
+	}
+	*z = int64String(v)
+	return nil
 }
 
 // writes a list of available rpc endpoints as an html page

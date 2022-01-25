@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 // Reserved event types (alphabetically sorted).
@@ -90,23 +90,21 @@ var (
 // ENCODING / DECODING
 
 // TMEventData implements events.EventData.
-type TMEventData interface {
-	// empty interface
-}
+type TMEventData interface{}
 
 func init() {
-	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
-	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
-	tmjson.RegisterType(EventDataNewEvidence{}, "tendermint/event/NewEvidence")
-	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
-	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
-	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
-	tmjson.RegisterType(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal")
-	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
-	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
-	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
-	tmjson.RegisterType(EventDataBlockSyncStatus{}, "tendermint/event/FastSyncStatus")
-	tmjson.RegisterType(EventDataStateSyncStatus{}, "tendermint/event/StateSyncStatus")
+	jsontypes.MustRegister(EventDataBlockSyncStatus{})
+	jsontypes.MustRegister(EventDataCompleteProposal{})
+	jsontypes.MustRegister(EventDataNewBlock{})
+	jsontypes.MustRegister(EventDataNewBlockHeader{})
+	jsontypes.MustRegister(EventDataNewEvidence{})
+	jsontypes.MustRegister(EventDataNewRound{})
+	jsontypes.MustRegister(EventDataRoundState{})
+	jsontypes.MustRegister(EventDataStateSyncStatus{})
+	jsontypes.MustRegister(EventDataTx{})
+	jsontypes.MustRegister(EventDataValidatorSetUpdates{})
+	jsontypes.MustRegister(EventDataVote{})
+	jsontypes.MustRegister(EventDataString(""))
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -120,6 +118,9 @@ type EventDataNewBlock struct {
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
+
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
@@ -128,16 +129,25 @@ type EventDataNewBlockHeader struct {
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewBlockHeader) TypeTag() string { return "tendermint/event/NewBlockHeader" }
+
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
 
 	Height int64 `json:"height"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewEvidence) TypeTag() string { return "tendermint/event/NewEvidence" }
+
 // All txs fire EventDataTx
 type EventDataTx struct {
 	abci.TxResult
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataTx) TypeTag() string { return "tendermint/event/Tx" }
 
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
@@ -145,6 +155,9 @@ type EventDataRoundState struct {
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataRoundState) TypeTag() string { return "tendermint/event/RoundState" }
 
 type ValidatorInfo struct {
 	Address Address `json:"address"`
@@ -159,6 +172,9 @@ type EventDataNewRound struct {
 	Proposer ValidatorInfo `json:"proposer"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewRound) TypeTag() string { return "tendermint/event/NewRound" }
+
 type EventDataCompleteProposal struct {
 	Height int64  `json:"height"`
 	Round  int32  `json:"round"`
@@ -167,15 +183,27 @@ type EventDataCompleteProposal struct {
 	BlockID BlockID `json:"block_id"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataCompleteProposal) TypeTag() string { return "tendermint/event/CompleteProposal" }
+
 type EventDataVote struct {
 	Vote *Vote
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataVote) TypeTag() string { return "tendermint/event/Vote" }
+
 type EventDataString string
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataString) TypeTag() string { return "tendermint/event/ProposalString" }
 
 type EventDataValidatorSetUpdates struct {
 	ValidatorUpdates []*Validator `json:"validator_updates"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataValidatorSetUpdates) TypeTag() string { return "tendermint/event/ValidatorSetUpdates" }
 
 // EventDataBlockSyncStatus shows the fastsync status and the
 // height when the node state sync mechanism changes.
@@ -184,12 +212,18 @@ type EventDataBlockSyncStatus struct {
 	Height   int64 `json:"height"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataBlockSyncStatus) TypeTag() string { return "tendermint/event/FastSyncStatus" }
+
 // EventDataStateSyncStatus shows the statesync status and the
 // height when the node state sync mechanism changes.
 type EventDataStateSyncStatus struct {
 	Complete bool  `json:"complete"`
 	Height   int64 `json:"height"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataStateSyncStatus) TypeTag() string { return "tendermint/event/StateSyncStatus" }
 
 // PUBSUB
 

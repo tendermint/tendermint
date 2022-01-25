@@ -8,12 +8,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/tendermint/tendermint/internal/consensus"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 			panic(fmt.Errorf("failed to decode msg: %w", err))
 		}
 
-		json, err := tmjson.Marshal(msg)
+		json, err := json.Marshal(msg)
 		if err != nil {
 			panic(fmt.Errorf("failed to marshal msg: %w", err))
 		}
