@@ -10,6 +10,7 @@ import (
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -77,9 +78,14 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 			}
 
 			// We have a message to deliver to the client.
+			edata, ok := msg.Data().(types.EventData)
+			if !ok {
+				env.Logger.Error("Incompatible event data value (skipped)", "data", msg.Data())
+				continue
+			}
 			resp := rpctypes.NewRPCSuccessResponse(subscriptionID, &coretypes.ResultEvent{
 				Query:  query,
-				Data:   msg.Data(),
+				Data:   edata,
 				Events: msg.Events(),
 			})
 			wctx, cancel := context.WithTimeout(opctx, 10*time.Second)

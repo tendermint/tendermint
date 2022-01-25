@@ -88,8 +88,10 @@ var (
 
 // ENCODING / DECODING
 
-// TMEventData implements events.EventData.
-type TMEventData interface{}
+// EventData is satisfied by types that can be published as event data.
+type EventData interface {
+	jsontypes.Tagged
+}
 
 func init() {
 	jsontypes.MustRegister(EventDataBlockSyncStatus{})
