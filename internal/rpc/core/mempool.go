@@ -74,17 +74,10 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 
 	r := (<-resCh).GetCheckTx()
 	if r.Code != abci.CodeTypeOK {
-		if r.MempoolError == "" {
-			err = errors.New("transaction did not succeed")
-		} else {
-			err = errors.New(r.MempoolError)
-		}
-
 		return &coretypes.ResultBroadcastTxCommit{
 			CheckTx: *r,
 			Hash:    tx.Hash(),
-		}, err
-
+		}, fmt.Errorf("transaction encountered error (%s)", r.MempoolError)
 	}
 
 	if !indexer.KVSinkEnabled(env.EventSinks) {
