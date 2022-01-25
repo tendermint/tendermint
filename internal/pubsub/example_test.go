@@ -29,6 +29,6 @@ func TestExample(t *testing.T) {
 			Attributes: []abci.EventAttribute{{Key: "name", Value: "John"}},
 		},
 	}
-	require.NoError(t, s.PublishWithEvents(ctx, "Tombstone", events))
-	sub.mustReceive(ctx, "Tombstone")
+	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Tombstone"), events))
+	sub.mustReceive(ctx, pubstring("Tombstone"))
 }
