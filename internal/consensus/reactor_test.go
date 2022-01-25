@@ -712,8 +712,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	nPeers := 7
-	nVals := 4
+	nPeers := 4
+	nVals := 1
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
 		t,
