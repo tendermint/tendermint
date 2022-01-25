@@ -193,8 +193,7 @@ func (s *Server) Observe(ctx context.Context, observe func(Message) error, queri
 	} else {
 		matches = func(msg Message) bool {
 			for _, q := range queries {
-				match, err := q.Matches(msg.events)
-				if err == nil && match {
+				if q.Matches(msg.events) {
 					return true
 				}
 			}
@@ -423,11 +422,7 @@ func (s *Server) send(data interface{}, events []types.Event) error {
 	}
 
 	for si := range s.subs.index.all {
-		match, err := si.query.Matches(events)
-		if err != nil {
-			return fmt.Errorf("match failed against query: %w", err)
-			// TODO(creachadair): Should we evict this subscription?
-		} else if !match {
+		if !si.query.Matches(events) {
 			continue
 		}
 

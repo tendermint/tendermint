@@ -207,11 +207,7 @@ func TestCompiledMatches(t *testing.T) {
 				t.Fatalf("NewCompiled %#q: unexpected error: %v", tc.s, err)
 			}
 
-			got, err := c.Matches(tc.events)
-			if err != nil {
-				t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
-					tc.s, tc.events, err)
-			}
+			got := c.Matches(tc.events)
 			if got != tc.matches {
 				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
 					tc.s, tc.events, got, tc.matches)
@@ -228,10 +224,7 @@ func TestAllMatchesAll(t *testing.T) {
 		`Rilly|Blue=`,
 	)
 	for i := 0; i < len(events); i++ {
-		match, err := query.All.Matches(events[:i])
-		if err != nil {
-			t.Errorf("Matches failed: %w", err)
-		} else if !match {
+		if !query.All.Matches(events[:i]) {
 			t.Errorf("Did not match on %+v ", events[:i])
 		}
 	}
