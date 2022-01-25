@@ -15,6 +15,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -2076,7 +2077,7 @@ func subscribe(
 	ctx context.Context,
 	t *testing.T,
 	eventBus *eventbus.EventBus,
-	q tmpubsub.Query,
+	q *tmquery.Query,
 ) <-chan tmpubsub.Message {
 	t.Helper()
 	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{

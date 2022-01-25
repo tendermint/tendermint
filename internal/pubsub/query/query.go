@@ -67,13 +67,18 @@ func Compile(ast syntax.Query) (*Query, error) {
 	return &Query{ast: ast, conds: conds}, nil
 }
 
-// Matches satisfies part of the pubsub.Query interface.  This implementation
-// never reports an error. A nil *Query matches all events.
-func (q *Query) Matches(events []types.Event) (bool, error) {
+// Matches reports whether q matches the given events. If q == nil, the query
+// matches any non-empty collection of events.
+func (q *Query) Matches(events []types.Event) bool {
 	if q == nil {
-		return true, nil
+		return true
 	}
-	return q.matchesEvents(events), nil
+	for _, cond := range q.conds {
+		if !cond.matchesAny(events) {
+			return false
+		}
+	}
+	return len(events) != 0
 }
 
 // String matches part of the pubsub.Query interface.
@@ -90,16 +95,6 @@ func (q *Query) Syntax() syntax.Query {
 		return nil
 	}
 	return q.ast
-}
-
-// matchesEvents reports whether all the conditions match the given events.
-func (q *Query) matchesEvents(events []types.Event) bool {
-	for _, cond := range q.conds {
-		if !cond.matchesAny(events) {
-			return false
-		}
-	}
-	return len(events) != 0
 }
 
 // A condition is a compiled match condition.  A condition matches an event if
