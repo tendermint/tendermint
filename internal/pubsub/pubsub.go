@@ -329,7 +329,7 @@ func (s *Server) OnStart(ctx context.Context) error { s.run(ctx); return nil }
 // OnReset implements Service.OnReset. It has no effect for this service.
 func (s *Server) OnReset() error { return nil }
 
-func (s *Server) publish(ctx context.Context, data interface{}, events []abci.Event) error {
+func (s *Server) publish(ctx context.Context, data types.EventData, events []abci.Event) error {
 	s.pubs.RLock()
 	defer s.pubs.RUnlock()
 
@@ -392,7 +392,7 @@ func (s *Server) removeSubs(evict subInfoSet, reason error) {
 
 // send delivers the given message to all matching subscribers.  An error in
 // query matching stops transmission and is returned.
-func (s *Server) send(data interface{}, events []abci.Event) error {
+func (s *Server) send(data types.EventData, events []abci.Event) error {
 	// At exit, evict any subscriptions that were too slow.
 	evict := make(subInfoSet)
 	defer func() {

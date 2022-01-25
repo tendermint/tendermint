@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/queue"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -73,7 +74,7 @@ func (s *Subscription) stop(err error) {
 // Message glues data and events together.
 type Message struct {
 	subID  string
-	data   interface{}
+	data   types.EventData
 	events []abci.Event
 }
 
