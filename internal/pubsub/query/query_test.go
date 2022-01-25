@@ -7,12 +7,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/pubsub/query/syntax"
 )
-
-var _ pubsub.Query = (*query.Query)(nil)
 
 // Example events from the OpenAPI documentation:
 //  https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
