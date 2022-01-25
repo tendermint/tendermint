@@ -119,10 +119,6 @@ func TestSubscribeErrors(t *testing.T) {
 	logger := log.TestingLogger()
 	s := newTestServer(ctx, t, logger)
 
-	t.Run("EmptyQueryErr", func(t *testing.T) {
-		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{ClientID: clientID})
-		require.Error(t, err)
-	})
 	t.Run("NegativeLimitErr", func(t *testing.T) {
 		_, err := s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 			ClientID: clientID,
