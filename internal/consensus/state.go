@@ -2017,6 +2017,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
 	cs.ProposalReceiveTime = recvTime
+	cs.calculateProposalTimestampDifferenceMetric()
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
@@ -2560,6 +2561,19 @@ func repairWalFile(src, dst string) error {
 	}
 
 	return nil
+}
+
+func (cs *State) calculateProposalTimestampDifferenceMetric() {
+	if cs.Proposal != nil && cs.Proposal.POLRound == -1 {
+		tp := types.SynchronyParams{
+			Precision:    cs.state.ConsensusParams.Synchrony.Precision,
+			MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
+		}
+
+		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.state.InitialHeight)
+		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
+			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
+	}
 }
 
 // proposerWaitTime determines how long the proposer should wait to propose its next block.

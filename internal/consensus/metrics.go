@@ -80,6 +80,11 @@ type Metrics struct {
 	// timestamp and the timestamp of the latest prevote in a round where 100%
 	// of the voting power on the network issued prevotes.
 	FullPrevoteMessageDelay metrics.Gauge
+
+	// ProposalTimestampDifference is the difference between the timestamp in
+	// the proposal message and the local time of the validator at the time
+	// that the validator received the message.
+	ProposalTimestampDifference metrics.Histogram
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -226,6 +231,15 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
 		}, labels).With(labelsAndValues...),
+		ProposalTimestampDifference: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "proposal_timestamp_difference",
+			Help: "Difference in seconds between the timestamp in the proposal " +
+				"message and the local time when the message was received. " +
+				"Only calculated when a new block is proposed.",
+			Buckets: []float64{-10, -.5, -.025, 0, .1, .5, 1, 1.5, 2, 10},
+		}, append(labels, "is_timely")).With(labelsAndValues...),
 	}
 }
 
@@ -249,15 +263,16 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-		NumTxs:                    discard.NewGauge(),
-		BlockSizeBytes:            discard.NewHistogram(),
-		TotalTxs:                  discard.NewGauge(),
-		CommittedHeight:           discard.NewGauge(),
-		BlockSyncing:              discard.NewGauge(),
-		StateSyncing:              discard.NewGauge(),
-		BlockParts:                discard.NewCounter(),
-		QuorumPrevoteMessageDelay: discard.NewGauge(),
-		FullPrevoteMessageDelay:   discard.NewGauge(),
+		NumTxs:                      discard.NewGauge(),
+		BlockSizeBytes:              discard.NewHistogram(),
+		TotalTxs:                    discard.NewGauge(),
+		CommittedHeight:             discard.NewGauge(),
+		BlockSyncing:                discard.NewGauge(),
+		StateSyncing:                discard.NewGauge(),
+		BlockParts:                  discard.NewCounter(),
+		QuorumPrevoteMessageDelay:   discard.NewGauge(),
+		FullPrevoteMessageDelay:     discard.NewGauge(),
+		ProposalTimestampDifference: discard.NewHistogram(),
 	}
 }
 
