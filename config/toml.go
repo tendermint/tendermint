@@ -571,6 +571,10 @@ var testGenesisFmt = `{
 			"max_gas": "-1",
 			"time_iota_ms": "10"
 		},
+		"synchrony": {
+			"message_delay": "500000000",
+			"precision": "10000000"
+		},
 		"evidence": {
 			"max_age_num_blocks": "100000",
 			"max_age_duration": "172800000000000",
