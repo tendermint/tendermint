@@ -11,13 +11,13 @@ Abstract
 --------
 
 The dependency on access to the RPC system makes running or using the light
-client more complicated than it should be, because it is difficult to get
-access to the RPC endpoints on a running node. There is no deep dependency for
-the light client on the RPC system, and there is a persistent notion that
-"make a p2p light client" is a solution to this operational limitation. This
-document explores the implications and requirements of implementing a
-p2p-based light client, as well as the possibilities afforded by this
-implementation.
+client more complicated than it should be, because in practice node operators
+choose to restrict access to these end points (often correctly.) There is no
+deep dependency for the light client on the RPC system, and there is a
+persistent notion that "make a p2p light client" is a solution to this
+operational limitation. This document explores the implications and
+requirements of implementing a p2p-based light client, as well as the
+possibilities afforded by this implementation.
 
 Background
 ----------
@@ -26,13 +26,14 @@ High Level Design
 ~~~~~~~~~~~~~~~~~
 
 From a high level, the light client P2P implementation, is relatively straight
-forward, and the P2P-backed statesync implementation that took place during
-the 0.35 cycle. The light client only really needs to be able to request (and
-receive) a `LightBlock` at a given height. To support this, a new Reactor
-would run on every full node and validator which would be able to service
-these requests. The workload would be entirely request-response, and the
-implementation of the reactor would likely be very straight forward, and the
-implementation of the provider is similarly relatively simple. 
+forward, but is orthogonal to the P2P-backed statesync implementation that
+took place during the 0.35 cycle. The light client only really needs to be
+able to request (and receive) a `LightBlock` at a given height. To support
+this, a new Reactor would run on every full node and validator which would be
+able to service these requests. The workload would be entirely
+request-response, and the implementation of the reactor would likely be very
+straight forward, and the implementation of the provider is similarly
+relatively simple.
 
 The complexity of the project focuses around peer discovery, handling when
 peers disconnect from the light clients, and how to change the current P2P
@@ -64,9 +65,11 @@ Similarly, libp2p makes it possible for a project to be able back their non-Go
 light clients, without the major task of first implementing Tendermint's p2p
 connection handling. We should identify if there exist users (e.g. the go IBC
 relayer, it's maintainers, and operators) who would be able to take advantage
-of p2p light client, before switching to libp2p. To our knowledge there are no
-external implementations of this p2p protocol, and it seems unlikely that a
-team would implement this directly ahead of its impending removal.
+of p2p light client, before switching to libp2p. To our knowledge there are
+limited implementations of this p2p protocol (a simple implementation without
+secret connection support exists in rust but it has not been used in
+production,), and it seems unlikely that a team would implement this directly
+ahead of its impending removal.
 
 User Cases
 ~~~~~~~~~~
@@ -74,6 +77,7 @@ User Cases
 This RFC makes a few assumptions about the use cases and users of light
 clients in tendermint.
 
+<<<<<<< HEAD
 One of the most active use cases for light clients is in the implementation of
 the IBC relayer. Thus, we expect that providing P2P light clients might
 increase the reliability of relayers and reduce the cost of running a relayer,
@@ -83,6 +87,17 @@ also assumes that there are *no* other uses of the RPC in the relayer, and
 unless the relayers have the option of dropping all RPC use, it's unclear if a
 P2P light client will actually be able to successfully remove the dependency
 on the RPC system.
+=======
+The most active and delicate use cases for light clients is in the
+implementation of the IBC relayer. Thus, we expect that providing P2P light
+clients might increase the reliability of relayers and reduce the cost of
+running a relayer, because relayer operators won't have to decide between rely
+on public RPC endpoints (unreliable) or running their own full nodes
+(expensive.) This also assumes that there are *no* other uses of the RPC in
+the relayer, and unless the relayers have the option of dropping all RPC use,
+it's unclear if a P2P light client will actually be able to successfully
+remove the dependency on the RPC system.
+>>>>>>> 19b0f3ffcd (respond to comments)
 
 Given that the primary relayer implementation is Hermes (rust,) it might be
 safe to deliver a version of Tendermint that adds a light client rector in
