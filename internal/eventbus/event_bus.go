@@ -73,7 +73,7 @@ func (b *EventBus) Observe(ctx context.Context, observe func(tmpubsub.Message) e
 	return b.pubsub.Observe(ctx, observe, queries...)
 }
 
-func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData types.TMEventData) error {
+func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData types.EventData) error {
 	tokens := strings.Split(types.EventTypeKey, ".")
 	event := abci.Event{
 		Type: tokens[0],
@@ -184,10 +184,6 @@ func (b *EventBus) PublishEventCompleteProposal(ctx context.Context, data types.
 
 func (b *EventBus) PublishEventPolka(ctx context.Context, data types.EventDataRoundState) error {
 	return b.Publish(ctx, types.EventPolkaValue, data)
-}
-
-func (b *EventBus) PublishEventUnlock(ctx context.Context, data types.EventDataRoundState) error {
-	return b.Publish(ctx, types.EventUnlockValue, data)
 }
 
 func (b *EventBus) PublishEventRelock(ctx context.Context, data types.EventDataRoundState) error {

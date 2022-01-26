@@ -324,7 +324,7 @@ func TestReactorBasic(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(ctx, t,
+	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
@@ -381,7 +381,8 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, n, false, 30)
+	valSet, privVals := factory.ValidatorSet(ctx, t, n, 30)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -484,8 +485,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(
-		ctx,
+	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
 		n,
@@ -541,7 +541,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(ctx, t,
+	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
@@ -606,8 +606,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(
-		ctx,
+	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
 		n,

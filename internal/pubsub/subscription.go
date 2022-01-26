@@ -5,8 +5,9 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/tendermint/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/queue"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -73,8 +74,8 @@ func (s *Subscription) stop(err error) {
 // Message glues data and events together.
 type Message struct {
 	subID  string
-	data   interface{}
-	events []types.Event
+	data   types.EventData
+	events []abci.Event
 }
 
 // SubscriptionID returns the unique identifier for the subscription
@@ -82,7 +83,7 @@ type Message struct {
 func (msg Message) SubscriptionID() string { return msg.subID }
 
 // Data returns an original data published.
-func (msg Message) Data() interface{} { return msg.data }
+func (msg Message) Data() types.EventData { return msg.data }
 
 // Events returns events, which matched the client's query.
-func (msg Message) Events() []types.Event { return msg.events }
+func (msg Message) Events() []abci.Event { return msg.events }

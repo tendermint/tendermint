@@ -34,14 +34,14 @@ type Proposal struct {
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int32, polRound int32, blockID BlockID) *Proposal {
+func NewProposal(height int64, round int32, polRound int32, blockID BlockID, ts time.Time) *Proposal {
 	return &Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
 		POLRound:  polRound,
-		Timestamp: tmtime.Now(),
+		Timestamp: tmtime.Canonical(ts),
 	}
 }
 
@@ -77,6 +77,31 @@ func (p *Proposal) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
+}
+
+// IsTimely validates that the block timestamp is 'timely' according to the proposer-based timestamp algorithm.
+// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the
+// configured Precision and MsgDelay parameters.
+// Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
+//
+// localtime >= proposedBlockTime - Precision
+// localtime <= proposedBlockTime + MsgDelay + Precision
+//
+// Note: If the proposal is for the `initialHeight` the second inequality is not checked. This is because
+// the timestamp in this case is set to the preconfigured genesis time.
+// For more information on the meaning of 'timely', see the proposer-based timestamp specification:
+// https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
+func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, initialHeight int64) bool {
+	// lhs is `proposedBlockTime - Precision` in the first inequality
+	lhs := p.Timestamp.Add(-sp.Precision)
+	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
+	rhs := p.Timestamp.Add(sp.MessageDelay).Add(sp.Precision)
+
+	if recvTime.Before(lhs) || (p.Height != initialHeight && recvTime.After(rhs)) {
+		return false
+	}
+
+	return true
 }
 
 // String returns a string representation of the Proposal.

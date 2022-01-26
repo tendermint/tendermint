@@ -47,15 +47,17 @@ var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg    Message
-	PeerID types.NodeID
+	Msg         Message
+	PeerID      types.NodeID
+	ReceiveTime time.Time
 }
 
 func (msgInfo) TypeTag() string { return "tendermint/wal/MsgInfo" }
 
 type msgInfoJSON struct {
-	Msg    json.RawMessage `json:"msg"`
-	PeerID types.NodeID    `json:"peer_key"`
+	Msg         json.RawMessage `json:"msg"`
+	PeerID      types.NodeID    `json:"peer_key"`
+	ReceiveTime time.Time       `json:"receive_time"`
 }
 
 func (m msgInfo) MarshalJSON() ([]byte, error) {
@@ -63,7 +65,7 @@ func (m msgInfo) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(msgInfoJSON{Msg: msg, PeerID: m.PeerID})
+	return json.Marshal(msgInfoJSON{Msg: msg, PeerID: m.PeerID, ReceiveTime: m.ReceiveTime})
 }
 
 func (m *msgInfo) UnmarshalJSON(data []byte) error {
@@ -163,7 +165,7 @@ type State struct {
 	// some functions can be overwritten for testing
 	decideProposal func(ctx context.Context, height int64, round int32)
 	doPrevote      func(ctx context.Context, height int64, round int32)
-	setProposal    func(proposal *types.Proposal) error
+	setProposal    func(proposal *types.Proposal, t time.Time) error
 
 	// closed when we finish shutting down
 	done chan struct{}
@@ -546,14 +548,14 @@ func (cs *State) AddVote(ctx context.Context, vote *types.Vote, peerID types.Nod
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}:
+		case cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, "", tmtime.Now()}:
 			return nil
 		}
 	} else {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID}:
+		case cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID, tmtime.Now()}:
 			return nil
 		}
 	}
@@ -568,14 +570,14 @@ func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peer
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}:
+		case cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()}:
 			return nil
 		}
 	} else {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID}:
+		case cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID, tmtime.Now()}:
 			return nil
 		}
 	}
@@ -589,14 +591,14 @@ func (cs *State) AddProposalBlockPart(ctx context.Context, height int64, round i
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}:
+		case cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, "", tmtime.Now()}:
 			return nil
 		}
 	} else {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID}:
+		case cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID, tmtime.Now()}:
 			return nil
 		}
 	}
@@ -785,6 +787,7 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 
 	cs.Validators = validators
 	cs.Proposal = nil
+	cs.ProposalReceiveTime = time.Time{}
 	cs.ProposalBlock = nil
 	cs.ProposalBlockParts = nil
 	cs.LockedRound = -1
@@ -933,7 +936,7 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		err = cs.setProposal(msg.Proposal)
+		err = cs.setProposal(msg.Proposal, mi.ReceiveTime)
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
@@ -1125,6 +1128,7 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 	} else {
 		logger.Debug("resetting proposal info")
 		cs.Proposal = nil
+		cs.ProposalReceiveTime = time.Time{}
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
 	}
@@ -1147,9 +1151,10 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
-	} else {
-		cs.enterPropose(ctx, height, round)
+		return
 	}
+
+	cs.enterPropose(ctx, height, round)
 }
 
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
@@ -1182,6 +1187,16 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 		return
 	}
 
+	// If this validator is the proposer of this round, and the previous block time is later than
+	// our local clock time, wait to propose until our local clock time has passed the block time.
+	if cs.privValidatorPubKey != nil && cs.isProposer(cs.privValidatorPubKey.Address()) {
+		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
+		if proposerWaitTime > 0 {
+			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
+			return
+		}
+	}
+
 	logger.Debug("entering propose step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -1202,11 +1217,9 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
-		logger.Debug("node is not a validator")
+		logger.Debug("propose step; not proposing since node is not a validator")
 		return
 	}
-
-	logger.Debug("node is a validator")
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
@@ -1215,18 +1228,20 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 		return
 	}
 
-	address := cs.privValidatorPubKey.Address()
+	addr := cs.privValidatorPubKey.Address()
 
 	// if not a validator, we're done
-	if !cs.Validators.HasAddress(address) {
-		logger.Debug("node is not a validator", "addr", address, "vals", cs.Validators)
+	if !cs.Validators.HasAddress(addr) {
+		logger.Debug("propose step; not proposing since node is not in the validator set",
+			"addr", addr,
+			"vals", cs.Validators)
 		return
 	}
 
-	if cs.isProposer(address) {
+	if cs.isProposer(addr) {
 		logger.Debug(
 			"propose step; our turn to propose",
-			"proposer", address,
+			"proposer", addr,
 		)
 
 		cs.decideProposal(ctx, height, round)
@@ -1267,7 +1282,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
@@ -1277,11 +1292,11 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
-		cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, ""})
+		cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()})
 
 		for i := 0; i < int(blockParts.Total()); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
+			cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, "", tmtime.Now()})
 		}
 
 		cs.logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
@@ -1348,8 +1363,11 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
-// Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
-// Otherwise vote nil.
+// If we received a valid proposal within this round and we are not locked on a block,
+// we will prevote for block.
+// Otherwise, if we receive a valid proposal that matches the block we are
+// locked on or matches a block that received a POL in a round later than our
+// locked round, prevote for the proposal, otherwise vote nil.
 func (cs *State) enterPrevote(ctx context.Context, height int64, round int32) {
 	logger := cs.logger.With("height", height, "round", round)
 
@@ -1376,19 +1394,47 @@ func (cs *State) enterPrevote(ctx context.Context, height int64, round int32) {
 	// (so we have more time to try and collect +2/3 prevotes for a single block)
 }
 
+func (cs *State) proposalIsTimely() bool {
+	sp := types.SynchronyParams{
+		Precision:    cs.state.ConsensusParams.Synchrony.Precision,
+		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
+	}
+
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.state.InitialHeight)
+}
+
 func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32) {
 	logger := cs.logger.With("height", height, "round", round)
 
-	// If a block is locked, prevote that.
-	if cs.LockedBlock != nil {
-		logger.Debug("prevote step; already locked on a block; prevoting locked block")
-		cs.signAddVote(ctx, tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
+	// Check that a proposed block was not received within this round (and thus executing this from a timeout).
+	if cs.ProposalBlock == nil {
+		logger.Debug("prevote step: ProposalBlock is nil; prevoting nil")
+		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
-	// If ProposalBlock is nil, prevote nil.
-	if cs.ProposalBlock == nil {
-		logger.Debug("prevote step: ProposalBlock is nil")
+	if cs.Proposal == nil {
+		logger.Debug("prevote step: did not receive proposal; prevoting nil")
+		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("prevote step: proposal timestamp not equal; prevoting nil")
+		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
+		logger.Debug("prevote step: Proposal is not timely; prevoting nil",
+			"proposed",
+			tmtime.Canonical(cs.Proposal.Timestamp).Format(time.RFC3339Nano),
+			"received",
+			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
+			"msg_delay",
+			cs.state.ConsensusParams.Synchrony.MessageDelay,
+			"precision",
+			cs.state.ConsensusParams.Synchrony.Precision)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1397,16 +1443,72 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		logger.Error("prevote step: ProposalBlock is invalid", "err", err)
+		logger.Error("prevote step: ProposalBlock is invalid; prevoting nil", "err", err)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
-	// Prevote cs.ProposalBlock
-	// NOTE: the proposal signature is validated when it is received,
-	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Debug("prevote step: ProposalBlock is valid")
-	cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+	/*
+		22: upon <PROPOSAL, h_p, round_p, v, −1> from proposer(h_p, round_p) while step_p = propose do
+		23: if valid(v) && (lockedRound_p = −1 || lockedValue_p = v) then
+		24: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		Here, cs.Proposal.POLRound corresponds to the -1 in the above algorithm rule.
+		This means that the proposer is producing a new proposal that has not previously
+		seen a 2/3 majority by the network.
+
+		If we have already locked on a different value that is different from the proposed value,
+		we prevote nil since we are locked on a different value. Otherwise, if we're not locked on a block
+		or the proposal matches our locked block, we prevote the proposal.
+	*/
+	if cs.Proposal.POLRound == -1 {
+		if cs.LockedRound == -1 {
+			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	/*
+		28: upon <PROPOSAL, h_p, round_p, v, v_r> from proposer(h_p, round_p) AND 2f + 1 <PREVOTE, h_p, v_r, id(v)> while
+		step_p = propose && (v_r ≥ 0 && v_r < round_p) do
+		29: if valid(v) && (lockedRound_p ≤ v_r || lockedValue_p = v) then
+		30: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		This rule is a bit confusing but breaks down as follows:
+
+		If we see a proposal in the current round for value 'v' that lists its valid round as 'v_r'
+		AND this validator saw a 2/3 majority of the voting power prevote 'v' in round 'v_r', then we will
+		issue a prevote for 'v' in this round if 'v' is valid and either matches our locked value OR
+		'v_r' is a round greater than or equal to our current locked round.
+
+		'v_r' can be a round greater than to our current locked round if a 2/3 majority of
+		the network prevoted a value in round 'v_r' but we did not lock on it, possibly because we
+		missed the proposal in round 'v_r'.
+	*/
+	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
+	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
+		if cs.LockedRound <= cs.Proposal.POLRound {
+			logger.Debug("prevote step: ProposalBlock is valid and received a 2/3" +
+				"majority in a round later than the locked round; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or" +
+		"did not receive a more recent majority; prevoting nil")
+	cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
 
 // Enter: any +2/3 prevotes at next round.
@@ -1444,7 +1546,6 @@ func (cs *State) enterPrevoteWait(ctx context.Context, height int64, round int32
 // Enter: `timeoutPrecommit` after any +2/3 precommits.
 // Enter: +2/3 precomits for block or nil.
 // Lock & precommit the ProposalBlock if we have enough prevotes for it (a POL in this round)
-// else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
 // else, precommit nil otherwise.
 func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) {
 	logger := cs.logger.With("height", height, "round", round)
@@ -1491,47 +1592,50 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 		panic(fmt.Sprintf("this POLRound should be %v but got %v", round, polRound))
 	}
 
-	// +2/3 prevoted nil. Unlock and precommit nil.
-	if len(blockID.Hash) == 0 {
-		if cs.LockedBlock == nil {
-			logger.Debug("precommit step; +2/3 prevoted for nil")
-		} else {
-			logger.Debug("precommit step; +2/3 prevoted for nil; unlocking")
-			cs.LockedRound = -1
-			cs.LockedBlock = nil
-			cs.LockedBlockParts = nil
+	// +2/3 prevoted nil. Precommit nil.
+	if blockID.IsNil() {
+		logger.Debug("precommit step: +2/3 prevoted for nil; precommitting nil")
+		cs.signAddVote(ctx, tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
+	// At this point, +2/3 prevoted for a particular block.
 
-			if err := cs.eventBus.PublishEventUnlock(ctx, cs.RoundStateEvent()); err != nil {
-				logger.Error("failed publishing event unlock", "err", err)
-			}
-		}
-
+	// If we never received a proposal for this block, we must precommit nil
+	if cs.Proposal == nil || cs.ProposalBlock == nil {
+		logger.Debug("precommit step; did not receive proposal, precommitting nil")
 		cs.signAddVote(ctx, tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
 
-	// At this point, +2/3 prevoted for a particular block.
+	// If the proposal time does not match the block time, precommit nil.
+	if !cs.Proposal.Timestamp.Equal(cs.ProposalBlock.Header.Time) {
+		logger.Debug("precommit step: proposal timestamp not equal; precommitting nil")
+		cs.signAddVote(ctx, tmproto.PrecommitType, nil, types.PartSetHeader{})
+		return
+	}
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		logger.Debug("precommit step; +2/3 prevoted locked block; relocking")
+		logger.Debug("precommit step: +2/3 prevoted locked block; relocking")
 		cs.LockedRound = round
 
 		if err := cs.eventBus.PublishEventRelock(ctx, cs.RoundStateEvent()); err != nil {
-			logger.Error("failed publishing event relock", "err", err)
+			logger.Error("precommit step: failed publishing event relock", "err", err)
 		}
 
 		cs.signAddVote(ctx, tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
 
-	// If +2/3 prevoted for proposal block, stage and precommit it
+	// If greater than 2/3 of the voting power on the network prevoted for
+	// the proposed block, update our locked block to this block and issue a
+	// precommit vote for it.
 	if cs.ProposalBlock.HashesTo(blockID.Hash) {
-		logger.Debug("precommit step; +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
+		logger.Debug("precommit step: +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
 
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
-			panic(fmt.Errorf("precommit step; +2/3 prevoted for an invalid block: %w", err))
+			panic(fmt.Sprintf("precommit step: +2/3 prevoted for an invalid block %v; relocking", err))
 		}
 
 		cs.LockedRound = round
@@ -1539,7 +1643,7 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 		cs.LockedBlockParts = cs.ProposalBlockParts
 
 		if err := cs.eventBus.PublishEventLock(ctx, cs.RoundStateEvent()); err != nil {
-			logger.Error("failed publishing event lock", "err", err)
+			logger.Error("precommit step: failed publishing event lock", "err", err)
 		}
 
 		cs.signAddVote(ctx, tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
@@ -1547,21 +1651,12 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 	}
 
 	// There was a polka in this round for a block we don't have.
-	// Fetch that block, unlock, and precommit nil.
-	// The +2/3 prevotes for this round is the POL for our unlock.
-	logger.Debug("precommit step; +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
-
-	cs.LockedRound = -1
-	cs.LockedBlock = nil
-	cs.LockedBlockParts = nil
+	// Fetch that block, and precommit nil.
+	logger.Debug("precommit step: +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
-	}
-
-	if err := cs.eventBus.PublishEventUnlock(ctx, cs.RoundStateEvent()); err != nil {
-		logger.Error("failed publishing event unlock", "err", err)
 	}
 
 	cs.signAddVote(ctx, tmproto.PrecommitType, nil, types.PartSetHeader{})
@@ -1671,7 +1766,7 @@ func (cs *State) tryFinalizeCommit(ctx context.Context, height int64) {
 	}
 
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
-	if !ok || len(blockID.Hash) == 0 {
+	if !ok || blockID.IsNil() {
 		logger.Error("failed attempt to finalize commit; there was no +2/3 majority or +2/3 was for nil")
 		return
 	}
@@ -1893,10 +1988,10 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 
 //-----------------------------------------------------------------------------
 
-func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
+func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time) error {
 	// Already have one
 	// TODO: possibly catch double proposals
-	if cs.Proposal != nil {
+	if cs.Proposal != nil || proposal == nil {
 		return nil
 	}
 
@@ -1921,6 +2016,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal
+	cs.ProposalReceiveTime = recvTime
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
@@ -2000,7 +2096,7 @@ func (cs *State) addProposalBlockPart(
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
 		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+		if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
 			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.logger.Debug(
 					"updating valid block to new proposal block",
@@ -2153,33 +2249,13 @@ func (cs *State) addVote(
 		prevotes := cs.Votes.Prevotes(vote.Round)
 		cs.logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
-		// If +2/3 prevotes for a block or nil for *any* round:
-		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
-			// There was a polka!
-			// If we're locked but this is a recent polka, unlock.
-			// If it matches our ProposalBlock, update the ValidBlock
-
-			// Unlock if `cs.LockedRound < vote.Round <= cs.Round`
-			// NOTE: If vote.Round > cs.Round, we'll deal with it when we get to vote.Round
-			if (cs.LockedBlock != nil) &&
-				(cs.LockedRound < vote.Round) &&
-				(vote.Round <= cs.Round) &&
-				!cs.LockedBlock.HashesTo(blockID.Hash) {
-
-				cs.logger.Debug("unlocking because of POL", "locked_round", cs.LockedRound, "pol_round", vote.Round)
-
-				cs.LockedRound = -1
-				cs.LockedBlock = nil
-				cs.LockedBlockParts = nil
-
-				if err := cs.eventBus.PublishEventUnlock(ctx, cs.RoundStateEvent()); err != nil {
-					return added, err
-				}
-			}
+		// Check to see if >2/3 of the voting power on the network voted for any non-nil block.
+		if blockID, ok := prevotes.TwoThirdsMajority(); ok && !blockID.IsNil() {
+			// Greater than 2/3 of the voting power on the network voted for some
+			// non-nil block
 
 			// Update Valid* if we can.
-			// NOTE: our proposal block may be nil or not what received a polka..
-			if len(blockID.Hash) != 0 && (cs.ValidRound < vote.Round) && (vote.Round == cs.Round) {
+			if cs.ValidRound < vote.Round && vote.Round == cs.Round {
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.logger.Debug("updating valid block because of POL", "valid_round", cs.ValidRound, "pol_round", vote.Round)
 					cs.ValidRound = vote.Round
@@ -2215,7 +2291,7 @@ func (cs *State) addVote(
 
 		case cs.Round == vote.Round && cstypes.RoundStepPrevote <= cs.Step: // current round
 			blockID, ok := prevotes.TwoThirdsMajority()
-			if ok && (cs.isProposalComplete() || len(blockID.Hash) == 0) {
+			if ok && (cs.isProposalComplete() || blockID.IsNil()) {
 				cs.enterPrecommit(ctx, height, vote.Round)
 			} else if prevotes.HasTwoThirdsAny() {
 				cs.enterPrevoteWait(ctx, height, vote.Round)
@@ -2243,7 +2319,7 @@ func (cs *State) addVote(
 			cs.enterNewRound(ctx, height, vote.Round)
 			cs.enterPrecommit(ctx, height, vote.Round)
 
-			if len(blockID.Hash) != 0 {
+			if !blockID.IsNil() {
 				cs.enterCommit(ctx, height, vote.Round)
 				if cs.config.SkipTimeoutCommit && precommits.HasAll() {
 					cs.enterNewRound(ctx, cs.Height, 0)
@@ -2288,7 +2364,7 @@ func (cs *State) signVote(
 		ValidatorIndex:   valIdx,
 		Height:           cs.Height,
 		Round:            cs.Round,
-		Timestamp:        cs.voteTime(),
+		Timestamp:        tmtime.Now(),
 		Type:             msgType,
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
@@ -2318,30 +2394,6 @@ func (cs *State) signVote(
 	return vote, err
 }
 
-// voteTime ensures monotonicity of the time a validator votes on.
-// It ensures that for a prior block with a BFT-timestamp of T,
-// any vote from this validator will have time at least time T + 1ms.
-// This is needed, as monotonicity of time is a guarantee that BFT time provides.
-func (cs *State) voteTime() time.Time {
-	now := tmtime.Now()
-	minVoteTime := now
-	// Minimum time increment between blocks
-	const timeIota = time.Millisecond
-	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
-	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
-	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
-	}
-
-	if now.After(minVoteTime) {
-		return now
-	}
-	return minVoteTime
-}
-
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
@@ -2362,7 +2414,7 @@ func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType,
 	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(ctx, msgType, hash, header)
 	if err == nil {
-		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, ""})
+		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
 		cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}
@@ -2508,4 +2560,18 @@ func repairWalFile(src, dst string) error {
 	}
 
 	return nil
+}
+
+// proposerWaitTime determines how long the proposer should wait to propose its next block.
+// If the result is zero, a block can be proposed immediately.
+//
+// Block times must be monotonically increasing, so if the block time of the previous
+// block is larger than the proposer's current time, then the proposer will sleep
+// until its local clock exceeds the previous block time.
+func proposerWaitTime(lt tmtime.Source, bt time.Time) time.Duration {
+	t := lt.Now()
+	if bt.After(t) {
+		return bt.Sub(t)
+	}
+	return 0
 }

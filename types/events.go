@@ -38,7 +38,6 @@ const (
 	EventStateSyncStatusValue = "StateSyncStatus"
 	EventTimeoutProposeValue  = "TimeoutPropose"
 	EventTimeoutWaitValue     = "TimeoutWait"
-	EventUnlockValue          = "Unlock"
 	EventValidBlockValue      = "ValidBlock"
 	EventVoteValue            = "Vote"
 )
@@ -88,8 +87,10 @@ var (
 
 // ENCODING / DECODING
 
-// TMEventData implements events.EventData.
-type TMEventData interface{}
+// EventData is satisfied by types that can be published as event data.
+type EventData interface {
+	jsontypes.Tagged
+}
 
 func init() {
 	jsontypes.MustRegister(EventDataBlockSyncStatus{})
@@ -257,7 +258,6 @@ var (
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
 	EventQueryTx                  = QueryForEvent(EventTxValue)
-	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
