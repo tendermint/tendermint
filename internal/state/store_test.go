@@ -3,6 +3,7 @@ package state_test
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -27,16 +28,15 @@ const (
 )
 
 func TestStoreBootstrap(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _, err := factory.RandValidator(ctx, true, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	val, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
-	val2, _, err := factory.RandValidator(ctx, true, 10)
+	val2, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
-	val3, _, err := factory.RandValidator(ctx, true, 10)
+	val3, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
@@ -58,16 +58,15 @@ func TestStoreBootstrap(t *testing.T) {
 }
 
 func TestStoreLoadValidators(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	val, _, err := factory.RandValidator(ctx, true, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	val, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
-	val2, _, err := factory.RandValidator(ctx, true, 10)
+	val2, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
-	val3, _, err := factory.RandValidator(ctx, true, 10)
+	val3, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 

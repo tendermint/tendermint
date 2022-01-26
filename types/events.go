@@ -38,7 +38,6 @@ const (
 	EventStateSyncStatusValue = "StateSyncStatus"
 	EventTimeoutProposeValue  = "TimeoutPropose"
 	EventTimeoutWaitValue     = "TimeoutWait"
-	EventUnlockValue          = "Unlock"
 	EventValidBlockValue      = "ValidBlock"
 	EventVoteValue            = "Vote"
 )
@@ -259,7 +258,6 @@ var (
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
 	EventQueryTx                  = QueryForEvent(EventTxValue)
-	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdatesValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)

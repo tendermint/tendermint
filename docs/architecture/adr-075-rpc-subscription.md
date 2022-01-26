@@ -2,13 +2,14 @@
 
 ## Changelog
 
+- 26-Jan-2022: Marked accepted.
 - 22-Jan-2022: Updated and expanded (@creachadair).
 - 20-Nov-2021: Initial draft (@creachadair).
 
 ---
 ## Status
 
-Proposed
+Accepted
 
 ---
 ## Background & Context

@@ -16,6 +16,7 @@ import (
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -1184,7 +1185,7 @@ func (r *Reactor) handleDataMessage(ctx context.Context, envelope *p2p.Envelope,
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case r.state.peerMsgQueue <- msgInfo{pMsg, envelope.From}:
+		case r.state.peerMsgQueue <- msgInfo{pMsg, envelope.From, tmtime.Now()}:
 		}
 	case *tmcons.ProposalPOL:
 		ps.ApplyProposalPOLMessage(msgI.(*ProposalPOLMessage))
@@ -1194,7 +1195,7 @@ func (r *Reactor) handleDataMessage(ctx context.Context, envelope *p2p.Envelope,
 		ps.SetHasProposalBlockPart(bpMsg.Height, bpMsg.Round, int(bpMsg.Part.Index))
 		r.Metrics.BlockParts.With("peer_id", string(envelope.From)).Add(1)
 		select {
-		case r.state.peerMsgQueue <- msgInfo{bpMsg, envelope.From}:
+		case r.state.peerMsgQueue <- msgInfo{bpMsg, envelope.From, tmtime.Now()}:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -1238,7 +1239,7 @@ func (r *Reactor) handleVoteMessage(ctx context.Context, envelope *p2p.Envelope,
 		ps.SetHasVote(vMsg.Vote)
 
 		select {
-		case r.state.peerMsgQueue <- msgInfo{vMsg, envelope.From}:
+		case r.state.peerMsgQueue <- msgInfo{vMsg, envelope.From, tmtime.Now()}:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
