@@ -594,7 +594,7 @@ func ensureNewTimeout(t *testing.T, timeoutCh <-chan tmpubsub.Message, height in
 	ensureNewEvent(t, timeoutCh, height, round, timeoutDuration)
 }
 
-func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32) types.BlockID {
 	t.Helper()
 	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
 	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
@@ -602,6 +602,7 @@ func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height 
 		msg.Data())
 	require.Equal(t, height, proposalEvent.Height)
 	require.Equal(t, round, proposalEvent.Round)
+	return proposalEvent.BlockID
 }
 
 func ensureNewValidBlock(t *testing.T, validBlockCh <-chan tmpubsub.Message, height int64, round int32) {
