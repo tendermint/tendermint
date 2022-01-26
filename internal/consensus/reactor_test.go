@@ -712,8 +712,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	nPeers := 4
-	nVals := 1
+	nPeers := 7
+	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
 		t,
@@ -726,7 +726,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	)
 	t.Cleanup(cleanup)
 
-	rts := setup(ctx, t, nPeers, states, 1000) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()

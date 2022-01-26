@@ -130,7 +130,7 @@ func DefaultSynchronyParams() SynchronyParams {
 	// https://github.com/tendermint/tendermint/issues/7202
 	return SynchronyParams{
 		Precision:    50 * time.Millisecond,
-		MessageDelay: 3 * time.Second,
+		MessageDelay: 2 * time.Second,
 	}
 }
 
