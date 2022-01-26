@@ -2,6 +2,41 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.1
+
+January 26, 2022
+
+Special thanks to external contributors on this release: @altergui, @odeke-em,
+@thanethomson
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+  - [config] [\#7276](https://github.com/tendermint/tendermint/pull/7276) rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
+
+- P2P Protocol
+
+  - [p2p] [\#7265](https://github.com/tendermint/tendermint/pull/7265) Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+  - [p2p] [\#7594](https://github.com/tendermint/tendermint/pull/7594) always advertise self, to enable mutual address discovery. (@altergui)
+
+### FEATURES
+
+- [rpc] [\#7270](https://github.com/tendermint/tendermint/pull/7270) Add `header` and `header_by_hash` RPC Client queries. (@fedekunze) (@cmwaters)
+
+### IMPROVEMENTS
+
+- [internal/protoio] [\#7325](https://github.com/tendermint/tendermint/pull/7325) Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
+- [\#7338](https://github.com/tendermint/tendermint/pull/7338) pubsub: Performance improvements for the event query API (backport of #7319) (@creachadair)
+- [\#7252](https://github.com/tendermint/tendermint/pull/7252) Add basic metrics to the indexer package. (@creachadair)
+- [\#7338](https://github.com/tendermint/tendermint/pull/7338) Performance improvements for the event query API. (@creachadair)
+
+### BUG FIXES
+
+- [\#7310](https://github.com/tendermint/tendermint/issues/7310) pubsub: Report a non-nil error when shutting down (fixes #7306).
+- [\#7355](https://github.com/tendermint/tendermint/pull/7355) Fix incorrect tests using the PSQL sink. (@creachadair)
+- [\#7683](https://github.com/tendermint/tendermint/pull/7683) rpc: check error code for broadcast_tx_commit. (@tychoish)
+
 ## v0.35.0
 
 November 4, 2021
