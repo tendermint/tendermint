@@ -129,7 +129,7 @@ func DefaultSynchronyParams() SynchronyParams {
 	// TODO(@wbanfield): Determine experimental values for these defaults
 	// https://github.com/tendermint/tendermint/issues/7202
 	return SynchronyParams{
-		Precision:    50 * time.Millisecond,
+		Precision:    500 * time.Millisecond,
 		MessageDelay: 2 * time.Second,
 	}
 }
