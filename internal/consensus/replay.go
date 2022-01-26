@@ -625,6 +625,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 		emptyMempool{},
 		sm.EmptyEvidencePool{},
 		h.store,
+		nil,
 		sm.BlockExecutorWithAppHashSize(h.appHashSize),
 	)
 	blockExec.SetEventBus(h.eventBus)

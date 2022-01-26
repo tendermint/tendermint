@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
@@ -178,7 +179,7 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 	for _, tx := range results.GetDeliverTxs() {
 		totalGasUsed += tx.GetGasUsed()
 	}
-	consensusParamUpdates := types.ConsensusParamsFromProto(*results.EndBlock.ConsensusParamUpdates)
+
 	return &coretypes.ResultBlockResults{
 		Height:                height,
 		TxsResults:            results.DeliverTxs,
@@ -186,7 +187,7 @@ func (env *Environment) BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*
 		BeginBlockEvents:      results.BeginBlock.Events,
 		EndBlockEvents:        results.EndBlock.Events,
 		ValidatorSetUpdate:    results.EndBlock.ValidatorSetUpdate,
-		ConsensusParamUpdates: &consensusParamUpdates,
+		ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.EndBlock.ConsensusParamUpdates),
 	}, nil
 }
 
@@ -259,4 +260,12 @@ func (env *Environment) BlockSearch(
 	}
 
 	return &coretypes.ResultBlockSearch{Blocks: apiResults, TotalCount: totalCount}, nil
+}
+
+func consensusParamsPtrFromProtoPtr(paramsProto *tmproto.ConsensusParams) *types.ConsensusParams {
+	if paramsProto == nil {
+		return nil
+	}
+	params := types.ConsensusParamsFromProto(*paramsProto)
+	return &params
 }

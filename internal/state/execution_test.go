@@ -44,6 +44,7 @@ func TestApplyBlock(t *testing.T) {
 	// The state is local, so we just take the first proTxHash
 	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
+	app.ValidatorSetUpdate = state.Validators.ABCIEquivalentValidatorUpdates()
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
@@ -83,6 +84,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	state, stateDB, privVals := makeState(1, 1)
 	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
+	app.ValidatorSetUpdate = state.Validators.ABCIEquivalentValidatorUpdates()
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	privVal := privVals[state.Validators.Validators[0].ProTxHash.String()]

@@ -23,8 +23,8 @@ func TestTxFilter(t *testing.T) {
 		tx    types.Tx
 		isErr bool
 	}{
-		{types.Tx(tmrand.Bytes(2155)), false},
-		{types.Tx(tmrand.Bytes(2156)), true},
+		{types.Tx(tmrand.Bytes(2120)), false},
+		{types.Tx(tmrand.Bytes(2121)), true},
 		{types.Tx(tmrand.Bytes(3000)), true},
 	}
 	// We get 2202 above as we have 80 more bytes in max bytes and we are using bls, so 2155 + 80 - 32 - 1 = 2202

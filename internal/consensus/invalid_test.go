@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -46,7 +47,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// block and otherwise disable the priv validator.
 	byzState.mtx.Lock()
 	privVal := byzState.privValidator
-	byzState.doPrevote = func(height int64, round int32) {
+	byzState.doPrevote = func(height int64, round int32, _ bool) {
 		invalidDoPrevoteFunc(t, height, round, byzState, byzReactor, privVal)
 	}
 	byzState.mtx.Unlock()
@@ -78,31 +79,38 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		cs.mtx.Lock()
 		cs.privValidator = pv
 
-		pubKey, err := cs.privValidator.GetPubKey(context.Background())
+		proTxHash, err := cs.privValidator.GetProTxHash(context.Background())
 		require.NoError(t, err)
 
-		addr := pubKey.Address()
-		valIndex, _ := cs.Validators.GetByAddress(addr)
+		valIndex, _ := cs.Validators.GetByProTxHash(proTxHash)
 
 		// precommit a random block
 		blockHash := bytes.HexBytes(tmrand.Bytes(32))
 		precommit := &types.Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   valIndex,
-			Height:           cs.Height,
-			Round:            cs.Round,
-			Timestamp:        cs.voteTime(),
-			Type:             tmproto.PrecommitType,
+			ValidatorProTxHash: proTxHash,
+			ValidatorIndex:     valIndex,
+			Height:             cs.Height,
+			Round:              cs.Round,
+			Type:               tmproto.PrecommitType,
 			BlockID: types.BlockID{
 				Hash:          blockHash,
 				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
 		}
 
 		p := precommit.ToProto()
-		err = cs.privValidator.SignVote(context.Background(), cs.state.ChainID, p)
+		err = cs.privValidator.SignVote(
+			context.Background(),
+			cs.state.ChainID,
+			cs.Validators.QuorumType,
+			cs.Validators.QuorumHash,
+			p,
+			cs.state.StateID(),
+			log.NewNopLogger(),
+		)
 		require.NoError(t, err)
 
-		precommit.Signature = p.Signature
+		precommit.StateSignature = p.StateSignature
+		precommit.BlockSignature = p.BlockSignature
 		cs.privValidator = nil // disable priv val so we don't do normal votes
 		cs.mtx.Unlock()
 

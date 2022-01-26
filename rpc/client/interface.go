@@ -28,7 +28,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate ../../scripts/mockery_generate.sh Client
+//go:generate ../../scripts/mockery_generate.sh Client|RemoteClient
 
 // Client describes the interface of Tendermint RPC client implementations.
 type Client interface {

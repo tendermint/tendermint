@@ -57,7 +57,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 
-	state, privVals := randGenesisState(baseConfig, 1, false,  types.DefaultDashVotingPower)
+	state, privVals := randGenesisState(baseConfig, 1, false, types.DefaultDashVotingPower)
 
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 
@@ -268,9 +268,7 @@ func txAsUint64(tx []byte) uint64 {
 func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.ResponseCommit{
-			Data: genesisAppHash,
-		}
+		return abci.ResponseCommit{}
 	}
 
 	hash := make([]byte, 32)

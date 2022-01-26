@@ -3,11 +3,11 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math/rand"
 	"sort"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -245,7 +245,6 @@ func GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
 	return types.NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
-
 func RandValidator() (*types.Validator, types.PrivValidator) {
 	quorumHash := crypto.RandQuorumHash()
 	privVal := types.NewMockPVForQuorum(quorumHash)
@@ -287,7 +286,7 @@ func RandValidatorSetWithPriority(numValidators int, shouldGeneratePriority bool
 			thresholdPublicKey, false, false)
 		valz[i] = types.NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 		if shouldGeneratePriority {
-			valz[i].ProposerPriority = rand.Int63() % (types.MaxTotalVotingPower - (int64(numValidators)*types.DefaultDashVotingPower))
+			valz[i].ProposerPriority = rand.Int63() % (types.MaxTotalVotingPower - (int64(numValidators) * types.DefaultDashVotingPower))
 		}
 	}
 

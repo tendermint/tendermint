@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -110,7 +109,7 @@ func sendTxs(ctx context.Context, cs *State) {
 			return
 		default:
 			tx := []byte{byte(i)}
-			if err := assertMempool(cs.txNotifier).CheckTx(context.Background(), tx, nil, mempool.TxInfo{}); err != nil {
+			if err := assertMempool(cs.txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{}); err != nil {
 				panic(err)
 			}
 			i++
@@ -299,7 +298,7 @@ type simulatorTestSuite struct {
 	Commits      []*types.Commit
 	CleanupFunc  cleanupFunc
 
-	Mempool mempool.Mempool
+	Mempool mempl.Mempool
 	Evpool  sm.EvidencePool
 }
 
@@ -1230,9 +1229,9 @@ func testHandshakeReplay(
 		buildAppStateFromChain(
 			proxyApp,
 			stateStore,
+			&firstValidatorProTxHash,
 			sim.Mempool,
 			sim.Evpool,
-			&firstValidatorProTxHash,
 			genesisState,
 			chain,
 			nBlocks,
@@ -1311,13 +1310,13 @@ func testHandshakeReplay(
 
 func applyBlock(
 	stateStore sm.Store,
-	mempool mempool.Mempool,
+	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	st sm.State,
 	nodeProTxHash *crypto.ProTxHash,
 	blk *types.Block,
 	proxyApp proxy.AppConns,
-    blockStore *mockBlockStore,
+	blockStore *mockBlockStore,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(
@@ -1391,7 +1390,7 @@ func buildAppStateFromChain(
 
 func buildTMStateFromChain(
 	cfg *config.Config,
-	mempool mempool.Mempool,
+	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	stateStore sm.Store,
 	nodeProTxHash *crypto.ProTxHash,
@@ -1457,7 +1456,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
 	require.NoError(t, err)
 	const appVersion = 0x0
-	quorumHash, err := privVal.GetFirstQuorumHash()
+	quorumHash, err := privVal.GetFirstQuorumHash(context.Background())
 	require.NoError(t, err)
 	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
 	require.NoError(t, err)
@@ -1468,7 +1467,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks := sf.MakeBlocks(3, &state, privVal)
+	blocks, err := sf.MakeBlocks(3, &state, privVal)
+	require.NoError(t, err)
 	store.chain = blocks
 
 	// 2. Tendermint must panic if app returns wrong hash for the first block
@@ -1494,7 +1494,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 				store,
 				genDoc,
 				&proTxHash,
-				config.Consensus.AppHashSize,
+				cfg.Consensus.AppHashSize,
 			)
 			if _, err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
@@ -1723,7 +1723,7 @@ func stateAndStore(
 // mock block store
 
 type mockBlockStore struct {
-	cfg                *config.Config
+	cfg                   *config.Config
 	params                types.ConsensusParams
 	chain                 []*types.Block
 	commits               []*types.Commit

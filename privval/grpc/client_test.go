@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
@@ -57,12 +58,15 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 	}
 	defer conn.Close()
 
-	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
+	quorumHash, err := mockPV.GetFirstQuorumHash(ctx)
 	require.NoError(t, err)
 
-	pk, err := client.GetPubKey(context.Background())
+	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
-	assert.Equal(t, mockPV.PrivKey.PubKey(), pk)
+	privKey := mockPV.PrivateKeys[quorumHash.String()].PrivKey
+	pk, err := client.GetPubKey(context.Background(), quorumHash)
+	require.NoError(t, err)
+	assert.Equal(t, privKey.PubKey(), pk)
 }
 
 func TestSignerClient_SignVote(t *testing.T) {
@@ -82,40 +86,45 @@ func TestSignerClient_SignVote(t *testing.T) {
 	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
-	ts := time.Now()
 	hash := tmrand.Bytes(tmhash.Size)
-	valAddr := tmrand.Bytes(crypto.AddressSize)
+	valAddr := crypto.RandProTxHash()
 
 	want := &types.Vote{
-		Type:             tmproto.PrecommitType,
-		Height:           1,
-		Round:            2,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		Timestamp:        ts,
-		ValidatorAddress: valAddr,
-		ValidatorIndex:   1,
+		Type:               tmproto.PrecommitType,
+		Height:             1,
+		Round:              2,
+		BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+		ValidatorProTxHash: valAddr,
+		ValidatorIndex:     1,
 	}
 
 	have := &types.Vote{
-		Type:             tmproto.PrecommitType,
-		Height:           1,
-		Round:            2,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		Timestamp:        ts,
-		ValidatorAddress: valAddr,
-		ValidatorIndex:   1,
+		Type:               tmproto.PrecommitType,
+		Height:             1,
+		Round:              2,
+		BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+		ValidatorProTxHash: valAddr,
+		ValidatorIndex:     1,
 	}
 
 	pbHave := have.ToProto()
+	stateID := types.StateID{
+		Height:      0,
+		LastAppHash: nil,
+	}
 
-	err = client.SignVote(context.Background(), chainID, pbHave)
+	quorumHash, err := mockPV.GetProTxHash(ctx)
+	require.NoError(t, err)
+
+	err = client.SignVote(ctx, chainID, btcjson.LLMQType_5_60, quorumHash, pbHave, stateID, logger)
 	require.NoError(t, err)
 
 	pbWant := want.ToProto()
 
-	require.NoError(t, mockPV.SignVote(context.Background(), chainID, pbWant))
+	require.NoError(t, mockPV.SignVote(ctx, chainID, btcjson.LLMQType_5_60, quorumHash, pbWant, stateID, logger))
 
-	assert.Equal(t, pbWant.Signature, pbHave.Signature)
+	assert.Equal(t, pbWant.StateSignature, pbHave.StateSignature)
+	assert.Equal(t, pbWant.BlockSignature, pbHave.BlockSignature)
 }
 
 func TestSignerClient_SignProposal(t *testing.T) {
@@ -155,14 +164,18 @@ func TestSignerClient_SignProposal(t *testing.T) {
 		Timestamp: ts,
 	}
 
+	quorumHash, err := mockPV.GetProTxHash(ctx)
+	require.NoError(t, err)
+
 	pbHave := have.ToProto()
 
-	err = client.SignProposal(context.Background(), chainID, pbHave)
+	_, err = client.SignProposal(context.Background(), chainID, btcjson.LLMQType_5_60, quorumHash, pbHave)
 	require.NoError(t, err)
 
 	pbWant := want.ToProto()
 
-	require.NoError(t, mockPV.SignProposal(context.Background(), chainID, pbWant))
+	_, err = mockPV.SignProposal(context.Background(), chainID, btcjson.LLMQType_5_60, quorumHash, pbWant)
+	require.NoError(t, err)
 
 	assert.Equal(t, pbWant.Signature, pbHave.Signature)
 }

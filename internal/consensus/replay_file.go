@@ -350,6 +350,7 @@ func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.Consensu
 		mempool,
 		evpool,
 		blockStore,
+		nil,
 		sm.BlockExecutorWithAppHashSize(csConfig.AppHashSize),
 	)
 

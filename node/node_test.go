@@ -4,15 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
 	"net"
 	"os"
 	"syscall"
 	"testing"
 	"time"
-
-	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/evidence"
@@ -344,74 +342,6 @@ func TestCreateProposalBlock(t *testing.T) {
 	assert.EqualValues(t, block.Header.ProposedAppVersion, proposedAppVersion)
 }
 
-func TestMaxProposalBlockSize(t *testing.T) {
-	config := cfg.ResetTestRoot("node_create_proposal")
-	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
-	err := proxyApp.Start()
-	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
-
-	logger := log.TestingLogger()
-
-	var height int64 = 1
-	state, stateDB, _ := state(1, height)
-	stateStore := sm.NewStore(stateDB)
-	var maxBytes int64 = 16384
-	var partSize uint32 = 256
-	state.ConsensusParams.Block.MaxBytes = maxBytes
-	proposerProTxHash, _ := state.Validators.GetByIndex(0)
-
-	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_2")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-	mempool.SetLogger(logger)
-
-	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, crypto.BLS12381, 1))
-	tx := tmrand.Bytes(txLength - 4) // to account for the varint
-	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
-	assert.NoError(t, err)
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		logger,
-		proxyApp.Consensus(),
-		proxyApp.Query(),
-		mempool,
-		sm.EmptyEvidencePool{},
-		nil,
-	)
-
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
-
-	proposedAppVersion := uint64(1)
-
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state,
-		commit,
-		proposerProTxHash,
-		proposedAppVersion,
-	)
-
-	pb, err := block.ToProto()
-	require.NoError(t, err)
-	assert.Less(t, int64(pb.Size()), maxBytes)
-
-	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
-	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
-}
-
 func TestMaxTxsProposalBlockSize(t *testing.T) {
 	cfg, err := config.ResetTestRoot("node_create_proposal")
 	require.NoError(t, err)
@@ -431,7 +361,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	const maxBytes int64 = 16384
 	const partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
-	proposerAddr, _ := state.Validators.GetByIndex(0)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
 	mp := mempoolv0.NewCListMempool(
@@ -445,7 +375,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	mp.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
+	txLength := int(types.MaxDataBytesNoEvidence(maxBytes))
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
 	err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
@@ -454,16 +384,20 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp.Consensus(),
+		proxyApp.Query(),
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
+		nil,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 	block, _ := blockExec.CreateProposalBlock(
 		height,
-		state, commit,
-		proposerAddr,
+		state,
+		commit,
+		proposerProTxHash,
+		0,
 	)
 
 	pb, err := block.ToProto()
@@ -538,7 +472,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 
 	stateID := types.StateID{
-		Height: math.MaxInt64 - 1,
+		Height:      math.MaxInt64 - 1,
 		LastAppHash: tmhash.Sum([]byte("app_hash")),
 	}
 
@@ -557,12 +491,11 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 	state.ChainID = maxChainID
 
-
 	commit := &types.Commit{
-		Height:  math.MaxInt64,
-		Round:   math.MaxInt32,
-		BlockID: blockID,
-		StateID: stateID,
+		Height:                  math.MaxInt64,
+		Round:                   math.MaxInt32,
+		BlockID:                 blockID,
+		StateID:                 stateID,
 		ThresholdBlockSignature: crypto.CRandBytes(bls12381.SignatureSize),
 		ThresholdStateSignature: crypto.CRandBytes(bls12381.SignatureSize),
 	}
@@ -598,7 +531,6 @@ func TestNodeNewSeedNode(t *testing.T) {
 
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	require.NoError(t, err)
-
 
 	ns, err := makeSeedNode(cfg,
 		config.DefaultDBProvider,

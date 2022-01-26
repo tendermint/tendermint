@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,11 +13,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
-)
-
-var (
-	ErrPeerStateHeightRegression = errors.New("peer state height regression")
-	ErrPeerStateInvalidStartTime = errors.New("peer state invalid startTime")
 )
 
 // peerStateStats holds internal statistics for a peer.
@@ -244,7 +238,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmprot
 				return nil
 
 			case tmproto.PrecommitType:
-				return ps.PRS.LastCommit
+				return ps.PRS.LastPrecommits
 			}
 		}
 
@@ -312,8 +306,8 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 			ps.PRS.ProposalPOL = bits.NewBitArray(numValidators)
 		}
 	} else if ps.PRS.Height == height+1 {
-		if ps.PRS.LastCommit == nil {
-			ps.PRS.LastCommit = bits.NewBitArray(numValidators)
+		if ps.PRS.LastPrecommits == nil {
+			ps.PRS.LastPrecommits = bits.NewBitArray(numValidators)
 		}
 	}
 }
@@ -379,6 +373,47 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 	}
 }
 
+// SetHasCommit sets the given vote as known by the peer
+func (ps *PeerState) SetHasCommit(commit *types.Commit) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.logger.
+		With(
+			"height", commit.Height,
+			"round", commit.Round,
+			"peer_height", ps.PRS.Height,
+			"peer_round", ps.PRS.Round,
+		).
+		Debug("setHasCommit")
+
+	ps.setHasCommit(commit.Height, commit.Round)
+
+	if ps.PRS.Height < commit.Height || (ps.PRS.Height == commit.Height && ps.PRS.Round < commit.Round) {
+		ps.PRS.ProposalBlockPartSetHeader = commit.BlockID.PartSetHeader
+		ps.PRS.ProposalBlockParts = bits.NewBitArray(int(commit.BlockID.PartSetHeader.Total))
+		ps.PRS.ProposalPOLRound = -1
+		ps.PRS.ProposalPOL = nil
+	}
+}
+
+func (ps *PeerState) setHasCommit(height int64, round int32) {
+	logger := ps.logger.With(
+		"height", height,
+		"round", round,
+		"peer_height", ps.PRS.Height,
+		"peer_round", ps.PRS.Round,
+	)
+	logger.Debug("setHasCommit")
+
+	if ps.PRS.Height < height || (ps.PRS.Height == height && ps.PRS.Round <= round) {
+		ps.PRS.Height = height
+		ps.PRS.Round = round
+		ps.PRS.Step = cstypes.RoundStepPropose // shouldn't matter
+		ps.PRS.HasCommit = true
+	}
+}
+
 // ApplyNewRoundStepMessage updates the peer state for the new round.
 func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	ps.mtx.Lock()
@@ -426,10 +461,10 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// shift Precommits to LastCommit
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = ps.PRS.Precommits
+			ps.PRS.LastPrecommits = ps.PRS.Precommits
 		} else {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = nil
+			ps.PRS.LastPrecommits = nil
 		}
 
 		// we'll update the BitArray capacity later

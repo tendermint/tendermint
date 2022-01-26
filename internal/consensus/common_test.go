@@ -22,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
-	"github.com/go-kit/log/term"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -438,7 +437,7 @@ func newStateWithConfigAndBlockStore(
 ) *State {
 
 	// one for mempool, one for consensus, one for signature validation
-	mtx := new(tmsync.RWMutex)
+	mtx := new(tmsync.Mutex)
 	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 	proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
@@ -732,14 +731,7 @@ func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func consensusLogger() log.Logger {
-	return log.TestingLoggerWithColorFn(func(keyvals ...interface{}) term.FgBgColor {
-		for i := 0; i < len(keyvals)-1; i += 2 {
-			if keyvals[i] == "validator" {
-				return term.FgBgColor{Fg: term.Color(uint8(keyvals[i+1].(int) + 1))}
-			}
-		}
-		return term.FgBgColor{}
-	}, "debug").With("module", "consensus")
+	return log.TestingLogger().With("module", "consensus")
 }
 
 func randConsensusState(
@@ -820,7 +812,7 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 	validatorProTxHashes := currentValidators.GetProTxHashes()
 	newValidatorProTxHashes := make([]crypto.ProTxHash, addValCount)
 	for i := 0; i < addValCount; i++ {
-		proTxHash, err := css[currentValidatorCount+i].privValidator.GetProTxHash()
+		proTxHash, err := css[currentValidatorCount+i].privValidator.GetProTxHash(context.Background())
 		if err != nil {
 			panic(err)
 		}
@@ -1052,8 +1044,6 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 
 //-------------------------------------------------------------------------------
 // genesis
-
-
 
 func randGenesisState(cfg *config.Config, numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
 	genDoc, privValidators := factory.RandGenesisDoc(cfg, numValidators, 1)

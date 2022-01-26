@@ -111,6 +111,8 @@ type Reactor struct {
 	metrics *consensus.Metrics
 
 	syncStartTime time.Time
+
+	nodeProTxHash *types.ProTxHash
 }
 
 // NewReactor returns new reactor instance.
@@ -153,6 +155,7 @@ func NewReactor(
 		closeCh:              make(chan struct{}),
 		metrics:              metrics,
 		syncStartTime:        time.Time{},
+		nodeProTxHash:        nodeProTxHash,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "BlockSync", r)
@@ -538,6 +541,10 @@ FOR_LOOP:
 				firstParts         = first.MakePartSet(types.BlockPartSizeBytes)
 				firstPartSetHeader = firstParts.Header()
 				firstID            = types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
+				stateID            = types.StateID{
+					Height:      first.Height,
+					LastAppHash: first.AppHash,
+				}
 			)
 
 			// Finally, verify the first block using the second's commit.
@@ -545,7 +552,7 @@ FOR_LOOP:
 			// NOTE: We can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
+			err := state.Validators.VerifyCommit(chainID, firstID, stateID, first.Height, second.LastCommit)
 			if err != nil {
 				err = fmt.Errorf("invalid last commit: %w", err)
 				r.Logger.Error(
@@ -582,7 +589,7 @@ FOR_LOOP:
 
 				// TODO: Same thing for app - but we would need a way to get the hash
 				// without persisting the state.
-				state, err = r.blockExec.ApplyBlock(state, firstID, first)
+				state, err = r.blockExec.ApplyBlock(state, r.nodeProTxHash, firstID, first)
 				if err != nil {
 					// TODO: This is bad, are we zombie?
 					panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

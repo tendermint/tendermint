@@ -105,6 +105,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
+	proTxHash := rts.network.Nodes[nodeID].NodeInfo.ProTxHash
 
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
@@ -127,6 +128,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
+			stateID := lastBlock.StateID()
 
 			vote, err := factory.MakeVote(
 				privVal,
@@ -134,10 +136,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 				lastBlock.Header.ChainID, 0,
 				lastBlock.Header.Height, 0, 2,
 				lastBlockMeta.BlockID,
-				types.StateID{
-					Height:      lastBlock.Height,
-					LastAppHash: lastBlock.AppHash,
-				},
+				stateID,
 			)
 			require.NoError(t, err)
 
@@ -145,15 +144,19 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 				vote.Height,
 				vote.Round,
 				lastBlockMeta.BlockID,
-				[]types.CommitSig{vote.CommitSig()},
+				stateID,
+				state.Validators.QuorumHash,
+				vote.BlockSignature,
+				vote.StateSignature,
 			)
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
+		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit, nil, 0)
+		require.NoError(t, err)
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, proTxHash, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
@@ -167,6 +170,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 		state.Copy(),
 		blockExec,
 		blockStore,
+		proTxHash,
 		nil,
 		rts.blockSyncChannels[nodeID],
 		rts.peerUpdates[nodeID],
@@ -192,7 +196,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
 	maxBlockHeight := int64(64)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -228,7 +232,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
 	maxBlockHeight := int64(101)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -253,7 +257,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 
 	defer os.RemoveAll(cfg.RootDir)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
 	maxBlockHeight := int64(65)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -302,7 +306,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 
 	maxBlockHeight := int64(48)
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
 
 	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
@@ -336,7 +340,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	//
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
-	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(cfg, 1, 30)
 	newNode := rts.network.MakeNode(t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),

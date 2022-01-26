@@ -64,7 +64,7 @@ func TestClientIntegration_Update(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		dashcore.NewMockClient(chainID, 100, validator, true),
+		dashCoreMockClient,
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		dashcore.NewMockClient(chainID, 100, validator, true),
+		dashcore.NewMockClient(chainID, 100, privVals[0], true),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)

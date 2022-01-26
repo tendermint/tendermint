@@ -12,7 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -180,14 +180,18 @@ func TestPruneStates(t *testing.T) {
 			db := dbm.NewMemDB()
 
 			stateStore := sm.NewStore(db)
-			pk := ed25519.GenPrivKey().PubKey()
+			pk := bls12381.GenPrivKey().PubKey()
+
+			proTxHash := crypto.RandProTxHash()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.
-			validator := &types.Validator{ProTxHash: crypto.RandProTxHash(), VotingPower: 100, PubKey: pk}
+			validator := &types.Validator{VotingPower: types.DefaultDashVotingPower, PubKey: pk, ProTxHash: proTxHash}
 			validatorSet := &types.ValidatorSet{
-				Validators: []*types.Validator{validator},
-				Proposer:   validator,
+				Validators:         []*types.Validator{validator},
+				Proposer:           validator,
+				ThresholdPublicKey: validator.PubKey,
+				QuorumHash:         crypto.RandQuorumHash(),
 			}
 			valsChanged := int64(0)
 			paramsChanged := int64(0)

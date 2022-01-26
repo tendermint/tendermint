@@ -53,6 +53,11 @@ type Block struct {
 	LastCommit    *Commit        `json:"last_commit"`
 }
 
+// StateID returns a state ID of this block
+func (b *Block) StateID() StateID {
+	return StateID{Height: b.Height, LastAppHash: b.AppHash}
+}
+
 // ValidateBasic performs basic validation that doesn't involve state data.
 // It checks the internal consistency of the block.
 // Further validation is done using state#ValidateBlock.
@@ -335,17 +340,17 @@ func MakeBlock(height int64, coreHeight uint32, coreChainLock *CoreChainLock, tx
 	evidence []Evidence, proposedAppVersion uint64) *Block {
 	block := &Block{
 		Header: Header{
-			Version: version.Consensus{Block: version.BlockProtocol, App: 0},
-			Height:  height,
+			Version:               version.Consensus{Block: version.BlockProtocol, App: 0},
+			Height:                height,
 			CoreChainLockedHeight: coreHeight,
-			ProposedAppVersion: proposedAppVersion,
+			ProposedAppVersion:    proposedAppVersion,
 		},
 		Data: Data{
 			Txs: txs,
 		},
 		CoreChainLock: coreChainLock,
-		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: lastCommit,
+		Evidence:      EvidenceData{Evidence: evidence},
+		LastCommit:    lastCommit,
 	}
 	block.fillHeader()
 	return block
@@ -361,10 +366,10 @@ func MakeBlock(height int64, coreHeight uint32, coreChainLock *CoreChainLock, tx
 type Header struct {
 	// basic block info
 	Version               version.Consensus `json:"version"`
-	ChainID               string              `json:"chain_id"`
-	Height                int64               `json:"height"`
-	CoreChainLockedHeight uint32              `json:"core_chain_locked_height"`
-	Time                  time.Time           `json:"time"`
+	ChainID               string            `json:"chain_id"`
+	Height                int64             `json:"height"`
+	CoreChainLockedHeight uint32            `json:"core_chain_locked_height"`
+	Time                  time.Time         `json:"time"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`

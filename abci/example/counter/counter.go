@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	types1 "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
@@ -94,14 +94,11 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 }
 
 func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.ResponseEndBlock {
+	var resp types.ResponseEndBlock
 	if app.HasCoreChainLocks {
-		app.CurrentCoreChainLockHeight = uint32(int32(app.CurrentCoreChainLockHeight) + app.CoreChainLockStep)
-
-		coreChainLock := types1.NewMockChainLock(app.CurrentCoreChainLockHeight)
-
-		return types.ResponseEndBlock{
-			NextCoreChainLockUpdate: coreChainLock.ToProto(),
-		}
+		app.CurrentCoreChainLockHeight = app.CurrentCoreChainLockHeight + uint32(app.CoreChainLockStep)
+		coreChainLock := tmtypes.NewMockChainLock(app.CurrentCoreChainLockHeight)
+		resp.NextCoreChainLockUpdate = coreChainLock.ToProto()
 	}
-	return types.ResponseEndBlock{}
+	return resp
 }

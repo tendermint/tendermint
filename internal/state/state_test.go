@@ -4,8 +4,6 @@ package state_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math/big"
 	"os"
 	"testing"
@@ -16,9 +14,12 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	sm "github.com/tendermint/tendermint/internal/state"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -1070,7 +1071,9 @@ func TestStateMakeBlock(t *testing.T) {
 
 	proposerProTxHash := state.Validators.GetProposer().ProTxHash
 	stateVersion := state.Version.Consensus
-	block, err := statefactory.MakeBlock(state, 2, new(types.Commit), nil, 0)
+	var height int64 = 2
+	state.LastBlockHeight = height - 1
+	block, err := statefactory.MakeBlock(state, height, new(types.Commit), nil, 0)
 	require.NoError(t, err)
 
 	// test we set some fields

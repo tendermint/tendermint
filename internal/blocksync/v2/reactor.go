@@ -62,11 +62,11 @@ type blockApplier interface {
 		nodeProTxHash *crypto.ProTxHash,
 		blockID types.BlockID,
 		block *types.Block,
-	) (state.State, int64, error)
+	) (state.State, error)
 }
 
 // XXX: unify naming in this package around tmState
-func newReactor(state state.State, nodeProTxHash *crypto.ProTxHash, store blockStore, reporter behaviour.Reporter,
+func newReactor(state state.State, nodeProTxHash *crypto.ProTxHash, store blockStore, reporter behavior.Reporter,
 	blockApplier blockApplier, blockSync bool, metrics *consensus.Metrics) *BlockchainReactor {
 	initHeight := state.LastBlockHeight + 1
 	if initHeight == 1 {
@@ -99,7 +99,7 @@ func NewBlockchainReactor(
 	nodeProTxHash *crypto.ProTxHash,
 	blockSync bool,
 	metrics *consensus.Metrics) *BlockchainReactor {
-	reporter := behaviour.NewMockReporter()
+	reporter := behavior.NewMockReporter()
 	return newReactor(state, nodeProTxHash, store, reporter, blockApplier, blockSync, metrics)
 }
 
@@ -275,10 +275,6 @@ func (resp bcStatusResponse) String() string {
 type bcAddNewPeer struct {
 	priorityNormal
 	peerID types.NodeID
-}
-
-func (resp bcAddNewPeer) String() string {
-	return fmt.Sprintf("bcAddNewPeer{%v}", resp.peerID)
 }
 
 func (resp bcAddNewPeer) String() string {

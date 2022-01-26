@@ -38,7 +38,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, 30)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -58,7 +58,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 			app := appFunc()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
-			app.InitChain(abci.RequestInitChain{Validators: vals})
+			app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
 			blockDB := dbm.NewMemDB()
 			blockStore := store.NewBlockStore(blockDB)
@@ -81,7 +81,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 
 			// Make State
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnCon, mempool, evpool, blockStore, nil)
 			cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 			cs.SetLogger(cs.Logger)
 			// set private validator
@@ -118,7 +118,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bzReactor := rts.reactors[bzNodeID]
 
 	// alter prevote so that the byzantine node double votes when height is 2
-	bzNodeState.doPrevote = func(height int64, round int32) {
+	bzNodeState.doPrevote = func(height int64, round int32, allowOldBlocks bool) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			prevote1, err := bzNodeState.signVote(
@@ -156,7 +156,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 		} else {
 			bzNodeState.Logger.Info("behaving normally")
-			bzNodeState.defaultDoPrevote(height, round)
+			bzNodeState.defaultDoPrevote(height, round, false)
 		}
 	}
 
@@ -175,28 +175,28 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyNodeState.Height == lazyNodeState.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, nil)
-		case lazyNodeState.LastCommit.HasTwoThirdsMajority():
-			// Make the commit from LastCommit
-			commit = lazyNodeState.LastCommit.MakeCommit()
+			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		case lazyNodeState.LastCommit != nil:
+			commit = lazyNodeState.LastCommit
 		default: // This shouldn't happen.
 			lazyNodeState.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
 		}
 
-		// omit the last signature in the commit
-		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
-
-		if lazyNodeState.privValidatorPubKey == nil {
+		if lazyNodeState.privValidatorProTxHash == nil {
 			// If this node is a validator & proposer in the current round, it will
 			// miss the opportunity to create a block.
-			lazyNodeState.Logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+			lazyNodeState.Logger.Error(fmt.Sprintf("enterPropose: %v", errProTxHashIsNotSet))
 			return
 		}
-		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
+		proposerProTxHash := lazyNodeState.privValidatorProTxHash
 
 		block, blockParts := lazyNodeState.blockExec.CreateProposalBlock(
-			lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr,
+			lazyNodeState.Height,
+			lazyNodeState.state,
+			commit,
+			proposerProTxHash,
+			0,
 		)
 
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
@@ -207,9 +207,22 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make proposal
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
+		proposal := types.NewProposal(
+			height,
+			lazyNodeState.state.LastCoreChainLockedBlockHeight,
+			round,
+			lazyNodeState.ValidRound,
+			propBlockID,
+		)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
+		_, err := lazyNodeState.privValidator.SignProposal(
+			context.Background(),
+			lazyNodeState.state.ChainID,
+			lazyNodeState.state.Validators.QuorumType,
+			lazyNodeState.state.Validators.QuorumHash,
+			p,
+		)
+		if err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -262,14 +275,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	pubkey, err := bzNodeState.privValidator.GetPubKey(context.Background())
+	proTxHash, err := bzNodeState.privValidator.GetProTxHash(context.Background())
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
 		if assert.NotNil(t, ev, idx) {
 			ev, ok := ev.(*types.DuplicateVoteEvidence)
 			assert.True(t, ok)
-			assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+			assert.Equal(t, proTxHash, ev.VoteA.ValidatorProTxHash)
 			assert.Equal(t, prevoteHeight, ev.Height())
 		}
 	}

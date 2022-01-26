@@ -10,6 +10,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -52,8 +53,8 @@ func NewRPCStateProvider(
 	chainID string,
 	initialHeight int64,
 	servers []string,
-	trustOptions light.TrustOptions,
 	logger log.Logger,
+	dashCoreClient dashcore.Client,
 ) (StateProvider, error) {
 	if len(servers) < 2 {
 		return nil, fmt.Errorf("at least 2 RPC servers are required, got %d", len(servers))
@@ -73,8 +74,8 @@ func NewRPCStateProvider(
 		providerRemotes[provider] = server
 	}
 
-	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+	lc, err := light.NewClient(ctx, chainID, providers[0], providers[1:],
+		lightdb.New(dbm.NewMemDB()), dashCoreClient, light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -211,16 +212,16 @@ func NewP2PStateProvider(
 	chainID string,
 	initialHeight int64,
 	providers []lightprovider.Provider,
-	trustOptions light.TrustOptions,
 	paramsSendCh chan<- p2p.Envelope,
 	logger log.Logger,
+	dashCoreClient dashcore.Client,
 ) (StateProvider, error) {
 	if len(providers) < 2 {
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}
 
-	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
-		lightdb.New(dbm.NewMemDB()), light.Logger(logger))
+	lc, err := light.NewClient(ctx, chainID, providers[0], providers[1:],
+		lightdb.New(dbm.NewMemDB()), dashCoreClient, light.Logger(logger))
 	if err != nil {
 		return nil, err
 	}

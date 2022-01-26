@@ -67,7 +67,7 @@ func (prs PeerRoundState) Copy() PeerRoundState {
 	prs.ProposalPOL = prs.ProposalPOL.Copy()
 	prs.Prevotes = prs.Prevotes.Copy()
 	prs.Precommits = prs.Precommits.Copy()
-	prs.LastCommit = prs.LastCommit.Copy()
+	prs.LastPrecommits = prs.LastPrecommits.Copy()
 	prs.CatchupCommit = prs.CatchupCommit.Copy()
 
 	return prs

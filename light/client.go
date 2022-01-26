@@ -39,7 +39,7 @@ const (
 	defaultMaxClockDrift = 10 * time.Second
 
 	// 10s is sufficient for most networks.
-	defaultMaxBlockLag = 10 * time.Second
+	defaultMaxBlockLag     = 10 * time.Second
 	defaultProviderTimeout = 10 * time.Second
 )
 
@@ -89,20 +89,6 @@ func MaxBlockLag(d time.Duration) Option {
 // provider to respond with a light block.
 func ProviderTimeout(d time.Duration) Option {
 	return func(c *Client) { c.providerTimeout = d }
-}
-
-// MaxBlockLag represents the maximum time difference between the realtime
-// that a block is received and the timestamp of that block.
-// One can approximate it to the maximum block production time
-//
-// As an example, say the light client received block B at a time
-// 12:05 (this is the real time) and the time on the block
-// was 12:00. Then the lag here is 5 minutes.
-// Default: 10s
-func MaxBlockLag(d time.Duration) Option {
-	return func(c *Client) {
-		c.maxBlockLag = d
-	}
 }
 
 // Client represents a light client, connected to a single chain, which gets
@@ -201,17 +187,17 @@ func NewClientFromTrustedStore(
 	}
 
 	c := &Client{
-		chainID:           chainID,
-		verificationMode:  dashCoreVerification,
-		maxRetryAttempts:  defaultMaxRetryAttempts,
-		maxClockDrift:     defaultMaxClockDrift,
-		maxBlockLag:       defaultMaxBlockLag,
-		primary:           primary,
-		witnesses:         witnesses,
-		trustedStore:      trustedStore,
-		pruningSize:       defaultPruningSize,
-		confirmationFn:    func(action string) bool { return true },
-		quit:              make(chan struct{}),
+		chainID:          chainID,
+		verificationMode: dashCoreVerification,
+		maxRetryAttempts: defaultMaxRetryAttempts,
+		maxClockDrift:    defaultMaxClockDrift,
+		maxBlockLag:      defaultMaxBlockLag,
+		primary:          primary,
+		witnesses:        witnesses,
+		trustedStore:     trustedStore,
+		pruningSize:      defaultPruningSize,
+		//confirmationFn:    func(action string) bool { return true },
+		//quit:              make(chan struct{}),
 		logger:            log.NewNopLogger(),
 		dashCoreRPCClient: dashCoreRPCClient,
 	}

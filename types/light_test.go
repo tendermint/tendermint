@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -15,12 +16,12 @@ func TestLightBlockValidateBasic(t *testing.T) {
 	header := MakeRandHeader()
 	stateID := RandStateID()
 	commit := randCommit(stateID)
-	vals, _ := GenerateValidatorSet(5)
+	vals, _ := factory.GenerateMockValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.ValidatorsHash = vals.Hash()
 	header.Version.Block = version.BlockProtocol
-	vals2, _ := GenerateValidatorSet(3)
+	vals2, _ := factory.GenerateMockValidatorSet(3)
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
 	commit.BlockID.Hash = header.Hash()
@@ -60,7 +61,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 func TestLightBlockProtobuf(t *testing.T) {
 	header := MakeRandHeader()
 	commit := randCommit(RandStateID())
-	vals, _ := GenerateValidatorSet(5)
+	vals, _ := factory.GenerateMockValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.Version.Block = version.BlockProtocol

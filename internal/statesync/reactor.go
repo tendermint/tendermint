@@ -12,6 +12,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -19,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/types"
@@ -174,6 +174,8 @@ type Reactor struct {
 	metrics            *Metrics
 	backfillBlockTotal int64
 	backfilledBlocks   int64
+
+	dashCoreClient dashcore.Client
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -193,26 +195,28 @@ func NewReactor(
 	blockStore *store.BlockStore,
 	tempDir string,
 	ssMetrics *Metrics,
+	client dashcore.Client,
 ) *Reactor {
 	r := &Reactor{
-		chainID:       chainID,
-		initialHeight: initialHeight,
-		cfg:           cfg,
-		conn:          conn,
-		connQuery:     connQuery,
-		snapshotCh:    snapshotCh,
-		chunkCh:       chunkCh,
-		blockCh:       blockCh,
-		paramsCh:      paramsCh,
-		peerUpdates:   peerUpdates,
-		closeCh:       make(chan struct{}),
-		tempDir:       tempDir,
-		stateStore:    stateStore,
-		blockStore:    blockStore,
-		peers:         newPeerList(),
-		dispatcher:    NewDispatcher(blockCh.Out),
-		providers:     make(map[types.NodeID]*BlockProvider),
-		metrics:       ssMetrics,
+		chainID:        chainID,
+		initialHeight:  initialHeight,
+		cfg:            cfg,
+		conn:           conn,
+		connQuery:      connQuery,
+		snapshotCh:     snapshotCh,
+		chunkCh:        chunkCh,
+		blockCh:        blockCh,
+		paramsCh:       paramsCh,
+		peerUpdates:    peerUpdates,
+		closeCh:        make(chan struct{}),
+		tempDir:        tempDir,
+		stateStore:     stateStore,
+		blockStore:     blockStore,
+		peers:          newPeerList(),
+		dispatcher:     NewDispatcher(blockCh.Out),
+		providers:      make(map[types.NodeID]*BlockProvider),
+		metrics:        ssMetrics,
+		dashCoreClient: client,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -1040,14 +1044,9 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 
 func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initialHeight int64) error {
 	var err error
-	to := light.TrustOptions{
-		Period: r.cfg.TrustPeriod,
-		Height: r.cfg.TrustHeight,
-		Hash:   r.cfg.TrustHashBytes(),
-	}
 	spLogger := r.Logger.With("module", "stateprovider")
-	spLogger.Info("initializing state provider", "trustPeriod", to.Period,
-		"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
+	spLogger.Info("initializing state provider", "trustPeriod", r.cfg.TrustPeriod,
+		"trustHeight", r.cfg.TrustHeight, "useP2P", r.cfg.UseP2P)
 
 	if r.cfg.UseP2P {
 		if err := r.waitForEnoughPeers(ctx, 2); err != nil {
@@ -1060,12 +1059,12 @@ func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initial
 			providers[idx] = NewBlockProvider(p, chainID, r.dispatcher)
 		}
 
-		r.stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, providers, to, r.paramsCh.Out, spLogger)
+		r.stateProvider, err = NewP2PStateProvider(ctx, chainID, initialHeight, providers, r.paramsCh.Out, spLogger, r.dashCoreClient)
 		if err != nil {
 			return fmt.Errorf("failed to initialize P2P state provider: %w", err)
 		}
 	} else {
-		r.stateProvider, err = NewRPCStateProvider(ctx, chainID, initialHeight, r.cfg.RPCServers, to, spLogger)
+		r.stateProvider, err = NewRPCStateProvider(ctx, chainID, initialHeight, r.cfg.RPCServers, spLogger, r.dashCoreClient)
 		if err != nil {
 			return fmt.Errorf("failed to initialize RPC state provider: %w", err)
 		}

@@ -1,21 +1,20 @@
 package v2
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
-
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync/v2/internal/behavior"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
@@ -30,6 +29,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 type mockPeer struct {
@@ -86,7 +86,7 @@ type mockBlockApplier struct {
 
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
-	state sm.State, blockID types.BlockID, block *types.Block,
+	state sm.State, nodeProTxHash *crypto.ProTxHash, blockID types.BlockID, block *types.Block,
 ) (sm.State, error) {
 	state.LastBlockHeight++
 	return state, nil
@@ -171,13 +171,13 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
 		blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
-		appl = sm.NewBlockExecutor(
-			stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), proxyApp.Query(), mock.Mempool{},
+			sm.EmptyEvidencePool{}, blockStore, nil)
 		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
-
-	r := newReactor(state, store, reporter, appl, true, consensus.NopMetrics())
+	proTxHash := crypto.RandProTxHash()
+	r := newReactor(state, &proTxHash, store, reporter, appl, true, consensus.NopMetrics())
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -368,7 +368,7 @@ func TestReactorHelperMode(t *testing.T) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_v2_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -459,7 +459,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_v2_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, false, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
 
 	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),
@@ -498,35 +498,44 @@ func newReactorStore(
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
+		mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore, nil)
 	err = stateStore.Save(state)
 	require.NoError(t, err)
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, state.StateID(), state.Validators.QuorumHash, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
+			stateID := types.StateID{
+				Height:      blockHeight,
+				LastAppHash: lastBlock.AppHash,
+			}
 			vote, err := factory.MakeVote(
 				privVals[0],
+				state.Validators,
 				lastBlock.Header.ChainID, 0,
 				lastBlock.Header.Height, 0, 2,
 				lastBlockMeta.BlockID,
-				time.Now(),
+				stateID,
 			)
 			require.NoError(t, err)
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
+				lastBlockMeta.BlockID, stateID, state.Validators.QuorumHash, vote.BlockSignature, vote.StateSignature)
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
+		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit, nil, 0)
+		require.NoError(t, err)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		proTxHash, err := privVals[0].GetProTxHash(context.Background())
+		require.NoError(t, err)
+
+		state, err = blockExec.ApplyBlock(state, &proTxHash, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

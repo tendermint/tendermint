@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,8 +33,8 @@ func TestGetPubKey(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
 
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
@@ -41,7 +42,9 @@ func TestGetPubKey(t *testing.T) {
 			if tc.err {
 				require.Error(t, err)
 			} else {
-				pk, err := tc.pv.GetPubKey(context.Background())
+				quorumHash, err := tc.pv.GetFirstQuorumHash(ctx)
+				require.NoError(t, err)
+				pk, err := tc.pv.GetPubKey(context.Background(), quorumHash)
 				require.NoError(t, err)
 				assert.Equal(t, resp.PubKey.GetEd25519(), pk.Bytes())
 			}
@@ -52,9 +55,8 @@ func TestGetPubKey(t *testing.T) {
 
 func TestSignVote(t *testing.T) {
 
-	ts := time.Now()
 	hash := tmrand.Bytes(tmhash.Size)
-	valAddr := tmrand.Bytes(crypto.AddressSize)
+	proTxHash := crypto.RandProTxHash()
 
 	testCases := []struct {
 		name       string
@@ -63,41 +65,37 @@ func TestSignVote(t *testing.T) {
 		err        bool
 	}{
 		{name: "valid", pv: types.NewMockPV(), have: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
+			Type:               tmproto.PrecommitType,
+			Height:             1,
+			Round:              2,
+			BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			ValidatorProTxHash: proTxHash,
+			ValidatorIndex:     1,
 		}, want: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
+			Type:               tmproto.PrecommitType,
+			Height:             1,
+			Round:              2,
+			BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			ValidatorProTxHash: proTxHash,
+			ValidatorIndex:     1,
 		},
 			err: false},
 		{name: "invalid vote", pv: types.NewErroringMockPV(), have: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
-			Signature:        []byte("signed"),
+			Type:               tmproto.PrecommitType,
+			Height:             1,
+			Round:              2,
+			BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			ValidatorProTxHash: proTxHash,
+			ValidatorIndex:     1,
+			BlockSignature:     []byte("signed"),
 		}, want: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
-			Signature:        []byte("signed"),
+			Type:               tmproto.PrecommitType,
+			Height:             1,
+			Round:              2,
+			BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			ValidatorProTxHash: proTxHash,
+			ValidatorIndex:     1,
+			BlockSignature:     []byte("signed"),
 		},
 			err: true},
 	}
@@ -113,10 +111,12 @@ func TestSignVote(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				pbVote := tc.want.ToProto()
+				quorumHash, err := tc.pv.GetFirstQuorumHash(context.Background())
+				require.NoError(t, err)
+				require.NoError(t, tc.pv.SignVote(context.Background(), ChainID, btcjson.LLMQType_5_60, quorumHash,
+					pbVote, types.StateID{}, log.TestingLogger()))
 
-				require.NoError(t, tc.pv.SignVote(context.Background(), ChainID, pbVote))
-
-				assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
+				assert.Equal(t, pbVote.BlockSignature, resp.Vote.BlockSignature)
 			}
 		})
 	}
@@ -172,15 +172,19 @@ func TestSignProposal(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
 
 			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
-			resp, err := s.SignProposal(context.Background(), req)
+			resp, err := s.SignProposal(ctx, req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbProposal := tc.want.ToProto()
-				require.NoError(t, tc.pv.SignProposal(context.Background(), ChainID, pbProposal))
+				quorumHash, err := tc.pv.GetFirstQuorumHash(ctx)
+				require.NoError(t, err)
+				_, err = tc.pv.SignProposal(ctx, ChainID, btcjson.LLMQType_5_60, quorumHash, pbProposal)
+				require.NoError(t, err)
 				assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
 			}
 		})

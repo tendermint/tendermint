@@ -1,13 +1,10 @@
 package state_test
 
 import (
-	"github.com/tendermint/tendermint/crypto"
-	"strings"
 	"context"
+	"strings"
 	"testing"
 	"time"
-
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,7 +12,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	memmock "github.com/tendermint/tendermint/internal/mempool/mock"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -23,8 +20,8 @@ import (
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
 	testfactory "github.com/tendermint/tendermint/internal/test/factory"
-
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -77,7 +74,6 @@ func TestValidateBlockHeader(t *testing.T) {
 			block.CoreChainLockedHeight -= 10
 		}},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
-		{"Time wrong 2", func(block *types.Block) { block.Time = block.Time.Add(time.Second * 1) }},
 
 		{
 			"LastBlockID wrong",
@@ -244,23 +240,6 @@ func TestValidateBlockCommit(t *testing.T) {
 				height,
 				err,
 			)
-			/*
-				Test that the threshold block signatures are good
-			*/
-			block, _ = statefactory.MakeBlock(state, height, wrongHeightCommit, nextChainLock, 0)
-			err = blockExec.ValidateBlock(state, block)
-			require.Error(t, err)
-			require.True(
-				t,
-				strings.HasPrefix(
-					err.Error(),
-					"error validating block: incorrect threshold block signature",
-				),
-				"expected error on block threshold signature at height %d, but got: %v",
-				height,
-				err,
-			)
-
 			/*
 				Test that the threshold block signatures are good
 			*/
