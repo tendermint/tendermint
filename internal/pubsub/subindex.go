@@ -1,17 +1,21 @@
 package pubsub
 
-import "github.com/tendermint/tendermint/abci/types"
+import (
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
+	"github.com/tendermint/tendermint/types"
+)
 
 // An item to be published to subscribers.
 type item struct {
-	Data   interface{}
-	Events []types.Event
+	Data   types.EventData
+	Events []abci.Event
 }
 
 // A subInfo value records a single subscription.
 type subInfo struct {
 	clientID string        // chosen by the client
-	query    Query         // chosen by the client
+	query    *query.Query  // chosen by the client
 	subID    string        // assigned at registration
 	sub      *Subscription // receives published events
 }

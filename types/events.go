@@ -7,7 +7,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/jsontypes"
-	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 )
 
@@ -88,8 +87,10 @@ var (
 
 // ENCODING / DECODING
 
-// TMEventData implements events.EventData.
-type TMEventData interface{}
+// EventData is satisfied by types that can be published as event data.
+type EventData interface {
+	jsontypes.Tagged
+}
 
 func init() {
 	jsontypes.MustRegister(EventDataBlockSyncStatus{})
@@ -264,11 +265,11 @@ var (
 	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
 )
 
-func EventQueryTxFor(tx Tx) tmpubsub.Query {
+func EventQueryTxFor(tx Tx) *tmquery.Query {
 	return tmquery.MustCompile(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
-func QueryForEvent(eventValue string) tmpubsub.Query {
+func QueryForEvent(eventValue string) *tmquery.Query {
 	return tmquery.MustCompile(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
 }
 

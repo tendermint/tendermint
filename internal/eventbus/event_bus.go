@@ -7,6 +7,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -51,7 +52,7 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 
 // Deprecated: Use SubscribeWithArgs instead.
 func (b *EventBus) Subscribe(ctx context.Context,
-	clientID string, query tmpubsub.Query, capacities ...int) (Subscription, error) {
+	clientID string, query *tmquery.Query, capacities ...int) (Subscription, error) {
 
 	return b.pubsub.Subscribe(ctx, clientID, query, capacities...)
 }
@@ -68,11 +69,11 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	return b.pubsub.UnsubscribeAll(ctx, subscriber)
 }
 
-func (b *EventBus) Observe(ctx context.Context, observe func(tmpubsub.Message) error, queries ...tmpubsub.Query) error {
+func (b *EventBus) Observe(ctx context.Context, observe func(tmpubsub.Message) error, queries ...*tmquery.Query) error {
 	return b.pubsub.Observe(ctx, observe, queries...)
 }
 
-func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData types.TMEventData) error {
+func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData types.EventData) error {
 	tokens := strings.Split(types.EventTypeKey, ".")
 	event := abci.Event{
 		Type: tokens[0],

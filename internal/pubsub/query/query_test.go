@@ -7,12 +7,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/pubsub/query/syntax"
 )
-
-var _ pubsub.Query = (*query.Query)(nil)
 
 // Example events from the OpenAPI documentation:
 //  https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
@@ -210,11 +207,7 @@ func TestCompiledMatches(t *testing.T) {
 				t.Fatalf("NewCompiled %#q: unexpected error: %v", tc.s, err)
 			}
 
-			got, err := c.Matches(tc.events)
-			if err != nil {
-				t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
-					tc.s, tc.events, err)
-			}
+			got := c.Matches(tc.events)
 			if got != tc.matches {
 				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
 					tc.s, tc.events, got, tc.matches)
@@ -231,10 +224,7 @@ func TestAllMatchesAll(t *testing.T) {
 		`Rilly|Blue=`,
 	)
 	for i := 0; i < len(events); i++ {
-		match, err := query.All.Matches(events[:i])
-		if err != nil {
-			t.Errorf("Matches failed: %w", err)
-		} else if !match {
+		if !query.All.Matches(events[:i]) {
 			t.Errorf("Did not match on %+v ", events[:i])
 		}
 	}

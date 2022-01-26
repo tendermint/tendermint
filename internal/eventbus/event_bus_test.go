@@ -498,7 +498,7 @@ func randEventValue() string {
 	return events[mrand.Intn(len(events))]
 }
 
-var queries = []tmpubsub.Query{
+var queries = []*tmquery.Query{
 	types.EventQueryNewBlock,
 	types.EventQueryNewBlockHeader,
 	types.EventQueryNewRound,
@@ -514,6 +514,6 @@ var queries = []tmpubsub.Query{
 	types.EventQueryStateSyncStatus,
 }
 
-func randQuery() tmpubsub.Query {
+func randQuery() *tmquery.Query {
 	return queries[mrand.Intn(len(queries))]
 }
