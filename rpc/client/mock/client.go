@@ -155,5 +155,5 @@ func (c Client) Validators(ctx context.Context, height *int64, page, perPage *in
 }
 
 func (c Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
-	return c.env.BroadcastEvidence(ctx, ev)
+	return c.env.BroadcastEvidence(ctx, coretypes.Evidence{Value: ev})
 }

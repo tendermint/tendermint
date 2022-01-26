@@ -385,7 +385,6 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, eventBus.PublishEventNewRound(ctx, types.EventDataNewRound{}))
 	require.NoError(t, eventBus.PublishEventCompleteProposal(ctx, types.EventDataCompleteProposal{}))
 	require.NoError(t, eventBus.PublishEventPolka(ctx, types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventUnlock(ctx, types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventRelock(ctx, types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventLock(ctx, types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventValidatorSetUpdates(ctx, types.EventDataValidatorSetUpdates{}))
@@ -487,7 +486,6 @@ var events = []string{
 	types.EventTimeoutProposeValue,
 	types.EventCompleteProposalValue,
 	types.EventPolkaValue,
-	types.EventUnlockValue,
 	types.EventLockValue,
 	types.EventRelockValue,
 	types.EventTimeoutWaitValue,
@@ -500,7 +498,7 @@ func randEventValue() string {
 	return events[mrand.Intn(len(events))]
 }
 
-var queries = []tmpubsub.Query{
+var queries = []*tmquery.Query{
 	types.EventQueryNewBlock,
 	types.EventQueryNewBlockHeader,
 	types.EventQueryNewRound,
@@ -508,7 +506,6 @@ var queries = []tmpubsub.Query{
 	types.EventQueryTimeoutPropose,
 	types.EventQueryCompleteProposal,
 	types.EventQueryPolka,
-	types.EventQueryUnlock,
 	types.EventQueryLock,
 	types.EventQueryRelock,
 	types.EventQueryTimeoutWait,
@@ -517,6 +514,6 @@ var queries = []tmpubsub.Query{
 	types.EventQueryStateSyncStatus,
 }
 
-func randQuery() tmpubsub.Query {
+func randQuery() *tmquery.Query {
 	return queries[mrand.Intn(len(queries))]
 }

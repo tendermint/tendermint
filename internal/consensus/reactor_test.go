@@ -81,7 +81,7 @@ func setup(
 	rts.voteSetBitsChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc(VoteSetBitsChannel, size))
 
 	ctx, cancel := context.WithCancel(ctx)
-	// Canceled during cleanup (see below).
+	t.Cleanup(cancel)
 
 	chCreator := func(nodeID types.NodeID) p2p.ChannelCreator {
 		return func(ctx context.Context, desc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
@@ -142,6 +142,7 @@ func setup(
 
 		require.NoError(t, reactor.Start(ctx))
 		require.True(t, reactor.IsRunning())
+		t.Cleanup(reactor.Wait)
 
 		i++
 	}
@@ -151,10 +152,7 @@ func setup(
 	// start the in-memory network and connect all peers with each other
 	rts.network.Start(ctx, t)
 
-	t.Cleanup(func() {
-		cancel()
-		leaktest.Check(t)
-	})
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }
@@ -326,7 +324,7 @@ func TestReactorBasic(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(ctx, t,
+	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
@@ -383,7 +381,8 @@ func TestReactorWithEvidence(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newKVStore
 
-	genDoc, privVals := factory.RandGenesisDoc(ctx, t, cfg, n, false, 30)
+	valSet, privVals := factory.ValidatorSet(ctx, t, n, 30)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -486,8 +485,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(
-		ctx,
+	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
 		n,
@@ -543,7 +541,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(ctx, t,
+	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true), newKVStore)
 	t.Cleanup(cleanup)
@@ -608,8 +606,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	cfg := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(
-		ctx,
+	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
 		n,

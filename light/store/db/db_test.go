@@ -19,10 +19,9 @@ import (
 )
 
 func TestLast_FirstLightBlockHeight(t *testing.T) {
+	dbStore := New(dbm.NewMemDB())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	dbStore := New(dbm.NewMemDB())
 
 	// Empty store
 	height, err := dbStore.LastLightBlockHeight()
@@ -48,7 +47,6 @@ func TestLast_FirstLightBlockHeight(t *testing.T) {
 
 func Test_SaveLightBlock(t *testing.T) {
 	dbStore := New(dbm.NewMemDB())
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -81,14 +79,13 @@ func Test_SaveLightBlock(t *testing.T) {
 
 func Test_LightBlockBefore(t *testing.T) {
 	dbStore := New(dbm.NewMemDB())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	assert.Panics(t, func() {
 		_, _ = dbStore.LightBlockBefore(0)
 		_, _ = dbStore.LightBlockBefore(100)
 	})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	err := dbStore.SaveLightBlock(randLightBlock(ctx, t, int64(2)))
 	require.NoError(t, err)
@@ -105,7 +102,6 @@ func Test_LightBlockBefore(t *testing.T) {
 
 func Test_Prune(t *testing.T) {
 	dbStore := New(dbm.NewMemDB())
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -200,7 +196,7 @@ func Test_Concurrency(t *testing.T) {
 
 func randLightBlock(ctx context.Context, t *testing.T, height int64) *types.LightBlock {
 	t.Helper()
-	vals, _ := factory.RandValidatorSet(ctx, t, 2, 1)
+	vals, _ := factory.ValidatorSet(ctx, t, 2, 1)
 	return &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
 			Header: &types.Header{

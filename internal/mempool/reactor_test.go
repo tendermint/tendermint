@@ -3,6 +3,7 @@ package mempool
 import (
 	"context"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -45,7 +46,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
 	rts := &reactorTestSuite{
-		logger:          log.TestingLogger().With("testCase", t.Name()),
+		logger:          log.NewNopLogger().With("testCase", t.Name()),
 		network:         p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:        make(map[types.NodeID]*Reactor, numNodes),
 		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
@@ -95,8 +96,10 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		for nodeID := range rts.reactors {
 			if rts.reactors[nodeID].IsRunning() {
 				require.NoError(t, rts.reactors[nodeID].Stop())
+				rts.reactors[nodeID].Wait()
 				require.False(t, rts.reactors[nodeID].IsRunning())
 			}
+
 		}
 	})
 
@@ -212,7 +215,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
 func TestReactorConcurrency(t *testing.T) {
-	numTxs := 5
+	numTxs := 10
 	numNodes := 2
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -227,7 +230,7 @@ func TestReactorConcurrency(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < runtime.NumCPU()*2; i++ {
 		wg.Add(2)
 
 		// 1. submit a bunch of txs
@@ -264,9 +267,6 @@ func TestReactorConcurrency(t *testing.T) {
 			err := mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
 			require.NoError(t, err)
 		}()
-
-		// flush the mempool
-		rts.mempools[secondary].Flush()
 	}
 
 	wg.Wait()

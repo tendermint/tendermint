@@ -19,11 +19,9 @@ func TestRollback(t *testing.T) {
 		height     int64 = 100
 		nextHeight int64 = 101
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	blockStore := &mocks.BlockStore{}
-	stateStore := setupStateStore(ctx, t, height)
+	stateStore := setupStateStore(t, height)
 	initialState, err := stateStore.Load()
 	require.NoError(t, err)
 
@@ -83,10 +81,7 @@ func TestRollbackNoState(t *testing.T) {
 func TestRollbackNoBlocks(t *testing.T) {
 	const height = int64(100)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	stateStore := setupStateStore(ctx, t, height)
+	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height)
 	blockStore.On("LoadBlockMeta", height-1).Return(nil)
@@ -98,11 +93,7 @@ func TestRollbackNoBlocks(t *testing.T) {
 
 func TestRollbackDifferentStateHeight(t *testing.T) {
 	const height = int64(100)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	stateStore := setupStateStore(ctx, t, height)
+	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height + 2)
 
@@ -111,9 +102,11 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 	require.Equal(t, err.Error(), "statestore height (100) is not one below or equal to blockstore height (102)")
 }
 
-func setupStateStore(ctx context.Context, t *testing.T, height int64) state.Store {
+func setupStateStore(t *testing.T, height int64) state.Store {
 	stateStore := state.NewStore(dbm.NewMemDB())
-	valSet, _ := factory.RandValidatorSet(ctx, t, 5, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	valSet, _ := factory.ValidatorSet(ctx, t, 5, 10)
 
 	params := types.DefaultConsensusParams()
 	params.Version.AppVersion = 10
