@@ -19,6 +19,8 @@ const (
 	clientID = "test-client"
 )
 
+// pubstring is a trivial implementation of the EventData interface for
+// string-valued test data.
 type pubstring string
 
 func (pubstring) TypeTag() string { return "pubstring" }
