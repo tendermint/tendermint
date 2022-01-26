@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -258,7 +259,6 @@ func makeRandomStateFromValidatorSet(
 		InitialHeight:                    1,
 	}
 }
-
 func makeRandomStateFromConsensusParams(
 	ctx context.Context,
 	t *testing.T,
@@ -267,7 +267,7 @@ func makeRandomStateFromConsensusParams(
 	lastHeightConsensusParamsChanged int64,
 ) sm.State {
 	t.Helper()
-	val, _, err := factory.RandValidator(ctx, true, 10)
+	val, _, err := factory.Validator(ctx, 10+int64(rand.Uint32()))
 	require.NoError(t, err)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{

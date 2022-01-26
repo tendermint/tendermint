@@ -7,9 +7,9 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestValidateMsg(t *testing.T) {
@@ -186,10 +186,30 @@ func TestStateSyncVectors(t *testing.T) {
 		{
 			"ParamsResponse",
 			&ssproto.ParamsResponse{
-				Height:          9001,
-				ConsensusParams: types.DefaultConsensusParams().ToProto(),
+				Height: 9001,
+				ConsensusParams: tmproto.ConsensusParams{
+					Block: &tmproto.BlockParams{
+						MaxBytes: 10,
+						MaxGas:   20,
+					},
+					Evidence: &tmproto.EvidenceParams{
+						MaxAgeNumBlocks: 10,
+						MaxAgeDuration:  300,
+						MaxBytes:        100,
+					},
+					Validator: &tmproto.ValidatorParams{
+						PubKeyTypes: []string{ed25519.KeyType},
+					},
+					Version: &tmproto.VersionParams{
+						AppVersion: 11,
+					},
+					Synchrony: &tmproto.SynchronyParams{
+						MessageDelay: 550,
+						Precision:    90,
+					},
+				},
 			},
-			"423408a946122f0a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a090a07656432353531392200",
+			"423008a946122b0a04080a10141209080a120310ac0218641a090a07656432353531392202080b2a090a0310a6041202105a",
 		},
 	}
 
