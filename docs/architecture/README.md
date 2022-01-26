@@ -79,6 +79,7 @@ Note the context/background should be written in the present tense.
 - [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
 - [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
 - [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
+- [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 
 ### Rejected
 
@@ -102,4 +103,3 @@ Note the context/background should be written in the present tense.
 - [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
 - [ADR-071: Proposer-Based Timestamps](adr-071-proposer-based-timestamps.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
-- [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
