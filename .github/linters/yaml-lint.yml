@@ -6,3 +6,4 @@ rules:
   document-end: disable
   document-start: disable
   line-length: disable
+  truthy: disable
