@@ -367,8 +367,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	ensureNewProposal(t, proposalCh, height, round)
 	rs := css[0].GetRoundState()
 
-	signAddVotes(ctx, t, sim.Config, css[0], tmproto.PrecommitType,
-		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -389,7 +389,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
+	proposal := types.NewProposal(vss[1].Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
 	if err := vss[1].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -402,8 +402,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(ctx, t, sim.Config, css[0], tmproto.PrecommitType,
-		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -423,7 +423,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
+	proposal = types.NewProposal(vss[2].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if err := vss[2].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -436,8 +436,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(ctx, t, sim.Config, css[0], tmproto.PrecommitType,
-		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -486,7 +486,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	selfIndex := valIndexFn(0)
 	require.NotEqual(t, -1, selfIndex)
 
-	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
+	proposal = types.NewProposal(vss[3].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if err := vss[3].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -508,9 +508,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(ctx, t, sim.Config, css[0],
-			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-			rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(ctx, t, css[0],
+			tmproto.PrecommitType, sim.Config.ChainID(),
+			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
+			newVss[i])
 	}
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -532,9 +533,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(ctx, t, sim.Config, css[0],
-			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-			rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(ctx, t, css[0],
+			tmproto.PrecommitType, sim.Config.ChainID(),
+			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
+			newVss[i])
 	}
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -555,8 +557,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	selfIndex = valIndexFn(0)
 	require.NotEqual(t, -1, selfIndex)
-
-	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
+	proposal = types.NewProposal(vss[1].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if err := vss[1].SignProposal(ctx, cfg.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
@@ -573,9 +574,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(ctx, t, sim.Config, css[0],
-			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
-			rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(ctx, t, css[0],
+			tmproto.PrecommitType, sim.Config.ChainID(),
+			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
+			newVss[i])
 	}
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -823,14 +825,15 @@ func testHandshakeReplay(
 	}
 
 	// now start the app using the handshake - it should sync
-	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
 	t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
-	err := handshaker.Handshake(ctx, proxyApp)
+	err = handshaker.Handshake(ctx, proxyApp)
 	if expectError {
 		require.Error(t, err)
 		return
@@ -1011,7 +1014,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(t, cfg, pubKey, appVersion)
 	stateStore := sm.NewStore(stateDB)
-	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
 	blocks := sf.MakeBlocks(ctx, t, 3, &state, privVal)
@@ -1277,7 +1281,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	val, _, err := factory.RandValidator(ctx, true, 10)
+	votePower := 10 + int64(rand.Uint32())
+	val, _, err := factory.Validator(ctx, votePower)
 	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}

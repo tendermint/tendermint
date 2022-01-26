@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	"github.com/tendermint/tendermint/libs/bits"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -18,29 +18,33 @@ import (
 // converted to a Message via MsgFromProto.
 type Message interface {
 	ValidateBasic() error
+
+	jsontypes.Tagged
 }
 
 func init() {
-	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
-	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
-	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
-	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
-	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
-	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
-	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
-	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
-	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
+	jsontypes.MustRegister(&NewRoundStepMessage{})
+	jsontypes.MustRegister(&NewValidBlockMessage{})
+	jsontypes.MustRegister(&ProposalMessage{})
+	jsontypes.MustRegister(&ProposalPOLMessage{})
+	jsontypes.MustRegister(&BlockPartMessage{})
+	jsontypes.MustRegister(&VoteMessage{})
+	jsontypes.MustRegister(&HasVoteMessage{})
+	jsontypes.MustRegister(&VoteSetMaj23Message{})
+	jsontypes.MustRegister(&VoteSetBitsMessage{})
 }
 
 // NewRoundStepMessage is sent for every step taken in the ConsensusState.
 // For every height/round/step transition
 type NewRoundStepMessage struct {
-	Height                int64
+	Height                int64 `json:",string"`
 	Round                 int32
 	Step                  cstypes.RoundStepType
-	SecondsSinceStartTime int64
+	SecondsSinceStartTime int64 `json:",string"`
 	LastCommitRound       int32
 }
+
+func (*NewRoundStepMessage) TypeTag() string { return "tendermint/NewRoundStepMessage" }
 
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
@@ -93,12 +97,14 @@ func (m *NewRoundStepMessage) String() string {
 // i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
 // In case the block is also committed, then IsCommit flag is set to true.
 type NewValidBlockMessage struct {
-	Height             int64
+	Height             int64 `json:",string"`
 	Round              int32
 	BlockPartSetHeader types.PartSetHeader
 	BlockParts         *bits.BitArray
 	IsCommit           bool
 }
+
+func (*NewValidBlockMessage) TypeTag() string { return "tendermint/NewValidBlockMessage" }
 
 // ValidateBasic performs basic validation.
 func (m *NewValidBlockMessage) ValidateBasic() error {
@@ -136,6 +142,8 @@ type ProposalMessage struct {
 	Proposal *types.Proposal
 }
 
+func (*ProposalMessage) TypeTag() string { return "tendermint/Proposal" }
+
 // ValidateBasic performs basic validation.
 func (m *ProposalMessage) ValidateBasic() error {
 	return m.Proposal.ValidateBasic()
@@ -148,10 +156,12 @@ func (m *ProposalMessage) String() string {
 
 // ProposalPOLMessage is sent when a previous proposal is re-proposed.
 type ProposalPOLMessage struct {
-	Height           int64
+	Height           int64 `json:",string"`
 	ProposalPOLRound int32
 	ProposalPOL      *bits.BitArray
 }
+
+func (*ProposalPOLMessage) TypeTag() string { return "tendermint/ProposalPOL" }
 
 // ValidateBasic performs basic validation.
 func (m *ProposalPOLMessage) ValidateBasic() error {
@@ -177,10 +187,12 @@ func (m *ProposalPOLMessage) String() string {
 
 // BlockPartMessage is sent when gossipping a piece of the proposed block.
 type BlockPartMessage struct {
-	Height int64
+	Height int64 `json:",string"`
 	Round  int32
 	Part   *types.Part
 }
+
+func (*BlockPartMessage) TypeTag() string { return "tendermint/BlockPart" }
 
 // ValidateBasic performs basic validation.
 func (m *BlockPartMessage) ValidateBasic() error {
@@ -206,6 +218,8 @@ type VoteMessage struct {
 	Vote *types.Vote
 }
 
+func (*VoteMessage) TypeTag() string { return "tendermint/Vote" }
+
 // ValidateBasic performs basic validation.
 func (m *VoteMessage) ValidateBasic() error {
 	return m.Vote.ValidateBasic()
@@ -218,11 +232,13 @@ func (m *VoteMessage) String() string {
 
 // HasVoteMessage is sent to indicate that a particular vote has been received.
 type HasVoteMessage struct {
-	Height int64
+	Height int64 `json:",string"`
 	Round  int32
 	Type   tmproto.SignedMsgType
 	Index  int32
 }
+
+func (*HasVoteMessage) TypeTag() string { return "tendermint/HasVote" }
 
 // ValidateBasic performs basic validation.
 func (m *HasVoteMessage) ValidateBasic() error {
@@ -248,11 +264,13 @@ func (m *HasVoteMessage) String() string {
 
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
 type VoteSetMaj23Message struct {
-	Height  int64
+	Height  int64 `json:",string"`
 	Round   int32
 	Type    tmproto.SignedMsgType
 	BlockID types.BlockID
 }
+
+func (*VoteSetMaj23Message) TypeTag() string { return "tendermint/VoteSetMaj23" }
 
 // ValidateBasic performs basic validation.
 func (m *VoteSetMaj23Message) ValidateBasic() error {
@@ -280,12 +298,14 @@ func (m *VoteSetMaj23Message) String() string {
 // VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the
 // BlockID.
 type VoteSetBitsMessage struct {
-	Height  int64
+	Height  int64 `json:",string"`
 	Round   int32
 	Type    tmproto.SignedMsgType
 	BlockID types.BlockID
 	Votes   *bits.BitArray
 }
+
+func (*VoteSetBitsMessage) TypeTag() string { return "tendermint/VoteSetBits" }
 
 // ValidateBasic performs basic validation.
 func (m *VoteSetBitsMessage) ValidateBasic() error {

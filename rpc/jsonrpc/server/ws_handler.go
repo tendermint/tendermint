@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"runtime/debug"
 	"time"
 
@@ -371,18 +370,14 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 				RPCRequest: &request,
 				WSConn:     wsc,
 			})
-			args := []reflect.Value{reflect.ValueOf(fctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
-				if err != nil {
-					if err := wsc.WriteRPCResponse(writeCtx,
-						rpctypes.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
-					); err != nil {
-						wsc.Logger.Error("error writing RPC response", "err", err)
-					}
-					continue
+			args, err := parseParams(fctx, rpcFunc, request.Params)
+			if err != nil {
+				if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCInvalidParamsError(
+					request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
+				); err != nil {
+					wsc.Logger.Error("error writing RPC response", "err", err)
 				}
-				args = append(args, fnArgs...)
+				continue
 			}
 
 			returns := rpcFunc.f.Call(args)

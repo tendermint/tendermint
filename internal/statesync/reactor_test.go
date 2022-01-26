@@ -442,7 +442,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	h := factory.MakeHeader(t, &types.Header{})
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
-	vals, pv := factory.RandValidatorSet(ctx, t, 1, 10)
+	vals, pv := factory.ValidatorSet(ctx, t, 1, 10)
 	vote, err := factory.MakeVote(ctx, pv[0], h.ChainID, 0, h.Height, 0, 2,
 		blockID, factory.DefaultTestTime)
 	require.NoError(t, err)
@@ -733,7 +733,7 @@ func handleLightBlockRequests(
 				} else {
 					switch errorCount % 3 {
 					case 0: // send a different block
-						vals, pv := factory.RandValidatorSet(ctx, t, 3, 10)
+						vals, pv := factory.ValidatorSet(ctx, t, 3, 10)
 						_, _, lb := mockLB(ctx, t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
 						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
@@ -802,7 +802,7 @@ func buildLightBlockChain(ctx context.Context, t *testing.T, fromHeight, toHeigh
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
 	blockTime := startTime.Add(time.Duration(fromHeight-toHeight) * time.Minute)
-	vals, pv := factory.RandValidatorSet(ctx, t, 3, 10)
+	vals, pv := factory.ValidatorSet(ctx, t, 3, 10)
 	for height := fromHeight; height < toHeight; height++ {
 		vals, pv, chain[height] = mockLB(ctx, t, height, blockTime, lastBlockID, vals, pv)
 		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
@@ -822,7 +822,7 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 	})
 	header.Version.App = testAppVersion
 
-	nextVals, nextPrivVals := factory.RandValidatorSet(ctx, t, 3, 10)
+	nextVals, nextPrivVals := factory.ValidatorSet(ctx, t, 3, 10)
 	header.ValidatorsHash = currentVals.Hash()
 	header.NextValidatorsHash = nextVals.Hash()
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()

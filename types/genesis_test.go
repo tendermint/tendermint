@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 )
 
@@ -56,21 +56,26 @@ func TestGenesisBad(t *testing.T) {
 	}
 }
 
-func TestGenesisGood(t *testing.T) {
+func TestBasicGenesisDoc(t *testing.T) {
 	// test a good one by raw json
 	genDocBytes := []byte(
 		`{
 			"genesis_time": "0001-01-01T00:00:00Z",
 			"chain_id": "test-chain-QDKdJr",
 			"initial_height": "1000",
-			"consensus_params": null,
 			"validators": [{
 				"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},
 				"power":"10",
 				"name":""
 			}],
 			"app_hash":"",
-			"app_state":{"account_owner": "Bob"}
+			"app_state":{"account_owner": "Bob"},
+			"consensus_params": {
+				"synchrony":  {"precision": "1", "message_delay": "10"},
+				"validator": {"pub_key_types":["ed25519"]},
+				"block": {"max_bytes": "100"},
+				"evidence": {"max_age_num_blocks": "100", "max_age_duration": "10"}
+			}
 		}`,
 	)
 	_, err := GenesisDocFromJSON(genDocBytes)
@@ -82,7 +87,7 @@ func TestGenesisGood(t *testing.T) {
 		ChainID:    "abc",
 		Validators: []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 	}
-	genDocBytes, err = tmjson.Marshal(baseGenDoc)
+	genDocBytes, err = json.Marshal(baseGenDoc)
 	assert.NoError(t, err, "error marshaling genDoc")
 
 	// test base gendoc and check consensus params were filled
@@ -94,14 +99,14 @@ func TestGenesisGood(t *testing.T) {
 	assert.NotNil(t, genDoc.Validators[0].Address, "expected validator's address to be filled in")
 
 	// create json with consensus params filled
-	genDocBytes, err = tmjson.Marshal(genDoc)
+	genDocBytes, err = json.Marshal(genDoc)
 	assert.NoError(t, err, "error marshaling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
-	assert.NoError(t, err, "expected no error for valid genDoc json")
+	require.NoError(t, err, "expected no error for valid genDoc json")
 
 	// test with invalid consensus params
 	genDoc.ConsensusParams.Block.MaxBytes = 0
-	genDocBytes, err = tmjson.Marshal(genDoc)
+	genDocBytes, err = json.Marshal(genDoc)
 	assert.NoError(t, err, "error marshaling genDoc")
 	_, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")

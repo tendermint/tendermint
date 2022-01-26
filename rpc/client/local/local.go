@@ -198,7 +198,7 @@ func (c *Local) BlockSearch(
 }
 
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
-	return c.env.BroadcastEvidence(ctx, ev)
+	return c.env.BroadcastEvidence(ctx, coretypes.Evidence{Value: ev})
 }
 
 func (c *Local) Subscribe(
