@@ -2294,12 +2294,22 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
 		votingPowerSeen += val.VotingPower
 		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
-			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			delay := v.Timestamp.Sub(cs.Proposal.Timestamp)
+			if delay >= 10*time.Second {
+				cs.metrics.QuorumPrevoteMessageDelay.With("height", fmt.Sprintf("%d", cs.Height)).Set(delay.Seconds())
+			} else {
+				cs.metrics.QuorumPrevoteMessageDelay.With("height", "none").Set(delay.Seconds())
+			}
 			break
 		}
 	}
 	if ps.HasAll() {
-		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+		delay := pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp)
+		if delay >= 10*time.Second {
+			cs.metrics.FullPrevoteMessageDelay.With("height", fmt.Sprintf("%d", cs.Height)).Set(delay.Seconds())
+		} else {
+			cs.metrics.FullPrevoteMessageDelay.With("height", "none").Set(delay.Seconds())
+		}
 	}
 }
 
