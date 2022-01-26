@@ -259,15 +259,10 @@ func (c *Local) eventsRoutine(
 			}
 			continue
 		}
-		edata, ok := msg.Data().(types.EventData)
-		if !ok {
-			c.Logger.Error("Incompatible event data (skipped)", "data", msg.Data())
-			continue
-		}
 		outc <- coretypes.ResultEvent{
 			SubscriptionID: msg.SubscriptionID(),
 			Query:          qstr,
-			Data:           edata,
+			Data:           msg.Data(),
 			Events:         msg.Events(),
 		}
 	}

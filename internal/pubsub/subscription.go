@@ -83,7 +83,7 @@ type Message struct {
 func (msg Message) SubscriptionID() string { return msg.subID }
 
 // Data returns an original data published.
-func (msg Message) Data() interface{} { return msg.data }
+func (msg Message) Data() types.EventData { return msg.data }
 
 // Events returns events, which matched the client's query.
 func (msg Message) Events() []abci.Event { return msg.events }
