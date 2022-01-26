@@ -21,7 +21,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2.4.0
       - name: Lint Code Base
-        uses: docker://github/super-linter:v4
+        uses: docker://github/super-linter:v4.8.5
         env:
           LINTER_RULES_PATH: .
           VALIDATE_ALL_CODEBASE: true
