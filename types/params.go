@@ -41,6 +41,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
+	Synchrony SynchronyParams `json:"synchrony"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -75,6 +76,15 @@ type VersionParams struct {
 	AppVersion uint64 `json:"app_version,string"`
 }
 
+// SynchronyParams influence the validity of block timestamps.
+// For more information on the relationship of the synchrony parameters to
+// block validity, see the Proposer-Based Timestamps specification:
+// https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/README.md
+type SynchronyParams struct {
+	Precision    time.Duration `json:"precision,string"`
+	MessageDelay time.Duration `json:"message_delay,string"`
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
@@ -82,6 +92,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
+		Synchrony: DefaultSynchronyParams(),
 	}
 }
 
@@ -113,6 +124,15 @@ func DefaultValidatorParams() ValidatorParams {
 func DefaultVersionParams() VersionParams {
 	return VersionParams{
 		AppVersion: 0,
+	}
+}
+
+func DefaultSynchronyParams() SynchronyParams {
+	// TODO(@wbanfield): Determine experimental values for these defaults
+	// https://github.com/tendermint/tendermint/issues/7202
+	return SynchronyParams{
+		Precision:    500 * time.Millisecond,
+		MessageDelay: 2 * time.Second,
 	}
 }
 
@@ -148,7 +168,7 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return fmt.Errorf("evidence.MaxAgeDuration must be grater than 0 if provided, Got %v",
+		return fmt.Errorf("evidence.MaxAgeDuration must be greater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
 
@@ -160,6 +180,16 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	if params.Evidence.MaxBytes < 0 {
 		return fmt.Errorf("evidence.MaxBytes must be non negative. Got: %d",
 			params.Evidence.MaxBytes)
+	}
+
+	if params.Synchrony.MessageDelay <= 0 {
+		return fmt.Errorf("synchrony.MessageDelay must be greater than 0. Got: %d",
+			params.Synchrony.MessageDelay)
+	}
+
+	if params.Synchrony.Precision <= 0 {
+		return fmt.Errorf("synchrony.Precision must be greater than 0. Got: %d",
+			params.Synchrony.Precision)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -205,6 +235,8 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 	return params.Block == params2.Block &&
 		params.Evidence == params2.Evidence &&
+		params.Version == params2.Version &&
+		params.Synchrony == params2.Synchrony &&
 		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
@@ -235,6 +267,10 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	if params2.Version != nil {
 		res.Version.AppVersion = params2.Version.AppVersion
 	}
+	if params2.Synchrony != nil {
+		res.Synchrony.Precision = params2.Synchrony.Precision
+		res.Synchrony.MessageDelay = params2.Synchrony.MessageDelay
+	}
 	return res
 }
 
@@ -255,6 +291,10 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		Version: &tmproto.VersionParams{
 			AppVersion: params.Version.AppVersion,
 		},
+		Synchrony: &tmproto.SynchronyParams{
+			MessageDelay: params.Synchrony.MessageDelay,
+			Precision:    params.Synchrony.Precision,
+		},
 	}
 }
 
@@ -274,6 +314,10 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 		},
 		Version: VersionParams{
 			AppVersion: pbParams.Version.AppVersion,
+		},
+		Synchrony: SynchronyParams{
+			MessageDelay: pbParams.Synchrony.MessageDelay,
+			Precision:    pbParams.Synchrony.Precision,
 		},
 	}
 }

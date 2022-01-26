@@ -40,7 +40,9 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(ctx, t, baseConfig, 1, false, 10)
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -65,7 +67,9 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
-	state, privVals := randGenesisState(ctx, t, baseConfig, 1, false, 10)
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
@@ -88,20 +92,22 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(ctx, t, baseConfig, 1, false, 10)
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
 	newRoundCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)
 	timeoutCh := subscribe(ctx, t, cs.eventBus, types.EventQueryTimeoutPropose)
-	cs.setProposal = func(proposal *types.Proposal) error {
+	cs.setProposal = func(proposal *types.Proposal, recvTime time.Time) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
 			// go to next round
 			return nil
 		}
-		return cs.defaultSetProposal(proposal)
+		return cs.defaultSetProposal(proposal, recvTime)
 	}
 	startTestRound(ctx, cs, height, round)
 
@@ -137,7 +143,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 	config := configSetup(t)
 	logger := log.TestingLogger()
-	state, privVals := randGenesisState(ctx, t, config, 1, false, 10)
+	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -170,7 +178,9 @@ func TestMempoolRmBadTx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	state, privVals := randGenesisState(ctx, t, config, 1, false, 10)
+	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
+		Validators: 1,
+		Power:      10})
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())

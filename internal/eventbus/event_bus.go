@@ -186,10 +186,6 @@ func (b *EventBus) PublishEventPolka(ctx context.Context, data types.EventDataRo
 	return b.Publish(ctx, types.EventPolkaValue, data)
 }
 
-func (b *EventBus) PublishEventUnlock(ctx context.Context, data types.EventDataRoundState) error {
-	return b.Publish(ctx, types.EventUnlockValue, data)
-}
-
 func (b *EventBus) PublishEventRelock(ctx context.Context, data types.EventDataRoundState) error {
 	return b.Publish(ctx, types.EventRelockValue, data)
 }
