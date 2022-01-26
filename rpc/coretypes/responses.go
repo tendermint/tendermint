@@ -3,7 +3,6 @@ package coretypes
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -312,7 +311,7 @@ type (
 type ResultEvent struct {
 	SubscriptionID string
 	Query          string
-	Data           types.TMEventData
+	Data           types.EventData
 	Events         []abci.Event
 }
 
@@ -324,11 +323,7 @@ type resultEventJSON struct {
 }
 
 func (r ResultEvent) MarshalJSON() ([]byte, error) {
-	data, ok := r.Data.(jsontypes.Tagged)
-	if !ok {
-		return nil, fmt.Errorf("type %T is not tagged", r.Data)
-	}
-	evt, err := jsontypes.Marshal(data)
+	evt, err := jsontypes.Marshal(r.Data)
 	if err != nil {
 		return nil, err
 	}

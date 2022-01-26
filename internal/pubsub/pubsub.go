@@ -40,10 +40,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tendermint/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -304,14 +305,14 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
-func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.publish(ctx, msg, []types.Event{})
+func (s *Server) Publish(ctx context.Context, msg types.EventData) error {
+	return s.publish(ctx, msg, []abci.Event{})
 }
 
 // PublishWithEvents publishes the given message with the set of events. The set
 // is matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events []types.Event) error {
+func (s *Server) PublishWithEvents(ctx context.Context, msg types.EventData, events []abci.Event) error {
 	return s.publish(ctx, msg, events)
 }
 
@@ -328,7 +329,7 @@ func (s *Server) OnStart(ctx context.Context) error { s.run(ctx); return nil }
 // OnReset implements Service.OnReset. It has no effect for this service.
 func (s *Server) OnReset() error { return nil }
 
-func (s *Server) publish(ctx context.Context, data interface{}, events []types.Event) error {
+func (s *Server) publish(ctx context.Context, data types.EventData, events []abci.Event) error {
 	s.pubs.RLock()
 	defer s.pubs.RUnlock()
 
@@ -391,7 +392,7 @@ func (s *Server) removeSubs(evict subInfoSet, reason error) {
 
 // send delivers the given message to all matching subscribers.  An error in
 // query matching stops transmission and is returned.
-func (s *Server) send(data interface{}, events []types.Event) error {
+func (s *Server) send(data types.EventData, events []abci.Event) error {
 	// At exit, evict any subscriptions that were too slow.
 	evict := make(subInfoSet)
 	defer func() {
