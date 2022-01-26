@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/version"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -21,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/abci/version"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
@@ -231,7 +231,7 @@ var versionCmd = &cobra.Command{
 	Long:  "print ABCI console version",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(version.Version)
+		fmt.Println(version.ABCIVersion)
 		return nil
 	},
 }
