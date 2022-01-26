@@ -60,9 +60,9 @@ func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, er
 		}
 	}
 
-	applicationInfo := coretypes.ApplicationInfo{}
-	abciInfo, _ := env.ABCIInfo(ctx)
-	if abciInfo != nil {
+	var applicationInfo coretypes.ApplicationInfo
+	if abciInfo, err := env.ABCIInfo(ctx); err == nil {
+		applicationInfo.Version = fmt.Sprint(abciInfo.Response.AppVersion)
 		applicationInfo.Version = fmt.Sprintf("%d", abciInfo.Response.AppVersion)
 	}
 
