@@ -35,7 +35,7 @@ const (
 func GetChannelDescriptor() *p2p.ChannelDescriptor {
 	return &p2p.ChannelDescriptor{
 		ID:                  EvidenceChannel,
-		MessageType:         new(tmproto.Evidence), //new(tmproto.EvidenceList),
+		MessageType:         new(tmproto.Evidence),
 		Priority:            6,
 		RecvMessageCapacity: maxMsgSize,
 		RecvBufferCapacity:  32,
