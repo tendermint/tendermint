@@ -127,13 +127,12 @@ func (r *Reactor) handleEvidenceMessage(envelope *p2p.Envelope) error {
 		if err != nil {
 			logger.Error("failed to convert evidence", "err", err)
 			return err
-		} else {
-			if err := r.evpool.AddEvidence(ev); err != nil {
-				// If we're given invalid evidence by the peer, notify the router that
-				// we should remove this peer by returning an error.
-				if _, ok := err.(*types.ErrInvalidEvidence); ok {
-					return err
-				}
+		}
+		if err := r.evpool.AddEvidence(ev); err != nil {
+			// If we're given invalid evidence by the peer, notify the router that
+			// we should remove this peer by returning an error.
+			if _, ok := err.(*types.ErrInvalidEvidence); ok {
+				return err
 			}
 		}
 
