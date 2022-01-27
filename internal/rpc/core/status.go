@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -59,8 +60,14 @@ func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, er
 		}
 	}
 
+	var applicationInfo coretypes.ApplicationInfo
+	if abciInfo, err := env.ABCIInfo(ctx); err == nil {
+		applicationInfo.Version = fmt.Sprint(abciInfo.Response.AppVersion)
+	}
+
 	result := &coretypes.ResultStatus{
-		NodeInfo: env.P2PTransport.NodeInfo(),
+		NodeInfo:        env.P2PTransport.NodeInfo(),
+		ApplicationInfo: applicationInfo,
 		SyncInfo: coretypes.SyncInfo{
 			LatestBlockHash:     latestBlockHash,
 			LatestAppHash:       latestAppHash,
