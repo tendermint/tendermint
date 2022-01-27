@@ -1,5 +1,4 @@
 ---
-
 - name: Copy binary
   copy:
     src: "{{BINARY}}"
@@ -13,5 +12,4 @@
     dest: "/home/{{service}}/.{{service}}/"
     owner: "{{service}}"
     group: "{{service}}"
-  loop: [ 0, 1, 2, 3, 4, 5, 6, 7 ]
-
+  loop: [0, 1, 2, 3, 4, 5, 6, 7]

@@ -1,7 +1,7 @@
 # Runs fuzzing nightly.
 name: Fuzz Tests
 on:
-  workflow_dispatch: # allow running workflow manually
+  workflow_dispatch:  # allow running workflow manually
   schedule:
     - cron: '0 3 * * *'
   pull_request:
