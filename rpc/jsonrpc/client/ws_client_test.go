@@ -26,7 +26,7 @@ func init() {
 	metrics.UseNilMetrics = true
 }
 
-var wsCallTimeout = 5 * time.Second
+const wsCallTimeout = 5 * time.Second
 
 type myTestHandler struct {
 	closeConnAfterRead bool
