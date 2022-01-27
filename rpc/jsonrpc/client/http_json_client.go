@@ -150,8 +150,8 @@ func New(remote string) (*Client, error) {
 }
 
 // NewWithHTTPClient returns a Client pointed at the given address using a
-// custom http client. An error is returned on invalid remote. The function
-// panics when client is nil.
+// custom HTTP client. It reports an error if c == nil or if remote is not a
+// valid URL.
 func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 	if c == nil {
 		return nil, errors.New("nil client")
