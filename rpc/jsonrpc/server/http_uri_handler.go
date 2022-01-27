@@ -22,7 +22,6 @@ var uriReqID = rpctypes.JSONRPCIntID(-1)
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
-	// All other endpoints
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := rpctypes.WithCallInfo(req.Context(), &rpctypes.CallInfo{
 			HTTPRequest: req,
