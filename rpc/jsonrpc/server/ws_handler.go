@@ -118,12 +118,6 @@ type wsConnection struct {
 
 	funcMap map[string]*RPCFunc
 
-	// write channel capacity
-	writeChanCapacity int
-
-	// each write times out after this.
-	writeWait time.Duration
-
 	// Connection times out if we haven't received *anything* in this long, not even pings.
 	readWait time.Duration
 
@@ -153,15 +147,13 @@ func newWSConnection(
 	options ...func(*wsConnection),
 ) *wsConnection {
 	wsc := &wsConnection{
-		RunState:          client.NewRunState("wsConnection", logger),
-		remoteAddr:        baseConn.RemoteAddr().String(),
-		baseConn:          baseConn,
-		funcMap:           funcMap,
-		writeWait:         defaultWSWriteWait,
-		writeChanCapacity: defaultWSWriteChanCapacity,
-		readWait:          defaultWSReadWait,
-		pingPeriod:        defaultWSPingPeriod,
-		readRoutineQuit:   make(chan struct{}),
+		RunState:        client.NewRunState("wsConnection", logger),
+		remoteAddr:      baseConn.RemoteAddr().String(),
+		baseConn:        baseConn,
+		funcMap:         funcMap,
+		readWait:        defaultWSReadWait,
+		pingPeriod:      defaultWSPingPeriod,
+		readRoutineQuit: make(chan struct{}),
 	}
 	for _, option := range options {
 		option(wsc)
@@ -175,22 +167,6 @@ func newWSConnection(
 func OnDisconnect(onDisconnect func(remoteAddr string)) func(*wsConnection) {
 	return func(wsc *wsConnection) {
 		wsc.onDisconnect = onDisconnect
-	}
-}
-
-// WriteWait sets the amount of time to wait before a websocket write times out.
-// It should only be used in the constructor - not Goroutine-safe.
-func WriteWait(writeWait time.Duration) func(*wsConnection) {
-	return func(wsc *wsConnection) {
-		wsc.writeWait = writeWait
-	}
-}
-
-// WriteChanCapacity sets the capacity of the websocket write channel.
-// It should only be used in the constructor - not Goroutine-safe.
-func WriteChanCapacity(cap int) func(*wsConnection) {
-	return func(wsc *wsConnection) {
-		wsc.writeChanCapacity = cap
 	}
 }
 
@@ -223,7 +199,7 @@ func (wsc *wsConnection) Start(ctx context.Context) error {
 	if err := wsc.RunState.Start(ctx); err != nil {
 		return err
 	}
-	wsc.writeChan = make(chan rpctypes.RPCResponse, wsc.writeChanCapacity)
+	wsc.writeChan = make(chan rpctypes.RPCResponse, defaultWSWriteChanCapacity)
 
 	// Read subscriptions/unsubscriptions to events
 	go wsc.readRoutine(ctx)
@@ -467,7 +443,7 @@ func (wsc *wsConnection) writeRoutine(ctx context.Context) {
 // If some writes don't set it while others do, they may timeout incorrectly
 // (https://github.com/tendermint/tendermint/issues/553)
 func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error {
-	if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait)); err != nil {
+	if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(defaultWSWriteWait)); err != nil {
 		return err
 	}
 	return wsc.baseConn.WriteMessage(msgType, msg)
