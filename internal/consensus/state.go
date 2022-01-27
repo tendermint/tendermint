@@ -1400,7 +1400,7 @@ func (cs *State) proposalIsTimely() bool {
 		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 	}
 
-	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.state.InitialHeight)
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp)
 }
 
 func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32) {
@@ -1506,7 +1506,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 		}
 	}
 
-	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or" +
+	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or " +
 		"did not receive a more recent majority; prevoting nil")
 	cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
@@ -2570,7 +2570,7 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 			MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 		}
 
-		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.state.InitialHeight)
+		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp)
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}

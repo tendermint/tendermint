@@ -217,7 +217,6 @@ func TestIsTimely(t *testing.T) {
 	require.NoError(t, err)
 	testCases := []struct {
 		name           string
-		genesisHeight  int64
 		proposalHeight int64
 		proposalTime   time.Time
 		recvTime       time.Time
@@ -230,7 +229,6 @@ func TestIsTimely(t *testing.T) {
 			// Checking that the following inequality evaluates to true:
 			// 0 - 2 <= 1 <= 0 + 1 + 2
 			name:           "basic timely",
-			genesisHeight:  1,
 			proposalHeight: 2,
 			proposalTime:   genesisTime,
 			recvTime:       genesisTime.Add(1 * time.Nanosecond),
@@ -242,7 +240,6 @@ func TestIsTimely(t *testing.T) {
 			// Checking that the following inequality evaluates to false:
 			// 0 - 2 <= 4 <= 0 + 1 + 2
 			name:           "local time too large",
-			genesisHeight:  1,
 			proposalHeight: 2,
 			proposalTime:   genesisTime,
 			recvTime:       genesisTime.Add(4 * time.Nanosecond),
@@ -254,34 +251,7 @@ func TestIsTimely(t *testing.T) {
 			// Checking that the following inequality evaluates to false:
 			// 4 - 2 <= 0 <= 4 + 2 + 1
 			name:           "proposal time too large",
-			genesisHeight:  1,
 			proposalHeight: 2,
-			proposalTime:   genesisTime.Add(4 * time.Nanosecond),
-			recvTime:       genesisTime,
-			precision:      time.Nanosecond * 2,
-			msgDelay:       time.Nanosecond,
-			expectTimely:   false,
-		},
-		{
-			// Checking that the following inequality evaluates to true:
-			// 0 - 2 <= 4
-			// and the following check is skipped
-			// 4 <= 0 + 1 + 2
-			name:           "local time too large but proposal is for genesis",
-			genesisHeight:  1,
-			proposalHeight: 1,
-			proposalTime:   genesisTime,
-			recvTime:       genesisTime.Add(4 * time.Nanosecond),
-			precision:      time.Nanosecond * 2,
-			msgDelay:       time.Nanosecond,
-			expectTimely:   true,
-		},
-		{
-			// Checking that the following inequality evaluates to false:
-			// 4 - 2 <= 0
-			name:           "proposal time too large for genesis block proposal",
-			genesisHeight:  1,
-			proposalHeight: 1,
 			proposalTime:   genesisTime.Add(4 * time.Nanosecond),
 			recvTime:       genesisTime,
 			precision:      time.Nanosecond * 2,
@@ -302,7 +272,7 @@ func TestIsTimely(t *testing.T) {
 				MessageDelay: testCase.msgDelay,
 			}
 
-			ti := p.IsTimely(testCase.recvTime, sp, testCase.genesisHeight)
+			ti := p.IsTimely(testCase.recvTime, sp)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}
