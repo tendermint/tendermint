@@ -1551,7 +1551,7 @@ func TestStateLock_POLSafety2(t *testing.T) {
 	ensureNewProposal(t, proposalCh, height, round)
 
 	ensurePrevote(t, voteCh, height, round)
-	validatePrevote(ctx, t, cs1, round, vss[0], propBlockID1.Hash)
+	validatePrevote(ctx, t, cs1, round, vss[0], nil)
 
 }
 
