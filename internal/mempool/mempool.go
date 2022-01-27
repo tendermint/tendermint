@@ -256,7 +256,7 @@ func (txmp *TxMempool) CheckTx(
 	txHash := tx.Key()
 
 	// We add the transaction to the mempool's cache and if the
-	// transaction already exists, i.e. false is returned, then we
+	// transaction is already present in the cache, i.e. false is returned, then we
 	// check if we've seen this transaction and error if we have.
 	if !txmp.cache.Push(tx) {
 		txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
