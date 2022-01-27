@@ -1,8 +1,6 @@
 ---
-
 - name: reload daemon
   command: "systemctl daemon-reload"
 
 - name: restart journalbeat
   service: name=journalbeat state=restarted
-

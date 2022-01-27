@@ -47,6 +47,7 @@ Special thanks to external contributors on this release:
 ### FEATURES
 
 - [rpc] [\#7270](https://github.com/tendermint/tendermint/pull/7270) Add `header` and `header_by_hash` RPC Client queries. (@fedekunze)
+- [rpc] [\#7701] Add `ApplicationInfo` to `status` rpc call which contains the application version. (@jonasbostoen)
 - [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
 - [consensus] \#7354 add a new `synchrony` field to the `ConsensusParameter` struct for controlling the parameters of the proposer-based timestamp algorithm. (@williambanfield)
@@ -54,6 +55,7 @@ Special thanks to external contributors on this release:
 - [consensus] \#7391 Use the proposed block timestamp as the proposal timestamp. Update the block validation logic to ensure that the proposed block's timestamp matches the timestamp in the proposal message. (@williambanfield)
 - [consensus] \#7415 Update proposal validation logic to Prevote nil if a proposal does not meet the conditions for Timelyness per the proposer-based timestamp specification. (@anca)
 - [consensus] \#7382 Update block validation to no longer require the block timestamp to be the median of the timestamps of the previous commit. (@anca)
+- [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
 
 ### IMPROVEMENTS
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
