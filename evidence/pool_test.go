@@ -88,7 +88,7 @@ func TestEvidencePoolSingleValidator(t *testing.T) {
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
-	const evidenceBytes int64 = 712 // bls is 64 more than edwards
+	const evidenceBytes int64 = 640
 	evs, size = pool.PendingEvidence(evidenceBytes)
 	assert.Equal(t, 1, len(evs))
 	assert.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct, bls is 64 more than edwards
@@ -147,7 +147,7 @@ func TestEvidencePoolQuorum(t *testing.T) {
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
-	const evidenceBytes int64 = 713 // bls is 64 more than edwards
+	const evidenceBytes int64 = 641
 	evs, size = pool.PendingEvidence(evidenceBytes)
 	assert.Equal(t, 1, len(evs))
 	assert.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct, bls is 64 more than edwards
@@ -447,7 +447,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valProTxHash []byte) *store
 }
 
 func makeCommit(height int64, quorumHash []byte, valProTxHash []byte) *types.Commit {
-	return types.NewCommit(height, 0, types.BlockID{}, types.StateID{}, quorumHash, crypto.CRandBytes(types.SignatureSize), crypto.CRandBytes(types.SignatureSize))
+	return types.NewCommit(height, 0, types.BlockID{}, types.StateID{Height: height - 1}, quorumHash, crypto.CRandBytes(types.SignatureSize), crypto.CRandBytes(types.SignatureSize))
 }
 
 func defaultTestPool(height int64) (*evidence.Pool, *types.MockPV) {

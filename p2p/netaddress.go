@@ -52,7 +52,7 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 		}
 	}
 
-	if err := validateID(id); err != nil {
+	if err := ValidateID(id); err != nil {
 		panic(fmt.Sprintf("Invalid ID %v: %v (addr: %v)", id, err, addr))
 	}
 
@@ -75,7 +75,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	}
 
 	// get ID
-	if err := validateID(ID(spl[0])); err != nil {
+	if err := ValidateID(ID(spl[0])); err != nil {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
 	var id ID
@@ -262,7 +262,7 @@ func (na *NetAddress) Routable() bool {
 // For IPv4 these are either a 0 or all bits set address. For IPv6 a zero
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() error {
-	if err := validateID(na.ID); err != nil {
+	if err := ValidateID(na.ID); err != nil {
 		return fmt.Errorf("invalid ID: %w", err)
 	}
 
@@ -405,7 +405,7 @@ func removeProtocolIfDefined(addr string) string {
 
 }
 
-func validateID(id ID) error {
+func ValidateID(id ID) error {
 	if len(id) == 0 {
 		return errors.New("no ID")
 	}

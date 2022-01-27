@@ -10,13 +10,12 @@ import (
 	"strings"
 
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto/merkle"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-
+	"github.com/tendermint/tendermint/crypto/merkle"
+	dashtypes "github.com/tendermint/tendermint/dash/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -524,6 +523,7 @@ func (vals *ValidatorSet) QuorumVotingPower() int64 {
 }
 
 // QuorumVotingThresholdPower returns the threshold power of the voting power of the quorum if all the members existed.
+// Voting is considered successful when voting power is at or above this threshold.
 func (vals *ValidatorSet) QuorumVotingThresholdPower() int64 {
 	return int64(vals.QuorumTypeThresholdCount()) * DefaultDashVotingPower
 }
@@ -921,7 +921,7 @@ func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte,
 
 	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
 
-	stateSignID := commit.CanonicalVoteStateSignID(chainID, vals.QuorumType, vals.QuorumHash)
+	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
 
 	return blockSignID, stateSignID
 }
@@ -959,12 +959,13 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			canonicalVoteBlockSignBytes, blockSignID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
 	}
 
-	stateSignID := commit.CanonicalVoteStateSignID(chainID, vals.QuorumType, vals.QuorumHash)
+	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignID, commit.ThresholdStateSignature) {
-		canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
+		commit.StateID.SignBytes(chainID)
+		stateSignBytes := commit.StateID.SignBytes(chainID)
 		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
-			canonicalVoteStateSignBytes, commit, vals.QuorumHash)
+			stateSignBytes, commit, vals.QuorumHash)
 	}
 
 	return nil
@@ -1010,8 +1011,9 @@ func (e ErrNotEnoughVotingPowerSigned) Error() string {
 func (vals *ValidatorSet) ABCIEquivalentValidatorUpdates() *abci.ValidatorSetUpdate {
 	var valUpdates []abci.ValidatorUpdate
 	for i := 0; i < len(vals.Validators); i++ {
+
 		valUpdate := TM2PB.NewValidatorUpdate(vals.Validators[i].PubKey, DefaultDashVotingPower,
-			vals.Validators[i].ProTxHash)
+			vals.Validators[i].ProTxHash, vals.Validators[i].NodeAddress)
 		valUpdates = append(valUpdates, valUpdate)
 	}
 	abciThresholdPublicKey, err := cryptoenc.PubKeyToProto(vals.ThresholdPublicKey)
@@ -1319,6 +1321,7 @@ func GenerateTestValidatorSetWithProTxHashes(
 			privateKeys[i].PubKey(),
 			originalPowerMap[string(orderedProTxHashes[i])],
 			orderedProTxHashes[i],
+			"",
 		)
 	}
 
@@ -1534,6 +1537,7 @@ func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abc
 			privateKeys[i].PubKey(),
 			DefaultDashVotingPower,
 			orderedProTxHashes[i],
+			dashtypes.ValidatorAddress{},
 		)
 		valUpdates = append(valUpdates, valUpdate)
 	}

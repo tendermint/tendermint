@@ -30,6 +30,12 @@ Multiple testnets can be run with the `run-multiple.sh` script:
 ./run-multiple.sh networks/generated/gen-group3-*.toml
 ```
 
+In order to generate network configurations with settings for dash, you have to override a default preset with `dash`.
+
+```sh
+./build/generator -d networks/generated/ -p dash
+```
+
 ## Test Stages
 
 The test runner has the following stages, which can also be executed explicitly by running `./build/runner -f <manifest> <stage>`:
@@ -80,6 +86,18 @@ func init() {
 	os.Setenv("E2E_MANIFEST", "networks/ci.toml")
 	os.Setenv("E2E_NODE", "validator01")
 }
+```
+
+### Full-node keys
+
+Since Full nodes do not participate in the consensus process, then keeping validators' public keys also is not required.
+By default, public keys are reset during network generation. However, if you need to keep its, then use this env
+parameter `FULLNODE_PUBKEY_KEEP=true`.
+
+For instance:
+
+```sh
+FULLNODE_PUBKEY_KEEP=true make runner/dashcore
 ```
 
 ### Speed up running e2e tests
@@ -146,7 +164,12 @@ To enable Delve, set the `DEBUG` environment variable when setting up the runner
 DEBUG=1 ./build/runner -f networks/ci.toml setup
 ```
 
-NOTE: Right now, only built-in app is supported (the one using `entrypoint-builtin` script)
+If you set DEBUG to `stop`, the app won't start automatically. 
+You'll need to connect to each app (each container) with your debugger
+and start it manually.
+
+NOTE: Right now, only the built-in app is supported(the one using
+`entrypoint-builtin` script)
 
 Containers expose DLV on ports starting from 40001 upwards.
 
@@ -169,6 +192,34 @@ For more details, see:
 * [JetBrains configuration](https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/)
 * [Visual Studio Code configuration](https://medium.com/@kaperys/delve-into-docker-d6c92be2f823)
 
+#### Core dumps
+
+To analyze core dumps:
+
+1. Examine [Dockerfile](docker/Dockerfile) to ensure `ENV TENDERMINT_BUILD_OPTIONS`  contains `nostrip` option AND `GOTRACEBACK` is set to `crash`, for example: 
+   
+   ```docker
+	ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb,nostrip
+	ENV GOTRACEBACK=crash
+   ```
+   
+2. Build the container with `make`
+3. On the **host** machine, set the location of core files:
+   
+   ```bash
+   echo /core.%p | sudo tee /proc/sys/kernel/core_pattern
+   ```
+
+4. After the container stops due to panic, you can export its contents and run delve debugger:
+
+	```bash
+	CONTAINER=<container name>
+	docker export -o ${CONTAINER}.tar ${CONTAINER}
+	mkdir ${CONTAINER}
+	cd ${CONTAINER}
+	tar -xf ../${CONTAINER}.tar
+	dlv core ./usr/bin/tenderdash ./core.*
+	```
 
 ## Enabling IPv6
 

@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -157,8 +158,8 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(p testReactorParams) *BlockchainReactor {
-	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+func newTestReactor(p testReactorParams, t *testing.T) *BlockchainReactor {
+	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight, t)
 	reporter := behaviour.NewMockReporter()
 
 	nodeProTxHash, err := p.privVals[0].GetProTxHash()
@@ -422,7 +423,7 @@ func TestReactorHelperMode(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			reactor := newTestReactor(params)
+			reactor := newTestReactor(params, t)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
 			err := reactor.Start()
@@ -469,7 +470,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 		logger:   log.TestingLogger(),
 		genDoc:   genDoc,
 		privVals: privVals,
-	})
+	}, t)
 	reactor.SetSwitch(nil)
 
 	assert.Nil(t, reactor.Switch)
@@ -503,6 +504,22 @@ func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
 
 type testApp struct {
 	abci.BaseApplication
+	lastHeight int64
+}
+
+func (app *testApp) Commit() abci.ResponseCommit {
+	// Change AppHash
+	appHash := make([]byte, crypto.DefaultAppHashSize)
+	binary.LittleEndian.PutUint64(appHash, uint64(app.lastHeight))
+
+	return abci.ResponseCommit{
+		Data: appHash,
+	}
+}
+
+func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	app.lastHeight = req.Header.Height
+	return abci.ResponseBeginBlock{}
 }
 
 func randGenesisDoc(chainID string, numValidators int) (
@@ -516,6 +533,7 @@ func randGenesisDoc(chainID string, numValidators int) (
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumHash:         quorumHash,
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
 	}, privValidators
 }
 
@@ -524,7 +542,8 @@ func randGenesisDoc(chainID string, numValidators int) (
 func newReactorStore(
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
+	maxBlockHeight int64,
+	t *testing.T) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -565,9 +584,11 @@ func newReactorStore(
 		panic(err)
 	}
 
+	var prevBlock *types.Block
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil,
+
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, state.LastStateID, nil,
 			nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
@@ -575,7 +596,7 @@ func newReactorStore(
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
-				lastBlockMeta.StateID,
+				state.LastStateID, // For height-1, we use previous state ID
 				state.Validators,
 				privVals[0],
 				lastBlock.Header.ChainID,
@@ -585,7 +606,7 @@ func newReactorStore(
 			}
 			// since there is only 1 vote, use it as threshold
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, nil,
+				lastBlockMeta.BlockID, state.LastStateID, nil,
 				vote.BlockSignature, vote.StateSignature)
 		}
 
@@ -599,7 +620,28 @@ func newReactorStore(
 			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
+		// Assert state
+		require.GreaterOrEqual(t, len(state.LastStateID.LastAppHash), crypto.SmallAppHashSize)
+		assert.EqualValues(t, blockHeight, state.LastBlockHeight)
+		assert.EqualValues(t, blockHeight, binary.LittleEndian.Uint64(state.AppHash))
+
+		// Assert some StateID params
+		assert.EqualValues(t, blockHeight-1, state.LastStateID.Height)
+		assert.EqualValues(t, blockHeight-1, binary.LittleEndian.Uint64(state.LastStateID.LastAppHash))
+
+		// Assert last commit
+		assert.EqualValues(t, blockHeight-1, lastCommit.Height)
+		if blockHeight > state.InitialHeight {
+			// verify StateID of commit for block N-1 (which is in thisBlock)
+			assert.EqualValues(t, thisBlock.Height-2, thisBlock.LastCommit.StateID.Height)
+			assert.EqualValues(t, prevBlock.Header.AppHash, thisBlock.LastCommit.StateID.LastAppHash)
+		} else {
+			assert.EqualValues(t, 0, lastCommit.StateID.Height)
+			assert.EqualValues(t, 0, binary.LittleEndian.Uint64(lastCommit.StateID.LastAppHash))
+		}
+
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
+		prevBlock = thisBlock
 	}
 	return blockStore, state, blockExec
 }

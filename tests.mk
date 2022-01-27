@@ -37,6 +37,7 @@ test_integrations:
 	make build_docker_test_image
 	make tools
 	make install
+	make install_abci
 	make test_cover
 	make test_apps
 	make test_abci_apps

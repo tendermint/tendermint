@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"sync"
@@ -37,6 +38,7 @@ func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
 		QuorumHash:         quorumHash,
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
 	}, privValidators
 }
 
@@ -59,12 +61,11 @@ func makeVote(
 		Round:              1,
 		Type:               tmproto.PrecommitType,
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 
 	vpb := vote.ToProto()
 
-	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb, nil)
+	_ = privVal.SignVote(header.ChainID, valset.QuorumType, valset.QuorumHash, vpb, stateID, nil)
 	vote.BlockSignature = vpb.BlockSignature
 	vote.StateSignature = vpb.StateSignature
 
@@ -131,15 +132,27 @@ func newBlockchainReactor(
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 1, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 1, types.BlockID{}, state.LastStateID, nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote := makeVote(t, &lastBlock.Header, lastBlockMeta.BlockID, lastBlockMeta.StateID, state.Validators, privVals[0])
+			vote := makeVote(
+				t,
+				&lastBlock.Header,
+				lastBlockMeta.BlockID,
+				state.LastStateID, // For height-1, we use previous state ID
+				state.Validators,
+				privVals[0])
 			// since there is only 1 vote, use it as threshold
-			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, lastBlockMeta.StateID,
-				state.Validators.QuorumHash, vote.BlockSignature, vote.StateSignature)
+			lastCommit = types.NewCommit(
+				vote.Height,
+				vote.Round,
+				lastBlockMeta.BlockID,
+				state.LastStateID, // For height-1, we use previous state ID
+				state.Validators.QuorumHash,
+				vote.BlockSignature,
+				vote.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
@@ -396,4 +409,21 @@ func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
 
 type testApp struct {
 	abci.BaseApplication
+
+	lastHeight int64
+}
+
+func (app *testApp) Commit() abci.ResponseCommit {
+	// Change AppHash
+	appHash := make([]byte, crypto.DefaultAppHashSize)
+	binary.LittleEndian.PutUint64(appHash, uint64(app.lastHeight))
+
+	return abci.ResponseCommit{
+		Data: appHash,
+	}
+}
+
+func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	app.lastHeight = req.Header.Height
+	return abci.ResponseBeginBlock{}
 }

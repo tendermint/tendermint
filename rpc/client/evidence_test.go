@@ -32,7 +32,8 @@ var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
 
 func newEvidence(t *testing.T, val *privval.FilePV,
 	vote *types.Vote, vote2 *types.Vote,
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *types.DuplicateVoteEvidence {
+	chainID string, stateID types.StateID,
+	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *types.DuplicateVoteEvidence {
 
 	var err error
 
@@ -48,13 +49,13 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v2, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote.StateSignature, err = privKey.SignDigest(types.VoteStateSignID(chainID, v, quorumType, quorumHash))
+	vote.StateSignature, err = privKey.SignDigest(stateID.SignID(chainID, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	vote2.StateSignature, err = privKey.SignDigest(types.VoteStateSignID(chainID, v2, quorumType, quorumHash))
+	vote2.StateSignature, err = privKey.SignDigest(stateID.SignID(chainID, quorumType, quorumHash))
 	require.NoError(t, err)
 
-	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash)
+	validator := types.NewValidator(privKey.PubKey(), 100, val.Key.ProTxHash, "")
 	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, quorumType, quorumHash, true)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
@@ -80,14 +81,13 @@ func makeEvidences(
 				Hash:  tmhash.Sum([]byte("partset")),
 			},
 		},
-		StateID: types.StateID{
-			LastAppHash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
-		},
 	}
+
+	stateID := types.RandStateID().WithHeight(vote.Height - 1)
 
 	vote2 := vote
 	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
-	correct = newEvidence(t, val, &vote, &vote2, chainID, quorumType, quorumHash)
+	correct = newEvidence(t, val, &vote, &vote2, chainID, stateID, quorumType, quorumHash)
 
 	fakes = make([]*types.DuplicateVoteEvidence, 0)
 
@@ -95,34 +95,34 @@ func makeEvidences(
 	{
 		v := vote2
 		v.ValidatorProTxHash = []byte("some_pro_tx_hash")
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// different height
 	{
 		v := vote2
 		v.Height = vote.Height + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// different round
 	{
 		v := vote2
 		v.Round = vote.Round + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// different type
 	{
 		v := vote2
 		v.Type = tmproto.PrecommitType
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	// exactly same vote
 	{
 		v := vote
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
 	}
 
 	return correct, fakes
@@ -137,7 +137,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		h := int64(1)
-		vals, _ := c.Validators(context.Background(), &h, nil, nil, nil)
+		vals, err := c.Validators(context.Background(), &h, nil, nil, nil)
+		require.NoError(t, err)
 		correct, fakes := makeEvidences(t, pv, chainID, vals.QuorumType, *vals.QuorumHash)
 		t.Logf("client %d", i)
 

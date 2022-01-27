@@ -704,6 +704,9 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 				"to", validators.BasicInfoString())
 		}
 	}
+
+	stateID := state.StateID()
+
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -715,7 +718,7 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
 	cs.Commit = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, stateID, validators)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -919,8 +922,8 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 			"height", cs.Height,
 			"round", cs.Round,
 			"peer", peerID,
+			"msg_type", fmt.Sprintf("%T", msg),
 			"err", err,
-			"msg", msg,
 		)
 	}
 }
@@ -1076,19 +1079,36 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	}
 }
 
-// needProofBlock returns true on the first height (so the genesis app hash is signed right away)
-// and where the last block (height-1) caused the app hash to change
+// needProofBlock returns true if additional proof block needs to be created.
+// It happens on the first height (so the genesis app hash is signed right away)
+// and where the last block (height-1) or the previous one (height - 2) caused
+// the app hash to change.
 func (cs *State) needProofBlock(height int64) bool {
 	if height == cs.state.InitialHeight {
 		return true
 	}
 
-	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-	if lastBlockMeta == nil {
-		panic(fmt.Sprintf("needProofBlock: last block meta for height %d not found", height-1))
+	proofBlockRange := cs.config.CreateProofBlockRange
+
+	for blockHeight := height - 1; blockHeight >= height-proofBlockRange; blockHeight-- {
+		if blockHeight >= cs.state.InitialHeight {
+			blockMeta := cs.blockStore.LoadBlockMeta(blockHeight)
+			if blockMeta == nil {
+				panic(fmt.Sprintf("needProofBlock (height=%d): last block meta for height %d not found", height, blockHeight))
+			}
+			if !bytes.Equal(cs.state.AppHash, blockMeta.Header.AppHash) {
+				cs.Logger.Debug(
+					"needProofBlock: proof block needed",
+					"height", height,
+					"modified_height", blockHeight,
+					"range", proofBlockRange,
+				)
+				return true
+			}
+		}
 	}
 
-	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
+	return false
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
@@ -1277,7 +1297,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.StateID(), nil, nil, nil)
 	case cs.LastCommit != nil:
 		// Make the commit from LastPrecommits
 		commit = cs.LastCommit
@@ -1815,7 +1835,7 @@ func (cs *State) verifyCommit(
 		return false, err
 	}
 
-	stateID := types.StateID{LastAppHash: cs.state.AppHash}
+	stateID := cs.state.StateID()
 
 	if rs.Proposal == nil || ignoreProposalBlock {
 		if ignoreProposalBlock {
@@ -2373,19 +2393,11 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 		return
 	}
 
-	if vote.BlockID.Hash != nil && !bytes.Equal(vote.StateID.LastAppHash, cs.state.AppHash) {
-		added = false
-		err = errors.New("vote state last app hash does not match the known state app hash")
-		cs.Logger.Debug("vote ignored because sending wrong app hash", "voteHeight", vote.Height,
-			"csHeight", cs.Height, "peerID", peerID)
-		return false, err
-	}
-
 	cs.Logger.Debug(
 		"adding vote",
-		"vote_height", vote.Height,
-		"vote_round", vote.Round,
-		"vote_type", vote.Type,
+		"height", vote.Height,
+		"round", vote.Round,
+		"type", vote.Type,
 		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
 		"vote_block_key", vote.BlockID.Key(),
 		"vote_block_signature", vote.BlockSignature,
@@ -2557,7 +2569,7 @@ func (cs *State) signVote(
 
 	// Since the block has already been validated the block.lastAppHash must be the state.AppHash
 
-	var lastAppHash = cs.state.AppHash
+	stateID := cs.state.StateID()
 
 	vote := &types.Vote{
 		ValidatorProTxHash: proTxHash,
@@ -2566,21 +2578,16 @@ func (cs *State) signVote(
 		Round:              cs.Round,
 		Type:               msgType,
 		BlockID:            types.BlockID{Hash: hash, PartSetHeader: header},
-		StateID:            types.StateID{LastAppHash: lastAppHash},
 	}
 
-	// if hash is nil no need to send the state id
-	if hash == nil {
-		vote.StateID.LastAppHash = nil
-	}
-	// fmt.Printf("##state signing vote %v\n", vote)
+	protoVote := vote.ToProto()
 
-	v := vote.ToProto()
 	// fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
 	err := cs.privValidator.SignVote(
-		cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v, cs.Logger)
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
+		cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash,
+		protoVote, stateID, cs.Logger)
+	vote.BlockSignature = protoVote.BlockSignature
+	vote.StateSignature = protoVote.StateSignature
 
 	return vote, err
 }

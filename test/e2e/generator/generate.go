@@ -30,7 +30,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	manifest := e2e.Manifest{
 		IPv6:                         opt["ipv6"].(bool),
 		InitialHeight:                int64(opt["initialHeight"].(int)),
-		InitialCoreChainLockedHeight: uint32(opt["initialCoreChainLockedHeight"].(int)),
+		GenesisCoreChainLockedHeight: uint32(opt["initialCoreChainLockedHeight"].(int)),
+		InitAppCoreChainLockedHeight: uint32(opt["initAppCoreChainLockedHeight"].(int)),
 		InitialState:                 opt["initialState"].(map[string]string),
 		Validators:                   &map[string]int64{},
 		ValidatorUpdates:             map[string]map[string]int64{},

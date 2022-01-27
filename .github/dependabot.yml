@@ -6,14 +6,14 @@ updates:
       interval: daily
       time: "11:00"
     open-pull-requests-limit: 10
-  - package-ecosystem: npm
-    directory: "/docs"
-    schedule:
-      interval: daily
-      time: "11:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - fadeev
+#  - package-ecosystem: npm
+#    directory: "/docs"
+#    schedule:
+#      interval: daily
+#      time: "11:00"
+#    open-pull-requests-limit: 10
+#    reviewers:
+#      - fadeev
   - package-ecosystem: gomod
     directory: "/"
     schedule:
@@ -21,7 +21,8 @@ updates:
       time: "11:00"
     open-pull-requests-limit: 10
     reviewers:
-      - melekes
-      - tessr
+      - shotonoff
+      - lklimek
+      - iammadab
     labels:
-      - T:dependencies
+      - dependencies

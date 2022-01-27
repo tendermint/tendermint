@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	dashquorum "github.com/tendermint/tendermint/dash/quorum"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -43,6 +44,7 @@ import (
 	"github.com/tendermint/tendermint/state/indexer"
 	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
 	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
+	"github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
@@ -96,9 +98,10 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
 
+	appClient, _ := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	return NewNode(config,
 		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
@@ -233,6 +236,8 @@ type Node struct {
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
 
+	validatorConnExecutor *dashquorum.ValidatorConnExecutor
+
 	dashCoreRPCClient dashcore.Client
 }
 
@@ -278,6 +283,7 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 
 func createAndStartIndexerService(
 	config *cfg.Config,
+	chainID string,
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
@@ -297,6 +303,18 @@ func createAndStartIndexerService(
 
 		txIndexer = kv.NewTxIndex(store)
 		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
+
+	case "psql":
+		if config.TxIndex.PsqlConn == "" {
+			return nil, nil, nil, errors.New(`no psql-conn is set for the "psql" indexer`)
+		}
+		es, err := psql.NewEventSink(config.TxIndex.PsqlConn, chainID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("creating psql indexer: %w", err)
+		}
+		txIndexer = es.TxIndexer()
+		blockIndexer = es.BlockIndexer()
+
 	default:
 		txIndexer = &null.TxIndex{}
 		blockIndexer = &blockidxnull.BlockerIndexer{}
@@ -738,12 +756,8 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(
-		config,
-		dbProvider,
-		eventBus,
-		logger,
-	)
+	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config,
+		genDoc.ChainID, dbProvider, eventBus, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -851,6 +865,9 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tenderdash with the app.
 	consensusLogger := logger.With("module", "consensus")
+	if proTxHashP != nil {
+		consensusLogger = consensusLogger.With("proTxHash", proTxHashP.ShortString())
+	}
 	proposedAppVersion := uint64(0)
 	if !stateSync {
 		handshaker := cs.NewHandshaker(
@@ -1029,6 +1046,21 @@ func NewNode(config *cfg.Config,
 		}()
 	}
 
+	// Initialize ValidatorConnExecutor (only on Validators)
+	var validatorConnExecutor *dashquorum.ValidatorConnExecutor
+	if proTxHashP != nil {
+		validatorConnExecutor, err = dashquorum.NewValidatorConnExecutor(
+			*proTxHashP,
+			eventBus,
+			sw,
+			dashquorum.WithLogger(logger),
+			dashquorum.WithValidatorsSet(state.Validators),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	node := &Node{
 		config:        config,
 		genesisDoc:    genDoc,
@@ -1058,7 +1090,8 @@ func NewNode(config *cfg.Config,
 		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
 
-		dashCoreRPCClient: dashCoreRPCClient,
+		validatorConnExecutor: validatorConnExecutor,
+		dashCoreRPCClient:     dashCoreRPCClient,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -1129,6 +1162,12 @@ func (n *Node) OnStart() error {
 		return fmt.Errorf("could not dial peers from persistent_peers field: %w", err)
 	}
 
+	// start
+	if n.validatorConnExecutor != nil {
+		if err := n.validatorConnExecutor.Start(); err != nil {
+			return fmt.Errorf("cannot start ValidatorConnExecutor: %w", err)
+		}
+	}
 	// Run state sync
 	if n.stateSync {
 		bcR, ok := n.bcReactor.(fastSyncReactor)
@@ -1241,6 +1280,11 @@ func (n *Node) ConfigureRPC() error {
 	}
 
 	rpccore.SetEnvironment(&env)
+
+	if err := rpccore.InitGenesisChunks(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

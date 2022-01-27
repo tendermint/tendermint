@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	dashtypes "github.com/tendermint/tendermint/dash/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,6 +57,13 @@ func TestNodeStartStop(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}
+
+	// check if we can read node ID of this node
+	va, err := dashtypes.ParseValidatorAddress(config.P2P.ListenAddress)
+	assert.NoError(t, err)
+	id, err := dashtypes.NewTCPNodeIDResolver().Resolve(va)
+	assert.Equal(t, n.nodeInfo.ID(), id)
+	assert.NoError(t, err)
 
 	// stop the node
 	go func() {
@@ -428,9 +436,11 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 
+	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	t.Cleanup(func() { closer.Close() })
 	n, err := NewNode(config,
 		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),

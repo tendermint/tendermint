@@ -18,7 +18,7 @@ import (
 // Ensure a testnet makes blocks
 func TestReactorInvalidPrecommit(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	css, cleanup := randConsensusNet(N, 1, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -68,12 +68,13 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		}
 		valIndex, _ := cs.Validators.GetByProTxHash(proTxHash)
 
+		stateID := cs.state.StateID()
+
 		// precommit a random block
 		blockHash := bytes.HexBytes(tmrand.Bytes(32))
-		lastAppHash := bytes.HexBytes(tmrand.Bytes(32))
 		// we want to see both errors, so send the correct state id half the time
 		if tmrand.Bool() == true {
-			lastAppHash = cs.state.AppHash
+			stateID.LastAppHash = cs.state.AppHash
 		}
 		precommit := &types.Vote{
 			ValidatorProTxHash: proTxHash,
@@ -84,12 +85,10 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 			BlockID: types.BlockID{
 				Hash:          blockHash,
 				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
-			StateID: types.StateID{
-				LastAppHash: lastAppHash,
-			},
 		}
 		p := precommit.ToProto()
-		err = cs.privValidator.SignVote(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p, nil)
+		err = cs.privValidator.SignVote(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash,
+			p, stateID, nil)
 		if err != nil {
 			t.Error(err)
 		}

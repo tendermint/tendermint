@@ -2,24 +2,23 @@ package light_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/light/store"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	dbm "github.com/tendermint/tm-db"
-
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	mockp "github.com/tendermint/tendermint/light/provider/mock"
+	"github.com/tendermint/tendermint/light/store"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -319,7 +318,7 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotEqual(t, c.Primary(), deadNode)
-	assert.Equal(t, 1, len(c.Witnesses()))
+	assert.Equal(t, 2, len(c.Witnesses()))
 }
 
 // func TestClient_BackwardsVerification(t *testing.T) {
@@ -565,31 +564,81 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		setupTrustedStore(t)
-		badNode := mockp.New(
-			chainID,
-			tc.headers,
-			tc.vals,
-			privVals[0],
-		)
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			badNode,
-			[]provider.Provider{badNode, badNode},
-			trustedStore,
-			dashCoreMockClient,
-			light.MaxRetryAttempts(1),
-		)
-		require.NoError(t, err)
+	//nolint:scopelint
+	for tcID, tc := range testCases {
+		t.Run(fmt.Sprintf("tc_%d", tcID), func(t *testing.T) {
+			setupTrustedStore(t)
+			badNode := mockp.New(
+				chainID,
+				tc.headers,
+				tc.vals,
+				privVals[0],
+			)
+			c, err := light.NewClient(
+				ctx,
+				chainID,
+				badNode,
+				[]provider.Provider{badNode, badNode},
+				trustedStore,
+				dashCoreMockClient,
+				light.MaxRetryAttempts(1),
+			)
+			require.NoError(t, err)
 
-		_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
-		if tc.err {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-		}
+			_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
+			if tc.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
+}
 
+func TestClientHandlesContexts(t *testing.T) {
+	p := mockp.New(genMockNode(chainID, 100, 10, bTime))
+	dashCoreMockClient := dashcore.NewMockClient(chainID, llmqType, p.MockPV, true)
+
+	// instantiate the light client with a timeout
+	ctxTimeOut, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+	_, err := light.NewClient(
+		ctxTimeOut,
+		chainID,
+		p,
+		[]provider.Provider{p, p},
+		dbs.New(dbm.NewMemDB(), chainID),
+		dashCoreMockClient,
+	)
+	require.Error(t, ctxTimeOut.Err())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.DeadlineExceeded))
+
+	// instantiate the client for real
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		p,
+		[]provider.Provider{p, p},
+		dbs.New(dbm.NewMemDB(), chainID),
+		dashCoreMockClient,
+	)
+	require.NoError(t, err)
+
+	// verify a block with a timeout
+	ctxTimeOutBlock, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+	_, err = c.VerifyLightBlockAtHeight(ctxTimeOutBlock, 101, bTime.Add(100*time.Minute))
+	require.Error(t, ctxTimeOutBlock.Err())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.DeadlineExceeded))
+
+	// verify a block with a cancel
+	ctxCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+	time.AfterFunc(10*time.Millisecond, cancel)
+	_, err = c.VerifyLightBlockAtHeight(ctxCancel, 101, bTime.Add(100*time.Minute))
+	require.Error(t, ctxCancel.Err())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.Canceled))
 }

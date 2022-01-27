@@ -80,50 +80,6 @@ func (m *CanonicalBlockID) GetPartSetHeader() CanonicalPartSetHeader {
 	return CanonicalPartSetHeader{}
 }
 
-type CanonicalStateID struct {
-	LastAppHash []byte `protobuf:"bytes,1,opt,name=last_app_hash,json=lastAppHash,proto3" json:"last_app_hash,omitempty"`
-}
-
-func (m *CanonicalStateID) Reset()         { *m = CanonicalStateID{} }
-func (m *CanonicalStateID) String() string { return proto.CompactTextString(m) }
-func (*CanonicalStateID) ProtoMessage()    {}
-func (*CanonicalStateID) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8d1a1a84ff7267ed, []int{1}
-}
-func (m *CanonicalStateID) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *CanonicalStateID) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_CanonicalStateID.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *CanonicalStateID) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CanonicalStateID.Merge(m, src)
-}
-func (m *CanonicalStateID) XXX_Size() int {
-	return m.Size()
-}
-func (m *CanonicalStateID) XXX_DiscardUnknown() {
-	xxx_messageInfo_CanonicalStateID.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CanonicalStateID proto.InternalMessageInfo
-
-func (m *CanonicalStateID) GetLastAppHash() []byte {
-	if m != nil {
-		return m.LastAppHash
-	}
-	return nil
-}
-
 type CanonicalPartSetHeader struct {
 	Total uint32 `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
 	Hash  []byte `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
@@ -133,7 +89,7 @@ func (m *CanonicalPartSetHeader) Reset()         { *m = CanonicalPartSetHeader{}
 func (m *CanonicalPartSetHeader) String() string { return proto.CompactTextString(m) }
 func (*CanonicalPartSetHeader) ProtoMessage()    {}
 func (*CanonicalPartSetHeader) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8d1a1a84ff7267ed, []int{2}
+	return fileDescriptor_8d1a1a84ff7267ed, []int{1}
 }
 func (m *CanonicalPartSetHeader) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -190,7 +146,7 @@ func (m *CanonicalProposal) Reset()         { *m = CanonicalProposal{} }
 func (m *CanonicalProposal) String() string { return proto.CompactTextString(m) }
 func (*CanonicalProposal) ProtoMessage()    {}
 func (*CanonicalProposal) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8d1a1a84ff7267ed, []int{3}
+	return fileDescriptor_8d1a1a84ff7267ed, []int{2}
 }
 func (m *CanonicalProposal) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -273,7 +229,6 @@ type CanonicalVote struct {
 	Height  int64             `protobuf:"fixed64,2,opt,name=height,proto3" json:"height,omitempty"`
 	Round   int64             `protobuf:"fixed64,3,opt,name=round,proto3" json:"round,omitempty"`
 	BlockID *CanonicalBlockID `protobuf:"bytes,4,opt,name=block_id,json=blockId,proto3" json:"block_id,omitempty"`
-	StateID *CanonicalStateID `protobuf:"bytes,7,opt,name=state_id,json=stateId,proto3" json:"state_id,omitempty"`
 	ChainID string            `protobuf:"bytes,6,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
 }
 
@@ -281,7 +236,7 @@ func (m *CanonicalVote) Reset()         { *m = CanonicalVote{} }
 func (m *CanonicalVote) String() string { return proto.CompactTextString(m) }
 func (*CanonicalVote) ProtoMessage()    {}
 func (*CanonicalVote) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8d1a1a84ff7267ed, []int{4}
+	return fileDescriptor_8d1a1a84ff7267ed, []int{3}
 }
 func (m *CanonicalVote) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -338,13 +293,6 @@ func (m *CanonicalVote) GetBlockID() *CanonicalBlockID {
 	return nil
 }
 
-func (m *CanonicalVote) GetStateID() *CanonicalStateID {
-	if m != nil {
-		return m.StateID
-	}
-	return nil
-}
-
 func (m *CanonicalVote) GetChainID() string {
 	if m != nil {
 		return m.ChainID
@@ -352,106 +300,48 @@ func (m *CanonicalVote) GetChainID() string {
 	return ""
 }
 
-type CanonicalStateVote struct {
-	Height  int64             `protobuf:"fixed64,1,opt,name=height,proto3" json:"height,omitempty"`
-	StateID *CanonicalStateID `protobuf:"bytes,2,opt,name=state_id,json=stateId,proto3" json:"state_id,omitempty"`
-}
-
-func (m *CanonicalStateVote) Reset()         { *m = CanonicalStateVote{} }
-func (m *CanonicalStateVote) String() string { return proto.CompactTextString(m) }
-func (*CanonicalStateVote) ProtoMessage()    {}
-func (*CanonicalStateVote) Descriptor() ([]byte, []int) {
-	return fileDescriptor_8d1a1a84ff7267ed, []int{5}
-}
-func (m *CanonicalStateVote) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *CanonicalStateVote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_CanonicalStateVote.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *CanonicalStateVote) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CanonicalStateVote.Merge(m, src)
-}
-func (m *CanonicalStateVote) XXX_Size() int {
-	return m.Size()
-}
-func (m *CanonicalStateVote) XXX_DiscardUnknown() {
-	xxx_messageInfo_CanonicalStateVote.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CanonicalStateVote proto.InternalMessageInfo
-
-func (m *CanonicalStateVote) GetHeight() int64 {
-	if m != nil {
-		return m.Height
-	}
-	return 0
-}
-
-func (m *CanonicalStateVote) GetStateID() *CanonicalStateID {
-	if m != nil {
-		return m.StateID
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterType((*CanonicalBlockID)(nil), "tendermint.types.CanonicalBlockID")
-	proto.RegisterType((*CanonicalStateID)(nil), "tendermint.types.CanonicalStateID")
 	proto.RegisterType((*CanonicalPartSetHeader)(nil), "tendermint.types.CanonicalPartSetHeader")
 	proto.RegisterType((*CanonicalProposal)(nil), "tendermint.types.CanonicalProposal")
 	proto.RegisterType((*CanonicalVote)(nil), "tendermint.types.CanonicalVote")
-	proto.RegisterType((*CanonicalStateVote)(nil), "tendermint.types.CanonicalStateVote")
 }
 
 func init() { proto.RegisterFile("tendermint/types/canonical.proto", fileDescriptor_8d1a1a84ff7267ed) }
 
 var fileDescriptor_8d1a1a84ff7267ed = []byte{
-	// 556 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x54, 0xcd, 0x6a, 0xdb, 0x40,
-	0x10, 0xf6, 0x3a, 0x8e, 0x2d, 0xaf, 0xe3, 0xd6, 0x5d, 0x42, 0x30, 0xa6, 0x48, 0x46, 0x87, 0xe2,
-	0x5e, 0x24, 0x48, 0xa0, 0x3d, 0x57, 0xc9, 0x21, 0x0e, 0x2d, 0x4d, 0xd7, 0x21, 0x87, 0x5e, 0xc4,
-	0xda, 0xda, 0x4a, 0xa2, 0xb2, 0x76, 0x91, 0xd6, 0xd0, 0x5c, 0xfa, 0x0c, 0x79, 0x96, 0x3e, 0x45,
-	0x8e, 0x39, 0xb6, 0x17, 0xb7, 0xc8, 0x2f, 0x52, 0x76, 0x25, 0x5b, 0x72, 0x52, 0x7c, 0x09, 0xf4,
-	0x22, 0xe6, 0x4f, 0xdf, 0x7c, 0xf3, 0xcd, 0xb0, 0x70, 0x28, 0x68, 0xec, 0xd1, 0x64, 0x1e, 0xc6,
-	0xc2, 0x16, 0x37, 0x9c, 0xa6, 0xf6, 0x8c, 0xc4, 0x2c, 0x0e, 0x67, 0x24, 0xb2, 0x78, 0xc2, 0x04,
-	0x43, 0xbd, 0xb2, 0xc2, 0x52, 0x15, 0x83, 0x43, 0x9f, 0xf9, 0x4c, 0x25, 0x6d, 0x69, 0xe5, 0x75,
-	0x83, 0x97, 0x8f, 0x90, 0xd4, 0xb7, 0xc8, 0x1a, 0x3e, 0x63, 0x7e, 0x44, 0x6d, 0xe5, 0x4d, 0x17,
-	0x5f, 0x6c, 0x11, 0xce, 0x69, 0x2a, 0xc8, 0x9c, 0xe7, 0x05, 0xe6, 0x77, 0xd8, 0x3b, 0x5d, 0x77,
-	0x76, 0x22, 0x36, 0xfb, 0x3a, 0x3e, 0x43, 0x08, 0x36, 0x02, 0x92, 0x06, 0x7d, 0x30, 0x04, 0xa3,
-	0x03, 0xac, 0x6c, 0x74, 0x0d, 0x9f, 0x73, 0x92, 0x08, 0x37, 0xa5, 0xc2, 0x0d, 0x28, 0xf1, 0x68,
-	0xd2, 0xaf, 0x0f, 0xc1, 0xa8, 0x73, 0x3c, 0xb2, 0x1e, 0x12, 0xb5, 0x36, 0x80, 0x97, 0x24, 0x11,
-	0x13, 0x2a, 0xce, 0x55, 0xbd, 0xd3, 0xb8, 0x5b, 0x1a, 0x35, 0xdc, 0xe5, 0xd5, 0xa0, 0xf9, 0xa6,
-	0xd2, 0x7f, 0x22, 0x88, 0xa0, 0xe3, 0x33, 0x64, 0xc2, 0x6e, 0x44, 0x52, 0xe1, 0x12, 0xce, 0xdd,
-	0x0a, 0x91, 0x8e, 0x0c, 0xbe, 0xe3, 0xfc, 0x9c, 0xa4, 0x81, 0xe9, 0xc0, 0xa3, 0x7f, 0xb7, 0x41,
-	0x87, 0x70, 0x5f, 0x30, 0x41, 0x22, 0xf5, 0x57, 0x17, 0xe7, 0xce, 0x66, 0xa6, 0x7a, 0x39, 0x93,
-	0xf9, 0xab, 0x0e, 0x5f, 0x94, 0x20, 0x09, 0xe3, 0x2c, 0x25, 0x11, 0x3a, 0x81, 0x0d, 0x39, 0x86,
-	0xfa, 0xfd, 0xd9, 0xb1, 0xf1, 0x78, 0xbc, 0x49, 0xe8, 0xc7, 0xd4, 0xfb, 0x90, 0xfa, 0x57, 0x37,
-	0x9c, 0x62, 0x55, 0x8c, 0x8e, 0x60, 0x33, 0xa0, 0xa1, 0x1f, 0x08, 0xd5, 0xa0, 0x87, 0x0b, 0x4f,
-	0x92, 0x49, 0xd8, 0x22, 0xf6, 0xfa, 0x7b, 0x2a, 0x9c, 0x3b, 0xe8, 0x35, 0x6c, 0x73, 0x16, 0xb9,
-	0x79, 0xa6, 0x31, 0x04, 0xa3, 0x3d, 0xe7, 0x20, 0x5b, 0x1a, 0xda, 0xe5, 0xc7, 0xf7, 0x58, 0xc6,
-	0xb0, 0xc6, 0x59, 0xa4, 0x2c, 0x74, 0x01, 0xb5, 0xa9, 0x5c, 0x8b, 0x1b, 0x7a, 0xfd, 0x7d, 0x25,
-	0xb8, 0xb9, 0x43, 0xf0, 0x62, 0x83, 0x4e, 0x27, 0x5b, 0x1a, 0xad, 0xc2, 0xc1, 0x2d, 0x05, 0x30,
-	0xf6, 0x90, 0x03, 0xdb, 0x9b, 0xf5, 0xf7, 0x9b, 0x0a, 0x6c, 0x60, 0xe5, 0x07, 0x62, 0xad, 0x0f,
-	0xc4, 0xba, 0x5a, 0x57, 0x38, 0x9a, 0xdc, 0xd7, 0xed, 0x6f, 0x03, 0xe0, 0xf2, 0x37, 0xf4, 0x0a,
-	0x6a, 0xb3, 0x80, 0x84, 0xb1, 0xe4, 0xd3, 0x1a, 0x82, 0x51, 0x3b, 0xef, 0x75, 0x2a, 0x63, 0xb2,
-	0x97, 0x4a, 0x8e, 0x3d, 0xf3, 0x47, 0x1d, 0x76, 0x37, 0xb4, 0xae, 0x99, 0xa0, 0xff, 0x43, 0xd7,
-	0xaa, 0x58, 0x8d, 0x27, 0x8a, 0x75, 0x01, 0xb5, 0x54, 0xde, 0xe3, 0x7a, 0xd0, 0xdd, 0x58, 0xc5,
-	0xe9, 0xe6, 0x58, 0x85, 0x83, 0x5b, 0x0a, 0x60, 0xec, 0x6d, 0x89, 0xd6, 0xdc, 0x21, 0xda, 0x37,
-	0x88, 0xb6, 0x11, 0x95, 0x70, 0xa5, 0x06, 0x60, 0x4b, 0x83, 0x2a, 0xc3, 0xfa, 0xd3, 0x18, 0x3a,
-	0x9f, 0xee, 0x32, 0x1d, 0xdc, 0x67, 0x3a, 0xf8, 0x93, 0xe9, 0xe0, 0x76, 0xa5, 0xd7, 0xee, 0x57,
-	0x7a, 0xed, 0xe7, 0x4a, 0xaf, 0x7d, 0x7e, 0xeb, 0x87, 0x22, 0x58, 0x4c, 0xad, 0x19, 0x9b, 0xdb,
-	0xd5, 0xa7, 0xa6, 0x34, 0xf3, 0x27, 0xe9, 0xe1, 0x33, 0x34, 0x6d, 0xaa, 0xf8, 0xc9, 0xdf, 0x00,
-	0x00, 0x00, 0xff, 0xff, 0x35, 0xd4, 0x12, 0x81, 0xeb, 0x04, 0x00, 0x00,
+	// 485 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x53, 0xbf, 0x6f, 0xd3, 0x40,
+	0x14, 0xce, 0xa5, 0x6e, 0xe2, 0x5c, 0x1b, 0x08, 0xa7, 0xaa, 0xb2, 0x22, 0x64, 0x5b, 0x1e, 0x90,
+	0x59, 0x6c, 0xa9, 0x1d, 0xd8, 0x5d, 0x06, 0x82, 0x40, 0x14, 0xb7, 0xea, 0xc0, 0x12, 0x5d, 0xec,
+	0xc3, 0xb6, 0x70, 0x7c, 0x27, 0xfb, 0x32, 0x74, 0xe1, 0x6f, 0xe8, 0x9f, 0xd5, 0xb1, 0x23, 0x2c,
+	0x01, 0x39, 0x12, 0x7f, 0x07, 0xba, 0xe7, 0x24, 0x8e, 0x5a, 0x60, 0x41, 0xea, 0x62, 0xbd, 0x1f,
+	0x9f, 0xbf, 0xf7, 0xdd, 0xf7, 0xf4, 0xb0, 0x2d, 0x59, 0x11, 0xb3, 0x72, 0x9e, 0x15, 0xd2, 0x97,
+	0xd7, 0x82, 0x55, 0x7e, 0x44, 0x0b, 0x5e, 0x64, 0x11, 0xcd, 0x3d, 0x51, 0x72, 0xc9, 0xc9, 0xa8,
+	0x45, 0x78, 0x80, 0x18, 0x1f, 0x25, 0x3c, 0xe1, 0xd0, 0xf4, 0x55, 0xd4, 0xe0, 0xc6, 0xcf, 0x1f,
+	0x30, 0xc1, 0x77, 0xdd, 0xb5, 0x12, 0xce, 0x93, 0x9c, 0xf9, 0x90, 0xcd, 0x16, 0x9f, 0x7d, 0x99,
+	0xcd, 0x59, 0x25, 0xe9, 0x5c, 0x34, 0x00, 0xe7, 0x2b, 0x1e, 0x9d, 0x6d, 0x26, 0x07, 0x39, 0x8f,
+	0xbe, 0x4c, 0x5e, 0x13, 0x82, 0xb5, 0x94, 0x56, 0xa9, 0x81, 0x6c, 0xe4, 0x1e, 0x86, 0x10, 0x93,
+	0x2b, 0xfc, 0x54, 0xd0, 0x52, 0x4e, 0x2b, 0x26, 0xa7, 0x29, 0xa3, 0x31, 0x2b, 0x8d, 0xae, 0x8d,
+	0xdc, 0x83, 0x13, 0xd7, 0xbb, 0x2f, 0xd4, 0xdb, 0x12, 0x9e, 0xd3, 0x52, 0x5e, 0x30, 0xf9, 0x06,
+	0xf0, 0x81, 0x76, 0xbb, 0xb4, 0x3a, 0xe1, 0x50, 0xec, 0x16, 0x9d, 0x00, 0x1f, 0xff, 0x19, 0x4e,
+	0x8e, 0xf0, 0xbe, 0xe4, 0x92, 0xe6, 0x20, 0x63, 0x18, 0x36, 0xc9, 0x56, 0x5b, 0xb7, 0xd5, 0xe6,
+	0x7c, 0xef, 0xe2, 0x67, 0x2d, 0x49, 0xc9, 0x05, 0xaf, 0x68, 0x4e, 0x4e, 0xb1, 0xa6, 0xe4, 0xc0,
+	0xef, 0x4f, 0x4e, 0xac, 0x87, 0x32, 0x2f, 0xb2, 0xa4, 0x60, 0xf1, 0xfb, 0x2a, 0xb9, 0xbc, 0x16,
+	0x2c, 0x04, 0x30, 0x39, 0xc6, 0xbd, 0x94, 0x65, 0x49, 0x2a, 0x61, 0xc0, 0x28, 0x5c, 0x67, 0x4a,
+	0x4c, 0xc9, 0x17, 0x45, 0x6c, 0xec, 0x41, 0xb9, 0x49, 0xc8, 0x4b, 0x3c, 0x10, 0x3c, 0x9f, 0x36,
+	0x1d, 0xcd, 0x46, 0xee, 0x5e, 0x70, 0x58, 0x2f, 0x2d, 0xfd, 0xfc, 0xc3, 0xbb, 0x50, 0xd5, 0x42,
+	0x5d, 0xf0, 0x1c, 0x22, 0xf2, 0x16, 0xeb, 0x33, 0x65, 0xef, 0x34, 0x8b, 0x8d, 0x7d, 0x30, 0xce,
+	0xf9, 0x87, 0x71, 0xeb, 0x4d, 0x04, 0x07, 0xf5, 0xd2, 0xea, 0xaf, 0x93, 0xb0, 0x0f, 0x04, 0x93,
+	0x98, 0x04, 0x78, 0xb0, 0x5d, 0xa3, 0xd1, 0x03, 0xb2, 0xb1, 0xd7, 0x2c, 0xda, 0xdb, 0x2c, 0xda,
+	0xbb, 0xdc, 0x20, 0x02, 0x5d, 0xf9, 0x7e, 0xf3, 0xc3, 0x42, 0x61, 0xfb, 0x1b, 0x79, 0x81, 0xf5,
+	0x28, 0xa5, 0x59, 0xa1, 0xf4, 0xf4, 0x6d, 0xe4, 0x0e, 0x9a, 0x59, 0x67, 0xaa, 0xa6, 0x66, 0x41,
+	0x73, 0x12, 0x3b, 0xbf, 0x10, 0x1e, 0x6e, 0x65, 0x5d, 0x71, 0xc9, 0x1e, 0xc3, 0xd7, 0x5d, 0xb3,
+	0xb4, 0xff, 0x34, 0x6b, 0xf7, 0xa1, 0xbd, 0xbf, 0x3f, 0x34, 0xf8, 0x78, 0x5b, 0x9b, 0xe8, 0xae,
+	0x36, 0xd1, 0xcf, 0xda, 0x44, 0x37, 0x2b, 0xb3, 0x73, 0xb7, 0x32, 0x3b, 0xdf, 0x56, 0x66, 0xe7,
+	0xd3, 0xab, 0x24, 0x93, 0xe9, 0x62, 0xe6, 0x45, 0x7c, 0xee, 0xef, 0x1e, 0x5b, 0x1b, 0x36, 0x47,
+	0x79, 0xff, 0x10, 0x67, 0x3d, 0xa8, 0x9f, 0xfe, 0x0e, 0x00, 0x00, 0xff, 0xff, 0x80, 0x68, 0xba,
+	0x81, 0xed, 0x03, 0x00, 0x00,
 }
 
 func (m *CanonicalBlockID) Marshal() (dAtA []byte, err error) {
@@ -488,36 +378,6 @@ func (m *CanonicalBlockID) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i -= len(m.Hash)
 		copy(dAtA[i:], m.Hash)
 		i = encodeVarintCanonical(dAtA, i, uint64(len(m.Hash)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *CanonicalStateID) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *CanonicalStateID) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *CanonicalStateID) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.LastAppHash) > 0 {
-		i -= len(m.LastAppHash)
-		copy(dAtA[i:], m.LastAppHash)
-		i = encodeVarintCanonical(dAtA, i, uint64(len(m.LastAppHash)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -651,18 +511,6 @@ func (m *CanonicalVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.StateID != nil {
-		{
-			size, err := m.StateID.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintCanonical(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x3a
-	}
 	if len(m.ChainID) > 0 {
 		i -= len(m.ChainID)
 		copy(dAtA[i:], m.ChainID)
@@ -702,47 +550,6 @@ func (m *CanonicalVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *CanonicalStateVote) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *CanonicalStateVote) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *CanonicalStateVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.StateID != nil {
-		{
-			size, err := m.StateID.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintCanonical(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Height != 0 {
-		i -= 8
-		encoding_binary.LittleEndian.PutUint64(dAtA[i:], uint64(m.Height))
-		i--
-		dAtA[i] = 0x9
-	}
-	return len(dAtA) - i, nil
-}
-
 func encodeVarintCanonical(dAtA []byte, offset int, v uint64) int {
 	offset -= sovCanonical(v)
 	base := offset
@@ -766,19 +573,6 @@ func (m *CanonicalBlockID) Size() (n int) {
 	}
 	l = m.PartSetHeader.Size()
 	n += 1 + l + sovCanonical(uint64(l))
-	return n
-}
-
-func (m *CanonicalStateID) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.LastAppHash)
-	if l > 0 {
-		n += 1 + l + sovCanonical(uint64(l))
-	}
 	return n
 }
 
@@ -850,26 +644,6 @@ func (m *CanonicalVote) Size() (n int) {
 	}
 	l = len(m.ChainID)
 	if l > 0 {
-		n += 1 + l + sovCanonical(uint64(l))
-	}
-	if m.StateID != nil {
-		l = m.StateID.Size()
-		n += 1 + l + sovCanonical(uint64(l))
-	}
-	return n
-}
-
-func (m *CanonicalStateVote) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Height != 0 {
-		n += 9
-	}
-	if m.StateID != nil {
-		l = m.StateID.Size()
 		n += 1 + l + sovCanonical(uint64(l))
 	}
 	return n
@@ -975,90 +749,6 @@ func (m *CanonicalBlockID) Unmarshal(dAtA []byte) error {
 			}
 			if err := m.PartSetHeader.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCanonical(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *CanonicalStateID) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCanonical
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: CanonicalStateID: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CanonicalStateID: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LastAppHash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCanonical
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.LastAppHash = append(m.LastAppHash[:0], dAtA[iNdEx:postIndex]...)
-			if m.LastAppHash == nil {
-				m.LastAppHash = []byte{}
 			}
 			iNdEx = postIndex
 		default:
@@ -1529,138 +1219,6 @@ func (m *CanonicalVote) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ChainID = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StateID", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCanonical
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.StateID == nil {
-				m.StateID = &CanonicalStateID{}
-			}
-			if err := m.StateID.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipCanonical(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *CanonicalStateVote) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowCanonical
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: CanonicalStateVote: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CanonicalStateVote: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 1 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
-			}
-			m.Height = 0
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Height = int64(encoding_binary.LittleEndian.Uint64(dAtA[iNdEx:]))
-			iNdEx += 8
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StateID", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowCanonical
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthCanonical
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.StateID == nil {
-				m.StateID = &CanonicalStateID{}
-			}
-			if err := m.StateID.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

@@ -121,7 +121,9 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return fmt.Errorf("the threshold public key must be 48 bytes for BLS")
 	}
 	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) < crypto.SmallAppHashSize {
-		return fmt.Errorf("the quorum hash must be at least 20 bytes long (%d Validator(s))", len(genDoc.Validators))
+		return fmt.Errorf("the quorum hash must be at least %d bytes long (%d Validator(s))",
+			crypto.SmallAppHashSize,
+			len(genDoc.Validators))
 	}
 
 	if genDoc.QuorumType == 0 {

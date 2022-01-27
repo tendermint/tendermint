@@ -25,22 +25,31 @@ func assertMempool(txn txNotifier) mempl.Mempool {
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
-	config := ResetConfig("consensus_mempool_txs_available_test")
-	defer os.RemoveAll(config.RootDir)
-	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(1, false, 100)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
-	assertMempool(cs.txNotifier).EnableTxsAvailable()
-	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
-	startTestRound(cs, height, round)
+	for proofBlockRange := int64(1); proofBlockRange <= 3; proofBlockRange++ {
+		t.Logf("Checking proof block range %d", proofBlockRange)
 
-	ensureNewEventOnChannel(newBlockCh) // first block gets committed
-	ensureNoNewEventOnChannel(newBlockCh)
-	deliverTxsRange(cs, 0, 1)
-	ensureNewEventOnChannel(newBlockCh) // commit txs
-	ensureNewEventOnChannel(newBlockCh) // commit updated app hash
-	ensureNoNewEventOnChannel(newBlockCh)
+		config := ResetConfig("consensus_mempool_txs_available_test")
+		defer os.RemoveAll(config.RootDir)
+		config.Consensus.CreateEmptyBlocks = false
+		config.Consensus.CreateProofBlockRange = proofBlockRange
+
+		state, privVals := randGenesisState(1, false, types.DefaultDashVotingPower)
+
+		cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+		assertMempool(cs.txNotifier).EnableTxsAvailable()
+		height, round := cs.Height, cs.Round
+		newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+		startTestRound(cs, height, round)
+
+		ensureNewEventOnChannel(newBlockCh) // first block gets committed
+		ensureNoNewEventOnChannel(newBlockCh)
+		deliverTxsRange(cs, 0, 1)
+		ensureNewEventOnChannel(newBlockCh) // commit txs
+		for i := int64(0); i < proofBlockRange; i++ {
+			ensureNewEventOnChannel(newBlockCh) // commit updated app hash
+		}
+		ensureNoNewEventOnChannel(newBlockCh)
+	}
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -48,7 +57,9 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
+
 	state, privVals := randGenesisState(1, false, 10)
+
 	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
@@ -73,7 +84,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
 	timeoutCh := subscribe(cs.eventBus, types.EventQueryTimeoutPropose)
 	cs.setProposal = func(proposal *types.Proposal) error {
-		if cs.Height == 2 && cs.Round == 0 {
+		if cs.Height == cs.state.InitialHeight+1 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
 			// go to next round
 			cs.Logger.Info("Ignoring set proposal at height 2, round 0")
@@ -250,8 +261,11 @@ func txAsUint64(tx []byte) uint64 {
 func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.ResponseCommit{}
+		return abci.ResponseCommit{
+			Data: genesisAppHash,
+		}
 	}
+
 	hash := make([]byte, 32)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
 	return abci.ResponseCommit{Data: hash}

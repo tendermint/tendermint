@@ -21,6 +21,7 @@ message Validator {
   int64                       voting_power      = 3;
   int64                       proposer_priority = 4;
   bytes                       pro_tx_hash       = 5;
+  string                      node_address      = 6;  // address of the Validator, correct URI (RFC 3986)
 }
 
 message SimpleValidator {

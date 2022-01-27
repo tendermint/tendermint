@@ -18,17 +18,18 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
 
 		// info API
-		"health":        rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
-		"status":        rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
-		"net_info":      rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
-		"blockchain":    rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":       rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
-		"block":         rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
-		"block_by_hash": rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
-		"block_results": rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
-		"commit":        rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":            rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
-		"tx_search":     rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
+		"health":          rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
+		"status":          rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
+		"net_info":        rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
+		"blockchain":      rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
+		"genesis":         rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
+		"genesis_chunked": rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), ""),
+		"block":           rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"block_by_hash":   rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
+		"block_results":   rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
+		"commit":          rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
+		"tx":              rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
+		"tx_search":       rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
 		"validators": rpcserver.NewRPCFunc(makeValidatorsFunc(c),
 			"height,page,per_page,request_threshold_public_key"),
 
@@ -90,6 +91,14 @@ type rpcGenesisFunc func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error)
 func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 		return c.Genesis(ctx.Context())
+	}
+}
+
+type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error)
+
+func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
+	return func(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChunk, error) {
+		return c.GenesisChunked(ctx.Context(), chunk)
 	}
 }
 

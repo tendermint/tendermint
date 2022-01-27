@@ -129,7 +129,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			A good block passes
 		*/
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
+		state, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
 			height,
@@ -138,9 +138,8 @@ func TestValidateBlockHeader(t *testing.T) {
 			blockExec,
 			privVals,
 			nil,
-			3,
-		)
-		require.NoError(t, err, "height %d", height)
+			3)
+		require.NoError(t, err, "height: %d\nstate:\n%+v\n", height, state)
 	}
 }
 
@@ -181,6 +180,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	}
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
+		stateID := state.StateID()
 		proTxHash := state.Validators.GetProposer().ProTxHash
 		if height > 1 {
 			/*
@@ -190,7 +190,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			wrongHeightVote, err := types.MakeVote(
 				height,
 				state.LastBlockID,
-				types.StateID{LastAppHash: state.AppHash},
+				stateID,
 				state.Validators,
 				privVals[proTxHash.String()],
 				chainID,
@@ -200,7 +200,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.Height,
 				wrongHeightVote.Round,
 				state.LastBlockID,
-				types.StateID{LastAppHash: state.AppHash},
+				stateID,
 				state.Validators.QuorumHash,
 				wrongHeightVote.BlockSignature,
 				wrongHeightVote.StateSignature,
@@ -281,8 +281,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		*/
 		var err error
 		var blockID types.BlockID
-		var stateID types.StateID
-		state, blockID, stateID, lastCommit, err = makeAndCommitGoodBlock(
+		state, blockID, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
 			height,
@@ -318,7 +317,6 @@ func TestValidateBlockCommit(t *testing.T) {
 			Round:              0,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
-			StateID:            stateID,
 		}
 
 		g := goodVote.ToProto()
@@ -329,6 +327,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			state.Validators.QuorumType,
 			badPrivValQuorumHash,
 			g,
+			stateID,
 			nil,
 		)
 		require.NoError(t, err, "height %d", height)
@@ -337,6 +336,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			state.Validators.QuorumType,
 			badPrivValQuorumHash,
 			b,
+			stateID,
 			nil,
 		)
 		require.NoError(t, err, "height %d", height)
@@ -447,7 +447,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		}
 
 		var err error
-		state, _, _, lastCommit, err = makeAndCommitGoodBlock(
+		state, _, lastCommit, err = makeAndCommitGoodBlock(
 			state,
 			nodeProTxHash,
 			height,

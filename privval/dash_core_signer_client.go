@@ -225,7 +225,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 // SignVote requests a remote signer to sign a vote
 func (sc *DashCoreSignerClient) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	protoVote *tmproto.Vote, logger log.Logger) error {
+	protoVote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
 	if len(quorumHash) != crypto.DefaultHashSize {
 		return fmt.Errorf("quorum hash is not the right length %s", quorumHash.String())
 	}
@@ -236,11 +236,11 @@ func (sc *DashCoreSignerClient) SignVote(
 
 	blockResponse, err := sc.dashCoreRPCClient.QuorumSign(quorumType, blockRequestID, blockMessageHash, quorumHash)
 
-	if blockResponse == nil {
-		return ErrUnexpectedResponse
-	}
 	if err != nil {
 		return &RemoteSignerError{Code: 500, Description: err.Error()}
+	}
+	if blockResponse == nil {
+		return ErrUnexpectedResponse
 	}
 
 	// fmt.Printf("blockResponse %v", blockResponse)
@@ -285,18 +285,18 @@ func (sc *DashCoreSignerClient) SignVote(
 
 	// Only sign the state when voting for the block
 	if protoVote.BlockID.Hash != nil {
-		stateSignBytes := types.VoteStateSignBytes(chainID, protoVote)
+		stateSignBytes := stateID.SignBytes(chainID)
 		stateMessageHash := crypto.Sha256(stateSignBytes)
-		stateRequestID := types.VoteStateRequestIDProto(protoVote)
+		stateRequestID := stateID.SignRequestID()
 
 		stateResponse, err := sc.dashCoreRPCClient.QuorumSign(
 			sc.defaultQuorumType, stateRequestID, stateMessageHash, quorumHash)
 
-		if stateResponse == nil {
-			return ErrUnexpectedResponse
-		}
 		if err != nil {
 			return &RemoteSignerError{Code: 500, Description: err.Error()}
+		}
+		if stateResponse == nil {
+			return ErrUnexpectedResponse
 		}
 
 		stateDecodedSignature, err := hex.DecodeString(stateResponse.Signature)
@@ -349,11 +349,11 @@ func (sc *DashCoreSignerClient) SignProposal(
 
 	response, err := sc.dashCoreRPCClient.QuorumSign(quorumType, requestIDHash, messageHash, quorumHash)
 
-	if response == nil {
-		return nil, ErrUnexpectedResponse
-	}
 	if err != nil {
 		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}
+	}
+	if response == nil {
+		return nil, ErrUnexpectedResponse
 	}
 
 	decodedSignature, err := hex.DecodeString(response.Signature)

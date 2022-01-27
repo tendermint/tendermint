@@ -36,7 +36,7 @@ type cleanupFunc func()
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	blockID := types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}
-	stateID := types.StateID{LastAppHash: make([]byte, 32)}
+	stateID := types.RandStateID().WithHeight(height - 1)
 	goodVote := &types.Vote{
 		ValidatorProTxHash: crypto.RandProTxHash(),
 		ValidatorIndex:     0,
@@ -44,7 +44,6 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		Round:              0,
 		Type:               tmproto.PrecommitType,
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 
 	g := goodVote.ToProto()
@@ -53,7 +52,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	privVal := types.NewMockPVWithParams(privKey, crypto.RandProTxHash(), state.Validators.QuorumHash,
 		state.Validators.ThresholdPublicKey, false, false)
 
-	_ = privVal.SignVote("chainID", state.Validators.QuorumType, state.Validators.QuorumHash, g, nil)
+	_ = privVal.SignVote("chainID", state.Validators.QuorumType, state.Validators.QuorumHash, g, stateID, nil)
 
 	goodVote.BlockSignature = g.BlockSignature
 	goodVote.StateSignature = g.StateSignature

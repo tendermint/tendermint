@@ -483,8 +483,8 @@ func (pv *FilePV) GetProTxHash() (crypto.ProTxHash, error) {
 // chainID. Implements PrivValidator.
 func (pv *FilePV) SignVote(
 	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, logger log.Logger) error {
-	if err := pv.signVote(chainID, quorumType, quorumHash, vote); err != nil {
+	vote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
+	if err := pv.signVote(chainID, quorumType, quorumHash, vote, stateID); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
 	return nil
@@ -554,31 +554,30 @@ func (pv *FilePV) UpdatePrivateKey(
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (pv *FilePV) signVote(
-	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote,
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote, stateID types.StateID,
 ) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
 	lss := pv.LastSignState
-
-	// The vote should not have a state ID set if the block ID is set to nil
-
-	if vote.BlockID.Hash == nil && vote.StateID.LastAppHash != nil {
-		return fmt.Errorf("error : vote should not have a state ID set if the"+
-			" block ID for the round (%d/%d) is not set", vote.Height, vote.Round)
-	}
 
 	sameHRS, err := lss.CheckHRS(height, round, step)
 	if err != nil {
 		return err
 	}
 
+	// StateID should refer to previous height in order to be valid
+	if stateID.Height != height-1 {
+		return fmt.Errorf("invalid height in StateID: is %d, should be %d", stateID.Height, height-1)
+	}
+
 	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
 
-	stateSignID := types.VoteStateSignID(chainID, vote, quorumType, quorumHash)
+	stateSignID := stateID.SignID(chainID, quorumType, quorumHash)
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
 
-	stateSignBytes := types.VoteStateSignBytes(chainID, vote)
+	stateSignBytes := stateID.SignBytes(chainID)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.

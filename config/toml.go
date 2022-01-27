@@ -260,7 +260,8 @@ laddr = "{{ .P2P.ListenAddress }}"
 # Address to advertise to peers for them to dial
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
-# to figure out the address.
+# to figure out the address. ip and port are required
+# example: 159.89.10.97:26656
 external_address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
@@ -440,6 +441,9 @@ skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 # EmptyBlocks mode and possible interval between empty blocks
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
 create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
+
+# How many blocks are inspected in order to determine if we need to create additional proof block.
+create_proof_block_range = "{{ .Consensus.CreateProofBlockRange }}"
 
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"

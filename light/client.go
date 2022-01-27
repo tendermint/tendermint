@@ -229,7 +229,7 @@ func NewClientFromTrustedStore(
 	}
 
 	// Validate the number of witnesses.
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -513,23 +513,32 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 	return c.updateTrustedLightBlock(newLightBlock)
 }
 
+// verifyBlockWithDashCore verifies block and StateID signature using Dash Core RPC service
 // This method is called from verifyLightBlock if verification mode is dashcore,
 // verifyLightBlock in its turn is called by VerifyHeader.
 func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+	if err := c.verifyBlockSignatureWithDashCore(ctx, newLightBlock); err != nil {
+		return err
+	}
+
+	if err := c.verifyStateIDSignatureWithDashCore(ctx, newLightBlock); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) verifyBlockSignatureWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+
 	quorumHash := newLightBlock.ValidatorSet.QuorumHash
 	quorumType := newLightBlock.ValidatorSet.QuorumType
 
 	protoVote := newLightBlock.Commit.GetCanonicalVote().ToProto()
 
 	blockSignBytes := types.VoteBlockSignBytes(c.chainID, protoVote)
-	stateSignBytes := types.VoteStateSignBytes(c.chainID, protoVote)
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
-
-	stateMessageHash := crypto.Sha256(stateSignBytes)
-	stateRequestID := types.VoteStateRequestIDProto(protoVote)
-	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	blockSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
@@ -546,6 +555,23 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	if !blockSignatureIsValid {
 		return fmt.Errorf("block signature is invalid")
 	}
+
+	return nil
+}
+
+// This method is called from verifyLightBlock if verification mode is dashcore,
+// verifyLightBlock in its turn is called by VerifyHeader.
+func (c *Client) verifyStateIDSignatureWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
+	quorumHash := newLightBlock.ValidatorSet.QuorumHash
+	quorumType := newLightBlock.ValidatorSet.QuorumType
+
+	stateID := newLightBlock.StateID()
+
+	stateSignBytes := stateID.SignBytes(c.chainID)
+
+	stateMessageHash := crypto.Sha256(stateSignBytes)
+	stateRequestID := stateID.SignRequestID()
+	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	stateSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
@@ -680,6 +706,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context) (*types.LightBlock, 
 	return c.lightBlockFromPrimaryAtHeight(ctx, 0)
 }
 
+// lightBlockFromPrimaryAtHeight retrieves a light block from the primary provider
 func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	l, err := c.primary.LightBlock(ctx, height)
@@ -700,17 +727,21 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 			err = nil
 		}
 
+	case context.Canceled, context.DeadlineExceeded:
+		return l, err
+
 	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
-		c.logger.Debug("error from light block request from primary, replacing...",
-			"error", err)
-		l, err = c.findNewPrimary(ctx, height, false)
+		c.logger.Info("error from light block request from primary, replacing...",
+			"error", err, "height", height, "primary", c.primary)
+		return c.findNewPrimary(ctx, height, false)
+
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
-		c.logger.Error("error from light block request from primary, removing...",
-			"error", err)
-		l, err = c.findNewPrimary(ctx, height, true)
+		c.logger.Info("error from light block request from primary, removing...",
+			"error", err, "height", height, "primary", c.primary)
+		return c.findNewPrimary(ctx, height, true)
 	}
 
 	// err was re-evaluated inside switch statement above
@@ -757,7 +788,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) <= 1 {
+	if len(c.witnesses) == 0 {
 		return nil, ErrNoWitnesses
 	}
 
@@ -827,6 +858,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		}
 	}
 
+	// remove witnesses marked as bad. Removal is done in descending order
+	if err := c.removeWitnesses(witnessesToRemove); err != nil {
+		c.logger.Error("failed to remove witnesses", "err", err, "witnessesToRemove", witnessesToRemove)
+	}
+
 	return nil, lastError
 }
 
@@ -839,7 +875,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return ErrNoWitnesses
 	}
 
@@ -863,21 +899,26 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 				c.witnesses[e.WitnessIndex])
 			return err
 		case errBadWitness:
-			// If witness sent us an invalid header, then remove it. If it didn't
-			// respond or couldn't find the block, then we ignore it and move on to
-			// the next witness.
-			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it",
-					"witness", c.witnesses[e.WitnessIndex], "err", err)
-				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+			// If witness sent us an invalid header, then remove it
+			c.logger.Info("witness sent an invalid light block, removing...",
+				"witness", c.witnesses[e.WitnessIndex],
+				"err", err)
+			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+		default: // benign errors can be ignored with the exception of context errors
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return err
 			}
+
+			// the witness either didn't respond or didn't have the block. We ignore it.
+			c.logger.Info("error comparing first header with witness. You may want to consider removing the witness",
+				"err", err)
 		}
 
 	}
 
 	// remove witnesses that have misbehaved
 	if err := c.removeWitnesses(witnessesToRemove); err != nil {
-		return err
+		c.logger.Error("failed to remove witnesses", "err", err, "witnessesToRemove", witnessesToRemove)
 	}
 
 	return nil

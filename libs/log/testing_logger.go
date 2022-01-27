@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-kit/kit/log/term"
+	"github.com/go-kit/log/term"
 )
 
 var (

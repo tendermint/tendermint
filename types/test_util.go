@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -24,7 +26,6 @@ func MakeCommit(blockID BlockID, stateID StateID, height int64, round int32,
 			Round:              round,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
-			StateID:            stateID,
 		}
 
 		_, err = signAddVote(validators[i], vote, voteSet)
@@ -36,9 +37,18 @@ func MakeCommit(blockID BlockID, stateID StateID, height int64, round int32,
 	return voteSet.MakeCommit(), nil
 }
 
+// signAddVote signs a vote using StateID configured inside voteSet, and adds it to that voteSet
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+	return signAddVoteForStateID(privVal, vote, voteSet, voteSet.stateID)
+}
+
+// signAddVoteForStateID signs a vote using specific StateID and adds it to voteSet
+func signAddVoteForStateID(privVal PrivValidator, vote *Vote, voteSet *VoteSet,
+	stateID StateID) (signed bool, err error) {
 	v := vote.ToProto()
-	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, v, nil)
+
+	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash,
+		v, stateID, nil)
 	if err != nil {
 		return false, err
 	}
@@ -70,11 +80,10 @@ func MakeVote(
 		Round:              0,
 		Type:               tmproto.PrecommitType,
 		BlockID:            blockID,
-		StateID:            stateID,
 	}
 	v := vote.ToProto()
 
-	if err := privVal.SignVote(chainID, valSet.QuorumType, valSet.QuorumHash, v, nil); err != nil {
+	if err := privVal.SignVote(chainID, valSet.QuorumType, valSet.QuorumHash, v, stateID, nil); err != nil {
 		return nil, err
 	}
 
@@ -112,4 +121,11 @@ func MakeBlock(
 	}
 	block.fillHeader()
 	return block
+}
+
+func RandStateID() StateID {
+	return StateID{
+		Height:      tmrand.Int63(),
+		LastAppHash: tmrand.Bytes(tmhash.Size),
+	}
 }

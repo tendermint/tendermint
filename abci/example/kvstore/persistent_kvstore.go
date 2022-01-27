@@ -56,6 +56,10 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	}
 }
 
+func (app *PersistentKVStoreApplication) Close() error {
+	return app.app.state.db.Close()
+}
+
 func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
@@ -108,7 +112,7 @@ func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (res
 
 		return resQuery
 	case "/val":
-		key := []byte("val:" + string(reqQuery.Data))
+		key := []byte(valSetTxKey(string(reqQuery.Data)))
 		value, err := app.app.state.db.Get(key)
 		if err != nil {
 			panic(err)
@@ -233,6 +237,12 @@ func (app *PersistentKVStoreApplication) ValidatorSet() (validatorSet types.Vali
 	return validatorSet
 }
 
+// valSetTxKey generates a key for validator set change transaction, like:
+//   `val:BASE64ENCODINGOFPROTXHASH`
+func valSetTxKey(proTxHashBase64 string) string {
+	return ValidatorSetChangePrefix + proTxHashBase64
+}
+
 func MakeValSetChangeTx(proTxHash []byte, pubkey *pc.PublicKey, power int64) []byte {
 	pubStr := ""
 	if pubkey != nil {
@@ -243,12 +253,11 @@ func MakeValSetChangeTx(proTxHash []byte, pubkey *pc.PublicKey, power int64) []b
 		pubStr = base64.StdEncoding.EncodeToString(pk.Bytes())
 	}
 	proTxHashStr := base64.StdEncoding.EncodeToString(proTxHash)
-	return []byte(fmt.Sprintf("val:%s!%s!%d", proTxHashStr, pubStr, power))
+	return []byte(valSetTxKey(proTxHashStr) + "!" + pubStr + "!" + strconv.FormatInt(power, 10))
 }
 
 func MakeValSetRemovalTx(proTxHash []byte) []byte {
-	proTxHashStr := base64.StdEncoding.EncodeToString(proTxHash)
-	return []byte(fmt.Sprintf("val:%s!!%d", proTxHashStr, 0))
+	return MakeValSetChangeTx(proTxHash, nil, 0)
 }
 
 func MakeThresholdPublicKeyChangeTx(thresholdPublicKey pc.PublicKey) []byte {
@@ -317,8 +326,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
 	}
-
-	return app.updateValidatorSet(types.UpdateValidator(proTxHash, pubkey, power))
+	return app.updateValidatorSet(types.UpdateValidator(proTxHash, pubkey, power, ""))
 }
 
 // format is "tpk:pubkey"
@@ -365,7 +373,7 @@ func (app *PersistentKVStoreApplication) updateValidatorSet(v types.ValidatorUpd
 	if v.ProTxHash == nil {
 		panic(fmt.Errorf("proTxHash can not be nil"))
 	}
-	key := []byte("val:" + string(v.ProTxHash))
+	key := []byte(valSetTxKey(string(v.ProTxHash)))
 
 	if v.Power == 0 {
 		// remove validator

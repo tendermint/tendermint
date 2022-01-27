@@ -90,10 +90,6 @@ type SecretConnection struct {
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
-	var (
-		locPubKey = locPrivKey.PubKey()
-	)
-
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
 
@@ -157,10 +153,20 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		sendAead:   sendAead,
 	}
 
-	// SignDigest the challenge bytes for authentication.
-	locSignature, err := signChallenge(&challenge, locPrivKey)
-	if err != nil {
-		return nil, fmt.Errorf("sign challenge: %v", err)
+	// Exchange public keys
+	var (
+		locPubKey    crypto.PubKey
+		locSignature []byte
+	)
+	// Allow no local private key to just retrieve remote privkey
+	if locPrivKey != nil {
+		locPubKey = locPrivKey.PubKey()
+
+		// SignDigest the challenge bytes for authentication.
+		locSignature, err = signChallenge(&challenge, locPrivKey)
+		if err != nil {
+			return nil, fmt.Errorf("sign challenge: %v", err)
+		}
 	}
 
 	// Share (in secret) each other's pubkey & challenge signature
@@ -404,18 +410,22 @@ type authSigMessage struct {
 	Sig []byte
 }
 
+// shareAuthSignature exchanges public keys, authorized by the signed challenge.
+// If `pubKey` is nil, it will just retrieve public key without sending ours to the other party.
 func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
 
 	// Send our info and receive theirs in tandem.
 	var trs, _ = async.Parallel(
 		func(_ int) (val interface{}, abort bool, err error) {
-			pbpk, err := cryptoenc.PubKeyToProto(pubKey)
-			if err != nil {
-				return nil, true, err
-			}
-			_, err = protoio.NewDelimitedWriter(sc).WriteMsg(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
-			if err != nil {
-				return nil, true, err // abort
+			if pubKey != nil {
+				pbpk, err := cryptoenc.PubKeyToProto(pubKey)
+				if err != nil {
+					return nil, true, err
+				}
+				_, err = protoio.NewDelimitedWriter(sc).WriteMsg(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
+				if err != nil {
+					return nil, true, err // abort
+				}
 			}
 			return nil, false, nil
 		},

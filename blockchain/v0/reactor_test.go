@@ -105,7 +105,7 @@ func newBlockchainReactor(
 			blockHeight-1,
 			0,
 			types.BlockID{},
-			types.StateID{LastAppHash: nil},
+			state.LastStateID, // For height-1, we use previous state ID
 			nil,
 			nil,
 			nil,
@@ -117,7 +117,7 @@ func newBlockchainReactor(
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
-				lastBlockMeta.StateID,
+				state.LastStateID, // For height-1, we use previous state ID
 				state.Validators,
 				privVals[0],
 				lastBlock.Header.ChainID,
@@ -127,7 +127,7 @@ func newBlockchainReactor(
 			}
 			// since there is only 1 vote, use it as threshold
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, nil, vote.BlockSignature,
+				lastBlockMeta.BlockID, state.LastStateID, nil, vote.BlockSignature,
 				vote.StateSignature)
 		}
 

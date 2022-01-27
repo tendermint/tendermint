@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"os"
 	"testing"
-
-	lighthttp "github.com/tendermint/tendermint/light/provider/http"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	testify "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/light/provider"
+	lighthttp "github.com/tendermint/tendermint/light/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
-
-	testify "github.com/stretchr/testify/mock"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -36,27 +35,17 @@ func TestNewProvider(t *testing.T) {
 	require.Equal(t, fmt.Sprintf("%s", c), "http{http://153.200.0.1}")
 }
 
-func TestMain(m *testing.M) {
+func TestProvider(t *testing.T) {
 	app := kvstore.NewApplication()
-	app.RetainBlocks = 9
+	app.RetainBlocks = 10
 	node := rpctest.StartTendermint(app)
 
-	code := m.Run()
-
-	rpctest.StopTendermint(node)
-	os.Exit(code)
-}
-
-func TestProvider(t *testing.T) {
 	cfg := rpctest.GetConfig()
 	defer os.RemoveAll(cfg.RootDir)
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	chainID := genDoc.ChainID
-	t.Log("chainID:", chainID)
 
 	c, err := rpchttp.New(rpcAddr, "/websocket")
 	require.Nil(t, err)
@@ -70,28 +59,39 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	// let's get the highest block
-	sh, err := p.LightBlock(context.Background(), 0)
+	lb, err := p.LightBlock(context.Background(), 0)
 	require.NoError(t, err)
-	assert.True(t, sh.Height < 1000)
+	require.NotNil(t, lb)
+	assert.True(t, lb.Height < 1000)
 
 	// let's check this is valid somehow
-	assert.Nil(t, sh.ValidateBasic(chainID))
+	assert.Nil(t, lb.ValidateBasic(chainID))
 
 	// historical queries now work :)
-	lower := sh.Height - 3
-	sh, err = p.LightBlock(context.Background(), lower)
+	lower := lb.Height - 3
+	lb, err = p.LightBlock(context.Background(), lower)
 	require.NoError(t, err)
-	assert.Equal(t, lower, sh.Height)
+	assert.Equal(t, lower, lb.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	lb, err := p.LightBlock(context.Background(), 1000)
+	lb, err = p.LightBlock(context.Background(), 1000)
 	require.Error(t, err)
 	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrHeightTooHigh, err)
 
 	_, err = p.LightBlock(context.Background(), 1)
 	require.Error(t, err)
+	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
+
+	// stop the full node and check that a no response error is returned
+	rpctest.StopTendermint(node)
+	time.Sleep(10 * time.Second)
+	lb, err = p.LightBlock(context.Background(), lower+2)
+	// we should see a connection refused
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "connection refused")
+	require.Nil(t, lb)
 }
 
 // TestLightClient_NilCommit ensures correct handling of a case where commit returned by http client is nil
@@ -101,8 +101,8 @@ func TestLightClient_NilCommit(t *testing.T) {
 	p := lighthttp.NewWithClient(chainID, c)
 	require.NotNil(t, p)
 
-	c.On("Commit", testify.Anything, testify.Anything).Return(
-		&coretypes.ResultCommit{
+	c.On("Commit", testify.Anything, testify.Anything).
+		Return(&coretypes.ResultCommit{
 			SignedHeader: types.SignedHeader{
 				Header: &types.Header{},
 				Commit: nil,

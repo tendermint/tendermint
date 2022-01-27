@@ -2,11 +2,11 @@ package types
 
 import (
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"github.com/tendermint/tendermint/crypto"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -14,7 +14,8 @@ import (
 
 func TestLightBlockValidateBasic(t *testing.T) {
 	header := makeRandHeader()
-	commit := randCommit()
+	stateID := RandStateID()
+	commit := randCommit(stateID)
 	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
@@ -39,7 +40,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 		{"valid light block", sh, vals, false},
 		{"hashes don't match", sh, vals2, true},
 		{"invalid validator set", sh, vals3, true},
-		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit()}, vals, true},
+		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit(stateID)}, vals, true},
 	}
 
 	for _, tc := range testCases {
@@ -59,7 +60,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 
 func TestLightBlockProtobuf(t *testing.T) {
 	header := makeRandHeader()
-	commit := randCommit()
+	commit := randCommit(RandStateID())
 	vals, _ := GenerateValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
@@ -112,7 +113,7 @@ func TestLightBlockProtobuf(t *testing.T) {
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit()
+	commit := randCommit(RandStateID())
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{
@@ -164,4 +165,48 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 			)
 		})
 	}
+}
+
+func TestLightBlock_StateID(t *testing.T) {
+
+	tests := []struct {
+		name        string
+		commit      *Commit
+		want        StateID
+		shouldPanic bool
+	}{
+		{
+			"State ID OK",
+			randCommit(StateID{12, []byte("12345678901234567890123456789012")}),
+			StateID{12, []byte("12345678901234567890123456789012")},
+			false,
+		},
+		{
+			"Short app hash",
+			randCommit(StateID{12, []byte("12345678901234567890")}),
+			StateID{12, []byte("12345678901234567890")},
+			false,
+		},
+		{
+			"Nil app hash",
+			randCommit(StateID{12, nil}),
+			StateID{12, []byte{}},
+			false,
+		},
+	}
+	// nolint:scopelint
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lb := LightBlock{
+				SignedHeader: &SignedHeader{Commit: tt.commit},
+			}
+			if got := lb.StateID(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LightBlock.StateID() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+func TestLightBlock_StateID_nocommit(t *testing.T) {
+	lb := LightBlock{}
+	assert.Panics(t, func() { lb.StateID() })
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
@@ -78,7 +79,7 @@ func newSyncer(
 		stateProvider: stateProvider,
 		conn:          conn,
 		connQuery:     connQuery,
-		snapshots:     newSnapshotPool(stateProvider),
+		snapshots:     newSnapshotPool(),
 		tempDir:       tempDir,
 		chunkFetchers: cfg.ChunkFetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
@@ -230,6 +231,10 @@ func (s *syncer) SyncAny(
 				s.logger.Info("Snapshot sender rejected", "peer", peer.ID())
 			}
 
+		case errors.Is(err, context.DeadlineExceeded):
+			s.logger.Info("Timed out validating snapshot, rejecting", "height", snapshot.Height, "err", err)
+			s.snapshots.Reject(snapshot)
+
 		default:
 			return sm.State{}, nil, fmt.Errorf("snapshot restoration failed: %w", err)
 		}
@@ -260,30 +265,51 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		s.mtx.Unlock()
 	}()
 
+	hctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	appHash, err := s.stateProvider.AppHash(hctx, snapshot.Height)
+	if err != nil {
+		s.logger.Info("failed to fetch and verify app hash", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
+	}
+	snapshot.trustedAppHash = appHash
+
 	// Offer snapshot to ABCI app.
-	err := s.offerSnapshot(snapshot)
+	err = s.offerSnapshot(snapshot)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
 
 	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context cancelled.
-	ctx, cancel := context.WithCancel(context.Background())
+	fetchCtx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	for i := int32(0); i < s.chunkFetchers; i++ {
-		go s.fetchChunks(ctx, snapshot, chunks)
+		go s.fetchChunks(fetchCtx, snapshot, chunks)
 	}
 
-	pctx, pcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pctx, pcancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer pcancel()
 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
 	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
-		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
+		s.logger.Info("failed to fetch and verify tendermint state", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
 	}
 	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
-		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
+		s.logger.Info("failed to fetch and verify commit", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
 	}
 
 	// Restore snapshot
@@ -484,12 +510,6 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
 		s.logger.Error("ABCI app reported unexpected last block height",
 			"expected", snapshot.Height, "actual", resp.LastBlockHeight)
-		return 0, errVerifyFailed
-	}
-	if snapshot.CoreChainLockedHeight != resp.LastCoreChainLockedHeight {
-		s.logger.Error("last core chain locked height verification failed",
-			"expected", fmt.Sprintf("%d", snapshot.CoreChainLockedHeight),
-			"actual", fmt.Sprintf("%d", resp.LastCoreChainLockedHeight))
 		return 0, errVerifyFailed
 	}
 

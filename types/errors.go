@@ -9,6 +9,8 @@ type (
 		Expected int64
 		Actual   int64
 	}
+
+	ErrInvalidVoteSignature error
 )
 
 func NewErrInvalidCommitHeight(expected, actual int64) ErrInvalidCommitHeight {

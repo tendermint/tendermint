@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -569,12 +570,13 @@ func TestTransportHandshake(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	time.Sleep(100 * time.Microsecond)
 	var (
 		peerPV       = ed25519.GenPrivKey()
 		peerNodeInfo = testNodeInfo(PubKeyToID(peerPV.PubKey()), defaultNodeName, nil)
+		wg           sync.WaitGroup
 	)
-
+	wg.Add(2)
 	go func() {
 		c, err := net.Dial(ln.Addr().Network(), ln.Addr().String())
 		if err != nil {
@@ -583,6 +585,7 @@ func TestTransportHandshake(t *testing.T) {
 		}
 
 		go func(c net.Conn) {
+			defer wg.Done()
 			_, err := protoio.NewDelimitedWriter(c).WriteMsg(peerNodeInfo.(DefaultNodeInfo).ToProto())
 			if err != nil {
 				t.Error(err)
@@ -593,6 +596,7 @@ func TestTransportHandshake(t *testing.T) {
 				// ni   DefaultNodeInfo
 				pbni tmp2p.DefaultNodeInfo
 			)
+			defer wg.Done()
 
 			protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
 			_, err := protoReader.ReadMsg(&pbni)
@@ -620,6 +624,8 @@ func TestTransportHandshake(t *testing.T) {
 	if have, want := ni, peerNodeInfo; !reflect.DeepEqual(have, want) {
 		t.Errorf("have %v, want %v", have, want)
 	}
+
+	wg.Wait() // ensure all goroutines are done
 }
 
 func TestTransportAddChannel(t *testing.T) {

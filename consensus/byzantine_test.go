@@ -37,13 +37,14 @@ import (
 func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const nValidators = 4
 	const byzantineNode = 0
-	const prevoteHeight = int64(2)
+
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	genDoc, privVals := randGenesisDoc(nValidators, false, 30, 1)
 	css := make([]*State, nValidators)
+	prevoteHeight := genDoc.InitialHeight + 1
 
 	for i := 0; i < nValidators; i++ {
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
@@ -61,7 +62,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
+		mtx := new(tmsync.RWMutex)
 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
@@ -324,7 +325,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	app := newCounter
-	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	css, cleanup := randConsensusNet(N, 1, "consensus_byzantine_test", newMockTickerFunc(false), app)
 	defer cleanup()
 
 	// give the byzantine validator a normal ticker

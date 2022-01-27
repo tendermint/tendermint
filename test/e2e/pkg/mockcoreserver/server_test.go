@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/privval"
@@ -24,6 +26,7 @@ func TestServer(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
+	time.Sleep(10 * time.Microsecond)
 	testCases := []struct {
 		url   string
 		e     string
@@ -133,6 +136,7 @@ func TestGetPubKey(t *testing.T) {
 	b, _ := hex.DecodeString(
 		"83349BA8363E5C03E9D6318B0491E38305CF59D9D57CEA2295A86ECFA696622571F266C28BACC78666E8B9B0FB2B3123",
 	)
+	require.NotNil(t, pubKey)
 	assert.True(t, pubKey.Equals(bls12381.PubKey(b)))
 	srv.Stop(ctx)
 }

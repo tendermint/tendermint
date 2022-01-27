@@ -162,7 +162,7 @@ func (state *pcState) handle(event Event) (Event, error) {
 			first, second = firstItem.block, secondItem.block
 			firstParts    = first.MakePartSet(types.BlockPartSizeBytes)
 			firstID       = types.BlockID{Hash: first.Hash(), PartSetHeader: firstParts.Header()}
-			firstStateID  = types.StateID{LastAppHash: first.Header.AppHash}
+			firstStateID  = types.StateID{Height: first.Height - 1, LastAppHash: first.AppHash}
 		)
 
 		// verify if +second+ last commit "confirms" +first+ block

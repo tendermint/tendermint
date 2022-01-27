@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Tests that block headers are identical across nodes where present.
@@ -27,7 +28,7 @@ func TestBlock_Header(t *testing.T) {
 		if node.RetainBlocks > 0 {
 			first++ // avoid race conditions with block pruning
 		}
-
+		var prevBlock *types.Block
 		for _, block := range blocks {
 			if block.Header.Height < first {
 				continue
@@ -43,6 +44,14 @@ func TestBlock_Header(t *testing.T) {
 
 			require.NoError(t, resp.Block.ValidateBasic(),
 				"block at height %d is invalid", block.Header.Height)
+
+			// validate StateID from last commit
+			if prevBlock != nil {
+				assert.EqualValues(t, block.Height-2, block.LastCommit.StateID.Height)
+				assert.EqualValues(t, prevBlock.Header.AppHash, block.LastCommit.StateID.LastAppHash)
+			}
+
+			prevBlock = resp.Block
 		}
 	})
 }
