@@ -20,7 +20,7 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 		mux.HandleFunc("/"+name, makeHTTPHandler(fn, logger))
 	}
 
-	// Endpoints for POST and websocket transport.
+	// Endpoints for POST.
 	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
 }
 
