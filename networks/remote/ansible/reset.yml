@@ -1,5 +1,4 @@
 ---
-
 - hosts: all
   user: root
   any_errors_fatal: true
@@ -10,5 +9,3 @@
     - stop
     - unsafe_reset
     - start
-
-

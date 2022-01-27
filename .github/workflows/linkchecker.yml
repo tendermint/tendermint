@@ -1,5 +1,5 @@
 name: Check Markdown links
-on: 
+on:
   schedule:
     - cron: '* */24 * * *'
 jobs:
