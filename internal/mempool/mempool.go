@@ -255,19 +255,12 @@ func (txmp *TxMempool) CheckTx(
 
 	txHash := tx.Key()
 
-	// We add the transaction to the mempool's cache and if the transaction already
-	// exists, i.e. false is returned, then we check if we've seen this transaction
-	// from the same sender and error if we have. Otherwise, we return nil.
+	// We add the transaction to the mempool's cache and if the
+	// transaction is already present in the cache, i.e. false is returned, then we
+	// check if we've seen this transaction and error if we have.
 	if !txmp.cache.Push(tx) {
-		wtx, ok := txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
-		if wtx != nil && ok {
-			// We already have the transaction stored and the we've already seen this
-			// transaction from txInfo.SenderID.
-			return types.ErrTxInCache
-		}
-
-		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
-		return nil
+		txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
+		return types.ErrTxInCache
 	}
 
 	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
