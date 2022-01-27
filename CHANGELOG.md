@@ -1,3 +1,16 @@
+## [0.7.0] - 2022-01-24
+
+### Miscellaneous Tasks
+
+- Create only 1 proof block by default
+- Release script and initial changelog (#250)
+- [**breaking**] Bump ABCI version and update release.sh to change TMVersionDefault automatically (#253)
+
+### Build
+
+- Bump github.com/prometheus/client_golang (#249)
+- Bump github.com/BurntSushi/toml from 0.4.1 to 1.0.0
+
 ## [0.7.0-dev.6] - 2022-01-07
 
 ### Bug Fixes
