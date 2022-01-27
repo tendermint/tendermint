@@ -32,7 +32,7 @@ type pbtsTestHarness struct {
 	pbtsTestConfiguration
 
 	// The timestamp of the first block produced by the network.
-	firstHeight time.Time
+	firstBlockTime time.Time
 
 	// The Tendermint consensus state machine being run during
 	// a run of the pbtsTestHarness.
@@ -175,27 +175,27 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(ctx context.Context, t
 func (p *pbtsTestHarness) height2(ctx context.Context, t *testing.T) heightResult {
 	signer := p.otherValidators[0].PrivValidator
 	return p.nextHeight(ctx, t, signer,
-		p.firstHeight.Add(p.height2ProposalTimeDeliveryOffset),
-		p.firstHeight.Add(p.height2ProposedBlockOffset),
-		p.firstHeight.Add(p.height2ProposedBlockOffset+10*blockTimeIota))
+		p.firstBlockTime.Add(p.height2ProposalTimeDeliveryOffset),
+		p.firstBlockTime.Add(p.height2ProposedBlockOffset),
+		p.firstBlockTime.Add(p.height2ProposedBlockOffset+10*blockTimeIota))
 }
 
 func (p *pbtsTestHarness) intermediateHeights(ctx context.Context, t *testing.T) {
 	signer := p.otherValidators[1].PrivValidator
 	p.nextHeight(ctx, t, signer,
-		p.firstHeight.Add(p.height2ProposedBlockOffset+10*blockTimeIota),
-		p.firstHeight.Add(p.height2ProposedBlockOffset+10*blockTimeIota),
-		p.firstHeight.Add(p.height4ProposedBlockOffset))
+		p.firstBlockTime.Add(p.height2ProposedBlockOffset+10*blockTimeIota),
+		p.firstBlockTime.Add(p.height2ProposedBlockOffset+10*blockTimeIota),
+		p.firstBlockTime.Add(p.height4ProposedBlockOffset))
 
 	signer = p.otherValidators[2].PrivValidator
 	p.nextHeight(ctx, t, signer,
-		p.firstHeight.Add(p.height4ProposedBlockOffset),
-		p.firstHeight.Add(p.height4ProposedBlockOffset),
+		p.firstBlockTime.Add(p.height4ProposedBlockOffset),
+		p.firstBlockTime.Add(p.height4ProposedBlockOffset),
 		time.Now())
 }
 
 func (p *pbtsTestHarness) height5(ctx context.Context, t *testing.T) (heightResult, time.Time) {
-	return p.observedValidatorProposerHeight(ctx, t, p.firstHeight.Add(p.height4ProposedBlockOffset))
+	return p.observedValidatorProposerHeight(ctx, t, p.firstBlockTime.Add(p.height4ProposedBlockOffset))
 }
 
 func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
@@ -306,7 +306,7 @@ func (p *pbtsTestHarness) run(ctx context.Context, t *testing.T) resultSet {
 	startTestRound(ctx, p.observedState, p.currentHeight, p.currentRound)
 
 	r1, proposalBlockTime := p.observedValidatorProposerHeight(ctx, t, p.genesisTime)
-	p.firstHeight = proposalBlockTime
+	p.firstBlockTime = proposalBlockTime
 	r2 := p.height2(ctx, t)
 	p.intermediateHeights(ctx, t)
 	r5, _ := p.height5(ctx, t)
@@ -389,7 +389,7 @@ func TestProposerWaitsForPreviousBlock(t *testing.T) {
 	// the observed validator is the proposer at height 5.
 	// ensure that the observed validator did not propose a block until after
 	// the time configured for height 4.
-	assert.True(t, results.height5.proposalIssuedAt.After(pbtsTest.firstHeight.Add(cfg.height4ProposedBlockOffset)))
+	assert.True(t, results.height5.proposalIssuedAt.After(pbtsTest.firstBlockTime.Add(cfg.height4ProposedBlockOffset)))
 
 	// Ensure that the validator issued a prevote for a non-nil block.
 	assert.NotNil(t, results.height5.prevote.BlockID.Hash)
