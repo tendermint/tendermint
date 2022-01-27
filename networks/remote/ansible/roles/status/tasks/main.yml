@@ -1,5 +1,4 @@
 ---
-
 - name: application service status
   command: "service {{service}} status"
   changed_when: false
@@ -7,4 +6,3 @@
 
 - name: Result
   debug: var=status.stdout_lines
-
