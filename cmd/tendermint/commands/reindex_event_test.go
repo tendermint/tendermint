@@ -10,9 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/mocks"
+	"github.com/tendermint/tendermint/libs/log"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
@@ -25,9 +27,11 @@ const (
 	base   int64 = 2
 )
 
-func setupReIndexEventCmd(ctx context.Context) *cobra.Command {
+func setupReIndexEventCmd(ctx context.Context, conf *tmcfg.Config, logger log.Logger) *cobra.Command {
+	cmd := MakeReindexEventCommand(conf, logger)
+
 	reIndexEventCmd := &cobra.Command{
-		Use: ReIndexEventCmd.Use,
+		Use: cmd.Use,
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
 
@@ -68,10 +72,7 @@ func TestReIndexEventCheckHeight(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		startHeight = tc.startHeight
-		endHeight = tc.endHeight
-
-		err := checkValidHeight(mockBlockStore)
+		err := checkValidHeight(mockBlockStore, checkValidHeightArgs{startHeight: tc.startHeight, endHeight: tc.endHeight})
 		if tc.validHeight {
 			require.NoError(t, err)
 		} else {
@@ -179,12 +180,20 @@ func TestReIndexEvent(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logger := log.NewNopLogger()
+	conf := config.DefaultConfig()
 
 	for _, tc := range testCases {
-		startHeight = tc.startHeight
-		endHeight = tc.endHeight
+		err := eventReIndex(
+			setupReIndexEventCmd(ctx, conf, logger),
+			eventReIndexArgs{
+				sinks:       []indexer.EventSink{mockEventSink},
+				blockStore:  mockBlockStore,
+				stateStore:  mockStateStore,
+				startHeight: tc.startHeight,
+				endHeight:   tc.endHeight,
+			})
 
-		err := eventReIndex(setupReIndexEventCmd(ctx), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
 		if tc.reIndexErr {
 			require.Error(t, err)
 		} else {

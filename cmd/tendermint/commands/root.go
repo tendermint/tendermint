@@ -11,19 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-var (
-	config     = cfg.DefaultConfig()
-	logger     = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-	ctxTimeout = 4 * time.Second
-)
-
-func init() {
-	registerFlagsRootCmd(RootCmd)
-}
-
-func registerFlagsRootCmd(cmd *cobra.Command) {
-	cmd.PersistentFlags().String("log-level", config.LogLevel, "log level")
-}
+const ctxTimeout = 4 * time.Second
 
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
@@ -41,26 +29,18 @@ func ParseConfig() (*cfg.Config, error) {
 	return conf, nil
 }
 
-// RootCmd is the root command for Tendermint core.
-var RootCmd = &cobra.Command{
-	Use:   "tendermint",
-	Short: "BFT state machine replication for applications in any programming languages",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
-		if cmd.Name() == VersionCmd.Name() {
+func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "tendermint",
+		Short: "BFT state machine replication for applications in any programming languages",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+			if cmd.Name() == VersionCmd.Name() {
+				return nil
+			}
+
 			return nil
-		}
-
-		config, err = ParseConfig()
-		if err != nil {
-			return err
-		}
-
-		logger, err = log.NewDefaultLogger(config.LogFormat, config.LogLevel)
-		if err != nil {
-			return err
-		}
-
-		logger = logger.With("module", "main")
-		return nil
-	},
+		},
+	}
+	cmd.PersistentFlags().String("log-level", conf.LogLevel, "log level")
+	return cmd
 }

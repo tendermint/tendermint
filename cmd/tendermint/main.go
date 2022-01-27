@@ -6,32 +6,43 @@ import (
 
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
-	"github.com/tendermint/tendermint/config"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 )
 
 func main() {
-	rootCmd := cmd.RootCmd
-	rootCmd.AddCommand(
-		cmd.GenValidatorCmd,
-		cmd.ReIndexEventCmd,
-		cmd.InitFilesCmd,
-		cmd.LightCmd,
-		cmd.ReplayCmd,
-		cmd.ReplayConsoleCmd,
-		cmd.ResetAllCmd,
-		cmd.ResetPrivValidatorCmd,
-		cmd.ShowValidatorCmd,
-		cmd.TestnetFilesCmd,
-		cmd.ShowNodeIDCmd,
+	conf, err := cmd.ParseConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	logger, err := log.NewDefaultLogger(conf.LogFormat, conf.LogLevel)
+	if err != nil {
+		panic(err)
+	}
+
+	rcmd := cmd.RootCommand(conf, logger)
+	rcmd.AddCommand(
+		cmd.MakeGenValidatorCommand(),
+		cmd.MakeReindexEventCommand(conf, logger),
+		cmd.MakeInitFilesCommand(conf, logger),
+		cmd.MakeLightCommand(conf, logger),
+		cmd.MakeReplayCommand(conf, logger),
+		cmd.MakeReplayConsoleCommand(conf, logger),
+		cmd.MakeResetAllCommand(conf, logger),
+		cmd.MakeResetPrivateValidatorCommand(conf, logger),
+		cmd.MakeShowValidatorCommand(conf, logger),
+		cmd.MakeTestnetFilesCommand(conf, logger),
+		cmd.MakeShowNodeIDCommand(conf),
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
-		cmd.InspectCmd,
-		cmd.RollbackStateCmd,
-		cmd.MakeKeyMigrateCommand(),
+		cmd.MakeInspectCommand(conf, logger),
+		cmd.MakeRollbackStateCommand(conf),
+		cmd.MakeKeyMigrateCommand(conf, logger),
 		debug.DebugCmd,
-		cli.NewCompletionCmd(rootCmd, true),
+		cli.NewCompletionCmd(rcmd, true),
 	)
 
 	// NOTE:
@@ -45,10 +56,10 @@ func main() {
 	nodeFunc := node.NewDefault
 
 	// Create & start node
-	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))
+	rcmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc, conf, logger))
 
-	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", config.DefaultTendermintDir)))
-	if err := cmd.Execute(); err != nil {
+	bcmd := cli.PrepareBaseCmd(rcmd, "TM", os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)))
+	if err := bcmd.Execute(); err != nil {
 		panic(err)
 	}
 }
