@@ -70,3 +70,5 @@ Special thanks to external contributors on this release:
 ### BUG FIXES
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
+- [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
+- [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
