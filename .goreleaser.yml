@@ -29,8 +29,8 @@ release:
 
 archives:
   - files:
-    - LICENSE
-    - README.md
-    - UPGRADING.md
-    - SECURITY.md
-    - CHANGELOG.md
+      - LICENSE
+      - README.md
+      - UPGRADING.md
+      - SECURITY.md
+      - CHANGELOG.md

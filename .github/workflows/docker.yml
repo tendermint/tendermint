@@ -2,12 +2,10 @@ name: Docker
 # Build & Push rebuilds the Tenderdash docker image every time a release is published
 # and pushes the image to https://hub.docker.com/r/dashpay/tenderdash/tags
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # Push events to matching v*, i.e. v1.0, v20.15.10
-      - "v[0-9]+.[0-9]+.[0-9]+-rc*" # Push events to matching v*, i.e. v1.0-rc1, v20.15.10-rc5
+  workflow_dispatch:
+  release:
+    types:
+    - published
 
 jobs:
   build:
