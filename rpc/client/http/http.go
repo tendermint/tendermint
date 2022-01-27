@@ -512,7 +512,7 @@ func (c *baseRPCClient) BroadcastEvidence(
 ) (*coretypes.ResultBroadcastEvidence, error) {
 	result := new(coretypes.ResultBroadcastEvidence)
 	if err := c.caller.Call(ctx, "broadcast_evidence", evidenceArgs{
-		Evidence: ev,
+		Evidence: coretypes.Evidence{Value: ev},
 	}, result); err != nil {
 		return nil, err
 	}

@@ -114,18 +114,11 @@ func validateBlock(state State, block *types.Block) error {
 				state.LastBlockTime,
 			)
 		}
-		medianTime := MedianTime(block.LastCommit, state.LastValidators)
-		if !block.Time.Equal(medianTime) {
-			return fmt.Errorf("invalid block time. Expected %v, got %v",
-				medianTime,
-				block.Time,
-			)
-		}
 
 	case block.Height == state.InitialHeight:
 		genesisTime := state.LastBlockTime
-		if !block.Time.Equal(genesisTime) {
-			return fmt.Errorf("block time %v is not equal to genesis time %v",
+		if block.Time.Before(genesisTime) {
+			return fmt.Errorf("block time %v is before genesis time %v",
 				block.Time,
 				genesisTime,
 			)

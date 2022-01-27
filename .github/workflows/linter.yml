@@ -23,10 +23,10 @@ jobs:
       - name: Lint Code Base
         uses: docker://github/super-linter:v4
         env:
-          LINTER_RULES_PATH: .
           VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
           VALIDATE_OPENAPI: true
           VALIDATE_YAML: true
+          YAML_CONFIG_FILE: yaml-lint.yml

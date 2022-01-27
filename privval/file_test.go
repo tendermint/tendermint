@@ -14,7 +14,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -143,7 +142,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 }`, addr, pubB64, privB64)
 
 	val := FilePVKey{}
-	err := tmjson.Unmarshal([]byte(serialized), &val)
+	err := json.Unmarshal([]byte(serialized), &val)
 	require.NoError(t, err)
 
 	// make sure the values match
@@ -152,7 +151,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	assert.EqualValues(t, privKey, val.PrivKey)
 
 	// export it and make sure it is the same
-	out, err := tmjson.Marshal(val)
+	out, err := json.Marshal(val)
 	require.NoError(t, err)
 	assert.JSONEq(t, serialized, string(out))
 }

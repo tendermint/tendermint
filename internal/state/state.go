@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -263,18 +264,10 @@ func (state State) MakeBlock(
 	// Build base block with block data.
 	block := types.MakeBlock(height, txs, commit, evidence)
 
-	// Set time.
-	var timestamp time.Time
-	if height == state.InitialHeight {
-		timestamp = state.LastBlockTime // genesis time
-	} else {
-		timestamp = MedianTime(commit, state.LastValidators)
-	}
-
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
-		timestamp, state.LastBlockID,
+		tmtime.Now(), state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		state.ConsensusParams.HashConsensusParams(), state.AppHash, state.LastResultsHash,
 		proposerAddress,
@@ -286,29 +279,6 @@ func (state State) MakeBlock(
 	}
 
 	return block, bps, nil
-}
-
-// MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
-// corresponding validator set. The computed time is always between timestamps of
-// the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
-// computed value.
-func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-	weightedTimes := make([]*weightedTime, len(commit.Signatures))
-	totalVotingPower := int64(0)
-
-	for i, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue
-		}
-		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
-		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
-		if validator != nil {
-			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = newWeightedTime(commitSig.Timestamp, validator.VotingPower)
-		}
-	}
-
-	return weightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------

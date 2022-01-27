@@ -7,14 +7,14 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
-	"github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 func init() {
-	json.RegisterType((*cryptoproto.PublicKey)(nil), "tendermint.crypto.PublicKey")
-	json.RegisterType((*cryptoproto.PublicKey_Ed25519)(nil), "tendermint.crypto.PublicKey_Ed25519")
-	json.RegisterType((*cryptoproto.PublicKey_Secp256K1)(nil), "tendermint.crypto.PublicKey_Secp256K1")
+	jsontypes.MustRegister((*cryptoproto.PublicKey)(nil))
+	jsontypes.MustRegister((*cryptoproto.PublicKey_Ed25519)(nil))
+	jsontypes.MustRegister((*cryptoproto.PublicKey_Secp256K1)(nil))
 }
 
 // PubKeyToProto takes crypto.PubKey and transforms it to a protobuf Pubkey

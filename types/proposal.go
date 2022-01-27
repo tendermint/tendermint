@@ -24,7 +24,7 @@ var (
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
 	Type      tmproto.SignedMsgType
-	Height    int64     `json:"height"`
+	Height    int64     `json:"height,string"`
 	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
 	POLRound  int32     `json:"pol_round"` // -1 if null.
 	BlockID   BlockID   `json:"block_id"`
@@ -34,14 +34,14 @@ type Proposal struct {
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int32, polRound int32, blockID BlockID) *Proposal {
+func NewProposal(height int64, round int32, polRound int32, blockID BlockID, ts time.Time) *Proposal {
 	return &Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    height,
 		Round:     round,
 		BlockID:   blockID,
 		POLRound:  polRound,
-		Timestamp: tmtime.Now(),
+		Timestamp: tmtime.Canonical(ts),
 	}
 }
 
@@ -77,6 +77,28 @@ func (p *Proposal) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 	return nil
+}
+
+// IsTimely validates that the block timestamp is 'timely' according to the proposer-based timestamp algorithm.
+// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the
+// configured Precision and MsgDelay parameters.
+// Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
+//
+// localtime >= proposedBlockTime - Precision
+// localtime <= proposedBlockTime + MsgDelay + Precision
+//
+// For more information on the meaning of 'timely', see the proposer-based timestamp specification:
+// https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
+func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams) bool {
+	// lhs is `proposedBlockTime - Precision` in the first inequality
+	lhs := p.Timestamp.Add(-sp.Precision)
+	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
+	rhs := p.Timestamp.Add(sp.MessageDelay).Add(sp.Precision)
+
+	if recvTime.Before(lhs) || recvTime.After(rhs) {
+		return false
+	}
+	return true
 }
 
 // String returns a string representation of the Proposal.

@@ -1,5 +1,4 @@
 ---
-
 - name: Copy journalbeat binary
   copy: src="{{JOURNALBEAT_BINARY}}" dest=/usr/bin/journalbeat mode=0755
   notify: restart journalbeat
@@ -24,4 +23,3 @@
   notify:
   - reload daemon
   - restart journalbeat
-  
