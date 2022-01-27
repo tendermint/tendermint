@@ -116,6 +116,10 @@ type SyncInfo struct {
 	BackFillBlocksTotal int64         `json:"backfill_blocks_total,string"`
 }
 
+type ApplicationInfo struct {
+	Version string `json:"version"`
+}
+
 // Info about the node's validator
 type ValidatorInfo struct {
 	Address     bytes.HexBytes
@@ -155,6 +159,7 @@ func (v *ValidatorInfo) UnmarshalJSON(data []byte) error {
 // Node Status
 type ResultStatus struct {
 	NodeInfo        types.NodeInfo        `json:"node_info"`
+	ApplicationInfo ApplicationInfo       `json:"application_info,omitempty"`
 	SyncInfo        SyncInfo              `json:"sync_info"`
 	ValidatorInfo   ValidatorInfo         `json:"validator_info"`
 	LightClientInfo types.LightClientInfo `json:"light_client_info,omitempty"`

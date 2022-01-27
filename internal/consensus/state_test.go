@@ -343,9 +343,7 @@ func TestStateFullRound1(t *testing.T) {
 	cs, vss := makeState(ctx, t, config, logger, 1)
 	height, round := cs.Height, cs.Round
 
-	pv, err := cs.privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
-	voteCh := subscribeToVoter(ctx, t, cs, pv.Address())
+	voteCh := subscribe(ctx, t, cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound)
 
@@ -354,17 +352,16 @@ func TestStateFullRound1(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	ensureNewProposal(t, propCh, height, round)
-	propBlockHash := cs.GetRoundState().ProposalBlock.Hash()
+	propBlock := ensureNewProposal(t, propCh, height, round)
 
-	ensurePrevoteMatch(t, voteCh, height, round, propBlockHash) // wait for prevote
+	ensurePrevoteMatch(t, voteCh, height, round, propBlock.Hash) // wait for prevote
 
 	ensurePrecommit(t, voteCh, height, round) // wait for precommit
 
 	// we're going to roll right into new height
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
-	validateLastPrecommit(ctx, t, cs, vss[0], propBlockHash)
+	validateLastPrecommit(ctx, t, cs, vss[0], propBlock.Hash)
 }
 
 // nil is proposed, so prevote and precommit nil
