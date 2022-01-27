@@ -11,7 +11,6 @@ import (
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/libs/log"
@@ -27,7 +26,7 @@ const (
 	base   int64 = 2
 )
 
-func setupReIndexEventCmd(ctx context.Context, conf *tmcfg.Config, logger log.Logger) *cobra.Command {
+func setupReIndexEventCmd(ctx context.Context, conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := MakeReindexEventCommand(conf, logger)
 
 	reIndexEventCmd := &cobra.Command{
@@ -98,7 +97,7 @@ func TestLoadEventSink(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		cfg := tmcfg.TestConfig()
+		cfg := config.TestConfig()
 		cfg.TxIndex.Indexer = tc.sinks
 		cfg.TxIndex.PsqlConn = tc.connURL
 		_, err := loadEventSinks(cfg)
@@ -111,7 +110,7 @@ func TestLoadEventSink(t *testing.T) {
 }
 
 func TestLoadBlockStore(t *testing.T) {
-	testCfg, err := tmcfg.ResetTestRoot(t.Name())
+	testCfg, err := config.ResetTestRoot(t.Name())
 	require.NoError(t, err)
 	testCfg.DBBackend = "goleveldb"
 	_, _, err = loadStateAndBlockStore(testCfg)

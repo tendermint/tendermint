@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/config"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -41,17 +40,17 @@ func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command
 	return cmd
 }
 
-func initFilesWithConfig(ctx context.Context, config *cfg.Config, logger log.Logger) error {
+func initFilesWithConfig(ctx context.Context, conf *config.Config, logger log.Logger) error {
 	var (
 		pv      *privval.FilePV
 		err     error
 		keyType string
 	)
 
-	if config.Mode == cfg.ModeValidator {
+	if conf.Mode == config.ModeValidator {
 		// private validator
-		privValKeyFile := config.PrivValidator.KeyFile()
-		privValStateFile := config.PrivValidator.StateFile()
+		privValKeyFile := conf.PrivValidator.KeyFile()
+		privValStateFile := conf.PrivValidator.StateFile()
 		if tmos.FileExists(privValKeyFile) {
 			pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
 			if err != nil {
@@ -73,7 +72,7 @@ func initFilesWithConfig(ctx context.Context, config *cfg.Config, logger log.Log
 		}
 	}
 
-	nodeKeyFile := config.NodeKeyFile()
+	nodeKeyFile := conf.NodeKeyFile()
 	if tmos.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
@@ -84,7 +83,7 @@ func initFilesWithConfig(ctx context.Context, config *cfg.Config, logger log.Log
 	}
 
 	// genesis file
-	genFile := config.GenesisFile()
+	genFile := conf.GenesisFile()
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
@@ -123,10 +122,10 @@ func initFilesWithConfig(ctx context.Context, config *cfg.Config, logger log.Log
 	}
 
 	// write config file
-	if err := cfg.WriteConfigFile(config.RootDir, config); err != nil {
+	if err := config.WriteConfigFile(conf.RootDir, conf); err != nil {
 		return err
 	}
-	logger.Info("Generated config", "mode", config.Mode)
+	logger.Info("Generated config", "mode", conf.Mode)
 
 	return nil
 }

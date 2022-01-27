@@ -287,7 +287,7 @@ func (args *testnetPeerArgs) hostnameOrIP(i int) (string, error) {
 	ip := net.ParseIP(args.startingIPAddr)
 	ip = ip.To4()
 	if ip == nil {
-		return "", fmt.Errorf("%v: non ipv4 address\n", args.startingIPAddr)
+		return "", fmt.Errorf("%v is non-ipv4 address", args.startingIPAddr)
 	}
 
 	for j := 0; j < i; j++ {
