@@ -1319,7 +1319,7 @@ func (cs *State) proposalIsTimely() bool {
 		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 	}
 
-	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.state.InitialHeight)
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp)
 }
 
 func (cs *State) defaultDoPrevote(height int64, round int32) {
@@ -1425,7 +1425,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		}
 	}
 
-	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or" +
+	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or " +
 		"did not receive a more recent majority; prevoting nil")
 	cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 }

@@ -87,20 +87,17 @@ func (p *Proposal) ValidateBasic() error {
 // localtime >= proposedBlockTime - Precision
 // localtime <= proposedBlockTime + MsgDelay + Precision
 //
-// Note: If the proposal is for the `initialHeight` the second inequality is not checked. This is because
-// the timestamp in this case is set to the preconfigured genesis time.
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, initialHeight int64) bool {
+func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams) bool {
 	// lhs is `proposedBlockTime - Precision` in the first inequality
 	lhs := p.Timestamp.Add(-sp.Precision)
 	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
 	rhs := p.Timestamp.Add(sp.MessageDelay).Add(sp.Precision)
 
-	if recvTime.Before(lhs) || (p.Height != initialHeight && recvTime.After(rhs)) {
+	if recvTime.Before(lhs) || recvTime.After(rhs) {
 		return false
 	}
-
 	return true
 }
 
