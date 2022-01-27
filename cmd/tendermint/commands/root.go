@@ -33,10 +33,17 @@ func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tendermint",
 		Short: "BFT state machine replication for applications in any programming languages",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() == VersionCmd.Name() {
 				return nil
 			}
+			var err error
+
+			pconf, err := ParseConfig()
+			if err != nil {
+				return err
+			}
+			*conf = *pconf
 
 			return nil
 		},

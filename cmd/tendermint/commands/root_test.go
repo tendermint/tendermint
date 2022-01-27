@@ -19,35 +19,30 @@ import (
 )
 
 // clearConfig clears env vars, the given root dir, and resets viper.
-func clearConfig(t *testing.T, dir string) {
+func clearConfig(t *testing.T, dir string) *cfg.Config {
 	t.Helper()
 	require.NoError(t, os.Unsetenv("TMHOME"))
 	require.NoError(t, os.Unsetenv("TM_HOME"))
 	require.NoError(t, os.RemoveAll(dir))
 
 	viper.Reset()
+	return cfg.DefaultConfig()
 }
 
 // prepare new rootCmd
 func testRootCmd(conf *cfg.Config) *cobra.Command {
 	logger := log.NewNopLogger()
-	RootCmd := RootCommand(conf, logger)
-
-	rootCmd := &cobra.Command{
-		Use:               RootCmd.Use,
-		PersistentPreRunE: RootCmd.PersistentPreRunE,
-		Run:               func(cmd *cobra.Command, args []string) {},
-	}
+	cmd := RootCommand(conf, logger)
+	cmd.Run = func(cmd *cobra.Command, args []string) {}
 
 	var l string
-	rootCmd.PersistentFlags().String("log", l, "Log")
-	return rootCmd
+	cmd.PersistentFlags().String("log", l, "Log")
+	return cmd
 }
 
 func testSetup(t *testing.T, conf *cfg.Config, rootDir string, args []string, env map[string]string) error {
 	t.Helper()
-	clearConfig(t, rootDir)
-
+	*conf = *clearConfig(t, rootDir)
 	rootCmd := testRootCmd(conf)
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", rootDir)
 
