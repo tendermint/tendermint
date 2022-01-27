@@ -2570,7 +2570,7 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 			MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 		}
 
-		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.state.InitialHeight)
+		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp)
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}
