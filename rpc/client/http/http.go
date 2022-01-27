@@ -122,9 +122,8 @@ func NewWithTimeout(remote string, t time.Duration) (*HTTP, error) {
 	return NewWithClient(remote, c)
 }
 
-// NewWithClient allows you to set a custom http client. An error is returned
-// on invalid remote. The function returns an error when client is nil or an
-// invalid remote.
+// NewWithClient constructs an RPC client using a custom HTTP client.
+// An error is reported if c == nil or remote is an invalid address.
 func NewWithClient(remote string, c *http.Client) (*HTTP, error) {
 	if c == nil {
 		return nil, errors.New("nil client")
