@@ -21,11 +21,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2.4.0
       - name: Lint Code Base
-<<<<<<< HEAD
-        uses: docker://github/super-linter:v3
-=======
         uses: docker://github/super-linter:v4
->>>>>>> 5eb50a43b (ci: fix super-linter configuration settings (#7708))
         env:
           VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: master

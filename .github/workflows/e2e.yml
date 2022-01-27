@@ -35,11 +35,8 @@ jobs:
         working-directory: test/e2e
         run: ./build/runner -f networks/ci.toml
         if: "env.GIT_DIFF != ''"
-<<<<<<< HEAD
 
       - name: Emit logs on failure
         if: ${{ failure() }}
         working-directory: test/e2e
         run: ./build/runner -f networks/ci.toml logs
-=======
->>>>>>> 5eb50a43b (ci: fix super-linter configuration settings (#7708))
