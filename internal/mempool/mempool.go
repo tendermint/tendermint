@@ -114,11 +114,154 @@ func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		txSize := types.ComputeProtoSizeForTxs([]types.Tx{tx})
 
+<<<<<<< HEAD
 		if txSize > maxBytes {
 			return fmt.Errorf("tx size is too big: %d, max: %d", txSize, maxBytes)
 		}
 
 		return nil
+=======
+	proxyAppConn.SetResponseCallback(txmp.defaultTxCallback)
+
+	for _, opt := range options {
+		opt(txmp)
+	}
+
+	return txmp
+}
+
+// WithPreCheck sets a filter for the mempool to reject a transaction if f(tx)
+// returns an error. This is executed before CheckTx. It only applies to the
+// first created block. After that, Update() overwrites the existing value.
+func WithPreCheck(f PreCheckFunc) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.preCheck = f }
+}
+
+// WithPostCheck sets a filter for the mempool to reject a transaction if
+// f(tx, resp) returns an error. This is executed after CheckTx. It only applies
+// to the first created block. After that, Update overwrites the existing value.
+func WithPostCheck(f PostCheckFunc) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.postCheck = f }
+}
+
+// WithMetrics sets the mempool's metrics collector.
+func WithMetrics(metrics *Metrics) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.metrics = metrics }
+}
+
+// Lock obtains a write-lock on the mempool. A caller must be sure to explicitly
+// release the lock when finished.
+func (txmp *TxMempool) Lock() {
+	txmp.mtx.Lock()
+}
+
+// Unlock releases a write-lock on the mempool.
+func (txmp *TxMempool) Unlock() {
+	txmp.mtx.Unlock()
+}
+
+// Size returns the number of valid transactions in the mempool. It is
+// thread-safe.
+func (txmp *TxMempool) Size() int {
+	return txmp.txStore.Size()
+}
+
+// SizeBytes return the total sum in bytes of all the valid transactions in the
+// mempool. It is thread-safe.
+func (txmp *TxMempool) SizeBytes() int64 {
+	return atomic.LoadInt64(&txmp.sizeBytes)
+}
+
+// FlushAppConn executes FlushSync on the mempool's proxyAppConn.
+//
+// NOTE: The caller must obtain a write-lock prior to execution.
+func (txmp *TxMempool) FlushAppConn(ctx context.Context) error {
+	return txmp.proxyAppConn.Flush(ctx)
+}
+
+// WaitForNextTx returns a blocking channel that will be closed when the next
+// valid transaction is available to gossip. It is thread-safe.
+func (txmp *TxMempool) WaitForNextTx() <-chan struct{} {
+	return txmp.gossipIndex.WaitChan()
+}
+
+// NextGossipTx returns the next valid transaction to gossip. A caller must wait
+// for WaitForNextTx to signal a transaction is available to gossip first. It is
+// thread-safe.
+func (txmp *TxMempool) NextGossipTx() *clist.CElement {
+	return txmp.gossipIndex.Front()
+}
+
+// EnableTxsAvailable enables the mempool to trigger events when transactions
+// are available on a block by block basis.
+func (txmp *TxMempool) EnableTxsAvailable() {
+	txmp.mtx.Lock()
+	defer txmp.mtx.Unlock()
+
+	txmp.txsAvailable = make(chan struct{}, 1)
+}
+
+// TxsAvailable returns a channel which fires once for every height, and only
+// when transactions are available in the mempool. It is thread-safe.
+func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
+	return txmp.txsAvailable
+}
+
+// CheckTx executes the ABCI CheckTx method for a given transaction. It acquires
+// a read-lock attempts to execute the application's CheckTx ABCI method via
+// CheckTxAsync. We return an error if any of the following happen:
+//
+// - The CheckTxAsync execution fails.
+// - The transaction already exists in the cache and we've already received the
+//   transaction from the peer. Otherwise, if it solely exists in the cache, we
+//   return nil.
+// - The transaction size exceeds the maximum transaction size as defined by the
+//   configuration provided to the mempool.
+// - The transaction fails Pre-Check (if it is defined).
+// - The proxyAppConn fails, e.g. the buffer is full.
+//
+// If the mempool is full, we still execute CheckTx and attempt to find a lower
+// priority transaction to evict. If such a transaction exists, we remove the
+// lower priority transaction and add the new one with higher priority.
+//
+// NOTE:
+// - The applications' CheckTx implementation may panic.
+// - The caller is not to explicitly require any locks for executing CheckTx.
+func (txmp *TxMempool) CheckTx(
+	ctx context.Context,
+	tx types.Tx,
+	cb func(*abci.Response),
+	txInfo TxInfo,
+) error {
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	if txSize := len(tx); txSize > txmp.config.MaxTxBytes {
+		return types.ErrTxTooLarge{
+			Max:    txmp.config.MaxTxBytes,
+			Actual: txSize,
+		}
+	}
+
+	if txmp.preCheck != nil {
+		if err := txmp.preCheck(tx); err != nil {
+			return types.ErrPreCheck{Reason: err}
+		}
+	}
+
+	if err := txmp.proxyAppConn.Error(); err != nil {
+		return err
+	}
+
+	txHash := tx.Key()
+
+	// We add the transaction to the mempool's cache and if the
+	// transaction is already present in the cache, i.e. false is returned, then we
+	// check if we've seen this transaction and error if we have.
+	if !txmp.cache.Push(tx) {
+		txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
+		return types.ErrTxInCache
+>>>>>>> 682237833 (mempool: return duplicate tx errors more consistently (#7714))
 	}
 }
 
