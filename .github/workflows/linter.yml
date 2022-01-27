@@ -21,12 +21,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2.4.0
       - name: Lint Code Base
+<<<<<<< HEAD
         uses: docker://github/super-linter:v3
+=======
+        uses: docker://github/super-linter:v4
+>>>>>>> 5eb50a43b (ci: fix super-linter configuration settings (#7708))
         env:
-          LINTER_RULES_PATH: .
           VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
           VALIDATE_OPENAPI: true
           VALIDATE_YAML: true
+          YAML_CONFIG_FILE: yaml-lint.yml

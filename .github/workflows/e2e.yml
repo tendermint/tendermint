@@ -2,7 +2,7 @@ name: e2e
 # Runs the CI end-to-end test network on all pushes to master or release branches
 # and every pull request, but only if any Go files have been changed.
 on:
-  workflow_dispatch: # allow running workflow manually
+  workflow_dispatch:  # allow running workflow manually
   pull_request:
   push:
     branches:
@@ -35,8 +35,11 @@ jobs:
         working-directory: test/e2e
         run: ./build/runner -f networks/ci.toml
         if: "env.GIT_DIFF != ''"
+<<<<<<< HEAD
 
       - name: Emit logs on failure
         if: ${{ failure() }}
         working-directory: test/e2e
         run: ./build/runner -f networks/ci.toml logs
+=======
+>>>>>>> 5eb50a43b (ci: fix super-linter configuration settings (#7708))
