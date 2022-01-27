@@ -32,19 +32,13 @@ type wsSubscription struct {
 var _ rpcclient.EventsClient = (*wsEvents)(nil)
 
 func newWsEvents(remote string) (*wsEvents, error) {
-	// remove the trailing / from the remote else the websocket endpoint
-	// won't parse correctly
-	if remote[len(remote)-1] == '/' {
-		remote = remote[:len(remote)-1]
-	}
-
 	w := &wsEvents{
+		RunState:      rpcclient.NewRunState("wsEvents", nil),
 		subscriptions: make(map[string]*wsSubscription),
 	}
-	w.RunState = rpcclient.NewRunState("wsEvents", nil)
 
 	var err error
-	w.ws, err = jsonrpcclient.NewWS(remote, "/websocket")
+	w.ws, err = jsonrpcclient.NewWS(strings.TrimSuffix(remote, "/"), "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("can't create WS client: %w", err)
 	}
