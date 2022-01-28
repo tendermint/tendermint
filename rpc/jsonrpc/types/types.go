@@ -43,6 +43,15 @@ func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 	}
 }
 
+// Constants defining the standard JSON-RPC error codes.
+const (
+	CodeParseError     = -32700 // Invalid JSON received by the server
+	CodeInvalidRequest = -32600 // The JSON sent is not a valid request object
+	CodeMethodNotFound = -32601 // The method does not exist or is unavailable
+	CodeInvalidParams  = -32602 // Invalid method parameters
+	CodeInternalError  = -32603 // Internal JSON-RPC error
+)
+
 //----------------------------------------
 // REQUEST
 
@@ -92,6 +101,29 @@ func (req RPCRequest) MarshalJSON() ([]byte, error) {
 
 func (req RPCRequest) String() string {
 	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
+}
+
+// MakeResponse constructs a success response to req with the given result.  If
+// there is an error marshaling result to JSON, it returns an error response.
+func (req RPCRequest) MakeResponse(result interface{}) RPCResponse {
+	data, err := json.Marshal(result)
+	if err != nil {
+		return req.MakeErrorf(CodeInternalError, "marshaling result: %v", err)
+	}
+	return RPCResponse{JSONRPC: "2.0", ID: req.ID, Result: data}
+}
+
+// MakeError constructs an error response to req with the given code and a
+// message constructed by formatting msg with args.
+func (req RPCRequest) MakeErrorf(code int, msg string, args ...interface{}) RPCResponse {
+	return RPCResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Error: &RPCError{
+			Code:    code,
+			Message: fmt.Sprintf(msg, args...),
+		},
+	}
 }
 
 // ParamsToRequest constructs a new RPCRequest with the given ID, method, and parameters.
