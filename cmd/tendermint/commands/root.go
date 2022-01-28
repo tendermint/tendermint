@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/tendermint/tendermint/config"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -19,8 +18,8 @@ const ctxTimeout = 4 * time.Second
 
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
-func ParseConfig() (*cfg.Config, error) {
-	conf := cfg.DefaultConfig()
+func ParseConfig() (*config.Config, error) {
+	conf := config.DefaultConfig()
 	err := viper.Unmarshal(conf)
 	if err != nil {
 		return nil, err
@@ -32,7 +31,7 @@ func ParseConfig() (*cfg.Config, error) {
 	return conf, nil
 }
 
-func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
+func RootCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tendermint",
 		Short: "BFT state machine replication for applications in any programming languages",
@@ -51,7 +50,7 @@ func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 				return err
 			}
 			*conf = *pconf
-			cfg.EnsureRoot(conf.RootDir)
+			config.EnsureRoot(conf.RootDir)
 
 			return nil
 		},
