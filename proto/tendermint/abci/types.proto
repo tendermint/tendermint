@@ -36,9 +36,10 @@ message Request {
     RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
     RequestApplySnapshotChunk  apply_snapshot_chunk  = 14;
     RequestPrepareProposal     prepare_proposal      = 15;
-    RequestExtendVote          extend_vote           = 16;
-    RequestVerifyVoteExtension verify_vote_extension = 17;
-    RequestFinalizeBlock       finalize_block        = 18;
+    RequestProcessProposal     process_proposal      = 16;
+    RequestExtendVote          extend_vote           = 17;
+    RequestVerifyVoteExtension verify_vote_extension = 18;
+    RequestFinalizeBlock       finalize_block        = 19;
   }
 }
 
@@ -121,29 +122,45 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+message RequestPrepareProposal {
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  // txs is an array of transactions that will be included in a block,
+  // sent to the app for possible modifications.
+  repeated bytes          txs                  = 3;
+  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  // the modified transactions cannot exceed this size.
+  int64                   max_tx_bytes         = 6;
+}
+
+message RequestProcessProposal {
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  repeated bytes          txs                  = 3;
+  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+}
+
 // Extends a vote with application-side injection
 message RequestExtendVote {
-  types.Vote vote = 1;
+  bytes hash   = 1;
+  int64 height = 2;
 }
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
-  types.Vote vote = 1;
-}
-
-message RequestPrepareProposal {
-  // block_data is an array of transactions that will be included in a block,
-  // sent to the app for possible modifications.
-  // applications can not exceed the size of the data passed to it.
-  repeated bytes block_data = 1;
-  // If an application decides to populate block_data with extra information, they can not exceed this value.
-  int64 block_data_size = 2;
+  bytes app_signed        = 1;
+  bytes tendermint_signed = 2;
+  bytes hash              = 3;
+  bytes validator_address = 4;
+  int64 height            = 5;
 }
 
 message RequestFinalizeBlock {
-  repeated bytes          txs                  = 1;
-  bytes                   hash                 = 2;
-  tendermint.types.Header header               = 3 [(gogoproto.nullable) = false];
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  repeated bytes          txs                  = 3;
   LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
 }
@@ -169,9 +186,10 @@ message Response {
     ResponseLoadSnapshotChunk   load_snapshot_chunk   = 14;
     ResponseApplySnapshotChunk  apply_snapshot_chunk  = 15;
     ResponsePrepareProposal     prepare_proposal      = 16;
-    ResponseExtendVote          extend_vote           = 17;
-    ResponseVerifyVoteExtension verify_vote_extension = 18;
-    ResponseFinalizeBlock       finalize_block        = 19;
+    ResponseProcessProposal     process_proposal      = 17;
+    ResponseExtendVote          extend_vote           = 18;
+    ResponseVerifyVoteExtension verify_vote_extension = 19;
+    ResponseFinalizeBlock       finalize_block        = 20;
   }
 }
 
@@ -225,8 +243,8 @@ message ResponseCheckTx {
   bytes          data       = 2;
   string         log        = 3;  // nondeterministic
   string         info       = 4;  // nondeterministic
-  int64          gas_wanted = 5 [json_name = "gas_wanted"];
-  int64          gas_used   = 6 [json_name = "gas_used"];
+  int64          gas_wanted = 5;
+  int64          gas_used   = 6;
   repeated Event events     = 7 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string         codespace  = 8;
   string         sender     = 9;
@@ -298,30 +316,41 @@ message ResponseApplySnapshotChunk {
   }
 }
 
+message ResponsePrepareProposal {
+  bool                             modified_tx             = 1;
+  repeated TxRecord                tx_records              = 2;
+  bytes                            app_hash                = 3;
+  repeated ExecTxResult            tx_results              = 4;
+  repeated ValidatorUpdate         validator_updates       = 5;
+  tendermint.types.ConsensusParams consensus_param_updates = 6;
+  repeated bytes                   app_signed_updates      = 7;
+}
+
+message ResponseProcessProposal {
+  bool                             accept                  = 1;
+  bytes                            app_hash                = 2;
+  repeated ExecTxResult            tx_results              = 3;
+  repeated ValidatorUpdate         validator_updates       = 4;
+  tendermint.types.ConsensusParams consensus_param_updates = 5;
+}
+
 message ResponseExtendVote {
-  tendermint.types.VoteExtension vote_extension = 1;
+  bytes app_signed        = 1;
+  bytes tendermint_signed = 2;
 }
 
 message ResponseVerifyVoteExtension {
-  Result result = 1;
-
-  enum Result {
-    UNKNOWN = 0;  // Unknown result, treat as ACCEPT by default
-    ACCEPT  = 1;  // Vote extension verified, include the vote
-    SLASH   = 2;  // Vote extension verification aborted, continue but slash validator
-    REJECT  = 3;  // Vote extension invalidated
-  }
-}
-
-message ResponsePrepareProposal {
-  repeated bytes block_data = 1;
+  bool accept = 1;
 }
 
 message ResponseFinalizeBlock {
-  repeated ResponseDeliverTx       txs                     = 1;
-  repeated ValidatorUpdate         validator_updates       = 2 [(gogoproto.nullable) = false];
-  tendermint.types.ConsensusParams consensus_param_updates = 3;
-  repeated Event                   events                  = 4 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated Event                   block_events            = 1
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated ExecTxResult            tx_results              = 2;
+  repeated ValidatorUpdate         validator_updates       = 3;
+  tendermint.types.ConsensusParams consensus_param_updates = 4;
+  bytes                            app_hash                = 5;
+  int64                            retain_height           = 6;
 }
 
 //----------------------------------------
@@ -347,6 +376,21 @@ message EventAttribute {
   bool   index = 3;  // nondeterministic
 }
 
+// ExecTxResult contains results of executing one individual transaction.
+//
+// * Its structure is equivalent to #ResponseDeliverTx which will be deprecated/deleted
+message ExecTxResult {
+  uint32         code       = 1;
+  bytes          data       = 2;
+  string         log        = 3;  // nondeterministic
+  string         info       = 4;  // nondeterministic
+  int64          gas_wanted = 5;
+  int64          gas_used   = 6;
+  repeated Event tx_events  = 7
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
+  string          codespace = 8;
+}
+
 // TxResult contains results of executing the transaction.
 //
 // One usage is indexing transaction results.
@@ -355,6 +399,21 @@ message TxResult {
   uint32            index  = 2;
   bytes             tx     = 3;
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+}
+
+message TxRecord {
+  TxAction action           = 1;
+  bytes tx                  = 2;
+  repeated bytes new_hashes = 3;
+
+  // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
+  enum TxAction {
+    UNKNOWN    = 0;  // Unknown action
+    UNMODIFIED = 1;  // The Application did not modify this transaction. Ignore new_hashes field
+    ADDED      = 2;  // The Application added this transaction. Ignore new_hashes field
+    REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
+                     // Use #new_hashes field if the transaction was modified
+  }
 }
 
 //----------------------------------------
@@ -375,8 +434,10 @@ message ValidatorUpdate {
 
 // VoteInfo
 message VoteInfo {
-  Validator validator         = 1 [(gogoproto.nullable) = false];
-  bool      signed_last_block = 2;
+  Validator validator                   = 1 [(gogoproto.nullable) = false];
+  bool      signed_last_block           = 2;
+  bytes     tendermint_signed_extension = 3;
+  bytes     app_signed_extension        = 4;
 }
 
 enum EvidenceType {
@@ -425,7 +486,9 @@ service ABCIApplication {
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
   rpc LoadSnapshotChunk(RequestLoadSnapshotChunk) returns (ResponseLoadSnapshotChunk);
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk) returns (ResponseApplySnapshotChunk);
+  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
+  rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
   rpc ExtendVote(RequestExtendVote) returns (ResponseExtendVote);
   rpc VerifyVoteExtension(RequestVerifyVoteExtension) returns (ResponseVerifyVoteExtension);
-  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
+  rpc FinalizeBlock(RequestFinalizeBlock) returns (ResponseFinalizeBlock);
 }
