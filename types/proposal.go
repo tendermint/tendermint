@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
@@ -89,11 +90,19 @@ func (p *Proposal) ValidateBasic() error {
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
 // https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
-func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams) bool {
+func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32) bool {
+	// The message delay values are scaled as rounds progress.
+	// Every 10 rounds, the message delay is doubled to allow consensus to
+	// proceed in the case that the choosen value was too small for the given network conditions.
+	// For more information and discussion on this mechanism, see the relevant github issue:
+	// https://github.com/tendermint/spec/issues/371
+	roundModifier := time.Duration(math.Exp2(float64(round / 10)))
+	msgDelay := sp.MessageDelay * roundModifier
+
 	// lhs is `proposedBlockTime - Precision` in the first inequality
 	lhs := p.Timestamp.Add(-sp.Precision)
 	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
-	rhs := p.Timestamp.Add(sp.MessageDelay).Add(sp.Precision)
+	rhs := p.Timestamp.Add(msgDelay).Add(sp.Precision)
 
 	if recvTime.Before(lhs) || recvTime.After(rhs) {
 		return false
