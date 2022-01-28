@@ -16,7 +16,7 @@ import (
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 )
 
-// ShowValidatorCmd adds capabilities for showing the validator info.
+// MakeShowValidatorCommand constructs a command to show the validator info.
 func MakeShowValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show-validator",

@@ -98,7 +98,7 @@ for applications built w/ Cosmos SDK).
 			chainID = args[0]
 			logger.Info("Creating client...", "chainID", chainID)
 
-			witnessesAddrs := []string{}
+			var witnessesAddrs []string
 			if witnessAddrsJoined != "" {
 				witnessesAddrs = strings.Split(witnessAddrsJoined, ",")
 			}

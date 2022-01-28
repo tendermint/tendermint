@@ -27,7 +27,7 @@ const (
 	reindexFailed = "event re-index failed: "
 )
 
-// ReIndexEventCmd allows re-index the event by given block height interval
+// MakeReindexEventCommand constructs a command to re-index events in a block height interval.
 func MakeReindexEventCommand(conf *tmcfg.Config, logger log.Logger) *cobra.Command {
 	var (
 		startHeight int64
@@ -80,7 +80,7 @@ either or both arguments.
 				blockStore:  bs,
 				stateStore:  ss,
 			}
-			if err = eventReIndex(cmd, riArgs); err != nil {
+			if err := eventReIndex(cmd, riArgs); err != nil {
 				fmt.Println(reindexFailed, err)
 				return
 			}

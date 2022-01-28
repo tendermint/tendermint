@@ -31,6 +31,7 @@ func ParseConfig() (*config.Config, error) {
 	return conf, nil
 }
 
+// RootCommand constructs the root command-line entry point for Tendermint core.
 func RootCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tendermint",

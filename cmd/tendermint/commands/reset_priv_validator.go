@@ -12,8 +12,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// ResetAllCmd removes the database of this Tendermint core
-// instance.
+// MakeResetAllCommand constructs a command that removes the database of
+// the specified Tendermint core instance.
 func MakeResetAllCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	var keyType string
 

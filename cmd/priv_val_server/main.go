@@ -46,6 +46,7 @@ func main() {
 		rootCA           = flag.String("rootcafile", "", "absolute path to root CA")
 		prometheusAddr   = flag.String("prometheus-addr", "", "address for prometheus endpoint (host:port)")
 	)
+	flag.Parse()
 
 	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	if err != nil {
@@ -54,7 +55,6 @@ func main() {
 	}
 	logger = logger.With("module", "priv_val")
 
-	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

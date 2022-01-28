@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MakeInitFilesCommand initializes a fresh Tendermint Core instance.
+// MakeInitFilesCommand returns the command to initialize a fresh Tendermint Core instance.
 func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	var keyType string
 	cmd := &cobra.Command{

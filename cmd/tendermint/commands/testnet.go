@@ -24,7 +24,7 @@ const (
 	nodeDirPerm = 0755
 )
 
-// TestnetFilesCmd allows initialisation of files for a Tendermint testnet.
+// MakeTestnetFilesCommand constructs a command to generate testnet config files.
 func MakeTestnetFilesCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 	var (
 		nValidators    int

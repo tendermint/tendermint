@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 )
 
-// MakeShowNodeIDCmd dumps node's ID to the standard output.
+// MakeShowNodeIDCommand constructs a command to dump the node ID to stdout.
 func MakeShowNodeIDCommand(conf *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show-node-id",

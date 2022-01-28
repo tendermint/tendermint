@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-// ReplayCmd allows replaying of messages from the WAL.
+// MakeReplayCommand constructs a command to replay messages from the WAL into consensus.
 func MakeReplayCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "replay",
@@ -18,8 +18,7 @@ func MakeReplayCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	}
 }
 
-// ReplayConsoleCmd allows replaying of messages from the WAL in a
-// console.
+// MakeReplayConsoleCommand constructs a command to replay WAL messages to stdout.
 func MakeReplayConsoleCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "replay-console",

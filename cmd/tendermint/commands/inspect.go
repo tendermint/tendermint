@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-// InspectCmd is the command for starting an inspect server.
+// InspectCmd constructs the command to start an inspect server.
 func MakeInspectCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect",

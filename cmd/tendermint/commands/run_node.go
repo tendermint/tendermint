@@ -19,8 +19,8 @@ var (
 	genesisHash []byte
 )
 
-// AddNodeFlags exposes some common configuration options on the command-line
-// These are exposed for convenience of commands embedding a tendermint node
+// AddNodeFlags exposes some common configuration options from conf in the flag
+// set for cmd. This is a convenience for commands embedding a Tendermint node.
 func AddNodeFlags(cmd *cobra.Command, conf *cfg.Config) {
 	// bind flags
 	cmd.Flags().String("moniker", conf.Moniker, "node name")
