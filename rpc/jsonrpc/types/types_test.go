@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -32,9 +31,14 @@ var responseTests = []responseTest{
 
 func TestResponses(t *testing.T) {
 	for _, tt := range responseTests {
-		jsonid := tt.id
-		a := NewRPCSuccessResponse(jsonid, &SampleResult{"hello"})
-		b, _ := json.Marshal(a)
+		req := RPCRequest{
+			ID:     tt.id,
+			Method: "whatever",
+		}
+
+		a := req.MakeResponse(&SampleResult{"hello"})
+		b, err := json.Marshal(a)
+		require.NoError(t, err)
 		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
 		assert.Equal(t, s, string(b))
 
@@ -61,7 +65,8 @@ func TestUnmarshallResponses(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		a := NewRPCSuccessResponse(tt.id, &SampleResult{"hello"})
+		req := RPCRequest{ID: tt.id}
+		a := req.MakeResponse(&SampleResult{"hello"})
 		assert.Equal(t, *response, a)
 	}
 	response := &RPCResponse{}

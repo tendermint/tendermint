@@ -131,15 +131,14 @@ func (req RPCRequest) MakeResponse(result interface{}) RPCResponse {
 	if err != nil {
 		return req.MakeErrorf(CodeInternalError, "marshaling result: %v", err)
 	}
-	return RPCResponse{JSONRPC: "2.0", ID: req.ID, Result: data}
+	return RPCResponse{ID: req.ID, Result: data}
 }
 
 // MakeErrorf constructs an error response to req with the given code and a
 // message constructed by formatting msg with args.
 func (req RPCRequest) MakeErrorf(code ErrorCode, msg string, args ...interface{}) RPCResponse {
 	return RPCResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
+		ID: req.ID,
 		Error: &RPCError{
 			Code:    int(code),
 			Message: code.String(),
