@@ -43,7 +43,7 @@ I believe it's safe to assume that much of the current functionality of the
 current ``light`` mode would *not* need to be maintained: there is no need to
 proxy the RPC endpoints over the P2P layer and there may be no need to run a
 node/process for the p2p light client (e.g. all use of this will be as a
-client.) 
+client.)
 
 The ability to run light clients using the RPC system will continue to be
 maintained.
@@ -120,7 +120,7 @@ that *only* runs the light client reactor, as this raises a few questions:
 
 - would users specify a single P2P node to connect to when creating a light
   client or would they also need/want to discover peers?
-  
+
   - **answer**: most light client use cases won't care much about selecting
     peers (and those that do can either disable PEX and specify persistent
     peers, *or* use the RPC light client.)
@@ -130,13 +130,19 @@ that *only* runs the light client reactor, as this raises a few questions:
   light-clients aren't limited, how do we prevent light clients from consuming
   resources on consensus nodes?
 
+  - **answer**: I think we can institute an internal cap on number of light
+    client connections to accept and also elide light client nodes from PEX
+    (pre-libp2p, if we implement this.) I believe that libp2p should provide
+    us with the kind of service discovery semantics for network connectivity
+    that would obviate this issue.
+
 - when a light client disconnects from its peers will it need to reset its
   internal state (cache)? does this change if it connects to the same peers?
-  
+
   - **answer**: no, the internal state only needs to be reset if the light
     client detects an invalid block or other divergence, and changing
     witnesses--which will be more common with a p2p light client--need not
-    invalidate the cache. 
+    invalidate the cache.
 
 These issues are primarily present given that the current peer management later
 does not have a particularly good service discovery mechanism nor does it have
@@ -148,4 +154,4 @@ Report Evidence
 The current light client implementation currently has the ability to report
 observed evidence. Either the notional light client reactor needs to be able
 to handle these kinds of requests *or* all light client nodes need to also run
-the evidence reactor. This could be configured at runtime. 
+the evidence reactor. This could be configured at runtime.
