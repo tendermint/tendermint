@@ -277,7 +277,7 @@ type testnetPeerArgs struct {
 	randomMonikers   bool
 }
 
-func hostnameOrIP(i int, hostnames []string, startingIpAddr string) (string, error) {
+func (args *testnetPeerArgs) hostnameOrIP(i int) (string, error) {
 	if len(args.hostnames) > 0 && i < len(args.hostnames) {
 		return args.hostnames[i], nil
 	}
