@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -12,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -38,25 +36,10 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		logger.Debug("HTTPRestRPC", "method", req.URL.Path, "args", args, "returns", outs)
 		result, err := unreflectResult(outs)
-		switch e := err.(type) {
-		// if no error then return a success response
-		case nil:
+		if err == nil {
 			writeHTTPResponse(w, logger, jreq.MakeResponse(result))
-
-		// if this already of type RPC error then forward that error.
-		case *rpctypes.RPCError:
-			writeHTTPResponse(w, logger, jreq.MakeErrorf(e.Code, e.Message))
-
-		default: // we need to unwrap the error and parse it accordingly
-			switch errors.Unwrap(err) {
-			case coretypes.ErrZeroOrNegativeHeight,
-				coretypes.ErrZeroOrNegativePerPage,
-				coretypes.ErrPageOutOfRange,
-				coretypes.ErrInvalidRequest:
-				writeHTTPResponse(w, logger, jreq.MakeErrorf(rpctypes.CodeInvalidRequest, err.Error()))
-			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				writeHTTPResponse(w, logger, jreq.MakeErrorf(rpctypes.CodeInternalError, err.Error()))
-			}
+		} else {
+			writeHTTPResponse(w, logger, jreq.MakeError(err))
 		}
 	}
 }

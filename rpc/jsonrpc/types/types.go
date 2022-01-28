@@ -3,10 +3,13 @@ package types
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
+
+	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -43,6 +46,16 @@ func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 	}
 }
 
+// ErrorCode is the type of JSON-RPC error codes.
+type ErrorCode int
+
+func (e ErrorCode) String() string {
+	if s, ok := errorCodeString[e]; ok {
+		return s
+	}
+	return fmt.Sprintf("server error: code %d", e)
+}
+
 // Constants defining the standard JSON-RPC error codes.
 const (
 	CodeParseError     = -32700 // Invalid JSON received by the server
@@ -50,8 +63,15 @@ const (
 	CodeMethodNotFound = -32601 // The method does not exist or is unavailable
 	CodeInvalidParams  = -32602 // Invalid method parameters
 	CodeInternalError  = -32603 // Internal JSON-RPC error
-	CodeServerError    = -32000 // Tendermint service error
 )
+
+var errorCodeString = map[ErrorCode]string{
+	CodeParseError:     "Parse error",
+	CodeInvalidRequest: "Invalid request",
+	CodeMethodNotFound: "Method not found",
+	CodeInvalidParams:  "Invalid params",
+	CodeInternalError:  "Internal error",
+}
 
 //----------------------------------------
 // REQUEST
@@ -114,17 +134,42 @@ func (req RPCRequest) MakeResponse(result interface{}) RPCResponse {
 	return RPCResponse{JSONRPC: "2.0", ID: req.ID, Result: data}
 }
 
-// MakeError constructs an error response to req with the given code and a
+// MakeErrorf constructs an error response to req with the given code and a
 // message constructed by formatting msg with args.
-func (req RPCRequest) MakeErrorf(code int, msg string, args ...interface{}) RPCResponse {
+func (req RPCRequest) MakeErrorf(code ErrorCode, msg string, args ...interface{}) RPCResponse {
 	return RPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
 		Error: &RPCError{
-			Code:    code,
-			Message: fmt.Sprintf(msg, args...),
+			Code:    int(code),
+			Message: code.String(),
+			Data:    fmt.Sprintf(msg, args...),
 		},
 	}
+}
+
+// MakeError constructs an error response to req from the given error value.
+// This function will panic if err == nil.
+func (req RPCRequest) MakeError(err error) RPCResponse {
+	if err == nil {
+		panic("cannot construct an error response for nil")
+	}
+	if e, ok := err.(*RPCError); ok {
+		return RPCResponse{ID: req.ID, Error: e}
+	}
+	if errors.Is(err, coretypes.ErrZeroOrNegativeHeight) ||
+		errors.Is(err, coretypes.ErrZeroOrNegativePerPage) ||
+		errors.Is(err, coretypes.ErrPageOutOfRange) ||
+		errors.Is(err, coretypes.ErrInvalidRequest) {
+		return RPCResponse{ID: req.ID, Error: &RPCError{
+			Code:    CodeInvalidRequest,
+			Message: err.Error(),
+		}}
+	}
+	return RPCResponse{ID: req.ID, Error: &RPCError{
+		Code:    CodeInternalError,
+		Message: err.Error(),
+	}}
 }
 
 // ParamsToRequest constructs a new RPCRequest with the given ID, method, and parameters.

@@ -161,12 +161,12 @@ func TestWriteHTTPResponse(t *testing.T) {
 	w := httptest.NewRecorder()
 	logger := log.NewNopLogger()
 	req := rpctypes.RPCRequest{ID: rpctypes.JSONRPCIntID(-1)}
-	writeHTTPResponse(w, logger, req.MakeErrorf(rpctypes.CodeInternalError, "Internal error: %s", "foo"))
+	writeHTTPResponse(w, logger, req.MakeErrorf(rpctypes.CodeInternalError, "foo"))
 	resp := w.Result()
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
-	assert.Equal(t, `{"code":-32603,"message":"Internal error: foo"}`, string(body))
+	assert.Equal(t, `{"code":-32603,"message":"Internal error","data":"foo"}`, string(body))
 }

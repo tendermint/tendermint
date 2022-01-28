@@ -13,7 +13,6 @@ import (
 	"strconv"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -78,26 +77,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			}
 
 			returns := rpcFunc.f.Call(args)
-			logger.Debug("HTTPJSONRPC", "method", req.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
-			switch e := err.(type) {
-			// if no error then return a success response
-			case nil:
+			if err == nil {
 				responses = append(responses, req.MakeResponse(result))
-
-			// if this already of type RPC error then forward that error
-			case *rpctypes.RPCError:
-				responses = append(responses, req.MakeErrorf(e.Code, e.Message))
-			default: // we need to unwrap the error and parse it accordingly
-				switch errors.Unwrap(err) {
-				// check if the error was due to an invald request
-				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
-					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
-					responses = append(responses, req.MakeErrorf(rpctypes.CodeInvalidRequest, err.Error()))
-				// lastly default all remaining errors as internal errors
-				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
-					responses = append(responses, req.MakeErrorf(rpctypes.CodeInternalError, err.Error()))
-				}
+			} else {
+				responses = append(responses, req.MakeError(err))
 			}
 		}
 

@@ -38,14 +38,16 @@ func TestResponses(t *testing.T) {
 		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
 		assert.Equal(t, s, string(b))
 
-		d := RPCParseError(errors.New("hello world"))
-		e, _ := json.Marshal(d)
-		f := `{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":"hello world"}}`
+		d := req.MakeErrorf(CodeParseError, "hello world")
+		e, err := json.Marshal(d)
+		require.NoError(t, err)
+		f := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32700,"message":"Parse error","data":"hello world"}}`, tt.expected)
 		assert.Equal(t, f, string(e))
 
-		g := RPCMethodNotFoundError(jsonid)
-		h, _ := json.Marshal(g)
-		i := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32601,"message":"Method not found"}}`, tt.expected)
+		g := req.MakeErrorf(CodeMethodNotFound, "foo")
+		h, err := json.Marshal(g)
+		require.NoError(t, err)
+		i := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32601,"message":"Method not found","data":"foo"}}`, tt.expected)
 		assert.Equal(t, string(h), i)
 	}
 }

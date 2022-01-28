@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/client"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -365,32 +363,14 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 
 			var resp rpctypes.RPCResponse
 			result, err := unreflectResult(returns)
-			switch e := err.(type) {
-			// if no error then return a success response
-			case nil:
+			if err == nil {
 				resp = request.MakeResponse(result)
-
-			// if this already of type RPC error then forward that error
-			case *rpctypes.RPCError:
-				resp = request.MakeErrorf(e.Code, e.Message)
-
-			default: // we need to unwrap the error and parse it accordingly
-				switch errors.Unwrap(err) {
-				// check if the error was due to an invald request
-				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
-					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
-					resp = request.MakeErrorf(rpctypes.CodeInvalidRequest, err.Error())
-
-				// lastly default all remaining errors as internal errors
-				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
-					resp = request.MakeErrorf(rpctypes.CodeInternalError, err.Error())
-				}
+			} else {
+				resp = request.MakeError(err)
 			}
-
 			if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
 				wsc.Logger.Error("error writing RPC response", "err", err)
 			}
-
 		}
 	}
 }
