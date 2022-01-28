@@ -5,6 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
@@ -14,7 +15,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := commands.ParseConfig()
+	conf, err := commands.ParseConfig(config.DefaultConfig())
 	if err != nil {
 		panic(err)
 	}
