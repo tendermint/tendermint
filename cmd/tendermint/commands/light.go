@@ -134,11 +134,13 @@ for applications built w/ Cosmos SDK).
 
 			options := []light.Option{light.Logger(logger)}
 
+
+			vo := light.SkippingVerification(trustLevel)
 			if sequential {
-				options = append(options, light.SequentialVerification())
-			} else {
-				options = append(options, light.SkippingVerification(trustLevel))
+				vo = light.SequentialVerification()
 			}
+			options = append(options, vo)
+
 
 			// Initiate the light client. If the trusted store already has blocks in it, this
 			// will be used else we use the trusted options.

@@ -85,7 +85,7 @@ either or both arguments.
 				return
 			}
 
-			fmt.Println("event re-index finished")
+			logger.Info("event re-index finished")
 		},
 	}
 
