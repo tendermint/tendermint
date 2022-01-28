@@ -77,17 +77,6 @@ User Cases
 This RFC makes a few assumptions about the use cases and users of light
 clients in tendermint.
 
-<<<<<<< HEAD
-One of the most active use cases for light clients is in the implementation of
-the IBC relayer. Thus, we expect that providing P2P light clients might
-increase the reliability of relayers and reduce the cost of running a relayer,
-because relayer operators won't have to decide between relying on public RPC
-endpoints (unreliable) or running their own full nodes (expensive.) This
-also assumes that there are *no* other uses of the RPC in the relayer, and
-unless the relayers have the option of dropping all RPC use, it's unclear if a
-P2P light client will actually be able to successfully remove the dependency
-on the RPC system.
-=======
 The most active and delicate use cases for light clients is in the
 implementation of the IBC relayer. Thus, we expect that providing P2P light
 clients might increase the reliability of relayers and reduce the cost of
@@ -97,7 +86,6 @@ on public RPC endpoints (unreliable) or running their own full nodes
 the relayer, and unless the relayers have the option of dropping all RPC use,
 it's unclear if a P2P light client will actually be able to successfully
 remove the dependency on the RPC system.
->>>>>>> 19b0f3ffcd (respond to comments)
 
 Given that the primary relayer implementation is Hermes (rust,) it might be
 safe to deliver a version of Tendermint that adds a light client rector in
