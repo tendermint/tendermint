@@ -26,7 +26,6 @@ func ParseConfig() (*cfg.Config, error) {
 		return nil, err
 	}
 	conf.SetRoot(conf.RootDir)
-	cfg.EnsureRoot(conf.RootDir)
 	if err := conf.ValidateBasic(); err != nil {
 		return nil, fmt.Errorf("error in config file: %w", err)
 	}
@@ -52,6 +51,7 @@ func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 				return err
 			}
 			*conf = *pconf
+			cfg.EnsureRoot(conf.RootDir)
 
 			return nil
 		},
