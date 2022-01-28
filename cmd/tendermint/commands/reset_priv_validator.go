@@ -21,7 +21,7 @@ func MakeResetAllCommand(conf *config.Config, logger log.Logger) *cobra.Command 
 		Use:   "unsafe-reset-all",
 		Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ResetAll(conf.DBDir(), conf.PrivValidator.KeyFile(),
+			return resetAll(conf.DBDir(), conf.PrivValidator.KeyFile(),
 				conf.PrivValidator.StateFile(), logger, keyType)
 		},
 	}
@@ -54,9 +54,9 @@ func MakeResetPrivateValidatorCommand(conf *config.Config, logger log.Logger) *c
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 
-// ResetAll removes address book files plus all data, and resets the privValdiator data.
+// resetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
-func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
+func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {

@@ -55,7 +55,6 @@ func main() {
 	}
 	logger = logger.With("module", "priv_val")
 
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
