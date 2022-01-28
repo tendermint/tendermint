@@ -69,7 +69,6 @@ func TestRPCParams(t *testing.T) {
 		blob, err := io.ReadAll(res.Body)
 		require.NoError(t, err, "#%d: reading body", i)
 		require.NoError(t, res.Body.Close())
-		t.Logf("MJF :: blob=%#q", string(blob))
 
 		recv := new(rpctypes.RPCResponse)
 		assert.Nil(t, json.Unmarshal(blob, recv), "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
