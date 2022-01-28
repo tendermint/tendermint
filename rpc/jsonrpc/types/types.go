@@ -64,8 +64,10 @@ func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 	var wrapper rpcRequestJSON
 	if err := json.Unmarshal(data, &wrapper); err != nil {
 		return err
+	} else if wrapper.V != "" && wrapper.V != "2.0" {
+		return fmt.Errorf("invalid version: %q", wrapper.V)
 	}
-	// TODO(creachadair): Check version?
+
 	if wrapper.ID != nil {
 		id, err := idFromInterface(wrapper.ID)
 		if err != nil {
@@ -140,8 +142,10 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	var wrapper rpcResponseJSON
 	if err := json.Unmarshal(data, &wrapper); err != nil {
 		return err
+	} else if wrapper.V != "" && wrapper.V != "2.0" {
+		return fmt.Errorf("invalid version: %q", wrapper.V)
 	}
-	// TODO(creachadair): Check version?
+
 	if wrapper.ID != nil {
 		id, err := idFromInterface(wrapper.ID)
 		if err != nil {
