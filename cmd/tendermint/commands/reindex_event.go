@@ -39,9 +39,9 @@ func MakeReindexEventCommand(conf *tmcfg.Config, logger log.Logger) *cobra.Comma
 		Short: "reindex events to the event store backends",
 		Long: `
 reindex-event is an offline tooling to re-index block and tx events to the eventsinks,
-you can run this command when the event store backend dropped/disconnected or you want to 
-replace the backend. The default start-height is 0, meaning the tooling will start 
-reindex from the base block height(inclusive); and the default end-height is 0, meaning 
+you can run this command when the event store backend dropped/disconnected or you want to
+replace the backend. The default start-height is 0, meaning the tooling will start
+reindex from the base block height(inclusive); and the default end-height is 0, meaning
 the tooling will reindex until the latest block height(inclusive). User can omit
 either or both arguments.
 	`,
@@ -51,11 +51,10 @@ either or both arguments.
 	tendermint reindex-event --end-height 10
 	tendermint reindex-event --start-height 2 --end-height 10
 	`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			bs, ss, err := loadStateAndBlockStore(conf)
 			if err != nil {
-				fmt.Println(reindexFailed, err)
-				return
+				return fmt.Errorf("%s: %w", reindexFailed, err)
 			}
 
 			cvhArgs := checkValidHeightArgs{
@@ -63,14 +62,12 @@ either or both arguments.
 				endHeight:   endHeight,
 			}
 			if err := checkValidHeight(bs, cvhArgs); err != nil {
-				fmt.Println(reindexFailed, err)
-				return
+				return fmt.Errorf("%s: %w", reindexFailed, err)
 			}
 
 			es, err := loadEventSinks(conf)
 			if err != nil {
-				fmt.Println(reindexFailed, err)
-				return
+				return fmt.Errorf("%s: %w", reindexFailed, err)
 			}
 
 			riArgs := eventReIndexArgs{
@@ -81,11 +78,11 @@ either or both arguments.
 				stateStore:  ss,
 			}
 			if err := eventReIndex(cmd, riArgs); err != nil {
-				fmt.Println(reindexFailed, err)
-				return
+				return fmt.Errorf("%s: %w", reindexFailed, err)
 			}
 
 			logger.Info("event re-index finished")
+			return nil
 		},
 	}
 
