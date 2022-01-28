@@ -299,25 +299,31 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 }
 
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
-		Block: BlockParams{
+	c := ConsensusParams{}
+	if pbParams.Block != nil {
+		c.Block = BlockParams{
 			MaxBytes: pbParams.Block.MaxBytes,
 			MaxGas:   pbParams.Block.MaxGas,
-		},
-		Evidence: EvidenceParams{
-			MaxAgeNumBlocks: pbParams.Evidence.MaxAgeNumBlocks,
-			MaxAgeDuration:  pbParams.Evidence.MaxAgeDuration,
-			MaxBytes:        pbParams.Evidence.MaxBytes,
-		},
-		Validator: ValidatorParams{
+		}
+	}
+
+	if pbParams.Validator != nil {
+		c.Validator = ValidatorParams{
 			PubKeyTypes: pbParams.Validator.PubKeyTypes,
-		},
-		Version: VersionParams{
+		}
+	}
+
+	if pbParams.Validator != nil {
+		c.Version = VersionParams{
 			AppVersion: pbParams.Version.AppVersion,
-		},
-		Synchrony: SynchronyParams{
+		}
+	}
+
+	if pbParams.Synchrony != nil {
+		c.Synchrony = SynchronyParams{
 			MessageDelay: pbParams.Synchrony.MessageDelay,
 			Precision:    pbParams.Synchrony.Precision,
-		},
+		}
 	}
+	return c
 }
