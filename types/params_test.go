@@ -160,9 +160,9 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		if tc.valid {
-			assert.NoErrorf(t, tc.params.ValidateConsensusParams(), "expected no error for valid params (#%d)", i)
+			assert.NoErrorf(t, tc.params.Validate(), "expected no error for valid params (#%d)", i)
 		} else {
-			assert.Errorf(t, tc.params.ValidateConsensusParams(), "expected error for non valid params (#%d)", i)
+			assert.Errorf(t, tc.params.Validate(), "expected error for non valid params (#%d)", i)
 		}
 	}
 }

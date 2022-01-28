@@ -145,9 +145,22 @@ func (val *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 	return false
 }
 
+func (params *ConsensusParams) Complete() {
+	if params.Synchrony.MessageDelay == 0 && params.Synchrony.Precision == 0 {
+		params.Synchrony = DefaultSynchronyParams()
+	}
+}
+func (params *ConsensusParams) ValidateAndComplete() error {
+	if params == nil {
+		params = DefaultConsensusParams()
+	}
+	params.Complete()
+	return params.Validate()
+}
+
 // Validate validates the ConsensusParams to ensure all values are within their
 // allowed limits, and returns an error if they are not.
-func (params ConsensusParams) ValidateConsensusParams() error {
+func (params *ConsensusParams) Validate() error {
 	if params.Block.MaxBytes <= 0 {
 		return fmt.Errorf("block.MaxBytes must be greater than 0. Got %d",
 			params.Block.MaxBytes)

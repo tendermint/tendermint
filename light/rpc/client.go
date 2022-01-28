@@ -269,7 +269,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes
 	}
 
 	// Validate res.
-	if err := res.ConsensusParams.ValidateConsensusParams(); err != nil {
+	if err := res.ConsensusParams.Validate(); err != nil {
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {

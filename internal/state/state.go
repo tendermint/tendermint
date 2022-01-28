@@ -239,7 +239,9 @@ func FromProto(pb *tmstate.State) (*State, error) {
 	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
-	state.ConsensusParams = types.ConsensusParamsFromProto(pb.ConsensusParams)
+	c := types.ConsensusParamsFromProto(pb.ConsensusParams)
+	(&c).Complete()
+	state.ConsensusParams = c
 	state.LastHeightConsensusParamsChanged = pb.LastHeightConsensusParamsChanged
 	state.LastResultsHash = pb.LastResultsHash
 	state.AppHash = pb.AppHash

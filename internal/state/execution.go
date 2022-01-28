@@ -455,7 +455,7 @@ func updateState(
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
 		nextParams = state.ConsensusParams.UpdateConsensusParams(abciResponses.EndBlock.ConsensusParamUpdates)
-		err := nextParams.ValidateConsensusParams()
+		err := nextParams.Validate()
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %w", err)
 		}
