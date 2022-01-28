@@ -65,6 +65,7 @@ func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
+	// TODO(creachadair): Check version?
 	if wrapper.ID != nil {
 		id, err := idFromInterface(wrapper.ID)
 		if err != nil {
@@ -140,6 +141,7 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &wrapper); err != nil {
 		return err
 	}
+	// TODO(creachadair): Check version?
 	if wrapper.ID != nil {
 		id, err := idFromInterface(wrapper.ID)
 		if err != nil {
