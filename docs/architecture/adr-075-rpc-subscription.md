@@ -396,7 +396,7 @@ The `oldest_item` and `newest_item` fields of the reply report the cursors of
 the oldest and newest items (of any kind) recorded in the event log at the time
 of the reply, or are `""` if the log is empty.
 
-The `data` field contains the type-specific event datum.  The datum carries Any
+The `data` field contains the type-specific event datum.  The datum carries any
 ABCI events that may have been defined.
 
 > **Discussion point**: Based on [issue #7273][i7273], I did not include a
