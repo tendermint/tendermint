@@ -122,9 +122,9 @@ func (err RPCError) Error() string {
 }
 
 type RPCResponse struct {
-	ID     jsonrpcid       `json:"id,omitempty"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *RPCError       `json:"error,omitempty"`
+	ID     jsonrpcid
+	Result json.RawMessage
+	Error  *RPCError
 }
 
 type rpcResponseJSON struct {
