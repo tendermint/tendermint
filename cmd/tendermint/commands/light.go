@@ -25,7 +25,7 @@ import (
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
-// LightCmd represents the base command when called without any subcommands
+// LightCmd constructs the base command called when invoked without any subcommands.
 func MakeLightCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	var (
 		listenAddr         string
