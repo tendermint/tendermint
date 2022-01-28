@@ -58,11 +58,11 @@ func (e ErrorCode) String() string {
 
 // Constants defining the standard JSON-RPC error codes.
 const (
-	CodeParseError     = -32700 // Invalid JSON received by the server
-	CodeInvalidRequest = -32600 // The JSON sent is not a valid request object
-	CodeMethodNotFound = -32601 // The method does not exist or is unavailable
-	CodeInvalidParams  = -32602 // Invalid method parameters
-	CodeInternalError  = -32603 // Internal JSON-RPC error
+	CodeParseError     ErrorCode = -32700 // Invalid JSON received by the server
+	CodeInvalidRequest ErrorCode = -32600 // The JSON sent is not a valid request object
+	CodeMethodNotFound ErrorCode = -32601 // The method does not exist or is unavailable
+	CodeInvalidParams  ErrorCode = -32602 // Invalid method parameters
+	CodeInternalError  ErrorCode = -32603 // Internal JSON-RPC error
 )
 
 var errorCodeString = map[ErrorCode]string{
@@ -161,13 +161,15 @@ func (req RPCRequest) MakeError(err error) RPCResponse {
 		errors.Is(err, coretypes.ErrPageOutOfRange) ||
 		errors.Is(err, coretypes.ErrInvalidRequest) {
 		return RPCResponse{ID: req.ID, Error: &RPCError{
-			Code:    CodeInvalidRequest,
-			Message: err.Error(),
+			Code:    int(CodeInvalidRequest),
+			Message: CodeInvalidRequest.String(),
+			Data:    err.Error(),
 		}}
 	}
 	return RPCResponse{ID: req.ID, Error: &RPCError{
-		Code:    CodeInternalError,
-		Message: err.Error(),
+		Code:    int(CodeInternalError),
+		Message: CodeInternalError.String(),
+		Data:    err.Error(),
 	}}
 }
 
