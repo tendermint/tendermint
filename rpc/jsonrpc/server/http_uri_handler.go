@@ -33,6 +33,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			fmt.Fprintln(w, err.Error())
 			return
 		}
+		jreq := rpctypes.RPCRequest{ID: uriReqID}
 		outs := rpcFunc.f.Call(args)
 
 		logger.Debug("HTTPRestRPC", "method", req.URL.Path, "args", args, "returns", outs)
@@ -40,11 +41,11 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		switch e := err.(type) {
 		// if no error then return a success response
 		case nil:
-			writeHTTPResponse(w, logger, rpctypes.NewRPCSuccessResponse(uriReqID, result))
+			writeHTTPResponse(w, logger, jreq.MakeResponse(result))
 
 		// if this already of type RPC error then forward that error.
 		case *rpctypes.RPCError:
-			writeHTTPResponse(w, logger, rpctypes.NewRPCErrorResponse(uriReqID, e.Code, e.Message, e.Data))
+			writeHTTPResponse(w, logger, jreq.MakeErrorf(e.Code, e.Message))
 
 		default: // we need to unwrap the error and parse it accordingly
 			switch errors.Unwrap(err) {
@@ -52,9 +53,9 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 				coretypes.ErrZeroOrNegativePerPage,
 				coretypes.ErrPageOutOfRange,
 				coretypes.ErrInvalidRequest:
-				writeHTTPResponse(w, logger, rpctypes.RPCInvalidRequestError(uriReqID, err))
+				writeHTTPResponse(w, logger, jreq.MakeErrorf(rpctypes.CodeInvalidRequest, err.Error()))
 			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				writeHTTPResponse(w, logger, rpctypes.RPCInternalError(uriReqID, err))
+				writeHTTPResponse(w, logger, jreq.MakeErrorf(rpctypes.CodeInternalError, err.Error()))
 			}
 		}
 	}

@@ -276,8 +276,10 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			if !ok {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
+			req := rpctypes.RPCRequest{ID: uriReqID}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), err)); err != nil {
+			if err := wsc.WriteRPCResponse(writeCtx,
+				req.MakeErrorf(rpctypes.CodeInternalError, "Panic in handler: %v", err)); err != nil {
 				wsc.Logger.Error("error writing RPC response", "err", err)
 			}
 			go wsc.readRoutine(ctx)
@@ -317,7 +319,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			err = dec.Decode(&request)
 			if err != nil {
 				if err := wsc.WriteRPCResponse(writeCtx,
-					rpctypes.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
+					request.MakeErrorf(rpctypes.CodeParseError, "unmarshaling request: %v", err)); err != nil {
 					wsc.Logger.Error("error writing RPC response", "err", err)
 				}
 				continue
@@ -336,7 +338,8 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			// Now, fetch the RPCFunc and execute it.
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCMethodNotFoundError(request.ID)); err != nil {
+				if err := wsc.WriteRPCResponse(writeCtx,
+					request.MakeErrorf(rpctypes.CodeMethodNotFound, request.Method)); err != nil {
 					wsc.Logger.Error("error writing RPC response", "err", err)
 				}
 				continue
@@ -348,9 +351,8 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			})
 			args, err := parseParams(fctx, rpcFunc, request.Params)
 			if err != nil {
-				if err := wsc.WriteRPCResponse(writeCtx, rpctypes.RPCInvalidParamsError(
-					request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
-				); err != nil {
+				if err := wsc.WriteRPCResponse(writeCtx, request.MakeErrorf(rpctypes.CodeInvalidParams,
+					"converting JSON parameters: %v", err)); err != nil {
 					wsc.Logger.Error("error writing RPC response", "err", err)
 				}
 				continue
@@ -366,22 +368,22 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			switch e := err.(type) {
 			// if no error then return a success response
 			case nil:
-				resp = rpctypes.NewRPCSuccessResponse(request.ID, result)
+				resp = request.MakeResponse(result)
 
 			// if this already of type RPC error then forward that error
 			case *rpctypes.RPCError:
-				resp = rpctypes.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data)
+				resp = request.MakeErrorf(e.Code, e.Message)
 
 			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
 				// check if the error was due to an invald request
 				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
 					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
-					resp = rpctypes.RPCInvalidRequestError(request.ID, err)
+					resp = request.MakeErrorf(rpctypes.CodeInvalidRequest, err.Error())
 
 				// lastly default all remaining errors as internal errors
 				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
-					resp = rpctypes.RPCInternalError(request.ID, err)
+					resp = request.MakeErrorf(rpctypes.CodeInternalError, err.Error())
 				}
 			}
 

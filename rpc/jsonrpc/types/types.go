@@ -50,6 +50,7 @@ const (
 	CodeMethodNotFound = -32601 // The method does not exist or is unavailable
 	CodeInvalidParams  = -32602 // Invalid method parameters
 	CodeInternalError  = -32603 // Internal JSON-RPC error
+	CodeServerError    = -32000 // Tendermint service error
 )
 
 //----------------------------------------
@@ -201,56 +202,11 @@ func (resp RPCResponse) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
-	result, err := json.Marshal(res)
-	if err != nil {
-		return RPCInternalError(id, fmt.Errorf("error marshaling response: %w", err))
-	}
-	return RPCResponse{ID: id, Result: result}
-}
-
-func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCResponse {
-	return RPCResponse{
-		ID:    id,
-		Error: &RPCError{Code: code, Message: msg, Data: data},
-	}
-}
-
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
 		return fmt.Sprintf("RPCResponse{%s %X}", resp.ID, resp.Result)
 	}
 	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Error)
-}
-
-// From the JSON-RPC 2.0 spec:
-//	If there was an error in detecting the id in the Request object (e.g. Parse
-// 	error/Invalid Request), it MUST be Null.
-func RPCParseError(err error) RPCResponse {
-	return NewRPCErrorResponse(nil, -32700, "Parse error", err.Error())
-}
-
-// From the JSON-RPC 2.0 spec:
-//	If there was an error in detecting the id in the Request object (e.g. Parse
-// 	error/Invalid Request), it MUST be Null.
-func RPCInvalidRequestError(id jsonrpcid, err error) RPCResponse {
-	return NewRPCErrorResponse(id, -32600, "Invalid Request", err.Error())
-}
-
-func RPCMethodNotFoundError(id jsonrpcid) RPCResponse {
-	return NewRPCErrorResponse(id, -32601, "Method not found", "")
-}
-
-func RPCInvalidParamsError(id jsonrpcid, err error) RPCResponse {
-	return NewRPCErrorResponse(id, -32602, "Invalid params", err.Error())
-}
-
-func RPCInternalError(id jsonrpcid, err error) RPCResponse {
-	return NewRPCErrorResponse(id, -32603, "Internal error", err.Error())
-}
-
-func RPCServerError(id jsonrpcid, err error) RPCResponse {
-	return NewRPCErrorResponse(id, -32000, "Server error", err.Error())
 }
 
 //----------------------------------------
