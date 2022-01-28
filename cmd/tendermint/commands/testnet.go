@@ -26,6 +26,21 @@ const (
 
 // MakeTestnetFilesCommand constructs a command to generate testnet config files.
 func MakeTestnetFilesCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "testnet",
+		Short: "Initialize files for a Tendermint testnet",
+		Long: `testnet will create "v" + "n" number of directories and populate each with
+necessary files (private validator, genesis, config, etc.).
+
+Note, strict routability for addresses is turned off in the config file.
+
+Optionally, it will fill in persistent-peers list in config file using either hostnames or IPs.
+
+Example:
+
+	tendermint testnet --v 4 --o ./output --populate-persistent-peers --starting-ip-address 192.168.10.2
+	`,
+	}
 	var (
 		nValidators    int
 		nNonValidators int
@@ -43,187 +58,6 @@ func MakeTestnetFilesCommand(conf *cfg.Config, logger log.Logger) *cobra.Command
 		randomMonikers          bool
 		keyType                 string
 	)
-
-	cmd := &cobra.Command{
-		Use:   "testnet",
-		Short: "Initialize files for a Tendermint testnet",
-		Long: `testnet will create "v" + "n" number of directories and populate each with
-necessary files (private validator, genesis, config, etc.).
-
-Note, strict routability for addresses is turned off in the config file.
-
-Optionally, it will fill in persistent-peers list in config file using either hostnames or IPs.
-
-Example:
-
-	tendermint testnet --v 4 --o ./output --populate-persistent-peers --starting-ip-address 192.168.10.2
-	`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(hostnames) > 0 && len(hostnames) != (nValidators+nNonValidators) {
-				return fmt.Errorf(
-					"testnet needs precisely %d hostnames (number of validators plus non-validators) if --hostname parameter is used",
-					nValidators+nNonValidators,
-				)
-			}
-
-			// set mode to validator for testnet
-			config := cfg.DefaultValidatorConfig()
-
-			// overwrite default config if set and valid
-			if configFile != "" {
-				viper.SetConfigFile(configFile)
-				if err := viper.ReadInConfig(); err != nil {
-					return err
-				}
-				if err := viper.Unmarshal(config); err != nil {
-					return err
-				}
-				if err := config.ValidateBasic(); err != nil {
-					return err
-				}
-			}
-
-			genVals := make([]types.GenesisValidator, nValidators)
-			ctx := cmd.Context()
-			for i := 0; i < nValidators; i++ {
-				nodeDirName := fmt.Sprintf("%s%d", nodeDirPrefix, i)
-				nodeDir := filepath.Join(outputDir, nodeDirName)
-				config.SetRoot(nodeDir)
-
-				err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
-				if err != nil {
-					_ = os.RemoveAll(outputDir)
-					return err
-				}
-				err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
-				if err != nil {
-					_ = os.RemoveAll(outputDir)
-					return err
-				}
-
-				if err := initFilesWithConfig(ctx, config, logger); err != nil {
-					return err
-				}
-
-				pvKeyFile := filepath.Join(nodeDir, config.PrivValidator.Key)
-				pvStateFile := filepath.Join(nodeDir, config.PrivValidator.State)
-				pv, err := privval.LoadFilePV(pvKeyFile, pvStateFile)
-				if err != nil {
-					return err
-				}
-
-				ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
-				defer cancel()
-
-				pubKey, err := pv.GetPubKey(ctx)
-				if err != nil {
-					return fmt.Errorf("can't get pubkey: %w", err)
-				}
-				genVals[i] = types.GenesisValidator{
-					Address: pubKey.Address(),
-					PubKey:  pubKey,
-					Power:   1,
-					Name:    nodeDirName,
-				}
-			}
-
-			for i := 0; i < nNonValidators; i++ {
-				nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i+nValidators))
-				config.SetRoot(nodeDir)
-
-				err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
-				if err != nil {
-					_ = os.RemoveAll(outputDir)
-					return err
-				}
-
-				err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
-				if err != nil {
-					_ = os.RemoveAll(outputDir)
-					return err
-				}
-
-				if err := initFilesWithConfig(ctx, conf, logger); err != nil {
-					return err
-				}
-			}
-
-			// Generate genesis doc from generated validators
-			genDoc := &types.GenesisDoc{
-				ChainID:         "chain-" + tmrand.Str(6),
-				GenesisTime:     tmtime.Now(),
-				InitialHeight:   initialHeight,
-				Validators:      genVals,
-				ConsensusParams: types.DefaultConsensusParams(),
-			}
-			if keyType == "secp256k1" {
-				genDoc.ConsensusParams.Validator = types.ValidatorParams{
-					PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
-				}
-			}
-
-			// Write genesis file.
-			for i := 0; i < nValidators+nNonValidators; i++ {
-				nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
-				if err := genDoc.SaveAs(filepath.Join(nodeDir, config.BaseConfig.Genesis)); err != nil {
-					_ = os.RemoveAll(outputDir)
-					return err
-				}
-			}
-
-			// Gather persistent peer addresses.
-			var (
-				persistentPeers = make([]string, 0)
-				err             error
-			)
-			tpargs := testnetPeerArgs{
-				numValidators:    nValidators,
-				numNonValidators: nNonValidators,
-				peerToPeerPort:   p2pPort,
-				nodeDirPrefix:    nodeDirPrefix,
-				outputDir:        outputDir,
-				hostnames:        hostnames,
-				startingIPAddr:   startingIPAddress,
-				hostnamePrefix:   hostnamePrefix,
-				hostnameSuffix:   hostnameSuffix,
-				randomMonikers:   randomMonikers,
-			}
-
-			if populatePersistentPeers {
-
-				persistentPeers, err = persistentPeersArray(config, tpargs)
-				if err != nil {
-					_ = os.RemoveAll(outputDir)
-					return err
-				}
-			}
-
-			// Overwrite default config.
-			for i := 0; i < nValidators+nNonValidators; i++ {
-				nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
-				config.SetRoot(nodeDir)
-				config.P2P.AllowDuplicateIP = true
-				if populatePersistentPeers {
-					persistentPeersWithoutSelf := make([]string, 0)
-					for j := 0; j < len(persistentPeers); j++ {
-						if j == i {
-							continue
-						}
-						persistentPeersWithoutSelf = append(persistentPeersWithoutSelf, persistentPeers[j])
-					}
-					config.P2P.PersistentPeers = strings.Join(persistentPeersWithoutSelf, ",")
-				}
-				config.Moniker = tpargs.moniker(i)
-
-				if err := cfg.WriteConfigFile(nodeDir, config); err != nil {
-					return err
-				}
-			}
-
-			fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)
-			return nil
-		},
-	}
 
 	cmd.Flags().IntVar(&nValidators, "v", 4,
 		"number of validators to initialize the testnet with")
@@ -260,6 +94,172 @@ Example:
 		"randomize the moniker for each generated node")
 	cmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
 		"Key type to generate privval file with. Options: ed25519, secp256k1")
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(hostnames) > 0 && len(hostnames) != (nValidators+nNonValidators) {
+			return fmt.Errorf(
+				"testnet needs precisely %d hostnames (number of validators plus non-validators) if --hostname parameter is used",
+				nValidators+nNonValidators,
+			)
+		}
+
+		// set mode to validator for testnet
+		config := cfg.DefaultValidatorConfig()
+
+		// overwrite default config if set and valid
+		if configFile != "" {
+			viper.SetConfigFile(configFile)
+			if err := viper.ReadInConfig(); err != nil {
+				return err
+			}
+			if err := viper.Unmarshal(config); err != nil {
+				return err
+			}
+			if err := config.ValidateBasic(); err != nil {
+				return err
+			}
+		}
+
+		genVals := make([]types.GenesisValidator, nValidators)
+		ctx := cmd.Context()
+		for i := 0; i < nValidators; i++ {
+			nodeDirName := fmt.Sprintf("%s%d", nodeDirPrefix, i)
+			nodeDir := filepath.Join(outputDir, nodeDirName)
+			config.SetRoot(nodeDir)
+
+			err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
+			if err != nil {
+				_ = os.RemoveAll(outputDir)
+				return err
+			}
+			err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
+			if err != nil {
+				_ = os.RemoveAll(outputDir)
+				return err
+			}
+
+			if err := initFilesWithConfig(ctx, config, logger); err != nil {
+				return err
+			}
+
+			pvKeyFile := filepath.Join(nodeDir, config.PrivValidator.Key)
+			pvStateFile := filepath.Join(nodeDir, config.PrivValidator.State)
+			pv, err := privval.LoadFilePV(pvKeyFile, pvStateFile)
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
+			defer cancel()
+
+			pubKey, err := pv.GetPubKey(ctx)
+			if err != nil {
+				return fmt.Errorf("can't get pubkey: %w", err)
+			}
+			genVals[i] = types.GenesisValidator{
+				Address: pubKey.Address(),
+				PubKey:  pubKey,
+				Power:   1,
+				Name:    nodeDirName,
+			}
+		}
+
+		for i := 0; i < nNonValidators; i++ {
+			nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i+nValidators))
+			config.SetRoot(nodeDir)
+
+			err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
+			if err != nil {
+				_ = os.RemoveAll(outputDir)
+				return err
+			}
+
+			err = os.MkdirAll(filepath.Join(nodeDir, "data"), nodeDirPerm)
+			if err != nil {
+				_ = os.RemoveAll(outputDir)
+				return err
+			}
+
+			if err := initFilesWithConfig(ctx, conf, logger); err != nil {
+				return err
+			}
+		}
+
+		// Generate genesis doc from generated validators
+		genDoc := &types.GenesisDoc{
+			ChainID:         "chain-" + tmrand.Str(6),
+			GenesisTime:     tmtime.Now(),
+			InitialHeight:   initialHeight,
+			Validators:      genVals,
+			ConsensusParams: types.DefaultConsensusParams(),
+		}
+		if keyType == "secp256k1" {
+			genDoc.ConsensusParams.Validator = types.ValidatorParams{
+				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+			}
+		}
+
+		// Write genesis file.
+		for i := 0; i < nValidators+nNonValidators; i++ {
+			nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
+			if err := genDoc.SaveAs(filepath.Join(nodeDir, config.BaseConfig.Genesis)); err != nil {
+				_ = os.RemoveAll(outputDir)
+				return err
+			}
+		}
+
+		// Gather persistent peer addresses.
+		var (
+			persistentPeers = make([]string, 0)
+			err             error
+		)
+		tpargs := testnetPeerArgs{
+			numValidators:    nValidators,
+			numNonValidators: nNonValidators,
+			peerToPeerPort:   p2pPort,
+			nodeDirPrefix:    nodeDirPrefix,
+			outputDir:        outputDir,
+			hostnames:        hostnames,
+			startingIPAddr:   startingIPAddress,
+			hostnamePrefix:   hostnamePrefix,
+			hostnameSuffix:   hostnameSuffix,
+			randomMonikers:   randomMonikers,
+		}
+
+		if populatePersistentPeers {
+
+			persistentPeers, err = persistentPeersArray(config, tpargs)
+			if err != nil {
+				_ = os.RemoveAll(outputDir)
+				return err
+			}
+		}
+
+		// Overwrite default config.
+		for i := 0; i < nValidators+nNonValidators; i++ {
+			nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
+			config.SetRoot(nodeDir)
+			config.P2P.AllowDuplicateIP = true
+			if populatePersistentPeers {
+				persistentPeersWithoutSelf := make([]string, 0)
+				for j := 0; j < len(persistentPeers); j++ {
+					if j == i {
+						continue
+					}
+					persistentPeersWithoutSelf = append(persistentPeersWithoutSelf, persistentPeers[j])
+				}
+				config.P2P.PersistentPeers = strings.Join(persistentPeersWithoutSelf, ",")
+			}
+			config.Moniker = tpargs.moniker(i)
+
+			if err := cfg.WriteConfigFile(nodeDir, config); err != nil {
+				return err
+			}
+		}
+
+		fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)
+		return nil
+	}
 
 	return cmd
 }
