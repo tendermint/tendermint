@@ -2,12 +2,16 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/tendermint/tendermint/config"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -34,6 +38,10 @@ func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 		Use:   "tendermint",
 		Short: "BFT state machine replication for applications in any programming languages",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.BindFlagsLoadViper(cmd, args); err != nil {
+				return err
+			}
+
 			if cmd.Name() == VersionCmd.Name() {
 				return nil
 			}
@@ -48,6 +56,9 @@ func RootCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.PersistentFlags().StringP(cli.HomeFlag, "", os.ExpandEnv(filepath.Join("$HOME", config.DefaultTendermintDir)), "directory for config and data")
+	cmd.PersistentFlags().Bool(cli.TraceFlag, false, "print out full stack trace on errors")
 	cmd.PersistentFlags().String("log-level", conf.LogLevel, "log level")
+	cobra.OnInitialize(func() { cli.InitEnv("TM") })
 	return cmd
 }

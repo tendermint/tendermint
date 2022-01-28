@@ -1,18 +1,19 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
+	"context"
 
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	conf, err := cmd.ParseConfig()
 	if err != nil {
 		panic(err)
@@ -58,8 +59,7 @@ func main() {
 	// Create & start node
 	rcmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc, conf, logger))
 
-	bcmd := cli.PrepareBaseCmd(rcmd, "TM", os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)))
-	if err := bcmd.Execute(); err != nil {
+	if err := rcmd.ExecuteContext(ctx); err != nil {
 		panic(err)
 	}
 }
