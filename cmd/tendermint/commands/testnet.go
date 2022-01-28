@@ -300,7 +300,7 @@ func (args *testnetPeerArgs) hostnameOrIP(i int) (string, error) {
 // get an array of persistent peers
 func persistentPeersArray(config *cfg.Config, args testnetPeerArgs) ([]string, error) {
 	peers := make([]string, args.numValidators+args.numNonValidators)
-	for i := 0; i < args.numValidators+args.numNonValidators; i++ {
+	for i := 0; i < len(peers); i++ {
 		nodeDir := filepath.Join(args.outputDir, fmt.Sprintf("%s%d", args.nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
 		nodeKey, err := config.LoadNodeKeyID()
