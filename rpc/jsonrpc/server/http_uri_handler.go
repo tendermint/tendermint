@@ -16,24 +16,12 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-// HTTP + URI handler
+// uriReqID is a placeholder ID used for GET requests, which do not receive a
+// JSON-RPC request ID from the caller.
+var uriReqID = rpctypes.JSONRPCIntID(-1)
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
-	// Always return -1 as there's no ID here.
-	dummyID := rpctypes.JSONRPCIntID(-1) // URIClientRequestID
-
-	// Exception for websocket endpoints
-	//
-	// TODO(creachadair): Rather than reporting errors for these, we should
-	// remove them from the routing list entirely on this endpoint.
-	if rpcFunc.ws {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}
-
-	// All other endpoints
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := rpctypes.WithCallInfo(req.Context(), &rpctypes.CallInfo{
 			HTTPRequest: req,
@@ -52,11 +40,11 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		switch e := err.(type) {
 		// if no error then return a success response
 		case nil:
-			writeHTTPResponse(w, logger, rpctypes.NewRPCSuccessResponse(dummyID, result))
+			writeHTTPResponse(w, logger, rpctypes.NewRPCSuccessResponse(uriReqID, result))
 
 		// if this already of type RPC error then forward that error.
 		case *rpctypes.RPCError:
-			writeHTTPResponse(w, logger, rpctypes.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
+			writeHTTPResponse(w, logger, rpctypes.NewRPCErrorResponse(uriReqID, e.Code, e.Message, e.Data))
 
 		default: // we need to unwrap the error and parse it accordingly
 			switch errors.Unwrap(err) {
@@ -64,9 +52,9 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 				coretypes.ErrZeroOrNegativePerPage,
 				coretypes.ErrPageOutOfRange,
 				coretypes.ErrInvalidRequest:
-				writeHTTPResponse(w, logger, rpctypes.RPCInvalidRequestError(dummyID, err))
+				writeHTTPResponse(w, logger, rpctypes.RPCInvalidRequestError(uriReqID, err))
 			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				writeHTTPResponse(w, logger, rpctypes.RPCInternalError(dummyID, err))
+				writeHTTPResponse(w, logger, rpctypes.RPCInternalError(uriReqID, err))
 			}
 		}
 	}

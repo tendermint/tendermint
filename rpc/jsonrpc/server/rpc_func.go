@@ -10,17 +10,17 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-// RegisterRPCFuncs adds a route for each function in the funcMap, as well as
-// general jsonrpc and websocket handlers for all functions. "result" is the
-// interface on which the result objects are registered, and is popualted with
-// every RPCResponse
+// RegisterRPCFuncs adds a route to mux for each non-websocket function in the
+// funcMap, and also a root JSON-RPC POST handler.
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger log.Logger) {
-	// HTTP endpoints
-	for funcName, rpcFunc := range funcMap {
-		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, logger))
+	for name, fn := range funcMap {
+		if fn.ws {
+			continue // skip websocket endpoints, not usable via GET calls
+		}
+		mux.HandleFunc("/"+name, makeHTTPHandler(fn, logger))
 	}
 
-	// JSONRPC endpoints
+	// Endpoints for POST.
 	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
 }
 
