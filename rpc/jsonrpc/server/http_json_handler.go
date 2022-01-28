@@ -13,7 +13,6 @@ import (
 	"strconv"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -25,15 +24,15 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		// For POST requests, reject a non-root URL path. This should not happen
 		// in the standard configuration, since the wrapper checks the path.
 		if hreq.URL.Path != "/" {
-			writeRPCResponse(w, logger, rpctypes.RPCInvalidRequestError(
-				nil, fmt.Errorf("invalid path: %q", hreq.URL.Path)))
+			writeRPCResponse(w, logger, rpctypes.RPCRequest{}.MakeErrorf(
+				rpctypes.CodeInvalidRequest, "invalid path: %q", hreq.URL.Path))
 			return
 		}
 
 		b, err := io.ReadAll(hreq.Body)
 		if err != nil {
-			writeRPCResponse(w, logger, rpctypes.RPCInvalidRequestError(
-				nil, fmt.Errorf("reading request body: %w", err)))
+			writeRPCResponse(w, logger, rpctypes.RPCRequest{}.MakeErrorf(
+				rpctypes.CodeInvalidRequest, "reading request body: %v", err))
 			return
 		}
 
@@ -46,7 +45,8 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 
 		requests, err := parseRequests(b)
 		if err != nil {
-			writeRPCResponse(w, logger, rpctypes.RPCParseError(fmt.Errorf("decoding request: %w", err)))
+			writeRPCResponse(w, logger, rpctypes.RPCRequest{}.MakeErrorf(
+				rpctypes.CodeParseError, "decoding request: %v", err))
 			return
 		}
 
@@ -60,7 +60,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 
 			rpcFunc, ok := funcMap[req.Method]
 			if !ok || rpcFunc.ws {
-				responses = append(responses, rpctypes.RPCMethodNotFoundError(req.ID))
+				responses = append(responses, req.MakeErrorf(rpctypes.CodeMethodNotFound, req.Method))
 				continue
 			}
 
@@ -71,32 +71,17 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			})
 			args, err := parseParams(ctx, rpcFunc, req.Params)
 			if err != nil {
-				responses = append(responses, rpctypes.RPCInvalidParamsError(
-					req.ID, fmt.Errorf("converting JSON parameters: %w", err)))
+				responses = append(responses,
+					req.MakeErrorf(rpctypes.CodeInvalidParams, "converting JSON parameters: %v", err))
 				continue
 			}
 
 			returns := rpcFunc.f.Call(args)
-			logger.Debug("HTTPJSONRPC", "method", req.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
-			switch e := err.(type) {
-			// if no error then return a success response
-			case nil:
-				responses = append(responses, rpctypes.NewRPCSuccessResponse(req.ID, result))
-
-			// if this already of type RPC error then forward that error
-			case *rpctypes.RPCError:
-				responses = append(responses, rpctypes.NewRPCErrorResponse(req.ID, e.Code, e.Message, e.Data))
-			default: // we need to unwrap the error and parse it accordingly
-				switch errors.Unwrap(err) {
-				// check if the error was due to an invald request
-				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
-					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
-					responses = append(responses, rpctypes.RPCInvalidRequestError(req.ID, err))
-				// lastly default all remaining errors as internal errors
-				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
-					responses = append(responses, rpctypes.RPCInternalError(req.ID, err))
-				}
+			if err == nil {
+				responses = append(responses, req.MakeResponse(result))
+			} else {
+				responses = append(responses, req.MakeError(err))
 			}
 		}
 

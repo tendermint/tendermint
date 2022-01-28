@@ -67,7 +67,7 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 				return
 			} else if errors.Is(err, tmpubsub.ErrTerminated) {
 				// The subscription was terminated by the publisher.
-				resp := rpctypes.RPCServerError(subscriptionID, err)
+				resp := callInfo.RPCRequest.MakeError(err)
 				ok := callInfo.WSConn.TryWriteRPCResponse(opctx, resp)
 				if !ok {
 					env.Logger.Info("Unable to write response (slow client)",
@@ -77,7 +77,7 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 			}
 
 			// We have a message to deliver to the client.
-			resp := rpctypes.NewRPCSuccessResponse(subscriptionID, &coretypes.ResultEvent{
+			resp := callInfo.RPCRequest.MakeResponse(&coretypes.ResultEvent{
 				Query:  query,
 				Data:   msg.Data(),
 				Events: msg.Events(),
