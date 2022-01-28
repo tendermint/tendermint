@@ -120,6 +120,10 @@ that *only* runs the light client reactor, as this raises a few questions:
 
 - would users specify a single P2P node to connect to when creating a light
   client or would they also need/want to discover peers?
+  
+  - **answer**: most light client use cases won't care much about selecting
+    peers (and those that do can either disable PEX and specify persistent
+    peers, *or* use the RPC light client.)
 
 - how do we prevent full nodes and validators from allowing their peer slots,
   which are typically limited, from filling with light clients? If
@@ -127,7 +131,12 @@ that *only* runs the light client reactor, as this raises a few questions:
   resources on consensus nodes?
 
 - when a light client disconnects from its peers will it need to reset its
-  internal state? does this change if it connects to the same peers?
+  internal state (cache)? does this change if it connects to the same peers?
+  
+  - **answer**: no, the internal state only needs to be reset if the light
+    client detects an invalid block or other divergence, and changing
+    witnesses--which will be more common with a p2p light client--need not
+    invalidate the cache. 
 
 These issues are primarily present given that the current peer management later
 does not have a particularly good service discovery mechanism nor does it have
