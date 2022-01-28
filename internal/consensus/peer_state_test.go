@@ -26,14 +26,25 @@ func TestSetHasVote(t *testing.T) {
 	require.Equal(t, ErrPeerStateNilVote, err)
 
 	// the peer giving an invalid index should returns ErrPeerStateInvalidVoteIndex
-	v := &types.Vote{
+	v0 := &types.Vote{
+		Height:         1,
+		ValidatorIndex: -1,
+		Round:          1,
+		Type:           tmproto.PrevoteType,
+	}
+
+	err = ps.SetHasVote(v0)
+	require.Equal(t, ErrPeerStateInvalidVoteIndex, err)
+
+	// the peer giving an invalid index should returns ErrPeerStateInvalidVoteIndex
+	v1 := &types.Vote{
 		Height:         1,
 		ValidatorIndex: 1,
 		Round:          1,
 		Type:           tmproto.PrevoteType,
 	}
 
-	err = ps.SetHasVote(v)
+	err = ps.SetHasVote(v1)
 	require.Equal(t, ErrPeerStateInvalidVoteIndex, err)
 
 	// the peer giving a correct index should return nil (vote has been set)

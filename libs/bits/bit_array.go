@@ -72,7 +72,7 @@ func (bA *BitArray) getIndex(i int) bool {
 }
 
 // SetIndex sets the bit at index i within the bit array.
-// The behavior is undefined if i >= bA.Bits
+// The behavior is undefined if i >= bA.Bits or i < 0
 func (bA *BitArray) SetIndex(i int, v bool) bool {
 	if bA == nil {
 		return false
@@ -83,7 +83,7 @@ func (bA *BitArray) SetIndex(i int, v bool) bool {
 }
 
 func (bA *BitArray) setIndex(i int, v bool) bool {
-	if i >= bA.Bits {
+	if i < 0 || i >= bA.Bits {
 		return false
 	}
 	if v {
