@@ -64,7 +64,9 @@ func (h *myTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		res := json.RawMessage(`{}`)
-		emptyRespBytes, _ := json.Marshal(rpctypes.RPCResponse{Result: res, ID: req.ID})
+
+		emptyRespBytes, err := json.Marshal(req.MakeResponse(res))
+		require.NoError(h.t, err)
 		if err := conn.WriteMessage(messageType, emptyRespBytes); err != nil {
 			return
 		}

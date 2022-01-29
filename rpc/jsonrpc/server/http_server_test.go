@@ -125,7 +125,7 @@ func TestServeTLS(t *testing.T) {
 }
 
 func TestWriteRPCResponse(t *testing.T) {
-	req := rpctypes.RPCRequest{ID: rpctypes.JSONRPCIntID(-1)}
+	req := rpctypes.NewRequest(-1)
 
 	// one argument
 	w := httptest.NewRecorder()
@@ -160,7 +160,7 @@ func TestWriteRPCResponse(t *testing.T) {
 func TestWriteHTTPResponse(t *testing.T) {
 	w := httptest.NewRecorder()
 	logger := log.NewNopLogger()
-	req := rpctypes.RPCRequest{ID: rpctypes.JSONRPCIntID(-1)}
+	req := rpctypes.NewRequest(-1)
 	writeHTTPResponse(w, logger, req.MakeErrorf(rpctypes.CodeInternalError, "foo"))
 	resp := w.Result()
 	body, err := io.ReadAll(resp.Body)

@@ -16,7 +16,7 @@ import (
 
 // uriReqID is a placeholder ID used for GET requests, which do not receive a
 // JSON-RPC request ID from the caller.
-var uriReqID = rpctypes.JSONRPCIntID(-1)
+const uriReqID = -1
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
@@ -31,7 +31,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			fmt.Fprintln(w, err.Error())
 			return
 		}
-		jreq := rpctypes.RPCRequest{ID: uriReqID}
+		jreq := rpctypes.NewRequest(uriReqID)
 		outs := rpcFunc.f.Call(args)
 
 		logger.Debug("HTTPRestRPC", "method", req.URL.Path, "args", args, "returns", outs)

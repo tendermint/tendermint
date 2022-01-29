@@ -53,7 +53,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		var responses []rpctypes.RPCResponse
 		for _, req := range requests {
 			// Ignore notifications, which this service does not support.
-			if req.ID == nil {
+			if req.IsNotification() {
 				logger.Debug("Ignoring notification", "req", req)
 				continue
 			}
