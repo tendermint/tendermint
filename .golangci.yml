@@ -16,7 +16,7 @@ linters:
     # - godox
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
@@ -24,7 +24,6 @@ linters:
     # - interfacer
     - lll
     - misspell
-    - maligned
     - nakedret
     - prealloc
     # - scopelint

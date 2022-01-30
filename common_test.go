@@ -127,7 +127,6 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 			val := internal[idx]
 			idxBytes := int642Bytes(idx)
 			valBytes := int642Bytes(val)
-			//fmt.Printf("Set %X -> %X\n", idxBytes, valBytes)
 			err := db.Set(idxBytes, valBytes)
 			if err != nil {
 				// require.NoError() is very expensive (according to profiler), so check manually
@@ -145,7 +144,6 @@ func benchmarkRandomReadsWrites(b *testing.B, db DB) {
 				// require.NoError() is very expensive (according to profiler), so check manually
 				b.Fatal(b, err)
 			}
-			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if valExp == 0 {
 				if !bytes.Equal(valBytes, nil) {
 					b.Errorf("Expected %v for %v, got %X", nil, idx, valBytes)

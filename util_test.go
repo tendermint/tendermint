@@ -113,7 +113,7 @@ func TestPrefixIteratorMatches1N(t *testing.T) {
 			// Bad!
 			checkNext(t, itr, false)
 
-			//Once invalid...
+			// Once invalid...
 			checkInvalid(t, itr)
 		})
 	}

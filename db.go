@@ -28,7 +28,7 @@ const (
 	//   - may be faster is some use-cases (random reads - indexer)
 	//   - use boltdb build tag (go build -tags boltdb)
 	BoltDBBackend BackendType = "boltdb"
-	// RocksDBBackend represents rocksdb (uses github.com/tecbot/gorocksdb)
+	// RocksDBBackend represents rocksdb (uses github.com/cosmos/gorocksdb)
 	//   - EXPERIMENTAL
 	//   - requires gcc
 	//   - use rocksdb build tag (go build -tags rocksdb)

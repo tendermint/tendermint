@@ -24,7 +24,7 @@ Go 1.13+
 
 - **[BoltDB](https://github.com/etcd-io/bbolt) [experimental]:** A [fork](https://github.com/etcd-io/bbolt) of [BoltDB](https://github.com/boltdb/bolt). Uses B+trees for on-disk storage, which have good performance for read-heavy workloads and range scans. Supports serializable ACID transactions.
 
-- **[RocksDB](https://github.com/tecbot/gorocksdb) [experimental]:** A [Go wrapper](https://github.com/tecbot/gorocksdb) around [RocksDB](https://rocksdb.org). Similarly to LevelDB (above) it uses LSM-trees for on-disk storage, but is optimized for fast storage media such as SSDs and memory. Supports atomic transactions, but not full ACID transactions.
+- **[RocksDB](https://github.com/cosmos/gorocksdb) [experimental]:** A [Go wrapper](https://github.com/cosmos/gorocksdb) around [RocksDB](https://rocksdb.org). Similarly to LevelDB (above) it uses LSM-trees for on-disk storage, but is optimized for fast storage media such as SSDs and memory. Supports atomic transactions, but not full ACID transactions.
 
 - **[BadgerDB](https://github.com/dgraph-io/badger) [experimental]:** A key-value database written as a pure-Go alternative to e.g. LevelDB and RocksDB, with LSM-tree storage. Makes use of multiple goroutines for performance, and includes advanced features such as serializable ACID transactions, write batches, compression, and more.
 
