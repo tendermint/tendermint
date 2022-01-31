@@ -28,7 +28,6 @@ import (
 // client is a global variable so it can be reused by the console
 var (
 	client abciclient.Client
-	logger log.Logger
 )
 
 // flags
@@ -48,34 +47,32 @@ var (
 	flagPersist string
 )
 
-var RootCmd = &cobra.Command{
-	Use:   "abci-cli",
-	Short: "the ABCI CLI tool wraps an ABCI client",
-	Long:  "the ABCI CLI tool wraps an ABCI client and is used for testing ABCI servers",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+func RootCmmand(logger log.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:   "abci-cli",
+		Short: "the ABCI CLI tool wraps an ABCI client",
+		Long:  "the ABCI CLI tool wraps an ABCI client and is used for testing ABCI servers",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 
-		switch cmd.Use {
-		case "kvstore", "version":
+			switch cmd.Use {
+			case "kvstore", "version":
+				return nil
+			}
+
+			if client == nil {
+				var err error
+				client, err = abciclient.NewClient(logger.With("module", "abci-client"), flagAddress, flagAbci, false)
+				if err != nil {
+					return err
+				}
+
+				if err := client.Start(cmd.Context()); err != nil {
+					return err
+				}
+			}
 			return nil
-		}
-
-		if logger == nil {
-			logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-		}
-
-		if client == nil {
-			var err error
-			client, err = abciclient.NewClient(logger.With("module", "abci-client"), flagAddress, flagAbci, false)
-			if err != nil {
-				return err
-			}
-
-			if err := client.Start(cmd.Context()); err != nil {
-				return err
-			}
-		}
-		return nil
-	},
+		},
+	}
 }
 
 // Structure for data passed to print response.
@@ -97,56 +94,46 @@ type queryResponse struct {
 }
 
 func Execute() error {
-	addGlobalFlags()
-	addCommands()
-	return RootCmd.Execute()
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		return err
+	}
+
+	cmd := RootCmmand(logger)
+	addGlobalFlags(cmd)
+	addCommands(cmd, logger)
+	return cmd.Execute()
 }
 
-func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&flagAddress,
+func addGlobalFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&flagAddress,
 		"address",
 		"",
 		"tcp://0.0.0.0:26658",
 		"address of application socket")
-	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&flagVerbose,
+	cmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
+	cmd.PersistentFlags().BoolVarP(&flagVerbose,
 		"verbose",
 		"v",
 		false,
 		"print the command and results as if it were a console session")
-	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
+	cmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
 }
 
-func addQueryFlags() {
-	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
-	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&flagProve,
-		"prove",
-		"",
-		false,
-		"whether or not to return a merkle proof of the query result")
-}
-
-func addKVStoreFlags() {
-	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
-}
-
-func addCommands() {
-	RootCmd.AddCommand(batchCmd)
-	RootCmd.AddCommand(consoleCmd)
-	RootCmd.AddCommand(echoCmd)
-	RootCmd.AddCommand(infoCmd)
-	RootCmd.AddCommand(deliverTxCmd)
-	RootCmd.AddCommand(checkTxCmd)
-	RootCmd.AddCommand(commitCmd)
-	RootCmd.AddCommand(versionCmd)
-	RootCmd.AddCommand(testCmd)
-	addQueryFlags()
-	RootCmd.AddCommand(queryCmd)
+func addCommands(cmd *cobra.Command, logger log.Logger) {
+	cmd.AddCommand(batchCmd)
+	cmd.AddCommand(consoleCmd)
+	cmd.AddCommand(echoCmd)
+	cmd.AddCommand(infoCmd)
+	cmd.AddCommand(deliverTxCmd)
+	cmd.AddCommand(checkTxCmd)
+	cmd.AddCommand(commitCmd)
+	cmd.AddCommand(versionCmd)
+	cmd.AddCommand(testCmd)
+	cmd.AddCommand(getQueryCmd())
 
 	// examples
-	addKVStoreFlags()
-	RootCmd.AddCommand(kvstoreCmd)
+	cmd.AddCommand(getKVStoreCmd(logger))
 }
 
 var batchCmd = &cobra.Command{
@@ -236,20 +223,38 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-var queryCmd = &cobra.Command{
-	Use:   "query",
-	Short: "query the application state",
-	Long:  "query the application state",
-	Args:  cobra.ExactArgs(1),
-	RunE:  cmdQuery,
+func getQueryCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "query",
+		Short: "query the application state",
+		Long:  "query the application state",
+		Args:  cobra.ExactArgs(1),
+		RunE:  cmdQuery,
+	}
+
+	cmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
+	cmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
+	cmd.PersistentFlags().BoolVarP(&flagProve,
+		"prove",
+		"",
+		false,
+		"whether or not to return a merkle proof of the query result")
+
+	return cmd
 }
 
-var kvstoreCmd = &cobra.Command{
-	Use:   "kvstore",
-	Short: "ABCI demo example",
-	Long:  "ABCI demo example",
-	Args:  cobra.ExactArgs(0),
-	RunE:  cmdKVStore,
+func getKVStoreCmd(logger log.Logger) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "kvstore",
+		Short: "ABCI demo example",
+		Long:  "ABCI demo example",
+		Args:  cobra.ExactArgs(0),
+		RunE:  makeKVStoreCmd(logger),
+	}
+
+	cmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
+	return cmd
+
 }
 
 var testCmd = &cobra.Command{
@@ -425,12 +430,9 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	})
 
 	fmt.Println("Available commands:")
-	fmt.Printf("%s: %s\n", echoCmd.Use, echoCmd.Short)
-	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
-	fmt.Printf("%s: %s\n", checkTxCmd.Use, checkTxCmd.Short)
-	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
-	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
-	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
+	for _, cmd := range cmd.Commands() {
+		fmt.Printf("%s: %s\n", cmd.Use, cmd.Short)
+	}
 	fmt.Println("Use \"[command] --help\" for more information about a command.")
 
 	return nil
@@ -574,33 +576,34 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func cmdKVStore(cmd *cobra.Command, args []string) error {
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+func makeKVStoreCmd(logger log.Logger) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		// Create the application - in memory or persisted to disk
+		var app types.Application
+		if flagPersist == "" {
+			app = kvstore.NewApplication()
+		} else {
+			app = kvstore.NewPersistentKVStoreApplication(logger, flagPersist)
+		}
 
-	// Create the application - in memory or persisted to disk
-	var app types.Application
-	if flagPersist == "" {
-		app = kvstore.NewApplication()
-	} else {
-		app = kvstore.NewPersistentKVStoreApplication(logger, flagPersist)
+		// Start the listener
+		srv, err := server.NewServer(logger.With("module", "abci-server"), flagAddress, flagAbci, app)
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+		defer cancel()
+
+		if err := srv.Start(ctx); err != nil {
+			return err
+		}
+
+		// Run forever.
+		<-ctx.Done()
+		return nil
 	}
 
-	// Start the listener
-	srv, err := server.NewServer(logger.With("module", "abci-server"), flagAddress, flagAbci, app)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
-	defer cancel()
-
-	if err := srv.Start(ctx); err != nil {
-		return err
-	}
-
-	// Run forever.
-	<-ctx.Done()
-	return nil
 }
 
 //--------------------------------------------------------------------------------

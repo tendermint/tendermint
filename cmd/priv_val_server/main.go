@@ -45,11 +45,15 @@ func main() {
 		keyFile          = flag.String("keyfile", "", "absolute path to server key")
 		rootCA           = flag.String("rootcafile", "", "absolute path to root CA")
 		prometheusAddr   = flag.String("prometheus-addr", "", "address for prometheus endpoint (host:port)")
-
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo).
-			With("module", "priv_val")
 	)
 	flag.Parse()
+
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to construct logger: %v", err)
+		os.Exit(1)
+	}
+	logger = logger.With("module", "priv_val")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
