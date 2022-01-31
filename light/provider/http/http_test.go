@@ -80,12 +80,12 @@ func TestProvider(t *testing.T) {
 	lb, err = p.LightBlock(ctx, 9001)
 	require.Error(t, err)
 	require.Nil(t, lb)
-	assert.Equal(t, provider.ErrHeightTooHigh, err)
+	assert.ErrorIs(t, err, provider.ErrHeightTooHigh)
 
 	lb, err = p.LightBlock(ctx, 1)
 	require.Error(t, err)
 	require.Nil(t, lb)
-	assert.Equal(t, provider.ErrLightBlockNotFound, err)
+	assert.ErrorIs(t, err, provider.ErrLightBlockNotFound)
 
 	// if the provider is unable to provide four more blocks then we should return
 	// an unreliable peer error

@@ -655,11 +655,7 @@ func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.Resu
 			case resultEvent := <-out:
 				// We should have a switch here that performs a validation
 				// depending on the event's type.
-				callInfo.WSConn.TryWriteRPCResponse(bctx,
-					rpctypes.NewRPCSuccessResponse(
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", callInfo.RPCRequest.ID)),
-						resultEvent,
-					))
+				callInfo.WSConn.TryWriteRPCResponse(bctx, callInfo.RPCRequest.MakeResponse(resultEvent))
 			case <-bctx.Done():
 				return
 			}

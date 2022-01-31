@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -126,16 +125,15 @@ func TestServeTLS(t *testing.T) {
 }
 
 func TestWriteRPCResponse(t *testing.T) {
-	id := rpctypes.JSONRPCIntID(-1)
+	req := rpctypes.RPCRequest{ID: rpctypes.JSONRPCIntID(-1)}
 
 	// one argument
 	w := httptest.NewRecorder()
 	logger := log.NewNopLogger()
-	writeRPCResponse(w, logger,
-		rpctypes.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	writeRPCResponse(w, logger, req.MakeResponse(&sampleResult{"hello"}))
 	resp := w.Result()
 	body, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -145,12 +143,12 @@ func TestWriteRPCResponse(t *testing.T) {
 	// multiple arguments
 	w = httptest.NewRecorder()
 	writeRPCResponse(w, logger,
-		rpctypes.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
-		rpctypes.NewRPCSuccessResponse(id, &sampleResult{"world"}),
+		req.MakeResponse(&sampleResult{"hello"}),
+		req.MakeResponse(&sampleResult{"world"}),
 	)
 	resp = w.Result()
 	body, err = io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 
 	assert.Equal(t, 200, resp.StatusCode)
@@ -162,11 +160,11 @@ func TestWriteRPCResponse(t *testing.T) {
 func TestWriteHTTPResponse(t *testing.T) {
 	w := httptest.NewRecorder()
 	logger := log.NewNopLogger()
-	writeHTTPResponse(w, logger,
-		rpctypes.RPCInternalError(rpctypes.JSONRPCIntID(-1), errors.New("foo")))
+	req := rpctypes.RPCRequest{ID: rpctypes.JSONRPCIntID(-1)}
+	writeHTTPResponse(w, logger, req.MakeErrorf(rpctypes.CodeInternalError, "foo"))
 	resp := w.Result()
 	body, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))

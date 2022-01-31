@@ -181,8 +181,6 @@ well as the server. These include:
 ---
 ## Decision
 
-(pending)
-
 To address the described problems, we will:
 
 1. Introduce a new API for event subscription to the Tendermint RPC service.
@@ -398,8 +396,8 @@ The `oldest_item` and `newest_item` fields of the reply report the cursors of
 the oldest and newest items (of any kind) recorded in the event log at the time
 of the reply, or are `""` if the log is empty.
 
-The `data` field contains the type-specific event datum, and `events` contain
-the ABCI events, if any were defined.
+The `data` field contains the type-specific event datum.  The datum carries any
+ABCI events that may have been defined.
 
 > **Discussion point**: Based on [issue #7273][i7273], I did not include a
 > separate field in the response for the ABCI events, since it duplicates data
@@ -458,7 +456,7 @@ crashes and connectivity issues:
      no `before_item`).
 
   2. If there are more events than the client requested, or if the client needs
-     to to read older events to recover from a stall or crash , clients will
+     to to read older events to recover from a stall or crash, clients will
      **page** backward through the event log (by setting `before_item` and
      possibly `after_item`).
 
