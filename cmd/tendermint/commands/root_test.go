@@ -45,6 +45,7 @@ func testSetup(t *testing.T, conf *cfg.Config, args []string, env map[string]str
 	t.Helper()
 
 	cmd := testRootCmd(conf)
+	viper.Set(cli.HomeFlag, conf.RootDir)
 
 	// run with the args and env
 	args = append([]string{cmd.Use}, args...)

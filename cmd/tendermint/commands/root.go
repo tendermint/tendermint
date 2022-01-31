@@ -19,8 +19,6 @@ const ctxTimeout = 4 * time.Second
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
 func ParseConfig(conf *config.Config) (*config.Config, error) {
-	viper.Set(cli.HomeFlag, conf.RootDir)
-
 	if err := viper.Unmarshal(conf); err != nil {
 		return nil, err
 	}
@@ -46,8 +44,6 @@ func RootCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 			if err := cli.BindFlagsLoadViper(cmd, args); err != nil {
 				return err
 			}
-
-			var err error
 
 			pconf, err := ParseConfig(conf)
 			if err != nil {
