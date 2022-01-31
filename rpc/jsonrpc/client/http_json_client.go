@@ -271,7 +271,10 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 		ids[i] = req.request.ID.(rpctypes.JSONRPCIntID)
 	}
 
-	return unmarshalResponseBytesArray(responseBytes, ids, results)
+	if err := unmarshalResponseBytesArray(responseBytes, ids, results); err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
 func (c *Client) nextRequestID() rpctypes.JSONRPCIntID {
