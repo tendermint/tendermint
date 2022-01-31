@@ -28,10 +28,10 @@ type Executable interface {
 
 // PrepareBaseCmd is meant for tendermint and other servers
 func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor {
-	cobra.OnInitialize(func() { initEnv(envPrefix) })
+	cobra.OnInitialize(func() { InitEnv(envPrefix) })
 	cmd.PersistentFlags().StringP(HomeFlag, "", defaultHome, "directory for config and data")
 	cmd.PersistentFlags().Bool(TraceFlag, false, "print out full stack trace on errors")
-	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
+	cmd.PersistentPreRunE = concatCobraCmdFuncs(BindFlagsLoadViper, cmd.PersistentPreRunE)
 	return Executor{cmd, os.Exit}
 }
 
@@ -46,8 +46,8 @@ func PrepareMainCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor 
 	return PrepareBaseCmd(cmd, envPrefix, defaultHome)
 }
 
-// initEnv sets to use ENV variables if set.
-func initEnv(prefix string) {
+// InitEnv sets to use ENV variables if set.
+func InitEnv(prefix string) {
 	copyEnvVars(prefix)
 
 	// env variables with TM prefix (eg. TM_ROOT)
@@ -127,7 +127,7 @@ func concatCobraCmdFuncs(fs ...cobraCmdFunc) cobraCmdFunc {
 }
 
 // Bind all flags and read the config into viper
-func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
+func BindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 	// cmd.Flags() includes flags from this command and all persistent flags from the parent
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
