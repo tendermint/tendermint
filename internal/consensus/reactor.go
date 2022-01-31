@@ -660,7 +660,6 @@ func (r *Reactor) pickSendVote(ctx context.Context, ps *PeerState, votes types.V
 		return false, err
 	}
 
-	// the vote should be non-nil.
 	if err := ps.SetHasVote(vote); err != nil {
 		return false, err
 	}

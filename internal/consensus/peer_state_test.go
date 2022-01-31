@@ -23,7 +23,7 @@ func TestSetHasVote(t *testing.T) {
 
 	// nil vote should return ErrPeerStateNilVote
 	err := ps.SetHasVote(nil)
-	require.Equal(t, ErrPeerStateNilVote, err)
+	require.Equal(t, ErrPeerStateSetNilVote, err)
 
 	// the peer giving an invalid index should returns ErrPeerStateInvalidVoteIndex
 	v0 := &types.Vote{

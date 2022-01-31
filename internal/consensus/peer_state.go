@@ -18,8 +18,8 @@ import (
 var (
 	ErrPeerStateHeightRegression = errors.New("peer state height regression")
 	ErrPeerStateInvalidStartTime = errors.New("peer state invalid startTime")
-	ErrPeerStateNilVote          = errors.New("peer state nil vote")
-	ErrPeerStateInvalidVoteIndex = errors.New("peer state invalid vote index")
+	ErrPeerStateSetNilVote       = errors.New("peer state set a nil vote")
+	ErrPeerStateInvalidVoteIndex = errors.New("peer sent a vote with an invalid vote index")
 )
 
 // peerStateStats holds internal statistics for a peer.
@@ -359,7 +359,7 @@ func (ps *PeerState) BlockPartsSent() int {
 func (ps *PeerState) SetHasVote(vote *types.Vote) error {
 	// sanity check
 	if vote == nil {
-		return ErrPeerStateNilVote
+		return ErrPeerStateSetNilVote
 	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
