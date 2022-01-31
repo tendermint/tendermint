@@ -56,13 +56,13 @@ func unmarshalResponseBytesArray(responseBytes []byte, expectedIDs []string, res
 }
 
 func validateResponseIDs(ids, expectedIDs []string) error {
-	m := make(map[string]bool, len(expectedIDs))
+	m := make(map[string]struct{}, len(expectedIDs))
 	for _, id := range expectedIDs {
-		m[id] = true
+		m[id] = struct{}{}
 	}
 
 	for i, id := range ids {
-		if !m[id] {
+		if _, ok := m[id]; !ok {
 			return fmt.Errorf("unexpected response ID %d: %q", i, id)
 		}
 	}
