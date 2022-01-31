@@ -240,7 +240,7 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 		}
 	}
 	w.Header().Set("Content-Type", "text/html")
-	listOfEndpoints.Execute(w, map[string]map[string]string{
+	_ = listOfEndpoints.Execute(w, map[string]map[string]string{
 		"NoArgs":  noArgs,
 		"HasArgs": hasArgs,
 	})
