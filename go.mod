@@ -26,7 +26,7 @@ require (
 	github.com/minio/highwayhash v1.0.2
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.12.0
+	github.com/prometheus/client_golang v1.12.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/rs/cors v1.8.2
 	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa
