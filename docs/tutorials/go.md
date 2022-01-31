@@ -367,7 +367,11 @@ func main() {
 
  flag.Parse()
 
- logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+ logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+ if err != nil {
+  fmt.Fprintf(os.Stderr, "failed to configure logger: %v", err)
+  os.Exit(1)
+ }
 
  server := abciserver.NewSocketServer(socketAddr, app)
  server.SetLogger(logger)
