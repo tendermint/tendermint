@@ -31,29 +31,12 @@ func unmarshalResponseBytes(responseBytes []byte, expectedID rpctypes.JSONRPCInt
 	return nil
 }
 
-func unmarshalResponseBytesArray(
-	responseBytes []byte,
-	expectedIDs []rpctypes.JSONRPCIntID,
-	results []interface{},
-) ([]interface{}, error) {
-
-	var (
-		responses []rpctypes.RPCResponse
-	)
-
+func unmarshalResponseBytesArray(responseBytes []byte, expectedIDs []rpctypes.JSONRPCIntID, results []interface{}) error {
+	var responses []rpctypes.RPCResponse
 	if err := json.Unmarshal(responseBytes, &responses); err != nil {
-		return nil, fmt.Errorf("error unmarshaling: %w", err)
-	}
-
-	// No response error checking here as there may be a mixture of successful
-	// and unsuccessful responses.
-
-	if len(results) != len(responses) {
-		return nil, fmt.Errorf(
-			"expected %d result objects into which to inject responses, but got %d",
-			len(responses),
-			len(results),
-		)
+		return fmt.Errorf("unmarshaling responses: %w", err)
+	} else if len(responses) != len(results) {
+		return fmt.Errorf("got %d results, wanted %d", len(responses), len(results))
 	}
 
 	// Intersect IDs from responses with expectedIDs.
@@ -62,20 +45,19 @@ func unmarshalResponseBytesArray(
 	for i, resp := range responses {
 		ids[i], ok = resp.ID.(rpctypes.JSONRPCIntID)
 		if !ok {
-			return nil, fmt.Errorf("expected JSONRPCIntID, got %T", resp.ID)
+			return fmt.Errorf("expected JSONRPCIntID, got %T", resp.ID)
 		}
 	}
 	if err := validateResponseIDs(ids, expectedIDs); err != nil {
-		return nil, fmt.Errorf("wrong IDs: %w", err)
+		return fmt.Errorf("wrong IDs: %w", err)
 	}
 
 	for i := 0; i < len(responses); i++ {
 		if err := json.Unmarshal(responses[i].Result, results[i]); err != nil {
-			return nil, fmt.Errorf("error unmarshaling #%d result: %w", i, err)
+			return fmt.Errorf("error unmarshaling #%d result: %w", i, err)
 		}
 	}
-
-	return results, nil
+	return nil
 }
 
 func validateResponseIDs(ids, expectedIDs []rpctypes.JSONRPCIntID) error {
