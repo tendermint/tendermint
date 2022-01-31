@@ -204,21 +204,21 @@ func (c *WSClient) Send(ctx context.Context, request rpctypes.RPCRequest) error 
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := rpctypes.ParamsToRequest(c.nextRequestID(), method, params)
-	if err != nil {
+	req := rpctypes.NewRequest(c.nextRequestID())
+	if err := req.SetMethodAndParams(method, params); err != nil {
 		return err
 	}
-	return c.Send(ctx, request)
+	return c.Send(ctx, req)
 }
 
 // Private methods
 
-func (c *WSClient) nextRequestID() rpctypes.JSONRPCIntID {
+func (c *WSClient) nextRequestID() int {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
 	id := c.nextReqID
 	c.nextReqID++
-	c.mtx.Unlock()
-	return rpctypes.JSONRPCIntID(id)
+	return id
 }
 
 func (c *WSClient) dial() error {
@@ -453,11 +453,6 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		err = json.Unmarshal(data, &response)
 		if err != nil {
 			c.Logger.Error("failed to parse response", "err", err, "data", string(data))
-			continue
-		}
-
-		if err = validateResponseID(response.ID); err != nil {
-			c.Logger.Error("error in response ID", "id", response.ID, "err", err)
 			continue
 		}
 

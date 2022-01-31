@@ -183,8 +183,8 @@ func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 func (c *Client) Call(ctx context.Context, method string, params, result interface{}) error {
 	id := c.nextRequestID()
 
-	request, err := rpctypes.ParamsToRequest(id, method, params)
-	if err != nil {
+	request := rpctypes.NewRequest(id)
+	if err := request.SetMethodAndParams(method, params); err != nil {
 		return fmt.Errorf("failed to encode params: %w", err)
 	}
 
@@ -210,14 +210,13 @@ func (c *Client) Call(ctx context.Context, method string, params, result interfa
 		return err
 	}
 
-	defer httpResponse.Body.Close()
-
 	responseBytes, err := io.ReadAll(httpResponse.Body)
+	httpResponse.Body.Close()
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
+		return fmt.Errorf("reading response body: %w", err)
 	}
 
-	return unmarshalResponseBytes(responseBytes, id, result)
+	return unmarshalResponseBytes(responseBytes, request.ID(), result)
 }
 
 // NewRequestBatch starts a batch of requests for this client.
@@ -258,17 +257,16 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 		return nil, fmt.Errorf("post: %w", err)
 	}
 
-	defer httpResponse.Body.Close()
-
 	responseBytes, err := io.ReadAll(httpResponse.Body)
+	httpResponse.Body.Close()
 	if err != nil {
-		return nil, fmt.Errorf("read response body: %w", err)
+		return nil, fmt.Errorf("reading response body: %w", err)
 	}
 
 	// collect ids to check responses IDs in unmarshalResponseBytesArray
-	ids := make([]rpctypes.JSONRPCIntID, len(requests))
+	ids := make([]string, len(requests))
 	for i, req := range requests {
-		ids[i] = req.request.ID.(rpctypes.JSONRPCIntID)
+		ids[i] = req.request.ID()
 	}
 
 	if err := unmarshalResponseBytesArray(responseBytes, ids, results); err != nil {
@@ -277,12 +275,12 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 	return results, nil
 }
 
-func (c *Client) nextRequestID() rpctypes.JSONRPCIntID {
+func (c *Client) nextRequestID() int {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
 	id := c.nextReqID
 	c.nextReqID++
-	c.mtx.Unlock()
-	return rpctypes.JSONRPCIntID(id)
+	return id
 }
 
 //------------------------------------------------------------------------------------
@@ -345,9 +343,8 @@ func (b *RequestBatch) Send(ctx context.Context) ([]interface{}, error) {
 // Call enqueues a request to call the given RPC method with the specified
 // parameters, in the same way that the `Client.Call` function would.
 func (b *RequestBatch) Call(_ context.Context, method string, params, result interface{}) error {
-	id := b.client.nextRequestID()
-	request, err := rpctypes.ParamsToRequest(id, method, params)
-	if err != nil {
+	request := rpctypes.NewRequest(b.client.nextRequestID())
+	if err := request.SetMethodAndParams(method, params); err != nil {
 		return err
 	}
 	b.enqueue(&jsonRPCBufferedRequest{request: request, result: result})

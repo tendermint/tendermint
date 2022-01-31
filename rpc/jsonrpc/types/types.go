@@ -1,50 +1,18 @@
 package types
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/tendermint/tendermint/rpc/coretypes"
 )
-
-// a wrapper to emulate a sum type: jsonrpcid = string | int
-// TODO: refactor when Go 2.0 arrives https://github.com/golang/go/issues/19412
-type jsonrpcid interface {
-	isJSONRPCID()
-}
-
-// JSONRPCStringID a wrapper for JSON-RPC string IDs
-type JSONRPCStringID string
-
-func (JSONRPCStringID) isJSONRPCID()      {}
-func (id JSONRPCStringID) String() string { return string(id) }
-
-// JSONRPCIntID a wrapper for JSON-RPC integer IDs
-type JSONRPCIntID int
-
-func (JSONRPCIntID) isJSONRPCID()      {}
-func (id JSONRPCIntID) String() string { return fmt.Sprintf("%d", id) }
-
-func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
-	switch id := idInterface.(type) {
-	case string:
-		return JSONRPCStringID(id), nil
-	case float64:
-		// json.Unmarshal uses float64 for all numbers
-		// (https://golang.org/pkg/encoding/json/#Unmarshal),
-		// but the JSONRPC2.0 spec says the id SHOULD NOT contain
-		// decimals - so we truncate the decimals here.
-		return JSONRPCIntID(int(id)), nil
-	default:
-		typ := reflect.TypeOf(id)
-		return nil, fmt.Errorf("json-rpc ID (%v) is of unknown type (%v)", id, typ)
-	}
-}
 
 // ErrorCode is the type of JSON-RPC error codes.
 type ErrorCode int
@@ -77,17 +45,38 @@ var errorCodeString = map[ErrorCode]string{
 // REQUEST
 
 type RPCRequest struct {
-	ID     jsonrpcid
+	id json.RawMessage
+
 	Method string
 	Params json.RawMessage
 }
 
+// NewRequest returns an empty request with the specified ID.
+func NewRequest(id int) RPCRequest {
+	return RPCRequest{id: []byte(strconv.Itoa(id))}
+}
+
+// ID returns a string representation of the request ID.
+func (req RPCRequest) ID() string { return string(req.id) }
+
+// IsNotification reports whether req is a notification (has an empty ID).
+func (req RPCRequest) IsNotification() bool { return len(req.id) == 0 }
+
 type rpcRequestJSON struct {
 	V  string          `json:"jsonrpc"` // must be "2.0"
-	ID interface{}     `json:"id,omitempty"`
+	ID json.RawMessage `json:"id,omitempty"`
 	M  string          `json:"method"`
 	P  json.RawMessage `json:"params"`
 }
+
+// isNullOrEmpty reports whether data is empty or the JSON "null" value.
+func isNullOrEmpty(data json.RawMessage) bool {
+	return len(data) == 0 || bytes.Equal(data, []byte("null"))
+}
+
+// validID matches the text of a JSON value that is allowed to serve as a
+// JSON-RPC request ID. Precondition: Target value is legal JSON.
+var validID = regexp.MustCompile(`^(?:".*"|-?\d+)$`)
 
 // UnmarshalJSON decodes a request from a JSON-RPC 2.0 request object.
 func (req *RPCRequest) UnmarshalJSON(data []byte) error {
@@ -98,12 +87,11 @@ func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid version: %q", wrapper.V)
 	}
 
-	if wrapper.ID != nil {
-		id, err := idFromInterface(wrapper.ID)
-		if err != nil {
-			return fmt.Errorf("invalid request ID: %w", err)
+	if !isNullOrEmpty(wrapper.ID) {
+		if !validID.Match(wrapper.ID) {
+			return fmt.Errorf("invalid request ID: %q", string(wrapper.ID))
 		}
-		req.ID = id
+		req.id = wrapper.ID
 	}
 	req.Method = wrapper.M
 	req.Params = wrapper.P
@@ -114,14 +102,14 @@ func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 func (req RPCRequest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rpcRequestJSON{
 		V:  "2.0",
-		ID: req.ID,
+		ID: req.id,
 		M:  req.Method,
 		P:  req.Params,
 	})
 }
 
 func (req RPCRequest) String() string {
-	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
+	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID(), req.Method, req.Params)
 }
 
 // MakeResponse constructs a success response to req with the given result.  If
@@ -131,14 +119,14 @@ func (req RPCRequest) MakeResponse(result interface{}) RPCResponse {
 	if err != nil {
 		return req.MakeErrorf(CodeInternalError, "marshaling result: %v", err)
 	}
-	return RPCResponse{ID: req.ID, Result: data}
+	return RPCResponse{id: req.id, Result: data}
 }
 
 // MakeErrorf constructs an error response to req with the given code and a
 // message constructed by formatting msg with args.
 func (req RPCRequest) MakeErrorf(code ErrorCode, msg string, args ...interface{}) RPCResponse {
 	return RPCResponse{
-		ID: req.ID,
+		id: req.id,
 		Error: &RPCError{
 			Code:    int(code),
 			Message: code.String(),
@@ -154,36 +142,35 @@ func (req RPCRequest) MakeError(err error) RPCResponse {
 		panic("cannot construct an error response for nil")
 	}
 	if e, ok := err.(*RPCError); ok {
-		return RPCResponse{ID: req.ID, Error: e}
+		return RPCResponse{id: req.id, Error: e}
 	}
 	if errors.Is(err, coretypes.ErrZeroOrNegativeHeight) ||
 		errors.Is(err, coretypes.ErrZeroOrNegativePerPage) ||
 		errors.Is(err, coretypes.ErrPageOutOfRange) ||
 		errors.Is(err, coretypes.ErrInvalidRequest) {
-		return RPCResponse{ID: req.ID, Error: &RPCError{
+		return RPCResponse{id: req.id, Error: &RPCError{
 			Code:    int(CodeInvalidRequest),
 			Message: CodeInvalidRequest.String(),
 			Data:    err.Error(),
 		}}
 	}
-	return RPCResponse{ID: req.ID, Error: &RPCError{
+	return RPCResponse{id: req.id, Error: &RPCError{
 		Code:    int(CodeInternalError),
 		Message: CodeInternalError.String(),
 		Data:    err.Error(),
 	}}
 }
 
-// ParamsToRequest constructs a new RPCRequest with the given ID, method, and parameters.
-func ParamsToRequest(id jsonrpcid, method string, params interface{}) (RPCRequest, error) {
+// SetMethodAndParams updates the method and parameters of req with the given
+// values, leaving the ID unchanged.
+func (req *RPCRequest) SetMethodAndParams(method string, params interface{}) error {
 	payload, err := json.Marshal(params)
 	if err != nil {
-		return RPCRequest{}, err
+		return err
 	}
-	return RPCRequest{
-		ID:     id,
-		Method: method,
-		Params: payload,
-	}, nil
+	req.Method = method
+	req.Params = payload
+	return nil
 }
 
 //----------------------------------------
@@ -204,14 +191,18 @@ func (err RPCError) Error() string {
 }
 
 type RPCResponse struct {
-	ID     jsonrpcid
+	id json.RawMessage
+
 	Result json.RawMessage
 	Error  *RPCError
 }
 
+// ID returns a representation of the response ID.
+func (resp RPCResponse) ID() string { return string(resp.id) }
+
 type rpcResponseJSON struct {
 	V  string          `json:"jsonrpc"` // must be "2.0"
-	ID interface{}     `json:"id,omitempty"`
+	ID json.RawMessage `json:"id,omitempty"`
 	R  json.RawMessage `json:"result,omitempty"`
 	E  *RPCError       `json:"error,omitempty"`
 }
@@ -225,14 +216,12 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid version: %q", wrapper.V)
 	}
 
-	if wrapper.ID != nil {
-		id, err := idFromInterface(wrapper.ID)
-		if err != nil {
-			return fmt.Errorf("invalid response ID: %w", err)
+	if !isNullOrEmpty(wrapper.ID) {
+		if !validID.Match(wrapper.ID) {
+			return fmt.Errorf("invalid response ID: %q", string(wrapper.ID))
 		}
-		resp.ID = id
+		resp.id = wrapper.ID
 	}
-
 	resp.Error = wrapper.E
 	resp.Result = wrapper.R
 	return nil
@@ -242,7 +231,7 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 func (resp RPCResponse) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rpcResponseJSON{
 		V:  "2.0",
-		ID: resp.ID,
+		ID: resp.id,
 		R:  resp.Result,
 		E:  resp.Error,
 	})
@@ -250,9 +239,9 @@ func (resp RPCResponse) MarshalJSON() ([]byte, error) {
 
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
-		return fmt.Sprintf("RPCResponse{%s %X}", resp.ID, resp.Result)
+		return fmt.Sprintf("RPCResponse{%s %X}", resp.ID(), resp.Result)
 	}
-	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Error)
+	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID(), resp.Error)
 }
 
 //----------------------------------------

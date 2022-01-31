@@ -38,24 +38,24 @@ func TestRPCParams(t *testing.T) {
 	tests := []struct {
 		payload    string
 		wantErr    string
-		expectedID interface{}
+		expectedID string
 	}{
 		// bad
-		{`{"jsonrpc": "2.0", "id": "0"}`, "Method not found", rpctypes.JSONRPCStringID("0")},
-		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found", rpctypes.JSONRPCStringID("0")},
+		{`{"jsonrpc": "2.0", "id": "0"}`, "Method not found", `"0"`},
+		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found", `"0"`},
 		// id not captured in JSON parsing failures
-		{`{"method": "c", "id": "0", "params": a}`, "invalid character", nil},
-		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1", rpctypes.JSONRPCStringID("0")},
-		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid syntax", rpctypes.JSONRPCStringID("0")},
-		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string", rpctypes.JSONRPCStringID("0")},
+		{`{"method": "c", "id": "0", "params": a}`, "invalid character", ""},
+		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1", `"0"`},
+		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid syntax", `"0"`},
+		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string", `"0"`},
 
 		// no ID - notification
 		// {`{"jsonrpc": "2.0", "method": "c", "params": ["a", "10"]}`, false, nil},
 
 		// good
-		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, "", rpctypes.JSONRPCStringID("0")},
-		{`{"method": "c", "id": "0", "params": {}}`, "", rpctypes.JSONRPCStringID("0")},
-		{`{"method": "c", "id": "0", "params": ["a", "10"]}`, "", rpctypes.JSONRPCStringID("0")},
+		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, "", `"0"`},
+		{`{"method": "c", "id": "0", "params": {}}`, "", `"0"`},
+		{`{"method": "c", "id": "0", "params": ["a", "10"]}`, "", `"0"`},
 	}
 
 	for i, tt := range tests {
@@ -73,7 +73,7 @@ func TestRPCParams(t *testing.T) {
 		recv := new(rpctypes.RPCResponse)
 		assert.Nil(t, json.Unmarshal(blob, recv), "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
 		assert.NotEqual(t, recv, new(rpctypes.RPCResponse), "#%d: not expecting a blank RPCResponse", i)
-		assert.Equal(t, tt.expectedID, recv.ID, "#%d: expected ID not matched in RPCResponse", i)
+		assert.Equal(t, tt.expectedID, recv.ID(), "#%d: expected ID not matched in RPCResponse", i)
 		if tt.wantErr == "" {
 			assert.Nil(t, recv.Error, "#%d: not expecting an error", i)
 		} else {
@@ -89,19 +89,19 @@ func TestJSONRPCID(t *testing.T) {
 	tests := []struct {
 		payload    string
 		wantErr    bool
-		expectedID interface{}
+		expectedID string
 	}{
 		// good id
-		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": ["a", "10"]}`, false, rpctypes.JSONRPCStringID("0")},
-		{`{"jsonrpc": "2.0", "method": "c", "id": "abc", "params": ["a", "10"]}`, false, rpctypes.JSONRPCStringID("abc")},
-		{`{"jsonrpc": "2.0", "method": "c", "id": 0, "params": ["a", "10"]}`, false, rpctypes.JSONRPCIntID(0)},
-		{`{"jsonrpc": "2.0", "method": "c", "id": 1, "params": ["a", "10"]}`, false, rpctypes.JSONRPCIntID(1)},
-		{`{"jsonrpc": "2.0", "method": "c", "id": 1.3, "params": ["a", "10"]}`, false, rpctypes.JSONRPCIntID(1)},
-		{`{"jsonrpc": "2.0", "method": "c", "id": -1, "params": ["a", "10"]}`, false, rpctypes.JSONRPCIntID(-1)},
+		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": ["a", "10"]}`, false, `"0"`},
+		{`{"jsonrpc": "2.0", "method": "c", "id": "abc", "params": ["a", "10"]}`, false, `"abc"`},
+		{`{"jsonrpc": "2.0", "method": "c", "id": 0, "params": ["a", "10"]}`, false, `0`},
+		{`{"jsonrpc": "2.0", "method": "c", "id": 1, "params": ["a", "10"]}`, false, `1`},
+		{`{"jsonrpc": "2.0", "method": "c", "id": -1, "params": ["a", "10"]}`, false, `-1`},
 
 		// bad id
-		{`{"jsonrpc": "2.0", "method": "c", "id": {}, "params": ["a", "10"]}`, true, nil},
-		{`{"jsonrpc": "2.0", "method": "c", "id": [], "params": ["a", "10"]}`, true, nil},
+		{`{"jsonrpc": "2.0", "method": "c", "id": {}, "params": ["a", "10"]}`, true, ""},  // object
+		{`{"jsonrpc": "2.0", "method": "c", "id": [], "params": ["a", "10"]}`, true, ""},  // array
+		{`{"jsonrpc": "2.0", "method": "c", "id": 1.3, "params": ["a", "10"]}`, true, ""}, // fractional
 	}
 
 	for i, tt := range tests {
@@ -123,7 +123,7 @@ func TestJSONRPCID(t *testing.T) {
 		assert.NoError(t, err, "#%d: expecting successful parsing of an RPCResponse:\nblob: %s", i, blob)
 		if !tt.wantErr {
 			assert.NotEqual(t, recv, new(rpctypes.RPCResponse), "#%d: not expecting a blank RPCResponse", i)
-			assert.Equal(t, tt.expectedID, recv.ID, "#%d: expected ID not matched in RPCResponse", i)
+			assert.Equal(t, tt.expectedID, recv.ID(), "#%d: expected ID not matched in RPCResponse", i)
 			assert.Nil(t, recv.Error, "#%d: not expecting an error", i)
 		} else {
 			assert.True(t, recv.Error.Code < 0, "#%d: not expecting a positive JSONRPC code", i)

@@ -274,7 +274,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 			if !ok {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
-			req := rpctypes.RPCRequest{ID: uriReqID}
+			req := rpctypes.NewRequest(uriReqID)
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
 			if err := wsc.WriteRPCResponse(writeCtx,
 				req.MakeErrorf(rpctypes.CodeInternalError, "Panic in handler: %v", err)); err != nil {
@@ -325,7 +325,7 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
-			if request.ID == nil {
+			if request.IsNotification() {
 				wsc.Logger.Debug(
 					"WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)",
 					"req", request,
