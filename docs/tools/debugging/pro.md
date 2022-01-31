@@ -46,7 +46,7 @@ To ease the burden of collecting different pieces of data Tendermint Core (since
 tendermint debug kill <pid> </path/to/out.zip> — home=</path/to/app.d>
 ```
 
-Here’s the official documentation page — <https://docs.tendermint.com/master/tools/debugging>
+Here’s the [official documentation page](./tools/debugging).
 
 If you’re using a process supervisor, like systemd, it will restart the Tendermint automatically. We strongly advise you to have one in production. If not, you will need to restart the node by hand.
 
@@ -66,19 +66,19 @@ At this point, depending on how severe the degradation is, you may want to resta
 
 ## Tendermint Inspect
 
-What if the Tendermint node will not start up due to inconsistent consensus state? 
+What if the Tendermint node will not start up due to inconsistent consensus state?
 
-When a node running the Tendermint consensus engine detects an inconsistent state 
-it will crash the entire Tendermint process. 
+When a node running the Tendermint consensus engine detects an inconsistent state
+it will crash the entire Tendermint process.
 The Tendermint consensus engine cannot be run in this inconsistent state and the so node
 will fail to start up as a result.
 The Tendermint RPC server can provide valuable information for debugging in this situation.
-The Tendermint `inspect` command will run a subset of the Tendermint RPC server 
+The Tendermint `inspect` command will run a subset of the Tendermint RPC server
 that is useful for debugging inconsistent state.
 
 ### Running inspect
 
-Start up the `inspect` tool on the machine where Tendermint crashed using: 
+Start up the `inspect` tool on the machine where Tendermint crashed using:
 ```bash
 tendermint inspect --home=</path/to/app.d>
 ```
@@ -90,7 +90,7 @@ tendermint inspect --home=</path/to/app.d>
 
 With the `inspect` server running, you can access RPC endpoints that are critically important
 for debugging.
-Calling the `/status`, `/consensus_state` and `/dump_consensus_state` RPC endpoint 
+Calling the `/status`, `/consensus_state` and `/dump_consensus_state` RPC endpoint
 will return useful information about the Tendermint consensus state.
 
 ## Outro

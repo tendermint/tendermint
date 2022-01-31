@@ -68,10 +68,10 @@ Tendermint is in essence similar software, but with two key differences:
 
 - It is Byzantine Fault Tolerant, meaning it can only tolerate up to a
   1/3 of failures, but those failures can include arbitrary behaviour -
-  including hacking and malicious attacks. 
-- It does not specify a particular application, like a fancy key-value 
-  store. Instead, it focuses on arbitrary state machine replication, 
-  so developers can build the application logic that's right for them, 
+  including hacking and malicious attacks.
+- It does not specify a particular application, like a fancy key-value
+  store. Instead, it focuses on arbitrary state machine replication,
+  so developers can build the application logic that's right for them,
   from key-value store to cryptocurrency to e-voting platform and beyond.
 
 ### Bitcoin, Ethereum, etc
@@ -119,10 +119,8 @@ consensus engine, and provides a particular application state.
 
 ## ABCI Overview
 
-The [Application BlockChain Interface
-(ABCI)](https://github.com/tendermint/tendermint/tree/master/abci)
-allows for Byzantine Fault Tolerant replication of applications
-written in any programming language.
+The [Application BlockChain Interface (ABCI)](../../abci) allows for Byzantine
+Fault Tolerant replication of applications written in any programming language.
 
 ### Motivation
 
@@ -188,7 +186,7 @@ core to the application. The application replies with corresponding
 response messages.
 
 The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
+Types](../../abci/README.md#message-types).
 
 The **DeliverTx** message is the work horse of the application. Each
 transaction in the blockchain is delivered with this message. The

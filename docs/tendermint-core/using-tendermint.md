@@ -37,9 +37,8 @@ tendermint testnet --help
 
 ### Genesis
 
-The `genesis.json` file in `$TMHOME/config/` defines the initial
-TendermintCore state upon genesis of the blockchain ([see
-definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.go)).
+The `genesis.json` file in `$TMHOME/config/` defines the initial TendermintCore
+state upon genesis of the blockchain ([see definition](../../types/genesis.go)).
 
 #### Fields
 
@@ -47,9 +46,9 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `chain_id`: ID of the blockchain. **This must be unique for
   every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
-- `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade, 
-    starting from the stopped height brings uniqueness to previous heights. 
-- `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
+- `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade,
+    starting from the stopped height brings uniqueness to previous heights.
+- `consensus_params` [spec](../../spec/core/state.md#consensusparams)
     - `block`
         - `max_bytes`: Max block size, in bytes.
         - `max_gas`: Max gas per block.
@@ -181,7 +180,7 @@ endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
 
-> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
+> TIP: Find the RPC Documentation [here](./rpc/)
 
 ### Formatting
 
@@ -578,8 +577,6 @@ library will deny making connections to peers with the same IP address.
 
 ### Upgrading
 
-See the
-[UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
-guide. You may need to reset your chain between major breaking releases.
-Although, we expect Tendermint to have fewer breaking releases in the future
-(especially after 1.0 release).
+See the [UPGRADING.md](../../UPGRADING.md) guide. You may need to reset your
+chain between major breaking releases.  Although, we expect Tendermint to have
+fewer breaking releases in the future (especially after 1.0 release).

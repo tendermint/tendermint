@@ -23,10 +23,10 @@ explained in a forthcoming document.
 For efficiency reasons, validators in Tendermint consensus protocol do not agree directly on the
 block as the block size is big, i.e., they don't embed the block inside `Proposal` and
 `VoteMessage`. Instead, they reach agreement on the `BlockID` (see `BlockID` definition in
-[Blockchain](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md#blockid) section)
-that uniquely identifies each block. The block itself is
-disseminated to validator processes using peer-to-peer gossiping protocol. It starts by having a
-proposer first splitting a block into a number of block parts, that are then gossiped between
+[Blockchain](../../spec/core/data_structures.md#blockid) section) that uniquely
+identifies each block. The block itself is disseminated to validator processes
+using peer-to-peer gossiping protocol. It starts by having a proposer first
+splitting a block into a number of block parts, that are then gossiped between
 processes using `BlockPartMessage`.
 
 Validators in Tendermint communicate by peer-to-peer gossiping protocol. Each validator is connected

@@ -69,13 +69,13 @@ Tendermint includes an `inspect` command for querying Tendermint's state store a
 store over Tendermint RPC.
 
 When the Tendermint consensus engine detects inconsistent state, it will crash the
-entire Tendermint process. 
-While in this inconsistent state, a node running Tendermint's consensus engine will not start up. 
+entire Tendermint process.
+While in this inconsistent state, a node running Tendermint's consensus engine will not start up.
 The `inspect` command runs only a subset of Tendermint's RPC endpoints for querying the block store
-and state store. 
+and state store.
 `inspect` allows operators to query a read-only view of the stage.
 `inspect` does not run the consensus engine at all and can therefore be used to debug
-processes that have crashed due to inconsistent state. 
+processes that have crashed due to inconsistent state.
 
 
 To start the `inspect` process, run
@@ -85,7 +85,7 @@ tendermint inspect
 
 ### RPC endpoints
 The list of available RPC endpoints can be found by making a request to the RPC port.
-For an `inspect` process running on `127.0.0.1:26657`, navigate your browser to 
+For an `inspect` process running on `127.0.0.1:26657`, navigate your browser to
 `http://127.0.0.1:26657/` to retrieve the list of enabled RPC endpoints.
 
-Additional information on the Tendermint RPC endpoints can be found in the [rpc documentation](https://docs.tendermint.com/master/rpc).
+Additional information on the Tendermint RPC endpoints can be found in the [rpc documentation](./rpc).

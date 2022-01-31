@@ -61,9 +61,8 @@ We'll start a kvstore application, which was installed at the same time
 as `abci-cli` above. The kvstore just stores transactions in a merkle
 tree.
 
-Its code can be found
-[here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
-and looks like:
+Its code can be found [here](../../abci/cmd/abci-cli/abci-cli.go) and looks
+like:
 
 ```go
 func cmdKVStore(cmd *cobra.Command, args []string) error {
@@ -136,10 +135,9 @@ application's socket server, send the given ABCI message, and wait for a
 response.
 
 The server may be generic for a particular language, and we provide a
-[reference implementation in
-Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
-[list of other ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for servers in
-other languages.
+[reference implementation in Golang](../../abci/server). See the [list of other
+ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for
+servers in other languages.
 
 The handler is specific to the application, and may be arbitrary, so
 long as it is deterministic and conforms to the ABCI interface

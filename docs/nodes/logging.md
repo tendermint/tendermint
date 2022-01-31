@@ -33,9 +33,9 @@ Here is the list of modules you may encounter in Tendermint's log and a
 little overview what they do.
 
 - `abci-client` As mentioned in [Application Architecture Guide](../app-dev/app-architecture.md), Tendermint acts as an ABCI
-  client with respect to the application and maintains 3 connections:
-  mempool, consensus and query. The code used by Tendermint Core can
-  be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
+  client with respect to the application and maintains 3 connections: mempool,
+  consensus and query. The code used by Tendermint Core can be found
+  [here](../../abci/client).
 - `blockchain` Provides storage, pool (a group of peers), and reactor
   for both storing and exchanging blocks between peers.
 - `consensus` The heart of Tendermint core, which is the
@@ -43,16 +43,16 @@ little overview what they do.
   "submodules": `wal` (write-ahead logging) for ensuring data
   integrity and `replay` to replay blocks and messages on recovery
   from a crash.
-  [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
+  [here](../../types/events.go).
   You can subscribe to them by calling `subscribe` RPC method. Refer
   to [RPC docs](../tendermint-core/rpc.md) for additional information.
 - `mempool` Mempool module handles all incoming transactions, whenever
   they are coming from peers or the application.
 - `p2p` Provides an abstraction around peer-to-peer communication. For
   more details, please check out the
-  [README](https://github.com/tendermint/spec/tree/master/spec/p2p).
+  [README](../../spec/p2p).
 - `rpc-server` RPC server. For implementation details, please read the
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
+  [doc.go](../../rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `statesync` Provides a way to quickly sync a node with pruned history.
@@ -116,11 +116,10 @@ I[10-04|13:54:30.391] Starting RPC HTTP server on tcp socket 0.0.0.0:26657 modul
 I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{id: DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:26656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:26657])}"
 ```
 
-Next follows a standard block creation cycle, where we enter a new
-round, propose a block, receive more than 2/3 of prevotes, then
-precommits and finally have a chance to commit a block. For details,
-please refer to [Byzantine Consensus
-Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
+Next follows a standard block creation cycle, where we enter a new round,
+propose a block, receive more than 2/3 of prevotes, then precommits and finally
+have a chance to commit a block. For details, please refer to [Byzantine
+Consensus Algorithm](../../spec/consensus/consensus.md).
 
 ```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus

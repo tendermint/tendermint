@@ -31,8 +31,8 @@ method via Websocket along with a valid query.
 }
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/) for
-more information on query syntax and other options.
+Check out [API docs](./rpc/) for more information on query syntax and other
+options.
 
 You can also use tags, given you had included them into DeliverTx
 response, to query transaction results. See [Indexing
@@ -40,11 +40,10 @@ transactions](../app-dev/indexing-transactions.md) for details.
 
 ## ValidatorSetUpdates
 
-When validator set changes, ValidatorSetUpdates event is published. The
-event carries a list of pubkey/power pairs. The list is the same
-Tendermint receives from ABCI application (see [EndBlock
-section](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock) in
-the ABCI spec).
+When validator set changes, ValidatorSetUpdates event is published. The event
+carries a list of pubkey/power pairs. The list is the same Tendermint receives
+from ABCI application (see [EndBlock
+section](../../spec/abci/abci.md#endblock) in the ABCI spec).
 
 Response:
 

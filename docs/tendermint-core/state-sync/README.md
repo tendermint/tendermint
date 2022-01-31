@@ -7,7 +7,7 @@ parent:
 
 
 State sync allows new nodes to rapidly bootstrap and join the network by discovering, fetching,
-and restoring state machine snapshots. For more information, see the [state sync ABCI section](https://docs.tendermint.com/master/spec/abci/abci.html#state-sync)).
+and restoring state machine snapshots. For more information, see the [state sync ABCI section](./spec/abci/abci.html#state-sync)).
 
 The state sync reactor has two main responsibilities:
 
@@ -21,7 +21,7 @@ The state sync process for bootstrapping a new node is described in detail in th
 above. While technically part of the reactor (see `statesync/syncer.go` and related components),
 this document will only cover the P2P reactor component.
 
-For details on the ABCI methods and data types, see the [ABCI documentation](https://docs.tendermint.com/master/spec/abci/).
+For details on the ABCI methods and data types, see the [ABCI documentation](./spec/abci/).
 
 Information on how to configure state sync is located in the [nodes section](../../nodes/state-sync.md)
 

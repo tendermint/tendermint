@@ -13,10 +13,9 @@ testnets on those servers.
 
 ## Install
 
-NOTE: see the [integration bash
-script](https://github.com/tendermint/tendermint/blob/master/networks/remote/integration.sh)
-that can be run on a fresh DO droplet and will automatically spin up a 4
-node testnet. The script more or less does everything described below.
+NOTE: see the [integration bash script](../../networks/remote/integration.sh)
+that can be run on a fresh DO droplet and will automatically spin up a 4 node
+testnet. The script more or less does everything described below.
 
 - Install [Terraform](https://www.terraform.io/downloads.html) and
   [Ansible](http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
@@ -57,11 +56,10 @@ With the droplets created and running, let's setup Ansible.
 
 ## Ansible
 
-The playbooks in [the ansible
-directory](https://github.com/tendermint/tendermint/tree/master/networks/remote/ansible)
-run ansible roles to configure the sentry node architecture. You must
-switch to this directory to run ansible
-(`cd $GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible`).
+The playbooks in [the ansible directory](../../networks/remote/ansible) run
+ansible roles to configure the sentry node architecture. You must switch to
+this directory to run ansible (`cd
+$GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible`).
 
 There are several roles that are self-explanatory:
 

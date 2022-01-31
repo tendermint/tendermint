@@ -23,7 +23,7 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master.
 
 ## Built-in app vs external app
 
@@ -57,7 +57,7 @@ go mod init github.com/<github_username>/<repo_name>
 
 Inside the example directory create a `main.go` file with the following content:
 
-> Note: there is no need to clone or fork Tendermint in this tutorial. 
+> Note: there is no need to clone or fork Tendermint in this tutorial.
 
 ```go
 package main
@@ -82,9 +82,8 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
-This allows Tendermint Core to run applications written in any programming
-language.
+file](../../proto/tendermint/abci/types.proto).  This allows Tendermint Core to
+run applications written in any programming language.
 
 Create a file called `app.go` with the following content:
 
@@ -211,8 +210,8 @@ Note that anything with non-zero code will be considered invalid (`-1`, `100`,
 etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
-have enough gas. To learn more about gas, check out ["the
-specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
+have enough gas. To learn more about gas, check out [the
+specification](./spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
@@ -330,8 +329,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 }
 ```
 
-The complete specification can be found
-[here](https://docs.tendermint.com/master/spec/abci/).
+The complete specification can be found [here](./spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
@@ -609,7 +607,7 @@ go build
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init validator`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
-guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+guide](./introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git
 checkout vX.Y.Z`). Don't forget to check that the application uses the same
 major version.
@@ -682,4 +680,4 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://docs.tendermint.com/master/).
+deeper, read [the docs](./).
