@@ -68,7 +68,7 @@ relayer, it's maintainers, and operators) who would be able to take advantage
 of p2p light client, before switching to libp2p. To our knowledge there are
 limited implementations of this p2p protocol (a simple implementation without
 secret connection support exists in rust but it has not been used in
-production,), and it seems unlikely that a team would implement this directly
+production), and it seems unlikely that a team would implement this directly
 ahead of its impending removal.
 
 User Cases
