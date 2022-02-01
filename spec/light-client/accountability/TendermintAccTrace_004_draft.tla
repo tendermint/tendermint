@@ -13,9 +13,13 @@ EXTENDS Sequences, Apalache, TendermintAcc_004_draft
 
 \* a sequence of action names that should appear in the given order,
 \* excluding "Init"
-CONSTANT Trace
+CONSTANT 
+  \* @type: TRACE;
+  Trace
 
-VARIABLE toReplay
+VARIABLE 
+  \* @type: TRACE;
+  toReplay
 
 TraceInit ==
     /\ toReplay = Trace

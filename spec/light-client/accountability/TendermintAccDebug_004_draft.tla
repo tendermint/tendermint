@@ -19,6 +19,7 @@ NFaultyPrecommits == 6  \* the number of injected faulty PRECOMMIT messages
 \* rounds to sets of messages.
 \* Importantly, there will be exactly k messages in the image of msgFun.
 \* We use this action to produce k faults in an initial state.
+\* @type: (ROUND -> Set(MESSAGE), Set(MESSAGE), Int) => Bool;
 ProduceFaults(msgFun, From, k) ==
     \E f \in [1..k -> From]:
         msgFun = [r \in Rounds |-> {m \in {f[i]: i \in 1..k}: m.round = r}]
@@ -50,14 +51,14 @@ InitFewFaults ==
     /\ validValue = [p \in Corr |-> NilValue]
     /\ validRound = [p \in Corr |-> NilRound]
     /\ ProduceFaults(msgsPrevote',
-                     SetOfMsgs([type: {"PREVOTE"}, src: Faulty, round: Rounds, id: Values]),
+                     [type: {"PREVOTE"}, src: Faulty, round: Rounds, id: Values],
                      NFaultyPrevotes)
     /\ ProduceFaults(msgsPrecommit',
-                     SetOfMsgs([type: {"PRECOMMIT"}, src: Faulty, round: Rounds, id: Values]),
+                     [type: {"PRECOMMIT"}, src: Faulty, round: Rounds, id: Values],
                      NFaultyPrecommits)
     /\ ProduceFaults(msgsPropose',
-                     SetOfMsgs([type: {"PROPOSAL"}, src: Faulty, round: Rounds,
-                                proposal: Values, validRound: Rounds \cup {NilRound}]),
+                     [type: {"PROPOSAL"}, src: Faulty, round: Rounds,
+                                proposal: Values, validRound: Rounds \cup {NilRound}],
                      NFaultyProposals)
     /\ evidence = EmptyMsgSet
 

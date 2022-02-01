@@ -13,24 +13,27 @@ EXTENDS TendermintAcc_004_draft
   
 (************************** TYPE INVARIANT ***********************************)
 (* first, we define the sets of all potential messages *)
+\* @type: Set(PROPMESSAGE);
 AllProposals == 
-  SetOfMsgs([type: {"PROPOSAL"},
-             src: AllProcs,
-             round: Rounds,
-             proposal: ValuesOrNil,
-             validRound: RoundsOrNil])
+  [type: {"PROPOSAL"},
+   src: AllProcs,
+   round: Rounds,
+   proposal: ValuesOrNil,
+   validRound: RoundsOrNil]
   
+\* @type: Set(PREMESSAGE);
 AllPrevotes ==
-  SetOfMsgs([type: {"PREVOTE"},
-             src: AllProcs,
-             round: Rounds,
-             id: ValuesOrNil])
+  [type: {"PREVOTE"},
+   src: AllProcs,
+   round: Rounds,
+   id: ValuesOrNil]
 
+\* @type: Set(PREMESSAGE);
 AllPrecommits ==
-  SetOfMsgs([type: {"PRECOMMIT"},
-             src: AllProcs,
-             round: Rounds,
-             id: ValuesOrNil])
+  [type: {"PRECOMMIT"},
+   src: AllProcs,
+   round: Rounds,
+   id: ValuesOrNil]
 
 (* the standard type invariant -- importantly, it is inductive *)
 TypeOK ==
@@ -226,7 +229,7 @@ LatestPrecommitHasLockedRound(p) ==
   LET pPrecommits ==
     {mm \in UNION { msgsPrecommit[r]: r \in Rounds }: mm.src = p /\ mm.id /= NilValue }
   IN
-  pPrecommits /= {} <: {MT}
+  pPrecommits /= {}
     => LET latest ==
          CHOOSE m \in pPrecommits:
            \A m2 \in pPrecommits:
@@ -242,6 +245,7 @@ AllLatestPrecommitHasLockedRound ==
 \* Every correct process sends only one value or NilValue.
 \* This test has quantifier alternation -- a threat to all decision procedures.
 \* Luckily, the sets Corr and ValidValues are small.
+\* @type: (ROUND, ROUND -> Set(PREMESSAGE)) => Bool;
 NoEquivocationByCorrect(r, msgs) ==
   \A p \in Corr:
     \E v \in ValidValues \union {NilValue}:
@@ -250,6 +254,7 @@ NoEquivocationByCorrect(r, msgs) ==
         \/ m.id = v
 
 \* a proposer nevers sends two values
+\* @type: (ROUND, ROUND -> Set(PROPMESSAGE)) => Bool;
 ProposalsByProposer(r, msgs) ==
   \* if the proposer is not faulty, it sends only one value
   \E v \in ValidValues:
@@ -264,6 +269,7 @@ AllNoEquivocationByCorrect ==
     /\ NoEquivocationByCorrect(r, msgsPrecommit)    
 
 \* construct the set of the message senders
+\* @type: (Set(MESSAGE)) => Set(PROCESS);
 Senders(M) == { m.src: m \in M }
 
 \* The final piece by Josef Widder:
