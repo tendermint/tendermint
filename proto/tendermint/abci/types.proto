@@ -136,8 +136,11 @@ message RequestPrepareProposal {
 }
 
 message RequestProcessProposal {
-  tendermint.types.Header header = 1 [(gogoproto.nullable) = false];
-  repeated bytes txs = 2;
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  repeated bytes          txs                  = 3;
+  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------
@@ -305,14 +308,11 @@ message ResponsePrepareProposal {
 }
 
 message ResponseProcessProposal {
-  Result result = 1;
-  repeated bytes evidence = 2;
-
-  enum Result {
-    UNKNOWN       = 0;  // Unknown result, invalidate
-    ACCEPT        = 1;  // proposal verified, vote on the proposal
-    REJECT        = 2;  // proposal invalidated
-  }
+  bool                             accept                  = 1;
+  bytes                            app_hash                = 2;
+  repeated ExecTxResult            tx_results              = 3;
+  repeated ValidatorUpdate         validator_updates       = 4;
+  tendermint.types.ConsensusParams consensus_param_updates = 5;
 }
 
 //----------------------------------------
