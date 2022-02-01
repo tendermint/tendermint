@@ -32,14 +32,9 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	}
 
 	// check basic functionality works
-	req, err := rpctypes.ParamsToRequest(
-		rpctypes.JSONRPCStringID("TestWebsocketManager"),
-		"c",
-		map[string]interface{}{"s": "a", "i": 10},
-	)
-	require.NoError(t, err)
-	err = c.WriteJSON(req)
-	require.NoError(t, err)
+	req := rpctypes.NewRequest(1001)
+	require.NoError(t, req.SetMethodAndParams("c", map[string]interface{}{"s": "a", "i": 10}))
+	require.NoError(t, c.WriteJSON(req))
 
 	var resp rpctypes.RPCResponse
 	err = c.ReadJSON(&resp)

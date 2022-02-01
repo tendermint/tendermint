@@ -318,7 +318,7 @@ func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, he
 }
 
 func TestReactorBasic(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
@@ -371,7 +371,7 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorWithEvidence(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
@@ -479,7 +479,7 @@ func TestReactorWithEvidence(t *testing.T) {
 }
 
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
@@ -535,7 +535,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
@@ -600,7 +600,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 }
 
 func TestReactorVotingPowerChange(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
@@ -707,7 +707,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)

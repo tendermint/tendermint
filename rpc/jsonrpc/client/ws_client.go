@@ -17,23 +17,20 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-// WSOptions for WSClient.
-type WSOptions struct {
+// wsOptions carries optional settings for a websocket connection.
+type wsOptions struct {
 	MaxReconnectAttempts uint          // maximum attempts to reconnect
 	ReadWait             time.Duration // deadline for any read op
 	WriteWait            time.Duration // deadline for any write op
 	PingPeriod           time.Duration // frequency with which pings are sent
-	SkipMetrics          bool          // do not keep metrics for ping/pong latency
 }
 
-// DefaultWSOptions returns default WS options.
-func DefaultWSOptions() WSOptions {
-	return WSOptions{
-		MaxReconnectAttempts: 10, // first: 2 sec, last: 17 min.
-		WriteWait:            10 * time.Second,
-		ReadWait:             0,
-		PingPeriod:           0,
-	}
+// defaultWSOptions are the default websocket connection settings.
+var defaultWSOptions = wsOptions{
+	MaxReconnectAttempts: 10, // first: 2 sec, last: 17 min.
+	WriteWait:            10 * time.Second,
+	ReadWait:             0,
+	PingPeriod:           0,
 }
 
 // WSClient is a JSON-RPC client, which uses WebSocket for communication with
@@ -89,15 +86,10 @@ type WSClient struct { // nolint: maligned
 	PingPongLatencyTimer metrics.Timer
 }
 
-// NewWS returns a new client. The endpoint argument must begin with a `/`. An
-// error is returned on invalid remote.
-// It uses DefaultWSOptions.
+// NewWS returns a new client with default options. The endpoint argument must
+// begin with a `/`. An error is returned on invalid remote.
 func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
-	return NewWSWithOptions(remoteAddr, endpoint, DefaultWSOptions())
-}
-
-// NewWSWithOptions allows you to provide custom WSOptions.
-func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, error) {
+	opts := defaultWSOptions
 	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
 		return nil, err
@@ -126,13 +118,7 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
 
-	switch opts.SkipMetrics {
-	case true:
-		c.PingPongLatencyTimer = metrics.NilTimer{}
-	case false:
-		c.PingPongLatencyTimer = metrics.NewTimer()
-	}
-
+	c.PingPongLatencyTimer = metrics.NewTimer()
 	return c, nil
 }
 
@@ -182,6 +168,7 @@ func (c *WSClient) Stop() error {
 
 	// only close user-facing channels when we can't write to them
 	c.wg.Wait()
+	c.PingPongLatencyTimer.Stop()
 	close(c.ResponsesCh)
 
 	return nil
@@ -217,21 +204,21 @@ func (c *WSClient) Send(ctx context.Context, request rpctypes.RPCRequest) error 
 
 // Call enqueues a call request onto the Send queue. Requests are JSON encoded.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := rpctypes.ParamsToRequest(c.nextRequestID(), method, params)
-	if err != nil {
+	req := rpctypes.NewRequest(c.nextRequestID())
+	if err := req.SetMethodAndParams(method, params); err != nil {
 		return err
 	}
-	return c.Send(ctx, request)
+	return c.Send(ctx, req)
 }
 
 // Private methods
 
-func (c *WSClient) nextRequestID() rpctypes.JSONRPCIntID {
+func (c *WSClient) nextRequestID() int {
 	c.mtx.Lock()
+	defer c.mtx.Unlock()
 	id := c.nextReqID
 	c.nextReqID++
-	c.mtx.Unlock()
-	return rpctypes.JSONRPCIntID(id)
+	return id
 }
 
 func (c *WSClient) dial() error {
@@ -430,10 +417,6 @@ func (c *WSClient) writeRoutine(ctx context.Context) {
 func (c *WSClient) readRoutine(ctx context.Context) {
 	defer func() {
 		c.conn.Close()
-		// err != nil {
-		// ignore error; it will trigger in tests
-		// likely because it's closing an already closed connection
-		// }
 		c.wg.Done()
 	}()
 
@@ -470,11 +453,6 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		err = json.Unmarshal(data, &response)
 		if err != nil {
 			c.Logger.Error("failed to parse response", "err", err, "data", string(data))
-			continue
-		}
-
-		if err = validateResponseID(response.ID); err != nil {
-			c.Logger.Error("error in response ID", "id", response.ID, "err", err)
 			continue
 		}
 

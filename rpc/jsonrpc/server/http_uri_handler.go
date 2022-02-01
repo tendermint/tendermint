@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -12,28 +11,15 @@ import (
 	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-// HTTP + URI handler
+// uriReqID is a placeholder ID used for GET requests, which do not receive a
+// JSON-RPC request ID from the caller.
+const uriReqID = -1
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
-	// Always return -1 as there's no ID here.
-	dummyID := rpctypes.JSONRPCIntID(-1) // URIClientRequestID
-
-	// Exception for websocket endpoints
-	//
-	// TODO(creachadair): Rather than reporting errors for these, we should
-	// remove them from the routing list entirely on this endpoint.
-	if rpcFunc.ws {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}
-
-	// All other endpoints
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := rpctypes.WithCallInfo(req.Context(), &rpctypes.CallInfo{
 			HTTPRequest: req,
@@ -45,29 +31,15 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			fmt.Fprintln(w, err.Error())
 			return
 		}
+		jreq := rpctypes.NewRequest(uriReqID)
 		outs := rpcFunc.f.Call(args)
 
 		logger.Debug("HTTPRestRPC", "method", req.URL.Path, "args", args, "returns", outs)
 		result, err := unreflectResult(outs)
-		switch e := err.(type) {
-		// if no error then return a success response
-		case nil:
-			writeHTTPResponse(w, logger, rpctypes.NewRPCSuccessResponse(dummyID, result))
-
-		// if this already of type RPC error then forward that error.
-		case *rpctypes.RPCError:
-			writeHTTPResponse(w, logger, rpctypes.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
-
-		default: // we need to unwrap the error and parse it accordingly
-			switch errors.Unwrap(err) {
-			case coretypes.ErrZeroOrNegativeHeight,
-				coretypes.ErrZeroOrNegativePerPage,
-				coretypes.ErrPageOutOfRange,
-				coretypes.ErrInvalidRequest:
-				writeHTTPResponse(w, logger, rpctypes.RPCInvalidRequestError(dummyID, err))
-			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				writeHTTPResponse(w, logger, rpctypes.RPCInternalError(dummyID, err))
-			}
+		if err == nil {
+			writeHTTPResponse(w, logger, jreq.MakeResponse(result))
+		} else {
+			writeHTTPResponse(w, logger, jreq.MakeError(err))
 		}
 	}
 }

@@ -12,10 +12,11 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
-  - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
   - [rpc] \#7121 Remove the deprecated gRPC interface to the RPC service. (@creachadair)
   - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
   - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
+  - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
+  - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
 
 - Apps
 
@@ -58,6 +59,7 @@ Special thanks to external contributors on this release:
 - [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
 
 ### IMPROVEMENTS
+
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 - [consensus] \#6969 remove logic to 'unlock' a locked block.
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
@@ -68,3 +70,5 @@ Special thanks to external contributors on this release:
 ### BUG FIXES
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
+- [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
+- [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)

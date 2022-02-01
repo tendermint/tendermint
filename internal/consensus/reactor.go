@@ -228,7 +228,6 @@ func (r *Reactor) OnStop() {
 	// This is safe to perform with the lock since none of the peers require the
 	// lock to complete any of the methods that the waitgroup is waiting on.
 	for _, state := range r.peers {
-		state.closer.Close()
 		state.broadcastWG.Wait()
 	}
 	r.mtx.Unlock()
@@ -507,11 +506,6 @@ OUTER_LOOP:
 		select {
 		case <-ctx.Done():
 			return
-		case <-ps.closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
-
 		default:
 		}
 
@@ -770,11 +764,6 @@ OUTER_LOOP:
 		select {
 		case <-ctx.Done():
 			return
-		case <-ps.closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
-
 		default:
 		}
 
@@ -862,10 +851,6 @@ OUTER_LOOP:
 
 		select {
 		case <-ctx.Done():
-			return
-		case <-ps.closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
 			return
 		default:
 		}
@@ -1055,8 +1040,6 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		ps, ok := r.peers[peerUpdate.NodeID]
 		if ok && ps.IsRunning() {
 			// signal to all spawned goroutines for the peer to gracefully exit
-			ps.closer.Close()
-
 			go func() {
 				// Wait for all spawned broadcast goroutines to exit before marking the
 				// peer state as no longer running and removal from the peers map.

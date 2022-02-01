@@ -6,14 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"reflect"
-	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -25,15 +25,15 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		// For POST requests, reject a non-root URL path. This should not happen
 		// in the standard configuration, since the wrapper checks the path.
 		if hreq.URL.Path != "/" {
-			writeRPCResponse(w, logger, rpctypes.RPCInvalidRequestError(
-				nil, fmt.Errorf("invalid path: %q", hreq.URL.Path)))
+			writeRPCResponse(w, logger, rpctypes.RPCRequest{}.MakeErrorf(
+				rpctypes.CodeInvalidRequest, "invalid path: %q", hreq.URL.Path))
 			return
 		}
 
 		b, err := io.ReadAll(hreq.Body)
 		if err != nil {
-			writeRPCResponse(w, logger, rpctypes.RPCInvalidRequestError(
-				nil, fmt.Errorf("reading request body: %w", err)))
+			writeRPCResponse(w, logger, rpctypes.RPCRequest{}.MakeErrorf(
+				rpctypes.CodeInvalidRequest, "reading request body: %v", err))
 			return
 		}
 
@@ -46,21 +46,22 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 
 		requests, err := parseRequests(b)
 		if err != nil {
-			writeRPCResponse(w, logger, rpctypes.RPCParseError(fmt.Errorf("decoding request: %w", err)))
+			writeRPCResponse(w, logger, rpctypes.RPCRequest{}.MakeErrorf(
+				rpctypes.CodeParseError, "decoding request: %v", err))
 			return
 		}
 
 		var responses []rpctypes.RPCResponse
 		for _, req := range requests {
 			// Ignore notifications, which this service does not support.
-			if req.ID == nil {
+			if req.IsNotification() {
 				logger.Debug("Ignoring notification", "req", req)
 				continue
 			}
 
 			rpcFunc, ok := funcMap[req.Method]
 			if !ok || rpcFunc.ws {
-				responses = append(responses, rpctypes.RPCMethodNotFoundError(req.ID))
+				responses = append(responses, req.MakeErrorf(rpctypes.CodeMethodNotFound, req.Method))
 				continue
 			}
 
@@ -71,32 +72,17 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			})
 			args, err := parseParams(ctx, rpcFunc, req.Params)
 			if err != nil {
-				responses = append(responses, rpctypes.RPCInvalidParamsError(
-					req.ID, fmt.Errorf("converting JSON parameters: %w", err)))
+				responses = append(responses,
+					req.MakeErrorf(rpctypes.CodeInvalidParams, "converting JSON parameters: %v", err))
 				continue
 			}
 
 			returns := rpcFunc.f.Call(args)
-			logger.Debug("HTTPJSONRPC", "method", req.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
-			switch e := err.(type) {
-			// if no error then return a success response
-			case nil:
-				responses = append(responses, rpctypes.NewRPCSuccessResponse(req.ID, result))
-
-			// if this already of type RPC error then forward that error
-			case *rpctypes.RPCError:
-				responses = append(responses, rpctypes.NewRPCErrorResponse(req.ID, e.Code, e.Message, e.Data))
-			default: // we need to unwrap the error and parse it accordingly
-				switch errors.Unwrap(err) {
-				// check if the error was due to an invald request
-				case coretypes.ErrZeroOrNegativeHeight, coretypes.ErrZeroOrNegativePerPage,
-					coretypes.ErrPageOutOfRange, coretypes.ErrInvalidRequest:
-					responses = append(responses, rpctypes.RPCInvalidRequestError(req.ID, err))
-				// lastly default all remaining errors as internal errors
-				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
-					responses = append(responses, rpctypes.RPCInternalError(req.ID, err))
-				}
+			if err == nil {
+				responses = append(responses, req.MakeResponse(result))
+			} else {
+				responses = append(responses, req.MakeError(err))
 			}
 		}
 
@@ -237,40 +223,51 @@ func (z *int64String) UnmarshalText(data []byte) error {
 
 // writes a list of available rpc endpoints as an html page
 func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[string]*RPCFunc) {
-	noArgNames := []string{}
-	argNames := []string{}
-	for name, funcData := range funcMap {
-		if len(funcData.args) == 0 {
-			noArgNames = append(noArgNames, name)
+	hasArgs := make(map[string]string)
+	noArgs := make(map[string]string)
+	for name, rf := range funcMap {
+		base := fmt.Sprintf("//%s/%s", r.Host, name)
+		// N.B. Check argNames, not args, since the type list includes the type
+		// of the leading context argument.
+		if len(rf.argNames) == 0 {
+			noArgs[name] = base
 		} else {
-			argNames = append(argNames, name)
-		}
-	}
-	sort.Strings(noArgNames)
-	sort.Strings(argNames)
-	buf := new(bytes.Buffer)
-	buf.WriteString("<html><body>")
-	buf.WriteString("<br>Available endpoints:<br>")
-
-	for _, name := range noArgNames {
-		link := fmt.Sprintf("//%s/%s", r.Host, name)
-		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
-	}
-
-	buf.WriteString("<br>Endpoints that require arguments:<br>")
-	for _, name := range argNames {
-		link := fmt.Sprintf("//%s/%s?", r.Host, name)
-		funcData := funcMap[name]
-		for i, argName := range funcData.argNames {
-			link += argName + "=_"
-			if i < len(funcData.argNames)-1 {
-				link += "&"
+			query := append([]string(nil), rf.argNames...)
+			for i, arg := range query {
+				query[i] = arg + "=_"
 			}
+			hasArgs[name] = base + "?" + strings.Join(query, "&")
 		}
-		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
 	}
-	buf.WriteString("</body></html>")
 	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(200)
-	w.Write(buf.Bytes()) // nolint: errcheck
+	_ = listOfEndpoints.Execute(w, map[string]map[string]string{
+		"NoArgs":  noArgs,
+		"HasArgs": hasArgs,
+	})
 }
+
+var listOfEndpoints = template.Must(template.New("list").Parse(`<html>
+<head><title>List of RPC Endpoints</title></head>
+<body>
+
+<h1>Available RPC endpoints:</h1>
+
+{{if .NoArgs}}
+<hr />
+<h2>Endpoints with no arguments:</h2>
+
+<ul>
+{{range $link := .NoArgs}}  <li><a href="{{$link}}">{{$link}}</a></li>
+{{end -}}
+</ul>{{end}}
+
+{{if .HasArgs}}
+<hr />
+<h2>Endpoints that require arguments:</h2>
+
+<ul>
+{{range $link := .HasArgs}}  <li><a href="{{$link}}">{{$link}}</a></li>
+{{end -}}
+</ul>{{end}}
+
+</body></html>`))
