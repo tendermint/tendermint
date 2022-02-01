@@ -99,6 +99,12 @@ func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32)
 	roundModifier := time.Duration(math.Exp2(float64(round / 10)))
 	msgDelay := sp.MessageDelay * roundModifier
 
+	if msgDelay <= 0 {
+		// In the case that messaeg delay overflows after applying the round modifier, use the maximum
+		// duration instead.
+		msgDelay = time.Nanosecond * math.MaxInt64
+	}
+
 	// lhs is `proposedBlockTime - Precision` in the first inequality
 	lhs := p.Timestamp.Add(-sp.Precision)
 	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality

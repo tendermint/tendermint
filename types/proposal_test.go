@@ -266,6 +266,17 @@ func TestIsTimely(t *testing.T) {
 			expectTimely: true,
 			round:        10,
 		},
+		{
+			// check that values that overflow time.Duration still correctly register
+			// as timely when round relaxation applied.
+			name:         "message delay fixed to not overflow time.Duration",
+			proposalTime: genesisTime,
+			recvTime:     genesisTime.Add(4 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: true,
+			round:        5000,
+		},
 	}
 
 	for _, testCase := range testCases {
