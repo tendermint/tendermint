@@ -100,7 +100,7 @@ func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32)
 	msgDelay := sp.MessageDelay * roundModifier
 
 	if msgDelay <= 0 {
-		// In the case that messaeg delay overflows after applying the round modifier, use the maximum
+		// In the case that message delay overflows after applying the round modifier, use the maximum
 		// duration instead.
 		msgDelay = time.Nanosecond * math.MaxInt64
 	}
