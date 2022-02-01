@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/pubsub"
+	"github.com/tendermint/tendermint/libs/log"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -16,8 +17,8 @@ import (
 
 // wsEvents is a wrapper around WSClient, which implements EventsClient.
 type wsEvents struct {
-	*rpcclient.RunState
-	ws *jsonrpcclient.WSClient
+	Logger log.Logger
+	ws     *jsonrpcclient.WSClient
 
 	mtx           sync.RWMutex
 	subscriptions map[string]*wsSubscription
@@ -33,7 +34,7 @@ var _ rpcclient.EventsClient = (*wsEvents)(nil)
 
 func newWsEvents(remote string) (*wsEvents, error) {
 	w := &wsEvents{
-		RunState:      rpcclient.NewRunState("wsEvents", nil),
+		Logger:        log.NewNopLogger(),
 		subscriptions: make(map[string]*wsSubscription),
 	}
 
@@ -60,9 +61,6 @@ func (w *wsEvents) Start(ctx context.Context) error {
 	return nil
 }
 
-// IsRunning reports whether the websocket client is running.
-func (w *wsEvents) IsRunning() bool { return w.ws.IsRunning() }
-
 // Stop shuts down the websocket client.
 func (w *wsEvents) Stop() error { return w.ws.Stop() }
 
@@ -80,11 +78,6 @@ func (w *wsEvents) Stop() error { return w.ws.Stop() }
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
-
-	if !w.IsRunning() {
-		return nil, rpcclient.ErrClientNotRunning
-	}
-
 	if err := w.ws.Subscribe(ctx, query); err != nil {
 		return nil, err
 	}
@@ -109,10 +102,6 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	if !w.IsRunning() {
-		return rpcclient.ErrClientNotRunning
-	}
-
 	if err := w.ws.Unsubscribe(ctx, query); err != nil {
 		return err
 	}
@@ -135,10 +124,6 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	if !w.IsRunning() {
-		return rpcclient.ErrClientNotRunning
-	}
-
 	if err := w.ws.UnsubscribeAll(ctx); err != nil {
 		return err
 	}
