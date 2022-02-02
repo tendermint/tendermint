@@ -226,6 +226,10 @@ func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok
 	return nil, false
 }
 
+func (voteSet *VoteSet) GetVotes() []*Vote {
+	return voteSet.votes
+}
+
 // Assumes signature is valid.
 // If conflicting vote exists, returns it.
 func (voteSet *VoteSet) addVerifiedVote(
@@ -630,6 +634,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
 			commitSig = NewCommitSigAbsent()
 		}
+
 		commitSigs[i] = commitSig
 	}
 

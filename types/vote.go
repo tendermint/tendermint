@@ -24,6 +24,7 @@ var (
 	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
 	ErrVoteNil                       = errors.New("nil vote")
+	ErrVoteInvalidExtension          = errors.New("invalid vote extension")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -45,6 +46,74 @@ func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 // Address is hex bytes.
 type Address = crypto.Address
 
+// VoteExtensionToSign is a subset of VoteExtension
+// that is signed by the validators private key
+type VoteExtensionToSign struct {
+	AppDataToSign []byte `json:"app_data_to_sign"`
+}
+
+func (ext VoteExtensionToSign) ToProto() *tmproto.VoteExtensionToSign {
+	if ext.IsEmpty() {
+		return nil
+	}
+	return &tmproto.VoteExtensionToSign{
+		AppDataToSign: ext.AppDataToSign,
+	}
+}
+
+func VoteExtensionToSignFromProto(pext *tmproto.VoteExtensionToSign) VoteExtensionToSign {
+	if pext == nil {
+		return VoteExtensionToSign{}
+	}
+	return VoteExtensionToSign{
+		AppDataToSign: pext.AppDataToSign,
+	}
+}
+
+func (ext VoteExtensionToSign) IsEmpty() bool {
+	return len(ext.AppDataToSign) == 0
+}
+
+// BytesPacked returns a bytes-packed representation for
+// debugging and human identification. This function should
+// not be used for any logical operations.
+func (ext VoteExtensionToSign) BytesPacked() []byte {
+	res := []byte{}
+	res = append(res, ext.AppDataToSign...)
+	return res
+}
+
+// ToVoteExtension constructs a VoteExtension from a VoteExtensionToSign
+func (ext VoteExtensionToSign) ToVoteExtension() VoteExtension {
+	return VoteExtension{
+		AppDataToSign: ext.AppDataToSign,
+	}
+}
+
+// VoteExtension is a set of data provided by the application
+// that is additionally included in the vote
+type VoteExtension struct {
+	AppDataToSign             []byte `json:"app_data_to_sign"`
+	AppDataSelfAuthenticating []byte `json:"app_data_self_authenticating"`
+}
+
+// ToSign constructs a VoteExtensionToSign from a VoteExtenstion
+func (ext VoteExtension) ToSign() VoteExtensionToSign {
+	return VoteExtensionToSign{
+		AppDataToSign: ext.AppDataToSign,
+	}
+}
+
+// BytesPacked returns a bytes-packed representation for
+// debugging and human identification. This function should
+// not be used for any logical operations.
+func (ext VoteExtension) BytesPacked() []byte {
+	res := []byte{}
+	res = append(res, ext.AppDataToSign...)
+	res = append(res, ext.AppDataSelfAuthenticating...)
+	return res
+}
+
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
@@ -56,6 +125,7 @@ type Vote struct {
 	ValidatorAddress Address               `json:"validator_address"`
 	ValidatorIndex   int32                 `json:"validator_index"`
 	Signature        []byte                `json:"signature"`
+	VoteExtension    VoteExtension         `json:"vote_extension"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -79,6 +149,7 @@ func (vote *Vote) CommitSig() CommitSig {
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
 		Signature:        vote.Signature,
+		VoteExtension:    vote.VoteExtension.ToSign(),
 	}
 }
 
@@ -102,6 +173,7 @@ func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 
 func (vote *Vote) Copy() *Vote {
 	voteCopy := *vote
+	voteCopy.VoteExtension = vote.VoteExtension.Copy()
 	return &voteCopy
 }
 
@@ -115,7 +187,8 @@ func (vote *Vote) Copy() *Vote {
 // 6. type string
 // 7. first 6 bytes of block hash
 // 8. first 6 bytes of signature
-// 9. timestamp
+// 9. first 6 bytes of vote extension
+// 10. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
@@ -131,7 +204,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X @ %s}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
@@ -140,6 +213,7 @@ func (vote *Vote) String() string {
 		typeString,
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.Signature),
+		tmbytes.Fingerprint(vote.VoteExtension.BytesPacked()),
 		CanonicalTime(vote.Timestamp),
 	)
 }
@@ -198,7 +272,38 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
+	// XXX: add length verification for vote extension?
+
 	return nil
+}
+
+func (ext VoteExtension) Copy() VoteExtension {
+	res := VoteExtension{
+		AppDataToSign:             ext.AppDataToSign,
+		AppDataSelfAuthenticating: ext.AppDataSelfAuthenticating,
+	}
+	return res
+}
+
+func (ext VoteExtension) IsEmpty() bool {
+	if len(ext.AppDataToSign) != 0 {
+		return false
+	}
+	if len(ext.AppDataSelfAuthenticating) != 0 {
+		return false
+	}
+	return true
+}
+
+func (ext VoteExtension) ToProto() *tmproto.VoteExtension {
+	if ext.IsEmpty() {
+		return nil
+	}
+
+	return &tmproto.VoteExtension{
+		AppDataToSign:             ext.AppDataToSign,
+		AppDataSelfAuthenticating: ext.AppDataSelfAuthenticating,
+	}
 }
 
 // ToProto converts the handwritten type to proto generated type
@@ -217,7 +322,29 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		ValidatorAddress: vote.ValidatorAddress,
 		ValidatorIndex:   vote.ValidatorIndex,
 		Signature:        vote.Signature,
+		VoteExtension:    vote.VoteExtension.ToProto(),
 	}
+}
+
+func VotesToProto(votes []*Vote) (res []*tmproto.Vote) {
+	if votes == nil {
+		return nil
+	}
+
+	res = make([]*tmproto.Vote, len(votes))
+	for i, vote := range votes {
+		res[i] = vote.ToProto()
+	}
+	return
+}
+
+func VoteExtensionFromProto(pext *tmproto.VoteExtension) VoteExtension {
+	ext := VoteExtension{}
+	if pext != nil {
+		ext.AppDataToSign = pext.AppDataToSign
+		ext.AppDataSelfAuthenticating = pext.AppDataSelfAuthenticating
+	}
+	return ext
 }
 
 // FromProto converts a proto generetad type to a handwritten type
@@ -241,6 +368,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
+	vote.VoteExtension = VoteExtensionFromProto(pv.VoteExtension)
 
 	return vote, vote.ValidateBasic()
 }
