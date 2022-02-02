@@ -3,10 +3,10 @@ package consensus
 import (
 	"fmt"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -128,9 +128,10 @@ type Reactor struct {
 	eventBus *types.EventBus
 	Metrics  *Metrics
 
-	mtx      tmsync.RWMutex
-	peers    map[types.NodeID]*PeerState
-	waitSync bool
+	mtx         sync.RWMutex
+	peers       map[types.NodeID]*PeerState
+	waitSync    bool
+	readySignal chan struct{} // closed when the node is ready to start consensus
 
 	stateCh       *p2p.Channel
 	dataCh        *p2p.Channel
@@ -173,12 +174,17 @@ func NewReactor(
 		voteSetBitsCh: voteSetBitsCh,
 		peerUpdates:   peerUpdates,
 		stateCloseCh:  make(chan struct{}),
+		readySignal:   make(chan struct{}),
 		closeCh:       make(chan struct{}),
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
 
 	for _, opt := range options {
 		opt(r)
+	}
+
+	if !r.waitSync {
+		close(r.readySignal)
 	}
 
 	return r
@@ -235,7 +241,6 @@ func (r *Reactor) OnStop() {
 	// lock to complete any of the methods that the waitgroup is waiting on.
 	for _, state := range r.peers {
 		state.closer.Close()
-		state.broadcastWG.Wait()
 	}
 	r.mtx.Unlock()
 
@@ -292,6 +297,7 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 
 	r.mtx.Lock()
 	r.waitSync = false
+	close(r.readySignal)
 	r.mtx.Unlock()
 
 	r.Metrics.BlockSyncing.Set(0)
@@ -517,8 +523,6 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 func (r *Reactor) gossipDataRoutine(ps *PeerState) {
 	logger := r.Logger.With("peer", ps.peerID)
 
-	defer ps.broadcastWG.Done()
-
 OUTER_LOOP:
 	for {
 		if !r.IsRunning() {
@@ -526,6 +530,8 @@ OUTER_LOOP:
 		}
 
 		select {
+		case <-r.closeCh:
+			return
 		case <-ps.closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
@@ -729,8 +735,6 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 func (r *Reactor) gossipVotesRoutine(ps *PeerState) {
 	logger := r.Logger.With("peer", ps.peerID)
 
-	defer ps.broadcastWG.Done()
-
 	// XXX: simple hack to throttle logs upon sleep
 	logThrottle := 0
 
@@ -809,8 +813,6 @@ OUTER_LOOP:
 // NOTE: `queryMaj23Routine` has a simple crude design since it only comes
 // into play for liveness when there's a signature DDoS attack happening.
 func (r *Reactor) queryMaj23Routine(ps *PeerState) {
-	defer ps.broadcastWG.Done()
-
 OUTER_LOOP:
 	for {
 		if !r.IsRunning() {
@@ -818,6 +820,8 @@ OUTER_LOOP:
 		}
 
 		select {
+		case <-r.closeCh:
+			return
 		case <-ps.closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
@@ -943,12 +947,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			return
 		}
 
-		var (
-			ps *PeerState
-			ok bool
-		)
-
-		ps, ok = r.peers[peerUpdate.NodeID]
+		ps, ok := r.peers[peerUpdate.NodeID]
 		if !ok {
 			ps = NewPeerState(r.Logger, peerUpdate.NodeID)
 			r.peers[peerUpdate.NodeID] = ps
@@ -959,19 +958,31 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			// when the peer is removed. We also set the running state to ensure we
 			// do not spawn multiple instances of the same goroutines and finally we
 			// set the waitgroup counter so we know when all goroutines have exited.
-			ps.broadcastWG.Add(3)
 			ps.SetRunning(true)
 
-			// start goroutines for this peer
-			go r.gossipDataRoutine(ps)
-			go r.gossipVotesRoutine(ps)
-			go r.queryMaj23Routine(ps)
+			go func() {
+				select {
+				case <-r.closeCh:
+					return
+				case <-r.readySignal:
+				}
+				// do nothing if the peer has
+				// stopped while we've been waiting.
+				if !ps.IsRunning() {
+					return
+				}
+				// start goroutines for this peer
+				go r.gossipDataRoutine(ps)
+				go r.gossipVotesRoutine(ps)
+				go r.queryMaj23Routine(ps)
 
-			// Send our state to the peer. If we're block-syncing, broadcast a
-			// RoundStepMessage later upon SwitchToConsensus().
-			if !r.waitSync {
-				go r.sendNewRoundStepMessage(ps.peerID)
-			}
+				// Send our state to the peer. If we're block-syncing, broadcast a
+				// RoundStepMessage later upon SwitchToConsensus().
+				if !r.WaitSync() {
+					go func() { r.sendNewRoundStepMessage(ps.peerID) }()
+				}
+
+			}()
 		}
 
 	case p2p.PeerStatusDown:
@@ -981,10 +992,6 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			ps.closer.Close()
 
 			go func() {
-				// Wait for all spawned broadcast goroutines to exit before marking the
-				// peer state as no longer running and removal from the peers map.
-				ps.broadcastWG.Wait()
-
 				r.mtx.Lock()
 				delete(r.peers, peerUpdate.NodeID)
 				r.mtx.Unlock()
