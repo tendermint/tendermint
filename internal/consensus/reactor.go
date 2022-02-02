@@ -119,7 +119,7 @@ type Reactor struct {
 	mtx         sync.RWMutex
 	peers       map[types.NodeID]*PeerState
 	waitSync    bool
-	readySignal chan struct{}
+	readySignal chan struct{}  // closed when the node is ready to start consensus
 
 	stateCh       *p2p.Channel
 	dataCh        *p2p.Channel
