@@ -43,8 +43,6 @@ type PeerState struct {
 	running bool
 	PRS     cstypes.PeerRoundState `json:"round_state"`
 	Stats   *peerStateStats        `json:"stats"`
-
-	broadcastWG sync.WaitGroup
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
