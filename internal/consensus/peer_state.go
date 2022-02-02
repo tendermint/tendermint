@@ -8,7 +8,6 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -46,7 +45,6 @@ type PeerState struct {
 	Stats   *peerStateStats        `json:"stats"`
 
 	broadcastWG sync.WaitGroup
-	closer      *tmsync.Closer
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
@@ -54,7 +52,6 @@ func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,
-		closer: tmsync.NewCloser(),
 		PRS: cstypes.PeerRoundState{
 			Round:              -1,
 			ProposalPOLRound:   -1,

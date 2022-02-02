@@ -222,6 +222,39 @@ func (app *localClient) ApplySnapshotChunk(
 	return &res, nil
 }
 
+func (app *localClient) PrepareProposal(
+	ctx context.Context,
+	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.PrepareProposal(req)
+	return &res, nil
+}
+
+func (app *localClient) ExtendVote(
+	ctx context.Context,
+	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ExtendVote(req)
+	return &res, nil
+}
+
+func (app *localClient) VerifyVoteExtension(
+	ctx context.Context,
+	req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.VerifyVoteExtension(req)
+	return &res, nil
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) callback(req *types.Request, res *types.Response) *ReqRes {

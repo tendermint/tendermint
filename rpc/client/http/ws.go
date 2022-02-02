@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -14,34 +13,6 @@ import (
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
-
-// WSOptions for the WS part of the HTTP client.
-type WSOptions struct {
-	Path string // path (e.g. "/ws")
-
-	jsonrpcclient.WSOptions // WSClient options
-}
-
-// DefaultWSOptions returns default WS options.
-// See jsonrpcclient.DefaultWSOptions.
-func DefaultWSOptions() WSOptions {
-	return WSOptions{
-		Path:      "/websocket",
-		WSOptions: jsonrpcclient.DefaultWSOptions(),
-	}
-}
-
-// Validate performs a basic validation of WSOptions.
-func (wso WSOptions) Validate() error {
-	if len(wso.Path) <= 1 {
-		return errors.New("empty Path")
-	}
-	if wso.Path[0] != '/' {
-		return errors.New("leading slash is missing in Path")
-	}
-
-	return nil
-}
 
 // wsEvents is a wrapper around WSClient, which implements EventsClient.
 type wsEvents struct {
@@ -60,25 +31,14 @@ type wsSubscription struct {
 
 var _ rpcclient.EventsClient = (*wsEvents)(nil)
 
-func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
-	// validate options
-	if err := wso.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid WSOptions: %w", err)
-	}
-
-	// remove the trailing / from the remote else the websocket endpoint
-	// won't parse correctly
-	if remote[len(remote)-1] == '/' {
-		remote = remote[:len(remote)-1]
-	}
-
+func newWsEvents(remote string) (*wsEvents, error) {
 	w := &wsEvents{
+		RunState:      rpcclient.NewRunState("wsEvents", nil),
 		subscriptions: make(map[string]*wsSubscription),
 	}
-	w.RunState = rpcclient.NewRunState("wsEvents", nil)
 
 	var err error
-	w.ws, err = jsonrpcclient.NewWSWithOptions(remote, wso.Path, wso.WSOptions)
+	w.ws, err = jsonrpcclient.NewWS(strings.TrimSuffix(remote, "/"), "/websocket")
 	if err != nil {
 		return nil, fmt.Errorf("can't create WS client: %w", err)
 	}

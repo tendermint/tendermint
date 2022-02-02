@@ -122,19 +122,9 @@ func NewWithTimeout(remote string, t time.Duration) (*HTTP, error) {
 	return NewWithClient(remote, c)
 }
 
-// NewWithClient allows you to set a custom http client. An error is returned
-// on invalid remote. The function returns an error when client is nil
-// or an invalid remote.
+// NewWithClient constructs an RPC client using a custom HTTP client.
+// An error is reported if c == nil or remote is an invalid address.
 func NewWithClient(remote string, c *http.Client) (*HTTP, error) {
-	if c == nil {
-		return nil, errors.New("nil client")
-	}
-	return NewWithClientAndWSOptions(remote, c, DefaultWSOptions())
-}
-
-// NewWithClientAndWSOptions allows you to set a custom http client and
-// WebSocket options. An error is returned on invalid remote or nil client.
-func NewWithClientAndWSOptions(remote string, c *http.Client, wso WSOptions) (*HTTP, error) {
 	if c == nil {
 		return nil, errors.New("nil client")
 	}
@@ -143,7 +133,7 @@ func NewWithClientAndWSOptions(remote string, c *http.Client, wso WSOptions) (*H
 		return nil, err
 	}
 
-	wsEvents, err := newWsEvents(remote, wso)
+	wsEvents, err := newWsEvents(remote)
 	if err != nil {
 		return nil, err
 	}

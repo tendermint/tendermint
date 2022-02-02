@@ -196,24 +196,25 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	}
 
 	// Validate the value proof against the trusted header.
+
+	// build a Merkle key path from path and resp.Key
+	if c.keyPathFn == nil {
+		return nil, errors.New("please configure Client with KeyPathFn option")
+	}
+
+	kp, err := c.keyPathFn(path, resp.Key)
+	if err != nil {
+		return nil, fmt.Errorf("can't build merkle key path: %w", err)
+	}
+
+	// verify value
 	if resp.Value != nil {
-		// 1) build a Merkle key path from path and resp.Key
-		if c.keyPathFn == nil {
-			return nil, errors.New("please configure Client with KeyPathFn option")
-		}
-
-		kp, err := c.keyPathFn(path, resp.Key)
-		if err != nil {
-			return nil, fmt.Errorf("can't build merkle key path: %w", err)
-		}
-
-		// 2) verify value
 		err = c.prt.VerifyValue(resp.ProofOps, l.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, fmt.Errorf("verify value proof: %w", err)
 		}
 	} else { // OR validate the absence proof against the trusted header.
-		err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, string(resp.Key))
+		err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, kp.String())
 		if err != nil {
 			return nil, fmt.Errorf("verify absence proof: %w", err)
 		}
@@ -654,11 +655,7 @@ func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.Resu
 			case resultEvent := <-out:
 				// We should have a switch here that performs a validation
 				// depending on the event's type.
-				callInfo.WSConn.TryWriteRPCResponse(bctx,
-					rpctypes.NewRPCSuccessResponse(
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", callInfo.RPCRequest.ID)),
-						resultEvent,
-					))
+				callInfo.WSConn.TryWriteRPCResponse(bctx, callInfo.RPCRequest.MakeResponse(resultEvent))
 			case <-bctx.Done():
 				return
 			}

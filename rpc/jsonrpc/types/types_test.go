@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -14,57 +13,48 @@ type SampleResult struct {
 	Value string
 }
 
-type responseTest struct {
-	id       jsonrpcid
-	expected string
-}
-
-var responseTests = []responseTest{
-	{JSONRPCStringID("1"), `"1"`},
-	{JSONRPCStringID("alphabet"), `"alphabet"`},
-	{JSONRPCStringID(""), `""`},
-	{JSONRPCStringID("àáâ"), `"àáâ"`},
-	{JSONRPCIntID(-1), "-1"},
-	{JSONRPCIntID(0), "0"},
-	{JSONRPCIntID(1), "1"},
-	{JSONRPCIntID(100), "100"},
+// Valid JSON identifier texts.
+var testIDs = []string{
+	`"1"`, `"alphabet"`, `""`, `"àáâ"`, "-1", "0", "1", "100",
 }
 
 func TestResponses(t *testing.T) {
-	for _, tt := range responseTests {
-		jsonid := tt.id
-		a := NewRPCSuccessResponse(jsonid, &SampleResult{"hello"})
-		b, _ := json.Marshal(a)
-		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)
+	for _, id := range testIDs {
+		req := RPCRequest{id: json.RawMessage(id)}
+
+		a := req.MakeResponse(&SampleResult{"hello"})
+		b, err := json.Marshal(a)
+		require.NoError(t, err, "input id: %q", id)
+		s := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, id)
 		assert.Equal(t, s, string(b))
 
-		d := RPCParseError(errors.New("hello world"))
-		e, _ := json.Marshal(d)
-		f := `{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":"hello world"}}`
+		d := req.MakeErrorf(CodeParseError, "hello world")
+		e, err := json.Marshal(d)
+		require.NoError(t, err)
+		f := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32700,"message":"Parse error","data":"hello world"}}`, id)
 		assert.Equal(t, f, string(e))
 
-		g := RPCMethodNotFoundError(jsonid)
-		h, _ := json.Marshal(g)
-		i := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32601,"message":"Method not found"}}`, tt.expected)
+		g := req.MakeErrorf(CodeMethodNotFound, "foo")
+		h, err := json.Marshal(g)
+		require.NoError(t, err)
+		i := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"error":{"code":-32601,"message":"Method not found","data":"foo"}}`, id)
 		assert.Equal(t, string(h), i)
 	}
 }
 
 func TestUnmarshallResponses(t *testing.T) {
-	for _, tt := range responseTests {
+	for _, id := range testIDs {
 		response := &RPCResponse{}
-		err := json.Unmarshal(
-			[]byte(fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, tt.expected)),
-			response,
-		)
-		require.NoError(t, err)
+		input := fmt.Sprintf(`{"jsonrpc":"2.0","id":%v,"result":{"Value":"hello"}}`, id)
+		require.NoError(t, json.Unmarshal([]byte(input), &response))
 
-		a := NewRPCSuccessResponse(tt.id, &SampleResult{"hello"})
+		req := RPCRequest{id: json.RawMessage(id)}
+		a := req.MakeResponse(&SampleResult{"hello"})
 		assert.Equal(t, *response, a)
 	}
-	response := &RPCResponse{}
-	err := json.Unmarshal([]byte(`{"jsonrpc":"2.0","id":true,"result":{"Value":"hello"}}`), response)
-	require.Error(t, err)
+	var response RPCResponse
+	const input = `{"jsonrpc":"2.0","id":true,"result":{"Value":"hello"}}`
+	require.Error(t, json.Unmarshal([]byte(input), &response))
 }
 
 func TestRPCError(t *testing.T) {

@@ -287,9 +287,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
 			testWithHTTPClient(ctx, t, cl2)
 
-			opts := client.DefaultWSOptions()
-			opts.SkipMetrics = true
-			cl3, err := client.NewWSWithOptions(addr, websocketEndpoint, opts)
+			cl3, err := client.NewWS(addr, websocketEndpoint)
 			require.NoError(t, err)
 			cl3.Logger = logger
 			err = cl3.Start(ctx)
@@ -307,9 +305,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := client.DefaultWSOptions()
-	opts.SkipMetrics = true
-	cl, err := client.NewWSWithOptions(tcpAddr, websocketEndpoint, opts)
+	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.NoError(t, err)
 	cl.Logger = log.NewNopLogger()
 	err = cl.Start(ctx)
@@ -346,9 +342,7 @@ func TestWSClientPingPong(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := client.DefaultWSOptions()
-	opts.SkipMetrics = true
-	cl, err := client.NewWSWithOptions(tcpAddr, websocketEndpoint, opts)
+	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
 	require.NoError(t, err)
 	cl.Logger = log.NewNopLogger()
 	err = cl.Start(ctx)

@@ -12,13 +12,21 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/gorilla/websocket"
+	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-var wsCallTimeout = 5 * time.Second
+func init() {
+	// Disable go-metrics metrics in tests, since they start unsupervised
+	// goroutines that trip the leak tester. Calling Stop on the metric is not
+	// sufficient, as that does not wait for the goroutine.
+	metrics.UseNilMetrics = true
+}
+
+const wsCallTimeout = 5 * time.Second
 
 type myTestHandler struct {
 	closeConnAfterRead bool
@@ -56,7 +64,9 @@ func (h *myTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		res := json.RawMessage(`{}`)
-		emptyRespBytes, _ := json.Marshal(rpctypes.RPCResponse{Result: res, ID: req.ID})
+
+		emptyRespBytes, err := json.Marshal(req.MakeResponse(res))
+		require.NoError(h.t, err)
 		if err := conn.WriteMessage(messageType, emptyRespBytes); err != nil {
 			return
 		}
@@ -223,9 +233,7 @@ func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 
 	t.Cleanup(leaktest.Check(t))
 
-	opts := DefaultWSOptions()
-	opts.SkipMetrics = true
-	c, err := NewWSWithOptions(addr, "/websocket", opts)
+	c, err := NewWS(addr, "/websocket")
 
 	require.NoError(t, err)
 	err = c.Start(ctx)

@@ -368,3 +368,27 @@ func (cli *grpcClient) ApplySnapshotChunk(
 	req := types.ToRequestApplySnapshotChunk(params)
 	return cli.client.ApplySnapshotChunk(ctx, req.GetApplySnapshotChunk(), grpc.WaitForReady(true))
 }
+
+func (cli *grpcClient) PrepareProposal(
+	ctx context.Context,
+	params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+
+	req := types.ToRequestPrepareProposal(params)
+	return cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
+}
+
+func (cli *grpcClient) ExtendVote(
+	ctx context.Context,
+	params types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+
+	req := types.ToRequestExtendVote(params)
+	return cli.client.ExtendVote(ctx, req.GetExtendVote(), grpc.WaitForReady(true))
+}
+
+func (cli *grpcClient) VerifyVoteExtension(
+	ctx context.Context,
+	params types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+
+	req := types.ToRequestVerifyVoteExtension(params)
+	return cli.client.VerifyVoteExtension(ctx, req.GetVerifyVoteExtension(), grpc.WaitForReady(true))
+}

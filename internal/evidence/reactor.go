@@ -35,7 +35,7 @@ const (
 func GetChannelDescriptor() *p2p.ChannelDescriptor {
 	return &p2p.ChannelDescriptor{
 		ID:                  EvidenceChannel,
-		MessageType:         new(tmproto.EvidenceList),
+		MessageType:         new(tmproto.Evidence),
 		Priority:            6,
 		RecvMessageCapacity: maxMsgSize,
 		RecvBufferCapacity:  32,
@@ -120,25 +120,19 @@ func (r *Reactor) handleEvidenceMessage(envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
-	case *tmproto.EvidenceList:
-		// TODO: Refactor the Evidence type to not contain a list since we only ever
-		// send and receive one piece of evidence at a time. Or potentially consider
-		// batching evidence.
-		//
-		// see: https://github.com/tendermint/tendermint/issues/4729
-		for i := 0; i < len(msg.Evidence); i++ {
-			ev, err := types.EvidenceFromProto(&msg.Evidence[i])
-			if err != nil {
-				logger.Error("failed to convert evidence", "err", err)
-				continue
-			}
-
-			if err := r.evpool.AddEvidence(ev); err != nil {
-				// If we're given invalid evidence by the peer, notify the router that
-				// we should remove this peer by returning an error.
-				if _, ok := err.(*types.ErrInvalidEvidence); ok {
-					return err
-				}
+	case *tmproto.Evidence:
+		// Process the evidence received from a peer
+		// Evidence is sent and received one by one
+		ev, err := types.EvidenceFromProto(msg)
+		if err != nil {
+			logger.Error("failed to convert evidence", "err", err)
+			return err
+		}
+		if err := r.evpool.AddEvidence(ev); err != nil {
+			// If we're given invalid evidence by the peer, notify the router that
+			// we should remove this peer by returning an error.
+			if _, ok := err.(*types.ErrInvalidEvidence); ok {
+				return err
 			}
 		}
 
@@ -320,11 +314,10 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
+
 		if err := r.evidenceCh.Send(ctx, p2p.Envelope{
-			To: peerID,
-			Message: &tmproto.EvidenceList{
-				Evidence: []tmproto.Evidence{*evProto},
-			},
+			To:      peerID,
+			Message: evProto,
 		}); err != nil {
 			return
 		}
