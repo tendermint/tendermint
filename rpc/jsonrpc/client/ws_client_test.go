@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -13,9 +12,9 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -193,38 +192,27 @@ func TestWSClientReconnectFailure(t *testing.T) {
 func TestNotBlockingOnStop(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	timeout := 3 * time.Second
 	s := httptest.NewServer(&myTestHandler{t: t})
 	defer s.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	c := startClient(ctx, t, "//"+s.Listener.Addr().String())
-	c.Call(ctx, "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
-	// Let the readRoutine get around to blocking
-	time.Sleep(time.Second)
-	passCh := make(chan struct{})
+	require.NoError(t, c.Call(ctx, "a", make(map[string]interface{})))
+
+	time.Sleep(200 * time.Millisecond) // give service routines time to start ⚠️
+	done := make(chan struct{})
 	go func() {
-		// Unless we have a non-blocking write to ResponsesCh from readRoutine
-		// this blocks forever ont the waitgroup
 		cancel()
-		require.NoError(t, c.Stop())
-		select {
-		case <-ctx.Done():
-		case passCh <- struct{}{}:
+		if assert.NoError(t, c.Stop()) {
+			close(done)
 		}
 	}()
-
-	runtime.Gosched() // hacks: force context switch
-
 	select {
-	case <-passCh:
-		// Pass
-	case <-time.After(timeout):
-		if c.IsRunning() {
-			t.Fatalf("WSClient did failed to stop within %v seconds - is one of the read/write routines blocking?",
-				timeout.Seconds())
-		}
+	case <-done:
+		t.Log("Stopped client successfully")
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timed out waiting for client to stop")
 	}
 }
 
@@ -234,11 +222,8 @@ func startClient(ctx context.Context, t *testing.T, addr string) *WSClient {
 	t.Cleanup(leaktest.Check(t))
 
 	c, err := NewWS(addr, "/websocket")
-
 	require.NoError(t, err)
-	err = c.Start(ctx)
-	require.NoError(t, err)
-	c.Logger = log.NewNopLogger()
+	require.NoError(t, c.Start(ctx))
 	return c
 }
 

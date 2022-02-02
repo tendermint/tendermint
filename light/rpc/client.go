@@ -105,12 +105,12 @@ func NewClient(logger log.Logger, next rpcclient.Client, lc LightClient, opts ..
 }
 
 func (c *Client) OnStart(ctx context.Context) error {
-	if !c.next.IsRunning() {
-		nctx, ncancel := context.WithCancel(ctx)
-		c.closers = append(c.closers, ncancel)
-		return c.next.Start(nctx)
+	nctx, ncancel := context.WithCancel(ctx)
+	if err := c.next.Start(nctx); err != nil {
+		ncancel()
+		return err
 	}
-
+	c.closers = append(c.closers, ncancel)
 	go func() {
 		defer close(c.quitCh)
 		c.Wait()

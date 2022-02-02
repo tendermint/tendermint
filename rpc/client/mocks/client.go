@@ -526,20 +526,6 @@ func (_m *Client) Health(_a0 context.Context) (*coretypes.ResultHealth, error) {
 	return r0, r1
 }
 
-// IsRunning provides a mock function with given fields:
-func (_m *Client) IsRunning() bool {
-	ret := _m.Called()
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
 // NetInfo provides a mock function with given fields: _a0
 func (_m *Client) NetInfo(_a0 context.Context) (*coretypes.ResultNetInfo, error) {
 	ret := _m.Called(_a0)
