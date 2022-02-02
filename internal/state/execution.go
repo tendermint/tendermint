@@ -149,9 +149,9 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
+	ctx context.Context,
 	block *types.Block,
 ) (bool, error) {
-	ctx := context.Background()
 	req := abci.RequestProcessProposal{
 		Txs:    block.Data.Txs.ToSliceOfBytes(),
 		Header: *block.Header.ToProto(),
