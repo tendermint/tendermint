@@ -177,11 +177,6 @@ func (c *WSClient) IsReconnecting() bool {
 	return c.reconnecting
 }
 
-// IsActive returns true if the client is not reconnecting.
-func (c *WSClient) IsActive() bool {
-	return !c.IsReconnecting()
-}
-
 // Send the given RPC request to the server. Results will be available on
 // ResponsesCh, errors, if any, on ErrorsCh. Will block until send succeeds or
 // ctx.Done is closed.
