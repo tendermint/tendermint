@@ -3,7 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
-	"math"
+	"math/bits"
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
@@ -96,14 +96,15 @@ func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32)
 	// proceed in the case that the chosen value was too small for the given network conditions.
 	// For more information and discussion on this mechanism, see the relevant github issue:
 	// https://github.com/tendermint/spec/issues/371
-	roundModifier := time.Duration(math.Exp2(float64(round / 10)))
-	msgDelay := sp.MessageDelay * roundModifier
+	maxShift := bits.LeadingZeros64(uint64(sp.MessageDelay)) - 1
+	nShift := int((round / 10))
 
-	if msgDelay <= 0 {
-		// In the case that message delay overflows after applying the round modifier, use the maximum
-		// duration instead.
-		msgDelay = time.Nanosecond * math.MaxInt64
+	if nShift > maxShift {
+		// if the number of 'doublings' would would overflow the size of the int, use the
+		// maximum instead.
+		nShift = maxShift
 	}
+	msgDelay := sp.MessageDelay * time.Duration(1<<nShift)
 
 	// lhs is `proposedBlockTime - Precision` in the first inequality
 	lhs := p.Timestamp.Add(-sp.Precision)
