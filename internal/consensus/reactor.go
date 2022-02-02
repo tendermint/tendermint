@@ -1024,10 +1024,15 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// set the waitgroup counter so we know when all goroutines have exited.
 			ps.SetRunning(true)
 
-			startPeerRoutine := func() {
-				// do nothing if we or the peer has
+			go func() {
+				select {
+				case <-ctx.Done():
+					return
+				case <-r.readySignal:
+				}
+				// do nothing if the peer has
 				// stopped while we've been waiting.
-				if !ps.IsRunning() || ctx.Err() != nil {
+				if !ps.IsRunning() {
 					return
 				}
 				ps.broadcastWG.Add(3)
@@ -1041,16 +1046,8 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 				if !r.WaitSync() {
 					go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID) }()
 				}
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-r.readySignal:
-				startPeerRoutine()
-			default:
-				go startPeerRoutine()
-			}
 
+			}()
 		}
 
 	case p2p.PeerStatusDown:
