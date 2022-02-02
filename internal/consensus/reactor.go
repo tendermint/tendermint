@@ -116,9 +116,10 @@ type Reactor struct {
 	eventBus *eventbus.EventBus
 	Metrics  *Metrics
 
-	mtx      sync.RWMutex
-	peers    map[types.NodeID]*PeerState
-	waitSync bool
+	mtx         sync.RWMutex
+	peers       map[types.NodeID]*PeerState
+	waitSync    bool
+	readySignal chan struct{}
 
 	stateCh       *p2p.Channel
 	dataCh        *p2p.Channel
@@ -171,8 +172,13 @@ func NewReactor(
 		voteCh:        voteCh,
 		voteSetBitsCh: voteSetBitsCh,
 		peerUpdates:   peerUpdates,
+		readySignal:   make(chan struct{}),
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
+
+	if !r.waitSync {
+		close(r.readySignal)
+	}
 
 	return r, nil
 }
@@ -222,7 +228,6 @@ func (r *Reactor) OnStop() {
 	if !r.WaitSync() {
 		r.state.Wait()
 	}
-
 	r.mtx.Lock()
 	// Close and wait for each of the peers to shutdown.
 	// This is safe to perform with the lock since none of the peers require the
@@ -263,6 +268,7 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	r.mtx.Lock()
 	r.waitSync = false
+	close(r.readySignal)
 	r.mtx.Unlock()
 
 	r.Metrics.BlockSyncing.Set(0)
@@ -1005,12 +1011,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			return
 		}
 
-		var (
-			ps *PeerState
-			ok bool
-		)
-
-		ps, ok = r.peers[peerUpdate.NodeID]
+		ps, ok := r.peers[peerUpdate.NodeID]
 		if !ok {
 			ps = NewPeerState(r.logger, peerUpdate.NodeID)
 			r.peers[peerUpdate.NodeID] = ps
@@ -1021,19 +1022,35 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// when the peer is removed. We also set the running state to ensure we
 			// do not spawn multiple instances of the same goroutines and finally we
 			// set the waitgroup counter so we know when all goroutines have exited.
-			ps.broadcastWG.Add(3)
 			ps.SetRunning(true)
 
-			// start goroutines for this peer
-			go r.gossipDataRoutine(ctx, ps)
-			go r.gossipVotesRoutine(ctx, ps)
-			go r.queryMaj23Routine(ctx, ps)
+			startPeerRoutine := func() {
+				// do nothing if we or the peer has
+				// stopped while we've been waiting.
+				if !ps.IsRunning() || ctx.Err() != nil {
+					return
+				}
+				ps.broadcastWG.Add(3)
+				// start goroutines for this peer
+				go r.gossipDataRoutine(ctx, ps)
+				go r.gossipVotesRoutine(ctx, ps)
+				go r.queryMaj23Routine(ctx, ps)
 
-			// Send our state to the peer. If we're block-syncing, broadcast a
-			// RoundStepMessage later upon SwitchToConsensus().
-			if !r.waitSync {
-				go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID) }()
+				// Send our state to the peer. If we're block-syncing, broadcast a
+				// RoundStepMessage later upon SwitchToConsensus().
+				if !r.WaitSync() {
+					go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID) }()
+				}
 			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-r.readySignal:
+				startPeerRoutine()
+			default:
+				go startPeerRoutine()
+			}
+
 		}
 
 	case p2p.PeerStatusDown:
