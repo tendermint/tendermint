@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -44,6 +45,7 @@ func (ids *IDs) Reclaim(peerID types.NodeID) {
 	if ok {
 		delete(ids.activeIDs, removedID)
 		delete(ids.peerMap, peerID)
+		ids.nextID = uint16(tmmath.MinInt(int(ids.nextID), int(removedID)))
 	}
 }
 
