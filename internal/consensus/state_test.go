@@ -816,7 +816,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
-	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID, theBlock.Header.Time)
+	propR1 := types.NewProposal(height, round, cs1.TwoThirdPrevoteRound, blockID, theBlock.Header.Time)
 	p := propR1.ToProto()
 	err = vs2.SignProposal(ctx, cs1.state.ChainID, p)
 	require.NoError(t, err)
@@ -1630,7 +1630,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	round++
 	// Generate a new proposal block.
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
-	cs2.ValidRound = 1
+	cs2.TwoThirdPrevoteRound = 1
 	propR1, propBlockR1 := decideProposal(ctx, t, cs2, vs2, vs2.Height, round)
 	t.Log(propR1.POLRound)
 	propBlockR1Parts, err := propBlockR1.MakePartSet(partSize)

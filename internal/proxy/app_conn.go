@@ -100,8 +100,8 @@ func (app *appConnConsensus) PrepareProposal(
 }
 
 func (app *appConnConsensus) ProcessProposal(
-       ctx context.Context,
-       req types.RequestProcessProposal,
+	ctx context.Context,
+	req types.RequestProcessProposal,
 ) (*types.ResponseProcessProposal, error) {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "process_proposal", "type", "sync"))()
 	return app.appConn.ProcessProposal(ctx, req)
