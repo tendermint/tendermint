@@ -93,7 +93,7 @@ func (p *Proposal) ValidateBasic() error {
 func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32) bool {
 	// The message delay values are scaled as rounds progress.
 	// Every 10 rounds, the message delay is doubled to allow consensus to
-	// proceed in the case that the choosen value was too small for the given network conditions.
+	// proceed in the case that the chosen value was too small for the given network conditions.
 	// For more information and discussion on this mechanism, see the relevant github issue:
 	// https://github.com/tendermint/spec/issues/371
 	roundModifier := time.Duration(math.Exp2(float64(round / 10)))
