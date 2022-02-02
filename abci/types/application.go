@@ -17,11 +17,20 @@ type Application interface {
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain w validators/other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain w validators/other info from TendermintCore
+	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
+	// Signals the beginning of a block
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock
+	// Deliver a tx for full processing
+	DeliverTx(RequestDeliverTx) ResponseDeliverTx
+	// Signals the end of a block, returns changes to the validator set
+	EndBlock(RequestEndBlock) ResponseEndBlock
+	// Commit the state and return the application Merkle root hash
+	Commit() ResponseCommit
+	// Create application specific vote extension
+	ExtendVote(RequestExtendVote) ResponseExtendVote
+	// Verify application's vote extension data
+	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -58,6 +67,14 @@ func (BaseApplication) Commit() ResponseCommit {
 	return ResponseCommit{}
 }
 
+func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
+	return ResponseExtendVote{}
+}
+
+func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
+	return ResponseVerifyVoteExtension{}
+}
+
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
 	return ResponseQuery{Code: CodeTypeOK}
 }
@@ -88,6 +105,10 @@ func (BaseApplication) LoadSnapshotChunk(req RequestLoadSnapshotChunk) ResponseL
 
 func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) ResponseApplySnapshotChunk {
 	return ResponseApplySnapshotChunk{}
+}
+
+func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
+	return ResponsePrepareProposal{}
 }
 
 //-------------------------------------------------------
@@ -170,5 +191,23 @@ func (app *GRPCApplication) LoadSnapshotChunk(
 func (app *GRPCApplication) ApplySnapshotChunk(
 	ctx context.Context, req *RequestApplySnapshotChunk) (*ResponseApplySnapshotChunk, error) {
 	res := app.app.ApplySnapshotChunk(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ExtendVote(
+	ctx context.Context, req *RequestExtendVote) (*ResponseExtendVote, error) {
+	res := app.app.ExtendVote(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) VerifyVoteExtension(
+	ctx context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
+	res := app.app.VerifyVoteExtension(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) PrepareProposal(
+	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
+	res := app.app.PrepareProposal(*req)
 	return &res, nil
 }

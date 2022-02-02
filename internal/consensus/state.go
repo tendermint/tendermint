@@ -1334,6 +1334,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	}
 
 	var commit *types.Commit
+	var votes []*types.Vote
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
@@ -1343,6 +1344,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
+		votes = cs.LastCommit.GetVotes()
 
 	default: // This shouldn't happen.
 		cs.logger.Error("propose step; cannot propose anything without commit for the previous block")
@@ -1358,7 +1360,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, votes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -2233,6 +2235,13 @@ func (cs *State) addVote(
 		return
 	}
 
+	// Verify VoteExtension if precommit
+	if vote.Type == tmproto.PrecommitType {
+		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
+			return false, err
+		}
+	}
+
 	height := cs.Height
 	added, err = cs.Votes.AddVote(vote, peerID)
 	if !added {
@@ -2370,8 +2379,6 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	v := vote.ToProto()
-
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
 	var timeout time.Duration
@@ -2379,11 +2386,19 @@ func (cs *State) signVote(
 	switch msgType {
 	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
+		// if the signedMessage type is for a precommit, add VoteExtension
+		ext, err := cs.blockExec.ExtendVote(vote)
+		if err != nil {
+			return nil, err
+		}
+		vote.VoteExtension = ext
 	case tmproto.PrevoteType:
 		timeout = cs.config.TimeoutPrevote
 	default:
 		timeout = time.Second
 	}
+
+	v := vote.ToProto()
 
 	ctxto, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -2396,7 +2411,12 @@ func (cs *State) signVote(
 }
 
 // sign the vote and publish on internalMsgQueue
-func (cs *State) signAddVote(ctx context.Context, msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+func (cs *State) signAddVote(
+	ctx context.Context,
+	msgType tmproto.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader,
+) *types.Vote {
 	if cs.privValidator == nil { // the node does not have a key
 		return nil
 	}

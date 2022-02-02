@@ -63,7 +63,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 		peerChans:      make(map[types.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
-	chDesc := &p2p.ChannelDescriptor{ID: evidence.EvidenceChannel, MessageType: new(tmproto.EvidenceList)}
+	chDesc := &p2p.ChannelDescriptor{ID: evidence.EvidenceChannel, MessageType: new(tmproto.Evidence)}
 	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), 0)
 

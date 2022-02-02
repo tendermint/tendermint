@@ -99,10 +99,13 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // and txs from the mempool. The max bytes must be big enough to fit the commit.
 // Up to 1/10th of the block space is allcoated for maximum sized evidence.
 // The rest is given to txs, up to the max gas.
+//
+// Contract: application will not return more bytes than are sent over the wire.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
+	votes []*types.Vote,
 ) (*types.Block, *types.PartSet, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -115,7 +118,38 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	preparedProposal, err := blockExec.proxyApp.PrepareProposal(
+		context.Background(),
+		abci.RequestPrepareProposal{
+			BlockData:     txs.ToSliceOfBytes(),
+			BlockDataSize: maxDataBytes,
+			Votes:         types.VotesToProto(votes),
+		},
+	)
+	if err != nil {
+		// The App MUST ensure that only valid (and hence 'processable') transactions
+		// enter the mempool. Hence, at this point, we can't have any non-processable
+		// transaction causing an error.
+		//
+		// Also, the App can simply skip any transaction that could cause any kind of trouble.
+		// Either way, we can not recover in a meaningful way, unless we skip proposing
+		// this block, repair what caused the error and try again. Hence, we panic on
+		// purpose for now.
+		panic(err)
+	}
+	newTxs := preparedProposal.GetBlockData()
+	var txSize int
+	for _, tx := range newTxs {
+		txSize += len(tx)
+
+		if maxDataBytes < int64(txSize) {
+			panic("block data exceeds max amount of allowed bytes")
+		}
+	}
+
+	modifiedTxs := types.ToTxs(preparedProposal.GetBlockData())
+
+	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -229,6 +263,37 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fireEvents(ctx, blockExec.logger, blockExec.eventBus, block, blockID, abciResponses, validatorUpdates)
 
 	return state, nil
+}
+
+func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
+	ctx := context.Background()
+	req := abci.RequestExtendVote{
+		Vote: vote.ToProto(),
+	}
+
+	resp, err := blockExec.proxyApp.ExtendVote(ctx, req)
+	if err != nil {
+		return types.VoteExtension{}, err
+	}
+	return types.VoteExtensionFromProto(resp.VoteExtension), nil
+}
+
+func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
+	ctx := context.Background()
+	req := abci.RequestVerifyVoteExtension{
+		Vote: vote.ToProto(),
+	}
+
+	resp, err := blockExec.proxyApp.VerifyVoteExtension(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if resp.IsErr() {
+		return types.ErrVoteInvalidExtension
+	}
+
+	return nil
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
@@ -468,7 +533,7 @@ func updateState(
 
 	nextVersion := state.Version
 
-	// NOTE: the AppHash has not been populated.
+	// NOTE: the AppHash and the VoteExtension has not been populated.
 	// It will be filled on state.Save.
 	return State{
 		Version:                          nextVersion,
