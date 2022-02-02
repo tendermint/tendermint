@@ -24,6 +24,20 @@ func TestMempoolIDsBasic(t *testing.T) {
 	require.EqualValues(t, 1, ids.GetForPeer(peerID))
 }
 
+func TestMempoolIDsPeerDupReserve(t *testing.T) {
+	ids := NewMempoolIDs()
+
+	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
+	require.NoError(t, err)
+	require.EqualValues(t, 0, ids.GetForPeer(peerID))
+
+	ids.ReserveForPeer(peerID)
+	require.EqualValues(t, 1, ids.GetForPeer(peerID))
+
+	ids.ReserveForPeer(peerID)
+	require.EqualValues(t, 1, ids.GetForPeer(peerID))
+}
+
 func TestMempoolIDs2Peers(t *testing.T) {
 	ids := NewMempoolIDs()
 
