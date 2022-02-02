@@ -5,38 +5,39 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 The Tendermint blockchains consists of a short list of data types:
 
 - [Data Structures](#data-structures)
-  - [Block](#block)
-  - [Execution](#execution)
-  - [Header](#header)
-  - [Version](#version)
-  - [BlockID](#blockid)
-  - [PartSetHeader](#partsetheader)
-  - [Part](#part)
-  - [Time](#time)
-  - [Data](#data)
-  - [Commit](#commit)
-  - [CommitSig](#commitsig)
-  - [BlockIDFlag](#blockidflag)
-  - [Vote](#vote)
-  - [CanonicalVote](#canonicalvote)
-  - [Proposal](#proposal)
-  - [SignedMsgType](#signedmsgtype)
-  - [Signature](#signature)
-  - [EvidenceList](#evidencelist)
-  - [Evidence](#evidence)
-    - [DuplicateVoteEvidence](#duplicatevoteevidence)
-    - [LightClientAttackEvidence](#lightclientattackevidence)
-  - [LightBlock](#lightblock)
-  - [SignedHeader](#signedheader)
-  - [ValidatorSet](#validatorset)
-  - [Validator](#validator)
-  - [Address](#address)
-  - [ConsensusParams](#consensusparams)
-    - [BlockParams](#blockparams)
-    - [EvidenceParams](#evidenceparams)
-    - [ValidatorParams](#validatorparams)
-    - [VersionParams](#versionparams)
-  - [Proof](#proof)
+    - [Block](#block)
+    - [Execution](#execution)
+    - [Header](#header)
+    - [Version](#version)
+    - [BlockID](#blockid)
+    - [PartSetHeader](#partsetheader)
+    - [Part](#part)
+    - [Time](#time)
+    - [Data](#data)
+    - [Commit](#commit)
+    - [CommitSig](#commitsig)
+    - [BlockIDFlag](#blockidflag)
+    - [Vote](#vote)
+    - [CanonicalVote](#canonicalvote)
+    - [Proposal](#proposal)
+    - [SignedMsgType](#signedmsgtype)
+    - [Signature](#signature)
+    - [EvidenceList](#evidencelist)
+    - [Evidence](#evidence)
+        - [DuplicateVoteEvidence](#duplicatevoteevidence)
+        - [LightClientAttackEvidence](#lightclientattackevidence)
+    - [LightBlock](#lightblock)
+    - [SignedHeader](#signedheader)
+    - [ValidatorSet](#validatorset)
+    - [Validator](#validator)
+    - [Address](#address)
+    - [ConsensusParams](#consensusparams)
+        - [BlockParams](#blockparams)
+        - [EvidenceParams](#evidenceparams)
+        - [ValidatorParams](#validatorparams)
+        - [VersionParams](#versionparams)
+        - [SynchronyParams](#synchronyparams)
+    - [Proof](#proof)
 
 
 ## Block
@@ -445,6 +446,13 @@ func SumTruncated(bz []byte) []byte {
 | Name        | Type   | Description                   | Field Number |
 |-------------|--------|-------------------------------|--------------|
 | app_version | uint64 | The ABCI application version. | 1            |
+
+### SynchronyParams
+
+| Name          | Type   | Description                   | Field Number |
+|---------------|--------|-------------------------------|--------------|
+| message_delay | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Bound for how long a proposal message may take to reach all validators on a newtork and still be considered valid. | 1            |
+| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Bound for how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. | 2            |
 
 ## Proof
 
