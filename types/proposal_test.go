@@ -216,54 +216,72 @@ func TestIsTimely(t *testing.T) {
 	genesisTime, err := time.Parse(time.RFC3339, "2019-03-13T23:00:00Z")
 	require.NoError(t, err)
 	testCases := []struct {
-		name           string
-		proposalHeight int64
-		proposalTime   time.Time
-		recvTime       time.Time
-		precision      time.Duration
-		msgDelay       time.Duration
-		expectTimely   bool
+		name         string
+		proposalTime time.Time
+		recvTime     time.Time
+		precision    time.Duration
+		msgDelay     time.Duration
+		expectTimely bool
+		round        int32
 	}{
 		// proposalTime - precision <= localTime <= proposalTime + msgDelay + precision
 		{
 			// Checking that the following inequality evaluates to true:
 			// 0 - 2 <= 1 <= 0 + 1 + 2
-			name:           "basic timely",
-			proposalHeight: 2,
-			proposalTime:   genesisTime,
-			recvTime:       genesisTime.Add(1 * time.Nanosecond),
-			precision:      time.Nanosecond * 2,
-			msgDelay:       time.Nanosecond,
-			expectTimely:   true,
+			name:         "basic timely",
+			proposalTime: genesisTime,
+			recvTime:     genesisTime.Add(1 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: true,
 		},
 		{
 			// Checking that the following inequality evaluates to false:
 			// 0 - 2 <= 4 <= 0 + 1 + 2
-			name:           "local time too large",
-			proposalHeight: 2,
-			proposalTime:   genesisTime,
-			recvTime:       genesisTime.Add(4 * time.Nanosecond),
-			precision:      time.Nanosecond * 2,
-			msgDelay:       time.Nanosecond,
-			expectTimely:   false,
+			name:         "local time too large",
+			proposalTime: genesisTime,
+			recvTime:     genesisTime.Add(4 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: false,
 		},
 		{
 			// Checking that the following inequality evaluates to false:
 			// 4 - 2 <= 0 <= 4 + 2 + 1
-			name:           "proposal time too large",
-			proposalHeight: 2,
-			proposalTime:   genesisTime.Add(4 * time.Nanosecond),
-			recvTime:       genesisTime,
-			precision:      time.Nanosecond * 2,
-			msgDelay:       time.Nanosecond,
-			expectTimely:   false,
+			name:         "proposal time too large",
+			proposalTime: genesisTime.Add(4 * time.Nanosecond),
+			recvTime:     genesisTime,
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: false,
+		},
+		{
+			// Checking that the following inequality evaluates to true:
+			// 0 - (2 * 2)  <= 4 <= 0 + (1 * 2) + 2
+			name:         "message delay adapts after 10 rounds",
+			proposalTime: genesisTime,
+			recvTime:     genesisTime.Add(4 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: true,
+			round:        10,
+		},
+		{
+			// check that values that overflow time.Duration still correctly register
+			// as timely when round relaxation applied.
+			name:         "message delay fixed to not overflow time.Duration",
+			proposalTime: genesisTime,
+			recvTime:     genesisTime.Add(4 * time.Nanosecond),
+			precision:    time.Nanosecond * 2,
+			msgDelay:     time.Nanosecond,
+			expectTimely: true,
+			round:        5000,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			p := Proposal{
-				Height:    testCase.proposalHeight,
 				Timestamp: testCase.proposalTime,
 			}
 
@@ -272,7 +290,7 @@ func TestIsTimely(t *testing.T) {
 				MessageDelay: testCase.msgDelay,
 			}
 
-			ti := p.IsTimely(testCase.recvTime, sp)
+			ti := p.IsTimely(testCase.recvTime, sp, testCase.round)
 			assert.Equal(t, testCase.expectTimely, ti)
 		})
 	}
