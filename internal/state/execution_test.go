@@ -243,25 +243,34 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 func TestProcessProposal(t *testing.T) {
 	height := 1
 	runTest := func(txs types.Txs, expectAccept bool) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		app := &testApp{}
-		cc := proxy.NewLocalClientCreator(app)
-		proxyApp := proxy.NewAppConns(cc)
-		err := proxyApp.Start()
-		require.Nil(t, err)
-		defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+		cc := abciclient.NewLocalCreator(app)
+		logger := log.TestingLogger()
+		proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+		err := proxyApp.Start(ctx)
+		require.NoError(t, err)
 
-		state, stateDB, _ := makeState(1, height)
+		state, stateDB, _ := makeState(t, 1, height)
 		stateStore := sm.NewStore(stateDB)
-
 		blockStore := store.NewBlockStore(dbm.NewMemDB())
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-			mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
+		blockExec := sm.NewBlockExecutor(
+			stateStore,
+			logger,
+			proxyApp.Consensus(),
+			mmock.Mempool{},
+			sm.EmptyEvidencePool{},
+			blockStore,
+		)
 
-		block := sf.MakeBlock(state, int64(height), new(types.Commit))
+		block, err := sf.MakeBlock(state, int64(height), new(types.Commit))
+		require.NoError(t, err)
 		block.Txs = txs
-		acceptBlock, err := blockExec.ProcessProposal(block)
-		require.Nil(t, err)
+		acceptBlock, err := blockExec.ProcessProposal(ctx, block)
+		require.NoError(t, err)
 		require.Equal(t, expectAccept, acceptBlock)
 	}
 	goodTxs := factory.MakeTenTxs(int64(height))
