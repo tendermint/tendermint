@@ -14,6 +14,7 @@ message ConsensusParams {
   ValidatorParams validator = 3;
   VersionParams   version   = 4;
   SynchronyParams synchrony = 5;
+  TimeoutParams   timeout   = 6;
 }
 
 // BlockParams contains limits on the block size.
@@ -74,10 +75,53 @@ message HashedParams {
 message SynchronyParams {
   // message_delay bounds how long a proposal message may take to reach all validators on a newtork
   // and still be considered valid.
-  google.protobuf.Duration message_delay = 1
-      [(gogoproto.stdduration) = true];
+  google.protobuf.Duration message_delay = 1 [(gogoproto.stdduration) = true];
   // precision bounds how skewed a proposer's clock may be from any validator
   // on the network while still producing valid proposals.
-  google.protobuf.Duration precision = 2
-      [(gogoproto.stdduration) = true];
+  google.protobuf.Duration precision = 2 [(gogoproto.stdduration) = true];
+}
+
+// TimeoutParams configure the timeouts for the steps of the Tendermint consensus algorithm.
+message TimeoutParams {
+  // These fields configure the timeouts for the propose step of the Tendermint
+  // consensus algorithm: propose is the initial timeout and propose_delta
+  // determines how much the timeout grows in subsequent rounds.
+  // For the first round, this propose timeout is used and for every subsequent
+  // round, the timeout grows by propose_delta.
+  //
+  // For example:
+  // With propose = 10ms, propose_delta = 5ms, the first round's propose phase
+  // timeout would be 10ms, the second round's would be 15ms, the third 20ms and so on.
+  //
+  // If a node waiting for a proposal message does not receive one matching its
+  // current height and round before this timeout, the node will issue a
+  // nil prevote for the round and advance to the next step.
+  google.protobuf.Duration propose       = 1 [(gogoproto.stdduration) = true];
+  google.protobuf.Duration propose_delta = 2 [(gogoproto.stdduration) = true];
+
+  // vote along with vote_delta configure the timeout for both of the prevote and
+  // precommit steps of the Tendermint consensus algorithm.
+  //
+  // These parameters influence the vote step timeouts in the the same way that
+  // the propose and propose_delta parameters do to the proposal step.
+  //
+  // The vote timeout does not begin until a quorum of votes has been received. Once
+  // a quorum of votes has been seen and this timeout elapses, Tendermint will
+  // procced to the next step of the consensus algorithm. If Tendermint receives
+  // all of the remaining votes before the end of the timeout, it will proceed
+  // to the next step immediately.
+  google.protobuf.Duration vote       = 3 [(gogoproto.stdduration) = true];
+  google.protobuf.Duration vote_delta = 4 [(gogoproto.stdduration) = true];
+
+  // commit configures how long Tendermint will wait after receiving a quorum of
+  // precommits before beginning consensus for the next height. This can be
+  // used to allow slow precommits to arrive for inclusion in the next height before progressing.
+  google.protobuf.Duration commit = 5 [(gogoproto.stdduration) = true];
+
+  // enable_commit_timeout_bypass configures the node to proceed immediately to
+  // the next height once the node has received all precommits for a block, forgoing
+  // the remaining commit timeout.
+  // Setting enable_commit_timeout_bypass false (the default) causes Tendermint to wait
+  // for the full commit.
+  bool enable_commit_timeout_bypass = 6;
 }

@@ -737,7 +737,8 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | evidence  | [EvidenceParams](../core/data_structures.md#evidenceparams)   | Parameters limiting the validity of evidence of byzantine behaviour.         | 2            |
     | validator | [ValidatorParams](../core/data_structures.md#validatorparams) | Parameters limiting the types of public keys validators can use.             | 3            |
     | version   | [VersionsParams](../core/data_structures.md#versionparams)       | The ABCI application version.                                                | 4            |
-    | synchrony  | [SynchronyParams](../core/data_structures.md#synchronyparams)   | Parameters that determine the bounds under which a proposed block's timestamp is considered valid.                                                | 4            |
+    | synchrony | [SynchronyParams](../core/data_structures.md#synchronyparams)   | Parameters that determine the bounds under which a proposed block's timestamp is considered valid.   | 5            |
+    | timeout   | [TimeoutParams](../core/data_structures.md#timeoutparams)   | Parameters that configure the timeouts for the steps of the Tendermint consensus algorithm. | 6            |
 
 ### ProofOps
 
