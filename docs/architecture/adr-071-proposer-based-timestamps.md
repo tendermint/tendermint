@@ -150,8 +150,8 @@ type ConsensusParams struct {
 ```
 
 ```go
-type TimestampParams struct {
-	MsgDelay  time.Duration `json:"msg_delay"`
+type SynchronyParams struct {
+	MessageDelay  time.Duration `json:"message_delay"`
 	Precision time.Duration `json:"precision"`
 }
 ```
