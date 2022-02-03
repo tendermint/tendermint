@@ -660,11 +660,16 @@ OUTER_LOOP:
 func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
-		r.voteCh.Out <- p2p.Envelope{
+		select {
+		case <-r.closeCh:
+			return false
+		case r.voteCh.Out <- p2p.Envelope{
 			To: ps.peerID,
 			Message: &tmcons.Vote{
 				Vote: vote.ToProto(),
 			},
+		}:
+
 		}
 
 		ps.SetHasVote(vote)
@@ -837,7 +842,12 @@ OUTER_LOOP:
 
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
-					r.stateCh.Out <- p2p.Envelope{
+					select {
+					case <-ps.closer.Done():
+						return
+					case <-r.closeCh:
+						return
+					case r.stateCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
@@ -845,6 +855,8 @@ OUTER_LOOP:
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
 						},
+					}:
+
 					}
 
 					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
@@ -859,7 +871,12 @@ OUTER_LOOP:
 
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-					r.stateCh.Out <- p2p.Envelope{
+					select {
+					case <-ps.closer.Done():
+						return
+					case <-r.closeCh:
+						return
+					case r.stateCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
@@ -867,6 +884,7 @@ OUTER_LOOP:
 							Type:    tmproto.PrecommitType,
 							BlockID: maj23.ToProto(),
 						},
+					}:
 					}
 
 					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
@@ -881,7 +899,12 @@ OUTER_LOOP:
 
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-					r.stateCh.Out <- p2p.Envelope{
+					select {
+					case <-ps.closer.Done():
+						return
+					case <-r.closeCh:
+						return
+					case r.stateCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
@@ -889,8 +912,8 @@ OUTER_LOOP:
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
 						},
+					}:
 					}
-
 					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -906,7 +929,12 @@ OUTER_LOOP:
 			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.state.blockStore.Height() &&
 				prs.Height >= r.state.blockStore.Base() {
 				if commit := r.state.LoadCommit(prs.Height); commit != nil {
-					r.stateCh.Out <- p2p.Envelope{
+					select {
+					case <-ps.closer.Done():
+						return
+					case <-r.closeCh:
+						return
+					case r.stateCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
@@ -914,6 +942,7 @@ OUTER_LOOP:
 							Type:    tmproto.PrecommitType,
 							BlockID: commit.BlockID.ToProto(),
 						},
+					}:
 					}
 
 					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
@@ -1311,8 +1340,6 @@ func (r *Reactor) processStateCh() {
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processDataCh() {
-	defer r.dataCh.Close()
-
 	for {
 		select {
 		case envelope := <-r.dataCh.In:
@@ -1325,7 +1352,6 @@ func (r *Reactor) processDataCh() {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on DataChannel; closing...")
 			return
 		}
 	}
@@ -1337,8 +1363,6 @@ func (r *Reactor) processDataCh() {
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processVoteCh() {
-	defer r.voteCh.Close()
-
 	for {
 		select {
 		case envelope := <-r.voteCh.In:
@@ -1351,7 +1375,6 @@ func (r *Reactor) processVoteCh() {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on VoteChannel; closing...")
 			return
 		}
 	}
@@ -1363,8 +1386,6 @@ func (r *Reactor) processVoteCh() {
 // When the reactor is stopped, we will catch the signal and close the p2p
 // Channel gracefully.
 func (r *Reactor) processVoteSetBitsCh() {
-	defer r.voteSetBitsCh.Close()
-
 	for {
 		select {
 		case envelope := <-r.voteSetBitsCh.In:
@@ -1377,7 +1398,6 @@ func (r *Reactor) processVoteSetBitsCh() {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on VoteSetBitsChannel; closing...")
 			return
 		}
 	}
@@ -1387,15 +1407,12 @@ func (r *Reactor) processVoteSetBitsCh() {
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates() {
-	defer r.peerUpdates.Close()
-
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():
 			r.processPeerUpdate(peerUpdate)
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}
