@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/jsontypes"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -553,6 +554,76 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
+
+// StringIndented returns a string representation of the evidence.
+func (data *EvidenceList) StringIndented(indent string) string {
+	if data == nil {
+		return "nil-Evidence"
+	}
+	evStrings := make([]string, tmmath.MinInt(len(*data), 21))
+	for i, ev := range *data {
+		if i == 20 {
+			evStrings[i] = fmt.Sprintf("... (%v total)", len(*data))
+			break
+		}
+		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
+	}
+	return fmt.Sprintf(`EvidenceList{
+%s  %v
+%s}#%v`,
+		indent, strings.Join(evStrings, "\n"+indent+"  "),
+		indent, data.Hash())
+}
+
+// ByteSize returns the total byte size of all the evidence
+func (data *EvidenceList) ByteSize() int64 {
+	if len(*data) != 0 {
+		pb, err := data.ToProto()
+		if err != nil {
+			panic(err)
+		}
+		return int64(pb.Size())
+	}
+	return 0
+}
+
+// FromProto sets a protobuf EvidenceList to the given pointer.
+func (data *EvidenceList) FromProto(eviData *tmproto.EvidenceList) error {
+	if eviData == nil {
+		return errors.New("nil evidence list")
+	}
+
+	eviBzs := make(EvidenceList, len(eviData.Evidence))
+	for i := range eviData.Evidence {
+		evi, err := EvidenceFromProto(&eviData.Evidence[i])
+		if err != nil {
+			return err
+		}
+		eviBzs[i] = evi
+	}
+	*data = eviBzs
+	return nil
+}
+
+// ToProto converts EvidenceList to protobuf
+func (data *EvidenceList) ToProto() (*tmproto.EvidenceList, error) {
+	if data == nil {
+		return nil, errors.New("nil evidence list")
+	}
+
+	evi := new(tmproto.EvidenceList)
+	eviBzs := make([]tmproto.Evidence, len(*data))
+	for i, v := range *data {
+		protoEvi, err := EvidenceToProto(v)
+		if err != nil {
+			return nil, err
+		}
+		eviBzs[i] = *protoEvi
+	}
+	evi.Evidence = eviBzs
+
+	return evi, nil
+}
 
 func (evl EvidenceList) MarshalJSON() ([]byte, error) {
 	lst := make([]json.RawMessage, len(evl))

@@ -267,8 +267,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 				require.NotNil(t, msg)
 				block := msg.Data().(types.EventDataNewBlock).Block
-				if len(block.Evidence.Evidence) != 0 {
-					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
+				if len(block.Evidence) != 0 {
+					evidenceFromEachValidator[j] = block.Evidence[0]
 					return
 				}
 			}

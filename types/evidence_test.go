@@ -33,6 +33,45 @@ func TestEvidenceList(t *testing.T) {
 	assert.False(t, evl.Has(&DuplicateVoteEvidence{}))
 }
 
+// TestEvidenceListProtoBuf to ensure parity in protobuf output and input
+func TestEvidenceListProtoBuf(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	const chainID = "mychain"
+	ev, err := NewMockDuplicateVoteEvidence(ctx, math.MaxInt64, time.Now(), chainID)
+	require.NoError(t, err)
+	data := EvidenceList{ev}
+	_ = data.ByteSize()
+	testCases := []struct {
+		msg      string
+		data1    *EvidenceList
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", &data, true, true},
+		{"empty evidenceData", &EvidenceList{}, true, true},
+		{"fail nil Data", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		protoData, err := tc.data1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		eviD := new(EvidenceList)
+		err = eviD.FromProto(protoData)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.data1, eviD, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
 func randomDuplicateVoteEvidence(ctx context.Context, t *testing.T) *DuplicateVoteEvidence {
 	t.Helper()
 	val := NewMockPV()
@@ -421,4 +460,23 @@ func TestEvidenceVectors(t *testing.T) {
 		hash := tc.evList.Hash()
 		require.Equal(t, tc.expBytes, hex.EncodeToString(hash), tc.testName)
 	}
+
+	// testCases2 := []struct {
+	// 	testName string
+	// 	evList   EvidenceData
+	// 	expBytes string
+	// }{
+	// 	{"duplicateVoteEvidence",
+	// 		EvidenceData{Evidence: EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}}},
+	// 		"a9ce28d13bb31001fc3e5b7927051baf98f86abdbd64377643a304164c826923",
+	// 	},
+	// }
+
+	// for _, tc := range testCases2 {
+	// 	tc := tc
+	// 	hash := tc.evList.Hash()
+	// 	t.Log(tc.evList.Hash())
+	// 	t.Log(tc.evList.Evidence.Hash())
+	// 	require.Equal(t, hex.EncodeToString(tc.evList.Evidence.Hash()), hex.EncodeToString(hash), tc.testName)
+	// }
 }

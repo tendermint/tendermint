@@ -1962,7 +1962,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 		byzantineValidatorsCount int64
 	)
 
-	for _, ev := range block.Evidence.Evidence {
+	for _, ev := range block.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
 				byzantineValidatorsCount++

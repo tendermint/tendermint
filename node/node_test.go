@@ -313,7 +313,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
-	evData := &types.EvidenceData{Evidence: evList}
+	evData := types.EvidenceList(evList)
 	require.EqualValues(t, size, evData.ByteSize())
 
 	// fill the mempool with more txs

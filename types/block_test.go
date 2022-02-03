@@ -52,7 +52,7 @@ func TestBlockAddEvidence(t *testing.T) {
 
 	block := MakeBlock(h, txs, commit, evList)
 	require.NotNil(t, block)
-	require.Equal(t, 1, len(block.Evidence.Evidence))
+	require.Equal(t, 1, len(block.Evidence))
 	require.NotNil(t, block.EvidenceHash)
 }
 
@@ -109,7 +109,7 @@ func TestBlockValidateBasic(t *testing.T) {
 		}, true},
 		{"Invalid Evidence", func(blk *Block) {
 			emptyEv := &DuplicateVoteEvidence{}
-			blk.Evidence = EvidenceData{Evidence: []Evidence{emptyEv}}
+			blk.Evidence = []Evidence{emptyEv}
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -700,7 +700,7 @@ func TestBlockProtoBuf(t *testing.T) {
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	evi, err := NewMockDuplicateVoteEvidence(ctx, h, evidenceTime, "block-test-chain")
 	require.NoError(t, err)
-	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
+	b2.Evidence = EvidenceList{evi}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
 	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
@@ -729,7 +729,7 @@ func TestBlockProtoBuf(t *testing.T) {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
 			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
-			require.EqualValues(t, tc.b1.Evidence.Evidence, block.Evidence.Evidence, tc.msg)
+			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
 			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
@@ -754,46 +754,6 @@ func TestDataProtoBuf(t *testing.T) {
 		if tc.expPass {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.data1, &d, tc.msg)
-		} else {
-			require.Error(t, err, tc.msg)
-		}
-	}
-}
-
-// TestEvidenceDataProtoBuf ensures parity in converting to and from proto.
-func TestEvidenceDataProtoBuf(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	const chainID = "mychain"
-	ev, err := NewMockDuplicateVoteEvidence(ctx, math.MaxInt64, time.Now(), chainID)
-	require.NoError(t, err)
-	data := &EvidenceData{Evidence: EvidenceList{ev}}
-	_ = data.ByteSize()
-	testCases := []struct {
-		msg      string
-		data1    *EvidenceData
-		expPass1 bool
-		expPass2 bool
-	}{
-		{"success", data, true, true},
-		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
-		{"fail nil Data", nil, false, false},
-	}
-
-	for _, tc := range testCases {
-		protoData, err := tc.data1.ToProto()
-		if tc.expPass1 {
-			require.NoError(t, err, tc.msg)
-		} else {
-			require.Error(t, err, tc.msg)
-		}
-
-		eviD := new(EvidenceData)
-		err = eviD.FromProto(protoData)
-		if tc.expPass2 {
-			require.NoError(t, err, tc.msg)
-			require.Equal(t, tc.data1, eviD, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
 		}
