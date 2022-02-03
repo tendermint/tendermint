@@ -556,14 +556,14 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 type EvidenceList []Evidence
 
 // StringIndented returns a string representation of the evidence.
-func (data *EvidenceList) StringIndented(indent string) string {
-	if data == nil {
+func (evl *EvidenceList) StringIndented(indent string) string {
+	if evl == nil {
 		return "nil-Evidence"
 	}
-	evStrings := make([]string, tmmath.MinInt(len(*data), 21))
-	for i, ev := range *data {
+	evStrings := make([]string, tmmath.MinInt(len(*evl), 21))
+	for i, ev := range *evl {
 		if i == 20 {
-			evStrings[i] = fmt.Sprintf("... (%v total)", len(*data))
+			evStrings[i] = fmt.Sprintf("... (%v total)", len(*evl))
 			break
 		}
 		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
@@ -572,13 +572,13 @@ func (data *EvidenceList) StringIndented(indent string) string {
 %s  %v
 %s}#%v`,
 		indent, strings.Join(evStrings, "\n"+indent+"  "),
-		indent, data.Hash())
+		indent, evl.Hash())
 }
 
 // ByteSize returns the total byte size of all the evidence
-func (data *EvidenceList) ByteSize() int64 {
-	if len(*data) != 0 {
-		pb, err := data.ToProto()
+func (evl *EvidenceList) ByteSize() int64 {
+	if len(*evl) != 0 {
+		pb, err := evl.ToProto()
 		if err != nil {
 			panic(err)
 		}
@@ -588,7 +588,7 @@ func (data *EvidenceList) ByteSize() int64 {
 }
 
 // FromProto sets a protobuf EvidenceList to the given pointer.
-func (data *EvidenceList) FromProto(eviData *tmproto.EvidenceList) error {
+func (evl *EvidenceList) FromProto(eviData *tmproto.EvidenceList) error {
 	if eviData == nil {
 		return errors.New("nil evidence list")
 	}
@@ -601,19 +601,19 @@ func (data *EvidenceList) FromProto(eviData *tmproto.EvidenceList) error {
 		}
 		eviBzs[i] = evi
 	}
-	*data = eviBzs
+	*evl = eviBzs
 	return nil
 }
 
 // ToProto converts EvidenceList to protobuf
-func (data *EvidenceList) ToProto() (*tmproto.EvidenceList, error) {
-	if data == nil {
+func (evl *EvidenceList) ToProto() (*tmproto.EvidenceList, error) {
+	if evl == nil {
 		return nil, errors.New("nil evidence list")
 	}
 
 	evi := new(tmproto.EvidenceList)
-	eviBzs := make([]tmproto.Evidence, len(*data))
-	for i, v := range *data {
+	eviBzs := make([]tmproto.Evidence, len(*evl))
+	for i, v := range *evl {
 		protoEvi, err := EvidenceToProto(v)
 		if err != nil {
 			return nil, err
