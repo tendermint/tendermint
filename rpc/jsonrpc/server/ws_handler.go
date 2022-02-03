@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/client"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -103,7 +102,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 //
 // In case of an error, the connection is stopped.
 type wsConnection struct {
-	*client.RunState
+	Logger log.Logger
 
 	remoteAddr string
 	baseConn   *websocket.Conn
@@ -145,7 +144,7 @@ func newWSConnection(
 	options ...func(*wsConnection),
 ) *wsConnection {
 	wsc := &wsConnection{
-		RunState:        client.NewRunState("wsConnection", logger),
+		Logger:          logger,
 		remoteAddr:      baseConn.RemoteAddr().String(),
 		baseConn:        baseConn,
 		funcMap:         funcMap,
@@ -194,9 +193,6 @@ func ReadLimit(readLimit int64) func(*wsConnection) {
 
 // Start starts the client service routines and blocks until there is an error.
 func (wsc *wsConnection) Start(ctx context.Context) error {
-	if err := wsc.RunState.Start(ctx); err != nil {
-		return err
-	}
 	wsc.writeChan = make(chan rpctypes.RPCResponse, defaultWSWriteChanCapacity)
 
 	// Read subscriptions/unsubscriptions to events
@@ -209,9 +205,6 @@ func (wsc *wsConnection) Start(ctx context.Context) error {
 
 // Stop unsubscribes the remote from all subscriptions.
 func (wsc *wsConnection) Stop() error {
-	if err := wsc.RunState.Stop(); err != nil {
-		return err
-	}
 	if wsc.onDisconnect != nil {
 		wsc.onDisconnect(wsc.remoteAddr)
 	}

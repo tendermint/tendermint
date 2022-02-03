@@ -40,12 +40,13 @@ func getHTTPClient(t *testing.T, logger log.Logger, conf *config.Config) *rpchtt
 	rpcAddr := conf.RPC.ListenAddress
 	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
 	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	require.NoError(t, c.Start(ctx))
 
 	c.Logger = logger
 	t.Cleanup(func() {
-		if c.IsRunning() {
-			require.NoError(t, c.Stop())
-		}
+		cancel()
+		require.NoError(t, c.Stop())
 	})
 
 	return c
@@ -56,16 +57,16 @@ func getHTTPClientWithTimeout(t *testing.T, logger log.Logger, conf *config.Conf
 
 	rpcAddr := conf.RPC.ListenAddress
 
-	http.DefaultClient.Timeout = timeout
-	c, err := rpchttp.NewWithClient(rpcAddr, http.DefaultClient)
+	tclient := &http.Client{Timeout: timeout}
+	c, err := rpchttp.NewWithClient(rpcAddr, tclient)
 	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	require.NoError(t, c.Start(ctx))
 
 	c.Logger = logger
 	t.Cleanup(func() {
-		http.DefaultClient.Timeout = 0
-		if c.IsRunning() {
-			require.NoError(t, c.Stop())
-		}
+		cancel()
+		require.NoError(t, c.Stop())
 	})
 
 	return c
@@ -183,25 +184,6 @@ func TestClientOperations(t *testing.T) {
 			}
 			wg.Wait()
 		})
-	})
-	t.Run("HTTPReturnsErrorIfClientIsNotRunning", func(t *testing.T) {
-		logger := log.NewTestingLogger(t)
-
-		c := getHTTPClientWithTimeout(t, logger, conf, 100*time.Millisecond)
-
-		// on Subscribe
-		_, err := c.Subscribe(ctx, "TestHeaderEvents",
-			types.QueryForEvent(types.EventNewBlockHeaderValue).String())
-		assert.Error(t, err)
-
-		// on Unsubscribe
-		err = c.Unsubscribe(ctx, "TestHeaderEvents",
-			types.QueryForEvent(types.EventNewBlockHeaderValue).String())
-		assert.Error(t, err)
-
-		// on UnsubscribeAll
-		err = c.UnsubscribeAll(ctx, "TestHeaderEvents")
-		assert.Error(t, err)
 	})
 }
 
@@ -488,15 +470,6 @@ func TestClientMethodCalls(t *testing.T) {
 				assert.Equal(t, 0, pool.Size(), "mempool must be empty")
 			})
 			t.Run("Events", func(t *testing.T) {
-				// start for this test it if it wasn't already running
-				if !c.IsRunning() {
-					ctx, cancel := context.WithCancel(ctx)
-					defer cancel()
-
-					// if so, then we start it, listen, and stop it.
-					err := c.Start(ctx)
-					require.NoError(t, err)
-				}
 				t.Run("Header", func(t *testing.T) {
 					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
 					require.NoError(t, err, "%d: %+v", i, err)
@@ -538,7 +511,7 @@ func TestClientMethodCalls(t *testing.T) {
 				})
 			})
 			t.Run("Evidence", func(t *testing.T) {
-				t.Run("BraodcastDuplicateVote", func(t *testing.T) {
+				t.Run("BroadcastDuplicateVote", func(t *testing.T) {
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 

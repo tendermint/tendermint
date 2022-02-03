@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
 
-	tmclient "github.com/tendermint/tendermint/rpc/client"
+	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -38,8 +38,8 @@ var defaultWSOptions = wsOptions{
 //
 // WSClient is safe for concurrent use by multiple goroutines.
 type WSClient struct { // nolint: maligned
-	*tmclient.RunState
-	conn *websocket.Conn
+	Logger log.Logger
+	conn   *websocket.Conn
 
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
@@ -105,7 +105,7 @@ func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
 	}
 
 	c := &WSClient{
-		RunState:             tmclient.NewRunState("WSClient", nil),
+		Logger:               log.NewNopLogger(),
 		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
@@ -134,13 +134,11 @@ func (c *WSClient) String() string {
 	return fmt.Sprintf("WSClient{%s (%s)}", c.Address, c.Endpoint)
 }
 
-// Start dials the specified service address and starts the I/O routines.
+// Start dials the specified service address and starts the I/O routines.  The
+// service routines run until ctx terminates. To wait for the client to exit
+// after ctx ends, call Stop.
 func (c *WSClient) Start(ctx context.Context) error {
-	if err := c.RunState.Start(ctx); err != nil {
-		return err
-	}
-	err := c.dial()
-	if err != nil {
+	if err := c.dial(); err != nil {
 		return err
 	}
 
@@ -160,17 +158,15 @@ func (c *WSClient) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop shuts down the client.
+// Stop blocks until the client is shut down and returns nil.
+//
+// TODO(creachadair): This method exists for compatibility with the original
+// service plumbing. Give it a better name (e.g., Wait).
 func (c *WSClient) Stop() error {
-	if err := c.RunState.Stop(); err != nil {
-		return err
-	}
-
 	// only close user-facing channels when we can't write to them
 	c.wg.Wait()
 	c.PingPongLatencyTimer.Stop()
 	close(c.ResponsesCh)
-
 	return nil
 }
 
@@ -179,11 +175,6 @@ func (c *WSClient) IsReconnecting() bool {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()
 	return c.reconnecting
-}
-
-// IsActive returns true if the client is running and not reconnecting.
-func (c *WSClient) IsActive() bool {
-	return c.IsRunning() && !c.IsReconnecting()
 }
 
 // Send the given RPC request to the server. Results will be available on

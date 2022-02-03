@@ -1402,7 +1402,7 @@ func (cs *State) proposalIsTimely() bool {
 		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 	}
 
-	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp)
+	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.Round)
 }
 
 func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32) {
@@ -2590,7 +2590,7 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 			MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
 		}
 
-		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp)
+		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.Round)
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}

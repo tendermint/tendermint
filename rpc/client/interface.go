@@ -32,13 +32,9 @@ import (
 
 // Client describes the interface of Tendermint RPC client implementations.
 type Client interface {
-	// These methods define the operational structure of the client.
-
-	// Start the client. Start must report an error if the client is running.
+	// Start the client, which will run until the context terminates.
+	// An error from Start indicates the client could not start.
 	Start(context.Context) error
-
-	// IsRunning reports whether the client is running.
-	IsRunning() bool
 
 	// These embedded interfaces define the callable methods of the service.
 	ABCIClient
