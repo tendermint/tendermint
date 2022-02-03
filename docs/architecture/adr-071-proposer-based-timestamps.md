@@ -133,7 +133,7 @@ These parameters are `PRECISION`, and `MSGDELAY`.
 The `PRECISION` and `MSGDELAY` parameters are used to determine if the proposed timestamp is acceptable.
 A validator will only Prevote a proposal if the proposal timestamp is considered `timely`.
 A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the Unix time known to the validator.
-More specifically, a proposal timestamp is `timely` if `proposalTimestamp - PRECISION <= validatorLocalTime <= proposalTimestamp + PRECISION + MSGDELAY`.
+More specifically, a proposal timestamp is `timely` if `proposalTimestamp - PRECISION ≤ validatorLocalTime ≤ proposalTimestamp + PRECISION + MSGDELAY`.
 
 Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/types/params.proto#L13) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
 
