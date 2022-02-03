@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -31,7 +30,7 @@ func (ids *IDs) ReserveForPeer(peerID types.NodeID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
-	if removedID, ok := ids.peerMap[peerID]; ok && removedID > 0 {
+	if _, ok := ids.peerMap[peerID]; ok {
 		// the peer has been reserved
 		return
 	}
@@ -50,7 +49,9 @@ func (ids *IDs) Reclaim(peerID types.NodeID) {
 	if ok {
 		delete(ids.activeIDs, removedID)
 		delete(ids.peerMap, peerID)
-		ids.nextID = uint16(tmmath.MinInt(int(ids.nextID), int(removedID)))
+		if removedID < ids.nextID {
+			ids.nextID = removedID
+		}
 	}
 }
 
