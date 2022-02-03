@@ -460,23 +460,4 @@ func TestEvidenceVectors(t *testing.T) {
 		hash := tc.evList.Hash()
 		require.Equal(t, tc.expBytes, hex.EncodeToString(hash), tc.testName)
 	}
-
-	// testCases2 := []struct {
-	// 	testName string
-	// 	evList   EvidenceData
-	// 	expBytes string
-	// }{
-	// 	{"duplicateVoteEvidence",
-	// 		EvidenceData{Evidence: EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}}},
-	// 		"a9ce28d13bb31001fc3e5b7927051baf98f86abdbd64377643a304164c826923",
-	// 	},
-	// }
-
-	// for _, tc := range testCases2 {
-	// 	tc := tc
-	// 	hash := tc.evList.Hash()
-	// 	t.Log(tc.evList.Hash())
-	// 	t.Log(tc.evList.Evidence.Hash())
-	// 	require.Equal(t, hex.EncodeToString(tc.evList.Evidence.Hash()), hex.EncodeToString(hash), tc.testName)
-	// }
 }
