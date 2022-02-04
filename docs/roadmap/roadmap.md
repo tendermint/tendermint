@@ -51,7 +51,7 @@ Proposer-based timestamps are a replacement of [BFT time](https://docs.tendermin
 
 ### RPC Event Subscription
 
-[More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md)
+The websocket-based RPC event subscription API has been an ongoing pain point for users and operators of Tendermint. In this release, we are adding a new API for event subscription that will be more predictable and reliable for clients, easier to use, and reduce resource pressure for the consensus node. The existing API based on websockets will be kept as-is but deprecated, and we plan to remove it entirely in the following release.  [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md)
 
 ### Minor Works
 
