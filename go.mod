@@ -9,9 +9,6 @@ require (
 	github.com/adlio/schema v1.2.3
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
-	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
-	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.0
@@ -39,3 +36,5 @@ require (
 	golang.org/x/net v0.0.0-20211208012354-db4efeb81f4b
 	google.golang.org/grpc v1.42.0
 )
+
+replace github.com/tecbot/gorocksdb => github.com/cosmos/gorocksdb v1.2.0
