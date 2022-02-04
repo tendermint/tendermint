@@ -3,7 +3,6 @@ package consensus
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
@@ -45,8 +44,7 @@ type PeerState struct {
 	PRS     cstypes.PeerRoundState `json:"round_state"`
 	Stats   *peerStateStats        `json:"stats"`
 
-	broadcastWG sync.WaitGroup
-	closer      *tmsync.Closer
+	closer *tmsync.Closer
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
