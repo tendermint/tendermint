@@ -593,7 +593,7 @@ func (evl *EvidenceList) FromProto(eviList *tmproto.EvidenceList) error {
 		return errors.New("nil evidence list")
 	}
 
-	eviBzs := make(EvidenceList, 0, len(eviList.Evidence))
+	eviBzs := make(EvidenceList, len(eviList.Evidence))
 	for i := range eviList.Evidence {
 		evi, err := EvidenceFromProto(&eviList.Evidence[i])
 		if err != nil {
