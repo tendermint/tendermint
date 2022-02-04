@@ -102,10 +102,10 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 //
 // Contract: application will not return more bytes than are sent over the wire.
 func (blockExec *BlockExecutor) CreateProposalBlock(
+	ctx context.Context,
 	height int64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
-	votes []*types.Vote,
 ) (*types.Block, *types.PartSet, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -119,12 +119,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
 	preparedProposal, err := blockExec.proxyApp.PrepareProposal(
-		context.Background(),
-		abci.RequestPrepareProposal{
-			BlockData:     txs.ToSliceOfBytes(),
-			BlockDataSize: maxDataBytes,
-			Votes:         types.VotesToProto(votes),
-		},
+		ctx,
+		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes(), BlockDataSize: maxDataBytes},
 	)
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
@@ -265,8 +261,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
-	ctx := context.Background()
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) (types.VoteExtension, error) {
 	req := abci.RequestExtendVote{
 		Vote: vote.ToProto(),
 	}
@@ -275,11 +270,11 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtensio
 	if err != nil {
 		return types.VoteExtension{}, err
 	}
+
 	return types.VoteExtensionFromProto(resp.VoteExtension), nil
 }
 
-func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
-	ctx := context.Background()
+func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
 	req := abci.RequestVerifyVoteExtension{
 		Vote: vote.ToProto(),
 	}
