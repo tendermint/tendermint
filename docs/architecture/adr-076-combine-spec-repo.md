@@ -35,9 +35,14 @@ January 2022.
 
 ## Alternative Approaches
 
-The main alternative to this was *do nothing* and continue to maintain
-separate versioning for both repositories, complicating the release
-process for both repositories and creating a difficult to resolve 
+The main alternative we considered was to keep separate repositories,
+and to introduce a coordinated versioning scheme between the two, so
+that users could figure out which spec versions go with which versions
+of the core implementation.
+
+We decided against this on the grounds that it would further complicate
+the release process for _both_ repositories, without mitigating any of
+the other existing issues.
 
 ## Detailed Design
 
