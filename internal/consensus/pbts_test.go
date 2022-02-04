@@ -203,7 +203,7 @@ func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer
 
 	ensureNewRound(t, p.roundCh, p.currentHeight, p.currentRound)
 
-	b, _, err := p.observedState.createProposalBlock()
+	b, _, err := p.observedState.createProposalBlock(ctx)
 	require.NoError(t, err)
 	b.Height = p.currentHeight
 	b.Header.Height = p.currentHeight
