@@ -29,8 +29,8 @@ burden to coordinate versions, documentation, and releases.
 The specification repository will be merged back into the Tendermint core repository.
 
 Stakeholders including representatives from the maintainers of the
-spec, the go implementation, and the tendermint rust library, agreed
-to merge the repositories in the tendermint core dev meeting on 27
+spec, the Go implementation, and the Tendermint Rust library, agreed
+to merge the repositories in the Tendermint core dev meeting on 27
 January 2022.
 
 ## Alternative Approaches
