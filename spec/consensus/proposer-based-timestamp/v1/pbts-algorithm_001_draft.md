@@ -1,6 +1,6 @@
-# Proposer-Based Time - Part II
+# PBTS: Protocol Specification (first draft)
 
-This specification is **OUTDATED**. Please refer to the [new version][v2].
+This specification is **OUTDATED**. Please refer to the [new version][algorithm].
 
 ## Updated Consensus Algorithm
 
@@ -152,16 +152,11 @@ upon ⟨PROPOSAL, h_p, r, (v,t), ∗⟩ from proposer(h_p, r) AND 2f + 1 ⟨PREC
 
 **All other rules remains unchanged.**
 
-Back to [main document][main].
+Back to [main document][main_v1].
 
-[main]: ./pbts_001_draft.md
+[main_v1]: ./pbts_001_draft.md
+
+[algorithm]: ../pbts-algorithm_002_draft.md
+[algorithm_v1]: ./pbts-algorithm_001_draft.md
 
 [arXiv]: https://arxiv.org/abs/1807.04938
-
-[tlatender]: https://github.com/tendermint/spec/blob/master/rust-spec/tendermint-accountability/README.md
-
-[bfttime]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/spec/consensus/bft-time.md
-
-[lcspec]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/rust-spec/lightclient/README.md
-
-[v2]: ./pbts-algorithm_002_draft.md

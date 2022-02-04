@@ -1,4 +1,4 @@
-# Proposer-Based Time v2 - Part II
+# PBTS: Protocol Specification
 
 ## Proposal Time
 
@@ -6,7 +6,7 @@ PBTS computes for a proposed value `v` the proposal time `v.time`, with bounded 
 The proposal time is read from the clock of the process that proposes a value for the first time, its original proposer.
 
 With PBTS, therefore, we assume that processes have access to **synchronized clocks**.
-The proper definition of what it means can be found in the [system model][model],
+The proper definition of what it means can be found in the [system model][sysmodel],
 but essentially we assume that two correct processes do not simultaneous read from their clocks
 time values that differ more than `PRECISION`, which is a system parameter.
 
@@ -20,7 +20,7 @@ A value `v` should re-proposed when it becomes locked by the network, i.e., when
 This means that processes with `2f + 1`-equivalent voting power accepted, in round `r`, both `v` and its associated time `v.time`.
 Since the originally proposed value and its associated time were considered valid, there is no reason for reassigning `v.time`.
 
-In the [first version][v1] of this specification, proposals were defined as pairs `(v, time)`.
+In the [first version][algorithm_v1] of this specification, proposals were defined as pairs `(v, time)`.
 In addition, the same value `v` could be proposed, in different rounds, but would be associated to distinct times each time it was reproposed.
 Since this possibility does not exist in this second specification, the proposal time became part of the proposed value.
 With this simplification, several small changes to the [arXiv][arXiv] algorithm are no longer required.
@@ -38,8 +38,8 @@ it should postpone the generation of its proposal until `now_p > decision_p[h_p-
 > Although it should be considered, this scenario is unlikely during regular operation,
 as from `decision_p[h_p-1].time` and the start of height `h_p`, a complete consensus instance need to terminate.
 
-Notice that monotonicity is not introduced by this proposal, being already ensured by [`bfttime`][bfttime].
-In `bfttime`, the `Timestamp` field of every `Precommit` message of height `h_p` sent by a correct process is required to be larger than `decision_p[h_p-1].time`, as one of such `Timestamp` fields becomes the time assigned to a value proposed at height `h_p`.
+Notice that monotonicity is not introduced by this proposal, being already ensured by  [`BFTTime`][bfttime].
+In `BFTTime`, the `Timestamp` field of every `Precommit` message of height `h_p` sent by a correct process is required to be larger than `decision_p[h_p-1].time`, as one of such `Timestamp` fields becomes the time assigned to a value proposed at height `h_p`.
 
 The time monotonicity of values proposed in heights of consensus is verified by the `valid()` predicate, to which every proposed value is submitted.
 A value rejected by the `valid()` implementation is not accepted by any correct process.
@@ -48,7 +48,7 @@ A value rejected by the `valid()` implementation is not accepted by any correct 
 
 PBTS introduces a new requirement for a process to accept a proposal: the proposal must be `timely`.
 It is a temporal requirement, associated with the following synchrony (that is, timing)
-[assumptions][model] regarding the behavior of processes and the network:
+[assumptions][sysmodel] regarding the behavior of processes and the network:
 
 - Synchronized clocks: the values simultaneously read from clocks of any two correct processes differ by at most `PRECISION`;
 - Bounded transmission delays: the real time interval between the sending of a proposal at a correct process, and the reception of the proposal at any correct process is upper bounded by `MSGDELAY`.
@@ -138,8 +138,11 @@ and because, since `v` was re-proposed as a `validValue` (line 16), `v.time` has
 
 Back to [main document][main].
 
-[arXiv]: https://arxiv.org/abs/1807.04938
-[v1]: ./pbts-algorithm_001_draft.md
-[main]: ./pbts_001_draft.md
-[bfttime]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/spec/consensus/bft-time.md
-[model]: ./pbts-sysmodel_002_draft.md
+[main]: ./README.md
+
+[algorithm_v1]: ./v1/pbts-algorithm_001_draft.md
+
+[sysmodel]: ./pbts-sysmodel_002_draft.md
+
+[bfttime]: https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md
+[arXiv]: https://arxiv.org/pdf/1807.04938.pdf

@@ -1,6 +1,6 @@
 <!-- markdown-link-check-disable -->
 
-# Proposer-Based Time
+# Proposer-Based Time (first draft)
 
 ## Current BFTTime
 
@@ -251,22 +251,17 @@ For analyzing real-time safety (Point 5), we use a system parameter `ACCURACY`, 
 
 This specification describes the changes needed to be done to the Tendermint consensus algorithm as described in the [arXiv paper][arXiv] and the simplified specification in [TLA+][tlatender], and makes precise the underlying assumptions and the required properties.
 
-- [Part I - System Model and Properties][sysmodel]
-- [Part II - Protocol specification][algorithm]
+- [Part I - System Model and Properties][sysmodel_v1]
+- [Part II - Protocol specification][algorithm_v1]
 - [TLA+ Specification][proposertla]
 
-[arXiv]: https://arxiv.org/abs/1807.04938
+[algorithm_v1]: ./pbts-algorithm_001_draft.md
 
+[sysmodel_v1]: ./pbts-sysmodel_001_draft.md
+
+[proposertla]: ../tla/TendermintPBT_001_draft.tla
+
+[bfttime]: https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md
 [tlatender]: https://github.com/tendermint/spec/blob/master/rust-spec/tendermint-accountability/README.md
-
-[bfttime]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/spec/consensus/bft-time.md
-
-[lcspec]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/rust-spec/lightclient/README.md
-
-[algorithm]: ./pbts-algorithm_002_draft.md
-
-[sysmodel]: ./pbts-sysmodel_002_draft.md
-
-[main]: ./pbts_001_draft.md
-
-[proposertla]: ./tla/TendermintPBT_001_draft.tla
+[lcspec]: https://github.com/tendermint/spec/tree/master/spec/light-client
+[arXiv]: https://arxiv.org/abs/1807.04938

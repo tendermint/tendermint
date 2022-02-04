@@ -1,6 +1,6 @@
-# Proposer-Based Time - Part I
+# PBTS: System Model and Properties (first draft)
 
-This specification is **OUTDATED**. Please refer to the [new version][v2].
+This specification is **OUTDATED**. Please refer to the [new version][sysmodel].
 
 ## System Model
 
@@ -183,20 +183,12 @@ Let `b` be a block with a valid commit that contains at least one `precommit` me
 
 > "triggered the `PRECOMMIT`" implies that the data in `m` and `b` are "matching", that is, `m` proposed the values that are actually stored in `b`.
 
-Back to [main document][main].
+Back to [main document][main_v1].
 
-[main]: ./pbts_001_draft.md
+[main_v1]: ./pbts_001_draft.md
+
+[algorithm_v1]: ./pbts-algorithm_001_draft.md
+
+[sysmodel]: ../pbts-sysmodel_002_draft.md
 
 [arXiv]: https://arxiv.org/abs/1807.04938
-
-[tlatender]: https://github.com/tendermint/spec/blob/master/rust-spec/tendermint-accountability/README.md
-
-[bfttime]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/spec/consensus/bft-time.md
-
-[lcspec]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/rust-spec/lightclient/README.md
-
-[algorithm]: ./pbts-algorithm_001_draft.md
-
-[sysmodel]: ./pbts-sysmodel_001_draft.md
-
-[v2]: ./pbts-sysmodel_002_draft.md
