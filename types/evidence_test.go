@@ -42,7 +42,6 @@ func TestEvidenceListProtoBuf(t *testing.T) {
 	ev, err := NewMockDuplicateVoteEvidence(ctx, math.MaxInt64, time.Now(), chainID)
 	require.NoError(t, err)
 	data := EvidenceList{ev}
-	_ = data.ByteSize()
 	testCases := []struct {
 		msg      string
 		data1    *EvidenceList

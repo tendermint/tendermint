@@ -556,14 +556,14 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 type EvidenceList []Evidence
 
 // StringIndented returns a string representation of the evidence.
-func (evl *EvidenceList) StringIndented(indent string) string {
+func (evl EvidenceList) StringIndented(indent string) string {
 	if evl == nil {
 		return "nil-Evidence"
 	}
-	evStrings := make([]string, tmmath.MinInt(len(*evl), 21))
-	for i, ev := range *evl {
+	evStrings := make([]string, tmmath.MinInt(len(evl), 21))
+	for i, ev := range evl {
 		if i == 20 {
-			evStrings[i] = fmt.Sprintf("... (%v total)", len(*evl))
+			evStrings[i] = fmt.Sprintf("... (%v total)", len(evl))
 			break
 		}
 		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
@@ -576,8 +576,8 @@ func (evl *EvidenceList) StringIndented(indent string) string {
 }
 
 // ByteSize returns the total byte size of all the evidence
-func (evl *EvidenceList) ByteSize() int64 {
-	if len(*evl) != 0 {
+func (evl EvidenceList) ByteSize() int64 {
+	if len(evl) != 0 {
 		pb, err := evl.ToProto()
 		if err != nil {
 			panic(err)
@@ -588,14 +588,14 @@ func (evl *EvidenceList) ByteSize() int64 {
 }
 
 // FromProto sets a protobuf EvidenceList to the given pointer.
-func (evl *EvidenceList) FromProto(eviData *tmproto.EvidenceList) error {
-	if eviData == nil {
+func (evl *EvidenceList) FromProto(eviList *tmproto.EvidenceList) error {
+	if eviList == nil {
 		return errors.New("nil evidence list")
 	}
 
-	eviBzs := make(EvidenceList, len(eviData.Evidence))
-	for i := range eviData.Evidence {
-		evi, err := EvidenceFromProto(&eviData.Evidence[i])
+	eviBzs := make(EvidenceList, 0, len(eviList.Evidence))
+	for i := range eviList.Evidence {
+		evi, err := EvidenceFromProto(&eviList.Evidence[i])
 		if err != nil {
 			return err
 		}
@@ -611,7 +611,6 @@ func (evl *EvidenceList) ToProto() (*tmproto.EvidenceList, error) {
 		return nil, errors.New("nil evidence list")
 	}
 
-	evi := new(tmproto.EvidenceList)
 	eviBzs := make([]tmproto.Evidence, len(*evl))
 	for i, v := range *evl {
 		protoEvi, err := EvidenceToProto(v)
@@ -620,9 +619,7 @@ func (evl *EvidenceList) ToProto() (*tmproto.EvidenceList, error) {
 		}
 		eviBzs[i] = *protoEvi
 	}
-	evi.Evidence = eviBzs
-
-	return evi, nil
+	return &tmproto.EvidenceList{Evidence: eviBzs}, nil
 }
 
 func (evl EvidenceList) MarshalJSON() ([]byte, error) {
