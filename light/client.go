@@ -188,11 +188,6 @@ func NewClient(
 		return nil, fmt.Errorf("invalid TrustOptions: %w", err)
 	}
 
-	// Validate the number of witnesses.
-	if len(witnesses) < 1 {
-		return nil, ErrNoWitnesses
-	}
-
 	c := &Client{
 		chainID:          chainID,
 		trustingPeriod:   trustOptions.Period,
@@ -252,11 +247,6 @@ func NewClientFromTrustedStore(
 
 	for _, o := range options {
 		o(c)
-	}
-
-	// Validate the number of witnesses.
-	if len(c.witnesses) < 1 {
-		return nil, ErrNoWitnesses
 	}
 
 	// Validate trust level.
@@ -974,6 +964,10 @@ func (c *Client) getLightBlock(ctx context.Context, p provider.Provider, height 
 
 // NOTE: requires a providerMutex lock
 func (c *Client) removeWitnesses(indexes []int) error {
+	if len(indexes) < 1 {
+		return nil
+	}
+
 	// check that we will still have witnesses remaining
 	if len(c.witnesses) <= len(indexes) {
 		return ErrNoWitnesses
@@ -1096,7 +1090,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	defer c.providerMutex.Unlock()
 
 	if len(c.witnesses) < 1 {
-		return ErrNoWitnesses
+		return nil
 	}
 
 	errc := make(chan error, len(c.witnesses))
