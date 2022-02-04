@@ -518,8 +518,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerAddress,
-		indent, h.Hash(),
-	)
+		indent, h.Hash())
 }
 
 // ToProto converts Header to protobuf
