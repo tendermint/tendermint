@@ -1268,7 +1268,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
-		block, blockParts, err = cs.createProposalBlock()
+		block, blockParts, err = cs.createProposalBlock(ctx)
 		if block == nil || err != nil {
 			return
 		}
@@ -1328,7 +1328,7 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet, err error) {
+func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, blockParts *types.PartSet, err error) {
 	if cs.privValidator == nil {
 		return nil, nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
@@ -1358,7 +1358,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
+	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -2235,7 +2235,7 @@ func (cs *State) addVote(
 
 	// Verify VoteExtension if precommit
 	if vote.Type == tmproto.PrecommitType {
-		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
+		if err = cs.blockExec.VerifyVoteExtension(ctx, vote); err != nil {
 			return false, err
 		}
 	}
@@ -2385,7 +2385,7 @@ func (cs *State) signVote(
 	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
 		// if the signedMessage type is for a precommit, add VoteExtension
-		ext, err := cs.blockExec.ExtendVote(vote)
+		ext, err := cs.blockExec.ExtendVote(ctx, vote)
 		if err != nil {
 			return nil, err
 		}
