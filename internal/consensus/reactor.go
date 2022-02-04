@@ -139,12 +139,7 @@ type Reactor struct {
 	voteSetBitsCh *p2p.Channel
 	peerUpdates   *p2p.PeerUpdates
 
-	// NOTE: We need a dedicated stateCloseCh channel for signaling closure of
-	// the StateChannel due to the fact that the StateChannel message handler
-	// performs a send on the VoteSetBitsChannel. This is an antipattern, so having
-	// this dedicated channel,stateCloseCh, is necessary in order to avoid data races.
-	stateCloseCh chan struct{}
-	closeCh      chan struct{}
+	closeCh chan struct{}
 }
 
 // NewReactor returns a reference to a new consensus reactor, which implements
@@ -173,7 +168,6 @@ func NewReactor(
 		voteCh:        voteCh,
 		voteSetBitsCh: voteSetBitsCh,
 		peerUpdates:   peerUpdates,
-		stateCloseCh:  make(chan struct{}),
 		readySignal:   make(chan struct{}),
 		closeCh:       make(chan struct{}),
 	}
@@ -244,22 +238,10 @@ func (r *Reactor) OnStop() {
 	}
 	r.mtx.Unlock()
 
-	// Close the StateChannel goroutine separately since it uses its own channel
-	// to signal closure.
-	close(r.stateCloseCh)
-	<-r.stateCh.Done()
-
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
 
-	// Wait for all p2p Channels to be closed before returning. This ensures we
-	// can easily reason about synchronization of all p2p Channels and ensure no
-	// panics will occur.
-	<-r.voteSetBitsCh.Done()
-	<-r.dataCh.Done()
-	<-r.voteCh.Done()
-	<-r.peerUpdates.Done()
 }
 
 // SetEventBus sets the reactor's event bus.
@@ -359,15 +341,23 @@ func (r *Reactor) GetPeerState(peerID types.NodeID) (*PeerState, bool) {
 }
 
 func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
-	r.stateCh.Out <- p2p.Envelope{
+	select {
+	case r.stateCh.Out <- p2p.Envelope{
 		Broadcast: true,
 		Message:   makeRoundStepMessage(rs),
+	}:
+	case <-r.closeCh:
+		return
+
 	}
 }
 
 func (r *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 	psHeader := rs.ProposalBlockParts.Header()
-	r.stateCh.Out <- p2p.Envelope{
+	select {
+	case <-r.closeCh:
+		return
+	case r.stateCh.Out <- p2p.Envelope{
 		Broadcast: true,
 		Message: &tmcons.NewValidBlock{
 			Height:             rs.Height,
@@ -376,11 +366,15 @@ func (r *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 			BlockParts:         rs.ProposalBlockParts.BitArray().ToProto(),
 			IsCommit:           rs.Step == cstypes.RoundStepCommit,
 		},
+	}:
 	}
 }
 
 func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
-	r.stateCh.Out <- p2p.Envelope{
+	select {
+	case <-r.closeCh:
+		return
+	case r.stateCh.Out <- p2p.Envelope{
 		Broadcast: true,
 		Message: &tmcons.HasVote{
 			Height: vote.Height,
@@ -388,6 +382,7 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 			Type:   vote.Type,
 			Index:  vote.ValidatorIndex,
 		},
+	}:
 	}
 }
 
@@ -450,9 +445,13 @@ func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
 func (r *Reactor) sendNewRoundStepMessage(peerID types.NodeID) {
 	rs := r.state.GetRoundState()
 	msg := makeRoundStepMessage(rs)
-	r.stateCh.Out <- p2p.Envelope{
+	select {
+	case <-r.closeCh:
+		return
+	case r.stateCh.Out <- p2p.Envelope{
 		To:      peerID,
 		Message: msg,
+	}:
 	}
 }
 
@@ -615,11 +614,16 @@ OUTER_LOOP:
 				propProto := rs.Proposal.ToProto()
 
 				logger.Debug("sending proposal", "height", prs.Height, "round", prs.Round)
-				r.dataCh.Out <- p2p.Envelope{
+				select {
+				case <-r.closeCh:
+					return
+				case r.dataCh.Out <- p2p.Envelope{
 					To: ps.peerID,
 					Message: &tmcons.Proposal{
 						Proposal: *propProto,
 					},
+				}:
+
 				}
 
 				// NOTE: A peer might have received a different proposal message, so
@@ -636,13 +640,17 @@ OUTER_LOOP:
 				pPolProto := pPol.ToProto()
 
 				logger.Debug("sending POL", "height", prs.Height, "round", prs.Round)
-				r.dataCh.Out <- p2p.Envelope{
+				select {
+				case <-r.closeCh:
+					return
+				case r.dataCh.Out <- p2p.Envelope{
 					To: ps.peerID,
 					Message: &tmcons.ProposalPOL{
 						Height:           rs.Height,
 						ProposalPolRound: rs.Proposal.POLRound,
 						ProposalPol:      *pPolProto,
 					},
+				}:
 				}
 			}
 
@@ -994,23 +1002,22 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 				case <-r.closeCh:
 					return
 				case <-r.readySignal:
-				}
-				// do nothing if the peer has
-				// stopped while we've been waiting.
-				if !ps.IsRunning() {
-					return
-				}
-				// start goroutines for this peer
-				go r.gossipDataRoutine(ps)
-				go r.gossipVotesRoutine(ps)
-				go r.queryMaj23Routine(ps)
+					// do nothing if the peer has
+					// stopped while we've been waiting.
+					if !ps.IsRunning() {
+						return
+					}
+					// start goroutines for this peer
+					go r.gossipDataRoutine(ps)
+					go r.gossipVotesRoutine(ps)
+					go r.queryMaj23Routine(ps)
 
-				// Send our state to the peer. If we're block-syncing, broadcast a
-				// RoundStepMessage later upon SwitchToConsensus().
-				if !r.WaitSync() {
-					go func() { r.sendNewRoundStepMessage(ps.peerID) }()
+					// Send our state to the peer. If we're block-syncing, broadcast a
+					// RoundStepMessage later upon SwitchToConsensus().
+					if !r.WaitSync() {
+						go func() { r.sendNewRoundStepMessage(ps.peerID) }()
+					}
 				}
-
 			}()
 		}
 
@@ -1314,8 +1321,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processStateCh() {
-	defer r.stateCh.Close()
-
 	for {
 		select {
 		case envelope := <-r.stateCh.In:
@@ -1326,9 +1331,7 @@ func (r *Reactor) processStateCh() {
 					Err:    err,
 				}
 			}
-
-		case <-r.stateCloseCh:
-			r.Logger.Debug("stopped listening on StateChannel; closing...")
+		case <-r.closeCh:
 			return
 		}
 	}
