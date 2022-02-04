@@ -26,12 +26,14 @@ burden to coordinate versions, documentation, and releases.
 
 ## Decision
 
-The specification repository will be merged back into the Tendermint core repository.
+The specification repository will be merged back into the Tendermint
+core repository.
 
 Stakeholders including representatives from the maintainers of the
 spec, the Go implementation, and the Tendermint Rust library, agreed
 to merge the repositories in the Tendermint core dev meeting on 27
-January 2022.
+January 2022, including @williambanfield @cmwaters @creachadair and
+@thanethomson.
 
 ## Alternative Approaches
 
@@ -50,28 +52,32 @@ Clone and merge the master branch of the `tendermint/spec` repository
 as a branch of the `tendermint/tendermint`, to ensure the commit history
 of both repositories remains intact.
 
-
 ### Implementation Instructions
 
 1. Within the `tendermint` repository, execute the following commands 
    to add a new branch with the history of the master branch of `spec`:
 
-```bash
-git remote add spec git@github.com:tendermint/spec.git
-git fetch spec
-git checkout -b spec-master spec/master
-mkdir spec
-git ls-tree -z --name-only HEAD | xargs -0 -I {} git mv {} subdir/
-git commit -m "spec: organize specification prior to merge"
-git checkout -b spec-merge-mainline origin/master
-git merge --allow-unrelated-histories spec-master
+   ```bash
+   git remote add spec git@github.com:tendermint/spec.git
+   git fetch spec
+   git checkout -b spec-master spec/master
+   mkdir spec
+	git ls-tree -z --name-only HEAD | xargs -0 -I {} git mv {} subdir/
+	git commit -m "spec: organize specification prior to merge"
+	git checkout -b spec-merge-mainline origin/master
+	git merge --allow-unrelated-histories spec-master
+	```
 
-This merges the spec into the `tendermint/tendermint` repository as a normal
-branch. This commit can also be backported to the 0.35 branch, if needed.
+   This merges the spec into the `tendermint/tendermint` repository as
+   a normal branch. This commit can also be backported to the 0.35
+   branch, if needed.
 
-2. In the specification repository, add redirect to the README and mark
-   the repository as archived. All issues should be recreated in the
+2. Migrate outstanding issues from `tendermint/spec` to the
    `tendermint/tendermint` repository.
+
+3. In the specification repository, add redirect to the README and mark
+   the repository as archived. 
+   
 
 ## Consequences
 
