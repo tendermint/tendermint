@@ -268,8 +268,12 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 		res.Version.AppVersion = params2.Version.AppVersion
 	}
 	if params2.Synchrony != nil {
-		res.Synchrony.Precision = params2.Synchrony.Precision
-		res.Synchrony.MessageDelay = params2.Synchrony.MessageDelay
+		if params2.Synchrony.GetPrecision() != nil {
+			res.Synchrony.Precision = *params2.Synchrony.GetPrecision()
+		}
+		if params2.Synchrony.GetMessageDelay() != nil {
+			res.Synchrony.MessageDelay = *params2.Synchrony.GetMessageDelay()
+		}
 	}
 	return res
 }
@@ -292,14 +296,14 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 			AppVersion: params.Version.AppVersion,
 		},
 		Synchrony: &tmproto.SynchronyParams{
-			MessageDelay: params.Synchrony.MessageDelay,
-			Precision:    params.Synchrony.Precision,
+			MessageDelay: &params.Synchrony.MessageDelay,
+			Precision:    &params.Synchrony.Precision,
 		},
 	}
 }
 
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
+	c := ConsensusParams{
 		Block: BlockParams{
 			MaxBytes: pbParams.Block.MaxBytes,
 			MaxGas:   pbParams.Block.MaxGas,
@@ -315,9 +319,12 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 		Version: VersionParams{
 			AppVersion: pbParams.Version.AppVersion,
 		},
-		Synchrony: SynchronyParams{
-			MessageDelay: pbParams.Synchrony.MessageDelay,
-			Precision:    pbParams.Synchrony.Precision,
-		},
 	}
+	if pbParams.Synchrony.GetPrecision() != nil {
+		c.Synchrony.Precision = *pbParams.Synchrony.GetPrecision()
+	}
+	if pbParams.Synchrony.GetMessageDelay() != nil {
+		c.Synchrony.MessageDelay = *pbParams.Synchrony.GetMessageDelay()
+	}
+	return c
 }
