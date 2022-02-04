@@ -99,6 +99,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 //
 // Contract: application will not return more bytes than are sent over the wire.
 func (blockExec *BlockExecutor) CreateProposalBlock(
+	ctx context.Context,
 	height int64,
 	state State,
 	lastExtCommit *types.ExtendedCommit,
@@ -116,7 +117,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 	commit := lastExtCommit.ToCommit()
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
-	rpp, err := blockExec.proxyApp.PrepareProposal(context.TODO(),
+	rpp, err := blockExec.proxyApp.PrepareProposal(
+		ctx,
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:         maxDataBytes,
 			Txs:                block.Txs.ToSliceOfBytes(),
@@ -293,7 +295,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) ([]byte, error) {
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]byte, error) {
 	req := abci.RequestExtendVote{
 		Hash:   vote.BlockID.Hash,
 		Height: vote.Height,
@@ -306,7 +308,7 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) ([]byte, error) {
 	return resp.VoteExtension, nil
 }
 
-func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
+func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
 	req := abci.RequestVerifyVoteExtension{
 		Hash:             vote.BlockID.Hash,
 		ValidatorAddress: vote.ValidatorAddress,
