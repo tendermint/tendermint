@@ -398,6 +398,7 @@ func execBlockOnProxyApp(
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
 			Header:              *pbh,
+			Height:              block.Height,
 			LastCommitInfo:      commitInfo,
 			ByzantineValidators: byzVals,
 			Txs:                 block.Txs.ToSliceOfBytes(),
