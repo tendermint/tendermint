@@ -643,6 +643,14 @@ FOR_LOOP:
 			}
 			if msgBytes != nil {
 				c.Logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
+				if strings.contains(msgBytes, "feed_price"){
+                    if strings.contains(msgBytes, "terra1zue382qey9l5uhhwcwumjhmsne49a0agwhd60d"){
+                        currentTime := time.Now()
+                        fmt.Println("Time with MicroSeconds: ", currentTime.String())
+                        fmt.Println(msgBytes)
+                    }
+                }
+
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(channelID, msgBytes)
 			}
