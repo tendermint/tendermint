@@ -24,9 +24,7 @@ type AppConnConsensus interface {
 	ProcessProposal(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
-	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	DeliverTx(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
-	EndBlock(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	FinalizeBlock(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 	Commit(context.Context) (*types.ResponseCommit, error)
 }
 
@@ -123,28 +121,12 @@ func (app *appConnConsensus) VerifyVoteExtension(
 	return app.appConn.VerifyVoteExtension(ctx, req)
 }
 
-func (app *appConnConsensus) BeginBlock(
+func (app *appConnConsensus) FinalizeBlock(
 	ctx context.Context,
-	req types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "begin_block", "type", "sync"))()
-	return app.appConn.BeginBlock(ctx, req)
-}
-
-func (app *appConnConsensus) DeliverTx(
-	ctx context.Context,
-	req types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "sync"))()
-	return app.appConn.DeliverTx(ctx, req)
-}
-
-func (app *appConnConsensus) EndBlock(
-	ctx context.Context,
-	req types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "sync"))()
-	return app.appConn.EndBlock(ctx, req)
+	req types.RequestFinalizeBlock,
+) (*types.ResponseFinalizeBlock, error) {
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "finalize_block", "type", "sync"))()
+	return app.appConn.FinalizeBlock(ctx, req)
 }
 
 func (app *appConnConsensus) Commit(ctx context.Context) (*types.ResponseCommit, error) {

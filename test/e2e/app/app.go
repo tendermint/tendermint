@@ -146,23 +146,26 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 }
 
 // DeliverTx implements ABCI.
-func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	key, value, err := parseTx(req.Tx)
-	if err != nil {
-		panic(err) // shouldn't happen since we verified it in CheckTx
-	}
-	app.state.Set(key, value)
-	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
-}
+func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+	var txs = make([]*abci.ResponseDeliverTx, len(req.Txs))
 
-// EndBlock implements ABCI.
-func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
+	for i, tx := range req.Txs {
+		key, value, err := parseTx(tx)
+		if err != nil {
+			panic(err) // shouldn't happen since we verified it in CheckTx
+		}
+		app.state.Set(key, value)
+
+		txs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
+	}
+
 	valUpdates, err := app.validatorUpdates(uint64(req.Height))
 	if err != nil {
 		panic(err)
 	}
 
-	return abci.ResponseEndBlock{
+	return abci.ResponseFinalizeBlock{
+		Txs: txs,
 		ValidatorUpdates: valUpdates,
 		Events: []abci.Event{
 			{

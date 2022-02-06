@@ -47,11 +47,11 @@ type Client interface {
 	ProcessProposal(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
+	FinalizeBlock(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 	ListSnapshots(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
 	OfferSnapshot(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
 	LoadSnapshotChunk(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
 	ApplySnapshotChunk(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
-	FinalizeBlock(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
 }
 
 //----------------------------------------

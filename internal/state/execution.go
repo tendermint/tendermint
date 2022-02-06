@@ -393,9 +393,9 @@ func execBlockOnProxyApp(
 		return nil, errors.New("nil header")
 	}
 
-	abciResponses.Finalize, err = proxyAppConn.Finalize(
+	abciResponses.FinalizeBlock, err = proxyAppConn.FinalizeBlock(
 		ctx,
-		abci.RequestFinalize{
+		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
 			Header:              *pbh,
 			LastCommitInfo:      commitInfo,
