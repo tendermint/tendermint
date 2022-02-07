@@ -667,9 +667,9 @@ func (cs *State) updateToState(state sm.State) {
 	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
-	cs.TwoThirdPrevoteRound = -1
-	cs.TwoThirdPrevoteBlock = nil
-	cs.TwoThirdPrevoteBlockParts = nil
+	cs.ValidRound = -1
+	cs.ValidBlock = nil
+	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
@@ -1126,9 +1126,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	var blockParts *types.PartSet
 
 	// Decide on block
-	if cs.TwoThirdPrevoteBlock != nil {
+	if cs.ValidBlock != nil {
 		// If there is valid block, choose that.
-		block, blockParts = cs.TwoThirdPrevoteBlock, cs.TwoThirdPrevoteBlockParts
+		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		block, blockParts = cs.createProposalBlock()
@@ -1145,7 +1145,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, round, cs.TwoThirdPrevoteRound, propBlockID)
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
@@ -1926,7 +1926,7 @@ func (cs *State) handleCompleteProposal(blockHeight int64) {
 	// Update Valid* if we can.
 	prevotes := cs.Votes.Prevotes(cs.Round)
 	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-	if hasTwoThirds && !blockID.IsZero() && (cs.TwoThirdPrevoteRound < cs.Round) {
+	if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
 		if cs.ProposalBlock.HashesTo(blockID.Hash) {
 			cs.Logger.Debug(
 				"updating valid block to new proposal block",
@@ -1934,9 +1934,9 @@ func (cs *State) handleCompleteProposal(blockHeight int64) {
 				"valid_block_hash", log.NewLazyBlockHash(cs.ProposalBlock),
 			)
 
-			cs.TwoThirdPrevoteRound = cs.Round
-			cs.TwoThirdPrevoteBlock = cs.ProposalBlock
-			cs.TwoThirdPrevoteBlockParts = cs.ProposalBlockParts
+			cs.ValidRound = cs.Round
+			cs.ValidBlock = cs.ProposalBlock
+			cs.ValidBlockParts = cs.ProposalBlockParts
 		}
 		// TODO: In case there is +2/3 majority in Prevotes set for some
 		// block and cs.ProposalBlock contains different block, either
@@ -2096,12 +2096,12 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 			// Update Valid* if we can.
 			// NOTE: our proposal block may be nil or not what received a polka..
-			if len(blockID.Hash) != 0 && (cs.TwoThirdPrevoteRound < vote.Round) && (vote.Round == cs.Round) {
+			if len(blockID.Hash) != 0 && (cs.ValidRound < vote.Round) && (vote.Round == cs.Round) {
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
-					cs.Logger.Debug("updating valid block because of POL", "valid_round", cs.TwoThirdPrevoteRound, "pol_round", vote.Round)
-					cs.TwoThirdPrevoteRound = vote.Round
-					cs.TwoThirdPrevoteBlock = cs.ProposalBlock
-					cs.TwoThirdPrevoteBlockParts = cs.ProposalBlockParts
+					cs.Logger.Debug("updating valid block because of POL", "valid_round", cs.ValidRound, "pol_round", vote.Round)
+					cs.ValidRound = vote.Round
+					cs.ValidBlock = cs.ProposalBlock
+					cs.ValidBlockParts = cs.ProposalBlockParts
 				} else {
 					cs.Logger.Debug(
 						"valid block we do not know about; set ProposalBlock=nil",
