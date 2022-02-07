@@ -104,11 +104,11 @@ type CommitSig struct {
 
 `Precommit` and `Prevote` messages use a common [Vote struct](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/vote.go#L50).
 This struct currently contains a timestamp.
-This timestamp is set using the [voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241) function and therefore vote times correspond to the current Unix time known to the validator.
+This timestamp is set using the [voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241) function and therefore vote times correspond to the current Unix time known to the validator, provided this time is greater than the timestamp of the previous block.
 For precommits, this timestamp is used to construct the [CommitSig that is included in the block in the LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L754) field.
 For prevotes, this field is currently unused.
 Proposer-based timestamps will use the timestamp that the proposer sets into the block and will therefore no longer require that a timestamp be included in the vote messages.
-This timestamp is therefore no longer useful and will be dropped.
+This timestamp is therefore no longer useful as part of consensus and may optionally be dropped from the message.
 
 `Vote` will be updated as follows:
 
@@ -127,7 +127,7 @@ type Vote struct {
 
 ### New consensus parameters
 
-The proposer-based timestamp specification includes multiple new parameters that must be the same among all validators.
+The proposer-based timestamp specification includes a pair of new parameters that must be the same among all validators.
 These parameters are `PRECISION`, and `MSGDELAY`.
 
 The `PRECISION` and `MSGDELAY` parameters are used to determine if the proposed timestamp is acceptable.
@@ -168,7 +168,7 @@ The timestamp the proposer sets into the `Header` will change depending on if th
 
 #### Proposal of a block that has not previously received a polka
 
-If a proposer is proposing a new block, then it will set the Unix time currently known to the proposer into the `Header.Timestamp` field.
+If a proposer is proposing a new block then it will set the Unix time currently known to the proposer into the `Header.Timestamp` field.
 The proposer will also set this same timestamp into the `Timestamp` field of the `Proposal` message that it issues.
 
 #### Re-proposal of a block that has previously received a polka
@@ -233,7 +233,7 @@ The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55
 A negative value in the `POLRound` field indicates that the block has not previously been proposed on the network.
 Therefore the validation logic will check for timely when `POLRound < 0`.
 
-When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is at most `PRECISION` greater than the current Unix time known to the validator, and at minimum `PRECISION + MSGDELAY` less than the current Unix time known to the validator.
+When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is at most `PRECISION` greater than the current Unix time known to the validator, and at maximum `PRECISION + MSGDELAY` less than the current Unix time known to the validator.
 If the timestamp is not within these bounds, the proposed block will not be considered `timely`.
 
 Once a full block matching the `Proposal` message is received, the validator will also check that the timestamp in the `Header.Timestamp` of the block matches this `Proposal.Timestamp`.
@@ -248,13 +248,33 @@ When a block is re-proposed that has already received a +2/3 majority of `Prevot
 A validator will not check that the `Proposal` is `timely` if the propose message has a non-negative `POLRound`.
 If the `POLRound` is non-negative, each validator will simply ensure that it received the `Prevote` messages for the proposed block in the round indicated by `POLRound`.
 
-If the validator did not receive `Prevote` messages for the proposed block in `POLRound`, then it will prevote nil.
+If the validator does not receive `Prevote` messages for the proposed block before the proposal timeout, then it will prevote nil.
 Validators already check that +2/3 prevotes were seen in `POLRound`, so this does not represent a change to the prevote logic.
 
 A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
 If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
 
 Additionally, this validation logic can be updated to check that the `Proposal.Timestamp` matches the `Header.Timestamp` of the proposed block, but it is less relevant since checking that votes were received is sufficient to ensure the block timestamp is correct.
+
+#### Relaxation of the 'Timely' check
+
+The `Synchrony` parameters, `MessageDelay` and `Precision` provide a means to bound the timestamp of a proposed block.
+Selecting values that are too small presents a possible liveness issue for the network.
+If a Tendermint network selects a `MessageDelay` parameter that does not accurately reflect the time to broadcast a proposal message to all of the validators on the network, nodes will begin rejecting proposals from otherwise correct proposers because these proposals will appear to be too far in the past.
+
+`MessageDelay` and `Precision` are planned to be configured as `ConsensusParams`.
+A very common way to update `ConsensusParams` is by executing a transaction included in a block that specifies new values for them.
+However, if the network is unable to produce blocks because of this liveness issue, no such transaction may be executed.
+To prevent this dangerous condition, we will add a relaxation mechanism to the `Timely` predicate.
+If consensus takes more than 10 rounds to produce a block for any reason, the `MessageDelay` will be doubled.
+This doubling will continue for each subsequent 10 rounds of consensus.
+This will enable chains that selected too small of a value for the `MessageDelay` parameter to eventually issue a transaction and readjust the parameters to more accurately reflect the broadcast time.
+
+This liveness issue is not as problematic for chains with very small `Precision` values.
+Operators can more easily readjust local validator clocks to be more aligned.
+Additionally, chains that wish to increase a small `Precision` value can still take advantage of the `MessageDelay` relaxation, waiting for the `MessageDelay` value to grow significantly and issuing proposals with timestamps that are far in the past of their peers.
+
+For more discussion of this, see [issue 371](https://github.com/tendermint/spec/issues/371).
 
 ### Changes to the prevote step
 
@@ -310,3 +330,4 @@ This skew will be bound by the `PRECISION` value, so it is unlikely to be too la
 
 * [PBTS Spec](https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp)
 * [BFTTime spec](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md)
+* [Issue 371](https://github.com/tendermint/spec/issues/371)
