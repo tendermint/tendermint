@@ -471,7 +471,7 @@ func TestReactorWithEvidence(t *testing.T) {
 			}
 
 			block := msg.Data().(types.EventDataNewBlock).Block
-			require.Len(t, block.Evidence.Evidence, 1)
+			require.Len(t, block.Evidence, 1)
 		}(sub)
 	}
 
