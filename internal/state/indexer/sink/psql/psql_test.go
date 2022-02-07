@@ -220,16 +220,10 @@ func TestStop(t *testing.T) {
 func newTestBlockHeader() types.EventDataNewBlockHeader {
 	return types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
-		ResultBeginBlock: abci.ResponseBeginBlock{
+		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 			Events: []abci.Event{
-				makeIndexedEvent("begin_event.proposer", "FCAA001"),
+				makeIndexedEvent("finalize_event.proposer", "FCAA001"),
 				makeIndexedEvent("thingy.whatzit", "O.O"),
-			},
-		},
-		ResultEndBlock: abci.ResponseEndBlock{
-			Events: []abci.Event{
-				makeIndexedEvent("end_event.foo", "100"),
-				makeIndexedEvent("thingy.whatzit", "-.O"),
 			},
 		},
 	}

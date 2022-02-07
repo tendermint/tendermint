@@ -685,19 +685,21 @@ func TestMockProxyApp(t *testing.T) {
 		require.NoError(t, err)
 
 		abciRes := new(tmstate.ABCIResponses)
-		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseFinalizeBlock, len(loadedAbciRes.FinalizeBlock.Txs))
+		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
 
 		someTx := []byte("tx")
 		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
 		// TODO: make use of res.Log
 		// TODO: make use of this info
 		// Blocks may include invalid txs.
-		if resp.Code == abci.CodeTypeOK {
-			validTxs++
-		} else {
-			invalidTxs++
+		for _, tx := range resp.Txs {
+			if tx.Code == abci.CodeTypeOK {
+				validTxs++
+			} else {
+				invalidTxs++
+			}
 		}
-		abciRes.DeliverTxs[txIndex] = resp
+		abciRes.FinalizeBlock.Txs = resp.Txs
 		txIndex++
 
 		assert.NoError(t, err)

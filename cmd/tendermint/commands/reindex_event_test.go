@@ -154,9 +154,9 @@ func TestReIndexEvent(t *testing.T) {
 
 	dtx := abcitypes.ResponseDeliverTx{}
 	abciResp := &prototmstate.ABCIResponses{
-		DeliverTxs: []*abcitypes.ResponseDeliverTx{&dtx},
-		EndBlock:   &abcitypes.ResponseEndBlock{},
-		BeginBlock: &abcitypes.ResponseBeginBlock{},
+		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
+			Txs: []*abcitypes.ResponseDeliverTx{&dtx},
+		},
 	}
 
 	mockStateStore.

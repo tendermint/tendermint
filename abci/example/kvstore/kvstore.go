@@ -88,7 +88,7 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 // tx is either "key=value" or just arbitrary bytes
 func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	var key, value string
-	var txs = make([]*types.ResponseDeliverTx, len(req.Txs))
+	txs := make([]*types.ResponseDeliverTx, len(req.Txs))
 
 	for i, tx := range req.Txs {
 		parts := bytes.Split(tx, []byte("="))

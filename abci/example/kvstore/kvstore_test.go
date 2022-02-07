@@ -26,11 +26,13 @@ const (
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
 	ar := app.FinalizeBlock(req)
+	require.Equal(t, 1, len(ar.Txs))
 	for _, tx := range ar.Txs {
 		require.False(t, tx.IsErr(), ar)
 	}
 	// repeating tx doesn't raise error
 	ar = app.FinalizeBlock(req)
+	require.Equal(t, 1, len(ar.Txs))
 	for _, tx := range ar.Txs {
 		require.False(t, tx.IsErr(), ar)
 	}

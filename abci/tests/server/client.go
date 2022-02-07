@@ -49,24 +49,24 @@ func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error
 	return nil
 }
 
-func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
-	for _, tx := range res.Txs {
+func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]byte, codeExp []uint32, dataExp []byte) error {
+	res, _ := client.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: txBytes})
+	for i, tx := range res.Txs {
 		code, data, log := tx.Code, tx.Data, tx.Log
-		if code != codeExp {
-			fmt.Println("Failed test: DeliverTx")
-			fmt.Printf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v\n",
+		if code != codeExp[i] {
+			fmt.Println("Failed test: FinalizeBlock")
+			fmt.Printf("FinalizeBlock response code was unexpected. Got %v expected %v. Log: %v\n",
 				code, codeExp, log)
-			return errors.New("deliverTx error")
+			return errors.New("FinalizeBlock error")
 		}
 		if !bytes.Equal(data, dataExp) {
-			fmt.Println("Failed test: DeliverTx")
-			fmt.Printf("DeliverTx response data was unexpected. Got %X expected %X\n",
+			fmt.Println("Failed test:  FinalizeBlock")
+			fmt.Printf("FinalizeBlock response data was unexpected. Got %X expected %X\n",
 				data, dataExp)
-			return errors.New("deliverTx error")
+			return errors.New("FinalizeBlock  error")
 		}
 	}
-	fmt.Println("Passed test: DeliverTx")
+	fmt.Println("Passed test: FinalizeBlock")
 	return nil
 }
 
