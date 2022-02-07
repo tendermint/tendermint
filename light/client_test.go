@@ -233,7 +233,7 @@ func TestClient(t *testing.T) {
 					chainID,
 					trustOptions,
 					mockNode,
-					[]provider.Provider{mockNode},
+					nil,
 					dbs.New(dbm.NewMemDB()),
 					light.SequentialVerification(),
 					light.Logger(logger),
@@ -360,7 +360,7 @@ func TestClient(t *testing.T) {
 					chainID,
 					trustOptions,
 					mockNode,
-					[]provider.Provider{mockNode},
+					nil,
 					dbs.New(dbm.NewMemDB()),
 					light.SkippingVerification(light.DefaultTrustLevel),
 					light.Logger(logger),
@@ -416,7 +416,7 @@ func TestClient(t *testing.T) {
 				Hash:   trustedLightBlock.Hash(),
 			},
 			mockNode,
-			[]provider.Provider{mockNode},
+			nil,
 			dbs.New(dbm.NewMemDB()),
 			light.SkippingVerification(light.DefaultTrustLevel),
 		)
@@ -445,7 +445,7 @@ func TestClient(t *testing.T) {
 				Hash:   h1.Hash(),
 			},
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			nil,
 			dbs.New(dbm.NewMemDB()),
 			light.SkippingVerification(light.DefaultTrustLevel),
 		)
@@ -475,7 +475,7 @@ func TestClient(t *testing.T) {
 			chainID,
 			trustOptions,
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			nil,
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -515,7 +515,7 @@ func TestClient(t *testing.T) {
 				chainID,
 				trustOptions,
 				mockNode,
-				[]provider.Provider{mockNode},
+				nil,
 				trustedStore,
 				light.Logger(logger),
 			)
@@ -554,7 +554,7 @@ func TestClient(t *testing.T) {
 					Hash:   header1.Hash(),
 				},
 				mockNode,
-				[]provider.Provider{mockNode},
+				nil,
 				trustedStore,
 				light.Logger(logger),
 			)
@@ -575,9 +575,14 @@ func TestClient(t *testing.T) {
 		defer cancel()
 
 		mockFullNode := &provider_mocks.Provider{}
+		mockFullNode.On("ID").Return("mockFullNode")
 		mockFullNode.On("LightBlock", mock.Anything, int64(0)).Return(l3, nil)
 		mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
-		mockFullNode.On("LightBlock", mock.Anything, int64(3)).Return(l3, nil)
+
+		mockWitnessNode := &provider_mocks.Provider{}
+		mockWitnessNode.On("ID").Return("mockWitnessNode")
+		mockWitnessNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
+		mockWitnessNode.On("LightBlock", mock.Anything, int64(3)).Return(l3, nil)
 
 		logger := log.NewTestingLogger(t)
 
@@ -586,7 +591,7 @@ func TestClient(t *testing.T) {
 			chainID,
 			trustOptions,
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			[]provider.Provider{mockWitnessNode},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -600,6 +605,7 @@ func TestClient(t *testing.T) {
 			assert.NoError(t, l.ValidateBasic(chainID))
 		}
 		mockFullNode.AssertExpectations(t)
+		mockWitnessNode.AssertExpectations(t)
 	})
 
 	t.Run("Concurrency", func(t *testing.T) {
@@ -615,7 +621,7 @@ func TestClient(t *testing.T) {
 			chainID,
 			trustOptions,
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			nil,
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -665,7 +671,7 @@ func TestClient(t *testing.T) {
 			chainID,
 			trustOptions,
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			nil,
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -679,9 +685,8 @@ func TestClient(t *testing.T) {
 			close(closeCh)
 		}()
 
-		// NOTE: the light client doesn't check uniqueness of providers
 		c.AddProvider(mockFullNode)
-		require.Len(t, c.Witnesses(), 2)
+		require.Len(t, c.Witnesses(), 1)
 		select {
 		case <-closeCh:
 		case <-time.After(5 * time.Second):
@@ -695,9 +700,10 @@ func TestClient(t *testing.T) {
 
 		mockFullNode := &provider_mocks.Provider{}
 		mockFullNode.On("LightBlock", mock.Anything, mock.Anything).Return(l1, nil)
-
+		mockFullNode.On("ID").Return("mockFullNode")
 		mockDeadNode := &provider_mocks.Provider{}
 		mockDeadNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrNoResponse)
+		mockDeadNode.On("ID").Return("mockDeadNode")
 
 		logger := log.NewTestingLogger(t)
 
@@ -706,7 +712,7 @@ func TestClient(t *testing.T) {
 			chainID,
 			trustOptions,
 			mockDeadNode,
-			[]provider.Provider{mockDeadNode, mockFullNode},
+			[]provider.Provider{mockFullNode},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -720,7 +726,7 @@ func TestClient(t *testing.T) {
 
 		// we should still have the dead node as a witness because it
 		// hasn't repeatedly been unresponsive yet
-		assert.Equal(t, 2, len(c.Witnesses()))
+		assert.Equal(t, 1, len(c.Witnesses()))
 		mockDeadNode.AssertExpectations(t)
 		mockFullNode.AssertExpectations(t)
 	})
@@ -730,17 +736,24 @@ func TestClient(t *testing.T) {
 
 		mockFullNode := &provider_mocks.Provider{}
 		mockFullNode.On("LightBlock", mock.Anything, mock.Anything).Return(l1, nil)
+		mockFullNode.On("ID").Return("mockFullNode")
 
 		logger := log.NewTestingLogger(t)
 
-		mockDeadNode := &provider_mocks.Provider{}
-		mockDeadNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+		mockDeadNode1 := &provider_mocks.Provider{}
+		mockDeadNode1.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+		mockDeadNode1.On("ID").Return("mockDeadNode1")
+
+		mockDeadNode2 := &provider_mocks.Provider{}
+		mockDeadNode2.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+		mockDeadNode2.On("ID").Return("mockDeadNode2")
+
 		c, err := light.NewClient(
 			ctx,
 			chainID,
 			trustOptions,
-			mockDeadNode,
-			[]provider.Provider{mockDeadNode, mockFullNode},
+			mockDeadNode1,
+			[]provider.Provider{mockFullNode, mockDeadNode2},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -751,7 +764,7 @@ func TestClient(t *testing.T) {
 		// we should still have the dead node as a witness because it
 		// hasn't repeatedly been unresponsive yet
 		assert.Equal(t, 2, len(c.Witnesses()))
-		mockDeadNode.AssertExpectations(t)
+		mockDeadNode1.AssertExpectations(t)
 		mockFullNode.AssertExpectations(t)
 	})
 	t.Run("BackwardsVerification", func(t *testing.T) {
@@ -777,7 +790,7 @@ func TestClient(t *testing.T) {
 					Hash:   trustHeader.Hash(),
 				},
 				mockLargeFullNode,
-				[]provider.Provider{mockLargeFullNode},
+				nil,
 				dbs.New(dbm.NewMemDB()),
 				light.Logger(logger),
 			)
@@ -836,7 +849,7 @@ func TestClient(t *testing.T) {
 					Hash:   h3.Hash(),
 				},
 				mockNode,
-				[]provider.Provider{mockNode},
+				nil,
 				dbs.New(dbm.NewMemDB()),
 				light.Logger(logger),
 			)
@@ -885,6 +898,7 @@ func TestClient(t *testing.T) {
 		}
 		mockBadNode1 := mockNodeFromHeadersAndVals(headers1, vals1)
 		mockBadNode1.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+		mockBadNode1.On("ID").Return("mockBadNode1")
 
 		// header is empty
 		headers2 := map[int64]*types.SignedHeader{
@@ -897,8 +911,10 @@ func TestClient(t *testing.T) {
 		}
 		mockBadNode2 := mockNodeFromHeadersAndVals(headers2, vals2)
 		mockBadNode2.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
+		mockBadNode2.On("ID").Return("mockBadNode2")
 
 		mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
+		mockFullNode.On("ID").Return("mockFullNode")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -956,6 +972,8 @@ func TestClient(t *testing.T) {
 				1: vals,
 				2: differentVals,
 			})
+		mockBadValSetNode.On("ID").Return("mockBadValSetNode")
+
 		mockFullNode := mockNodeFromHeadersAndVals(
 			map[int64]*types.SignedHeader{
 				1: h1,
@@ -965,13 +983,25 @@ func TestClient(t *testing.T) {
 				1: vals,
 				2: vals,
 			})
+		mockFullNode.On("ID").Return("mockFullNode")
+
+		mockGoodWitness := mockNodeFromHeadersAndVals(
+			map[int64]*types.SignedHeader{
+				1: h1,
+				2: h2,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				2: vals,
+			})
+		mockGoodWitness.On("ID").Return("mockGoodWitness")
 
 		c, err := light.NewClient(
 			ctx,
 			chainID,
 			trustOptions,
 			mockFullNode,
-			[]provider.Provider{mockBadValSetNode, mockFullNode},
+			[]provider.Provider{mockBadValSetNode, mockGoodWitness},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 		)
@@ -988,14 +1018,25 @@ func TestClient(t *testing.T) {
 		mockFullNode := mockNodeFromHeadersAndVals(
 			map[int64]*types.SignedHeader{
 				1: h1,
-				3: h3,
 				0: h3,
 			},
 			map[int64]*types.ValidatorSet{
 				1: vals,
-				3: vals,
 				0: vals,
 			})
+
+		mockFullNode.On("ID").Return("mockFullNode")
+
+		mockGoodWitness := mockNodeFromHeadersAndVals(
+			map[int64]*types.SignedHeader{
+				1: h1,
+				3: h3,
+			},
+			map[int64]*types.ValidatorSet{
+				1: vals,
+				3: vals,
+			})
+		mockGoodWitness.On("ID").Return("mockGoodWitness")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -1006,7 +1047,7 @@ func TestClient(t *testing.T) {
 			chainID,
 			trustOptions,
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			[]provider.Provider{mockGoodWitness},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(logger),
 			light.PruningSize(1),
@@ -1022,6 +1063,7 @@ func TestClient(t *testing.T) {
 		_, err = c.TrustedLightBlock(1)
 		assert.Error(t, err)
 		mockFullNode.AssertExpectations(t)
+		mockGoodWitness.AssertExpectations(t)
 	})
 	t.Run("EnsureValidHeadersAndValSets", func(t *testing.T) {
 		emptyValSet := &types.ValidatorSet{
@@ -1098,7 +1140,7 @@ func TestClient(t *testing.T) {
 					chainID,
 					trustOptions,
 					mockBadNode,
-					[]provider.Provider{mockBadNode, mockBadNode},
+					nil,
 					dbs.New(dbm.NewMemDB()),
 				)
 				require.NoError(t, err)

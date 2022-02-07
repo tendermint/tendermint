@@ -151,14 +151,29 @@ type Client struct {
 	logger log.Logger
 }
 
+func validatePrimaryAndWitnesses(primary provider.Provider, witnesses []provider.Provider) error {
+	witnessMap := make(map[string]struct{})
+	for _, w := range witnesses {
+		if w.ID() == primary.ID() {
+			return fmt.Errorf("primary cannot be also configured as witness")
+		}
+		if _, duplicate := witnessMap[w.ID()]; duplicate {
+			return fmt.Errorf("witness list must not contain duplicates")
+		}
+		witnessMap[w.ID()] = struct{}{}
+	}
+	return nil
+}
+
 // NewClient returns a new light client. It returns an error if it fails to
-// obtain the light block from the primary or they are invalid (e.g. trust
+// obtain the light block from the primary, or they are invalid (e.g. trust
 // hash does not match with the one from the headers).
 //
 // Witnesses are providers, which will be used for cross-checking the primary
-// provider. At least one witness must be given when skipping verification is
-// used (default). A witness can become a primary iff the current primary is
-// unavailable.
+// provider. At least one witness should be given when skipping verification is
+// used (default). A verified header is compared with the headers at same height
+// obtained from the specified witnesses. A witness can become a primary iff the
+// current primary is unavailable.
 //
 // See all Option(s) for the additional configuration.
 func NewClient(
@@ -170,6 +185,11 @@ func NewClient(
 	trustedStore store.Store,
 	options ...Option,
 ) (*Client, error) {
+
+	// Check that the witness list does not include duplicates or the primary
+	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
+		return nil, err
+	}
 
 	// Check whether the trusted store already has a trusted block. If so, then create
 	// a new client from the trusted store instead of the trust options.
@@ -966,11 +986,6 @@ func (c *Client) getLightBlock(ctx context.Context, p provider.Provider, height 
 func (c *Client) removeWitnesses(indexes []int) error {
 	if len(indexes) < 1 {
 		return nil
-	}
-
-	// check that we will still have witnesses remaining
-	if len(c.witnesses) <= len(indexes) {
-		return ErrNoWitnesses
 	}
 
 	// we need to make sure that we remove witnesses by index in the reverse
