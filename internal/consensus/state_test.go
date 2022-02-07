@@ -816,7 +816,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
-	propR1 := types.NewProposal(height, round, cs1.TwoThirdPrevoteRound, blockID, theBlock.Header.Time)
+	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID, theBlock.Header.Time)
 	p := propR1.ToProto()
 	err = vs2.SignProposal(ctx, cs1.state.ChainID, p)
 	require.NoError(t, err)
@@ -1630,7 +1630,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	round++
 	// Generate a new proposal block.
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
-	cs2.TwoThirdPrevoteRound = 1
+	cs2.ValidRound = 1
 	propR1, propBlockR1 := decideProposal(ctx, t, cs2, vs2, vs2.Height, round)
 	t.Log(propR1.POLRound)
 	propBlockR1Parts, err := propBlockR1.MakePartSet(partSize)
@@ -1789,9 +1789,9 @@ func TestProposeValidBlock(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), blockID.Hash))
-	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), rs.TwoThirdPrevoteBlock.Hash()))
-	assert.True(t, rs.Proposal.POLRound == rs.TwoThirdPrevoteRound)
-	assert.True(t, bytes.Equal(rs.Proposal.BlockID.Hash, rs.TwoThirdPrevoteBlock.Hash()))
+	assert.True(t, bytes.Equal(rs.ProposalBlock.Hash(), rs.ValidBlock.Hash()))
+	assert.True(t, rs.Proposal.POLRound == rs.ValidRound)
+	assert.True(t, bytes.Equal(rs.Proposal.BlockID.Hash, rs.ValidBlock.Hash()))
 }
 
 // What we want:
@@ -1847,9 +1847,9 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 
-	assert.True(t, rs.TwoThirdPrevoteBlock == nil)
-	assert.True(t, rs.TwoThirdPrevoteBlockParts == nil)
-	assert.True(t, rs.TwoThirdPrevoteRound == -1)
+	assert.True(t, rs.ValidBlock == nil)
+	assert.True(t, rs.ValidBlockParts == nil)
+	assert.True(t, rs.ValidRound == -1)
 
 	// vs2 send (delayed) prevote for propBlock
 	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vs4)
@@ -1858,9 +1858,9 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 
 	rs = cs1.GetRoundState()
 
-	assert.True(t, bytes.Equal(rs.TwoThirdPrevoteBlock.Hash(), blockID.Hash))
-	assert.True(t, rs.TwoThirdPrevoteBlockParts.Header().Equals(blockID.PartSetHeader))
-	assert.True(t, rs.TwoThirdPrevoteRound == round)
+	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), blockID.Hash))
+	assert.True(t, rs.ValidBlockParts.Header().Equals(blockID.PartSetHeader))
+	assert.True(t, rs.ValidRound == round)
 }
 
 // What we want:
@@ -1923,9 +1923,9 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	ensureNewProposal(t, proposalCh, height, round)
 	rs := cs1.GetRoundState()
 
-	assert.True(t, bytes.Equal(rs.TwoThirdPrevoteBlock.Hash(), blockID.Hash))
-	assert.True(t, rs.TwoThirdPrevoteBlockParts.Header().Equals(blockID.PartSetHeader))
-	assert.True(t, rs.TwoThirdPrevoteRound == round)
+	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), blockID.Hash))
+	assert.True(t, rs.ValidBlockParts.Header().Equals(blockID.PartSetHeader))
+	assert.True(t, rs.ValidRound == round)
 }
 
 // 4 vals, 3 Nil Precommits at P0
