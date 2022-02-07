@@ -30,7 +30,7 @@ func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command
 				return errors.New("must specify a node type: tendermint init [validator|full|seed]")
 			}
 			conf.Mode = args[0]
-			return initFilesWithConfig(cmd.Context(), conf, logger)
+			return initFilesWithConfig(cmd.Context(), conf, logger, keyType)
 		},
 	}
 
@@ -40,11 +40,10 @@ func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command
 	return cmd
 }
 
-func initFilesWithConfig(ctx context.Context, conf *config.Config, logger log.Logger) error {
+func initFilesWithConfig(ctx context.Context, conf *config.Config, logger log.Logger, keyType string) error {
 	var (
-		pv      *privval.FilePV
-		err     error
-		keyType string
+		pv  *privval.FilePV
+		err error
 	)
 
 	if conf.Mode == config.ModeValidator {
