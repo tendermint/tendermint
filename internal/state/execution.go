@@ -163,7 +163,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 		return err
 	}
 
-	err = blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+	err = blockExec.evpool.CheckEvidence(block.Evidence)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update evpool with the latest state.
-	blockExec.evpool.Update(state, block.Evidence.Evidence)
+	blockExec.evpool.Update(state, block.Evidence)
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
@@ -365,7 +365,7 @@ func execBlockOnProxyApp(
 	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
 	byzVals := make([]abci.Evidence, 0)
-	for _, evidence := range block.Evidence.Evidence {
+	for _, evidence := range block.Evidence {
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
 
@@ -578,8 +578,8 @@ func fireEvents(
 		logger.Error("failed publishing new block header", "err", err)
 	}
 
-	if len(block.Evidence.Evidence) != 0 {
-		for _, ev := range block.Evidence.Evidence {
+	if len(block.Evidence) != 0 {
+		for _, ev := range block.Evidence {
 			if err := eventBus.PublishEventNewEvidence(ctx, types.EventDataNewEvidence{
 				Evidence: ev,
 				Height:   block.Height,
