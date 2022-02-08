@@ -17,7 +17,11 @@
 >     [Milestone](https://github.com/tendermint/tendermint/milestones/123)
 >     [Project board](https://github.com/orgs/tendermint/projects/123)
 >
-> If an ADR is deprecated, simply write "Deprecated" in this section.
+> If an ADR is deprecated, simply write "Deprecated" in this section. If an ADR
+> is superseded by one or more other ADRs, provide a reference to those ADRs,
+> e.g.:
+>
+>     Superseded by [ADR 123](./adr-123.md)
 
 ## Context
 
