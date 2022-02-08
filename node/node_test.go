@@ -313,7 +313,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
-	evData := &types.EvidenceData{Evidence: evList}
+	evData := types.EvidenceList(evList)
 	require.EqualValues(t, size, evData.ByteSize())
 
 	// fill the mempool with more txs
@@ -336,10 +336,10 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	block, _, err := blockExec.CreateProposalBlock(
+		ctx,
 		height,
 		state, commit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -411,10 +411,10 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	block, _, err := blockExec.CreateProposalBlock(
+		ctx,
 		height,
 		state, commit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -522,10 +522,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 
 	block, partSet, err := blockExec.CreateProposalBlock(
+		ctx,
 		math.MaxInt64,
 		state, commit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 

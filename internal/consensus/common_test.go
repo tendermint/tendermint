@@ -240,7 +240,7 @@ func decideProposal(
 	t.Helper()
 
 	cs1.mtx.Lock()
-	block, blockParts, err := cs1.createProposalBlock()
+	block, blockParts, err := cs1.createProposalBlock(ctx)
 	require.NoError(t, err)
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID

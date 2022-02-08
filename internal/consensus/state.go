@@ -1268,7 +1268,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
-		block, blockParts, err = cs.createProposalBlock()
+		block, blockParts, err = cs.createProposalBlock(ctx)
 		if block == nil || err != nil {
 			return
 		}
@@ -1328,13 +1328,12 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet, err error) {
+func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, blockParts *types.PartSet, err error) {
 	if cs.privValidator == nil {
 		return nil, nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
 	var commit *types.Commit
-	var votes []*types.Vote
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
@@ -1344,7 +1343,6 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
-		votes = cs.LastCommit.GetVotes()
 
 	default: // This shouldn't happen.
 		cs.logger.Error("propose step; cannot propose anything without commit for the previous block")
@@ -1360,7 +1358,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, votes)
+	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1441,11 +1439,12 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 		return
 	}
 
-	// Validate proposal block
+	// Validate proposal block, from Tendermint's perspective
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		logger.Error("prevote step: ProposalBlock is invalid; prevoting nil", "err", err)
+		logger.Error("prevote step: consensus deems this block invalid; prevoting nil",
+			"err", err)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1506,6 +1505,30 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
 		}
+	}
+
+	/*
+		Before prevoting on the block received from the proposer for the current round and height,
+		we request the Application, via `ProcessProposal` ABCI call, to confirm that the block is
+		valid. If the Application does not accept the block, Tendermint prevotes `nil`.
+
+		WARNING: misuse of block rejection by the Application can seriously compromise Tendermint's
+		liveness properties. Please see `PrepareProosal`-`ProcessProposal` coherence and determinism
+		properties in the ABCI++ specification.
+	*/
+	stateMachineValidBlock, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock)
+	if err != nil {
+		panic(fmt.Sprintf(
+			"state machine returned an error (%v) when calling ProcessProposal", err,
+		))
+	}
+
+	// Vote nil if the Application rejected the block
+	if !stateMachineValidBlock {
+		logger.Error("prevote step: state machine rejected a proposed block; this should not happen:"+
+			"the proposer may be misbehaving; prevoting nil", "err", err)
+		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
 	}
 
 	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or " +
@@ -1962,7 +1985,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 		byzantineValidatorsCount int64
 	)
 
-	for _, ev := range block.Evidence.Evidence {
+	for _, ev := range block.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
 				byzantineValidatorsCount++
@@ -2237,7 +2260,7 @@ func (cs *State) addVote(
 
 	// Verify VoteExtension if precommit
 	if vote.Type == tmproto.PrecommitType {
-		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
+		if err = cs.blockExec.VerifyVoteExtension(ctx, vote); err != nil {
 			return false, err
 		}
 	}
@@ -2387,7 +2410,7 @@ func (cs *State) signVote(
 	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
 		// if the signedMessage type is for a precommit, add VoteExtension
-		ext, err := cs.blockExec.ExtendVote(vote)
+		ext, err := cs.blockExec.ExtendVote(ctx, vote)
 		if err != nil {
 			return nil, err
 		}

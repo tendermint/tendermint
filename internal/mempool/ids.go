@@ -30,6 +30,11 @@ func (ids *IDs) ReserveForPeer(peerID types.NodeID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
+	if _, ok := ids.peerMap[peerID]; ok {
+		// the peer has been reserved
+		return
+	}
+
 	curID := ids.nextPeerID()
 	ids.peerMap[peerID] = curID
 	ids.activeIDs[curID] = struct{}{}
@@ -44,6 +49,9 @@ func (ids *IDs) Reclaim(peerID types.NodeID) {
 	if ok {
 		delete(ids.activeIDs, removedID)
 		delete(ids.peerMap, peerID)
+		if removedID < ids.nextID {
+			ids.nextID = removedID
+		}
 	}
 }
 

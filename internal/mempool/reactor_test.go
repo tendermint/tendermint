@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -370,13 +371,14 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	// 0 is already reserved for UnknownPeerID
 	ids := NewMempoolIDs()
 
-	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
-	require.NoError(t, err)
-
 	for i := 0; i < MaxActiveIDs-1; i++ {
+		peerID, err := types.NewNodeID(fmt.Sprintf("%040d", i))
+		require.NoError(t, err)
 		ids.ReserveForPeer(peerID)
 	}
 
+	peerID, err := types.NewNodeID(fmt.Sprintf("%040d", MaxActiveIDs-1))
+	require.NoError(t, err)
 	require.Panics(t, func() {
 		ids.ReserveForPeer(peerID)
 	})

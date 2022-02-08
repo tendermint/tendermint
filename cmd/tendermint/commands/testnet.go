@@ -138,7 +138,7 @@ Example:
 				return err
 			}
 
-			if err := initFilesWithConfig(ctx, config, logger); err != nil {
+			if err := initFilesWithConfig(ctx, config, logger, keyType); err != nil {
 				return err
 			}
 
@@ -180,7 +180,7 @@ Example:
 				return err
 			}
 
-			if err := initFilesWithConfig(ctx, conf, logger); err != nil {
+			if err := initFilesWithConfig(ctx, conf, logger, keyType); err != nil {
 				return err
 			}
 		}

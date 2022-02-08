@@ -102,10 +102,10 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 //
 // Contract: application will not return more bytes than are sent over the wire.
 func (blockExec *BlockExecutor) CreateProposalBlock(
+	ctx context.Context,
 	height int64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
-	votes []*types.Vote,
 ) (*types.Block, *types.PartSet, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -119,12 +119,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
 	preparedProposal, err := blockExec.proxyApp.PrepareProposal(
-		context.Background(),
-		abci.RequestPrepareProposal{
-			BlockData:     txs.ToSliceOfBytes(),
-			BlockDataSize: maxDataBytes,
-			Votes:         types.VotesToProto(votes),
-		},
+		ctx,
+		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes(), BlockDataSize: maxDataBytes},
 	)
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
@@ -152,6 +148,23 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
 
+func (blockExec *BlockExecutor) ProcessProposal(
+	ctx context.Context,
+	block *types.Block,
+) (bool, error) {
+	req := abci.RequestProcessProposal{
+		Txs:    block.Data.Txs.ToSliceOfBytes(),
+		Header: *block.Header.ToProto(),
+	}
+
+	resp, err := blockExec.proxyApp.ProcessProposal(ctx, req)
+	if err != nil {
+		return false, ErrInvalidBlock(err)
+	}
+
+	return resp.IsOK(), nil
+}
+
 // ValidateBlock validates the given block against the given state.
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
@@ -167,7 +180,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 		return err
 	}
 
-	err = blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+	err = blockExec.evpool.CheckEvidence(block.Evidence)
 	if err != nil {
 		return err
 	}
@@ -237,7 +250,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update evpool with the latest state.
-	blockExec.evpool.Update(state, block.Evidence.Evidence)
+	blockExec.evpool.Update(state, block.Evidence)
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
@@ -265,8 +278,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtension, error) {
-	ctx := context.Background()
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) (types.VoteExtension, error) {
 	req := abci.RequestExtendVote{
 		Vote: vote.ToProto(),
 	}
@@ -275,11 +287,11 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtensio
 	if err != nil {
 		return types.VoteExtension{}, err
 	}
+
 	return types.VoteExtensionFromProto(resp.VoteExtension), nil
 }
 
-func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
-	ctx := context.Background()
+func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
 	req := abci.RequestVerifyVoteExtension{
 		Vote: vote.ToProto(),
 	}
@@ -370,7 +382,7 @@ func execBlockOnProxyApp(
 	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
 	byzVals := make([]abci.Evidence, 0)
-	for _, evidence := range block.Evidence.Evidence {
+	for _, evidence := range block.Evidence {
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
 
@@ -583,8 +595,8 @@ func fireEvents(
 		logger.Error("failed publishing new block header", "err", err)
 	}
 
-	if len(block.Evidence.Evidence) != 0 {
-		for _, ev := range block.Evidence.Evidence {
+	if len(block.Evidence) != 0 {
+		for _, ev := range block.Evidence {
 			if err := eventBus.PublishEventNewEvidence(ctx, types.EventDataNewEvidence{
 				Evidence: ev,
 				Height:   block.Height,
