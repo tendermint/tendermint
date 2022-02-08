@@ -155,10 +155,10 @@ func validatePrimaryAndWitnesses(primary provider.Provider, witnesses []provider
 	witnessMap := make(map[string]struct{})
 	for _, w := range witnesses {
 		if w.ID() == primary.ID() {
-			return fmt.Errorf("primary cannot be also configured as witness")
+			return fmt.Errorf("primary (%s) cannot be also configured as witness", primary.ID())
 		}
 		if _, duplicate := witnessMap[w.ID()]; duplicate {
-			return fmt.Errorf("witness list must not contain duplicates")
+			return fmt.Errorf("witness list must not contain duplicates; duplicate found: %s", w.ID())
 		}
 		witnessMap[w.ID()] = struct{}{}
 	}
