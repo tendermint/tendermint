@@ -112,8 +112,10 @@ func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32)
 	rhs := p.Timestamp.Add(msgDelay).Add(sp.Precision)
 
 	if recvTime.Before(lhs) || recvTime.After(rhs) {
+		fmt.Println("NOT TIMELY")
 		return false
 	}
+	fmt.Println("TIMELY")
 	return true
 }
 
