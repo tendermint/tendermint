@@ -518,7 +518,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 
 	_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(1*time.Hour))
 	assert.Error(t, err)
-	assert.Equal(t, 0, len(c.Witnesses()))
+	assert.Equal(t, 1, len(c.Witnesses()))
 	mockWitness.AssertExpectations(t)
 	mockPrimary.AssertExpectations(t)
 }
@@ -563,7 +563,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 
 	_, err = c.VerifyLightBlockAtHeight(ctx, 2, bTime.Add(1*time.Hour))
 	assert.Error(t, err)
-	assert.Equal(t, 0, len(c.Witnesses()))
+	assert.Equal(t, 1, len(c.Witnesses()))
 	mockWitness.AssertExpectations(t)
 	mockPrimary.AssertExpectations(t)
 }

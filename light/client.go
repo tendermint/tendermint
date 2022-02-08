@@ -984,8 +984,8 @@ func (c *Client) getLightBlock(ctx context.Context, p provider.Provider, height 
 
 // NOTE: requires a providerMutex lock
 func (c *Client) removeWitnesses(indexes []int) error {
-	if len(indexes) < 1 {
-		return nil
+	if len(c.witnesses) <= len(indexes) {
+		return ErrNoWitnesses
 	}
 
 	// we need to make sure that we remove witnesses by index in the reverse
