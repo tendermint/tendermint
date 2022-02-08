@@ -1444,7 +1444,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("prevote step: consensus deems this block invalid; prevoting nil",
-					 "err", err)
+			"err", err)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1525,14 +1525,14 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 
 	// Vote nil if the Application rejected the block
 	if !stateMachineValidBlock {
-		logger.Error("prevote step: state machine rejected a proposed block; this should not happen:" +
-		             "the proposer may be misbehaving; prevoting nil", "err", err)
+		logger.Error("prevote step: state machine rejected a proposed block; this should not happen:"+
+			"the proposer may be misbehaving; prevoting nil", "err", err)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
 
 	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or " +
-				 "did not receive a more recent majority; prevoting nil")
+		"did not receive a more recent majority; prevoting nil")
 	cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
 
