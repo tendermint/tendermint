@@ -225,7 +225,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
 	require.NoError(t, err)
-	block.Evidence = types.EvidenceData{Evidence: ev}
+	block.Evidence = ev
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
