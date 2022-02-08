@@ -6,12 +6,18 @@
 
 ## Status
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted"
-> once it is agreed upon. Once the ADR has been implemented mark the ADR as
-> "implemented". If a later ADR changes or reverses a decision, it may be marked
-> as "deprecated" or "superseded" with a reference to its replacement.
-
-{Deprecated|Declined|Accepted|Implemented}
+> An architecture decision is considered "proposed" when a PR containing the ADR
+> is submitted. An ADR that is merged is automatically considered "accepted",
+> and its implementation status must be tracked via a tracking issue, milestone
+> or project board.
+>
+> Link to the relevant tracking mechanism in this section. For example:
+>
+>     [Tracking issue](https://github.com/tendermint/tendermint/issues/123)
+>     [Milestone](https://github.com/tendermint/tendermint/milestones/123)
+>     [Project board](https://github.com/orgs/tendermint/projects/123)
+>
+> If an ADR is deprecated, simply write "Deprecated" in this section.
 
 ## Context
 
