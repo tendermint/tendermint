@@ -268,8 +268,12 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 		res.Version.AppVersion = params2.Version.AppVersion
 	}
 	if params2.Synchrony != nil {
-		res.Synchrony.Precision = params2.Synchrony.Precision
-		res.Synchrony.MessageDelay = params2.Synchrony.MessageDelay
+		if m := params2.Synchrony.GetMessageDelay(); m != nil {
+			res.Synchrony.MessageDelay = *m
+		}
+		if p := params2.Synchrony.GetPrecision(); p != nil {
+			res.Synchrony.Precision = *p
+		}
 	}
 	return res
 }
@@ -292,32 +296,44 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 			AppVersion: params.Version.AppVersion,
 		},
 		Synchrony: &tmproto.SynchronyParams{
-			MessageDelay: params.Synchrony.MessageDelay,
-			Precision:    params.Synchrony.Precision,
+			MessageDelay: &params.Synchrony.MessageDelay,
+			Precision:    &params.Synchrony.Precision,
 		},
 	}
 }
 
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
-		Block: BlockParams{
+	c := ConsensusParams{}
+	if pbParams.Block != nil {
+		c.Block = BlockParams{
 			MaxBytes: pbParams.Block.MaxBytes,
 			MaxGas:   pbParams.Block.MaxGas,
-		},
-		Evidence: EvidenceParams{
+		}
+	}
+	if pbParams.Evidence != nil {
+		c.Evidence = EvidenceParams{
 			MaxAgeNumBlocks: pbParams.Evidence.MaxAgeNumBlocks,
 			MaxAgeDuration:  pbParams.Evidence.MaxAgeDuration,
 			MaxBytes:        pbParams.Evidence.MaxBytes,
-		},
-		Validator: ValidatorParams{
-			PubKeyTypes: pbParams.Validator.PubKeyTypes,
-		},
-		Version: VersionParams{
-			AppVersion: pbParams.Version.AppVersion,
-		},
-		Synchrony: SynchronyParams{
-			MessageDelay: pbParams.Synchrony.MessageDelay,
-			Precision:    pbParams.Synchrony.Precision,
-		},
+		}
 	}
+	if pbParams.Validator != nil {
+		c.Validator = ValidatorParams{
+			PubKeyTypes: pbParams.Validator.PubKeyTypes,
+		}
+	}
+	if pbParams.Version != nil {
+		c.Version = VersionParams{
+			AppVersion: pbParams.Version.AppVersion,
+		}
+	}
+	if pbParams.Synchrony != nil {
+		if m := pbParams.Synchrony.GetMessageDelay(); m != nil {
+			c.Synchrony.MessageDelay = *m
+		}
+		if p := pbParams.Synchrony.GetPrecision(); p != nil {
+			c.Synchrony.Precision = *p
+		}
+	}
+	return c
 }
