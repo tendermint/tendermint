@@ -1278,7 +1278,9 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 
 	stateMachineValidBlock, err := cs.blockExec.ProcessProposal(cs.ProposalBlock)
 	if err != nil {
-		cs.Logger.Error("state machine returned an error when trying to process proposal block", "err", err)
+		panic(fmt.Sprintf(
+			"state machine returned an error (%v) when calling ProcessProposal", err,
+		))
 	}
 
 	// Vote nil if application invalidated the block
