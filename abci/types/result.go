@@ -58,19 +58,9 @@ func (r ResponseVerifyVoteExtension) IsErr() bool {
 	return r.Result != ResponseVerifyVoteExtension_ACCEPT
 }
 
-// IsUnknown returns true if Code is Unknown
-func (r ResponseProcessProposal) IsUnknown() bool {
-	return r.Result == ResponseProcessProposal_UNKNOWN
-}
-
 // IsOK returns true if Code is OK
 func (r ResponseProcessProposal) IsOK() bool {
 	return r.Result == ResponseProcessProposal_ACCEPT
-}
-
-// IsErr returns true if Code is something other than OK.
-func (r ResponseProcessProposal) IsErr() bool {
-	return r.Result != ResponseProcessProposal_ACCEPT
 }
 
 //---------------------------------------------------------------------------
