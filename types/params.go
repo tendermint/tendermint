@@ -147,7 +147,7 @@ func (val *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 }
 
 func (params *ConsensusParams) Complete() {
-	if params.Synchrony.MessageDelay == 0 && params.Synchrony.Precision == 0 {
+	if params.Synchrony == (SynchronyParams{}) {
 		params.Synchrony = DefaultSynchronyParams()
 	}
 }
