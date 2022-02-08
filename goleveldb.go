@@ -166,6 +166,10 @@ func (db *GoLevelDB) Stats() map[string]string {
 	return stats
 }
 
+func (db *GoLevelDB) ForceCompact(start, limit []byte) error {
+	return db.db.CompactRange(util.Range{Start: start, Limit: limit})
+}
+
 // NewBatch implements DB.
 func (db *GoLevelDB) NewBatch() Batch {
 	return newGoLevelDBBatch(db)
