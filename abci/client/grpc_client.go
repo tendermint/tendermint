@@ -377,6 +377,14 @@ func (cli *grpcClient) PrepareProposal(
 	return cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
 }
 
+func (cli *grpcClient) ProcessProposal(
+	ctx context.Context,
+	params types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+
+	req := types.ToRequestProcessProposal(params)
+	return cli.client.ProcessProposal(ctx, req.GetProcessProposal(), grpc.WaitForReady(true))
+}
+
 func (cli *grpcClient) ExtendVote(
 	ctx context.Context,
 	params types.RequestExtendVote) (*types.ResponseExtendVote, error) {

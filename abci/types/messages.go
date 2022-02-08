@@ -128,6 +128,12 @@ func ToRequestPrepareProposal(req RequestPrepareProposal) *Request {
 	}
 }
 
+func ToRequestProcessProposal(req RequestProcessProposal) *Request {
+	return &Request{
+		Value: &Request_ProcessProposal{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -234,5 +240,11 @@ func ToResponseVerifyVoteExtension(res ResponseVerifyVoteExtension) *Response {
 func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {
 	return &Response{
 		Value: &Response_PrepareProposal{&res},
+	}
+}
+
+func ToResponseProcessProposal(res ResponseProcessProposal) *Response {
+	return &Response{
+		Value: &Response_ProcessProposal{&res},
 	}
 }
