@@ -837,6 +837,8 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 	defer cancel()
 
 	signal := make(chan struct{})
+	once := &sync.Once{}
+	closeSignal := func() { once.Do(func() { close(signal) }) }
 	for {
 		if !ps.IsRunning() {
 			return
@@ -877,7 +879,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 							BlockID: maj23.ToProto(),
 						},
 					}); err != nil {
-						close(signal)
+						closeSignal()
 					}
 				}
 			}(rs, prs)
@@ -898,7 +900,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 								BlockID: maj23.ToProto(),
 							},
 						}); err != nil {
-							close(signal)
+							closeSignal()
 						}
 					}
 				}(rs, prs)
@@ -919,7 +921,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 							BlockID: maj23.ToProto(),
 						},
 					}); err != nil {
-						close(signal)
+						closeSignal()
 					}
 				}
 			}(rs, prs)
