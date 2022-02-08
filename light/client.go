@@ -1008,17 +1008,11 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
 			defer wg.Done()
 
-<<<<<<< HEAD
-			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
-			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
-=======
 			lb, err := c.witnesses[witnessIndex].LightBlock(ctx, height)
 			select {
 			case witnessResponsesC <- witnessResponse{lb, witnessIndex, err}:
 			case <-ctx.Done():
 			}
-
->>>>>>> fd50d90b7 (light: remove legacy timeout scheme (#7776))
 		}(index, witnessResponsesC)
 	}
 
