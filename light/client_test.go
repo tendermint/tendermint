@@ -865,13 +865,15 @@ func TestClient(t *testing.T) {
 		db := dbs.New(dbm.NewMemDB())
 		err := db.SaveLightBlock(l1)
 		require.NoError(t, err)
-		mockNode := &provider_mocks.Provider{}
-
+		mockPrimary := &provider_mocks.Provider{}
+		mockPrimary.On("ID").Return("mockPrimary")
+		mockWitness := &provider_mocks.Provider{}
+		mockWitness.On("ID").Return("mockWitness")
 		c, err := light.NewClientFromTrustedStore(
 			chainID,
 			trustPeriod,
-			mockNode,
-			[]provider.Provider{mockNode},
+			mockPrimary,
+			[]provider.Provider{mockWitness},
 			db,
 		)
 		require.NoError(t, err)
@@ -880,7 +882,8 @@ func TestClient(t *testing.T) {
 		h, err := c.TrustedLightBlock(1)
 		assert.NoError(t, err)
 		assert.EqualValues(t, l1.Height, h.Height)
-		mockNode.AssertExpectations(t)
+		mockPrimary.AssertExpectations(t)
+		mockWitness.AssertExpectations(t)
 	})
 	t.Run("RemovesWitnessIfItSendsUsIncorrectHeader", func(t *testing.T) {
 		logger := log.NewTestingLogger(t)

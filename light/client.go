@@ -186,11 +186,6 @@ func NewClient(
 	options ...Option,
 ) (*Client, error) {
 
-	// Check that the witness list does not include duplicates or the primary
-	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
-		return nil, err
-	}
-
 	// Check whether the trusted store already has a trusted block. If so, then create
 	// a new client from the trusted store instead of the trust options.
 	lastHeight, err := trustedStore.LastLightBlockHeight()
@@ -201,6 +196,11 @@ func NewClient(
 		return NewClientFromTrustedStore(
 			chainID, trustOptions.Period, primary, witnesses, trustedStore, options...,
 		)
+	}
+
+	// Check that the witness list does not include duplicates or the primary
+	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
+		return nil, err
 	}
 
 	// Validate trust options
@@ -250,6 +250,11 @@ func NewClientFromTrustedStore(
 	witnesses []provider.Provider,
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
+
+	// Check that the witness list does not include duplicates or the primary
+	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
+		return nil, err
+	}
 
 	c := &Client{
 		chainID:          chainID,
