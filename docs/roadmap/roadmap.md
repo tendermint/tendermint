@@ -4,7 +4,7 @@ order: 1
 
 # Tendermint Roadmap
 
-*Last Updated: Fridya 4 February 2022*
+*Last Updated: Friday 4 February 2022*
 
 This document endeavours to inform the wider Tendermint community about development plans and priorities for Tendermint Core, and when we expect features to be delivered. It is intended to broadly inform all users of Tendermint, including application developers, node operators, integrators, and the engineering and research teams.
 
@@ -60,7 +60,7 @@ The websocket-based RPC event subscription API has been an ongoing pain point fo
 - Improve life cycle management of a node and its reactors.
 - Remove redundancy in several data structures. Remove unused components such as the block sync v2 reactor, gRPC in the RPC layer, and the socket-based remote signer.
 - Improve node visibility through the introduction of more metrics
-- Migrating locally configured consensus timeouts to global consensus params. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-074-timeout-params.md)
+- Migrating locally configured consensus timeouts to global consensus parameters. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-074-timeout-params.md)
 
 ## V0.37 (expected Q3 2022)
 
