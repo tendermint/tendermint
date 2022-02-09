@@ -27,15 +27,11 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
 	ar := app.FinalizeBlock(req)
 	require.Equal(t, 1, len(ar.Txs))
-	for _, tx := range ar.Txs {
-		require.False(t, tx.IsErr(), ar)
-	}
+	require.False(t, ar.Txs[0].IsErr())
 	// repeating tx doesn't raise error
 	ar = app.FinalizeBlock(req)
 	require.Equal(t, 1, len(ar.Txs))
-	for _, tx := range ar.Txs {
-		require.False(t, tx.IsErr(), ar)
-	}
+	require.False(t, ar.Txs[0].IsErr())
 	// commit
 	app.Commit()
 
@@ -327,15 +323,13 @@ func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client)
 func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
 	ar, err := app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
-	for _, tx := range ar.Txs {
-		require.False(t, tx.IsErr(), ar)
-	}
+	require.Equal(t, 1, len(ar.Txs))
+	require.False(t, ar.Txs[0].IsErr())
 	// repeating FinalizeBlock doesn't raise error
 	ar, err = app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
-	for _, tx := range ar.Txs {
-		require.False(t, tx.IsErr(), ar)
-	}
+	require.Equal(t, 1, len(ar.Txs))
+	require.False(t, ar.Txs[0].IsErr())
 	// commit
 	_, err = app.Commit(ctx)
 	require.NoError(t, err)

@@ -86,39 +86,42 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+func (app *Application) DeliverTx(tx []byte) *types.ResponseDeliverTx {
 	var key, value string
-	txs := make([]*types.ResponseDeliverTx, len(req.Txs))
-
-	for i, tx := range req.Txs {
-		parts := bytes.Split(tx, []byte("="))
-		if len(parts) == 2 {
-			key, value = string(parts[0]), string(parts[1])
-		} else {
-			key, value = string(tx), string(tx)
-		}
-
-		err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
-		if err != nil {
-			panic(err)
-		}
-		app.state.Size++
-
-		events := []types.Event{
-			{
-				Type: "app",
-				Attributes: []types.EventAttribute{
-					{Key: "creator", Value: "Cosmoshi Netowoko", Index: true},
-					{Key: "key", Value: key, Index: true},
-					{Key: "index_key", Value: "index is working", Index: true},
-					{Key: "noindex_key", Value: "index is working", Index: false},
-				},
-			},
-		}
-
-		txs[i] = &types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+	parts := bytes.Split(tx, []byte("="))
+	if len(parts) == 2 {
+		key, value = string(parts[0]), string(parts[1])
+	} else {
+		key, value = string(tx), string(tx)
 	}
 
+	err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
+	if err != nil {
+		panic(err)
+	}
+	app.state.Size++
+
+	events := []types.Event{
+		{
+			Type: "app",
+			Attributes: []types.EventAttribute{
+				{Key: "creator", Value: "Cosmoshi Netowoko", Index: true},
+				{Key: "key", Value: key, Index: true},
+				{Key: "index_key", Value: "index is working", Index: true},
+				{Key: "noindex_key", Value: "index is working", Index: false},
+			},
+		},
+	}
+
+	return &types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+}
+
+
+func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+	txs := make([]*types.ResponseDeliverTx, len(req.Txs))
+	for i, tx := range req.Txs {
+		txs[i] = app.DeliverTx(tx)
+	}
 	return types.ResponseFinalizeBlock{Txs: txs}
 }
 
