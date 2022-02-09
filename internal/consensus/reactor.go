@@ -1009,6 +1009,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// do not spawn multiple instances of the same goroutines and finally we
 			// set the waitgroup counter so we know when all goroutines have exited.
 			ps.SetRunning(true)
+			ctx, ps.cancel = context.WithCancel(ctx)
 
 			go func() {
 				select {
@@ -1045,6 +1046,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 				r.mtx.Unlock()
 
 				ps.SetRunning(false)
+				ps.cancel()
 			}()
 		}
 	}
