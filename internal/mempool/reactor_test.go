@@ -171,7 +171,6 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	// run the router
 	rts.start(ctx, t)
 
-	primaryReactor.peerWG.Add(1)
 	go primaryReactor.broadcastTxRoutine(ctx, secondary)
 
 	wg := &sync.WaitGroup{}
@@ -186,7 +185,6 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 
 	err := primaryReactor.Stop()
 	require.NoError(t, err)
-	primaryReactor.peerWG.Wait()
 	wg.Wait()
 }
 

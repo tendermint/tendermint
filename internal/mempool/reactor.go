@@ -48,10 +48,6 @@ type Reactor struct {
 	mempoolCh   *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 
-	// peerWG is used to coordinate graceful termination of all peer broadcasting
-	// goroutines.
-	peerWG sync.WaitGroup
-
 	// observePanic is a function for observing panics that were recovered in methods on
 	// Reactor. observePanic is called with the recovered value.
 	observePanic func(interface{})
@@ -130,10 +126,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
-func (r *Reactor) OnStop() {
-	// wait for all spawned peer tx broadcasting goroutines to gracefully exit
-	r.peerWG.Wait()
-}
+func (r *Reactor) OnStop() {}
 
 // handleMempoolMessage handles envelopes sent from peers on the MempoolChannel.
 // For every tx in the message, we execute CheckTx. It returns an error if an
@@ -243,7 +236,6 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			if !ok {
 				pctx, pcancel := context.WithCancel(ctx)
 				r.peerRoutines[peerUpdate.NodeID] = pcancel
-				r.peerWG.Add(1)
 
 				r.ids.ReserveForPeer(peerUpdate.NodeID)
 
@@ -289,8 +281,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID) {
 		r.mtx.Lock()
 		delete(r.peerRoutines, peerID)
 		r.mtx.Unlock()
-
-		r.peerWG.Done()
 
 		if e := recover(); e != nil {
 			r.observePanic(e)
