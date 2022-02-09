@@ -836,9 +836,6 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	signal := make(chan struct{})
-	once := &sync.Once{}
-	closeSignal := func() { once.Do(func() { close(signal) }) }
 	for {
 		if !ps.IsRunning() {
 			return
@@ -846,8 +843,6 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 
 		select {
 		case <-ctx.Done():
-			return
-		case <-signal:
 			return
 		case <-timer.C:
 		}
@@ -879,7 +874,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 							BlockID: maj23.ToProto(),
 						},
 					}); err != nil {
-						closeSignal()
+						cancel()
 					}
 				}
 			}(rs, prs)
@@ -900,7 +895,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 								BlockID: maj23.ToProto(),
 							},
 						}); err != nil {
-							closeSignal()
+							cancel()
 						}
 					}
 				}(rs, prs)
@@ -921,7 +916,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 							BlockID: maj23.ToProto(),
 						},
 					}); err != nil {
-						closeSignal()
+						cancel()
 					}
 				}
 			}(rs, prs)
@@ -946,7 +941,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 								BlockID: commit.BlockID.ToProto(),
 							},
 						}); err != nil {
-							close(signal)
+							cancel()
 						}
 					}
 				}
@@ -954,16 +949,11 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 		}
 
 		waitSignal := make(chan struct{})
-		go func() {
-			defer close(waitSignal)
-			wg.Wait()
-		}()
+		go func() { defer close(waitSignal); wg.Wait() }()
 
 		select {
 		case <-waitSignal:
 			timer.Reset(r.state.config.PeerQueryMaj23SleepDuration)
-		case <-signal:
-			return
 		case <-ctx.Done():
 			return
 		}
