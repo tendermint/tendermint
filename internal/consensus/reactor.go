@@ -751,13 +751,7 @@ func (r *Reactor) gossipVotesRoutine(ps *PeerState) {
 	// XXX: simple hack to throttle logs upon sleep
 	logThrottle := 0
 
-<<<<<<< HEAD
 OUTER_LOOP:
-=======
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 	for {
 		if !r.IsRunning() {
 			return
@@ -784,15 +778,8 @@ OUTER_LOOP:
 
 		// if height matches, then send LastCommit, Prevotes, and Precommits
 		if rs.Height == prs.Height {
-<<<<<<< HEAD
 			if r.gossipVotesForHeight(rs, prs, ps) {
 				continue OUTER_LOOP
-=======
-			if ok, err := r.gossipVotesForHeight(ctx, rs, prs, ps); err != nil {
-				return
-			} else if ok {
-				continue
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 			}
 		}
 
@@ -831,34 +818,17 @@ OUTER_LOOP:
 			logThrottle = 1
 		}
 
-<<<<<<< HEAD
 		time.Sleep(r.state.config.PeerGossipSleepDuration)
 		continue OUTER_LOOP
-=======
-		timer.Reset(r.state.config.PeerGossipSleepDuration)
-		select {
-		case <-ctx.Done():
-			return
-		case <-timer.C:
-		}
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 	}
 }
 
 // NOTE: `queryMaj23Routine` has a simple crude design since it only comes
 // into play for liveness when there's a signature DDoS attack happening.
-<<<<<<< HEAD
 func (r *Reactor) queryMaj23Routine(ps *PeerState) {
-OUTER_LOOP:
-=======
-func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 	for {
 		if !ps.IsRunning() {
 			return
@@ -867,16 +837,11 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 		select {
 		case <-r.closeCh:
 			return
-<<<<<<< HEAD
 		case <-ps.closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
 			return
-
-		default:
-=======
 		case <-timer.C:
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 		}
 
 		if !ps.IsRunning() {
@@ -910,17 +875,8 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
 						},
-<<<<<<< HEAD
 					}:
-
 					}
-
-					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
-=======
-					}); err != nil {
-						cancel()
-					}
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 				}
 			}(rs, prs)
 
@@ -931,7 +887,12 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 
 					// maybe send Height/Round/ProposalPOL
 					if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-						if err := r.stateCh.Send(ctx, p2p.Envelope{
+						select {
+						case <-ps.closer.Done():
+							return
+						case <-r.closeCh:
+							return
+						case r.stateCh.Out <- p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.VoteSetMaj23{
 								Height:  prs.Height,
@@ -939,142 +900,52 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 								Type:    tmproto.PrevoteType,
 								BlockID: maj23.ToProto(),
 							},
-						}); err != nil {
-							cancel()
+						}:
 						}
+					}
+				}(rs, prs)
+
+				wg.Add(1)
+				go func(rs *cstypes.RoundState, prs *cstypes.PeerRoundState) {
+					defer wg.Done()
+
+					// maybe send Height/Round/Precommits
+					if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
+						select {
+						case <-ps.closer.Done():
+							return
+						case <-r.closeCh:
+							return
+						case r.stateCh.Out <- p2p.Envelope{
+							To: ps.peerID,
+							Message: &tmcons.VoteSetMaj23{
+								Height:  prs.Height,
+								Round:   prs.Round,
+								Type:    tmproto.PrecommitType,
+								BlockID: maj23.ToProto(),
+							},
+						}:
+						}
+
+						time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 					}
 				}(rs, prs)
 			}
 
-			wg.Add(1)
-			go func(rs *cstypes.RoundState, prs *cstypes.PeerRoundState) {
-				defer wg.Done()
+			waitSignal := make(chan struct{})
+			go func() { defer close(waitSignal); wg.Wait() }()
 
-				// maybe send Height/Round/Precommits
-				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-					select {
-					case <-ps.closer.Done():
-						return
-					case <-r.closeCh:
-						return
-					case r.stateCh.Out <- p2p.Envelope{
-						To: ps.peerID,
-						Message: &tmcons.VoteSetMaj23{
-							Height:  prs.Height,
-							Round:   prs.Round,
-							Type:    tmproto.PrecommitType,
-							BlockID: maj23.ToProto(),
-						},
-<<<<<<< HEAD
-					}:
-					}
-
-					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
-				}
+			select {
+			case <-r.closeCh:
+				return
+			case <-ps.closer.Done():
+				// The peer is marked for removal via a PeerUpdate as the doneCh was
+				// explicitly closed to signal we should exit.
+				return
+			case <-waitSignal:
+				timer.Reset(r.state.config.PeerQueryMaj23SleepDuration)
 			}
 		}
-
-		// maybe send Height/Round/ProposalPOL
-		{
-			rs := r.state.GetRoundState()
-			prs := ps.GetRoundState()
-
-			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
-				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-					select {
-					case <-ps.closer.Done():
-						return
-					case <-r.closeCh:
-						return
-					case r.stateCh.Out <- p2p.Envelope{
-						To: ps.peerID,
-						Message: &tmcons.VoteSetMaj23{
-							Height:  prs.Height,
-							Round:   prs.ProposalPOLRound,
-							Type:    tmproto.PrevoteType,
-							BlockID: maj23.ToProto(),
-						},
-					}:
-					}
-					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
-				}
-			}
-=======
-					}); err != nil {
-						cancel()
-					}
-				}
-			}(rs, prs)
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
-		}
-
-		// Little point sending LastCommitRound/LastCommit, these are fleeting and
-		// non-blocking.
-		if prs.CatchupCommitRound != -1 && prs.Height > 0 {
-			wg.Add(1)
-			go func(rs *cstypes.RoundState, prs *cstypes.PeerRoundState) {
-				defer wg.Done()
-
-<<<<<<< HEAD
-		// maybe send Height/CatchupCommitRound/CatchupCommit
-		{
-			prs := ps.GetRoundState()
-
-			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.state.blockStore.Height() &&
-				prs.Height >= r.state.blockStore.Base() {
-				if commit := r.state.LoadCommit(prs.Height); commit != nil {
-					select {
-					case <-ps.closer.Done():
-						return
-					case <-r.closeCh:
-						return
-					case r.stateCh.Out <- p2p.Envelope{
-						To: ps.peerID,
-						Message: &tmcons.VoteSetMaj23{
-							Height:  prs.Height,
-							Round:   commit.Round,
-							Type:    tmproto.PrecommitType,
-							BlockID: commit.BlockID.ToProto(),
-						},
-					}:
-					}
-
-					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
-=======
-				if prs.Height <= r.state.blockStore.Height() && prs.Height >= r.state.blockStore.Base() {
-					// maybe send Height/CatchupCommitRound/CatchupCommit
-					if commit := r.state.LoadCommit(prs.Height); commit != nil {
-						if err := r.stateCh.Send(ctx, p2p.Envelope{
-							To: ps.peerID,
-							Message: &tmcons.VoteSetMaj23{
-								Height:  prs.Height,
-								Round:   commit.Round,
-								Type:    tmproto.PrecommitType,
-								BlockID: commit.BlockID.ToProto(),
-							},
-						}); err != nil {
-							cancel()
-						}
-					}
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
-				}
-			}(rs, prs)
-		}
-
-<<<<<<< HEAD
-		time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
-		continue OUTER_LOOP
-=======
-		waitSignal := make(chan struct{})
-		go func() { defer close(waitSignal); wg.Wait() }()
-
-		select {
-		case <-waitSignal:
-			timer.Reset(r.state.config.PeerQueryMaj23SleepDuration)
-		case <-ctx.Done():
-			return
-		}
->>>>>>> eed617c2d (consensus: refactor operations in consensus queryMaj23Routine (#7791))
 	}
 }
 
