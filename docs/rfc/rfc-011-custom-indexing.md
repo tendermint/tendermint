@@ -151,7 +151,7 @@ there are some specific principles that a solution should include:
 5. **Indexers are responsible for answering queries.** An indexer plugin is not
    required to support the legacy query filter language, nor to be compatible
    with the legacy RPC endpoints for accessing them.  Any APIs for clients to
-   to query a custom index are the responsibility of the indexer, not the node.
+   query a custom index are the responsibility of the indexer, not the node.
 
 ### Informal Design Intent
 
