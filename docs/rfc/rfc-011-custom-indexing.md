@@ -124,6 +124,35 @@ risk a much larger surface area.
 
 ## Discussion
 
+It is not possible to simultaneously guarantee that publishing events will not
+delay consensus, and also that all events are always completely indexed.
+
+Therefore, our choice is between eliminating delay (and minimizing loss) or
+eliminating loss (and minimizing delay).  Currently, we take the second
+approach, which has led to user complaints about consensus delays due to
+indexing and subscription overhead.
+
+- If we agree that consensus performance supersedes index completeness, our
+  design choices are to constrain the likelihood and frequency of missing event
+  data.
+
+- If we decide that consensus performance is more important than index
+  completeness, our option is to minimize overhead on the event delivery path
+  and document that indexer plugins constrain the rate of consensus.
+
+Since we have user reports requesting both properties, we have to choose one or
+the other.  Since the primary job of the consensus engine is to correctly,
+robustly, reliablly, and efficiently replicate application state across the
+network, I believe the correct choice is to favor consensus performance.
+
+Inevitably, the question will arise whether we could do both and toggle between
+them with a flag. Arguably this would be the worst-case scenario, requiring us
+to maintain the complexity of two very-different operational concerns.  If our
+goal is that Tendermint should be as simple, efficient, and trustworthy as
+posible, there is not a strong case for making these options configurable.
+
+### Design Principles
+
 Although there is no unique "best" solution to the issues described above,
 there are some specific principles that a solution should include:
 
