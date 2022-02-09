@@ -50,8 +50,6 @@ type Reactor struct {
 	evidenceCh  *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 
-	peerWG sync.WaitGroup
-
 	mtx          sync.Mutex
 	peerRoutines map[types.NodeID]context.CancelFunc
 }
@@ -97,10 +95,6 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
-	// Wait for all spawned peer evidence broadcasting goroutines to gracefully
-	// exit.
-	r.peerWG.Wait()
-
 	// Close the evidence db
 	r.evpool.Close()
 }
@@ -216,7 +210,6 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		if !ok {
 			pctx, pcancel := context.WithCancel(ctx)
 			r.peerRoutines[peerUpdate.NodeID] = pcancel
-			r.peerWG.Add(1)
 			go r.broadcastEvidenceLoop(pctx, peerUpdate.NodeID)
 		}
 
@@ -265,8 +258,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		delete(r.peerRoutines, peerID)
 		r.mtx.Unlock()
 
-		r.peerWG.Done()
-
 		if e := recover(); e != nil {
 			r.logger.Error(
 				"recovering from broadcasting evidence loop",
@@ -275,6 +266,9 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 			)
 		}
 	}()
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	for {
 		// This happens because the CElement we were looking at got garbage
@@ -312,8 +306,9 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		r.logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 
 		select {
-		case <-time.After(time.Second * broadcastEvidenceIntervalS):
+		case <-timer.C:
 			// start from the beginning after broadcastEvidenceIntervalS seconds
+			timer.Reset(time.Second * broadcastEvidenceIntervalS)
 			next = nil
 
 		case <-next.NextWaitChan():
