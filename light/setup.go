@@ -2,7 +2,6 @@ package light
 
 import (
 	"context"
-	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/provider/http"
@@ -33,34 +32,6 @@ func NewHTTPClient(
 		ctx,
 		chainID,
 		trustOptions,
-		providers[len(providers)-1],
-		providers[:len(providers)-1],
-		trustedStore,
-		options...)
-}
-
-// NewHTTPClientFromTrustedStore initiates an instance of a light client using
-// HTTP addresses for both the primary provider and witnesses and uses a
-// trusted store as the root of trust.
-//
-// See all Option(s) for the additional configuration.
-// See NewClientFromTrustedStore.
-func NewHTTPClientFromTrustedStore(
-	chainID string,
-	trustingPeriod time.Duration,
-	primaryAddress string,
-	witnessesAddresses []string,
-	trustedStore store.Store,
-	options ...Option) (*Client, error) {
-
-	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClientFromTrustedStore(
-		chainID,
-		trustingPeriod,
 		providers[len(providers)-1],
 		providers[:len(providers)-1],
 		trustedStore,

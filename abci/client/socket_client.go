@@ -415,6 +415,18 @@ func (cli *socketClient) PrepareProposal(
 	return reqres.Response.GetPrepareProposal(), nil
 }
 
+func (cli *socketClient) ProcessProposal(
+	ctx context.Context,
+	req types.RequestProcessProposal,
+) (*types.ResponseProcessProposal, error) {
+
+	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestProcessProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetProcessProposal(), nil
+}
+
 func (cli *socketClient) ExtendVote(
 	ctx context.Context,
 	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {

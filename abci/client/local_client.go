@@ -233,6 +233,17 @@ func (app *localClient) PrepareProposal(
 	return &res, nil
 }
 
+func (app *localClient) ProcessProposal(
+	ctx context.Context,
+	req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ProcessProposal(req)
+	return &res, nil
+}
+
 func (app *localClient) ExtendVote(
 	ctx context.Context,
 	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {

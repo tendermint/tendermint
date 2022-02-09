@@ -148,6 +148,23 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
 }
 
+func (blockExec *BlockExecutor) ProcessProposal(
+	ctx context.Context,
+	block *types.Block,
+) (bool, error) {
+	req := abci.RequestProcessProposal{
+		Txs:    block.Data.Txs.ToSliceOfBytes(),
+		Header: *block.Header.ToProto(),
+	}
+
+	resp, err := blockExec.proxyApp.ProcessProposal(ctx, req)
+	if err != nil {
+		return false, ErrInvalidBlock(err)
+	}
+
+	return resp.IsOK(), nil
+}
+
 // ValidateBlock validates the given block against the given state.
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,

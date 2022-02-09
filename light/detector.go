@@ -26,6 +26,9 @@ import (
 // If there are no conflictinge headers, the light client deems the verified target header
 // trusted and saves it to the trusted store.
 func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.LightBlock, now time.Time) error {
+	if len(c.witnesses) < 1 {
+		return nil
+	}
 	if primaryTrace == nil || len(primaryTrace) < 2 {
 		return errors.New("nil or single block primary trace")
 	}
@@ -39,10 +42,6 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
-
-	if len(c.witnesses) == 0 {
-		return ErrNoWitnesses
-	}
 
 	// launch one goroutine per witness to retrieve the light block of the target height
 	// and compare it with the header from the primary

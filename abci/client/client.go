@@ -46,6 +46,7 @@ type Client interface {
 	Commit(context.Context) (*types.ResponseCommit, error)
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 	PrepareProposal(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
+	ProcessProposal(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
 	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
 	BeginBlock(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)

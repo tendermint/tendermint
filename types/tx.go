@@ -93,6 +93,7 @@ func (txs Txs) ToSliceOfBytes() [][]byte {
 }
 
 // ToTxs converts a raw slice of byte slices into a Txs type.
+// TODO This function is to disappear when TxRecord is introduced
 func ToTxs(txs [][]byte) Txs {
 	txBzs := make(Txs, len(txs))
 	for i := 0; i < len(txs); i++ {
