@@ -43,14 +43,24 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
+// IsUnknown returns true if Code is Unknown
+func (r ResponseVerifyVoteExtension) IsUnknown() bool {
+	return r.Result == ResponseVerifyVoteExtension_UNKNOWN
+}
+
 // IsOK returns true if Code is OK
 func (r ResponseVerifyVoteExtension) IsOK() bool {
-	return r.Result <= ResponseVerifyVoteExtension_ACCEPT
+	return r.Result == ResponseVerifyVoteExtension_ACCEPT
 }
 
 // IsErr returns true if Code is something other than OK.
 func (r ResponseVerifyVoteExtension) IsErr() bool {
-	return r.Result > ResponseVerifyVoteExtension_ACCEPT
+	return r.Result != ResponseVerifyVoteExtension_ACCEPT
+}
+
+// IsOK returns true if Code is OK
+func (r ResponseProcessProposal) IsOK() bool {
+	return r.Result == ResponseProcessProposal_ACCEPT
 }
 
 //---------------------------------------------------------------------------

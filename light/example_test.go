@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/light/provider"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -74,7 +73,7 @@ func ExampleClient() {
 			Hash:   block.Hash(),
 		},
 		primary,
-		[]provider.Provider{primary}, // NOTE: primary should not be used here
+		nil,
 		dbs.New(db),
 		light.Logger(logger),
 	)
