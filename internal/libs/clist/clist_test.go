@@ -67,7 +67,7 @@ func TestSmall(t *testing.T) {
 
 func TestGCFifo(t *testing.T) {
 
-	const numElements = 1000000
+	const numElements = 1000
 	l := New()
 	gcCount := 0
 
@@ -90,8 +90,9 @@ func TestGCFifo(t *testing.T) {
 
 	for el := l.Front(); el != nil; {
 		l.Remove(el)
-		// oldEl := el
+		oldEl := el
 		el = el.Next()
+		oldEl.Value = nil
 		// oldEl.DetachPrev()
 		// oldEl.DetachNext()
 	}
@@ -127,7 +128,7 @@ func TestGCFifo(t *testing.T) {
 
 func TestGCRandom(t *testing.T) {
 
-	const numElements = 1000000
+	const numElements = 1000
 	l := New()
 	gcCount := 0
 
@@ -155,8 +156,10 @@ func TestGCRandom(t *testing.T) {
 
 	for _, i := range mrand.Perm(numElements) {
 		el := els[i]
-		l.Remove(el)
+		oldEl := el
 		_ = el.Next()
+		els[i] = nil
+		oldEl.Value = nil
 	}
 
 	tickerQuitCh := make(chan struct{})

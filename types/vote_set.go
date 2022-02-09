@@ -3,13 +3,14 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"runtime/debug"
+	"strings"
+
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"runtime/debug"
-	"strings"
 )
 
 const (

@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -11,12 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
+	"github.com/tendermint/tendermint/privval"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
@@ -35,6 +37,10 @@ func TestClientIntegration_Update(t *testing.T) {
 
 	// Start a test application
 	app := kvstore.NewApplication()
+
+	filePV, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+	require.NoError(t, err)
+
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, closer(ctx)) }()
@@ -58,13 +64,14 @@ func TestClientIntegration_Update(t *testing.T) {
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
 	require.NoError(t, err)
 
-	c, err := light.NewClient(
+	c, err := light.NewClientAtHeight(
 		ctx,
+		1,
 		chainID,
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		dashCoreMockClient,
+		dashcore.NewMockClient(chainID, btcjson.LLMQType_5_60, filePV, true),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)
@@ -93,6 +100,9 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	// Start a test application
 	app := kvstore.NewApplication()
 
+	filePV, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+	require.NoError(t, err)
+
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, closer(ctx)) }()
@@ -118,7 +128,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		dashcore.NewMockClient(chainID, 100, privVals[0], true),
+		dashcore.NewMockClient(chainID, btcjson.LLMQType_5_60, filePV, true),
 		light.Logger(log.TestingLogger()),
 	)
 	require.NoError(t, err)

@@ -16,6 +16,7 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
@@ -132,7 +133,6 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 		var (
 			localEvList []types.Evidence
 			size        int64
-			loops       int
 		)
 
 		// wait till we have at least the amount of evidence
@@ -140,16 +140,13 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 		// it doesn't make sense to wait longer and a
 		// different assertion should catch the resulting error
 		for len(localEvList) < len(evList) {
-			// each evidence should not be more than 500 bytes
-			localEvList, size = pool.PendingEvidence(int64(len(evList) * 500))
-			if loops == 100 {
-				t.Log("current wait status:", "|",
-					"local", len(localEvList), "|",
-					"waitlist", len(evList), "|",
-					"size", size)
-			}
-
-			loops++
+			// each evidence should not be more than 1000 bytes
+			localEvList, size = pool.PendingEvidence(int64(len(evList) * 1000))
+			time.Sleep(time.Millisecond * 100)
+			t.Log("current wait status:", "|",
+				"local", len(localEvList), "|",
+				"waitlist", len(evList), "|",
+				"size", size)
 		}
 
 		// put the reaped evidence in a map so we can quickly check we got everything
@@ -241,10 +238,10 @@ func createEvidenceList(
 }
 
 func TestReactorMultiDisconnect(t *testing.T) {
-	val := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
 	height := int64(numEvidence) + 10
 
-	quorumHash := crypto.RandQuorumHash()
 	stateDB1 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 	stateDB2 := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
 
@@ -534,9 +531,11 @@ func TestEvidenceListSerialization(t *testing.T) {
 		}
 	}
 
+	privKey := bls12381.GenPrivKey()
 	val := &types.Validator{
-		ProTxHash:   crypto.ProTxHashFromSeedBytes([]byte("validator_address")),
+		PubKey:      privKey.PubKey(),
 		VotingPower: types.DefaultDashVotingPower,
+		ProTxHash:   crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
 	}
 
 	valSet := types.NewValidatorSet(
@@ -561,7 +560,7 @@ func TestEvidenceListSerialization(t *testing.T) {
 	}{
 		"DuplicateVoteEvidence": {
 			[]types.Evidence{dupl},
-			"0a85020a82020a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03180a200a2a060880dbaae105",
+			"0a83020a80020a78080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb031278080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb03186420642a060880dbaae105",
 		},
 	}
 

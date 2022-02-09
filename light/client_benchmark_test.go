@@ -2,17 +2,17 @@ package light_test
 
 import (
 	"context"
-	"github.com/tendermint/tendermint/types"
 	"testing"
 	"time"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	"github.com/tendermint/tendermint/light"
+	dbm "github.com/tendermint/tm-db"
 
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	dbs "github.com/tendermint/tendermint/light/store/db"
-	dbm "github.com/tendermint/tm-db"
+	"github.com/tendermint/tendermint/types"
 )
 
 // NOTE: block is produced every minute. Make sure the verification time

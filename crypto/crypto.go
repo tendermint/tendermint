@@ -29,7 +29,7 @@ const (
 	KeyTypeAny
 )
 
-// An address is a []byte, but hex-encoded even in JSON.
+// Address is an address is a []byte, but hex-encoded even in JSON.
 // []byte leaves us the option to change the address length.
 // Use an alias so Unmarshal methods (with ptr receivers) are available too.
 type Address = bytes.HexBytes
@@ -38,20 +38,25 @@ type ProTxHash = bytes.HexBytes
 
 type QuorumHash = bytes.HexBytes
 
-func AddressHash(bz []byte) Address {
-	return Address(tmhash.SumTruncated(bz))
-}
-
 func ProTxHashFromSeedBytes(bz []byte) ProTxHash {
-	return ProTxHash(tmhash.Sum(bz))
+	return tmhash.Sum(bz)
 }
 
 func RandProTxHash() ProTxHash {
-	return ProTxHash(CRandBytes(ProTxHashSize))
+	return CRandBytes(ProTxHashSize)
+}
+
+// RandProTxHashes generates and returns a list of N random generated proTxHashes
+func RandProTxHashes(n int) []ProTxHash {
+	proTxHashes := make([]ProTxHash, n)
+	for i := 0; i < n; i++ {
+		proTxHashes[i] = RandProTxHash()
+	}
+	return proTxHashes
 }
 
 func RandQuorumHash() QuorumHash {
-	return QuorumHash(CRandBytes(ProTxHashSize))
+	return CRandBytes(ProTxHashSize)
 }
 
 func SmallQuorumType() btcjson.LLMQType {
@@ -108,13 +113,12 @@ type Symmetric interface {
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
 }
 
-
 // HexStringer ...
 type HexStringer interface {
 	HexString() string
 }
 
-// If a new key type implements batch verification,
+// BatchVerifier If a new key type implements batch verification,
 // the key type must be registered in github.com/tendermint/tendermint/crypto/batch
 type BatchVerifier interface {
 	// Add appends an entry into the BatchVerifier.

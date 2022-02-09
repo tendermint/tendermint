@@ -183,7 +183,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		// is negative we will keep repeating.
 		attempt := uint16(0)
 		for {
-			requestThresholdPublicKey := attempt == 1
+			requestThresholdPublicKey := attempt == 0
 			res, err := p.client.Validators(ctx, height, &page, &perPage, &requestThresholdPublicKey)
 			switch e := err.(type) {
 			case nil: // success!! Now we validate the response

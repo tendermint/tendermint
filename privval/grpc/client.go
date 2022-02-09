@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 
-	grpc "google.golang.org/grpc"
+	"github.com/dashevo/dashd-go/btcjson"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 
 	"github.com/tendermint/tendermint/crypto"

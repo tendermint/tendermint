@@ -11,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -183,7 +182,7 @@ func Test_Concurrency(t *testing.T) {
 }
 
 func randLightBlock(height int64) *types.LightBlock {
-	vals, _ := factory.RandValidatorSet(2)
+	vals, _ := types.RandValidatorSet(2)
 	return &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
 			Header: &types.Header{

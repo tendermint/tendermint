@@ -7,15 +7,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	types "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // DashCoreSignerClient implements PrivValidator.
@@ -399,7 +398,7 @@ func (sc *DashCoreSignerClient) SignProposal(
 
 func (sc *DashCoreSignerClient) UpdatePrivateKey(
 	ctx context.Context,
-    privateKey crypto.PrivKey,
+	privateKey crypto.PrivKey,
 	quorumHash crypto.QuorumHash,
 	thresholdPublicKey crypto.PubKey,
 	height int64,

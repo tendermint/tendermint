@@ -8,12 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
@@ -81,7 +80,7 @@ func TestMsgToProto(t *testing.T) {
 		2,
 		types.BlockID{},
 		types.StateID{},
-		)
+	)
 	require.NoError(t, err)
 	pbVote := vote.ToProto()
 

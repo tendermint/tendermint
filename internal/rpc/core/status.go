@@ -1,13 +1,12 @@
 package core
 
 import (
-	"bytes"
-	"github.com/tendermint/tendermint/types"
 	"time"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Status returns Tendermint status including node info, pubkey, latest block
@@ -82,28 +81,4 @@ func (env *Environment) Status(ctx *rpctypes.Context) (*coretypes.ResultStatus, 
 	}
 
 	return result, nil
-}
-
-func (env *Environment) validatorAtHeight(h int64) *types.Validator {
-	valsWithH, err := env.StateStore.LoadValidators(h)
-	if err != nil {
-		return nil
-	}
-	if env.ProTxHash == nil {
-		return nil
-	}
-	privValProTxHash := env.ProTxHash
-
-	// If we're still at height h, search in the current validator set.
-	lastBlockHeight, vals := env.ConsensusState.GetValidators()
-	if lastBlockHeight == h {
-		for _, val := range vals {
-			if bytes.Equal(val.ProTxHash, privValProTxHash) {
-				return val
-			}
-		}
-	}
-
-	_, val := valsWithH.GetByProTxHash(privValProTxHash)
-	return val
 }

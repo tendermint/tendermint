@@ -4,18 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"io/ioutil"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
-	"github.com/tendermint/tendermint/crypto/bls12381"
-
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -39,18 +38,18 @@ type GenesisValidator struct {
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
-	GenesisTime                  time.Time                `json:"genesis_time"`
-	ChainID                      string                   `json:"chain_id"`
-	InitialHeight                int64                    `json:"initial_height"`
-	InitialCoreChainLockedHeight uint32                   `json:"initial_core_chain_locked_height"`
-	InitialProposalCoreChainLock *tmproto.CoreChainLock   `json:"initial_proposal_core_chain_lock"`
-	ConsensusParams              *ConsensusParams         `json:"consensus_params,omitempty"`
-	Validators                   []GenesisValidator       `json:"validators,omitempty"`
-	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
-	QuorumType                   btcjson.LLMQType         `json:"quorum_type"`
-	QuorumHash                   crypto.QuorumHash        `json:"quorum_hash"`
-	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
-	AppState                     json.RawMessage          `json:"app_state,omitempty"`
+	GenesisTime                  time.Time              `json:"genesis_time"`
+	ChainID                      string                 `json:"chain_id"`
+	InitialHeight                int64                  `json:"initial_height"`
+	InitialCoreChainLockedHeight uint32                 `json:"initial_core_chain_locked_height"`
+	InitialProposalCoreChainLock *tmproto.CoreChainLock `json:"initial_proposal_core_chain_lock"`
+	ConsensusParams              *ConsensusParams       `json:"consensus_params,omitempty"`
+	Validators                   []GenesisValidator     `json:"validators,omitempty"`
+	ThresholdPublicKey           crypto.PubKey          `json:"threshold_public_key"`
+	QuorumType                   btcjson.LLMQType       `json:"quorum_type"`
+	QuorumHash                   crypto.QuorumHash      `json:"quorum_hash"`
+	AppHash                      tmbytes.HexBytes       `json:"app_hash"`
+	AppState                     json.RawMessage        `json:"app_state,omitempty"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.

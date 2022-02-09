@@ -220,7 +220,7 @@ func NewP2PStateProvider(
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}
 
-	lc, err := light.NewClient(ctx, chainID, providers[0], providers[1:],
+	lc, err := light.NewClientAtHeight(ctx, initialHeight, chainID, providers[0], providers[1:],
 		lightdb.New(dbm.NewMemDB()), dashCoreClient, light.Logger(logger))
 	if err != nil {
 		return nil, err

@@ -45,7 +45,7 @@ func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []index
 		"block_by_hash":    server.NewRPCFunc(env.BlockByHash, "hash", true),
 		"block_results":    server.NewRPCFunc(env.BlockResults, "height", true),
 		"commit":           server.NewRPCFunc(env.Commit, "height", true),
-		"validators":       server.NewRPCFunc(env.Validators, "height,page,per_page", true),
+		"validators":       server.NewRPCFunc(env.Validators, "height,page,per_page,request_quorum_info", true),
 		"tx":               server.NewRPCFunc(env.Tx, "hash,prove", true),
 		"tx_search":        server.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by", false),
 		"block_search":     server.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by", false),

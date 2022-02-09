@@ -28,7 +28,7 @@ const (
 	PubKeySize = 48
 	// PrivateKeySize is the size, in bytes, of private keys as used in this package.
 	PrivateKeySize = 32
-	// Size of an BLS12381 signature.
+	// SignatureSize of an BLS12381 signature.
 	SignatureSize = 96
 	// SeedSize is the size, in bytes, of private key seeds. These are the
 	// private key representations used by RFC 8032.
@@ -47,7 +47,7 @@ type PrivKey []byte
 
 // Bytes returns the privkey byte format.
 func (privKey PrivKey) Bytes() []byte {
-	return []byte(privKey)
+	return privKey
 }
 
 // Sign produces a signature on the provided message.
@@ -72,7 +72,7 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	return serializedSignature, nil
 }
 
-// Sign produces a signature on the provided message.
+// SignDigest produces a signature on the provided message.
 // This assumes the privkey is wellformed in the golang format.
 // The first 32 bytes should be random,
 // corresponding to the normal bls12381 private key.
@@ -150,7 +150,7 @@ func genPrivKey(rand io.Reader) PrivKey {
 	if err != nil {
 		panic(err)
 	}
-	return PrivKey(privateKey.Serialize())
+	return privateKey.Serialize()
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -163,7 +163,7 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	if err != nil {
 		panic(err)
 	}
-	return PrivKey(privKey.Serialize())
+	return privKey.Serialize()
 }
 
 func ReverseBytes(bz []byte) []byte {
@@ -384,12 +384,12 @@ func (pubKey PubKey) Address() crypto.Address {
 	if len(pubKey) != PubKeySize {
 		panic("pubkey is incorrect size")
 	}
-	return crypto.Address(tmhash.SumTruncated(pubKey))
+	return tmhash.SumTruncated(pubKey)
 }
 
 // Bytes returns the PubKey byte format.
 func (pubKey PubKey) Bytes() []byte {
-	return []byte(pubKey)
+	return pubKey
 }
 
 func (pubKey PubKey) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {

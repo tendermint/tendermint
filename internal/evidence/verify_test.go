@@ -2,10 +2,10 @@ package evidence_test
 
 import (
 	"context"
-	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -28,10 +28,10 @@ type voteData struct {
 }
 
 func TestVerifyDuplicateVoteEvidence(t *testing.T) {
-	val := types.NewMockPV()
-	val2 := types.NewMockPV()
 	quorumType := crypto.SmallQuorumType()
 	quorumHash := crypto.RandQuorumHash()
+	val := types.NewMockPVForQuorum(quorumHash)
+	val2 := types.NewMockPVForQuorum(quorumHash)
 	validator1 := val.ExtractIntoValidator(context.Background(), quorumHash)
 	valSet := types.NewValidatorSet([]*types.Validator{validator1}, validator1.PubKey, quorumType, quorumHash, true)
 
@@ -46,7 +46,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID)
 	v1 := vote1.ToProto()
-	err := val.SignVote(context.Background(), chainID, crypto.SmallQuorumType(), quorumHash, v1, stateID, nil)
+	err := val.SignVote(context.Background(), chainID, quorumType, quorumHash, v1, stateID, nil)
 	require.NoError(t, err)
 	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID)
 	bv := badVote.ToProto()
@@ -90,14 +90,16 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	// create good evidence and correct validator power
 	goodEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, crypto.SmallQuorumType(), quorumHash)
 	require.NoError(t, err)
-	goodEv.ValidatorPower = 1
-	goodEv.TotalVotingPower = 1
+	goodEv.ValidatorPower = types.DefaultDashVotingPower
+	goodEv.TotalVotingPower = types.DefaultDashVotingPower
 	badEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, crypto.SmallQuorumType(), quorumHash)
 	require.NoError(t, err)
-	badTimeEv, err :=  types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, crypto.SmallQuorumType(), quorumHash)
+	badEv.ValidatorPower = types.DefaultDashVotingPower + 1
+	badEv.TotalVotingPower = types.DefaultDashVotingPower
+	badTimeEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, crypto.SmallQuorumType(), quorumHash)
 	require.NoError(t, err)
-	badTimeEv.ValidatorPower = 1
-	badTimeEv.TotalVotingPower = 1
+	badTimeEv.ValidatorPower = types.DefaultDashVotingPower
+	badTimeEv.TotalVotingPower = types.DefaultDashVotingPower
 	state := sm.State{
 		ChainID:         chainID,
 		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
@@ -135,11 +137,11 @@ func makeVote(
 	require.NoError(t, err)
 	v := &types.Vote{
 		ValidatorProTxHash: proTxHash,
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             tmproto.SignedMsgType(step),
-		BlockID:          blockID,
+		ValidatorIndex:     valIndex,
+		Height:             height,
+		Round:              round,
+		Type:               tmproto.SignedMsgType(step),
+		BlockID:            blockID,
 	}
 
 	vpb := v.ToProto()

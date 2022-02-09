@@ -9,7 +9,6 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
@@ -107,15 +106,7 @@ func StartTendermint(ctx context.Context,
 	papp := abciclient.NewLocalCreator(app)
 	//signer, err := privval.NewDashCoreSignerClient()
 
-	dashClient, err := dashcore.NewRPCClient(
-		conf.PrivValidatorCoreRPCHost,
-		conf.BaseConfig.PrivValidatorCoreRPCUsername,
-		conf.BaseConfig.PrivValidatorCoreRPCPassword,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-	tmNode, err := node.New(conf, logger, papp, nil, dashClient)
+	tmNode, err := node.New(conf, logger, papp, nil, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { return nil }, err
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -72,7 +73,8 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 func TestSignerClient_SignVote(t *testing.T) {
 
 	ctx := context.Background()
-	mockPV := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	mockPV := types.NewMockPVForQuorum(quorumHash)
 	logger := log.TestingLogger()
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
@@ -87,14 +89,14 @@ func TestSignerClient_SignVote(t *testing.T) {
 	require.NoError(t, err)
 
 	hash := tmrand.Bytes(tmhash.Size)
-	valAddr := crypto.RandProTxHash()
+	proTxHash := crypto.RandProTxHash()
 
 	want := &types.Vote{
 		Type:               tmproto.PrecommitType,
 		Height:             1,
 		Round:              2,
 		BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		ValidatorProTxHash: valAddr,
+		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     1,
 	}
 
@@ -103,18 +105,15 @@ func TestSignerClient_SignVote(t *testing.T) {
 		Height:             1,
 		Round:              2,
 		BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		ValidatorProTxHash: valAddr,
+		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     1,
 	}
 
 	pbHave := have.ToProto()
 	stateID := types.StateID{
 		Height:      0,
-		LastAppHash: nil,
+		LastAppHash: factory.RandomHash(),
 	}
-
-	quorumHash, err := mockPV.GetProTxHash(ctx)
-	require.NoError(t, err)
 
 	err = client.SignVote(ctx, chainID, btcjson.LLMQType_5_60, quorumHash, pbHave, stateID, logger)
 	require.NoError(t, err)
@@ -130,7 +129,8 @@ func TestSignerClient_SignVote(t *testing.T) {
 func TestSignerClient_SignProposal(t *testing.T) {
 
 	ctx := context.Background()
-	mockPV := types.NewMockPV()
+	quorumHash := crypto.RandQuorumHash()
+	mockPV := types.NewMockPVForQuorum(quorumHash)
 	logger := log.TestingLogger()
 	srv, dialer := dialer(mockPV, logger)
 	defer srv.Stop()
@@ -163,9 +163,6 @@ func TestSignerClient_SignProposal(t *testing.T) {
 		BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
 		Timestamp: ts,
 	}
-
-	quorumHash, err := mockPV.GetProTxHash(ctx)
-	require.NoError(t, err)
 
 	pbHave := have.ToProto()
 

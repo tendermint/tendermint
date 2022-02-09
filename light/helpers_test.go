@@ -1,15 +1,15 @@
 package light_test
 
 import (
-	"github.com/tendermint/tendermint/internal/test/factory"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -24,10 +24,11 @@ import (
 // and can optionally extend the validator set later with Extend.
 type privKeys []crypto.PrivKey
 
-func exposeMockPVKeys(pvs []*types.MockPV, quorumHash crypto.QuorumHash) privKeys {
+func exposeMockPVKeys(pvs []types.PrivValidator, quorumHash crypto.QuorumHash) privKeys {
 	res := make(privKeys, len(pvs))
 	for i, pval := range pvs {
-		res[i] = pval.PrivateKeys[quorumHash.String()].PrivKey
+		mockPV := pval.(*types.MockPV)
+		res[i] = mockPV.PrivateKeys[quorumHash.String()].PrivKey
 	}
 	return res
 }
@@ -174,80 +175,22 @@ func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTi
 	}
 }
 
-// Generates the header and validator set to create a full entire mock node with blocks to height (
-// blockSize) and with variation in validator sets. BlockIntervals are in per minute.
-// NOTE: Expected to have a large validator set size ~ 100 validators.
-func genMockNodeWithKeys(
-	chainID string,
-	blockSize int64,
-	valSize int,
-	bTime time.Time) (
-	map[int64]*types.SignedHeader,
-	map[int64]*types.ValidatorSet,
-	map[string]*types.MockPV) {
-
-	var (
-		headers           = make(map[int64]*types.SignedHeader, blockSize)
-		valsets           = make(map[int64]*types.ValidatorSet, blockSize+1)
-		valset0, privVals = factory.GenerateMockValidatorSet(valSize)
-		keys              = exposeMockPVKeys(privVals, valset0.QuorumHash)
-		privValMap        = types.MapMockPVByProTxHashes(privVals)
-	)
-
-	nextValSet, _ := factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
-		valset0.GetProTxHashes(),
-		privValMap,
-		0,
-	)
-
-	// genesis header and vals
-	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
-		valset0, nextValSet, hash("app_hash"), hash("cons_hash"),
-		hash("results_hash"), 0, len(keys))
-	currentHeader := lastHeader
-	headers[1] = currentHeader
-	valsets[1] = valset0
-	currentValset := nextValSet
-
-	for height := int64(2); height <= blockSize; height++ {
-		keysAtHeight := exposeMockPVKeys(privVals, currentValset.QuorumHash)
-		nextValSet, _ := factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(
-			valset0.GetProTxHashes(), privValMap, height,
-		)
-		currentHeader = keysAtHeight.GenSignedHeaderLastBlockID(
-			chainID, height, bTime.Add(time.Duration(height)*time.Minute),
-			nil,
-			currentValset, nextValSet, hash("app_hash"), hash("cons_hash"),
-			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})
-		headers[height] = currentHeader
-		valsets[height] = currentValset
-		lastHeader = currentHeader
-		currentValset = nextValSet
-	}
-
-	return headers, valsets, privValMap
-}
-
-func genMockNode(
-	chainID string,
-	blockSize int64,
-	valSize int,
-	bTime time.Time) (
-	string,
-	map[int64]*types.SignedHeader,
-	map[int64]*types.ValidatorSet,
-	*types.MockPV) {
-	headers, valset, privvalKeys := genMockNodeWithKeys(chainID, blockSize, valSize, bTime)
-	var privateValidator *types.MockPV
-	for _, privVal := range privvalKeys {
-		privateValidator = privVal
-		break
-	}
-	return chainID, headers, valset, privateValidator
-}
-
 func hash(s string) []byte {
 	return tmhash.Sum([]byte(s))
+}
+
+func mockNodeFromHeadersAndVals(
+	headers map[int64]*types.SignedHeader,
+	vals map[int64]*types.ValidatorSet,
+) *provider_mocks.Provider {
+	provider := &provider_mocks.Provider{}
+	for i, header := range headers {
+		lb := &types.LightBlock{SignedHeader: header, ValidatorSet: vals[i]}
+		provider.
+			On("LightBlock", mock.Anything, i).
+			Return(lb, nil)
+	}
+	return provider
 }
 
 // genLightBlocksWithValidatorsRotatingEveryBlock generates the header and validator set to create
@@ -260,17 +203,20 @@ func genLightBlocksWithValidatorsRotatingEveryBlock(
 	bTime time.Time) (
 	map[int64]*types.SignedHeader,
 	map[int64]*types.ValidatorSet,
-	[]*types.MockPV) {
+	[]types.PrivValidator) {
 
 	var (
 		headers = make(map[int64]*types.SignedHeader, numBlocks)
 		valset  = make(map[int64]*types.ValidatorSet, numBlocks+1)
 	)
 
-	vals, privVals := factory.GenerateMockValidatorSet(valSize)
+	vals, privVals := types.RandValidatorSet(valSize)
 	keys := exposeMockPVKeys(privVals, vals.QuorumHash)
 
-	newVals, newPrivVals := factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(vals.GetProTxHashes(), types.MapMockPVByProTxHashes(privVals), 1)
+	newVals, newPrivVals := types.GenerateValidatorSet(
+		types.NewValSetParam(vals.GetProTxHashes()),
+		types.WithUpdatePrivValAt(privVals, 1),
+	)
 	newKeys := exposeMockPVKeys(newPrivVals, newVals.QuorumHash)
 
 	// genesis header and vals
@@ -283,7 +229,10 @@ func genLightBlocksWithValidatorsRotatingEveryBlock(
 	keys = newKeys
 
 	for height := int64(2); height <= numBlocks; height++ {
-		newVals, newPrivVals = factory.GenerateMockValidatorSetUpdatingPrivateValidatorsAtHeight(vals.GetProTxHashes(), types.MapMockPVByProTxHashes(privVals), height)
+		newVals, newPrivVals := types.GenerateValidatorSet(
+			types.NewValSetParam(vals.GetProTxHashes()),
+			types.WithUpdatePrivValAt(privVals, height),
+		)
 		newKeys = exposeMockPVKeys(newPrivVals, newVals.QuorumHash)
 
 		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),

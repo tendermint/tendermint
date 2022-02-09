@@ -4,6 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -11,8 +14,6 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"math"
-	"time"
 )
 
 var (

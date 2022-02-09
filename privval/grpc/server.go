@@ -1,9 +1,9 @@
 package grpc
 
 import (
-	context "context"
-	"github.com/dashevo/dashd-go/btcjson"
+	"context"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -98,11 +98,11 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 	*privvalproto.SignedVoteResponse, error) {
 	vote := req.Vote
 
-	stateId, err := types.StateIDFromProto(req.StateId)
+	stateID, err := types.StateIDFromProto(req.StateId)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "error converting stateId when signing vote: %v", err)
 	}
-	err = ss.privVal.SignVote(ctx, req.ChainId, btcjson.LLMQType(req.QuorumType), req.QuorumHash, vote, *stateId, nil)
+	err = ss.privVal.SignVote(ctx, req.ChainId, btcjson.LLMQType(req.QuorumType), req.QuorumHash, vote, *stateID, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}

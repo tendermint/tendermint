@@ -3,6 +3,7 @@ package evidence
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -140,19 +141,4 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	}
 
 	return nil
-}
-
-func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, error) {
-	blockMeta := blockStore.LoadBlockMeta(height)
-	if blockMeta == nil {
-		return nil, fmt.Errorf("don't have header at height #%d", height)
-	}
-	commit := blockStore.LoadBlockCommit(height)
-	if commit == nil {
-		return nil, fmt.Errorf("don't have commit at height #%d", height)
-	}
-	return &types.SignedHeader{
-		Header: &blockMeta.Header,
-		Commit: commit,
-	}, nil
 }

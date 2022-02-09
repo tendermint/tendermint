@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
 	mrand "math/rand"
 	"os"
@@ -20,10 +19,11 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -114,7 +114,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.LastCommit = nil
 		}, true},
 		{"Invalid LastCommit", func(blk *Block) {
-			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, StateID{}, nil, nil, nil )
+			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, StateID{}, nil, nil, nil)
 		}, true},
 		{"Invalid Evidence", func(blk *Block) {
 			emptyEv := &DuplicateVoteEvidence{}
@@ -168,7 +168,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	partSet := block.MakePartSet(512)
 	assert.NotNil(t, partSet)
 	// The part set can be either 3 or 4 parts, this is because of variance in sizes due to the non second part of
-	//  timestamps marshalling to different sizes
+	//  timestamps marshaling to different sizes
 	assert.True(t, partSet.Total() == 3)
 }
 
@@ -298,7 +298,6 @@ func TestCommitValidateBasic(t *testing.T) {
 }
 
 func TestMaxCommitBytes(t *testing.T) {
-
 	// check size with a single commit
 	commit := &Commit{
 		Height: math.MaxInt64,
@@ -319,8 +318,7 @@ func TestMaxCommitBytes(t *testing.T) {
 
 	pb := commit.ToProto()
 	pbSize := int64(pb.Size())
-	maxCommitBytes := MaxCommitOverheadBytes
-	assert.EqualValues(t, maxCommitBytes, pbSize)
+	assert.EqualValues(t, MaxCommitOverheadBytes, pbSize)
 
 	pb = commit.ToProto()
 
@@ -489,10 +487,10 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		0: {-10, crypto.BLS12381, 1, 0, true, 0},
 		1: {10, crypto.BLS12381, 1, 0, true, 0},
 		2: {1114, crypto.BLS12381, 1, 0, true, 0},
-		3: {1115, crypto.BLS12381, 1, 0, false, 0},
-		4: {1116, crypto.BLS12381, 1, 0, false, 1},
-		5: {1116, crypto.BLS12381, 2, 0, false, 1},
-		6: {1215, crypto.BLS12381, 2, 100, false, 0},
+		3: {1118, crypto.BLS12381, 1, 0, false, 0},
+		4: {1119, crypto.BLS12381, 1, 0, false, 1},
+		5: {1119, crypto.BLS12381, 2, 0, false, 1},
+		6: {1218, crypto.BLS12381, 2, 100, false, 0},
 	}
 	// An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
@@ -526,8 +524,8 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 		0: {-10, 1, crypto.BLS12381, 1, true, 0},
 		1: {10, 1, crypto.BLS12381, 1, true, 0},
 		2: {1114, 1, crypto.BLS12381, 1, true, 0},
-		3: {1115, 1, crypto.BLS12381, 1, false, 0},
-		4: {1116, 1, crypto.BLS12381, 1, false, 1},
+		3: {1118, 1, crypto.BLS12381, 1, false, 0},
+		4: {1119, 1, crypto.BLS12381, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -1062,9 +1060,9 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				LastCommitHash:    make([]byte, tmhash.Size),
 				DataHash:          make([]byte, tmhash.Size),
 				EvidenceHash:      make([]byte, tmhash.Size),
-				ProposerProTxHash: make([]byte, crypto.ProTxHashSize + 1),
+				ProposerProTxHash: make([]byte, crypto.ProTxHashSize+1),
 			},
-			true, "invalid ProposerAddress length",
+			true, "invalid ProposerProTxHash length; got: 33, expected: 32",
 		},
 		{
 			"invalid validator hash",
@@ -1101,7 +1099,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				LastCommitHash:     make([]byte, tmhash.Size),
 				DataHash:           make([]byte, tmhash.Size),
 				EvidenceHash:       make([]byte, tmhash.Size),
-				ProposerProTxHash:    make([]byte, crypto.ProTxHashSize),
+				ProposerProTxHash:  make([]byte, crypto.ProTxHashSize),
 				ValidatorsHash:     make([]byte, tmhash.Size),
 				NextValidatorsHash: make([]byte, tmhash.Size+1),
 			},
@@ -1122,7 +1120,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				LastCommitHash:     make([]byte, tmhash.Size),
 				DataHash:           make([]byte, tmhash.Size),
 				EvidenceHash:       make([]byte, tmhash.Size),
-				ProposerProTxHash:    make([]byte, crypto.ProTxHashSize),
+				ProposerProTxHash:  make([]byte, crypto.ProTxHashSize),
 				ValidatorsHash:     make([]byte, tmhash.Size),
 				NextValidatorsHash: make([]byte, tmhash.Size),
 				ConsensusHash:      make([]byte, tmhash.Size+1),
@@ -1144,7 +1142,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				LastCommitHash:     make([]byte, tmhash.Size),
 				DataHash:           make([]byte, tmhash.Size),
 				EvidenceHash:       make([]byte, tmhash.Size),
-				ProposerProTxHash:      make([]byte, crypto.ProTxHashSize),
+				ProposerProTxHash:  make([]byte, crypto.ProTxHashSize),
 				ValidatorsHash:     make([]byte, tmhash.Size),
 				NextValidatorsHash: make([]byte, tmhash.Size),
 				ConsensusHash:      make([]byte, tmhash.Size),
@@ -1155,9 +1153,9 @@ func TestHeader_ValidateBasic(t *testing.T) {
 		{
 			"valid header",
 			Header{
-				Version: version.Consensus{Block: version.BlockProtocol},
-				ChainID: string(make([]byte, MaxChainIDLen)),
-				Height:  1,
+				Version:               version.Consensus{Block: version.BlockProtocol},
+				ChainID:               string(make([]byte, MaxChainIDLen)),
+				Height:                1,
 				CoreChainLockedHeight: 1,
 				LastBlockID: BlockID{
 					Hash: make([]byte, tmhash.Size),
@@ -1168,7 +1166,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				LastCommitHash:     make([]byte, tmhash.Size),
 				DataHash:           make([]byte, tmhash.Size),
 				EvidenceHash:       make([]byte, tmhash.Size),
-				ProposerProTxHash:    make([]byte, crypto.ProTxHashSize),
+				ProposerProTxHash:  make([]byte, crypto.ProTxHashSize),
 				ValidatorsHash:     make([]byte, tmhash.Size),
 				NextValidatorsHash: make([]byte, tmhash.Size),
 				ConsensusHash:      make([]byte, tmhash.Size),
@@ -1255,20 +1253,6 @@ func TestCommit_ValidateBasic(t *testing.T) {
 			true, "commit cannot be for nil block",
 		},
 		{
-			"no signatures",
-			&Commit{
-				Height: 1,
-				Round:  1,
-				BlockID: BlockID{
-					Hash: make([]byte, tmhash.Size),
-					PartSetHeader: PartSetHeader{
-						Hash: make([]byte, tmhash.Size),
-					},
-				},
-			},
-			true, "no signatures in commit",
-		},
-		{
 			"invalid block signature",
 			&Commit{
 				Height: 1,
@@ -1279,10 +1263,10 @@ func TestCommit_ValidateBasic(t *testing.T) {
 						Hash: make([]byte, tmhash.Size),
 					},
 				},
-				ThresholdBlockSignature: make([]byte, bls12381.SignatureSize + 1),
+				ThresholdBlockSignature: make([]byte, bls12381.SignatureSize+1),
 				ThresholdStateSignature: make([]byte, bls12381.SignatureSize),
 			},
-			true, "wrong CommitSig",
+			true, "block threshold signature is wrong size",
 		},
 		{
 			"invalid state signature",
@@ -1296,9 +1280,9 @@ func TestCommit_ValidateBasic(t *testing.T) {
 					},
 				},
 				ThresholdBlockSignature: make([]byte, bls12381.SignatureSize),
-				ThresholdStateSignature: make([]byte, bls12381.SignatureSize + 1),
+				ThresholdStateSignature: make([]byte, bls12381.SignatureSize+1),
 			},
-			true, "wrong CommitSig",
+			true, "state threshold signature is wrong size",
 		},
 		{
 			"valid commit",
@@ -1358,7 +1342,7 @@ func TestHeaderHashVector(t *testing.T) {
 
 		LastResultsHash: []byte("f2564c78071e26643ae9b3e2a19fa0dc10d4d9e873aa0be808660123f11a1e78"),
 
-		EvidenceHash:    []byte("f2564c78071e26643ae9b3e2a19fa0dc10d4d9e873aa0be808660123f11a1e78"),
+		EvidenceHash:      []byte("f2564c78071e26643ae9b3e2a19fa0dc10d4d9e873aa0be808660123f11a1e78"),
 		ProposerProTxHash: []byte("f2564c78071e26643ae9b3e2a19fa0dc10d4d9e873aa0be808660123f11a1e78"),
 	}
 
@@ -1366,7 +1350,7 @@ func TestHeaderHashVector(t *testing.T) {
 		header   Header
 		expBytes string
 	}{
-		{header: h, expBytes: "87b6117ac7f827d656f178a3d6d30b24b205db2b6a3a053bae8baf4618570bfc"},
+		{header: h, expBytes: "8df5f303af2ae303adaaa56d8f5645247dd8fd12dc5ebdff55444649f653452f"},
 	}
 
 	for _, tc := range testCases {

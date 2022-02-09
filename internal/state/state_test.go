@@ -19,7 +19,6 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	sm "github.com/tendermint/tendermint/internal/state"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -763,7 +762,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
 
-	originalValidatorSet, _ := factory.RandValidatorSet(4)
+	originalValidatorSet, _ := types.RandValidatorSet(4)
 	// reset state validators to above validator
 	state.Validators = originalValidatorSet
 	state.NextValidators = originalValidatorSet
@@ -851,8 +850,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	// add 10 validators with the same voting power as the one added directly after genesis:
 	for i := 0; i < 10; i++ {
 		addedProTxHash := crypto.RandProTxHash()
-		proTxHashes := append(proTxHashes, addedProTxHash)
-		proTxHashes, privateKeys3, thresholdPublicKey3 := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+		proTxHashes, privateKeys3, thresholdPublicKey3 := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(append(proTxHashes, addedProTxHash))
 		abciValidatorUpdates := make([]abci.ValidatorUpdate, len(proTxHashes))
 		for j, proTxHash := range proTxHashes {
 			abciValidatorUpdates[j] = abci.UpdateValidator(proTxHash, privateKeys3[j].PubKey().Bytes(), types.DefaultDashVotingPower)
@@ -984,7 +982,7 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	t.Cleanup(func() { tearDown(t) })
 	stateStore := sm.NewStore(stateDB)
-	state.Validators, _ = factory.RandValidatorSet(valSetSize)
+	state.Validators, _ = types.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
@@ -1010,7 +1008,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
 	require.Equal(t, int64(0), state.LastBlockHeight)
-	state.Validators, _ = factory.RandValidatorSet(valSetSize)
+	state.Validators, _ = types.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err := stateStore.Save(state)
 	require.NoError(t, err)

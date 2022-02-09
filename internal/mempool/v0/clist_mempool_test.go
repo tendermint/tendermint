@@ -22,6 +22,7 @@ import (
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -442,7 +443,7 @@ func TestSerialReap(t *testing.T) {
 		if err != nil {
 			t.Errorf("client error committing: %v", err)
 		}
-		if len(res.Data) != 8 {
+		if len(res.Data) != crypto.DefaultAppHashSize {
 			t.Errorf("error committing. Hash:%X", res.Data)
 		}
 	}

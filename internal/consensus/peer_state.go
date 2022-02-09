@@ -18,11 +18,12 @@ import (
 // peerStateStats holds internal statistics for a peer.
 type peerStateStats struct {
 	Votes      int `json:"votes"`
+	Commits    int `json:"commits"`
 	BlockParts int `json:"block_parts"`
 }
 
 func (pss peerStateStats) String() string {
-	return fmt.Sprintf("peerStateStats{votes: %d, blockParts: %d}", pss.Votes, pss.BlockParts)
+	return fmt.Sprintf("peerStateStats{votes: %d, commits: %d, blockParts: %d}", pss.Votes, pss.Commits, pss.BlockParts)
 }
 
 // PeerState contains the known state of a peer, including its connection and
@@ -332,6 +333,24 @@ func (ps *PeerState) VotesSent() int {
 	return ps.Stats.Votes
 }
 
+// RecordCommit safely increments the commit counter and returns the new value
+func (ps *PeerState) RecordCommit() int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.Stats.Commits++
+
+	return ps.Stats.Commits
+}
+
+// CommitsSent safely returns a last value of a commit counter
+func (ps *PeerState) CommitsSent() int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	return ps.Stats.Commits
+}
+
 // RecordBlockPart increments internal block part related statistics for this peer.
 // It returns the total number of added block parts.
 func (ps *PeerState) RecordBlockPart() int {
@@ -461,7 +480,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// shift Precommits to LastCommit
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastPrecommits = ps.PRS.Precommits
+			ps.PRS.LastPrecommits = ps.PRS.Precommits.Copy()
 		} else {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
 			ps.PRS.LastPrecommits = nil

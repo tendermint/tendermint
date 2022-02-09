@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -34,7 +34,6 @@ type PersistentKVStoreApplication struct {
 	app *Application
 
 	ValidatorSetUpdates types.ValidatorSetUpdate
-
 
 	valProTxHashToPubKeyMap map[string]*cryptoproto.PublicKey
 

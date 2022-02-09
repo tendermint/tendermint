@@ -272,8 +272,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	var currentBytes int64 = 0
-	for currentBytes <= maxEvidenceBytes {
+	for currentBytes := 0; int64(currentBytes) <= maxEvidenceBytes; {
 		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 			height,
 			time.Now(),
@@ -283,7 +282,7 @@ func TestCreateProposalBlock(t *testing.T) {
 			state.Validators.QuorumHash,
 		)
 		require.NoError(t, err)
-		currentBytes += int64(len(ev.Bytes()))
+		currentBytes += len(ev.Bytes())
 		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
 
@@ -421,11 +420,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
+	state, stateDB, _ := state(100, int64(1))
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
+	state.LastCoreChainLockedBlockHeight = math.MaxUint32 - 1
 	proposerProTxHash, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
@@ -439,9 +439,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	)
 	mp.SetLogger(logger)
 
-	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes))
-	tx := tmrand.Bytes(txLength - 6) // to account for the varint
+	//// fill the mempool with one txs just below the maximum size
+	txLength := cfg.Mempool.MaxTxBytes - 6
+	tx := tmrand.Bytes(txLength) // to account for the varint
 	err = mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	// now produce more txs than what a normal block can hold with 10 smaller txs
@@ -452,6 +452,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	coreChainLock := types.CoreChainLock{
+		CoreBlockHeight: math.MaxUint32,
+		CoreBlockHash:   crypto.CRandBytes(32),
+		Signature:       crypto.CRandBytes(96),
+	}
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
@@ -460,7 +466,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
-		nil,
+		&coreChainLock,
 	)
 
 	blockID := types.BlockID{
@@ -496,6 +502,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		Round:                   math.MaxInt32,
 		BlockID:                 blockID,
 		StateID:                 stateID,
+		QuorumHash:              crypto.RandQuorumHash(),
 		ThresholdBlockSignature: crypto.CRandBytes(bls12381.SignatureSize),
 		ThresholdStateSignature: crypto.CRandBytes(bls12381.SignatureSize),
 	}
@@ -513,10 +520,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// require that the header and commit be the max possible size
-	require.Equal(t, int64(pb.Header.Size()), types.MaxHeaderBytes)
-	require.Equal(t, int64(pb.LastCommit.Size()), 10) // todo
+	require.Equal(t, types.MaxHeaderBytes, int64(pb.Header.Size()))
+	require.Equal(t, types.MaxCommitSize, int64(pb.LastCommit.Size()))
 	// make sure that the block is less than the max possible size
-	assert.Equal(t, int64(pb.Size()), maxBytes)
+	assert.Equal(t, int64(1292+cfg.Mempool.MaxTxBytes), int64(pb.Size()))
 	// because of the proto overhead we expect the part set bytes to be equal or
 	// less than the pb block size
 	assert.LessOrEqual(t, partSet.ByteSize(), int64(pb.Size()))
@@ -650,15 +657,16 @@ func TestNodeSetEventSink(t *testing.T) {
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
-	vals, privVals, quorumHash, thresholdPublicKey := factory.GenerateGenesisValidators(nVals)
+	vals, privVals := types.RandValidatorSet(nVals)
+	genVals := types.MakeGenesisValsFromValidatorSet(vals)
 	for i := 0; i < nVals; i++ {
-		vals[i].Name = fmt.Sprintf("test%d", i)
+		genVals[i].Name = fmt.Sprintf("test%d", i)
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:            "test-chain",
-		Validators:         vals,
-		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash:         quorumHash,
+		Validators:         genVals,
+		ThresholdPublicKey: vals.ThresholdPublicKey,
+		QuorumHash:         vals.QuorumHash,
 		AppHash:            nil,
 	})
 

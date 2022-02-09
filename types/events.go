@@ -2,10 +2,10 @@ package types
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
@@ -18,11 +18,11 @@ const (
 	// after a block has been committed.
 	// These are also used by the tx indexer for async indexing.
 	// All of this data can be fetched through the rpc.
-	EventNewBlockValue            = "NewBlock"
-	EventNewBlockHeaderValue      = "NewBlockHeader"
-	EventNewEvidenceValue         = "NewEvidence"
-	EventTxValue                  = "Tx"
-	EventValidatorSetUpdateValue  = "ValidatorSetUpdate"
+	EventNewBlockValue           = "NewBlock"
+	EventNewBlockHeaderValue     = "NewBlockHeader"
+	EventNewEvidenceValue        = "NewEvidence"
+	EventTxValue                 = "Tx"
+	EventValidatorSetUpdateValue = "ValidatorSetUpdate"
 
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
@@ -184,7 +184,6 @@ type EventDataValidatorSetUpdate struct {
 	QuorumHash          crypto.QuorumHash `json:"quorum_hash"`
 }
 
-
 // EventDataBlockSyncStatus shows the fastsync status and the
 // height when the node state sync mechanism changes.
 type EventDataBlockSyncStatus struct {
@@ -217,7 +216,6 @@ const (
 
 	EventTypeBeginBlock = "begin_block"
 	EventTypeEndBlock   = "end_block"
-
 )
 
 var (

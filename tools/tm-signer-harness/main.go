@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -148,7 +149,7 @@ func extractKey(tmhome, outputPath string) {
 		logger.Error("Can't load file pv", "err", err)
 		os.Exit(1)
 	}
-	quorumHash, _ := fpv.GetFirstQuorumHash()
+	quorumHash, _ := fpv.GetFirstQuorumHash(context.Background())
 	privKey, _ := fpv.Key.PrivateKeyForQuorumHash(quorumHash)
 	pkb := privKey.Bytes()
 	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {

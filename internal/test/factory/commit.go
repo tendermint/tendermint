@@ -40,9 +40,11 @@ func MakeCommit(blockID types.BlockID, height int64, round int32, voteSet *types
 func signAddVote(privVal types.PrivValidator, vote *types.Vote, voteSet *types.VoteSet, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, stateID types.StateID) (signed bool, err error) {
 	v := vote.ToProto()
-	err = privVal.SignVote(context.Background(), voteSet.ChainID(), quorumType, quorumHash, v, stateID, log.NewNopLogger())
+	err = privVal.SignVote(context.Background(), voteSet.ChainID(), quorumType, quorumHash, v, stateID, log.TestingLogger())
 	if err != nil {
 		return false, err
 	}
+	vote.StateSignature = v.StateSignature
+	vote.BlockSignature = v.BlockSignature
 	return voteSet.AddVote(vote)
 }

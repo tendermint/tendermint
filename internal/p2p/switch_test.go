@@ -15,13 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
@@ -217,7 +216,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 }
 
 func TestSwitchDialFailsOnIncompatiblePeer(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", nil,  initSwitchFunc, log.TestingLogger())
+	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", nil, initSwitchFunc, log.TestingLogger())
 	ni := s1.NodeInfo()
 	ni.Network = "network-a"
 	s1.SetNodeInfo(ni)

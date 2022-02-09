@@ -232,11 +232,11 @@ func TestSignVote(t *testing.T) {
 	v := vote.ToProto()
 	quorumHash, err := privVal.GetFirstQuorumHash(context.Background())
 	assert.NoError(err)
-	err = privVal.SignVote(context.Background(),"mychainid", 0, quorumHash, v, stateID, nil)
+	err = privVal.SignVote(context.Background(), "mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote(context.Background(),"mychainid", 0, quorumHash, v, stateID, nil)
+	err = privVal.SignVote(context.Background(), "mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes

@@ -35,7 +35,6 @@ import (
 	"github.com/tendermint/tendermint/test/e2e/app"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/test/e2e/pkg/mockcoreserver"
-	"github.com/tendermint/tendermint/types"
 )
 
 var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
@@ -43,8 +42,6 @@ var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, fals
 var (
 	tmhome            string
 	tmcfg             *config.Config
-	nodeLogger        log.Logger
-	nodeKey           *types.NodeKey
 	dashCoreRPCClient dashcore.Client
 )
 
@@ -54,7 +51,7 @@ func init() {
 		panic("TMHOME is missed")
 	}
 	var err error
-	tmcfg, nodeLogger, err = setupNode()
+	tmcfg, _, err = setupNode()
 	if err != nil {
 		panic("failed to setup config: " + err.Error())
 	}
@@ -218,11 +215,6 @@ func startLightNode(cfg *Config) error {
 	c, err := light.NewHTTPClient(
 		context.Background(),
 		cfg.ChainID,
-		light.TrustOptions{
-			Period: tmcfg.StateSync.TrustPeriod,
-			Height: tmcfg.StateSync.TrustHeight,
-			Hash:   tmcfg.StateSync.TrustHashBytes(),
-		},
 		providers[0],
 		providers[1:],
 		dbs.New(lightDB),

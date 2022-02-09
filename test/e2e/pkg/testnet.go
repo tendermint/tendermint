@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/types"
 	"io"
 	"math/rand"
 	"net"
@@ -16,11 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -113,7 +114,6 @@ type Node struct {
 	UseLegacyP2P         bool
 	QueueType            string
 	HasStarted           bool
-
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to

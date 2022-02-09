@@ -13,9 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
@@ -28,6 +30,11 @@ import (
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	chainID  = "test-chain"
+	llmqType = btcjson.LLMQType_5_60
 )
 
 var (
@@ -67,6 +74,9 @@ type reactorTestSuite struct {
 
 	stateStore *smmocks.Store
 	blockStore *store.BlockStore
+
+	dashcoreClient dashcore.Client
+	privVal        *types.MockPV
 }
 
 func setup(
@@ -146,6 +156,9 @@ func setup(
 
 	cfg := config.DefaultStateSyncConfig()
 
+	rts.privVal = types.NewMockPV()
+	rts.dashcoreClient = dashcore.NewMockClient(chainID, llmqType, rts.privVal, false)
+
 	rts.reactor = NewReactor(
 		factory.DefaultTestChainID,
 		1,
@@ -162,6 +175,7 @@ func setup(
 		rts.blockStore,
 		"",
 		m,
+		rts.dashcoreClient,
 	)
 
 	rts.syncer = newSyncer(
@@ -191,7 +205,7 @@ func setup(
 func TestReactor_Sync(t *testing.T) {
 	const snapshotHeight = 7
 	rts := setup(t, nil, nil, nil, 2)
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	chain := buildLightBlockChain(t, 1, 10, time.Now(), rts.privVal)
 	// app accepts any snapshot
 	rts.conn.On("OfferSnapshotSync", ctx, mock.AnythingOfType("types.RequestOfferSnapshot")).
 		Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
@@ -244,7 +258,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
 	rts.chunkInCh <- p2p.Envelope{
-		From:    types.NodeID("aa"),
+		From:    "aa",
 		Message: &ssproto.SnapshotsRequest{},
 	}
 
@@ -298,7 +312,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 			rts := setup(t, conn, nil, nil, 2)
 
 			rts.chunkInCh <- p2p.Envelope{
-				From:    types.NodeID("aa"),
+				From:    "aa",
 				Message: tc.request,
 			}
 
@@ -315,7 +329,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
 	rts.snapshotInCh <- p2p.Envelope{
-		From:    types.NodeID("aa"),
+		From:    "aa",
 		Message: &ssproto.ChunkRequest{},
 	}
 
@@ -375,7 +389,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 			rts := setup(t, conn, nil, nil, 100)
 
 			rts.snapshotInCh <- p2p.Envelope{
-				From:    types.NodeID("aa"),
+				From:    "aa",
 				Message: &ssproto.SnapshotsRequest{},
 			}
 
@@ -406,7 +420,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 		Height:      height,
 		LastAppHash: h.AppHash,
 	}
-	vals, pv := factory.RandValidatorSet(1)
+	vals, pv := types.RandValidatorSet(1)
 	vote, err := factory.MakeVote(pv[0], vals, h.ChainID, 0, h.Height, 0, 2,
 		blockID, stateID)
 	require.NoError(t, err)
@@ -433,7 +447,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	rts.stateStore.On("LoadValidators", height).Return(vals, nil)
 
 	rts.blockInCh <- p2p.Envelope{
-		From: types.NodeID("aa"),
+		From: "aa",
 		Message: &ssproto.LightBlockRequest{
 			Height: 10,
 		},
@@ -456,18 +470,18 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 func TestReactor_BlockProviders(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID("aa"),
+		NodeID: "aa",
 		Status: p2p.PeerStatusUp,
 	}
 	rts.peerUpdateCh <- p2p.PeerUpdate{
-		NodeID: types.NodeID("bb"),
+		NodeID: "bb",
 		Status: p2p.PeerStatusUp,
 	}
 
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	chain := buildLightBlockChain(t, 1, 10, time.Now(), rts.privVal)
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 
 	peers := rts.reactor.peers.All()
@@ -524,7 +538,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	closeCh := make(chan struct{})
 	defer close(closeCh)
 
-	chain := buildLightBlockChain(t, 1, 10, time.Now())
+	chain := buildLightBlockChain(t, 1, 10, time.Now(), rts.privVal)
 	go handleLightBlockRequests(t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 	go handleConsensusParamsRequest(t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
@@ -607,7 +621,7 @@ func TestReactor_Backfill(t *testing.T) {
 				return nil
 			})
 
-			chain := buildLightBlockChain(t, stopHeight-1, startHeight+1, stopTime)
+			chain := buildLightBlockChain(t, stopHeight-1, startHeight+1, stopTime, rts.privVal)
 
 			closeCh := make(chan struct{})
 			defer close(closeCh)
@@ -686,7 +700,7 @@ func handleLightBlockRequests(t *testing.T,
 				} else {
 					switch errorCount % 3 {
 					case 0: // send a different block
-						vals, pv := factory.RandValidatorSet(3)
+						vals, pv := types.RandValidatorSet(3)
 						_, _, lb := mockLB(t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
 						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
@@ -739,12 +753,14 @@ func handleConsensusParamsRequest(t *testing.T, receiving, sending chan p2p.Enve
 	}
 }
 
-func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time) map[int64]*types.LightBlock {
+func buildLightBlockChain(t *testing.T, fromHeight, toHeight int64, startTime time.Time, privVal *types.MockPV) map[int64]*types.LightBlock {
 	chain := make(map[int64]*types.LightBlock, toHeight-fromHeight)
 	lastBlockID := factory.MakeBlockID()
 	blockTime := startTime.Add(time.Duration(fromHeight-toHeight) * time.Minute)
-	vals, pv := factory.RandValidatorSet(3)
+	vals, pv := types.RandValidatorSet(3)
 	for height := fromHeight; height < toHeight; height++ {
+		pk, _ := pv[0].GetPrivateKey(context.Background(), vals.QuorumHash)
+		privVal.UpdatePrivateKey(context.Background(), pk, vals.QuorumHash, vals.ThresholdPublicKey, height)
 		vals, pv, chain[height] = mockLB(t, height, blockTime, lastBlockID, vals, pv)
 		lastBlockID = factory.MakeBlockIDWithHash(chain[height].Header.Hash())
 		blockTime = blockTime.Add(1 * time.Minute)
@@ -761,13 +777,13 @@ func mockLB(t *testing.T, height int64, time time.Time, lastBlockID types.BlockI
 		Time:        time,
 	})
 	require.NoError(t, err)
-	nextVals, nextPrivVals := factory.RandValidatorSet(3)
+	nextVals, nextPrivVals := types.RandValidatorSet(3)
 	header.ValidatorsHash = currentVals.Hash()
 	header.NextValidatorsHash = nextVals.Hash()
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()
 	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
 	stateID := types.StateID{
-		Height:      height,
+		Height:      height - 1,
 		LastAppHash: header.AppHash,
 	}
 	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals, stateID)

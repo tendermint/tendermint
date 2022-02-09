@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// InitFilesCmd initialises a fresh Tendermint Core instance.
+// InitFilesCmd initializes a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
 	Use:       "init [full|validator|seed|single]",
 	Short:     "Initializes a Tenderdash node",

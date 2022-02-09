@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -36,8 +37,8 @@ func TestGetPubKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
-
-			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
+			quorumHash, _ := tc.pv.GetFirstQuorumHash(context.Background())
+			req := &privvalproto.PubKeyRequest{ChainId: ChainID, QuorumHash: quorumHash}
 			resp, err := s.GetPubKey(context.Background(), req)
 			if tc.err {
 				require.Error(t, err)
@@ -46,7 +47,7 @@ func TestGetPubKey(t *testing.T) {
 				require.NoError(t, err)
 				pk, err := tc.pv.GetPubKey(context.Background(), quorumHash)
 				require.NoError(t, err)
-				assert.Equal(t, resp.PubKey.GetEd25519(), pk.Bytes())
+				assert.Equal(t, resp.PubKey.GetBls12381(), pk.Bytes())
 			}
 		})
 	}
@@ -105,14 +106,22 @@ func TestSignVote(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
 
-			req := &privvalproto.SignVoteRequest{ChainId: ChainID, Vote: tc.have.ToProto()}
+			quorumHash, _ := tc.pv.GetFirstQuorumHash(context.Background())
+			req := &privvalproto.SignVoteRequest{
+				Vote:       tc.have.ToProto(),
+				ChainId:    ChainID,
+				QuorumType: int32(btcjson.LLMQType_5_60),
+				QuorumHash: quorumHash,
+				StateId: &tmproto.StateID{
+					Height:      tc.have.Height - 1,
+					LastAppHash: factory.RandomHash(),
+				},
+			}
 			resp, err := s.SignVote(context.Background(), req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbVote := tc.want.ToProto()
-				quorumHash, err := tc.pv.GetFirstQuorumHash(context.Background())
-				require.NoError(t, err)
 				require.NoError(t, tc.pv.SignVote(context.Background(), ChainID, btcjson.LLMQType_5_60, quorumHash,
 					pbVote, types.StateID{}, log.TestingLogger()))
 
@@ -126,6 +135,7 @@ func TestSignProposal(t *testing.T) {
 
 	ts := time.Now()
 	hash := tmrand.Bytes(tmhash.Size)
+	quorumHash := crypto.RandQuorumHash()
 
 	testCases := []struct {
 		name       string
@@ -133,7 +143,7 @@ func TestSignProposal(t *testing.T) {
 		have, want *types.Proposal
 		err        bool
 	}{
-		{name: "valid", pv: types.NewMockPV(), have: &types.Proposal{
+		{name: "valid", pv: types.NewMockPVForQuorum(quorumHash), have: &types.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
 			Round:     2,
@@ -175,14 +185,17 @@ func TestSignProposal(t *testing.T) {
 			ctx := context.Background()
 			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
 
-			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
+			req := &privvalproto.SignProposalRequest{
+				Proposal:   tc.have.ToProto(),
+				ChainId:    ChainID,
+				QuorumType: int32(btcjson.LLMQType_5_60),
+				QuorumHash: quorumHash,
+			}
 			resp, err := s.SignProposal(ctx, req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbProposal := tc.want.ToProto()
-				quorumHash, err := tc.pv.GetFirstQuorumHash(ctx)
-				require.NoError(t, err)
 				_, err = tc.pv.SignProposal(ctx, ChainID, btcjson.LLMQType_5_60, quorumHash, pbProposal)
 				require.NoError(t, err)
 				assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)

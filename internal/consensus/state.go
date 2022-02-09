@@ -1857,7 +1857,7 @@ func (cs *State) verifyCommit(
 	)
 
 	// Height mismatch is ignored.
-	// Not necessarily a bad peer, but not favourable behaviour.
+	// Not necessarily a bad peer, but not favorable behavior.
 	if commit.Height != stateHeight {
 		cs.Logger.Debug(
 			"commit ignored and not added",
@@ -2619,29 +2619,6 @@ func (cs *State) signVote(
 	vote.StateSignature = protoVote.StateSignature
 
 	return vote, err
-}
-
-// voteTime ensures monotonicity of the time a validator votes on.
-// It ensures that for a prior block with a BFT-timestamp of T,
-// any vote from this validator will have time at least time T + 1ms.
-// This is needed, as monotonicity of time is a guarantee that BFT time provides.
-func (cs *State) voteTime() time.Time {
-	now := tmtime.Now()
-	minVoteTime := now
-	// Minimum time increment between blocks
-	const timeIota = time.Millisecond
-	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
-	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
-	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
-	}
-	if now.After(minVoteTime) {
-		return now
-	}
-	return minVoteTime
 }
 
 // sign the vote and publish on internalMsgQueue

@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 // InjectEvidence takes a running testnet and generates an amount of valid
@@ -122,8 +121,8 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	return nil
 }
 
-func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.PubKey, quorumHash crypto.QuorumHash) ([]types.MockPV, error) {
-	var privVals []types.MockPV
+func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.PubKey, quorumHash crypto.QuorumHash) ([]*types.MockPV, error) {
+	var privVals []*types.MockPV
 
 	for _, node := range testnet.Nodes {
 		if node.Mode == e2e.ModeValidator {
@@ -136,7 +135,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.Pub
 			// stateless which means we can double vote and do other funky stuff
 			privVals = append(
 				privVals,
-				*types.NewMockPVWithParams(
+				types.NewMockPVWithParams(
 					privKey,
 					node.ProTxHash,
 					quorumHash,
@@ -154,7 +153,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.Pub
 // generateDuplicateVoteEvidence picks a random validator from the val set and
 // returns duplicate vote evidence against the validator
 func generateDuplicateVoteEvidence(
-	privVals []types.MockPV,
+	privVals []*types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
 	chainID string,
@@ -165,11 +164,11 @@ func generateDuplicateVoteEvidence(
 		return nil, err
 	}
 	stateID := types.RandStateID()
-	voteA, err := factory.MakeVote(&privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
+	voteA, err := factory.MakeVote(privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := factory.MakeVote(&privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
+	voteB, err := factory.MakeVote(privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +182,7 @@ func generateDuplicateVoteEvidence(
 
 // getRandomValidatorIndex picks a random validator from a slice of mock PrivVals that's
 // also part of the validator set, returning the PrivVal and its index in the validator set
-func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) (types.MockPV, int32, error) {
+func getRandomValidatorIndex(privVals []*types.MockPV, vals *types.ValidatorSet) (*types.MockPV, int32, error) {
 	for _, idx := range rand.Perm(len(privVals)) {
 		pv := privVals[idx]
 		valIdx, _ := vals.GetByProTxHash(pv.ProTxHash)
@@ -191,7 +190,7 @@ func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) 
 			return pv, valIdx, nil
 		}
 	}
-	return types.MockPV{}, -1, errors.New("no private validator found in validator set")
+	return nil, -1, errors.New("no private validator found in validator set")
 }
 
 func readPrivKey(keyFilePath string, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
@@ -206,25 +205,6 @@ func readPrivKey(keyFilePath string, quorumHash crypto.QuorumHash) (crypto.PrivK
 	}
 
 	return pvKey.PrivateKeyForQuorumHash(quorumHash)
-}
-
-func makeHeaderRandom(chainID string, height int64) *types.Header {
-	return &types.Header{
-		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
-		ChainID:            chainID,
-		Height:             height,
-		Time:               time.Now(),
-		LastBlockID:        makeBlockID([]byte("headerhash"), 1000, []byte("partshash")),
-		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
-		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerProTxHash:  crypto.RandProTxHash(),
-	}
 }
 
 func makeRandomBlockID() types.BlockID {

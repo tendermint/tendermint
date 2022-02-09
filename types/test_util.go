@@ -95,7 +95,7 @@ func MakeVote(
 
 func RandStateID() StateID {
 	return StateID{
-		Height:      rand.Int63(),
+		Height:      rand.Int63(), // nolint:gosec
 		LastAppHash: tmrand.Bytes(tmhash.Size),
 	}
 }

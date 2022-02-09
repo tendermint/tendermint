@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	sm "github.com/tendermint/tendermint/internal/state"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -27,7 +26,7 @@ const (
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	vals, _ := factory.GenerateMockValidatorSet(3)
+	vals, _ := types.RandValidatorSet(3)
 
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
 	err := stateStore.Bootstrap(bootstrapState)
@@ -51,7 +50,7 @@ func TestStoreBootstrap(t *testing.T) {
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	vals, _ := factory.GenerateMockValidatorSet(3)
+	vals, _ := types.RandValidatorSet(3)
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// Note that only the next validators at height h + 1 are saved
@@ -108,7 +107,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	state.Validators, _ = factory.RandValidatorSet(valSetSize)
+	state.Validators, _ = types.RandValidatorSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err = stateStore.Save(state)
 	require.NoError(b, err)

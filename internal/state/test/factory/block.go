@@ -3,6 +3,7 @@ package factory
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -41,7 +42,7 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 	return blocks, nil
 }
 
-func MakeBlock(state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock,  proposedAppVersion uint64) (*types.Block, error) {
+func MakeBlock(state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock, proposedAppVersion uint64) (*types.Block, error) {
 
 	if state.LastBlockHeight != (height - 1) {
 		return nil, fmt.Errorf("requested height %d should be 1 more than last block height %d",
@@ -73,7 +74,7 @@ func makeBlockAndPartSet(state sm.State, lastBlock *types.Block, lastBlockMeta *
 			1, lastBlock.Header.Height, 0, 2,
 			lastBlockMeta.BlockID,
 			state.LastStateID,
-			)
+		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error when creating vote at height %d: %s", height, err)
 		}

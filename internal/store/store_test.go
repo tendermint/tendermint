@@ -325,6 +325,7 @@ func TestLoadBaseMeta(t *testing.T) {
 	bs := NewBlockStore(dbm.NewMemDB())
 
 	for h := int64(1); h <= 10; h++ {
+		state.LastBlockHeight = h - 1
 		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
 		require.NoError(t, err)
 		partSet := block.MakePartSet(2)
@@ -392,6 +393,7 @@ func TestPruneBlocks(t *testing.T) {
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
+		state.LastBlockHeight = h - 1
 		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
 		require.NoError(t, err)
 		partSet := block.MakePartSet(2)
@@ -539,6 +541,7 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	// produce a few blocks and check that the correct seen and cannoncial commits
 	// are persisted.
 	for h := int64(3); h <= 5; h++ {
+		state.LastBlockHeight = h - 1
 		blockCommit := makeTestCommit(h-1, tmtime.Now())
 		block, err := factory.MakeBlock(state, h, blockCommit, nil, 0)
 		require.NoError(t, err)

@@ -9,8 +9,6 @@ import (
 
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/light"
-	"github.com/tendermint/tendermint/types"
-
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -19,10 +17,6 @@ import (
 	httpp "github.com/tendermint/tendermint/light/provider/http"
 	dbs "github.com/tendermint/tendermint/light/store/db"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
-)
-
-var (
-	privval types.PrivValidator
 )
 
 // Manually getting light blocks and verifying them.
@@ -71,15 +65,13 @@ func ExampleClient() {
 		stdlog.Fatal(err)
 	}
 
-	dashCoreMockClient := dashcore.NewMockClient(chainID, 100, privval, false)
-
 	c, err := light.NewClient(
 		context.Background(),
 		chainID,
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db),
-		dashCoreMockClient,
+		dashcore.NewMockClient(chainID, 100, nil, false),
 		light.Logger(log.TestingLogger()),
 	)
 
@@ -115,4 +107,3 @@ func ExampleClient() {
 
 	logger.Info("verified light block", "light-block", lb)
 }
-

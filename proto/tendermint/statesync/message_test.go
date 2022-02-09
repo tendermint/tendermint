@@ -189,7 +189,7 @@ func TestStateSyncVectors(t *testing.T) {
 				Height:          9001,
 				ConsensusParams: types.DefaultConsensusParams().ToProto(),
 			},
-			"423408a946122f0a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a090a07656432353531392200",
+			"423508a94612300a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a0a0a08626c7331323338312200",
 		},
 	}
 

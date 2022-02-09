@@ -31,7 +31,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 		7: {makeParams(1024*1024*1024, 0, -1, 0, valBLS12381), false},
 		// test evidence params
 		8:  {makeParams(1, 0, 0, 0, valBLS12381), false},
-		9: {makeParams(1, 0, 2, 2, valBLS12381), false},
+		9:  {makeParams(1, 0, 2, 2, valBLS12381), false},
 		10: {makeParams(1000, 0, 2, 1, valBLS12381), true},
 		11: {makeParams(1, 0, -1, 0, valBLS12381), false},
 		// test no pubkey type provided

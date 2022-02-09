@@ -205,7 +205,7 @@ func (pv *MockPV) GetThresholdPublicKey(ctx context.Context, quorumHash crypto.Q
 	return pv.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
 }
 
-// PrivateKeyForQuorumHash ...
+// GetPrivateKey ...
 func (pv *MockPV) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return pv.PrivateKeys[quorumHash.String()].PrivKey, nil
 }
@@ -310,6 +310,7 @@ func (pv *MockPV) UpdatePrivateKey(
 	// fmt.Printf("mockpv node %X setting a new key %X at height %d\n", pv.ProTxHash,
 	//  privateKey.PubKey().Bytes(), height)
 	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	pv.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
 		PrivKey:            privateKey,
 		PubKey:             privateKey.PubKey(),
@@ -319,7 +320,6 @@ func (pv *MockPV) UpdatePrivateKey(
 	if _, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; !ok {
 		pv.FirstHeightOfQuorums[quorumHash.String()] = strconv.Itoa(int(height))
 	}
-	pv.mtx.RUnlock()
 }
 
 func (pv *MockPV) ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *Validator {
@@ -344,15 +344,6 @@ func (pv *MockPV) String() string {
 func (pv *MockPV) DisableChecks() {
 	// Currently this does nothing,
 	// as MockPV has no safety checks at all.
-}
-
-func MapMockPVByProTxHashes(privValidators []*MockPV) map[string]*MockPV {
-	privValidatorProTxHashMap := make(map[string]*MockPV)
-	for _, privValidator := range privValidators {
-		proTxHash := privValidator.ProTxHash
-		privValidatorProTxHashMap[proTxHash.String()] = privValidator
-	}
-	return privValidatorProTxHashMap
 }
 
 type ErroringMockPV struct {
@@ -423,20 +414,4 @@ func (pvs MockPrivValidatorsByProTxHash) Less(i, j int) bool {
 
 func (pvs MockPrivValidatorsByProTxHash) Swap(i, j int) {
 	pvs[i], pvs[j] = pvs[j], pvs[i]
-}
-
-type GenesisValidatorsByProTxHash []GenesisValidator
-
-func (vs GenesisValidatorsByProTxHash) Len() int {
-	return len(vs)
-}
-
-func (vs GenesisValidatorsByProTxHash) Less(i, j int) bool {
-	pvi := vs[i].ProTxHash
-	pvj := vs[j].ProTxHash
-	return bytes.Compare(pvi, pvj) == -1
-}
-
-func (vs GenesisValidatorsByProTxHash) Swap(i, j int) {
-	vs[i], vs[j] = vs[j], vs[i]
 }

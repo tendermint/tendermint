@@ -18,7 +18,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	smmocks "github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/internal/store"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -39,7 +38,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 		blockStore = &mocks.BlockStore{}
 	)
 
-	valSet, privVals := factory.RandValidatorSet(1)
+	valSet, privVals := types.RandValidatorSet(1)
 
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
@@ -57,7 +56,6 @@ func TestEvidencePoolBasic(t *testing.T) {
 
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID,
 		valSet.QuorumType, valSet.QuorumHash)
-
 	require.NoError(t, err)
 
 	// good evidence
@@ -79,7 +77,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	next := pool.EvidenceFront()
 	require.Equal(t, ev, next.Value.(types.Evidence))
 
-	const evidenceBytes int64 = 372
+	const evidenceBytes int64 = 640
 	evs, size = pool.PendingEvidence(evidenceBytes)
 	require.Equal(t, 1, len(evs))
 	require.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct
@@ -202,7 +200,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	notPrunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(
-		height,
+		2,
 		defaultEvidenceTime.Add(2*time.Minute),
 		val,
 		evidenceChainID,
@@ -301,7 +299,7 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 func TestRecoverPendingEvidence(t *testing.T) {
 	height := int64(10)
 	quorumHash := crypto.RandQuorumHash()
-	val := types.NewMockPV()
+	val := types.NewMockPVForQuorum(quorumHash)
 	proTxHash := val.ProTxHash
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(t, val, height, btcjson.LLMQType_5_60, quorumHash)
@@ -412,9 +410,6 @@ func initializeValidatorState(
 	require.NoError(t, err)
 	proTxHash, err := privVal.GetProTxHash(context.Background())
 	require.NoError(t, err)
-	if len(proTxHash) != 32 {
-		t.Fatalf("proTxHash len not correct")
-	}
 	validator := &types.Validator{VotingPower: types.DefaultDashVotingPower, PubKey: pubKey, ProTxHash: proTxHash}
 
 	// create validator set and state

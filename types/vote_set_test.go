@@ -11,9 +11,9 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -639,12 +639,10 @@ func randVoteSet(
 	numValidators int,
 	stateID StateID,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSet, mockPVs := factory.RandValidatorSet(numValidators)
-	var privVals []PrivValidator
-	for _, pv := range mockPVs {
-		privVals = append(privVals, pv)
-	}
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, stateID), valSet, privVals
+	valSet, mockPVs := RandValidatorSet(numValidators)
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, stateID),
+		valSet,
+		append([]PrivValidator(nil), mockPVs...)
 }
 
 func randVoteSetWithLLMQType(

@@ -21,11 +21,7 @@ func TestGenerator(t *testing.T) {
 
 	for idx, m := range manifests {
 		t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
-			numStateSyncs := 0
 			for name, node := range m.Nodes {
-				if node.StateSync != e2e.StateSyncDisabled {
-					numStateSyncs++
-				}
 				t.Run(name, func(t *testing.T) {
 					if node.StartAt > m.InitialHeight+5 && !node.Stateless() {
 						require.NotEqual(t, node.StateSync, e2e.StateSyncDisabled)
@@ -38,7 +34,6 @@ func TestGenerator(t *testing.T) {
 
 				})
 			}
-			require.True(t, numStateSyncs <= 2)
 		})
 	}
 
@@ -63,49 +58,9 @@ func TestGenerator(t *testing.T) {
 					}
 				}
 
-				assert.True(t, numLegacy >= 1, "not enough legacy nodes [%d/%d]",
-					numLegacy, len(m.Nodes))
 				assert.True(t, numNew >= 1, "not enough new nodes [%d/%d]",
 					numNew, len(m.Nodes))
 			})
 		}
-	})
-	t.Run("UnmixedP2P", func(t *testing.T) {
-		t.Run("New", func(t *testing.T) {
-			manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), Options{P2P: NewP2PMode})
-			require.NoError(t, err)
-			require.True(t, len(manifests) >= 16, "insufficient combinations: %d", len(manifests))
-
-			// failures map to the test cases that you'd see locally.
-			e2e.SortManifests(manifests, false /* ascending */)
-
-			for idx, m := range manifests {
-				t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
-					for name, node := range m.Nodes {
-						t.Run(name, func(t *testing.T) {
-							require.False(t, node.UseLegacyP2P)
-						})
-					}
-				})
-			}
-		})
-		t.Run("Legacy", func(t *testing.T) {
-			manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), Options{P2P: LegacyP2PMode})
-			require.NoError(t, err)
-			require.True(t, len(manifests) >= 16, "insufficient combinations: %d", len(manifests))
-
-			// failures map to the test cases that you'd see locally.
-			e2e.SortManifests(manifests, false /* ascending */)
-
-			for idx, m := range manifests {
-				t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
-					for name, node := range m.Nodes {
-						t.Run(name, func(t *testing.T) {
-							require.True(t, node.UseLegacyP2P)
-						})
-					}
-				})
-			}
-		})
 	})
 }

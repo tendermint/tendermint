@@ -161,7 +161,6 @@ func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 	}
 }
 
-
 type rpcBlockSearchFunc func(
 	ctx *rpctypes.Context,
 	query string,

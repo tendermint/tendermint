@@ -24,11 +24,11 @@ func MakeVote(
 	}
 	v := &types.Vote{
 		ValidatorProTxHash: proTxHash,
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             tmproto.SignedMsgType(step),
-		BlockID:          blockID,
+		ValidatorIndex:     valIndex,
+		Height:             height,
+		Round:              round,
+		Type:               tmproto.SignedMsgType(step),
+		BlockID:            blockID,
 	}
 
 	vpb := v.ToProto()

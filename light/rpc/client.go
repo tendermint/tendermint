@@ -5,15 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dashevo/dashd-go/btcjson"
 	"regexp"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/gogo/protobuf/proto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -528,9 +527,11 @@ func (c *Client) Validators(
 
 	skipCount := validateSkipCount(page, perPage)
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
-	var thresholdPublicKey crypto.PubKey = nil
-	var quorumHash crypto.QuorumHash = nil
-	var quorumType btcjson.LLMQType
+	var (
+		thresholdPublicKey crypto.PubKey
+		quorumHash         crypto.QuorumHash
+		quorumType         btcjson.LLMQType
+	)
 	if *requestQuorumInfo {
 		thresholdPublicKey = l.ValidatorSet.ThresholdPublicKey
 		quorumHash = l.ValidatorSet.QuorumHash

@@ -3,7 +3,6 @@ package statesync
 import (
 	"context"
 	"errors"
-	"github.com/tendermint/tendermint/crypto"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/proxy"
 	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"

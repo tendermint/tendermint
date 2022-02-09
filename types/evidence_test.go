@@ -3,22 +3,18 @@ package types
 import (
 	"context"
 	"encoding/hex"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
-	mrand "math/rand"
 	"testing"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -147,25 +143,6 @@ func makeVote(
 	return v
 }
 
-func makeHeaderRandom() *Header {
-	return &Header{
-		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
-		ChainID:            tmrand.Str(12),
-		Height:             int64(mrand.Uint32() + 1),
-		Time:               time.Now(),
-		LastBlockID:        makeBlockIDRandom(),
-		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
-		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerProTxHash:  crypto.CRandBytes(crypto.DefaultHashSize),
-	}
-}
-
 func TestEvidenceProto(t *testing.T) {
 	// -------- Votes --------
 	quorumHash := crypto.RandQuorumHash()
@@ -215,14 +192,18 @@ func TestEvidenceProto(t *testing.T) {
 func TestEvidenceVectors(t *testing.T) {
 	// Votes for duplicateEvidence
 	quorumType := btcjson.LLMQType_5_60
-	quorumHash := crypto.RandQuorumHash()
-	val := NewMockPVForQuorum(quorumHash)
+	quorumHash := make([]byte, crypto.QuorumHashSize)
+	val := NewMockPVForQuorum(make([]byte, crypto.QuorumHashSize))
+	val.ProTxHash = make([]byte, crypto.ProTxHashSize)
 	key := bls12381.GenPrivKeyFromSecret([]byte("it's a secret")) // deterministic key
 	val.UpdatePrivateKey(context.Background(), key, quorumHash, key.PubKey(), 10)
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	const chainID = "mychain"
-	stateID := RandStateID().WithHeight(100)
+	stateID := StateID{
+		Height:      100,
+		LastAppHash: make([]byte, tmhash.Size),
+	}
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, quorumType, quorumHash, blockID, stateID)
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, quorumType, quorumHash, blockID2, stateID)
 
@@ -233,7 +214,7 @@ func TestEvidenceVectors(t *testing.T) {
 	}{
 		{"duplicateVoteEvidence",
 			EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}},
-			"a9ce28d13bb31001fc3e5b7927051baf98f86abdbd64377643a304164c826923",
+			"24d8bc379db8ef7f4406b8532df92ddebc50142bfe8518e39b3ea4a35804fb8f",
 		},
 	}
 

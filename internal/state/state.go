@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	"io/ioutil"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
@@ -163,7 +163,7 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
-// StateID() generates new state ID based on current `state`
+// StateID generates new state ID based on current `state`
 func (state State) StateID() types.StateID {
 	lastAppHash := make([]byte, len(state.AppHash))
 	copy(lastAppHash, state.AppHash)

@@ -39,8 +39,7 @@ const (
 	defaultMaxClockDrift = 10 * time.Second
 
 	// 10s is sufficient for most networks.
-	defaultMaxBlockLag     = 10 * time.Second
-	defaultProviderTimeout = 10 * time.Second
+	defaultMaxBlockLag = 10 * time.Second
 )
 
 // Option sets a parameter for the light client.
@@ -162,7 +161,7 @@ func NewClientAtHeight(
 		return nil, err
 	}
 
-	if c.latestTrustedBlock == nil {
+	if c.latestTrustedBlock == nil && height > 0 {
 		c.logger.Info("Downloading trusted light block using options")
 		if err := c.initializeAtHeight(ctx, height); err != nil {
 			return nil, err
@@ -187,17 +186,15 @@ func NewClientFromTrustedStore(
 	}
 
 	c := &Client{
-		chainID:          chainID,
-		verificationMode: dashCoreVerification,
-		maxRetryAttempts: defaultMaxRetryAttempts,
-		maxClockDrift:    defaultMaxClockDrift,
-		maxBlockLag:      defaultMaxBlockLag,
-		primary:          primary,
-		witnesses:        witnesses,
-		trustedStore:     trustedStore,
-		pruningSize:      defaultPruningSize,
-		//confirmationFn:    func(action string) bool { return true },
-		//quit:              make(chan struct{}),
+		chainID:           chainID,
+		verificationMode:  dashCoreVerification,
+		maxRetryAttempts:  defaultMaxRetryAttempts,
+		maxClockDrift:     defaultMaxClockDrift,
+		maxBlockLag:       defaultMaxBlockLag,
+		primary:           primary,
+		witnesses:         witnesses,
+		trustedStore:      trustedStore,
+		pruningSize:       defaultPruningSize,
 		logger:            log.NewNopLogger(),
 		dashCoreRPCClient: dashCoreRPCClient,
 	}
@@ -454,6 +451,10 @@ func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now 
 
 func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
 	c.logger.Info("verify light block", "height", newLightBlock.Height, "hash", newLightBlock.Hash())
+
+	if err := newLightBlock.ValidateBasic(c.ChainID()); err != nil {
+		return err
+	}
 
 	var (
 		verifyFunc func(ctx context.Context, new *types.LightBlock) error
@@ -871,12 +872,4 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 
 	// remove all witnesses that misbehaved
 	return c.removeWitnesses(witnessesToRemove)
-}
-
-// providerShouldBeRemoved analyzes the nature of the error and whether the provider
-// should be removed from the light clients set
-func (c *Client) providerShouldBeRemoved(err error) bool {
-	return errors.As(err, &provider.ErrUnreliableProvider{}) ||
-		errors.As(err, &provider.ErrBadLightBlock{}) ||
-		errors.Is(err, provider.ErrConnectionClosed)
 }

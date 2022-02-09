@@ -676,7 +676,7 @@ func (r *Reactor) crawlPeersRoutine() {
 	if len(r.seedAddrs) > 0 {
 		for try := 0; try < seedInitMaxAttemptToDial; try++ {
 			// we sleep a few (random) secs to avoid connection storm when whole network restarts
-			delay := time.Duration(rand.Int63n(seedConnectMaxDelayPeriod.Nanoseconds()))
+			delay := time.Duration(rand.Int63n(seedConnectMaxDelayPeriod.Nanoseconds())) // nolint:gosec
 			time.Sleep(delay)
 
 			if r.dialSeeds() {

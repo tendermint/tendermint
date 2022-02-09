@@ -274,24 +274,15 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 		return state, fmt.Errorf("error when converting abci validator updates: %w", err)
 	}
 
-	validatorSet := state.Validators.Copy()
-	err = validatorSet.UpdateWithChangeSet(validators, thresholdPublicKey, quorumHash)
-	if err != nil {
-		return state, fmt.Errorf("error when updating validator set with a new change set: %w", err)
-	}
-
-	if validatorSet != nil {
-		validators = validatorSet.Validators
-		thresholdPublicKey = validatorSet.ThresholdPublicKey
-		quorumHash = validatorSet.QuorumHash
+	if len(validators) > 0 {
 		blockExec.logger.Debug(
 			"updates to validators",
 			"quorumHash",
-			validatorSet.QuorumHash,
+			quorumHash,
 			"thresholdPublicKey",
-			validatorSet.ThresholdPublicKey,
+			thresholdPublicKey,
 			"updates",
-			types.ValidatorListString(validatorSet.Validators),
+			types.ValidatorListString(validators),
 		)
 	}
 
@@ -347,7 +338,7 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(logger, blockExec.eventBus, block, blockID, abciResponses, validatorSet)
+	fireEvents(logger, blockExec.eventBus, block, blockID, abciResponses, state.NextValidators)
 
 	return state, nil
 }
@@ -718,7 +709,7 @@ func fireEvents(
 				ThresholdPublicKey:  validatorSetUpdate.ThresholdPublicKey,
 				QuorumHash:          validatorSetUpdate.QuorumHash,
 			}); err != nil {
-			logger.Error("failed publishing event", "err", err)
+			logger.Error("failed publishing event validator-set update", "err", err)
 		}
 	}
 }

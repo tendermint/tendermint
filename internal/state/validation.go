@@ -5,13 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/internal/proxy"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/proxy"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
 

@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
@@ -140,8 +139,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	for i, c := range GetClients(t, n, config) {
-		h := int64(1)
-		vals, _ := c.Validators(context.Background(), &h, nil, nil, nil)
+		vals, err := c.Validators(ctx, libs.Int64Ptr(1), nil, nil, libs.BoolPtr(true))
+		require.NoError(t, err)
 		correct, fakes := makeEvidences(t, pv, chainID, vals.QuorumType, *vals.QuorumHash)
 		t.Logf("client %d", i)
 

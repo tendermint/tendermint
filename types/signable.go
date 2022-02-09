@@ -5,7 +5,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/bls12381"
 )
 
-var (
+const (
 	SignatureSize = bls12381.SignatureSize
 )
 

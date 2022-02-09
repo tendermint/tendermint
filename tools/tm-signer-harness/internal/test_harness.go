@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"net"
 	"os"
 	"os/signal"
@@ -13,14 +12,13 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/state"
-	"github.com/tendermint/tendermint/privval"
-
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )

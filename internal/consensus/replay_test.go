@@ -32,7 +32,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
@@ -1792,7 +1791,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
 	require.NoError(t, err)
 
-	val, _ := factory.RandValidator()
+	val, _ := randValidator()
 	randQuorumHash, err := privVal.GetFirstQuorumHash(context.Background())
 	require.NoError(t, err)
 	vals := types.NewValidatorSet(
@@ -1857,4 +1856,13 @@ func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitC
 	return abci.ResponseInitChain{
 		ValidatorSetUpdate: *ica.vals,
 	}
+}
+
+func randValidator() (*types.Validator, types.PrivValidator) {
+	quorumHash := crypto.RandQuorumHash()
+	privVal := types.NewMockPVForQuorum(quorumHash)
+	proTxHash, _ := privVal.GetProTxHash(context.Background())
+	pubKey, _ := privVal.GetPubKey(context.Background(), quorumHash)
+	val := types.NewValidatorDefaultVotingPower(pubKey, proTxHash)
+	return val, privVal
 }

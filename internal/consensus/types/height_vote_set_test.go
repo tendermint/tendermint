@@ -3,16 +3,15 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -32,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
-	valSet, privVals := factory.RandValidatorSet(10)
+	valSet, privVals := types.RandValidatorSet(10)
 
 	stateID := types.StateID{}
 

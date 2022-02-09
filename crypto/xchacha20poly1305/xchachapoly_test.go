@@ -25,19 +25,19 @@ func TestRandom(t *testing.T) {
 		plaintext := make([]byte, pl)
 		_, err := crand.Read(key[:])
 		if err != nil {
-			t.Errorf("error on read: %w", err)
+			t.Errorf("error on read: %v", err)
 		}
 		_, err = crand.Read(nonce[:])
 		if err != nil {
-			t.Errorf("error on read: %w", err)
+			t.Errorf("error on read: %v", err)
 		}
 		_, err = crand.Read(ad)
 		if err != nil {
-			t.Errorf("error on read: %w", err)
+			t.Errorf("error on read: %v", err)
 		}
 		_, err = crand.Read(plaintext)
 		if err != nil {
-			t.Errorf("error on read: %w", err)
+			t.Errorf("error on read: %v", err)
 		}
 
 		aead, err := New(key[:])

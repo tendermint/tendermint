@@ -368,7 +368,7 @@ func TestReactorHelperMode(t *testing.T) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_v2_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 1)
 
 	params := testReactorParams{
 		logger:      log.TestingLogger(),
@@ -459,7 +459,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 	cfg, err := config.ResetTestRoot("blockchain_reactor_v2_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
-	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 30)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, 1, 1)
 
 	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),
@@ -505,25 +505,21 @@ func newReactorStore(
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, state.StateID(), state.Validators.QuorumHash, nil, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, state.Validators.QuorumHash, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-			stateID := types.StateID{
-				Height:      blockHeight,
-				LastAppHash: lastBlock.AppHash,
-			}
 			vote, err := factory.MakeVote(
 				privVals[0],
 				state.Validators,
 				lastBlock.Header.ChainID, 0,
 				lastBlock.Header.Height, 0, 2,
 				lastBlockMeta.BlockID,
-				stateID,
+				state.LastStateID, // todo: figure out using state.StateID() instead
 			)
 			require.NoError(t, err)
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, stateID, state.Validators.QuorumHash, vote.BlockSignature, vote.StateSignature)
+				lastBlockMeta.BlockID, state.LastStateID, state.Validators.QuorumHash, vote.BlockSignature, vote.StateSignature)
 		}
 
 		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit, nil, 0)

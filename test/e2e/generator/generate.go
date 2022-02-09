@@ -165,19 +165,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	numChainLocks := topology.chainLocks.compute(r)
 	numLightClients := topology.lightClients.compute(r)
 
-	const legacyP2PFactor float64 = 0.5
-
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
 		node := generateNode(r, manifest, e2e.ModeSeed, 0, false)
-
-		switch p2pMode {
-		case LegacyP2PMode:
-			node.UseLegacyP2P = true
-		case HybridP2PMode:
-			node.UseLegacyP2P = r.Float64() < legacyP2PFactor
-		}
-
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
@@ -194,7 +184,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	}
 	// generate the validators updates list since initial height and updates every N blocks specified in quorumHeightRotate
 	valHeights := valPlr.populate(manifest.ValidatorUpdates)
-	fmt.Printf("%v", valHeights)
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up
@@ -223,14 +212,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		node := generateNode(r, manifest, e2e.ModeFull, startAt, false)
-
-		switch p2pMode {
-		case LegacyP2PMode:
-			node.UseLegacyP2P = true
-		case HybridP2PMode:
-			node.UseLegacyP2P = r.Float64() > legacyP2PFactor
-		}
-
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
 
@@ -305,20 +286,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// lastly, set up the light clients
 	for i := 1; i <= numLightClients; i++ {
 		startAt := manifest.InitialHeight + 5
-
 		node := generateLightNode(
 			r, startAt+(5*int64(i)), lightProviders,
 		)
-
-		switch p2pMode {
-		case LegacyP2PMode:
-			node.UseLegacyP2P = true
-		case HybridP2PMode:
-			node.UseLegacyP2P = r.Float64() < legacyP2PFactor
-		}
-
 		manifest.Nodes[fmt.Sprintf("light%02d", i)] = node
-
 	}
 
 	return manifest, nil
@@ -349,7 +320,7 @@ func generateNode(
 		Perturb:          nodePerturbations.Choose(r),
 	}
 
-	if startAt > 0 {
+	if startAt > 0 && startAt != manifest.InitialHeight {
 		node.StateSync = nodeStateSyncs.Choose(r)
 		if manifest.InitialHeight-startAt <= 5 && node.StateSync == e2e.StateSyncDisabled {
 			// avoid needing to blocsync more than five total blocks.

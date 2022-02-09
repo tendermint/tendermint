@@ -3,7 +3,7 @@ package state_test
 import (
 	"bytes"
 	"context"
-	"github.com/tendermint/tendermint/internal/test/factory"
+	"fmt"
 	"testing"
 	"time"
 
@@ -208,17 +208,17 @@ func TestValidateValidatorUpdates(t *testing.T) {
 }
 
 func TestUpdateValidators(t *testing.T) {
-	validatorSet, _ := factory.RandValidatorSet(4)
+	validatorSet, _ := types.RandValidatorSet(4)
 	originalProTxHashes := validatorSet.GetProTxHashes()
 	addedProTxHashes := bls12381.CreateProTxHashes(4)
 	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...) // nolint:gocritic
-	combinedValidatorSet, _ := factory.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
-	regeneratedValidatorSet, _ := factory.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
+	combinedValidatorSet, _ := types.GenerateValidatorSet(types.NewValSetParam(combinedProTxHashes))
+	regeneratedValidatorSet, _ := types.GenerateValidatorSet(types.NewValSetParam(combinedProTxHashes))
 	abciRegeneratedValidatorUpdates := regeneratedValidatorSet.ABCIEquivalentValidatorUpdates()
 	removedProTxHashes := combinedValidatorSet.GetProTxHashes()[0 : len(combinedProTxHashes)-2] // these are sorted
-	removedValidatorSet, _ := factory.GenerateValidatorSetUsingProTxHashes(
+	removedValidatorSet, _ := types.GenerateValidatorSet(types.NewValSetParam(
 		removedProTxHashes,
-	) // size 6
+	)) // size 6
 	abciRemovalValidatorUpdates := removedValidatorSet.ABCIEquivalentValidatorUpdates()
 	abciRemovalValidatorUpdates.ValidatorUpdates = append(
 		abciRemovalValidatorUpdates.ValidatorUpdates,
@@ -356,9 +356,13 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	vals := state.Validators
 	proTxHashes := vals.GetProTxHashes()
+
 	addProTxHash := crypto.RandProTxHash()
+
+	fmt.Printf("old: %x, new: %x\n", proTxHashes[0], addProTxHash)
+
 	proTxHashes = append(proTxHashes, addProTxHash)
-	newVals, _ := factory.GenerateValidatorSetUsingProTxHashes(proTxHashes)
+	newVals, _ := types.GenerateValidatorSet(types.NewValSetParam(proTxHashes))
 	var pos int
 	for i, proTxHash := range newVals.GetProTxHashes() {
 		if bytes.Equal(proTxHash.Bytes(), addProTxHash.Bytes()) {
@@ -393,7 +397,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 			assert.EqualValues(
 				t,
 				types.DefaultDashVotingPower,
-				event.ValidatorSetUpdates[1].VotingPower,
+				event.ValidatorSetUpdates[pos].VotingPower,
 			)
 		}
 	case <-updatesSub.Canceled():

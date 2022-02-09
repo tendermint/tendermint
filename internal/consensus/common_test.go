@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/internal/p2p"
 	"io"
 	"io/ioutil"
 	"os"
@@ -18,16 +16,15 @@ import (
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
-
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -1033,15 +1030,6 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
-	for i, s := range switches {
-		if peer.NodeInfo().ID() == s.NodeInfo().ID() {
-			return i
-		}
-	}
-	panic("didnt find peer in switches")
-}
-
 //-------------------------------------------------------------------------------
 // genesis
 
@@ -1095,14 +1083,6 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 }
 
 func (*mockTicker) SetLogger(log.Logger) {}
-
-func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
-	if err != nil {
-		panic(err)
-	}
-	return kvstore.NewPersistentKVStoreApplication(dir)
-}
 
 func newKVStore() abci.Application {
 	return kvstore.NewApplication()

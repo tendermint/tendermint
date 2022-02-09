@@ -30,6 +30,7 @@ const (
 	// capped in size and thus this number should be seen as a soft max
 	MaxHeaderBytes       int64 = 646
 	MaxCoreChainLockSize int64 = 132
+	MaxCommitSize        int64 = 374
 
 	// MaxOverheadForBlock - maximum overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -640,8 +641,8 @@ const (
 
 const (
 	// MaxCommitOverheadBytes is the max size of commit -> 82 for BlockID, 34 for StateID, 8 for Height, 4 for Round.
-	// 96 for Block signature, 96 for State Signature
-	MaxCommitOverheadBytes int64 = 326
+	// 96 for Block signature, 96 for State Signature and -> 3 bytes overhead
+	MaxCommitOverheadBytes int64 = 329
 )
 
 //-------------------------------------

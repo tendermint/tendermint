@@ -2,13 +2,14 @@ package types
 
 import (
 	"context"
+	"testing"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"testing"
-
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 

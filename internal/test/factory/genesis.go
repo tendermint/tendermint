@@ -10,7 +10,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func RandGenesisDoc(cfg *config.Config, numValidators int, initialHeight int64) (*types.GenesisDoc, []types.PrivValidator) {
+func RandGenesisDoc(
+	cfg *config.Config,
+	numValidators int,
+	initialHeight int64,
+) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
 
