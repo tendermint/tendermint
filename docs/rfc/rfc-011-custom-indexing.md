@@ -187,30 +187,30 @@ something like this (subject to refinement):
 ## References
 
 - [ADR 065: Custom Event Indexing][adr065]
-- [`tm-db` library][tmdb]
+- [ADR 075: RPC Event Subscription Interface][adr075]
+- [Cosmos SDK][sdk]
+- [Event subscription RPC][event-rpc]
 - [KV transaction indexer][kv-index]
-- [Query filter language][query]
-- [Stream events to postgres for indexing][i1161] (#1161)
-- [`EventSink` interface][esink]
+- [Pluggable custom event indexing][i7135] (#7135)
 - [PostgreSQL event sink][psql]
    - [PostgreSQL database][postgres]
-- [Cosmos SDK][sdk]
-- [Pluggable custom event indexing][i7135] (#7135)
-- [Event subscription RPC][event-rpc]
+- [Query filter language][query]
+- [Stream events to postgres for indexing][i1161] (#1161)
 - [Unbuffered event subscription slow down the consensus][i7247] (#7247)
-- [ADR 075: RPC Event Subscription Interface][adr075]
+- [`EventSink` interface][esink]
+- [`tm-db` library][tmdb]
 
 [adr065]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-065-custom-event-indexing.md
-[kv-index]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/tx/kv
-[psql]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/sink/psql
-[tmdb]: https://pkg.go.dev/github.com/tendermint/tm-db#DB
-[query]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/pubsub/query/syntax
-[esink]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/state/indexer#EventSink
-[i1161]: https://github.com/tendermint/tendermint/issues/1161
-[psql]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/sink/psql
-[postgres]: https://postgresql.org/
-[sdk]: https://github.com/cosmos/cosmos-sdk
-[i7135]: https://github.com/tendermint/tendermint/issues/7135
-[event-rpc]: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
-[i7247]: https://github.com/tendermint/tendermint/issues/7247
 [adr075]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md
+[esink]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/state/indexer#EventSink
+[event-rpc]: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
+[i1161]: https://github.com/tendermint/tendermint/issues/1161
+[i7135]: https://github.com/tendermint/tendermint/issues/7135
+[i7247]: https://github.com/tendermint/tendermint/issues/7247
+[kv-index]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/tx/kv
+[postgres]: https://postgresql.org/
+[psql]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/sink/psql
+[psql]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/sink/psql
+[query]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/pubsub/query/syntax
+[sdk]: https://github.com/cosmos/cosmos-sdk
+[tmdb]: https://pkg.go.dev/github.com/tendermint/tm-db#DB
