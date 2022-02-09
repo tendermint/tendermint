@@ -182,6 +182,49 @@ there are some specific principles that a solution should include:
    with the legacy RPC endpoints for accessing them.  Any APIs for clients to
    query a custom index are the responsibility of the indexer, not the node.
 
+### Open Questions
+
+Given the constraints outlined above, there are important design questions we
+must answer to guide any specific changes:
+
+1. **What is an acceptable probability that, given sufficiently extreme
+   operational issues, an indexer might miss some number of events?**
+
+   There are two parts to this question: One is what constitutes an extreme
+   operational problem, the other is how likely we are to miss some number of
+   events.
+
+   - If the consensus is that no events must ever be missed, no matter how bad
+     the operational circumstances, then we _must_ accept that indexing can
+     slow or halt consensus arbitrarily. It is impossible to guarantee complete
+     index coverage without potentially unbounded delays.
+
+   - Otherwise, how much data can we afford to lose and how often? For example,
+     if we can ensure no events will be lost unless the indexer halts for at
+     least five minutes, is that acceptable? What probabilities and time ranges
+     are reasonable for real production environments?
+
+2. **What level of operational overhead is acceptable to impose on node
+   operators to support indexing?**
+
+   Are node operators willing to configure and run custom indexers as sidecar
+   type processes alongside a node? How much indexer setup above and beyond the
+   work of setting up the underlying node in isolation is tractable in
+   production networks?
+
+   The answer to this question also informs the question of whether we should
+   keep an "in-process" indexing option, and to what extent that option needs
+   to satisfy the suggested design principles.
+
+3. **What (if any) query APIs does the consensus node need to export,
+   independent of the indexer implementation?**
+
+   One typical example is whether the node should be able to answer queries
+   like "is this transaction ID in a block?" Currently, a node cannot answer
+   this query _unless_ it runs the built-in KV indexer. Does the node need to
+   continue to support that query even for nodes that disable the KV indexer,
+   or which use a custom indexer?
+
 ### Informal Design Intent
 
 The design principles described above implicate several components of the
