@@ -3,6 +3,7 @@
 ## Changelog
 
 - 03-Feb-2022: Initial draft (@williambanfield).
+- 10-Feb-2022: Update in response to feedback (@williambanfield).
 
 ## Abstract
 
@@ -48,12 +49,13 @@ from the mempool. Overflowing MaxGas is the _only_ way that a transaction can be
 invalid that is not directly a result of failing the `CheckTx`. Operators, and the application,
 do not know that a transaction was removed from the mempool for this reason. A stateless check
 of this nature is exactly what `CheckTx` exists for and there is no reason for the mempool
-to keep track of this data separately. A special [MempoolError][add-mempool-error] field was added in v0.35 to communicate
-to clients that a transaction failed after `CheckTx`. While this should alleviate the pain for
-operators wishing to understand if their transaction was included in the mempool, it
-highlights that the abstraction of what is included in the mempool is not currently well defined.
+to keep track of this data separately. A special [MempoolError][add-mempool-error] field 
+was added in v0.35 to communicate to clients that a transaction failed after `CheckTx`. 
+While this should alleviate the pain for operators wishing to understand if their 
+transaction was included in the mempool, it highlights that the abstraction of 
+what is included in the mempool is not currently well defined.
 
-Removing Gas from Tendermint and the mempool would allow for the 'mempool' to be a better
+Removing Gas from Tendermint and the mempool would allow for the mempool to be a better
 abstraction: any transaction that arrived at `CheckTx` and passed the check will either be
 a candidate for a later block or evicted after a TTL is reached. All other transactions are
 completely invalid and can be discarded forever.
