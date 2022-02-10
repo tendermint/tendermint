@@ -2,6 +2,7 @@ package kv_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,11 +23,21 @@ func TestBlockIndexer(t *testing.T) {
 		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 			Events: []abci.Event{
 				{
-					Type: "begin_event",
+					Type: "finalize_event1",
 					Attributes: []abci.EventAttribute{
 						{
 							Key:   "proposer",
 							Value: "FCAA001",
+							Index: true,
+						},
+					},
+				},
+				{
+					Type: "finalize_event2",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   "foo",
+							Value: "100",
 							Index: true,
 						},
 					},
@@ -36,17 +47,31 @@ func TestBlockIndexer(t *testing.T) {
 	}))
 
 	for i := 2; i < 12; i++ {
+		var index bool
+		if i%2 == 0 {
+			index = true
+		}
 		require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
 			Header: types.Header{Height: int64(i)},
 			ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 				Events: []abci.Event{
 					{
-						Type: "finalize_event",
+						Type: "finalize_event1",
 						Attributes: []abci.EventAttribute{
 							{
 								Key:   "proposer",
 								Value: "FCAA001",
 								Index: true,
+							},
+						},
+					},
+					{
+						Type: "finalize_event2",
+						Attributes: []abci.EventAttribute{
+							{
+								Key:   "foo",
+								Value: fmt.Sprintf("%d", i),
+								Index: index,
 							},
 						},
 					},
@@ -68,31 +93,31 @@ func TestBlockIndexer(t *testing.T) {
 			results: []int64{5},
 		},
 		"begin_event.key1 = 'value1'": {
-			q:       query.MustCompile(`begin_event.key1 = 'value1'`),
+			q:       query.MustCompile(`finalize_event1.key1 = 'value1'`),
 			results: []int64{},
 		},
 		"begin_event.proposer = 'FCAA001'": {
-			q:       query.MustCompile(`begin_event.proposer = 'FCAA001'`),
+			q:       query.MustCompile(`finalize_event1.proposer = 'FCAA001'`),
 			results: []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
 		},
 		"end_event.foo <= 5": {
-			q:       query.MustCompile(`end_event.foo <= 5`),
+			q:       query.MustCompile(`finalize_event2.foo <= 5`),
 			results: []int64{2, 4},
 		},
 		"end_event.foo >= 100": {
-			q:       query.MustCompile(`end_event.foo >= 100`),
+			q:       query.MustCompile(`finalize_event2.foo >= 100`),
 			results: []int64{1},
 		},
-		"block.height > 2 AND end_event.foo <= 8": {
-			q:       query.MustCompile(`block.height > 2 AND end_event.foo <= 8`),
+		"block.height > 2 AND finalize_event2.foo <= 8": {
+			q:       query.MustCompile(`block.height > 2 AND finalize_event2.foo <= 8`),
 			results: []int64{4, 6, 8},
 		},
 		"begin_event.proposer CONTAINS 'FFFFFFF'": {
-			q:       query.MustCompile(`begin_event.proposer CONTAINS 'FFFFFFF'`),
+			q:       query.MustCompile(`finalize_event1.proposer CONTAINS 'FFFFFFF'`),
 			results: []int64{},
 		},
 		"begin_event.proposer CONTAINS 'FCAA001'": {
-			q:       query.MustCompile(`begin_event.proposer CONTAINS 'FCAA001'`),
+			q:       query.MustCompile(`finalize_event1.proposer CONTAINS 'FCAA001'`),
 			results: []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
 		},
 	}

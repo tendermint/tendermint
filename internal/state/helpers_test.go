@@ -302,7 +302,10 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 		ValidatorUpdates: app.ValidatorUpdates,
 		ConsensusParamUpdates: &tmproto.ConsensusParams{
 			Version: &tmproto.VersionParams{
-				AppVersion: 1}},
+				AppVersion: 1,
+			},
+		},
+		Events: []abci.Event{},
 	}
 }
 

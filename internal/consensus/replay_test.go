@@ -665,10 +665,11 @@ func TestMockProxyApp(t *testing.T) {
 
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
-	txIndex := 0
+	txCount := 0
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
+		abciResWithEmptyDeliverTx.FinalizeBlock = new(abci.ResponseFinalizeBlock)
 		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, 0)
 		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = append(abciResWithEmptyDeliverTx.FinalizeBlock.Txs, &abci.ResponseDeliverTx{})
 
@@ -685,10 +686,12 @@ func TestMockProxyApp(t *testing.T) {
 		require.NoError(t, err)
 
 		abciRes := new(tmstate.ABCIResponses)
+		abciRes.FinalizeBlock = new(abci.ResponseFinalizeBlock)
 		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
 
 		someTx := []byte("tx")
 		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
+		require.NoError(t, err)
 		// TODO: make use of res.Log
 		// TODO: make use of this info
 		// Blocks may include invalid txs.
@@ -698,14 +701,12 @@ func TestMockProxyApp(t *testing.T) {
 			} else {
 				invalidTxs++
 			}
+			txCount++
 		}
-		abciRes.FinalizeBlock.Txs = resp.Txs
-		txIndex++
-
-		assert.NoError(t, err)
 	})
-	assert.True(t, validTxs == 1)
-	assert.True(t, invalidTxs == 0)
+	require.Equal(t, 1, txCount)
+	require.Equal(t, 1, validTxs)
+	require.Zero(t, invalidTxs)
 }
 
 func tempWALWithData(t *testing.T, data []byte) string {

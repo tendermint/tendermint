@@ -265,15 +265,20 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 }
 
 func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	txValue := txAsUint64(req.Txs[0])
-	if txValue != uint64(app.txCount) {
-		return abci.ResponseFinalizeBlock{Txs: []*abci.ResponseDeliverTx{{
-			Code: code.CodeTypeBadNonce,
-			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}},
+	respTxs := make([]*abci.ResponseDeliverTx, len(req.Txs))
+	for i, tx := range req.Txs {
+		txValue := txAsUint64(tx)
+		if txValue != uint64(app.txCount) {
+			respTxs[i] = &abci.ResponseDeliverTx{
+				Code: code.CodeTypeBadNonce,
+				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue),
+			}
+			continue
 		}
+		app.txCount++
+		respTxs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 	}
-	app.txCount++
-	return abci.ResponseFinalizeBlock{Txs: []*abci.ResponseDeliverTx{{Code: code.CodeTypeOK}}}
+	return abci.ResponseFinalizeBlock{Txs: respTxs}
 }
 
 func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {

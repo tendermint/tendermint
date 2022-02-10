@@ -372,8 +372,6 @@ func execBlockOnProxyApp(
 	store Store,
 	initialHeight int64,
 ) (*tmstate.ABCIResponses, error) {
-	var validTxs, invalidTxs = 0, 0
-
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
@@ -408,7 +406,7 @@ func execBlockOnProxyApp(
 		logger.Error("error in proxyAppConn.FinalizeBlock", "err", err)
 		return nil, err
 	}
-	logger.Info("executed block", "height", block.Height, "num_valid_txs", validTxs, "num_invalid_txs", invalidTxs)
+	logger.Info("executed block", "height", block.Height)
 	return abciResponses, nil
 }
 
@@ -564,8 +562,8 @@ func fireEvents(
 	}
 
 	if err := eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
-		Header:           block.Header,
-		NumTxs:           int64(len(block.Txs)),
+		Header:              block.Header,
+		NumTxs:              int64(len(block.Txs)),
 		ResultFinalizeBlock: *abciResponses.FinalizeBlock,
 	}); err != nil {
 		logger.Error("failed publishing new block header", "err", err)
@@ -582,14 +580,17 @@ func fireEvents(
 		}
 	}
 
+	//TODO strengthen this condition
 	if len(abciResponses.FinalizeBlock.Txs) != 0 {
 		for i, tx := range block.Data.Txs {
-			if err := eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: abci.TxResult{
-				Height: block.Height,
-				Index:  uint32(i),
-				Tx:     tx,
-				Result: *(abciResponses.FinalizeBlock.Txs[i]),
-			}}); err != nil {
+			if err := eventBus.PublishEventTx(ctx, types.EventDataTx{
+				TxResult: abci.TxResult{
+					Height: block.Height,
+					Index:  uint32(i),
+					Tx:     tx,
+					Result: *(abciResponses.FinalizeBlock.Txs[i]),
+				},
+			}); err != nil {
 				logger.Error("failed publishing event TX", "err", err)
 			}
 		}
