@@ -216,6 +216,12 @@ must answer to guide any specific changes:
    keep an "in-process" indexing option, and to what extent that option needs
    to satisfy the suggested design principles.
 
+   Relatedly, to what extent do we need to be concerned about the cost of
+   encoding and sending events to an external process (e.g., as JSON blobs or
+   protobuf wire messages)? Given that the node already encodes events as JSON
+   for event subscription purposes, the overhead would be negligible for the
+   node itself, but the indexer would have to decode to process the results.
+
 3. **What (if any) query APIs does the consensus node need to export,
    independent of the indexer implementation?**
 
