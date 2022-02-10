@@ -66,7 +66,8 @@ func TestEvidencePoolBasic(t *testing.T) {
 	}()
 
 	// evidence seen but not yet committed:
-	require.NoError(t, pool.AddEvidence(ev))
+	_, err = pool.AddEvidence(ev)
+	require.NoError(t, err)
 
 	select {
 	case <-evAdded:
@@ -83,7 +84,8 @@ func TestEvidencePoolBasic(t *testing.T) {
 	require.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct
 
 	// shouldn't be able to add evidence twice
-	require.NoError(t, pool.AddEvidence(ev))
+	_, err = pool.AddEvidence(ev)
+	require.NoError(t, err)
 	evs, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	require.Equal(t, 1, len(evs))
 }
@@ -136,7 +138,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 
 			ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, tc.evHeight, tc.evTime, val, evidenceChainID)
 			require.NoError(t, err)
-			err = pool.AddEvidence(ev)
+			_, err = pool.AddEvidence(ev)
 			if tc.expErr {
 				require.Error(t, err)
 			} else {
@@ -211,8 +213,10 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	require.NoError(t, pool.AddEvidence(prunedEv))
-	require.NoError(t, pool.AddEvidence(notPrunedEv))
+	_, err = pool.AddEvidence(prunedEv)
+	require.NoError(t, err)
+	_, err = pool.AddEvidence(notPrunedEv)
+	require.NoError(t, err)
 
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
@@ -269,7 +273,8 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 		evidenceChainID,
 	)
 	require.NoError(t, err)
-	require.NoError(t, pool.AddEvidence(ev))
+	_, err = pool.AddEvidence(ev)
+	require.NoError(t, err)
 	require.NoError(t, pool.CheckEvidence(types.EvidenceList{ev}))
 }
 
@@ -331,8 +336,10 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 
 	hash := ev.Hash()
 
-	require.NoError(t, pool.AddEvidence(ev))
-	require.NoError(t, pool.AddEvidence(ev))
+	_, err = pool.AddEvidence(ev)
+	require.NoError(t, err)
+	_, err = pool.AddEvidence(ev)
+	require.NoError(t, err)
 
 	pendingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	require.Equal(t, 1, len(pendingEv))
@@ -351,7 +358,9 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 
 	// evidence is already committed so it shouldn't pass
 	require.Error(t, pool.CheckEvidence(types.EvidenceList{ev}))
-	require.NoError(t, pool.AddEvidence(ev))
+
+	_, err = pool.AddEvidence(ev)
+	require.NoError(t, err)
 
 	remaindingEv, _ = pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	require.Empty(t, remaindingEv)
@@ -396,8 +405,10 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	require.NoError(t, pool.AddEvidence(goodEvidence))
-	require.NoError(t, pool.AddEvidence(expiredEvidence))
+	_, err = pool.AddEvidence(goodEvidence)
+	require.NoError(t, err)
+	_, err = pool.AddEvidence(expiredEvidence)
+	require.NoError(t, err)
 
 	// now recover from the previous pool at a different time
 	newStateStore := &smmocks.Store{}

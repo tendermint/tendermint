@@ -198,6 +198,10 @@ func (b *EventBus) PublishEventValidatorSetUpdates(ctx context.Context, data typ
 	return b.Publish(ctx, types.EventValidatorSetUpdatesValue, data)
 }
 
+func (b *EventBus) PublishEventEvidenceValidated(ctx context.Context, evidence types.EventDataEvidenceValidated) error {
+	return b.Publish(ctx, types.EventEvidenceValidatedValue, evidence)
+}
+
 //-----------------------------------------------------------------------------
 
 // NopEventBus implements a types.BlockEventPublisher that discards all events.

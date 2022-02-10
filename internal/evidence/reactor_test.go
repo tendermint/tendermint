@@ -218,7 +218,8 @@ func createEvidenceList(
 			evidenceChainID,
 		)
 		require.NoError(t, err)
-		require.NoError(t, pool.AddEvidence(ev),
+		_, err = pool.AddEvidence(ev)
+		require.NoError(t, err,
 			"adding evidence it#%d of %d to pool with height %d",
 			i, numEvidence, pool.State().LastBlockHeight)
 		evList[i] = ev
@@ -380,7 +381,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// Manually add half the evidence to the secondary which will mark them as
 	// pending.
 	for i := 0; i < numEvidence/2; i++ {
-		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
+		_, err := rts.pools[secondary.NodeID].AddEvidence(evList[i])
+		require.NoError(t, err)
 	}
 
 	// the secondary should have half the evidence as pending
@@ -422,7 +424,8 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	// Manually add half the evidence to the secondary which will mark them as
 	// pending.
 	for i := 0; i < numEvidence/2; i++ {
-		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
+		_, err := rts.pools[secondary.NodeID].AddEvidence(evList[i])
+		require.NoError(t, err)
 	}
 
 	// the secondary should have half the evidence as pending

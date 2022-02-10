@@ -126,14 +126,16 @@ func TestVerify_LunaticAttackAgainstState(t *testing.T) {
 	ev.Timestamp = defaultEvidenceTime.Add(1 * time.Minute)
 	pool, err = evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
-	assert.Error(t, pool.AddEvidence(ev))
+	_, err = pool.AddEvidence(ev)
+	assert.Error(t, err)
 	ev.Timestamp = defaultEvidenceTime
 
 	// Evidence submitted with a different validator power should fail
 	ev.TotalVotingPower = 1
 	pool, err = evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
-	assert.Error(t, pool.AddEvidence(ev))
+	_, err = pool.AddEvidence(ev)
+	assert.Error(t, err)
 	ev.TotalVotingPower = common.ValidatorSet.TotalVotingPower()
 }
 

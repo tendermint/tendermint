@@ -142,13 +142,13 @@ func (evpool *Pool) Update(state sm.State, ev types.EvidenceList) {
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
-func (evpool *Pool) AddEvidence(ev types.Evidence) error {
+func (evpool *Pool) AddEvidence(ev types.Evidence) (bool, error) {
 	evpool.logger.Debug("attempting to add evidence", "evidence", ev)
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
 		evpool.logger.Debug("evidence already pending; ignoring", "evidence", ev)
-		return nil
+		return false, nil
 	}
 
 	// check that the evidence isn't already committed
@@ -156,24 +156,25 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 		// This can happen if the peer that sent us the evidence is behind so we
 		// shouldn't punish the peer.
 		evpool.logger.Debug("evidence was already committed; ignoring", "evidence", ev)
-		return nil
+		return false, nil
 	}
 
 	// 1) Verify against state.
 	if err := evpool.verify(ev); err != nil {
-		return err
+		return false, err
 	}
 
 	// 2) Save to store.
 	if err := evpool.addPendingEvidence(ev); err != nil {
-		return fmt.Errorf("failed to add evidence to pending list: %w", err)
+		return false, fmt.Errorf("failed to add evidence to pending list: %w", err)
 	}
 
 	// 3) Add evidence to clist.
 	evpool.evidenceList.PushBack(ev)
 
+	// ToDo Emit evidence after validation
 	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
-	return nil
+	return true, nil
 }
 
 // ReportConflictingVotes takes two conflicting votes and forms duplicate vote evidence,
