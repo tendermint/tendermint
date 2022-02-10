@@ -10,7 +10,6 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -49,16 +48,12 @@ type Reactor struct {
 	mempoolCh   *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 
-	// peerWG is used to coordinate graceful termination of all peer broadcasting
-	// goroutines.
-	peerWG sync.WaitGroup
-
 	// observePanic is a function for observing panics that were recovered in methods on
 	// Reactor. observePanic is called with the recovered value.
 	observePanic func(interface{})
 
 	mtx          sync.Mutex
-	peerRoutines map[types.NodeID]*tmsync.Closer
+	peerRoutines map[types.NodeID]context.CancelFunc
 }
 
 // NewReactor returns a reference to a new reactor.
@@ -85,7 +80,7 @@ func NewReactor(
 		ids:          NewMempoolIDs(),
 		mempoolCh:    ch,
 		peerUpdates:  peerUpdates,
-		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[types.NodeID]context.CancelFunc),
 		observePanic: defaultObservePanic,
 	}
 
@@ -131,16 +126,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
-func (r *Reactor) OnStop() {
-	r.mtx.Lock()
-	for _, c := range r.peerRoutines {
-		c.Close()
-	}
-	r.mtx.Unlock()
-
-	// wait for all spawned peer tx broadcasting goroutines to gracefully exit
-	r.peerWG.Wait()
-}
+func (r *Reactor) OnStop() {}
 
 // handleMempoolMessage handles envelopes sent from peers on the MempoolChannel.
 // For every tx in the message, we execute CheckTx. It returns an error if an
@@ -259,15 +245,13 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			// safely, and finally start the goroutine to broadcast txs to that peer.
 			_, ok := r.peerRoutines[peerUpdate.NodeID]
 			if !ok {
-				closer := tmsync.NewCloser()
-
-				r.peerRoutines[peerUpdate.NodeID] = closer
-				r.peerWG.Add(1)
+				pctx, pcancel := context.WithCancel(ctx)
+				r.peerRoutines[peerUpdate.NodeID] = pcancel
 
 				r.ids.ReserveForPeer(peerUpdate.NodeID)
 
 				// start a broadcast routine ensuring all txs are forwarded to the peer
-				go r.broadcastTxRoutine(ctx, peerUpdate.NodeID, closer)
+				go r.broadcastTxRoutine(pctx, peerUpdate.NodeID)
 			}
 		}
 
@@ -280,7 +264,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// from the map of peer tx broadcasting goroutines.
 		closer, ok := r.peerRoutines[peerUpdate.NodeID]
 		if ok {
-			closer.Close()
+			closer()
 		}
 	}
 }
@@ -299,7 +283,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 	}
 }
 
-func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
 	var nextGossipTx *clist.CElement
 
@@ -308,8 +292,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		r.mtx.Lock()
 		delete(r.peerRoutines, peerID)
 		r.mtx.Unlock()
-
-		r.peerWG.Done()
 
 		if e := recover(); e != nil {
 			r.observePanic(e)
@@ -337,11 +319,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
 					continue
 				}
-
-			case <-closer.Done():
-				// The peer is marked for removal via a PeerUpdate as the doneCh was
-				// explicitly closed to signal we should exit.
-				return
 			}
 		}
 
@@ -380,10 +357,6 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, c
 		select {
 		case <-nextGossipTx.NextWaitChan():
 			nextGossipTx = nextGossipTx.Next()
-		case <-closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
 		case <-ctx.Done():
 			return
 		}
