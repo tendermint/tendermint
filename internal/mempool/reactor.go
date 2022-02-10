@@ -163,7 +163,18 @@ func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope *p2p.Envelo
 
 		for _, tx := range protoTxs {
 			if err := r.mempool.CheckTx(ctx, types.Tx(tx), nil, txInfo); err != nil {
-				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "err", err)
+				if errors.Is(err, types.ErrTxInCache) {
+					// if the tx is in the cache,
+					// then we've been gossiped a
+					// Tx that we've already
+					// got. Gossip should be
+					// smarter, but it's not a
+					// problem.
+					continue
+				}
+				logger.Error("checktx failed for tx",
+					"tx", fmt.Sprintf("%X", types.Tx(tx).Hash()),
+					"err", err)
 			}
 		}
 
