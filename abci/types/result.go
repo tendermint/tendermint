@@ -60,7 +60,7 @@ func (r ResponseVerifyVoteExtension) IsErr() bool {
 
 // IsOK returns true if Code is OK
 func (r ResponseProcessProposal) IsOK() bool {
-	return r.Result == ResponseProcessProposal_ACCEPT
+	return r.Accept
 }
 
 //---------------------------------------------------------------------------
