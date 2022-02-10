@@ -48,14 +48,17 @@ from the mempool. Overflowing MaxGas is the _only_ way that a transaction can be
 invalid that is not directly a result of failing the `CheckTx`. Operators, and the application,
 do not know that a transaction was removed from the mempool for this reason. A stateless check
 of this nature is exactly what `CheckTx` exists for and there is no reason for the mempool
-to keep track of this data separately.
+to keep track of this data separately. A special [MempoolError][add-mempool-error] field was added in v0.35 to communicate
+to clients that a transaction failed after `CheckTx`. While this should alleviate the pain for
+operators wishing to understand if their transaction was included in the mempool, it
+highlights that the abstraction of what is included in the mempool is not currently well defined.
 
 Removing Gas from Tendermint and the mempool would allow for the 'mempool' to be a better
 abstraction: any transaction that arrived at `CheckTx` and passed the check will either be
-a candidate for a later block or evicted after a TTL is reached. All other transactions are 
+a candidate for a later block or evicted after a TTL is reached. All other transactions are
 completely invalid and can be discarded forever.
 
-Removing gas will not be completely straightforward. It will mean ensuring that 
+Removing gas will not be completely straightforward. It will mean ensuring that
 equivalent functionality can be implemented outside of the mempool using the mempool's API.
 
 ## Discussion
@@ -69,10 +72,10 @@ Gas produces a market for inclusion in a block. On many networks, a [gas fee][co
 included in pending transactions. This fee indicates how much a user is willing to
 pay per unit of execution and the fees are distributed to validators.
 
-Validators wishing to extract higher gas fees are incentivized to include transactions 
+Validators wishing to extract higher gas fees are incentivized to include transactions
 with the highest listed gas fees into each block. This produces a naturally ordering
 of the pending transactions. Applications wishing to implement a gas mechanism need
-to be able to order the transactions in the mempool. This can trivially be accomplished 
+to be able to order the transactions in the mempool. This can trivially be accomplished
 by sorting transactions using the `priority` field available to applications as part of
 v0.35's `ResponseCheckTx` message.
 
@@ -88,12 +91,12 @@ applications to determine an acceptable set of transactions to include in the bl
 This is what the new ABCI++ `PrepareProposal` method is useful for. Applications
 that wish to limit the contents of a block by an application-defined limit may
 do so by removing transactions from the proposal it is passed during `PrepareProposal`.
-
-Fully meeting the requirements of the current Gas system would mean adding functionality that is
-not currently provided the `PrepareProposal` method.
-Applications that wish to include _more_ transactions in the proposal than `PrepareProposal`
-initially passed to it cannot do so in the current design. [Issue 7750][issue-7750] has been filed to discuss
-and possibly solve for this.
+Applications wishing to reach parity with the current Gas implementation may do
+so by creating an application-side limit: filtering out transactions from
+`PrepareProposal` the cause the proposal the exceed the maximum gas. Additionally,
+applications can currently opt to have all transactions in the mempool delivered
+during `PrepareProposal` by passing `-1` for `MaxGas` and `MaxBytes` into
+[ReapMaxBytesMaxGas][reap-max-bytes-max-gas].
 
 ### Requirement: Handle Transaction Metadata
 
@@ -126,8 +129,13 @@ addition of a new application-metadata field in the `ResponseCheckTx`. This fiel
 would be a protocol buffer message whose contents were entirely opaque to Tendermint.
 The application would be responsible for marshalling and unmarshalling whatever data
 it stored in this field. During `PrepareProposal`, the application would be passed
-this metadata along with the transaction, allowing the application to use it to perform 
+this metadata along with the transaction, allowing the application to use it to perform
 any necessary filtering.
+
+If either of these proposed metadata handling techniques are selected, it's likely
+useful to enable applications to gossip metadata along with the transaction it is
+gossiping. This could easily take the form of an opaque proto message that is
+gossiped along with the transaction.
 
 ## References
 
@@ -138,3 +146,5 @@ any necessary filtering.
 [anoma-gas]: https://github.com/anoma/anoma/blob/6974fe1532a59db3574fc02e7f7e65d1216c1eb2/docs/src/specs/ledger.md#transaction-execution
 [cosmos-sdk-fee]: https://github.com/cosmos/cosmos-sdk/blob/c00cedb1427240a730d6eb2be6f7cb01f43869d3/types/tx/tx.pb.go#L780-L794
 [issue-7750]: https://github.com/tendermint/tendermint/issues/7750
+[reap-max-bytes-max-gas]: https://github.com/tendermint/tendermint/blob/1ac58469f32a98f1c0e2905ca1773d9eac7b7103/internal/mempool/types.go#L45
+[add-mempool-error]: https://github.com/tendermint/tendermint/blob/205bfca66f6da1b2dded381efb9ad3792f9404cf/rpc/coretypes/responses.go#L239
