@@ -149,7 +149,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			},
 			[]*abci.ResponseDeliverTx{
 				{Code: 32, Data: []byte("Hello")},
-			}},
+			},
+		},
 		2: {
 			[]*abci.ResponseDeliverTx{
 				{Code: 383},
@@ -167,7 +168,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 					{Type: "type1", Attributes: []abci.EventAttribute{{Key: "a", Value: "1"}}},
 					{Type: "type2", Attributes: []abci.EventAttribute{{Key: "build", Value: "stuff"}}},
 				}},
-			}},
+			},
+		},
 		3: {
 			nil,
 			nil,
@@ -205,9 +207,11 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			t.Log(res)
 			responses := &tmstate.ABCIResponses{
 				FinalizeBlock: &abci.ResponseFinalizeBlock{
-					Txs: tc.added,
+					Txs: tc.expected,
 				},
 			}
+			sm.ABCIResponsesResultsHash(res)
+			sm.ABCIResponsesResultsHash(responses)
 			assert.Equal(t, sm.ABCIResponsesResultsHash(responses), sm.ABCIResponsesResultsHash(res), "%d", i)
 		}
 	}
