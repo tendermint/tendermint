@@ -2,6 +2,7 @@
 
 ## Changelog
 
+- 10-Feb-2022: Updates to reflect implementation.
 - 26-Jan-2022: Marked accepted.
 - 22-Jan-2022: Updated and expanded (@creachadair).
 - 20-Nov-2021: Initial draft (@creachadair).
@@ -267,12 +268,12 @@ initial implementation will store the event log in-memory, and the operator
 will be given two per-node configuration settings.  Note, these names are
 provisional:
 
-- `[event-subscription] time-window`: A duration before present during which the
-  node will retain event items published. Setting this value to zero disables
-  event subscription.
+- `[rpc] event-log-window-size`: A duration before the latest published event,
+  during which the node will retain event items published. Setting this value
+  to zero disables event subscription.
 
-- `[event-subscription] max-items`: A maximum number of event items that the
-  node will retain within the time window. If the number of items exceeds this
+- `[rpc] event-log-max-items`: A maximum number of event items that the node
+  will retain within the time window. If the number of items exceeds this
   value, the node discardes the oldest items in the window. Setting this value
   to zero means that no limit is imposed on the number of items.
 
@@ -307,11 +308,11 @@ type EventParams struct {
 
     // Return only items after this cursor. If empty, the limit is just
     // before the the beginning of the event log.
-    After string `json:"after_item"`
+    After string `json:"after"`
 
     // Return only items before this cursor.  If empty, the limit is just
     // after the head of the event log.
-    Before string `json:"before_item"`
+    Before string `json:"before"`
 
     // Wait for up to this long for events to be available.
     WaitTime time.Duration `json:"wait_time"`
@@ -335,8 +336,8 @@ type Filter struct {
 The semantics of the request are as follows: An item in the event log is
 **eligible** for a query if:
 
-- It is newer than the `after_item` cursor (if set).
-- It is older than the `before_item` cursor (if set).
+- It is newer than the `after` cursor (if set).
+- It is older than the `before` cursor (if set).
 - It matches the filter (if set).
 
 Among the eligible items in the log, the server returns up to `max_results` of
@@ -344,13 +345,13 @@ the newest items, in reverse order of cursor. If `max_results` is unset the
 server chooses a number to return, and will cap `max_results` at a sensible
 limit.
 
-The `wait_time` parameter is used to effect polling. If `before_item` is empty,
-the server will wait for up to `wait_time` for additional items, if there are
-fewer than `max_results` eligible results in the log.  If `wait_time` is zero,
-the server will return whatever eligible items are available immediately.
+The `wait_time` parameter is used to effect polling. If `before` is empty and
+no items are available, the server will wait for up to `wait_time` for matching
+items to arrive at the head of the log. If `wait_time` is zero, the server will
+return whatever eligible items are available immediately.
 
-If `before_item` non-empty, `wait_time` is ignored: new results are only added
-to the head of the log, so there is no need to wait.  This allows the client to
+If `before` non-empty, `wait_time` is ignored: new results are only added to
+the head of the log, so there is no need to wait.  This allows the client to
 poll for new data, and "page" backward through matching event items. This is
 discussed in more detail below.
 
@@ -372,11 +373,11 @@ type EventReply struct {
 
     // The cursor of the oldest item in the log at the time of this reply,
     // or "" if the log is empty.
-    Oldest string `json:"oldest_item"`
+    Oldest string `json:"oldest"`
 
     // The cursor of the newest item in the log at the time of this reply,
     // or "" if the log is empty.
-    Newest string `json:"newest_item"`
+    Newest string `json:"newest"`
 }
 
 type EventItem struct {
@@ -392,9 +393,9 @@ type EventItem struct {
 }
 ```
 
-The `oldest_item` and `newest_item` fields of the reply report the cursors of
-the oldest and newest items (of any kind) recorded in the event log at the time
-of the reply, or are `""` if the log is empty.
+The `oldest` and `newest` fields of the reply report the cursors of the oldest
+and newest items (of any kind) recorded in the event log at the time of the
+reply, or are `""` if the log is empty.
 
 The `data` field contains the type-specific event datum.  The datum carries any
 ABCI events that may have been defined.
@@ -412,26 +413,26 @@ The semantics of the reply are as follows:
     - If `more` is true, there is at least one additional, older item in the
       event log that was not returned (in excess of `max_results`).
 
-      In this case the client can fetch the next page by setting `before_item`
-      in a new request, to the cursor of the oldest item fetched (i.e., the
-      last one in `items`).
+      In this case the client can fetch the next page by setting `before` in a
+      new request, to the cursor of the oldest item fetched (i.e., the last one
+      in `items`).
 
     - Otherwise (if `more` is false), all the matching results have been
       reported (pagination is complete).
 
     - The first element of `items` identifies the newest item considered.
-      Subsequent poll requests can set `after_item` to this cursor to skip
-      items that were already retrieved.
+      Subsequent poll requests can set `after` to this cursor to skip items
+      that were already retrieved.
 
 - If `items` is empty:
 
-    - If the `before_item` was set in the request, there are no further
-      eligible items for this query in the log (pagination is complete).
+    - If the `before` was set in the request, there are no further eligible
+      items for this query in the log (pagination is complete).
 
       This is just a safety case; the client can detect this without issuing
       another call by consulting the `more` field of the previous reply.
 
-    - If the `before_item` was empty in the request, no eligible items were
+    - If the `before` was empty in the request, no eligible items were
       available before the `wait_time` expired. The client may poll again to
       wait for more event items.
 
@@ -453,12 +454,11 @@ crashes and connectivity issues:
 
   1. In ordinary operation, clients will **long-poll** the head of the event
      log for new events matching their criteria (by setting a `wait_time` and
-     no `before_item`).
+     no `before`).
 
   2. If there are more events than the client requested, or if the client needs
      to to read older events to recover from a stall or crash, clients will
-     **page** backward through the event log (by setting `before_item` and
-     possibly `after_item`).
+     **page** backward through the event log (by setting `before` and `after`).
 
 - While the new API requires explicit polling by the client, it makes better
   use of the node's existing HTTP infrastructure (e.g., connection pools).
@@ -479,7 +479,7 @@ crashes and connectivity issues:
   The initial implementation will do this by checking the tail of the event log
   after each new item is published. If the number of items in the log exceeds
   the item limit, it will delete oldest items until the log is under the limit;
-  then discard any older than the time window before present.
+  then discard any older than the time window before the latest.
 
   To minimize coordination interference between the publisher (the event bus)
   and the subcribers (the `events` service handlers), the event log will be
