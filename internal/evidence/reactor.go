@@ -9,7 +9,6 @@ import (
 
 	"github.com/tendermint/tendermint/internal/eventbus"
 	clist "github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -52,14 +51,12 @@ type Reactor struct {
 	evidenceCh  *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 
-	peerWG sync.WaitGroup
-
-	mtx          sync.Mutex
-	peerRoutines map[types.NodeID]*tmsync.Closer
+	mtx sync.Mutex
 
 	// Eventbus to emit events when evidence is validated
 	// Not part of the constructor but it can be configured via setEventsBus below
-	eventBus *eventbus.EventBus
+	eventBus     *eventbus.EventBus
+	peerRoutines map[types.NodeID]context.CancelFunc
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -82,7 +79,7 @@ func NewReactor(
 		evpool:       evpool,
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
-		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+		peerRoutines: make(map[types.NodeID]context.CancelFunc),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -110,16 +107,6 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
-	r.mtx.Lock()
-	for _, c := range r.peerRoutines {
-		c.Close()
-	}
-	r.mtx.Unlock()
-
-	// Wait for all spawned peer evidence broadcasting goroutines to gracefully
-	// exit.
-	r.peerWG.Wait()
-
 	// Close the evidence db
 	r.evpool.Close()
 }
@@ -236,11 +223,9 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// safely, and finally start the goroutine to broadcast evidence to that peer.
 		_, ok := r.peerRoutines[peerUpdate.NodeID]
 		if !ok {
-			closer := tmsync.NewCloser()
-
-			r.peerRoutines[peerUpdate.NodeID] = closer
-			r.peerWG.Add(1)
-			go r.broadcastEvidenceLoop(ctx, peerUpdate.NodeID, closer)
+			pctx, pcancel := context.WithCancel(ctx)
+			r.peerRoutines[peerUpdate.NodeID] = pcancel
+			go r.broadcastEvidenceLoop(pctx, peerUpdate.NodeID)
 		}
 
 	case p2p.PeerStatusDown:
@@ -250,7 +235,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		// from the map of peer evidence broadcasting goroutines.
 		closer, ok := r.peerRoutines[peerUpdate.NodeID]
 		if ok {
-			closer.Close()
+			closer()
 		}
 	}
 }
@@ -280,15 +265,13 @@ func (r *Reactor) processPeerUpdates(ctx context.Context) {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID, closer *tmsync.Closer) {
+func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID) {
 	var next *clist.CElement
 
 	defer func() {
 		r.mtx.Lock()
 		delete(r.peerRoutines, peerID)
 		r.mtx.Unlock()
-
-		r.peerWG.Done()
 
 		if e := recover(); e != nil {
 			r.logger.Error(
@@ -298,6 +281,9 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 			)
 		}
 	}()
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	for {
 		// This happens because the CElement we were looking at got garbage
@@ -311,10 +297,6 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 				}
 
 			case <-ctx.Done():
-				return
-			case <-closer.Done():
-				// The peer is marked for removal via a PeerUpdate as the doneCh was
-				// explicitly closed to signal we should exit.
 				return
 			}
 		}
@@ -339,17 +321,13 @@ func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID
 		r.logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 
 		select {
-		case <-time.After(time.Second * broadcastEvidenceIntervalS):
+		case <-timer.C:
 			// start from the beginning after broadcastEvidenceIntervalS seconds
+			timer.Reset(time.Second * broadcastEvidenceIntervalS)
 			next = nil
 
 		case <-next.NextWaitChan():
 			next = next.Next()
-
-		case <-closer.Done():
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
 
 		case <-ctx.Done():
 			return

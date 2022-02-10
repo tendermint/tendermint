@@ -129,7 +129,7 @@ func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
-	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
+	NumTxs           int64                   `json:"num_txs,string"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
@@ -140,7 +140,7 @@ func (EventDataNewBlockHeader) TypeTag() string { return "tendermint/event/NewBl
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
 
-	Height int64 `json:"height"`
+	Height int64 `json:"height,string"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.
@@ -156,7 +156,7 @@ func (EventDataTx) TypeTag() string { return "tendermint/event/Tx" }
 
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
-	Height int64  `json:"height"`
+	Height int64  `json:"height,string"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 }
@@ -170,7 +170,7 @@ type ValidatorInfo struct {
 }
 
 type EventDataNewRound struct {
-	Height int64  `json:"height"`
+	Height int64  `json:"height,string"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
@@ -181,7 +181,7 @@ type EventDataNewRound struct {
 func (EventDataNewRound) TypeTag() string { return "tendermint/event/NewRound" }
 
 type EventDataCompleteProposal struct {
-	Height int64  `json:"height"`
+	Height int64  `json:"height,string"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
@@ -214,7 +214,7 @@ func (EventDataValidatorSetUpdates) TypeTag() string { return "tendermint/event/
 // height when the node state sync mechanism changes.
 type EventDataBlockSyncStatus struct {
 	Complete bool  `json:"complete"`
-	Height   int64 `json:"height"`
+	Height   int64 `json:"height,string"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.
@@ -224,7 +224,7 @@ func (EventDataBlockSyncStatus) TypeTag() string { return "tendermint/event/Fast
 // height when the node state sync mechanism changes.
 type EventDataStateSyncStatus struct {
 	Complete bool  `json:"complete"`
-	Height   int64 `json:"height"`
+	Height   int64 `json:"height,string"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.
