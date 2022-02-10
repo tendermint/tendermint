@@ -9,6 +9,7 @@ import (
 	"math/big"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/jsontypes"
 

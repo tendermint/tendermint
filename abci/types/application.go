@@ -104,7 +104,7 @@ func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProce
 
 func (BaseApplication) FinalizeBlock(req RequestFinalizeBlock) ResponseFinalizeBlock {
 	txs := make([]*ResponseDeliverTx, len(req.Txs))
-	for i, _ := range req.Txs {
+	for i := range req.Txs {
 		txs[i] = &ResponseDeliverTx{Code: CodeTypeOK}
 	}
 	return ResponseFinalizeBlock{

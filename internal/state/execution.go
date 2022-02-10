@@ -554,8 +554,8 @@ func fireEvents(
 	validatorUpdates []*types.Validator,
 ) {
 	if err := eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
-		Block:            block,
-		BlockID:          blockID,
+		Block:               block,
+		BlockID:             blockID,
 		ResultFinalizeBlock: *abciResponses.FinalizeBlock,
 	}); err != nil {
 		logger.Error("failed publishing new block", "err", err)

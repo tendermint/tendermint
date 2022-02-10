@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"

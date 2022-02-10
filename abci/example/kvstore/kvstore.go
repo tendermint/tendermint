@@ -116,7 +116,6 @@ func (app *Application) DeliverTx(tx []byte) *types.ResponseDeliverTx {
 	return &types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
 }
 
-
 func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	txs := make([]*types.ResponseDeliverTx, len(req.Txs))
 	for i, tx := range req.Txs {
