@@ -82,8 +82,10 @@ func (info NodeInfo) Validate() error {
 	}
 
 	// Validate Version
-	if ver, err := tmstrings.ASCIITrim(info.Version); err != nil || ver == "" {
-		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v, %q: %w", info.Version, ver, err)
+	if len(info.Version) > 0 {
+		if ver, err := tmstrings.ASCIITrim(info.Version); err != nil || ver == "" {
+			return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got, %q [%s]", info.Version, ver)
+		}
 	}
 
 	// Validate Channels - ensure max and check for duplicates.
@@ -114,7 +116,7 @@ func (info NodeInfo) Validate() error {
 	// XXX: Should we be more strict about address formats?
 	rpcAddr := other.RPCAddress
 	if len(rpcAddr) > 0 {
-		if _, err := tmstrings.ASCIITrim(rpcAddr); err != nil {
+		if a, err := tmstrings.ASCIITrim(rpcAddr); err != nil || a == "" {
 			return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
 		}
 	}

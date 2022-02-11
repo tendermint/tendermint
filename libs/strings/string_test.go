@@ -34,21 +34,29 @@ func assertCorrectTrim(t *testing.T, input, expected string) {
 
 func TestASCIITrim(t *testing.T) {
 	t.Run("Validation", func(t *testing.T) {
-		notASCIIText := []string{
-			"", "\xC2", "\xC2\xA2", "\xFF", "\x80", "\xF0", "\n", "\t",
-		}
-		for _, v := range notASCIIText {
-			_, err := ASCIITrim(v)
-			require.Error(t, err, "%q is not ascii-text", v)
-		}
-		asciiText := []string{
-			" ", ".", "x", "$", "_", "abcdefg;", "-", "0x00", "0", "123",
-		}
-		for _, v := range asciiText {
-			_, err := ASCIITrim(v)
-			require.NoError(t, err, "%q is  ascii-text", v)
-		}
-
+		t.Run("NonASCII", func(t *testing.T) {
+			notASCIIText := []string{
+				"\xC2", "\xC2\xA2", "\xFF", "\x80", "\xF0", "\n", "\t",
+			}
+			for _, v := range notASCIIText {
+				_, err := ASCIITrim(v)
+				require.Error(t, err, "%q is not ascii-text", v)
+			}
+		})
+		t.Run("EmptyString", func(t *testing.T) {
+			out, err := ASCIITrim("")
+			require.NoError(t, err)
+			require.Zero(t, out)
+		})
+		t.Run("ASCIIText", func(t *testing.T) {
+			asciiText := []string{
+				" ", ".", "x", "$", "_", "abcdefg;", "-", "0x00", "0", "123",
+			}
+			for _, v := range asciiText {
+				_, err := ASCIITrim(v)
+				require.NoError(t, err, "%q is  ascii-text", v)
+			}
+		})
 		_, err := ASCIITrim("\xC2\xA2")
 		require.Error(t, err)
 	})
