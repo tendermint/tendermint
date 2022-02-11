@@ -4,6 +4,7 @@
 
 - 03-Feb-2022: Initial draft (@williambanfield).
 - 10-Feb-2022: Update in response to feedback (@williambanfield).
+- 11-Feb-2022: Add reflection on MaxGas during consensus (@williambanfield).
 
 ## Abstract
 
@@ -43,16 +44,25 @@ via a distributed consensus algorithm. Tendermint relies on the application spec
 code to decide how to handle the transactions Tendermint has produced (or if the
 application wants to consider them at all). Gas is an application concern.
 
+Our implementation of Gas is not currently enforced by consensus. Our current validation check that
+occurs during block propagation does not verify that the block is under the configured `MaxGas`.
+Ensuring that the transactions in a proposed block do not exceed `MaxGas` would require
+input from the application during propagation. The `ProcessProposal` method introduced
+as part of ABCI++ would enable such input but would further entwine Tendermint and
+the application. The issue of checking `MaxGas` during block propagation is important
+because it demonstrates that the feature as it currently exists is not implemented
+as fully as it perhaps should be.
+
 Our implementation of Gas is causing issues for node operators and relayers. At
 the moment, transactions that overflow the configured 'MaxGas' can be silently rejected
 from the mempool. Overflowing MaxGas is the _only_ way that a transaction can be considered
 invalid that is not directly a result of failing the `CheckTx`. Operators, and the application,
 do not know that a transaction was removed from the mempool for this reason. A stateless check
 of this nature is exactly what `CheckTx` exists for and there is no reason for the mempool
-to keep track of this data separately. A special [MempoolError][add-mempool-error] field 
-was added in v0.35 to communicate to clients that a transaction failed after `CheckTx`. 
-While this should alleviate the pain for operators wishing to understand if their 
-transaction was included in the mempool, it highlights that the abstraction of 
+to keep track of this data separately. A special [MempoolError][add-mempool-error] field
+was added in v0.35 to communicate to clients that a transaction failed after `CheckTx`.
+While this should alleviate the pain for operators wishing to understand if their
+transaction was included in the mempool, it highlights that the abstraction of
 what is included in the mempool is not currently well defined.
 
 Removing Gas from Tendermint and the mempool would allow for the mempool to be a better
