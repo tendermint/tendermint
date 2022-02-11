@@ -57,11 +57,6 @@ Users can override the OnStart/OnStop methods. In the absence of errors, these
 methods are guaranteed to be called at most once. If OnStart returns an error,
 service won't be marked as started, so the user can call Start again.
 
-A call to Reset will panic, unless OnReset is overwritten, allowing
-OnStart/OnStop to be called again.
-
-The caller must ensure that Start and Stop are not called concurrently.
-
 It is ok to call Stop without calling Start first.
 
 Typical usage:
@@ -128,26 +123,29 @@ func (bs *BaseService) Start(ctx context.Context) error {
 		return ErrAlreadyStopped
 	default:
 		bs.logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
-		srvCtx, cancel := context.WithCancel(ctx)
-		bs.cancel = cancel
-		bs.quit = srvCtx.Done()
-		if err := bs.impl.OnStart(srvCtx); err != nil {
-			cancel()
+		if err := bs.impl.OnStart(ctx); err != nil {
 			return err
 		}
+
+		// we need a seperate context to ensure that we start
+		// a thread that will get cleaned up and that the
+		// Stop/Wait functions work as expected.
+		srvCtx, cancel := context.WithCancel(context.Background())
+		bs.cancel = cancel
+		bs.quit = srvCtx.Done()
 
 		go func(ctx context.Context) {
 			select {
 			case <-srvCtx.Done():
+				// this means stop was called manually
 				return
 			case <-ctx.Done():
-				bs.impl.OnStop()
-				bs.cancel()
-				bs.logger.Info("stopped service",
-					"service", bs.name,
-					"impl", bs.impl.String())
-
+				_ = bs.Stop()
 			}
+
+			bs.logger.Info("stopped service",
+				"service", bs.name,
+				"impl", bs.impl.String())
 		}(ctx)
 
 		return nil
@@ -171,10 +169,6 @@ func (bs *BaseService) Stop() error {
 	default:
 		bs.logger.Info("stopping service", "service", bs.name, "impl", bs.impl.String())
 		bs.impl.OnStop()
-
-		// this is mostly redundant, except to cause Wait to
-		// return *and* because explicit stops will not
-		// otherwise release resources created during Start.
 		bs.cancel()
 
 		return nil
