@@ -83,7 +83,7 @@ func (info NodeInfo) Validate() error {
 
 	// Validate Version
 	if ver, err := tmstrings.ASCIITrim(info.Version); err != nil || ver == "" {
-		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v, %q: err", info.Version, ver, err)
+		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v, %q: %w", info.Version, ver, err)
 	}
 
 	// Validate Channels - ensure max and check for duplicates.
