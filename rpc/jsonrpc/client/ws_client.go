@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	metrics "github.com/rcrowley/go-metrics"
 
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -80,10 +79,6 @@ type WSClient struct { // nolint: maligned
 
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
-
-	// Time between sending a ping and receiving a pong. See
-	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
-	PingPongLatencyTimer metrics.Timer
 }
 
 // NewWS returns a new client with default options. The endpoint argument must
@@ -117,8 +112,6 @@ func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
-
-	c.PingPongLatencyTimer = metrics.NewTimer()
 	return c, nil
 }
 
