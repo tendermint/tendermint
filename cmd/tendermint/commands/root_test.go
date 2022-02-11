@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func testRootCmd(conf *cfg.Config) *cobra.Command {
 	return cmd
 }
 
-func testSetup(t *testing.T, conf *cfg.Config, args []string, env map[string]string) error {
+func testSetup(ctx context.Context, t *testing.T, conf *cfg.Config, args []string, env map[string]string) error {
 	t.Helper()
 
 	cmd := testRootCmd(conf)
@@ -60,7 +61,7 @@ func testSetup(t *testing.T, conf *cfg.Config, args []string, env map[string]str
 
 	// run with the args and env
 	args = append([]string{cmd.Use}, args...)
-	return cli.RunWithArgs(cmd, args, env)
+	return cli.RunWithArgs(ctx, cmd, args, env)
 }
 
 func TestRootHome(t *testing.T) {
@@ -76,11 +77,14 @@ func TestRootHome(t *testing.T) {
 		{nil, map[string]string{"TMHOME": newRoot}, newRoot},
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for i, tc := range cases {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			conf := clearConfig(t, tc.root)
 
-			err := testSetup(t, conf, tc.args, tc.env)
+			err := testSetup(ctx, t, conf, tc.args, tc.env)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.root, conf.RootDir)
@@ -110,11 +114,14 @@ func TestRootFlagsEnv(t *testing.T) {
 		{nil, map[string]string{"TM_LOG_LEVEL": "debug"}, "debug"},       // right env
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for i, tc := range cases {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			conf := clearConfig(t, defaultDir)
 
-			err := testSetup(t, conf, tc.args, tc.env)
+			err := testSetup(ctx, t, conf, tc.args, tc.env)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.logLevel, conf.LogLevel)
@@ -124,6 +131,9 @@ func TestRootFlagsEnv(t *testing.T) {
 }
 
 func TestRootConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// write non-default config
 	nonDefaultLogLvl := "debug"
 	cvals := map[string]string{
@@ -160,7 +170,7 @@ func TestRootConfig(t *testing.T) {
 
 			// run with the args and env
 			tc.args = append([]string{cmd.Use}, tc.args...)
-			err = cli.RunWithArgs(cmd, tc.args, tc.env)
+			err = cli.RunWithArgs(ctx, cmd, tc.args, tc.env)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.logLvl, conf.LogLevel)

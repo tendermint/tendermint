@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,9 @@ import (
 )
 
 func TestSetupEnv(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cases := []struct {
 		args     []string
 		env      map[string]string
@@ -50,7 +54,7 @@ func TestSetupEnv(t *testing.T) {
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		err := RunWithArgs(cmd, args, tc.env)
+		err := RunWithArgs(ctx, cmd, args, tc.env)
 		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, foo, i)
 	}
@@ -76,6 +80,9 @@ func writeConfigVals(dir string, vals map[string]string) error {
 }
 
 func TestSetupConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1 := "fubble"
@@ -120,7 +127,7 @@ func TestSetupConfig(t *testing.T) {
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		err := RunWithArgs(cmd, args, tc.env)
+		err := RunWithArgs(ctx, cmd, args, tc.env)
 		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, foo, i)
 		assert.Equal(t, tc.expectedTwo, two, i)
@@ -134,6 +141,9 @@ type DemoConfig struct {
 }
 
 func TestSetupUnmarshal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1, cval2 := "someone", "else"
@@ -198,13 +208,16 @@ func TestSetupUnmarshal(t *testing.T) {
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		err := RunWithArgs(cmd, args, tc.env)
+		err := RunWithArgs(ctx, cmd, args, tc.env)
 		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, cfg, i)
 	}
 }
 
 func TestSetupTrace(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cases := []struct {
 		args     []string
 		env      map[string]string
@@ -230,14 +243,13 @@ func TestSetupTrace(t *testing.T) {
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		stdout, stderr, err := runCaptureWithArgs(cmd, args, tc.env)
+		stdout, stderr, err := runCaptureWithArgs(ctx, cmd, args, tc.env)
 		require.Error(t, err, i)
 		require.Equal(t, "", stdout, i)
 		require.NotEqual(t, "", stderr, i)
 		msg := strings.Split(stderr, "\n")
 		desired := fmt.Sprintf("ERROR: %s", tc.expected)
-		assert.Equal(t, desired, msg[0], i)
-		t.Log(msg)
+		assert.Equal(t, desired, msg[0], i, msg)
 		if tc.long && assert.True(t, len(msg) > 2, i) {
 			// the next line starts the stack trace...
 			assert.Contains(t, stderr, "TestSetupTrace", i)
@@ -250,7 +262,7 @@ func TestSetupTrace(t *testing.T) {
 // line args and environmental variables set. It returns string fields
 // representing output written to stdout and stderr, additionally any error
 // from cmd.Execute() is also returned
-func runCaptureWithArgs(cmd *cobra.Command, args []string, env map[string]string) (stdout, stderr string, err error) {
+func runCaptureWithArgs(ctx context.Context, cmd *cobra.Command, args []string, env map[string]string) (stdout, stderr string, err error) {
 	oldout, olderr := os.Stdout, os.Stderr // keep backup of the real stdout
 	rOut, wOut, _ := os.Pipe()
 	rErr, wErr, _ := os.Pipe()
@@ -277,7 +289,7 @@ func runCaptureWithArgs(cmd *cobra.Command, args []string, env map[string]string
 	errC := copyStd(rErr)
 
 	// now run the command
-	err = RunWithArgs(cmd, args, env)
+	err = RunWithArgs(ctx, cmd, args, env)
 
 	// and grab the stdout to return
 	wOut.Close()

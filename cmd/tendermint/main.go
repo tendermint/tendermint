@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 )
@@ -59,7 +60,7 @@ func main() {
 	// Create & start node
 	rcmd.AddCommand(commands.NewRunNodeCmd(nodeFunc, conf, logger))
 
-	if err := rcmd.ExecuteContext(ctx); err != nil {
+	if err := cli.RunWithTrace(ctx, rcmd); err != nil {
 		panic(err)
 	}
 }
