@@ -271,6 +271,12 @@ something like this (subject to refinement):
    default.  If we decide to remove it, we can also remove the legacy RPC
    endpoints for querying the KV indexer.
 
+   If we plan to do this, we should also investigate providing a way for
+   clients to query whether a given transaction ID has landed in a block.  That
+   serves a common need, and currently _only_ works if the KV indexer is
+   enabled, but could be addressed more simply using the other data a node
+   already has stored, without having to answer more general queries.
+
 
 ## References
 
