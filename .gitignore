@@ -54,3 +54,11 @@ proto/tendermint/p2p/*.proto
 proto/tendermint/statesync/*.proto
 proto/tendermint/types/*.proto
 proto/tendermint/version/*.proto
+*.aux
+*.bbl
+*.blg
+*.log
+*.pdf
+*.gz
+*.dvi
+*.pb.go
