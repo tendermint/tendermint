@@ -82,10 +82,8 @@ func (info NodeInfo) Validate() error {
 	}
 
 	// Validate Version
-	if len(info.Version) > 0 &&
-		(!tmstrings.IsASCIIText(info.Version) || tmstrings.ASCIITrim(info.Version) == "") {
-
-		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v", info.Version)
+	if ver, err := tmstrings.ASCIITrim(info.Version); err != nil || ver == "" {
+		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v, %q: err", info.Version, ver, err)
 	}
 
 	// Validate Channels - ensure max and check for duplicates.
@@ -101,8 +99,7 @@ func (info NodeInfo) Validate() error {
 		channels[ch] = struct{}{}
 	}
 
-	// Validate Moniker.
-	if !tmstrings.IsASCIIText(info.Moniker) || tmstrings.ASCIITrim(info.Moniker) == "" {
+	if m, err := tmstrings.ASCIITrim(info.Moniker); err != nil || m == "" {
 		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
 	}
 
@@ -116,8 +113,10 @@ func (info NodeInfo) Validate() error {
 	}
 	// XXX: Should we be more strict about address formats?
 	rpcAddr := other.RPCAddress
-	if len(rpcAddr) > 0 && (!tmstrings.IsASCIIText(rpcAddr) || tmstrings.ASCIITrim(rpcAddr) == "") {
-		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
+	if len(rpcAddr) > 0 {
+		if _, err := tmstrings.ASCIITrim(rpcAddr); err != nil {
+			return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
+		}
 	}
 
 	return nil
