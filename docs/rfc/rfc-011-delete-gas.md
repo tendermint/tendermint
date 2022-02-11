@@ -75,7 +75,7 @@ included in pending transactions. This fee indicates how much a user is willing 
 pay per unit of execution and the fees are distributed to validators.
 
 Validators wishing to extract higher gas fees are incentivized to include transactions
-with the highest listed gas fees into each block. This produces a naturally ordering
+with the highest listed gas fees into each block. This produces a natural ordering
 of the pending transactions. Applications wishing to implement a gas mechanism need
 to be able to order the transactions in the mempool. This can trivially be accomplished
 by sorting transactions using the `priority` field available to applications as part of
