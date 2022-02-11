@@ -1,11 +1,8 @@
 package cli
 
 import (
-	"context"
-	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -13,52 +10,27 @@ import (
 )
 
 const (
-	HomeFlag     = "home"
-	TraceFlag    = "trace"
-	OutputFlag   = "output"
-	EncodingFlag = "encoding"
+	HomeFlag   = "home"
+	TraceFlag  = "trace"
+	OutputFlag = "output" // used in the cli
 )
 
-// Executable is the minimal interface to *corba.Command, so we can
-// wrap if desired before the test
-type Executable interface {
-	Execute() error
-	Context() context.Context
-}
-
 // PrepareBaseCmd is meant for tendermint and other servers
-func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor {
+func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defaultHome string) *cobra.Command {
+	// the primary caller of this command is in the SDK and
+	// returning the cobra.Command object avoids breaking that
+	// code. In the long term, the SDK could avoid this entirely.
 	cobra.OnInitialize(func() { InitEnv(envPrefix) })
 	cmd.PersistentFlags().StringP(HomeFlag, "", defaultHome, "directory for config and data")
 	cmd.PersistentFlags().Bool(TraceFlag, false, "print out full stack trace on errors")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(BindFlagsLoadViper, cmd.PersistentPreRunE)
-	return Executor{cmd, os.Exit}
-}
-
-// PrepareMainCmd is meant for client side libs that want some more flags
-//
-// This adds --encoding (hex, btc, base64) and --output (text, json) to
-// the command.  These only really make sense in interactive commands.
-func PrepareMainCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor {
-	cmd.PersistentFlags().StringP(EncodingFlag, "e", "hex", "Binary encoding (hex|b64|btc)")
-	cmd.PersistentFlags().StringP(OutputFlag, "o", "text", "Output format (text|json)")
-	cmd.PersistentPreRunE = concatCobraCmdFuncs(validateOutput, cmd.PersistentPreRunE)
-	return PrepareBaseCmd(cmd, envPrefix, defaultHome)
+	return cmd
 }
 
 // InitEnv sets to use ENV variables if set.
 func InitEnv(prefix string) {
-	copyEnvVars(prefix)
-
-	// env variables with TM prefix (eg. TM_ROOT)
-	viper.SetEnvPrefix(prefix)
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
-	viper.AutomaticEnv()
-}
-
-// This copies all variables like TMROOT to TM_ROOT,
-// so we can support both formats for the user
-func copyEnvVars(prefix string) {
+	// This copies all variables like TMROOT to TM_ROOT,
+	// so we can support both formats for the user
 	prefix = strings.ToUpper(prefix)
 	ps := prefix + "_"
 	for _, e := range os.Environ() {
@@ -71,42 +43,11 @@ func copyEnvVars(prefix string) {
 			}
 		}
 	}
-}
 
-// Executor wraps the cobra Command with a nicer Execute method
-type Executor struct {
-	*cobra.Command
-	Exit func(int) // this is os.Exit by default, override in tests
-}
-
-type ExitCoder interface {
-	ExitCode() int
-}
-
-// execute adds all child commands to the root command sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func (e Executor) Execute() error {
-	e.SilenceUsage = true
-	e.SilenceErrors = true
-	err := e.Command.Execute()
-	if err != nil {
-		if viper.GetBool(TraceFlag) {
-			const size = 64 << 10
-			buf := make([]byte, size)
-			buf = buf[:runtime.Stack(buf, false)]
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n%s\n", err, buf)
-		} else {
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		}
-
-		// return error code 1 by default, can override it with a special error type
-		exitCode := 1
-		if ec, ok := err.(ExitCoder); ok {
-			exitCode = ec.ExitCode()
-		}
-		e.Exit(exitCode)
-	}
-	return err
+	// env variables with TM prefix (eg. TM_ROOT)
+	viper.SetEnvPrefix(prefix)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	viper.AutomaticEnv()
 }
 
 type cobraCmdFunc func(cmd *cobra.Command, args []string) error
@@ -146,17 +87,6 @@ func BindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 		// ignore not found error, return other errors
 		return err
-	}
-	return nil
-}
-
-func validateOutput(cmd *cobra.Command, args []string) error {
-	// validate output format
-	output := viper.GetString(OutputFlag)
-	switch output {
-	case "text", "json":
-	default:
-		return fmt.Errorf("unsupported output format: %s", output)
 	}
 	return nil
 }
