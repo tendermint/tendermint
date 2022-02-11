@@ -175,8 +175,16 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	inCh := make(chan memoryMessage, t.bufferSize)
 	outCh := make(chan memoryMessage, t.bufferSize)
 
+	once := &sync.Once{}
+	closeCh := make(chan struct{})
+	closeFn := func() { once.Do(func() { close(closeCh) }) }
+
 	outConn := newMemoryConnection(t.logger, t.nodeID, peer.nodeID, inCh, outCh)
+	outConn.closeCh = closeCh
+	outConn.closeFn = closeFn
 	inConn := newMemoryConnection(peer.logger, peer.nodeID, t.nodeID, outCh, inCh)
+	inConn.closeCh = closeCh
+	inConn.closeFn = closeFn
 
 	select {
 	case peer.acceptCh <- inConn:
@@ -223,17 +231,12 @@ func newMemoryConnection(
 	receiveCh <-chan memoryMessage,
 	sendCh chan<- memoryMessage,
 ) *MemoryConnection {
-	closeCh := make(chan struct{})
-	once := &sync.Once{}
-
 	return &MemoryConnection{
 		logger:    logger.With("remote", remoteID),
 		localID:   localID,
 		remoteID:  remoteID,
 		receiveCh: receiveCh,
 		sendCh:    sendCh,
-		closeCh:   closeCh,
-		closeFn:   func() { once.Do(func() { close(closeCh) }) },
 	}
 }
 
@@ -303,6 +306,8 @@ func (c *MemoryConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byt
 	case msg := <-c.receiveCh:
 		c.logger.Debug("received message", "chID", msg.channelID, "msg", msg.message)
 		return msg.channelID, msg.message, nil
+	case <-ctx.Done():
+		return 0, nil, io.EOF
 	case <-c.closeCh:
 		return 0, nil, io.EOF
 	}
