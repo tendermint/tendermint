@@ -67,8 +67,8 @@ what is included in the mempool is not currently well defined.
 
 Removing Gas from Tendermint and the mempool would allow for the mempool to be a better
 abstraction: any transaction that arrived at `CheckTx` and passed the check will either be
-a candidate for a later block or evicted after a TTL is reached. All other transactions are
-completely invalid and can be discarded forever.
+a candidate for a later block or evicted after a TTL is reached or to make room for
+other, higher priority transactions. All other transactions are completely invalid and can be discarded forever.
 
 Removing gas will not be completely straightforward. It will mean ensuring that
 equivalent functionality can be implemented outside of the mempool using the mempool's API.
