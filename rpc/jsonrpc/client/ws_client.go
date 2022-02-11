@@ -66,7 +66,6 @@ type WSClient struct { // nolint: maligned
 	wg sync.WaitGroup
 
 	mtx            sync.RWMutex
-	sentLastPingAt time.Time
 	reconnecting   bool
 	nextReqID      int
 	// sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
@@ -158,7 +157,6 @@ func (c *WSClient) Start(ctx context.Context) error {
 func (c *WSClient) Stop() error {
 	// only close user-facing channels when we can't write to them
 	c.wg.Wait()
-	c.PingPongLatencyTimer.Stop()
 	close(c.ResponsesCh)
 	return nil
 }
@@ -379,9 +377,6 @@ func (c *WSClient) writeRoutine(ctx context.Context) {
 				c.reconnectAfter <- err
 				return
 			}
-			c.mtx.Lock()
-			c.sentLastPingAt = time.Now()
-			c.mtx.Unlock()
 		case <-c.readRoutineQuit:
 			return
 		case <-ctx.Done():
@@ -403,16 +398,6 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		c.conn.Close()
 		c.wg.Done()
 	}()
-
-	c.conn.SetPongHandler(func(string) error {
-		// gather latency stats
-		c.mtx.RLock()
-		t := c.sentLastPingAt
-		c.mtx.RUnlock()
-		c.PingPongLatencyTimer.UpdateSince(t)
-
-		return nil
-	})
 
 	for {
 		// reset deadline for every message type (control or data)
