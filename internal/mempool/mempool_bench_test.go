@@ -20,7 +20,7 @@ func BenchmarkTxMempool_CheckTx(b *testing.B) {
 	txmp.config.Size = 5000
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	peerID := 1
+	const peerID = 1
 
 	b.ResetTimer()
 
