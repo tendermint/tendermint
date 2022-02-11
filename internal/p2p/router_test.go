@@ -620,6 +620,7 @@ func TestRouter_DialPeers(t *testing.T) {
 
 			// Set up a mock transport that handshakes.
 			connCtx, connCancel := context.WithCancel(context.Background())
+			defer connCancel()
 			mockConnection := &mocks.Connection{}
 			mockConnection.On("String").Maybe().Return("mock")
 			if tc.dialErr == nil {
