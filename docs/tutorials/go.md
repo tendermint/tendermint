@@ -526,17 +526,15 @@ I[2019-07-16|18:26:20.330] Accepted a new connection
 Now open another tab in your terminal and try sending a transaction:
 
 ```json
-curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
+$ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "check_tx": {
-      "gasWanted": "1"
-    },
-    "deliver_tx": {},
-    "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
-    "height": "33"
+  "check_tx": {
+    "gasWanted": "1",
+    ...
+  },
+  "deliver_tx": { ... },
+  "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
+  "height": "33"
 }
 ```
 
@@ -545,16 +543,18 @@ Response should contain the height where this transaction was committed.
 Now let's check if the given key now exists and its value:
 
 ```json
-curl -s 'localhost:26657/abci_query?data="tendermint"'
+$ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "response": {
-      "log": "exists",
-      "key": "dGVuZGVybWludA==",
-      "value": "cm9ja3My"
-    }
+  "response": {
+    "code": 0,
+    "log": "exists",
+    "info": "",
+    "index": "0",
+    "key": "dGVuZGVybWludA==",
+    "value": "cm9ja3M=",
+    "proofOps": null,
+    "height": "6",
+    "codespace": ""
   }
 }
 ```
