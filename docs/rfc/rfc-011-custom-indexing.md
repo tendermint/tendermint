@@ -145,11 +145,21 @@ the other.  Since the primary job of the consensus engine is to correctly,
 robustly, reliablly, and efficiently replicate application state across the
 network, I believe the correct choice is to favor consensus performance.
 
-Inevitably, the question will arise whether we could do both and toggle between
-them with a flag. Arguably this would be the worst-case scenario, requiring us
-to maintain the complexity of two very-different operational concerns.  If our
-goal is that Tendermint should be as simple, efficient, and trustworthy as
-posible, there is not a strong case for making these options configurable.
+An important consideration for this decision is that a node does not index
+application metadata separately: If indexing is disabled, there is no built-in
+mechanism to go back and replay or reconstruct the data that an indexer would
+have stored. The node _does_ store the blockchain itself (i.e., the blocks and
+their transactions), so potentially some use cases currently handled by the
+indexer could be handled by the node. For example, allowing clients to ask
+whether a given transaction ID has been committed to a block could in principle
+be done without an indexer, since it does not depend on application metadata.
+
+Inevitably, a question will arise whether we could implement both strategies
+and toggle between them with a flag. That would be a worst-case scenario,
+requiring us to maintain the complexity of two very-different operational
+concerns.  If our goal is that Tendermint should be as simple, efficient, and
+trustworthy as posible, there is not a strong case for making these options
+configurable: We should pick a side and commit to it.
 
 ### Design Principles
 
