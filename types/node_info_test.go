@@ -80,15 +80,18 @@ func TestNodeInfoValidate(t *testing.T) {
 	assert.NoError(t, ni.Validate())
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(t, nodeKeyID, name)
-		ni.Channels = channels
-		tc.malleateNodeInfo(&ni)
-		err := ni.Validate()
-		if tc.expectErr {
-			assert.Error(t, err, tc.testName)
-		} else {
-			assert.NoError(t, err, tc.testName)
-		}
+		t.Run(tc.testName, func(t *testing.T) {
+			ni := testNodeInfo(t, nodeKeyID, name)
+			ni.Channels = channels
+			tc.malleateNodeInfo(&ni)
+			err := ni.Validate()
+			if tc.expectErr {
+				assert.Error(t, err, tc.testName)
+			} else {
+				assert.NoError(t, err, tc.testName)
+			}
+		})
+
 	}
 
 }
