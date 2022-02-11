@@ -44,7 +44,7 @@ func main() {
 		commands.MakeRollbackStateCommand(conf),
 		commands.MakeKeyMigrateCommand(conf, logger),
 		debug.DebugCmd,
-		cli.NewCompletionCmd(rcmd, true),
+		commands.NewCompletionCmd(rcmd, true),
 	)
 
 	// NOTE:
@@ -60,7 +60,7 @@ func main() {
 	// Create & start node
 	rcmd.AddCommand(commands.NewRunNodeCmd(nodeFunc, conf, logger))
 
-	if err := rcmd.ExecuteContext(ctx); err != nil {
+	if err := cli.RunWithTrace(ctx, rcmd); err != nil {
 		panic(err)
 	}
 }
