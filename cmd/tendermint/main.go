@@ -6,7 +6,6 @@ import (
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 )
@@ -44,7 +43,7 @@ func main() {
 		commands.MakeRollbackStateCommand(conf),
 		commands.MakeKeyMigrateCommand(conf, logger),
 		debug.DebugCmd,
-		cli.NewCompletionCmd(rcmd, true),
+		commands.NewCompletionCmd(rcmd, true),
 	)
 
 	// NOTE:

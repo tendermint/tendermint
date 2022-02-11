@@ -17,6 +17,17 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
+// writeConfigVals writes a toml file with the given values.
+// It returns an error if writing was impossible.
+func writeConfigVals(dir string, vals map[string]string) error {
+	data := ""
+	for k, v := range vals {
+		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
+	}
+	cfile := filepath.Join(dir, "config.toml")
+	return os.WriteFile(cfile, []byte(data), 0600)
+}
+
 // clearConfig clears env vars, the given root dir, and resets viper.
 func clearConfig(t *testing.T, dir string) *cfg.Config {
 	t.Helper()
@@ -142,7 +153,7 @@ func TestRootConfig(t *testing.T) {
 
 			// write the non-defaults to a different path
 			// TODO: support writing sub configs so we can test that too
-			err = WriteConfigVals(configFilePath, cvals)
+			err = writeConfigVals(configFilePath, cvals)
 			require.NoError(t, err)
 
 			cmd := testRootCmd(conf)
