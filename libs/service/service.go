@@ -139,27 +139,14 @@ func (bs *BaseService) Start(ctx context.Context) error {
 		go func(ctx context.Context) {
 			select {
 			case <-srvCtx.Done():
-				// someone else explicitly called stop
-				// and then we shouldn't.
 				return
 			case <-ctx.Done():
-				// if nothing is running, no need to
-				// shut down again.
-				if !bs.impl.IsRunning() {
-					return
-				}
-
-				// after the context was canceled and
-				// we should stop.
-				if err := bs.Stop(); err != nil {
-					bs.logger.Error("stopped service",
-						"err", err.Error(),
-						"service", bs.name,
-						"impl", bs.impl.String())
-				}
+				bs.impl.OnStop()
+				bs.cancel()
 				bs.logger.Info("stopped service",
 					"service", bs.name,
 					"impl", bs.impl.String())
+
 			}
 		}(ctx)
 
