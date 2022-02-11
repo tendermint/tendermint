@@ -13,8 +13,8 @@ type testService struct {
 	BaseService
 }
 
-func (testService) OnStop() {}
-func (testService) OnStart(context.Context) error {
+func (*testService) OnStop() {}
+func (*testService) OnStart(context.Context) error {
 	return nil
 }
 
