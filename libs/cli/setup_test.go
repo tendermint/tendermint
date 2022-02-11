@@ -66,10 +66,11 @@ func tempDir(t *testing.T) string {
 // writeConfigVals writes a toml file with the given values.
 // It returns an error if writing was impossible.
 func writeConfigVals(dir string, vals map[string]string) error {
-	data := ""
+	var lines []string
 	for k, v := range vals {
-		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
+		lines = append(lines, fmt.Sprintf("%s = %q", k, v)
 	}
+	data := strings.Join(lines, "\n")
 	cfile := filepath.Join(dir, "config.toml")
 	return os.WriteFile(cfile, []byte(data), 0600)
 }
