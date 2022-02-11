@@ -94,9 +94,9 @@ Typical usage:
 type BaseService struct {
 	logger log.Logger
 	name   string
-	mutex  sync.Mutex
+	mtx    sync.Mutex
 	quit   <-chan (struct{})
-	kill   context.CancelFunc
+	cancel context.CancelFunc
 
 	// The "subclass" of BaseService
 	impl Implementation
@@ -115,8 +115,8 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 // returned if the service is already running or stopped.  To restart a
 // stopped service, call Reset.
 func (bs *BaseService) Start(ctx context.Context) error {
-	bs.mutex.Lock()
-	defer bs.mutex.Unlock()
+	bs.mtx.Lock()
+	defer bs.mtx.Unlock()
 
 	if bs.quit != nil {
 		return ErrAlreadyStarted
@@ -129,7 +129,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 	default:
 		bs.logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
 		srvCtx, cancel := context.WithCancel(ctx)
-		bs.kill = cancel
+		bs.cancel = cancel
 		bs.quit = srvCtx.Done()
 		if err := bs.impl.OnStart(srvCtx); err != nil {
 			cancel()
@@ -170,8 +170,8 @@ func (bs *BaseService) Start(ctx context.Context) error {
 // Stop implements Service by calling OnStop (if defined) and closing quit
 // channel. An error will be returned if the service is already stopped.
 func (bs *BaseService) Stop() error {
-	bs.mutex.Lock()
-	defer bs.mutex.Unlock()
+	bs.mtx.Lock()
+	defer bs.mtx.Unlock()
 
 	if bs.quit == nil {
 		bs.logger.Error("not stopping service; not started yet", "service", bs.name, "impl", bs.impl.String())
@@ -188,7 +188,7 @@ func (bs *BaseService) Stop() error {
 		// this is mostly redundant, except to cause Wait to
 		// return *and* because explicit stops will not
 		// otherwise release resources created during Start.
-		bs.kill()
+		bs.cancel()
 
 		return nil
 	}
@@ -197,8 +197,8 @@ func (bs *BaseService) Stop() error {
 // IsRunning implements Service by returning true or false depending on the
 // service's state.
 func (bs *BaseService) IsRunning() bool {
-	bs.mutex.Lock()
-	defer bs.mutex.Unlock()
+	bs.mtx.Lock()
+	defer bs.mtx.Unlock()
 
 	if bs.quit == nil {
 		return false
