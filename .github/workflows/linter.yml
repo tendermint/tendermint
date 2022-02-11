@@ -1,4 +1,4 @@
-name: Lint
+name: Markdown Linter
 on:
   push:
     branches:

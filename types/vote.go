@@ -326,6 +326,22 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 }
 
+func VotesToProto(votes []*Vote) []*tmproto.Vote {
+	if votes == nil {
+		return nil
+	}
+
+	res := make([]*tmproto.Vote, 0, len(votes))
+	for _, vote := range votes {
+		v := vote.ToProto()
+		// protobuf crashes when serializing "repeated" fields with nil elements
+		if v != nil {
+			res = append(res, v)
+		}
+	}
+	return res
+}
+
 func VoteExtensionFromProto(pext *tmproto.VoteExtension) VoteExtension {
 	ext := VoteExtension{}
 	if pext != nil {

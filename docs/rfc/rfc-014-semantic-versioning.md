@@ -1,8 +1,9 @@
-# RFC 006: Semantic Versioning
+# RFC 014: Semantic Versioning
 
 ## Changelog
 
 - 2021-11-19: Initial Draft
+- 2021-02-11: Migrate RFC to tendermint repo (Originally [RFC 006](https://github.com/tendermint/spec/pull/365))
 
 ## Author(s)
 

@@ -82,7 +82,7 @@ func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoo
 	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
 
-	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
+	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	cfg.Mempool.CacheSize = cacheSize
 	appConnMem, err := cc(logger)

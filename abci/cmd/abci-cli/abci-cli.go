@@ -193,7 +193,7 @@ var deliverTxCmd = &cobra.Command{
 	Short: "deliver a new transaction to the application",
 	Long:  "deliver a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdDeliverTx,
+	RunE:  cmdFinalizeBlock,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -300,17 +300,38 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 		[]func() error{
 			func() error { return servertest.InitChain(ctx, client) },
 			func() error { return servertest.Commit(ctx, client, nil) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte("abc"), code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.Commit(ctx, client, nil) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00}, code.CodeTypeOK, nil) },
-			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00}, code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte{0x01}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00, 0x02}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00, 0x03}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(ctx, client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil) },
 			func() error {
-				return servertest.DeliverTx(ctx, client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
+				return servertest.FinalizeBlock(ctx, client, [][]byte{
+					[]byte("abc"),
+				}, []uint32{
+					code.CodeTypeBadNonce,
+				}, nil)
+			},
+			func() error { return servertest.Commit(ctx, client, nil) },
+			func() error {
+				return servertest.FinalizeBlock(ctx, client, [][]byte{
+					{0x00},
+				}, []uint32{
+					code.CodeTypeOK,
+				}, nil)
+			},
+			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
+			func() error {
+				return servertest.FinalizeBlock(ctx, client, [][]byte{
+					{0x00},
+					{0x01},
+					{0x00, 0x02},
+					{0x00, 0x03},
+					{0x00, 0x00, 0x04},
+					{0x00, 0x00, 0x06},
+				}, []uint32{
+					code.CodeTypeBadNonce,
+					code.CodeTypeOK,
+					code.CodeTypeOK,
+					code.CodeTypeOK,
+					code.CodeTypeOK,
+					code.CodeTypeBadNonce,
+				}, nil)
 			},
 			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
 		})
@@ -406,7 +427,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
 	case "deliver_tx":
-		return cmdDeliverTx(cmd, actualArgs)
+		return cmdFinalizeBlock(cmd, actualArgs)
 	case "echo":
 		return cmdEcho(cmd, actualArgs)
 	case "info":
@@ -475,7 +496,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 const codeBad uint32 = 10
 
 // Append a new tx to application
-func cmdDeliverTx(cmd *cobra.Command, args []string) error {
+func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
@@ -487,16 +508,18 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTx(cmd.Context(), types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.FinalizeBlock(cmd.Context(), types.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	if err != nil {
 		return err
 	}
-	printResponse(cmd, args, response{
-		Code: res.Code,
-		Data: res.Data,
-		Info: res.Info,
-		Log:  res.Log,
-	})
+	for _, tx := range res.Txs {
+		printResponse(cmd, args, response{
+			Code: tx.Code,
+			Data: tx.Data,
+			Info: tx.Info,
+			Log:  tx.Log,
+		})
+	}
 	return nil
 }
 

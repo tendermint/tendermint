@@ -1,4 +1,4 @@
-# RFC 002: Non-Zero Genesis
+# ADR 078: Non-Zero Genesis
 
 ## Changelog
 
@@ -6,6 +6,7 @@
 - 2020-07-28: Use weak chain linking, i.e. `predecessor` field (@erikgrinaker)
 - 2020-07-31: Drop chain linking (@erikgrinaker)
 - 2020-08-03: Add `State.InitialHeight` (@erikgrinaker)
+- 2021-02-11: Migrate to tendermint repo (Originally [RFC 002](https://github.com/tendermint/spec/pull/119))
 
 ## Author(s)
 

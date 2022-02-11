@@ -78,7 +78,7 @@ $(BUILDDIR)/:
 # there and run the Build & Push Proto Builder Image workflow.
 IMAGE := ghcr.io/tendermint/docker-build-proto:latest
 DOCKER_PROTO_BUILDER := docker run -v $(shell pwd):/workspace --workdir /workspace $(IMAGE)
-HTTPS_GIT := https://github.com/tendermint/spec.git
+HTTPS_GIT := https://github.com/tendermint/tendermint.git
 
 ###############################################################################
 ###                                Protobuf                                 ###

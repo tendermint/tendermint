@@ -1,8 +1,9 @@
-# RFC 003: Ed25519 Verification
+# ADR 079: Ed25519 Verification
 
 ## Changelog
 
-- August 21, 2020: initialized
+- 2020-08-21: Initial RFC
+- 2021-02-11: Migrate RFC to tendermint repo (Originally [RFC 003](https://github.com/tendermint/spec/pull/144))
 
 ## Author(s)
 

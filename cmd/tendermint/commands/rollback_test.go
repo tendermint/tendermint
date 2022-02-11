@@ -19,10 +19,12 @@ func TestRollbackIntegration(t *testing.T) {
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cfg, err := rpctest.CreateConfig(t.Name())
+	cfg, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 	cfg.BaseConfig.DBBackend = "goleveldb"
+
 	app, err := e2e.NewApplication(e2e.DefaultConfig(dir))
+	require.NoError(t, err)
 
 	t.Run("First run", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
@@ -30,27 +32,29 @@ func TestRollbackIntegration(t *testing.T) {
 		require.NoError(t, err)
 		node, _, err := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err)
+		require.True(t, node.IsRunning())
 
 		time.Sleep(3 * time.Second)
 		cancel()
 		node.Wait()
+
 		require.False(t, node.IsRunning())
 	})
-
 	t.Run("Rollback", func(t *testing.T) {
+		time.Sleep(time.Second)
 		require.NoError(t, app.Rollback())
 		height, _, err = commands.RollbackState(cfg)
-		require.NoError(t, err)
-
+		require.NoError(t, err, "%d", height)
 	})
-
 	t.Run("Restart", func(t *testing.T) {
+		require.True(t, height > 0, "%d", height)
+
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		node2, _, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err2)
 
-		logger := log.NewTestingLogger(t)
+		logger := log.NewNopLogger()
 
 		client, err := local.New(logger, node2.(local.NodeService))
 		require.NoError(t, err)

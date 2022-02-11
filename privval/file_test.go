@@ -21,9 +21,9 @@ import (
 )
 
 func TestGenLoadValidator(t *testing.T) {
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
@@ -44,9 +44,9 @@ func TestResetValidator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
@@ -74,9 +74,9 @@ func TestResetValidator(t *testing.T) {
 }
 
 func TestLoadOrGenValidator(t *testing.T) {
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
 	tempKeyFilePath := tempKeyFile.Name()
@@ -160,9 +160,9 @@ func TestSignVote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
@@ -215,9 +215,9 @@ func TestSignProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
@@ -263,9 +263,9 @@ func TestDifferByTimestamp(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
