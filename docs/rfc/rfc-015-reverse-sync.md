@@ -1,7 +1,8 @@
-# RFC 005: ReverseSync - fetching historical data
+# RFC 015: ReverseSync - fetching historical data
 
 ## Changelog
 
+- 2021-02-11: Migrate RFC to tendermint repo (Originally [RFC 005](https://github.com/tendermint/spec/pull/224))
 - 2021-04-19: Use P2P to gossip necessary data for reverse sync.
 - 2021-03-03: Simplify proposal to the state sync case.
 - 2021-02-17: Add notes on asynchronicity of processes.

@@ -48,5 +48,11 @@ sections.
 - [RFC-008: Don't Panic](./rfc-008-don't-panic.md)
 - [RFC-009: Consensus Parameter Upgrades](./rfc-009-consensus-parameter-upgrades.md)
 - [RFC-010: P2P Light Client](./rfc-010-p2p-light-client.rst)
+- [RFC-011: Block Retention](./rfc-011-block-retention.md)
+- [RFC-012: Non-Zero Genesis](./rfc-012-nonzero-genesis.md)
+- [RFC-013: ED25519 Verification](./rfc-013-ed25519-verification.md)
+- [RFC-014: ABCI++](./rfc-014-abci++.md)
+- [RFC-015: Reverse Sync](./rfc-015-reverse-sync.md)
+- [RFC-016: Semantic Versioning](./rfc-016-semantic-versioning.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->

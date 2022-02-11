@@ -1,4 +1,4 @@
-# RFC 001: Configurable Block Retention
+# RFC 011: Configurable Block Retention
 
 ## Changelog
 
@@ -6,6 +6,7 @@
 - 2020-03-25: Use local config for snapshot interval (@erikgrinaker)
 - 2020-03-31: Use ABCI commit response for block retention hint
 - 2020-04-02: Resolved open questions
+- 2021-02-11: Migrate RFC to tendermint repo (Originally [RFC 001](https://github.com/tendermint/spec/pull/84))
 
 ## Author(s)
 
