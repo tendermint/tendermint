@@ -65,9 +65,9 @@ type WSClient struct { // nolint: maligned
 
 	wg sync.WaitGroup
 
-	mtx            sync.RWMutex
-	reconnecting   bool
-	nextReqID      int
+	mtx          sync.RWMutex
+	reconnecting bool
+	nextReqID    int
 	// sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	// Time allowed to write a message to the server. 0 means block until operation succeeds.
