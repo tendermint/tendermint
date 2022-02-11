@@ -327,10 +327,12 @@ func TestEventBusPublishEventEvidenceValidated(t *testing.T) {
 
 		edt := msg.Data().(types.EventDataEvidenceValidated)
 		assert.Equal(t, ev, edt.Evidence)
+		assert.Equal(t, int64(1), edt.Height)
 	}()
 
 	err = eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
 		Evidence: ev,
+		Height:   int64(1),
 	})
 	assert.NoError(t, err)
 

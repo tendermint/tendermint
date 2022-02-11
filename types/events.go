@@ -232,6 +232,8 @@ func (EventDataStateSyncStatus) TypeTag() string { return "tendermint/event/Stat
 
 type EventDataEvidenceValidated struct {
 	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height,string"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.

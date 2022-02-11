@@ -134,7 +134,10 @@ func (r *Reactor) handleEvidenceMessage(ctx context.Context, envelope *p2p.Envel
 				return err
 			}
 			if evAdded {
-				err := r.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{Evidence: ev})
+				err := r.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
+					Evidence: ev,
+					Height:   ev.Height(),
+				})
 				if err != nil {
 					return err
 				}
