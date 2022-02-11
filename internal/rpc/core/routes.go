@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"time"
 
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpc "github.com/tendermint/tendermint/rpc/jsonrpc/server"
@@ -28,7 +30,9 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 		opts = new(RouteOptions)
 	}
 	out := RoutesMap{
-		// subscribe/unsubscribe are reserved for websocket events.
+		// Event subscription. Note that subscribe, unsubscribe, and
+		// unsubscribe_all are only available via the websocket endpoint.
+		"events":          rpc.NewRPCFunc(svc.Events, "filter", "maxItems", "before", "after", "waitTime"),
 		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe, "query"),
 		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe, "query"),
 		"unsubscribe_all": rpc.NewWSRPCFunc(svc.UnsubscribeAll),
@@ -94,6 +98,7 @@ type RPCService interface {
 	Commit(ctx context.Context, heightPtr *int64) (*coretypes.ResultCommit, error)
 	ConsensusParams(ctx context.Context, heightPtr *int64) (*coretypes.ResultConsensusParams, error)
 	DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error)
+	Events(ctx context.Context, filter *coretypes.EventFilter, maxItems int, before, after cursor.Cursor, waitTime time.Duration) (*coretypes.ResultEvents, error)
 	Genesis(ctx context.Context) (*coretypes.ResultGenesis, error)
 	GenesisChunked(ctx context.Context, chunk uint) (*coretypes.ResultGenesisChunk, error)
 	GetConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error)
