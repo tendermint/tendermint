@@ -71,27 +71,14 @@ Note the context/background should be written in the present tense.
 ### Accepted
 
 - [ADR-006: Trust-Metric](./adr-006-trust-metric.md)
-- [ADR-007: Trust-Metric-Usage](./adr-007-trust-metric-usage.md)
-- [ADR-012: Peer-Transport](./adr-012-peer-transport.md)
-- [ADR-013: Symmetric-Crypto](./adr-013-symmetric-crypto.md)
-- [ADR-022: ABCI-Errors](./adr-022-abci-errors.md)
 - [ADR-024: Sign-Bytes](./adr-024-sign-bytes.md)
-- [ADR-030: Consensus-Refactor](./adr-030-consensus-refactor.md)
 - [ADR-035: Documentation](./adr-035-documentation.md)
-- [ADR-037: Deliver-Block](./adr-037-deliver-block.md)
-- [ADR-038: Non-Zero-Start-Height](./adr-038-non-zero-start-height.md)
 - [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
-- [ADR-041: Proposer-Selection-via-ABCI](./adr-041-proposer-selection-via-abci.md)
-- [ADR-045: ABCI-Evidence](./adr-045-abci-evidence.md)
-- [ADR-057: RPC](./adr-057-RPC.md)
 - [ADR-060: Go-API-Stability](./adr-060-go-api-stability.md)
 - [ADR-061: P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
 - [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
-- [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 - [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
-- [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
-- [ADR-071: Proposer-Based Timestamps](adr-071-proposer-based-timestamps.md)
-- [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
+- [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 
@@ -100,3 +87,21 @@ Note the context/background should be written in the present tense.
 - [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
 - [ADR-029: Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
 - [ADR-058: Event-Hashing](./adr-058-event-hashing.md)
+
+
+### Proposed
+
+- [ADR-007: Trust-Metric-Usage](./adr-007-trust-metric-usage.md)
+- [ADR-012: Peer-Transport](./adr-012-peer-transport.md)
+- [ADR-013: Symmetric-Crypto](./adr-013-symmetric-crypto.md)
+- [ADR-022: ABCI-Errors](./adr-022-abci-errors.md)
+- [ADR-030: Consensus-Refactor](./adr-030-consensus-refactor.md)
+- [ADR-037: Deliver-Block](./adr-037-deliver-block.md)
+- [ADR-038: Non-Zero-Start-Height](./adr-038-non-zero-start-height.md)
+- [ADR-041: Proposer-Selection-via-ABCI](./adr-041-proposer-selection-via-abci.md)
+- [ADR-045: ABCI-Evidence](./adr-045-abci-evidence.md)
+- [ADR-057: RPC](./adr-057-RPC.md)
+- [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
+- [ADR-071: Proposer-Based Timestamps](adr-071-proposer-based-timestamps.md)
+- [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
+
