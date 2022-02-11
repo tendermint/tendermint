@@ -82,6 +82,10 @@ Note the context/background should be written in the present tense.
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 
+### Deprecated
+
+None
+
 ### Rejected
 
 - [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
