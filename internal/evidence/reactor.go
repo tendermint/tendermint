@@ -89,7 +89,7 @@ func NewReactor(
 	return r, err
 }
 
-func (r *Reactor) setEventBus(e *eventbus.EventBus) {
+func (r *Reactor) SetEventBus(e *eventbus.EventBus) {
 	r.eventBus = e
 }
 
@@ -115,7 +115,7 @@ func (r *Reactor) OnStop() {
 // It returns an error only if the Envelope.Message is unknown for this channel
 // or if the given evidence is invalid. This should never be called outside of
 // handleMessage.
-func (r *Reactor) handleEvidenceMessage(envelope *p2p.Envelope, ctx context.Context) error {
+func (r *Reactor) handleEvidenceMessage(ctx context.Context, envelope *p2p.Envelope) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -134,7 +134,10 @@ func (r *Reactor) handleEvidenceMessage(envelope *p2p.Envelope, ctx context.Cont
 				return err
 			}
 			if evAdded {
-				r.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{Evidence: ev})
+				err := r.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{Evidence: ev})
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -148,7 +151,7 @@ func (r *Reactor) handleEvidenceMessage(envelope *p2p.Envelope, ctx context.Cont
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope *p2p.Envelope, ctx context.Context) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -164,7 +167,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope *p2p.Envelope, ctx 
 
 	switch chID {
 	case EvidenceChannel:
-		err = r.handleEvidenceMessage(envelope, ctx)
+		err = r.handleEvidenceMessage(ctx, envelope)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
@@ -179,7 +182,7 @@ func (r *Reactor) processEvidenceCh(ctx context.Context) {
 	iter := r.evidenceCh.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(r.evidenceCh.ID, envelope, ctx); err != nil {
+		if err := r.handleMessage(ctx, r.evidenceCh.ID, envelope); err != nil {
 			r.logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
 			if serr := r.evidenceCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,

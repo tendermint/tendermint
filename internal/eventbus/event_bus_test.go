@@ -301,6 +301,46 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	}
 }
 
+func TestEventBusPublishEventEvidenceValidated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	eventBus := eventbus.NewDefault(log.TestingLogger())
+	err := eventBus.Start(ctx)
+	require.NoError(t, err)
+
+	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id")
+	require.NoError(t, err)
+
+	const query = `tm.event='EvidenceValidated'`
+	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: "test",
+		Query:    tmquery.MustCompile(query),
+	})
+
+	require.NoError(t, err)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		msg, err := evSub.Next(ctx)
+		assert.NoError(t, err)
+
+		edt := msg.Data().(types.EventDataEvidenceValidated)
+		assert.Equal(t, ev, edt.Evidence)
+	}()
+
+	err = eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
+		Evidence: ev,
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("did not receive a block header after 1 sec.")
+	}
+
+}
 func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
