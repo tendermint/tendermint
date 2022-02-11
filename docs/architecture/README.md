@@ -88,7 +88,6 @@ Note the context/background should be written in the present tense.
 - [ADR-029: Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
 - [ADR-058: Event-Hashing](./adr-058-event-hashing.md)
 
-
 ### Proposed
 
 - [ADR-007: Trust-Metric-Usage](./adr-007-trust-metric-usage.md)
