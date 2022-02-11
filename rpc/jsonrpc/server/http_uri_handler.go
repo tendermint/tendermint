@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -95,6 +96,7 @@ func parseArgValue(atype reflect.Type, text string) (reflect.Value, error) {
 			return reflect.Value{}, fmt.Errorf("invalid integer: %w", err)
 		}
 		out.Elem().Set(reflect.ValueOf(v).Convert(baseType))
+
 	} else if isStringOrBytes(baseType) {
 		// String or byte slice: Check for quotes, hex encoding.
 		dec, err := decodeString(text)
@@ -110,6 +112,18 @@ func parseArgValue(atype reflect.Type, text string) (reflect.Value, error) {
 		}
 		out.Elem().Set(reflect.ValueOf(b))
 
+	} else if out.Type().Implements(textUnmarshalerType) {
+		s, err := decodeString(text)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		v := reflect.New(baseType)
+		dec := v.Interface().(encoding.TextUnmarshaler)
+		if err := dec.UnmarshalText(s); err != nil {
+			return reflect.Value{}, fmt.Errorf("invalid text: %w", err)
+		}
+		out.Elem().Set(v.Elem())
+
 	} else {
 		// We don't know how to represent other types.
 		return reflect.Value{}, fmt.Errorf("unsupported argument type %v", baseType)
@@ -123,7 +137,10 @@ func parseArgValue(atype reflect.Type, text string) (reflect.Value, error) {
 	return out.Elem(), nil
 }
 
-var uint64Type = reflect.TypeOf(uint64(0))
+var (
+	uint64Type          = reflect.TypeOf(uint64(0))
+	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+)
 
 // isIntType reports whether atype is an integer-shaped type.
 func isIntType(atype reflect.Type) bool {
