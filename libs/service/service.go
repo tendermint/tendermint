@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"sync/atomic"
+	"sync"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -92,11 +92,11 @@ Typical usage:
 	}
 */
 type BaseService struct {
-	logger  log.Logger
-	name    string
-	started uint32 // atomic
-	stopped uint32 // atomic
-	quit    chan struct{}
+	logger log.Logger
+	name   string
+	mutex  sync.Mutex
+	quit   <-chan (struct{})
+	kill   context.CancelFunc
 
 	// The "subclass" of BaseService
 	impl Implementation
@@ -107,7 +107,6 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 	return &BaseService{
 		logger: logger,
 		name:   name,
-		quit:   make(chan struct{}),
 		impl:   impl,
 	}
 }
@@ -116,24 +115,30 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 // returned if the service is already running or stopped.  To restart a
 // stopped service, call Reset.
 func (bs *BaseService) Start(ctx context.Context) error {
-	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
-		if atomic.LoadUint32(&bs.stopped) == 1 {
-			bs.logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
-			atomic.StoreUint32(&bs.started, 0)
-			return ErrAlreadyStopped
-		}
+	bs.mutex.Lock()
+	defer bs.mutex.Unlock()
 
+	if bs.quit != nil {
+		return ErrAlreadyStarted
+	}
+
+	select {
+	case <-bs.quit:
+		bs.logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
+		return ErrAlreadyStopped
+	default:
 		bs.logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
-
-		if err := bs.impl.OnStart(ctx); err != nil {
-			// revert flag
-			atomic.StoreUint32(&bs.started, 0)
+		srvCtx, cancel := context.WithCancel(ctx)
+		bs.kill = cancel
+		bs.quit = srvCtx.Done()
+		if err := bs.impl.OnStart(srvCtx); err != nil {
+			cancel()
 			return err
 		}
 
 		go func(ctx context.Context) {
 			select {
-			case <-bs.quit:
+			case <-srvCtx.Done():
 				// someone else explicitly called stop
 				// and then we shouldn't.
 				return
@@ -144,15 +149,14 @@ func (bs *BaseService) Start(ctx context.Context) error {
 					return
 				}
 
-				// the context was cancel and we
-				// should stop.
+				// after the context was canceled and
+				// we should stop.
 				if err := bs.Stop(); err != nil {
 					bs.logger.Error("stopped service",
 						"err", err.Error(),
 						"service", bs.name,
 						"impl", bs.impl.String())
 				}
-
 				bs.logger.Info("stopped service",
 					"service", bs.name,
 					"impl", bs.impl.String())
@@ -161,34 +165,51 @@ func (bs *BaseService) Start(ctx context.Context) error {
 
 		return nil
 	}
-
-	return ErrAlreadyStarted
 }
 
 // Stop implements Service by calling OnStop (if defined) and closing quit
 // channel. An error will be returned if the service is already stopped.
 func (bs *BaseService) Stop() error {
-	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
-		if atomic.LoadUint32(&bs.started) == 0 {
-			bs.logger.Error("not stopping service; not started yet", "service", bs.name, "impl", bs.impl.String())
-			atomic.StoreUint32(&bs.stopped, 0)
-			return ErrNotStarted
-		}
+	bs.mutex.Lock()
+	defer bs.mutex.Unlock()
 
+	if bs.quit == nil {
+		bs.logger.Error("not stopping service; not started yet", "service", bs.name, "impl", bs.impl.String())
+		return ErrNotStarted
+	}
+
+	select {
+	case <-bs.quit:
+		return ErrAlreadyStopped
+	default:
 		bs.logger.Info("stopping service", "service", bs.name, "impl", bs.impl.String())
 		bs.impl.OnStop()
-		close(bs.quit)
+
+		// this is mostly redundant, except to cause Wait to
+		// return *and* because explicit stops will not
+		// otherwise release resources created during Start.
+		bs.kill()
 
 		return nil
 	}
-
-	return ErrAlreadyStopped
 }
 
 // IsRunning implements Service by returning true or false depending on the
 // service's state.
 func (bs *BaseService) IsRunning() bool {
-	return atomic.LoadUint32(&bs.started) == 1 && atomic.LoadUint32(&bs.stopped) == 0
+	bs.mutex.Lock()
+	defer bs.mutex.Unlock()
+
+	if bs.quit == nil {
+		return false
+	}
+
+	select {
+	case <-bs.quit:
+		return false
+	default:
+		return true
+	}
 }
 
 // Wait blocks until the service is stopped.
