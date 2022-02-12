@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	metrics "github.com/rcrowley/go-metrics"
 
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -66,10 +65,9 @@ type WSClient struct { // nolint: maligned
 
 	wg sync.WaitGroup
 
-	mtx            sync.RWMutex
-	sentLastPingAt time.Time
-	reconnecting   bool
-	nextReqID      int
+	mtx          sync.RWMutex
+	reconnecting bool
+	nextReqID    int
 	// sentIDs        map[types.JSONRPCIntID]bool // IDs of the requests currently in flight
 
 	// Time allowed to write a message to the server. 0 means block until operation succeeds.
@@ -80,10 +78,6 @@ type WSClient struct { // nolint: maligned
 
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
-
-	// Time between sending a ping and receiving a pong. See
-	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
-	PingPongLatencyTimer metrics.Timer
 }
 
 // NewWS returns a new client with default options. The endpoint argument must
@@ -117,8 +111,6 @@ func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
-
-	c.PingPongLatencyTimer = metrics.NewTimer()
 	return c, nil
 }
 
@@ -165,7 +157,6 @@ func (c *WSClient) Start(ctx context.Context) error {
 func (c *WSClient) Stop() error {
 	// only close user-facing channels when we can't write to them
 	c.wg.Wait()
-	c.PingPongLatencyTimer.Stop()
 	close(c.ResponsesCh)
 	return nil
 }
@@ -386,9 +377,6 @@ func (c *WSClient) writeRoutine(ctx context.Context) {
 				c.reconnectAfter <- err
 				return
 			}
-			c.mtx.Lock()
-			c.sentLastPingAt = time.Now()
-			c.mtx.Unlock()
 		case <-c.readRoutineQuit:
 			return
 		case <-ctx.Done():
@@ -410,16 +398,6 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		c.conn.Close()
 		c.wg.Done()
 	}()
-
-	c.conn.SetPongHandler(func(string) error {
-		// gather latency stats
-		c.mtx.RLock()
-		t := c.sentLastPingAt
-		c.mtx.RUnlock()
-		c.PingPongLatencyTimer.UpdateSince(t)
-
-		return nil
-	})
 
 	for {
 		// reset deadline for every message type (control or data)
