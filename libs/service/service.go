@@ -30,9 +30,6 @@ type Service interface {
 	// Return true if the service is running
 	IsRunning() bool
 
-	// String representation of the service
-	String() string
-
 	// Wait blocks until the service is stopped.
 	Wait()
 }
@@ -40,8 +37,6 @@ type Service interface {
 // Implementation describes the implementation that the
 // BaseService implementation wraps.
 type Implementation interface {
-	Service
-
 	// Called by the Services Start Method
 	OnStart(context.Context) error
 
@@ -57,7 +52,7 @@ Users can override the OnStart/OnStop methods. In the absence of errors, these
 methods are guaranteed to be called at most once. If OnStart returns an error,
 service won't be marked as started, so the user can call Start again.
 
-It is ok to call Stop without calling Start first.
+It is safe, but an error, to call Stop without calling Start first.
 
 Typical usage:
 
@@ -75,13 +70,11 @@ Typical usage:
 	}
 
 	func (fs *FooService) OnStart(ctx context.Context) error {
-		fs.BaseService.OnStart() // Always call the overridden method.
 		// initialize private fields
 		// start subroutines, etc.
 	}
 
 	func (fs *FooService) OnStop() error {
-		fs.BaseService.OnStop() // Always call the overridden method.
 		// close/destroy private fields
 		// stop subroutines, etc.
 	}
@@ -119,10 +112,9 @@ func (bs *BaseService) Start(ctx context.Context) error {
 
 	select {
 	case <-bs.quit:
-		bs.logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
 		return ErrAlreadyStopped
 	default:
-		bs.logger.Info("starting service", "service", bs.name, "impl", bs.impl.String())
+		bs.logger.Info("starting service", "service", bs.name, "impl", bs.name)
 		if err := bs.impl.OnStart(ctx); err != nil {
 			return err
 		}
@@ -144,8 +136,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 			}
 
 			bs.logger.Info("stopped service",
-				"service", bs.name,
-				"impl", bs.impl.String())
+				"service", bs.name)
 		}(ctx)
 
 		return nil
@@ -159,7 +150,6 @@ func (bs *BaseService) Stop() error {
 	defer bs.mtx.Unlock()
 
 	if bs.quit == nil {
-		bs.logger.Error("not stopping service; not started yet", "service", bs.name, "impl", bs.impl.String())
 		return ErrNotStarted
 	}
 
@@ -167,7 +157,7 @@ func (bs *BaseService) Stop() error {
 	case <-bs.quit:
 		return ErrAlreadyStopped
 	default:
-		bs.logger.Info("stopping service", "service", bs.name, "impl", bs.impl.String())
+		bs.logger.Info("stopping service", "service", bs.name)
 		bs.impl.OnStop()
 		bs.cancel()
 
