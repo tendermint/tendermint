@@ -193,8 +193,21 @@ func (bs *BaseService) IsRunning() bool {
 	}
 }
 
+func (bs *BaseService) getWait() <-chan struct{} {
+	bs.mtx.Lock()
+	defer bs.mtx.Unlock()
+
+	if bs.quit == nil {
+		out := make(chan struct{})
+		close(out)
+		return out
+	}
+
+	return bs.quit
+}
+
 // Wait blocks until the service is stopped.
-func (bs *BaseService) Wait() { <-bs.quit }
+func (bs *BaseService) Wait() { <-bs.getWait() }
 
 // String implements Service by returning a string representation of the service.
 func (bs *BaseService) String() string { return bs.name }
