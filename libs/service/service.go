@@ -127,7 +127,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 			return err
 		}
 
-		// we need a seperate context to ensure that we start
+		// we need a separate context to ensure that we start
 		// a thread that will get cleaned up and that the
 		// Stop/Wait functions work as expected.
 		srvCtx, cancel := context.WithCancel(context.Background())
