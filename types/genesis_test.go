@@ -126,7 +126,7 @@ func TestBasicGenesisDoc(t *testing.T) {
 }
 
 func TestGenesisSaveAs(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "genesis")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "genesis")
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 

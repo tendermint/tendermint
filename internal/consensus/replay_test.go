@@ -142,7 +142,7 @@ func TestWALCrash(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			consensusReplayConfig, err := ResetConfig(tc.name)
+			consensusReplayConfig, err := ResetConfig(t.TempDir(), tc.name)
 			require.NoError(t, err)
 			crashWALandCheckLiveness(ctx, t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
@@ -709,7 +709,7 @@ func TestMockProxyApp(t *testing.T) {
 func tempWALWithData(t *testing.T, data []byte) string {
 	t.Helper()
 
-	walFile, err := os.CreateTemp("", "wal")
+	walFile, err := os.CreateTemp(t.TempDir(), "wal")
 	require.NoError(t, err, "failed to create temp WAL file")
 
 	_, err = walFile.Write(data)
@@ -743,7 +743,7 @@ func testHandshakeReplay(
 
 	logger := log.TestingLogger()
 	if testValidatorsChange {
-		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		testConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		stateDB = dbm.NewMemDB()
@@ -754,7 +754,7 @@ func testHandshakeReplay(
 		commits = sim.Commits
 		store = newMockBlockStore(t, cfg, genesisState.ConsensusParams)
 	} else { // test single node
-		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		testConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		walBody, err := WALWithNBlocks(ctx, t, logger, numBlocks)
@@ -1004,7 +1004,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig(t.TempDir(), "handshake_test_")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
@@ -1288,7 +1288,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)
 
-	cfg, err := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig(t.TempDir(), "handshake_test_")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
 

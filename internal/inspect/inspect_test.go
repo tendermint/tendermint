@@ -28,7 +28,7 @@ import (
 )
 
 func TestInspectConstructor(t *testing.T) {
-	cfg, err := config.ResetTestRoot("test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "test")
 	require.NoError(t, err)
 	testLogger := log.TestingLogger()
 	t.Cleanup(leaktest.Check(t))
@@ -43,7 +43,7 @@ func TestInspectConstructor(t *testing.T) {
 }
 
 func TestInspectRun(t *testing.T) {
-	cfg, err := config.ResetTestRoot("test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "test")
 	require.NoError(t, err)
 
 	testLogger := log.TestingLogger()

@@ -18,7 +18,7 @@ func setupChunkQueue(t *testing.T) (*chunkQueue, func()) {
 		Hash:     []byte{7},
 		Metadata: nil,
 	}
-	queue, err := newChunkQueue(snapshot, "")
+	queue, err := newChunkQueue(snapshot, t.TempDir())
 	require.NoError(t, err)
 	teardown := func() {
 		err := queue.Close()
@@ -35,9 +35,7 @@ func TestNewChunkQueue_TempDir(t *testing.T) {
 		Hash:     []byte{7},
 		Metadata: nil,
 	}
-	dir, err := os.MkdirTemp("", "newchunkqueue")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	queue, err := newChunkQueue(snapshot, dir)
 	require.NoError(t, err)
 

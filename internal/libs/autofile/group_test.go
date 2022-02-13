@@ -132,11 +132,8 @@ func TestRotateFile(t *testing.T) {
 		}
 	}()
 
-	dir, err := os.MkdirTemp("", "rotate_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-	err = os.Chdir(dir)
-	require.NoError(t, err)
+	dir := t.TempDir()
+	require.NoError(t, os.Chdir(dir))
 
 	require.True(t, filepath.IsAbs(g.Head.Path))
 	require.True(t, filepath.IsAbs(g.Dir))

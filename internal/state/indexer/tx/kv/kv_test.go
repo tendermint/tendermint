@@ -3,7 +3,6 @@ package kv
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -333,9 +332,7 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 }
 
 func benchmarkTxIndex(txsCount int64, b *testing.B) {
-	dir, err := os.MkdirTemp("", "tx_index_db")
-	require.NoError(b, err)
-	defer os.RemoveAll(dir)
+	dir := b.TempDir()
 
 	store, err := dbm.NewDB("tx_index", "goleveldb", dir)
 	require.NoError(b, err)
