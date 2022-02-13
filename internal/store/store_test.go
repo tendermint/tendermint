@@ -100,6 +100,7 @@ func TestMain(m *testing.M) {
 	seenCommit1 = makeTestCommit(10, tmtime.Now())
 	code := m.Run()
 	cleanup()
+	os.RemoveAll(dir) // best-effort
 	os.Exit(code)
 }
 
