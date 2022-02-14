@@ -465,10 +465,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 	for _, reactor := range n.services {
 		if err := reactor.Start(ctx); err != nil {
-			if errors.Is(err, service.ErrAlreadyStarted) {
-				continue
-			}
-
 			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
 		}
 	}

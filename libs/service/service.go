@@ -9,12 +9,9 @@ import (
 )
 
 var (
-	// ErrAlreadyStarted is returned when somebody tries to start an already
-	// running service.
-	ErrAlreadyStarted = errors.New("already started")
-	// ErrAlreadyStopped is returned when somebody tries to stop an already
+	// errAlreadyStopped is returned when somebody tries to stop an already
 	// stopped service (without resetting it).
-	ErrAlreadyStopped = errors.New("already stopped")
+	errAlreadyStopped = errors.New("already stopped")
 )
 
 // Service defines a service that can be started, stopped, and reset.
@@ -43,13 +40,14 @@ type Implementation interface {
 
 /*
 Classical-inheritance-style service declarations. Services can be started, then
-stopped, then optionally restarted.
+stopped, but cannot be restarted.
 
 Users must implement OnStart/OnStop methods. In the absence of errors, these
 methods are guaranteed to be called at most once. If OnStart returns an error,
 service won't be marked as started, so the user can call Start again.
 
-It is safe, but an error, to call Stop without calling Start first.
+The BaseService implementation ensures that the OnStop method is
+called after the context passed to Start is canceled.
 
 Typical usage:
 
@@ -96,20 +94,27 @@ func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseSe
 	}
 }
 
-// Start starts the Service and calls its OnStart method. An error will be
-// returned if the service is already running or stopped.  To restart a
-// stopped service, call Reset.
+// Start starts the Service and calls its OnStart method. An error
+// will be returned if the service is stopped, but not if it is
+// already running.
 func (bs *BaseService) Start(ctx context.Context) error {
 	bs.mtx.Lock()
 	defer bs.mtx.Unlock()
 
 	if bs.quit != nil {
-		return ErrAlreadyStarted
+		select {
+		case <-bs.quit:
+			return errAlreadyStopped
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return nil
+		}
 	}
 
 	select {
 	case <-bs.quit:
-		return ErrAlreadyStopped
+		return errAlreadyStopped
 	default:
 		bs.logger.Info("starting service", "service", bs.name, "impl", bs.name)
 		if err := bs.impl.OnStart(ctx); err != nil {

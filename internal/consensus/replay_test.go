@@ -206,7 +206,7 @@ LOOP:
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
 
 			// stop consensus state and transactions sender (initFn)
-			cs.Stop() //nolint:errcheck // Logging this error causes failure
+			cs.Stop()
 			cancel()
 
 			// if we reached the required height, exit

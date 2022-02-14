@@ -164,9 +164,7 @@ func (wal *BaseWAL) FlushAndSync() error {
 func (wal *BaseWAL) OnStop() {
 	wal.flushTicker.Stop()
 	if err := wal.FlushAndSync(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			wal.logger.Error("error on flush data to disk", "error", err)
-		}
+		wal.logger.Error("error on flush data to disk", "error", err)
 	}
 	wal.group.Stop()
 	wal.group.Close()

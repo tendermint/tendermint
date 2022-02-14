@@ -178,7 +178,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 		err := signerServer.Start(ctx)
 		require.NoError(t, err)
 	}()
-	defer signerServer.Stop() //nolint:errcheck // ignore for tests
+	defer signerServer.Stop()
 
 	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
 	require.NoError(t, err)
@@ -242,7 +242,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		err := pvsc.Start(ctx)
 		require.NoError(t, err)
 	}()
-	defer pvsc.Stop() //nolint:errcheck // ignore for tests
+	defer pvsc.Stop()
 	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
 	require.NoError(t, err)
 
