@@ -151,10 +151,19 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 func (blockExec *BlockExecutor) ProcessProposal(
 	ctx context.Context,
 	block *types.Block,
+	initialHeight int64,
 ) (bool, error) {
+	ep, err := block.Evidence.ToProto()
+	if err != nil {
+		return false, err
+	}
+
 	req := abci.RequestProcessProposal{
-		Txs:    block.Data.Txs.ToSliceOfBytes(),
-		Header: *block.Header.ToProto(),
+		Hash:                block.Header.Hash(),
+		Header:              *block.Header.ToProto(),
+		Txs:                 block.Data.Txs.ToSliceOfBytes(),
+		LastCommitInfo:      getBeginBlockValidatorInfo(block, blockExec.store, initialHeight),
+		ByzantineValidators: ep.Evidence,
 	}
 
 	resp, err := blockExec.proxyApp.ProcessProposal(ctx, req)
