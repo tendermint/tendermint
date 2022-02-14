@@ -26,7 +26,7 @@ import (
 
 // setupTestCase does setup common to all test cases.
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
-	cfg, err := config.ResetTestRoot("state_")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "state_")
 	require.NoError(t, err)
 
 	dbType := dbm.BackendType(cfg.DBBackend)

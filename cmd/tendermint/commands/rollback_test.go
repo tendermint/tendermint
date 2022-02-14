@@ -19,7 +19,7 @@ func TestRollbackIntegration(t *testing.T) {
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cfg, err := rpctest.CreateConfig(t.Name())
+	cfg, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 	cfg.BaseConfig.DBBackend = "goleveldb"
 

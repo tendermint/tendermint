@@ -110,7 +110,7 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	cfg, err := config.ResetTestRoot("state_")
+	cfg, err := config.ResetTestRoot(b.TempDir(), "state_")
 	require.NoError(b, err)
 
 	defer os.RemoveAll(cfg.RootDir)

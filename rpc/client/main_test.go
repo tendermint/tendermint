@@ -2,7 +2,6 @@ package client_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -20,13 +19,11 @@ func NodeSuite(t *testing.T, logger log.Logger) (service.Service, *config.Config
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	conf, err := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
 	// start a tendermint node in the background to test against
-	dir, err := os.MkdirTemp("/tmp", fmt.Sprint("rpc-client-test-", t.Name()))
-	require.NoError(t, err)
-
+	dir := t.TempDir()
 	app := kvstore.NewPersistentKVStoreApplication(logger, dir)
 
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)

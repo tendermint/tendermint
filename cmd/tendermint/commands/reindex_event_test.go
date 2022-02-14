@@ -110,7 +110,7 @@ func TestLoadEventSink(t *testing.T) {
 }
 
 func TestLoadBlockStore(t *testing.T) {
-	testCfg, err := config.ResetTestRoot(t.Name())
+	testCfg, err := config.ResetTestRoot(t.TempDir(), t.Name())
 	require.NoError(t, err)
 	testCfg.DBBackend = "goleveldb"
 	_, _, err = loadStateAndBlockStore(testCfg)

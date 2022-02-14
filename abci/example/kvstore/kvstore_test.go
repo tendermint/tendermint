@@ -3,7 +3,6 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 
@@ -72,10 +71,7 @@ func TestKVStoreKV(t *testing.T) {
 }
 
 func TestPersistentKVStoreKV(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	logger := log.NewTestingLogger(t)
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
@@ -90,10 +86,7 @@ func TestPersistentKVStoreKV(t *testing.T) {
 }
 
 func TestPersistentKVStoreInfo(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	logger := log.NewTestingLogger(t)
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
@@ -124,10 +117,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValUpdates(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	logger := log.NewTestingLogger(t)
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)

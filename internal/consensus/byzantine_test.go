@@ -60,7 +60,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, stateStore.Save(state))
 
-			thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+			thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 			require.NoError(t, err)
 
 			defer os.RemoveAll(thisConfig.RootDir)

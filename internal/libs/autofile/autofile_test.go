@@ -25,11 +25,7 @@ func TestSIGHUP(t *testing.T) {
 	})
 
 	// First, create a temporary directory and move into it
-	dir, err := os.MkdirTemp("", "sighup_test")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = os.RemoveAll(dir)
-	})
+	dir := t.TempDir()
 	require.NoError(t, os.Chdir(dir))
 
 	// Create an AutoFile in the temporary directory
@@ -48,9 +44,7 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, os.Rename(name, name+"_old"))
 
 	// Move into a different temporary directory
-	otherDir, err := os.MkdirTemp("", "sighup_test_other")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(otherDir) })
+	otherDir := t.TempDir()
 	require.NoError(t, os.Chdir(otherDir))
 
 	// Send SIGHUP to self.
@@ -112,7 +106,7 @@ func TestAutoFileSize(t *testing.T) {
 	defer cancel()
 
 	// First, create an AutoFile writing to a tempfile dir
-	f, err := os.CreateTemp("", "sighup_test")
+	f, err := os.CreateTemp(t.TempDir(), "sighup_test")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 

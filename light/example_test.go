@@ -2,8 +2,7 @@ package light_test
 
 import (
 	"context"
-	stdlog "log"
-	"os"
+	"testing"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -17,17 +16,17 @@ import (
 )
 
 // Manually getting light blocks and verifying them.
-func ExampleClient() {
+func TestExampleClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf, err := rpctest.CreateConfig("ExampleClient_VerifyLightBlockAtHeight")
+	conf, err := rpctest.CreateConfig(t, "ExampleClient_VerifyLightBlockAtHeight")
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Start a test application
@@ -35,21 +34,16 @@ func ExampleClient() {
 
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = closer(ctx) }()
 
-	dbDir, err := os.MkdirTemp("", "light-client-example")
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-	defer os.RemoveAll(dbDir)
-
+	dbDir := t.TempDir()
 	chainID := conf.ChainID()
 
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// give Tendermint time to generate some blocks
@@ -57,12 +51,12 @@ func ExampleClient() {
 
 	block, err := primary.LightBlock(ctx, 2)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	c, err := light.NewClient(ctx,
@@ -78,11 +72,11 @@ func ExampleClient() {
 		light.Logger(logger),
 	)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 	defer func() {
 		if err := c.Cleanup(); err != nil {
-			stdlog.Fatal(err)
+			t.Fatal(err)
 		}
 	}()
 
@@ -92,19 +86,19 @@ func ExampleClient() {
 	// veify the block at height 3
 	_, err = c.VerifyLightBlockAtHeight(ctx, 3, time.Now())
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// retrieve light block at height 3
 	_, err = c.TrustedLightBlock(3)
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// update to the latest height
 	lb, err := c.Update(ctx, time.Now())
 	if err != nil {
-		stdlog.Fatal(err)
+		t.Fatal(err)
 	}
 
 	logger.Info("verified light block", "light-block", lb)
