@@ -57,4 +57,3 @@ jobs:
           SLACK_COLOR: danger
           SLACK_MESSAGE: Nightly E2E tests failed on v0.34.x
           SLACK_FOOTER: ''
-
