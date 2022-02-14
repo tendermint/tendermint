@@ -55,11 +55,10 @@ func TestNodeStartStop(t *testing.T) {
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 	t.Cleanup(func() {
-		if n.IsRunning() {
-			bcancel()
-			n.Wait()
-		}
+		bcancel()
+		n.Wait()
 	})
+	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
 
 	require.NoError(t, n.Start(ctx))
 	// wait for the node to produce a block
@@ -98,6 +97,7 @@ func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger 
 			ns.Wait()
 		}
 	})
+
 	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
 
 	return n
@@ -568,6 +568,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 		logger,
 	)
 	t.Cleanup(ns.Wait)
+	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
 
 	require.NoError(t, err)
 	n, ok := ns.(*seedNodeImpl)

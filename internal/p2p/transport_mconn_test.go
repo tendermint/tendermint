@@ -154,9 +154,6 @@ func TestMConnTransport_Listen(t *testing.T) {
 		t.Run(tc.endpoint.String(), func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
 
-			ctx, cancel = context.WithCancel(ctx)
-			defer cancel()
-
 			transport := p2p.NewMConnTransport(
 				log.TestingLogger(),
 				conn.DefaultMConnConfig(),

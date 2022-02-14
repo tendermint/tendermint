@@ -125,7 +125,6 @@ func TestBlockPoolBasic(t *testing.T) {
 		case err := <-errorsCh:
 			t.Error(err)
 		case request := <-requestsCh:
-			t.Logf("Pulled new BlockRequest %v", request)
 			if request.Height == 300 {
 				return // Done!
 			}
@@ -139,20 +138,18 @@ func TestBlockPoolTimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.TestingLogger()
+
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
-	pool := NewBlockPool(log.TestingLogger(), start, requestsCh, errorsCh)
+	pool := NewBlockPool(logger, start, requestsCh, errorsCh)
 	err := pool.Start(ctx)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Cleanup(func() { cancel(); pool.Wait() })
-
-	for _, peer := range peers {
-		t.Logf("Peer %v", peer.id)
-	}
 
 	// Introduce each peer.
 	go func() {
@@ -182,7 +179,6 @@ func TestBlockPoolTimeout(t *testing.T) {
 	for {
 		select {
 		case err := <-errorsCh:
-			t.Log(err)
 			// consider error to be always timeout here
 			if _, ok := timedOut[err.peerID]; !ok {
 				counter++
@@ -191,7 +187,9 @@ func TestBlockPoolTimeout(t *testing.T) {
 				}
 			}
 		case request := <-requestsCh:
-			t.Logf("Pulled new BlockRequest %+v", request)
+			logger.Debug("received request",
+				"counter", counter,
+				"request", request)
 		}
 	}
 }
