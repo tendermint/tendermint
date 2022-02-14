@@ -157,7 +157,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		Hash:                block.Header.Hash(),
 		Header:              *block.Header.ToProto(),
 		Txs:                 block.Data.Txs.ToSliceOfBytes(),
-		LastCommitInfo:      getBeginBlockValidatorInfo(block, blockExec.store, initialHeight),
+		LastCommitInfo:      buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 		ByzantineValidators: block.Evidence.ToABCI(),
 	}
 
