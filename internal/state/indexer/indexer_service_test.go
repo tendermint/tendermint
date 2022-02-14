@@ -137,6 +137,9 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 	assert.NoError(t, err)
+	if _, err := pool.Client.Info(); err != nil {
+		t.Skipf("WARNING: Docker is not available: %v [skipping this test]", err)
+	}
 
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
