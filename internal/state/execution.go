@@ -151,7 +151,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 func (blockExec *BlockExecutor) ProcessProposal(
 	ctx context.Context,
 	block *types.Block,
-	initialHeight int64,
+	state State,
 ) (bool, error) {
 	req := abci.RequestProcessProposal{
 		Hash:                block.Header.Hash(),
