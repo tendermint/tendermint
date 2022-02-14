@@ -383,7 +383,7 @@ func execBlockOnProxyApp(
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
 	abciResponses.DeliverTxs = dtxs
 
-	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
+	commitInfo := buildLastCommitInfo(block, store, initialHeight)
 
 	// Begin block
 	var err error
