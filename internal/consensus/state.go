@@ -1450,6 +1450,28 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	}
 
 	/*
+		Before prevoting on the block received from the proposer for the current round and height,
+		we request the Application, via `ProcessProposal` ABCI call, to confirm that the block is
+		valid. If the Application does not accept the block, Tendermint prevotes `nil`.
+
+		WARNING: misuse of block rejection by the Application can seriously compromise Tendermint's
+		liveness properties. Please see `PrepareProposal`-`ProcessProposal` coherence and determinism
+		properties in the ABCI++ specification.
+	*/
+	isAppValid, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock, cs.state)
+	if err != nil {
+		panic(fmt.Sprintf("ProcessProposal: %v", err))
+	}
+
+	// Vote nil if the Application rejected the block
+	if !isAppValid {
+		logger.Error("prevote step: state machine rejected a proposed block; this should not happen:"+
+			"the proposer may be misbehaving; prevoting nil", "err", err)
+		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	/*
 		22: upon <PROPOSAL, h_p, round_p, v, −1> from proposer(h_p, round_p) while step_p = propose do
 		23: if valid(v) && (lockedRound_p = −1 || lockedValue_p = v) then
 		24: broadcast <PREVOTE, h_p, round_p, id(v)>
@@ -1505,28 +1527,6 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 			return
 		}
-	}
-
-	/*
-		Before prevoting on the block received from the proposer for the current round and height,
-		we request the Application, via `ProcessProposal` ABCI call, to confirm that the block is
-		valid. If the Application does not accept the block, Tendermint prevotes `nil`.
-
-		WARNING: misuse of block rejection by the Application can seriously compromise Tendermint's
-		liveness properties. Please see `PrepareProposal`-`ProcessProposal` coherence and determinism
-		properties in the ABCI++ specification.
-	*/
-	stateMachineValidBlock, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock, cs.state)
-	if err != nil {
-		panic(fmt.Sprintf("ProcessProposal: %v", err))
-	}
-
-	// Vote nil if the Application rejected the block
-	if !stateMachineValidBlock {
-		logger.Error("prevote step: state machine rejected a proposed block; this should not happen:"+
-			"the proposer may be misbehaving; prevoting nil", "err", err)
-		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
-		return
 	}
 
 	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or " +
