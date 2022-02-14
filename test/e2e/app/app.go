@@ -145,7 +145,7 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
-// DeliverTx implements ABCI.
+// FinalizeBlock implements ABCI.
 func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
 	var txs = make([]*abci.ResponseDeliverTx, len(req.Txs))
 

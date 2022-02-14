@@ -580,19 +580,22 @@ func fireEvents(
 		}
 	}
 
-	//TODO strengthen this condition
-	if len(abciResponses.FinalizeBlock.Txs) != 0 {
-		for i, tx := range block.Data.Txs {
-			if err := eventBus.PublishEventTx(ctx, types.EventDataTx{
-				TxResult: abci.TxResult{
-					Height: block.Height,
-					Index:  uint32(i),
-					Tx:     tx,
-					Result: *(abciResponses.FinalizeBlock.Txs[i]),
-				},
-			}); err != nil {
-				logger.Error("failed publishing event TX", "err", err)
-			}
+	// sanity check
+	if len(abciResponses.FinalizeBlock.Txs) != len(block.Data.Txs) {
+		panic(fmt.Sprintf("number of TXs (%d) and ABCI TX responses (%d) do not match",
+			len(block.Data.Txs), len(abciResponses.FinalizeBlock.Txs)))
+	}
+
+	for i, tx := range block.Data.Txs {
+		if err := eventBus.PublishEventTx(ctx, types.EventDataTx{
+			TxResult: abci.TxResult{
+				Height: block.Height,
+				Index:  uint32(i),
+				Tx:     tx,
+				Result: *(abciResponses.FinalizeBlock.Txs[i]),
+			},
+		}); err != nil {
+			logger.Error("failed publishing event TX", "err", err)
 		}
 	}
 
