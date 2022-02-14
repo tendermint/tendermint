@@ -86,7 +86,7 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *Application) DeliverTx(tx []byte) *types.ResponseDeliverTx {
+func (app *Application) HandleTx(tx []byte) *types.ResponseDeliverTx {
 	var key, value string
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
@@ -119,7 +119,7 @@ func (app *Application) DeliverTx(tx []byte) *types.ResponseDeliverTx {
 func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	txs := make([]*types.ResponseDeliverTx, len(req.Txs))
 	for i, tx := range req.Txs {
-		txs[i] = app.DeliverTx(tx)
+		txs[i] = app.HandleTx(tx)
 	}
 	return types.ResponseFinalizeBlock{Txs: txs}
 }

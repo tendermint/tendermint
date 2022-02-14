@@ -59,7 +59,7 @@ func TestGRPC(t *testing.T) {
 func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Application) {
 	t.Helper()
 
-	const numDeliverTxs = 600000
+	const numDeliverTxs = 700000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
@@ -81,14 +81,12 @@ func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Ap
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		rfb.Txs[counter] = []byte("test")
 	}
-	// Send bulk request (several times)
-	for i := 0; i < 3; i++ {
-		res, err := client.FinalizeBlock(ctx, rfb)
-		require.NoError(t, err)
-		require.Equal(t, numDeliverTxs, len(res.Txs), "Number of txs doesn't match")
-		for _, tx := range res.Txs {
-			require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
-		}
+	// Send bulk request
+	res, err := client.FinalizeBlock(ctx, rfb)
+	require.NoError(t, err)
+	require.Equal(t, numDeliverTxs, len(res.Txs), "Number of txs doesn't match")
+	for _, tx := range res.Txs {
+		require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
 	}
 
 	// Send final flush message
@@ -105,7 +103,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 
 func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app types.ABCIApplicationServer) {
 	t.Helper()
-	numDeliverTxs := 600000
+	numDeliverTxs := 680000
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
@@ -137,13 +135,11 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 		rfb.Txs[counter] = []byte("test")
 	}
 
-	// Send request (several times)
-	for i := 0; i < 10; i++ {
-		response, err := client.FinalizeBlock(ctx, &rfb)
-		require.NoError(t, err, "Error in GRPC FinalizeBlock")
-		require.Equal(t, numDeliverTxs, len(response.Txs), "Number of txs returned via GRPC doesn't match")
-		for _, tx := range response.Txs {
-			require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
-		}
+	// Send request
+	response, err := client.FinalizeBlock(ctx, &rfb)
+	require.NoError(t, err, "Error in GRPC FinalizeBlock")
+	require.Equal(t, numDeliverTxs, len(response.Txs), "Number of txs returned via GRPC doesn't match")
+	for _, tx := range response.Txs {
+		require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
 	}
 }

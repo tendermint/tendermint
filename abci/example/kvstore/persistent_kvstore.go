@@ -64,7 +64,7 @@ func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.Respo
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) *types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) HandleTx(tx []byte) *types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey!power"
 	if isValidatorTx(tx) {
@@ -78,7 +78,7 @@ func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) *types.ResponseDel
 	}
 
 	// otherwise, update the key-value store
-	return app.app.DeliverTx(tx)
+	return app.app.HandleTx(tx)
 }
 
 func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
@@ -147,7 +147,7 @@ func (app *PersistentKVStoreApplication) FinalizeBlock(req types.RequestFinalize
 
 	respTxs := make([]*types.ResponseDeliverTx, len(req.Txs))
 	for i, tx := range req.Txs {
-		respTxs[i] = app.DeliverTx(tx)
+		respTxs[i] = app.HandleTx(tx)
 	}
 
 	return types.ResponseFinalizeBlock{Txs: respTxs, ValidatorUpdates: app.ValUpdates}

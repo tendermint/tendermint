@@ -311,11 +311,11 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 
 	root := sm.ABCIResponsesResultsHash(responses)
 
-	// root should be Merkle tree root of DeliverTxs responses
+	// root should be Merkle tree root of FinalizeBlock tx responses
 	results := types.NewResults(responses.FinalizeBlock.Txs)
 	assert.Equal(t, root, results.Hash())
 
-	// test we can prove first DeliverTx
+	// test we can prove first tx in FinalizeBlock
 	proof := results.ProveResult(0)
 	bz, err := results[0].Marshal()
 	require.NoError(t, err)

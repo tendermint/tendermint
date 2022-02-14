@@ -193,7 +193,7 @@ var deliverTxCmd = &cobra.Command{
 	Short: "deliver a new transaction to the application",
 	Long:  "deliver a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdDeliverTx,
+	RunE:  cmdFinalizeBlock,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -427,7 +427,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
 	case "deliver_tx":
-		return cmdDeliverTx(cmd, actualArgs)
+		return cmdFinalizeBlock(cmd, actualArgs)
 	case "echo":
 		return cmdEcho(cmd, actualArgs)
 	case "info":
@@ -496,7 +496,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 const codeBad uint32 = 10
 
 // Append a new tx to application
-func cmdDeliverTx(cmd *cobra.Command, args []string) error {
+func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,

@@ -454,7 +454,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 		return nil, err
 	}
 
-	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
+	// Build a Merkle tree of proto-encoded FinalizeBlock tx results and get a hash.
 	results := types.NewResults(res.TxsResults)
 
 	// Build a Merkle tree out of the above 3 binary slices.
