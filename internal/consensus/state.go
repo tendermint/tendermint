@@ -1516,11 +1516,9 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 		liveness properties. Please see `PrepareProosal`-`ProcessProposal` coherence and determinism
 		properties in the ABCI++ specification.
 	*/
-	stateMachineValidBlock, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock, cs.state.InitialHeight)
+	stateMachineValidBlock, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock, cs.state)
 	if err != nil {
-		panic(fmt.Sprintf(
-			"state machine returned an error (%v) when calling ProcessProposal", err,
-		))
+		panic(fmt.Sprintf("ProcessProposal: %v", err))
 	}
 
 	// Vote nil if the Application rejected the block
