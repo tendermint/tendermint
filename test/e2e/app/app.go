@@ -272,6 +272,17 @@ func (app *Application) PrepareProposal(
 	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
 }
 
+// ProcessProposal implements ABCI
+func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		_, _, err := parseTx(tx)
+		if err != nil {
+			return abci.ResponseProcessProposal{Accept: false}
+		}
+	}
+	return abci.ResponseProcessProposal{Accept: true}
+}
+
 func (app *Application) Rollback() error {
 	return app.state.Rollback()
 }
