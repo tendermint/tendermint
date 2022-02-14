@@ -28,41 +28,43 @@ meant to unify and focus some of the disparate discussions of the topic.
 
 ## Background
 
-- **Terminological Note**: The term "event" in Tendermint can be confusing,
-  because the word is used for multiple related (but different) concepts:
+We begin with some important terminological context.  The term "event" in
+Tendermint can be confusing, as the same word is used for multiple related but
+distinct concepts:
 
-  1. **ABCI Events** refer to the key-value metadata attached to blocks and
-     transactions by the application. These values are represented by the ABCI
-     `Event` protobuf message type.
+1. **ABCI Events** refer to the key-value metadata attached to blocks and
+   transactions by the application. These values are represented by the ABCI
+   `Event` protobuf message type.
 
-  2. **Consensus Events** refer to the data published by the Tendermint node to
-     its pubsub bus in response to various consensus state transitions and
-     other important activities, such as round updates, votes, transaction
-     delivery, and block completion.
+2. **Consensus Events** refer to the data published by the Tendermint node to
+   its pubsub bus in response to various consensus state transitions and other
+   important activities, such as round updates, votes, transaction delivery,
+   and block completion.
 
-  This confusion is compounded because some "consensus event" values also have
-  "ABCI event" metadata attached to them. Notably, block and transaction items
-  typically have ABCI metadata assigned by the application.
+This confusion is compounded because some "consensus event" values also have
+"ABCI event" metadata attached to them. Notably, block and transaction items
+typically have ABCI metadata assigned by the application.
 
-  Indexers and RPC clients subscribed to the pubsub bus receive **consensus
-  events**, but they identify which ones to care about using query expressions
-  that match against the **ABCI events** associated with them.
+Indexers and RPC clients subscribed to the pubsub bus receive **consensus
+events**, but they identify which ones to care about using query expressions
+that match against the **ABCI events** associated with them.
 
-  In the discussion that follows, we will use the term **event item** to refer
-  to a datum published to or received from the pubsub bus, and **ABCI event**
-  or **event metadata** to refer to the key/value annotations.
+In the discussion that follows, we will use the term **event item** to refer to
+a datum published to or received from the pubsub bus, and **ABCI event** or
+**event metadata** to refer to the key/value annotations.
 
-  **Indexing** in this context means recording the association between certain
-  ABCI metadata and the blocks or transactions they're attached to. The ABCI
-  metadata typically carry application-specific details like sender and
-  recipient addresses, catgory tags, and so forth, that are not part of
-  consensus but are used by UI tools to find and display transactions of
-  interest.
+**Indexing** in this context means recording the association between certain
+ABCI metadata and the blocks or transactions they're attached to. The ABCI
+metadata typically carry application-specific details like sender and recipient
+addresses, catgory tags, and so forth, that are not part of consensus but are
+used by UI tools to find and display transactions of interest.
 
-  The consensus node records the blocks and transactions as part of its block
-  store, but does not persist the application metadata. Metadata persistence is
-  the task of the indexer, which can be (optionally) enabled by the node
-  operator.
+The consensus node records the blocks and transactions as part of its block
+store, but does not persist the application metadata. Metadata persistence is
+the task of the indexer, which can be (optionally) enabled by the node
+operator.
+
+### History
 
 The [original indexer][kv-index] built in to Tendermint stored index data in an
 embedded [`tm-db` database][tmdb] with a proprietary key layout.
