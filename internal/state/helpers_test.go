@@ -316,7 +316,7 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 			},
 		},
 		Events: []abci.Event{},
-		Txs: resTxs,
+		Txs:    resTxs,
 	}
 }
 
