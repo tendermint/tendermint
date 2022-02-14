@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -603,7 +604,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// it includes the commit for block 4, which should have the updated validator set
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, addOneVal.quorumHash, blocksSubs, states)
 
-	validate(states)
+	validate(t, states)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, addTwoVals.txs...)
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, addTwoVals.txs...)
@@ -614,7 +615,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, addTwoVals.quorumHash, blocksSubs, states)
 
-	validate(states)
+	validate(t, states)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, removeTwoVals.txs...)
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, removeTwoVals.txs...)
@@ -622,7 +623,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, removeTwoVals.quorumHash, blocksSubs, states)
 
-	validate(states)
+	validate(t, states)
 }
 
 func makeProTxHashMap(proTxHashes []crypto.ProTxHash) map[string]struct{} {
@@ -754,31 +755,15 @@ func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*privValUpdate, erro
 	return &privVal, nil
 }
 
-func validate(states []*State) {
-	currValidatorCount := len(states[0].Validators.Validators)
-	currValidators := states[0].Validators
-	currHeight, _ := states[0].GetValidators()
-	height, validators := states[0].GetValidatorSet()
-	if height != currHeight {
-		panic("they should all have the same heights")
-	}
-	if len(validators.Validators) != currValidatorCount {
-		panic("they should all have the same initial validator count")
-	}
-	if !currValidators.Equals(validators) {
-		panic("all validators should be the same")
-	}
+func validate(t *testing.T, states []*State) {
 
-	for _, state := range states {
+	currHeight, currValidators := states[0].GetValidatorSet()
+	currValidatorCount := currValidators.Size()
+
+	for validatorID, state := range states {
 		height, validators := state.GetValidatorSet()
-		if height != currHeight {
-			panic("they should all have the same heights")
-		}
-		if len(validators.Validators) != currValidatorCount {
-			panic("they should all have the same initial validator count")
-		}
-		if !currValidators.Equals(validators) {
-			panic("all validators should be the same")
-		}
+		assert.Equal(t, currHeight, height, "validator_id=%d", validatorID)
+		assert.Equal(t, currValidatorCount, len(validators.Validators), "validator_id=%d", validatorID)
+		assert.True(t, currValidators.Equals(validators), "validator_id=%d", validatorID)
 	}
 }

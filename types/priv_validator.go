@@ -179,6 +179,8 @@ func NewMockPVWithParams(
 
 // GetPubKey implements PrivValidator.
 func (pv *MockPV) GetPubKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	if keys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
 		return keys.PubKey, nil
 	}
@@ -194,6 +196,8 @@ func (pv *MockPV) GetProTxHash(ctx context.Context) (crypto.ProTxHash, error) {
 }
 
 func (pv *MockPV) GetFirstQuorumHash(ctx context.Context) (crypto.QuorumHash, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	for quorumHashString := range pv.PrivateKeys {
 		return hex.DecodeString(quorumHashString)
 	}
@@ -202,21 +206,29 @@ func (pv *MockPV) GetFirstQuorumHash(ctx context.Context) (crypto.QuorumHash, er
 
 // GetThresholdPublicKey ...
 func (pv *MockPV) GetThresholdPublicKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	return pv.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
 }
 
 // GetPrivateKey ...
 func (pv *MockPV) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	return pv.PrivateKeys[quorumHash.String()].PrivKey, nil
 }
 
 // ThresholdPublicKeyForQuorumHash ...
 func (pv *MockPV) ThresholdPublicKeyForQuorumHash(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	return pv.PrivateKeys[quorumHash.String()].ThresholdPublicKey, nil
 }
 
 // GetHeight ...
 func (pv *MockPV) GetHeight(ctx context.Context, quorumHash crypto.QuorumHash) (int64, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
 	if intString, ok := pv.FirstHeightOfQuorums[quorumHash.String()]; ok {
 		return strconv.ParseInt(intString, 10, 64)
 	}
@@ -232,6 +244,8 @@ func (pv *MockPV) SignVote(
 	vote *tmproto.Vote,
 	stateID StateID,
 	logger log.Logger) error {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
 	useChainID := chainID
 	if pv.breakVoteSigning {
 		useChainID = "incorrect-chain-id"
@@ -276,6 +290,8 @@ func (pv *MockPV) SignProposal(
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
 ) ([]byte, error) {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
 	useChainID := chainID
 	if pv.breakProposalSigning {
 		useChainID = "incorrect-chain-id"
@@ -309,8 +325,8 @@ func (pv *MockPV) UpdatePrivateKey(
 ) {
 	// fmt.Printf("mockpv node %X setting a new key %X at height %d\n", pv.ProTxHash,
 	//  privateKey.PubKey().Bytes(), height)
-	pv.mtx.RLock()
-	defer pv.mtx.RUnlock()
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
 	pv.PrivateKeys[quorumHash.String()] = crypto.QuorumKeys{
 		PrivKey:            privateKey,
 		PubKey:             privateKey.PubKey(),
