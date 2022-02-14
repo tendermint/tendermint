@@ -102,14 +102,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 	defer bs.mtx.Unlock()
 
 	if bs.quit != nil {
-		select {
-		case <-bs.quit:
-			return errAlreadyStopped
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			return nil
-		}
+		return nil
 	}
 
 	select {

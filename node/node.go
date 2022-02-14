@@ -176,6 +176,7 @@ func makeNode(
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	closers = append(closers, func() error { indexerService.Stop(); return nil })
 
 	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
 	if err != nil {
@@ -362,7 +363,6 @@ func makeNode(
 
 		services: []service.Service{
 			eventBus,
-			indexerService,
 			evReactor,
 			mpReactor,
 			csReactor,
