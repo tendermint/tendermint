@@ -1513,7 +1513,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 		valid. If the Application does not accept the block, Tendermint prevotes `nil`.
 
 		WARNING: misuse of block rejection by the Application can seriously compromise Tendermint's
-		liveness properties. Please see `PrepareProosal`-`ProcessProposal` coherence and determinism
+		liveness properties. Please see `PrepareProposal`-`ProcessProposal` coherence and determinism
 		properties in the ABCI++ specification.
 	*/
 	stateMachineValidBlock, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock, cs.state)
