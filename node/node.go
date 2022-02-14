@@ -507,9 +507,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		if err != nil {
 			n.logger.Error("state sync failed; shutting down this node", "err", err)
 			// stop the node
-			if err := n.Stop(); err != nil {
-				n.logger.Error("failed to shut down node", "err", err)
-			}
+			n.Stop()
 			return err
 		}
 

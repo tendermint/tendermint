@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"syscall"
@@ -67,7 +66,7 @@ type multiAppConn struct {
 // of reasonable lifecycle witout needing an explicit stop method.
 type stoppableClient interface {
 	abciclient.Client
-	Stop() error
+	Stop()
 }
 
 // NewMultiAppConn makes all necessary abci connections to the application.
@@ -81,28 +80,16 @@ func NewMultiAppConn(clientCreator abciclient.Creator, logger log.Logger, metric
 	return multiAppConn
 }
 
-func (app *multiAppConn) Mempool() AppConnMempool {
-	return app.mempoolConn
-}
-
-func (app *multiAppConn) Consensus() AppConnConsensus {
-	return app.consensusConn
-}
-
-func (app *multiAppConn) Query() AppConnQuery {
-	return app.queryConn
-}
-
-func (app *multiAppConn) Snapshot() AppConnSnapshot {
-	return app.snapshotConn
-}
+func (app *multiAppConn) Mempool() AppConnMempool     { return app.mempoolConn }
+func (app *multiAppConn) Consensus() AppConnConsensus { return app.consensusConn }
+func (app *multiAppConn) Query() AppConnQuery         { return app.queryConn }
+func (app *multiAppConn) Snapshot() AppConnSnapshot   { return app.snapshotConn }
 
 func (app *multiAppConn) OnStart(ctx context.Context) error {
 	c, err := app.abciClientFor(ctx, connQuery)
 	if err != nil {
 		return err
 	}
-	app.queryConnClient = c.(stoppableClient)
 	app.queryConn = NewAppConnQuery(c, app.metrics)
 
 	c, err = app.abciClientFor(ctx, connSnapshot)
@@ -110,7 +97,6 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 		app.stopAllClients()
 		return err
 	}
-	app.snapshotConnClient = c.(stoppableClient)
 	app.snapshotConn = NewAppConnSnapshot(c, app.metrics)
 
 	c, err = app.abciClientFor(ctx, connMempool)
@@ -118,7 +104,6 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 		app.stopAllClients()
 		return err
 	}
-	app.mempoolConnClient = c.(stoppableClient)
 	app.mempoolConn = NewAppConnMempool(c, app.metrics)
 
 	c, err = app.abciClientFor(ctx, connConsensus)
@@ -126,7 +111,6 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 		app.stopAllClients()
 		return err
 	}
-	app.consensusConnClient = c.(stoppableClient)
 	app.consensusConn = NewAppConnConsensus(c, app.metrics)
 
 	// Kill Tendermint if the ABCI application crashes.
@@ -135,9 +119,7 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 	return nil
 }
 
-func (app *multiAppConn) OnStop() {
-	app.stopAllClients()
-}
+func (app *multiAppConn) OnStop() { app.stopAllClients() }
 
 func (app *multiAppConn) startWatchersForClientErrorToKillTendermint(ctx context.Context) {
 	// this function starts a number of threads (per abci client)
@@ -190,37 +172,19 @@ func (app *multiAppConn) startWatchersForClientErrorToKillTendermint(ctx context
 }
 
 func (app *multiAppConn) stopAllClients() {
-	if app.consensusConnClient != nil {
-		if err := app.consensusConnClient.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				app.logger.Error("error while stopping consensus client", "error", err)
-			}
-		}
-	}
-	if app.mempoolConnClient != nil {
-		if err := app.mempoolConnClient.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				app.logger.Error("error while stopping mempool client", "error", err)
-			}
-		}
-	}
-	if app.queryConnClient != nil {
-		if err := app.queryConnClient.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				app.logger.Error("error while stopping query client", "error", err)
-			}
-		}
-	}
-	if app.snapshotConnClient != nil {
-		if err := app.snapshotConnClient.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				app.logger.Error("error while stopping snapshot client", "error", err)
-			}
+	for _, client := range []stoppableClient{
+		app.consensusConnClient,
+		app.mempoolConnClient,
+		app.queryConnClient,
+		app.snapshotConnClient,
+	} {
+		if client != nil {
+			client.Stop()
 		}
 	}
 }
 
-func (app *multiAppConn) abciClientFor(ctx context.Context, conn string) (abciclient.Client, error) {
+func (app *multiAppConn) abciClientFor(ctx context.Context, conn string) (stoppableClient, error) {
 	c, err := app.clientCreator(app.logger.With(
 		"module", "abci-client",
 		"connection", conn))
@@ -230,7 +194,12 @@ func (app *multiAppConn) abciClientFor(ctx context.Context, conn string) (abcicl
 	if err := c.Start(ctx); err != nil {
 		return nil, fmt.Errorf("error starting ABCI client (%s connection): %w", conn, err)
 	}
-	return c, nil
+	client, ok := c.(stoppableClient)
+	if !ok {
+		return nil, fmt.Errorf("%T is not a stoppable client", c)
+	}
+
+	return client, nil
 }
 
 func kill() error {

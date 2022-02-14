@@ -592,7 +592,5 @@ func (cli *socketClient) stopForError(err error) {
 	cli.mtx.Unlock()
 
 	cli.logger.Info("Stopping abci.socketClient", "reason", err)
-	if err := cli.Stop(); err != nil {
-		cli.logger.Error("error stopping abci.socketClient", "err", err)
-	}
+	cli.Stop()
 }

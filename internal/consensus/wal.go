@@ -67,7 +67,7 @@ type WAL interface {
 
 	// service methods
 	Start(context.Context) error
-	Stop() error
+	Stop()
 	Wait()
 }
 
@@ -168,11 +168,7 @@ func (wal *BaseWAL) OnStop() {
 			wal.logger.Error("error on flush data to disk", "error", err)
 		}
 	}
-	if err := wal.group.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			wal.logger.Error("error trying to stop wal", "error", err)
-		}
-	}
+	wal.group.Stop()
 	wal.group.Close()
 }
 
@@ -438,5 +434,5 @@ func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io
 	return nil, false, nil
 }
 func (nilWAL) Start(context.Context) error { return nil }
-func (nilWAL) Stop() error                 { return nil }
+func (nilWAL) Stop()                       {}
 func (nilWAL) Wait()                       {}

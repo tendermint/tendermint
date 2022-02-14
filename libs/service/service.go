@@ -15,9 +15,6 @@ var (
 	// ErrAlreadyStopped is returned when somebody tries to stop an already
 	// stopped service (without resetting it).
 	ErrAlreadyStopped = errors.New("already stopped")
-	// ErrNotStarted is returned when somebody tries to stop a not running
-	// service.
-	ErrNotStarted = errors.New("not started")
 )
 
 // Service defines a service that can be started, stopped, and reset.
@@ -48,7 +45,7 @@ type Implementation interface {
 Classical-inheritance-style service declarations. Services can be started, then
 stopped, then optionally restarted.
 
-Users can override the OnStart/OnStop methods. In the absence of errors, these
+Users must implement OnStart/OnStop methods. In the absence of errors, these
 methods are guaranteed to be called at most once. If OnStart returns an error,
 service won't be marked as started, so the user can call Start again.
 
@@ -74,7 +71,7 @@ Typical usage:
 		// start subroutines, etc.
 	}
 
-	func (fs *FooService) OnStop() error {
+	func (fs *FooService) OnStop() {
 		// close/destroy private fields
 		// stop subroutines, etc.
 	}
@@ -132,7 +129,7 @@ func (bs *BaseService) Start(ctx context.Context) error {
 				// this means stop was called manually
 				return
 			case <-ctx.Done():
-				_ = bs.Stop()
+				bs.Stop()
 			}
 
 			bs.logger.Info("stopped service",
@@ -143,25 +140,26 @@ func (bs *BaseService) Start(ctx context.Context) error {
 	}
 }
 
-// Stop implements Service by calling OnStop (if defined) and closing quit
-// channel. An error will be returned if the service is already stopped.
-func (bs *BaseService) Stop() error {
+// Stop manually terminates the service by calling OnStop method from
+// the implementation and releases all resources related to the
+// service.
+func (bs *BaseService) Stop() {
 	bs.mtx.Lock()
 	defer bs.mtx.Unlock()
 
 	if bs.quit == nil {
-		return ErrNotStarted
+		return
 	}
 
 	select {
 	case <-bs.quit:
-		return ErrAlreadyStopped
+		return
 	default:
 		bs.logger.Info("stopping service", "service", bs.name)
 		bs.impl.OnStop()
 		bs.cancel()
 
-		return nil
+		return
 	}
 }
 

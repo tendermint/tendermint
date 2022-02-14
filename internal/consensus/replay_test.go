@@ -79,9 +79,7 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 
 	require.NoError(t, cs.Start(ctx))
 	defer func() {
-		if err := cs.Stop(); err != nil {
-			t.Error(err)
-		}
+		cs.Stop()
 	}()
 	t.Cleanup(cs.Wait)
 	// This is just a signal that we haven't halted; its not something contained
@@ -292,7 +290,7 @@ func (w *crashingWAL) SearchForEndHeight(
 }
 
 func (w *crashingWAL) Start(ctx context.Context) error { return w.next.Start(ctx) }
-func (w *crashingWAL) Stop() error                     { return w.next.Stop() }
+func (w *crashingWAL) Stop()                           { w.next.Stop() }
 func (w *crashingWAL) Wait()                           { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
