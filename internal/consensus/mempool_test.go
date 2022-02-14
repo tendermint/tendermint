@@ -271,7 +271,7 @@ func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci
 		if txValue != uint64(app.txCount) {
 			respTxs[i] = &abci.ResponseDeliverTx{
 				Code: code.CodeTypeBadNonce,
-				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue),
+				Log:  fmt.Sprintf("Invalid nonce. Expected %d, got %d", app.txCount, txValue),
 			}
 			continue
 		}
