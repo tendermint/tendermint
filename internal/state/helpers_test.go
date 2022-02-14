@@ -298,6 +298,16 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
 	app.CommitVotes = req.LastCommitInfo.Votes
 	app.ByzantineValidators = req.ByzantineValidators
+
+	resTxs := make([]*abci.ResponseDeliverTx, len(req.Txs))
+	for i, tx := range req.Txs {
+		if len(tx) > 0 {
+			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		} else {
+			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK + 10} // error
+		}
+	}
+
 	return abci.ResponseFinalizeBlock{
 		ValidatorUpdates: app.ValidatorUpdates,
 		ConsensusParamUpdates: &tmproto.ConsensusParams{
@@ -306,6 +316,7 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 			},
 		},
 		Events: []abci.Event{},
+		Txs: resTxs,
 	}
 }
 
