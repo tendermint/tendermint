@@ -153,17 +153,12 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	block *types.Block,
 	initialHeight int64,
 ) (bool, error) {
-	ep, err := block.Evidence.ToProto()
-	if err != nil {
-		return false, err
-	}
-
 	req := abci.RequestProcessProposal{
 		Hash:                block.Header.Hash(),
 		Header:              *block.Header.ToProto(),
 		Txs:                 block.Data.Txs.ToSliceOfBytes(),
 		LastCommitInfo:      getBeginBlockValidatorInfo(block, blockExec.store, initialHeight),
-		ByzantineValidators: ep.Evidence,
+		ByzantineValidators: block.Evidence.ToABCI(),
 	}
 
 	resp, err := blockExec.proxyApp.ProcessProposal(ctx, req)
@@ -390,11 +385,6 @@ func execBlockOnProxyApp(
 
 	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
-	byzVals := make([]abci.Evidence, 0)
-	for _, evidence := range block.Evidence {
-		byzVals = append(byzVals, evidence.ABCI()...)
-	}
-
 	// Begin block
 	var err error
 	pbh := block.Header.ToProto()
@@ -408,7 +398,7 @@ func execBlockOnProxyApp(
 			Hash:                block.Hash(),
 			Header:              *pbh,
 			LastCommitInfo:      commitInfo,
-			ByzantineValidators: byzVals,
+			ByzantineValidators: block.Evidence.ToABCI(),
 		},
 	)
 	if err != nil {

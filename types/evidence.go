@@ -681,6 +681,14 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	return false
 }
 
+func (evl EvidenceList) ToABCI() []abci.Evidence {
+	el := make([]abci.Evidence, 0)
+	for _, e := range evl {
+		el = append(el, e.ABCI()...)
+	}
+	return el
+}
+
 //------------------------------------------ PROTO --------------------------------------
 
 // EvidenceToProto is a generalized function for encoding evidence that conforms to the
