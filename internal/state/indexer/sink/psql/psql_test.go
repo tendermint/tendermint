@@ -52,12 +52,19 @@ const (
 func TestMain(m *testing.M) {
 	flag.Parse()
 
-	// Set up docker and start a container running PostgreSQL.
+	// Set up docker.
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 	if err != nil {
 		log.Fatalf("Creating docker pool: %v", err)
 	}
 
+	// If docker is unavailable, log and exit without reporting failure.
+	if _, err := pool.Client.Info(); err != nil {
+		log.Printf("WARNING: Docker is not available: %v [skipping this test]", err)
+		return
+	}
+
+	// Start a container running PostgreSQL.
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "13",
