@@ -39,7 +39,7 @@ import (
 )
 
 func TestNodeStartStop(t *testing.T) {
-	cfg, err := config.ResetTestRoot("node_node_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_node_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -55,11 +55,10 @@ func TestNodeStartStop(t *testing.T) {
 	n, ok := ns.(*nodeImpl)
 	require.True(t, ok)
 	t.Cleanup(func() {
-		if n.IsRunning() {
-			bcancel()
-			n.Wait()
-		}
+		bcancel()
+		n.Wait()
 	})
+	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
 
 	require.NoError(t, n.Start(ctx))
 	// wait for the node to produce a block
@@ -98,13 +97,14 @@ func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger 
 			ns.Wait()
 		}
 	})
+
 	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
 
 	return n
 }
 
 func TestNodeDelayedStart(t *testing.T) {
-	cfg, err := config.ResetTestRoot("node_delayed_start_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_delayed_start_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -126,7 +126,7 @@ func TestNodeDelayedStart(t *testing.T) {
 }
 
 func TestNodeSetAppVersion(t *testing.T) {
-	cfg, err := config.ResetTestRoot("node_app_version_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_app_version_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -159,7 +159,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_priv_val_tcp_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addr
@@ -196,7 +196,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 
 	addrNoPrefix := testFreeAddr(t)
 
-	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_priv_val_tcp_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = addrNoPrefix
@@ -220,7 +220,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("node_priv_val_tcp_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_priv_val_tcp_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cfg.PrivValidator.ListenAddr = "unix://" + tmpfile
@@ -267,7 +267,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_create_proposal")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -364,7 +364,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_create_proposal")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -432,7 +432,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("node_create_proposal")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_create_proposal")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -547,7 +547,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 }
 
 func TestNodeNewSeedNode(t *testing.T) {
-	cfg, err := config.ResetTestRoot("node_new_node_custom_reactors_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_new_node_custom_reactors_test")
 	require.NoError(t, err)
 	cfg.Mode = config.ModeSeed
 	defer os.RemoveAll(cfg.RootDir)
@@ -568,6 +568,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 		logger,
 	)
 	t.Cleanup(ns.Wait)
+	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
 
 	require.NoError(t, err)
 	n, ok := ns.(*seedNodeImpl)
@@ -584,7 +585,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 }
 
 func TestNodeSetEventSink(t *testing.T) {
-	cfg, err := config.ResetTestRoot("node_app_version_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_app_version_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -724,7 +725,7 @@ func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	cfg, err := config.ResetTestRoot("load_state_from_genesis")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "load_state_from_genesis")
 	require.NoError(t, err)
 
 	loadedState, err := stateStore.Load()

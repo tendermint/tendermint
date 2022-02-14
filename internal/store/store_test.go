@@ -46,8 +46,8 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		commitSigs)
 }
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc, error) {
-	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
+func makeStateAndBlockStore(dir string, logger log.Logger) (sm.State, *BlockStore, cleanupFunc, error) {
+	cfg, err := config.ResetTestRoot(dir, "blockchain_reactor_test")
 	if err != nil {
 		return sm.State{}, nil, nil, err
 	}
@@ -75,10 +75,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "store_test")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 	var cleanup cleanupFunc
-	var err error
 
-	state, _, cleanup, err = makeStateAndBlockStore(log.NewNopLogger())
+	state, _, cleanup, err = makeStateAndBlockStore(dir, log.NewNopLogger())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -97,12 +100,13 @@ func TestMain(m *testing.M) {
 	seenCommit1 = makeTestCommit(10, tmtime.Now())
 	code := m.Run()
 	cleanup()
+	os.RemoveAll(dir) // best-effort
 	os.Exit(code)
 }
 
 // TODO: This test should be simplified ...
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup, err := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir(), log.NewNopLogger())
 	defer cleanup()
 	require.NoError(t, err)
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
@@ -313,7 +317,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func TestLoadBaseMeta(t *testing.T) {
-	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -373,7 +377,7 @@ func TestLoadBlockPart(t *testing.T) {
 }
 
 func TestPruneBlocks(t *testing.T) {
-	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -494,7 +498,7 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup, err := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir(), log.NewNopLogger())
 	defer cleanup()
 	require.NoError(t, err)
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")

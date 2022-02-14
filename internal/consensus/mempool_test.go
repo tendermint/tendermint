@@ -35,7 +35,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 	baseConfig := configSetup(t)
 
-	config, err := ResetConfig("consensus_mempool_txs_available_test")
+	config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
@@ -62,7 +62,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := ResetConfig("consensus_mempool_txs_available_test")
+	config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
@@ -87,7 +87,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := ResetConfig("consensus_mempool_txs_available_test")
+	config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 

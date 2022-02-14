@@ -503,7 +503,7 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
 			body := []byte{1, 2, 3}
-			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
+			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, t.TempDir())
 			require.NoError(t, err)
 
 			fetchStartTime := time.Now()
@@ -562,7 +562,7 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 
 			rts := setup(ctx, t, nil, nil, stateProvider, 2)
 
-			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
+			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, t.TempDir())
 			require.NoError(t, err)
 
 			fetchStartTime := time.Now()
@@ -660,7 +660,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			_, err = rts.syncer.AddSnapshot(peerCID, s2)
 			require.NoError(t, err)
 
-			chunks, err := newChunkQueue(s1, "")
+			chunks, err := newChunkQueue(s1, t.TempDir())
 			require.NoError(t, err)
 
 			fetchStartTime := time.Now()

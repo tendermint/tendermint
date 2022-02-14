@@ -11,19 +11,11 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/gorilla/websocket"
-	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
-
-func init() {
-	// Disable go-metrics metrics in tests, since they start unsupervised
-	// goroutines that trip the leak tester. Calling Stop on the metric is not
-	// sufficient, as that does not wait for the goroutine.
-	metrics.UseNilMetrics = true
-}
 
 const wsCallTimeout = 5 * time.Second
 
