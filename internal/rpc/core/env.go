@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/cors"
+
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"

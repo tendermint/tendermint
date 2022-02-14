@@ -6,6 +6,7 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
+
 	indexer "github.com/tendermint/tendermint/internal/state/indexer"
 
 	query "github.com/tendermint/tendermint/internal/pubsub/query"
