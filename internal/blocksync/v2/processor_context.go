@@ -20,13 +20,13 @@ type processorContext interface {
 
 type pContext struct {
 	store         blockStore
-	nodeProTxHash *crypto.ProTxHash
+	nodeProTxHash crypto.ProTxHash
 	applier       blockApplier
 	state         state.State
 	metrics       *consensus.Metrics
 }
 
-func newProcessorContext(st blockStore, nodeProTxHash *crypto.ProTxHash, ex blockApplier, s state.State, m *consensus.Metrics) *pContext {
+func newProcessorContext(st blockStore, nodeProTxHash crypto.ProTxHash, ex blockApplier, s state.State, m *consensus.Metrics) *pContext {
 	return &pContext{
 		store:         st,
 		nodeProTxHash: nodeProTxHash,

@@ -112,7 +112,7 @@ type Reactor struct {
 
 	syncStartTime time.Time
 
-	nodeProTxHash *types.ProTxHash
+	nodeProTxHash types.ProTxHash
 }
 
 // NewReactor returns new reactor instance.
@@ -121,7 +121,7 @@ func NewReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	consReactor consensusReactor,
 	blockSyncCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,

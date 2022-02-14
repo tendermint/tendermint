@@ -221,7 +221,7 @@ type Handshaker struct {
 	store         sm.BlockStore
 	eventBus      types.BlockEventPublisher
 	genDoc        *types.GenesisDoc
-	nodeProTxHash *crypto.ProTxHash
+	nodeProTxHash crypto.ProTxHash
 	logger        log.Logger
 
 	nBlocks int // number of blocks applied to the state
@@ -234,7 +234,7 @@ func NewHandshaker(
 	state sm.State,
 	store sm.BlockStore,
 	genDoc *types.GenesisDoc,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	appHashSize int,
 ) *Handshaker {
 

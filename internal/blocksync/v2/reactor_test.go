@@ -86,7 +86,7 @@ type mockBlockApplier struct {
 
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
-	state sm.State, nodeProTxHash *crypto.ProTxHash, blockID types.BlockID, block *types.Block,
+	state sm.State, nodeProTxHash crypto.ProTxHash, blockID types.BlockID, block *types.Block,
 ) (sm.State, error) {
 	state.LastBlockHeight++
 	return state, nil
@@ -177,7 +177,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		require.NoError(t, err)
 	}
 	proTxHash := crypto.RandProTxHash()
-	r := newReactor(state, &proTxHash, store, reporter, appl, true, consensus.NopMetrics())
+	r := newReactor(state, proTxHash, store, reporter, appl, true, consensus.NopMetrics())
 	logger := log.TestingLogger()
 	r.SetLogger(logger.With("module", "blockchain"))
 
@@ -531,7 +531,7 @@ func newReactorStore(
 		proTxHash, err := privVals[0].GetProTxHash(context.Background())
 		require.NoError(t, err)
 
-		state, err = blockExec.ApplyBlock(state, &proTxHash, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, proTxHash, blockID, thisBlock)
 		require.NoError(t, err)
 
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)

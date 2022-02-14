@@ -2001,7 +2001,7 @@ func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	stateCopy, err := cs.blockExec.ApplyBlockWithLogger(
 		stateCopy,
-		&cs.privValidatorProTxHash,
+		cs.privValidatorProTxHash,
 		types.BlockID{
 			Hash:          block.Hash(),
 			PartSetHeader: blockParts.Header(),

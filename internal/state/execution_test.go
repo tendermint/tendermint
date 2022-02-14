@@ -42,7 +42,7 @@ func TestApplyBlock(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	// The state is local, so we just take the first proTxHash
-	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	app.ValidatorSetUpdate = state.Validators.ABCIEquivalentValidatorUpdates()
 
@@ -82,7 +82,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
-	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	app.ValidatorSetUpdate = state.Validators.ABCIEquivalentValidatorUpdates()
 
@@ -317,7 +317,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -418,7 +418,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	nodeProTxHash := &state.Validators.Validators[0].ProTxHash
+	nodeProTxHash := state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	proTxHash := state.Validators.Validators[0].ProTxHash
 	blockStore := store.NewBlockStore(dbm.NewMemDB())

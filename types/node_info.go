@@ -40,7 +40,7 @@ type NodeInfo struct {
 	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Node Type
-	ProTxHash *crypto.ProTxHash
+	ProTxHash crypto.ProTxHash
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
@@ -65,7 +65,7 @@ func (info NodeInfo) ID() NodeID {
 	return info.NodeID
 }
 
-func (info NodeInfo) GetProTxHash() *crypto.ProTxHash {
+func (info NodeInfo) GetProTxHash() crypto.ProTxHash {
 	return info.ProTxHash
 }
 
@@ -221,9 +221,7 @@ func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
 	dni.Version = info.Version
 	dni.Channels = info.Channels
 	dni.Moniker = info.Moniker
-	if info.ProTxHash != nil {
-		dni.ProTxHash = *info.ProTxHash
-	}
+	dni.ProTxHash = info.ProTxHash
 	dni.Other = tmp2p.NodeInfoOther{
 		TxIndex:    info.Other.TxIndex,
 		RPCAddress: info.Other.RPCAddress,
@@ -253,11 +251,5 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 			RPCAddress: pb.Other.RPCAddress,
 		},
 	}
-
-	if len(pb.ProTxHash) > 0 {
-		proTxHash := crypto.ProTxHash(pb.ProTxHash)
-		dni.ProTxHash = &proTxHash
-	}
-
 	return dni, nil
 }

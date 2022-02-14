@@ -97,7 +97,7 @@ func doHandshake(
 	state sm.State,
 	blockStore sm.BlockStore,
 	genDoc *types.GenesisDoc,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	appHashSize int,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
@@ -114,7 +114,7 @@ func doHandshake(
 	return appVersion, nil
 }
 
-func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, consensusLogger log.Logger, mode string) {
+func logNodeStartupInfo(state sm.State, proTxHash crypto.ProTxHash, logger, consensusLogger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
 		"tmVersion", version.TMCoreSemVer,
@@ -135,7 +135,7 @@ func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, con
 		consensusLogger.Info("This node is a fullnode")
 	case mode == config.ModeValidator:
 		// Log whether this node is a validator or an observer
-		if proTxHash != nil && state.Validators.HasProTxHash(*proTxHash) {
+		if proTxHash != nil && state.Validators.HasProTxHash(proTxHash) {
 			consensusLogger.Info("This node is a validator", "proTxHash", proTxHash)
 		} else {
 			consensusLogger.Info("This node is not a validator", "proTxHash", proTxHash)
@@ -143,7 +143,7 @@ func logNodeStartupInfo(state sm.State, proTxHash *crypto.ProTxHash, logger, con
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, proTxHash *types.ProTxHash) bool {
+func onlyValidatorIsUs(state sm.State, proTxHash types.ProTxHash) bool {
 	if proTxHash == nil {
 		return false
 	}
@@ -151,7 +151,7 @@ func onlyValidatorIsUs(state sm.State, proTxHash *types.ProTxHash) bool {
 		return false
 	}
 	validatorProTxHash, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(validatorProTxHash, *proTxHash)
+	return bytes.Equal(validatorProTxHash, proTxHash)
 }
 
 func createMempoolReactor(
@@ -291,7 +291,7 @@ func createBlockchainReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	csReactor *consensus.Reactor,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,

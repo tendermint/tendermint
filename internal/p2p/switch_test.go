@@ -96,7 +96,7 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 // XXX: note this uses net.Pipe and not a proper TCP conn
 func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	nodeProTxHashes := make([]*crypto.ProTxHash, 2)
+	nodeProTxHashes := make([]crypto.ProTxHash, 2)
 	switches := MakeConnectedSwitches(cfg, nodeProTxHashes, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
 }
@@ -611,7 +611,7 @@ func waitUntilSwitchHasAtLeastNPeers(sw *Switch, n int) {
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {
-	nodeProTxHashes := make([]*crypto.ProTxHash, 3)
+	nodeProTxHashes := make([]crypto.ProTxHash, 3)
 	switches := MakeConnectedSwitches(cfg, nodeProTxHashes, initSwitchFunc, Connect2Switches)
 	defer func() {
 		for _, sw := range switches {

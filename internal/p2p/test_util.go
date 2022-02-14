@@ -68,7 +68,7 @@ const TestHost = "localhost"
 // initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
 func MakeConnectedSwitches(cfg *config.P2PConfig,
-	nodeProTxHashes []*crypto.ProTxHash,
+	nodeProTxHashes []crypto.ProTxHash,
 	initSwitch func(int, *Switch) *Switch,
 	connect func([]*Switch, int, int),
 ) []*Switch {
@@ -166,7 +166,7 @@ func MakeSwitch(
 	cfg *config.P2PConfig,
 	i int,
 	network, version string,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	initSwitch func(int, *Switch) *Switch,
 	logger log.Logger,
 	opts ...SwitchOption,
@@ -228,11 +228,11 @@ func testPeerConn(
 //----------------------------------------------------------------
 // rand node info
 
-func testNodeInfo(id types.NodeID, name string, nodeProTxHash *crypto.ProTxHash) types.NodeInfo {
+func testNodeInfo(id types.NodeID, name string, nodeProTxHash crypto.ProTxHash) types.NodeInfo {
 	return testNodeInfoWithNetwork(id, name, "testing", nodeProTxHash)
 }
 
-func testNodeInfoWithNetwork(id types.NodeID, name, network string, nodeProTxHash *crypto.ProTxHash) types.NodeInfo {
+func testNodeInfoWithNetwork(id types.NodeID, name, network string, nodeProTxHash crypto.ProTxHash) types.NodeInfo {
 	return types.NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		ProTxHash:       nodeProTxHash,

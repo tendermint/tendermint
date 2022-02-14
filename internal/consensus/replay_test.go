@@ -1182,13 +1182,8 @@ func testHandshakeReplay(
 		stateDB, genesisState, store = stateAndStore(cfg, pubKey, kvstore.ProtocolVersion)
 
 	}
-	var proTxHashP *crypto.ProTxHash
 	proTxHash, err := privVal.GetProTxHash(context.Background())
-	if err == nil {
-		proTxHashP = &proTxHash
-	} else {
-		proTxHashP = nil
-	}
+	require.NoError(t, err)
 
 	stateStore := sm.NewStore(stateDB)
 	store.chain = chain
@@ -1202,7 +1197,7 @@ func testHandshakeReplay(
 		sim.Mempool,
 		sim.Evpool,
 		stateStore,
-		&firstValidatorProTxHash,
+		firstValidatorProTxHash,
 		state,
 		chain,
 		nBlocks,
@@ -1228,7 +1223,7 @@ func testHandshakeReplay(
 		buildAppStateFromChain(
 			proxyApp,
 			stateStore,
-			&firstValidatorProTxHash,
+			firstValidatorProTxHash,
 			sim.Mempool,
 			sim.Evpool,
 			genesisState,
@@ -1255,7 +1250,7 @@ func testHandshakeReplay(
 		state,
 		store,
 		genDoc,
-		proTxHashP,
+		proTxHash,
 		cfg.Consensus.AppHashSize,
 	)
 	proxyApp := proxy.NewAppConns(clientCreator2)
@@ -1312,7 +1307,7 @@ func applyBlock(
 	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	st sm.State,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	blk *types.Block,
 	proxyApp proxy.AppConns,
 	blockStore *mockBlockStore,
@@ -1340,7 +1335,7 @@ func applyBlock(
 func buildAppStateFromChain(
 	proxyApp proxy.AppConns,
 	stateStore sm.Store,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	state sm.State,
@@ -1392,7 +1387,7 @@ func buildTMStateFromChain(
 	mempool mempl.Mempool,
 	evpool sm.EvidencePool,
 	stateStore sm.Store,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	state sm.State,
 	chain []*types.Block,
 	nBlocks int,
@@ -1492,7 +1487,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 				state,
 				store,
 				genDoc,
-				&proTxHash,
+				proTxHash,
 				cfg.Consensus.AppHashSize,
 			)
 			if _, err = h.Handshake(proxyApp); err != nil {
@@ -1523,7 +1518,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 				state,
 				store,
 				genDoc,
-				&proTxHash,
+				proTxHash,
 				cfg.Consensus.AppHashSize,
 			)
 			if _, err = h.Handshake(proxyApp); err != nil {
@@ -1821,7 +1816,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 		state,
 		store,
 		genDoc,
-		&proTxHash,
+		proTxHash,
 		cfg.Consensus.AppHashSize,
 	)
 	proxyApp := proxy.NewAppConns(clientCreator)

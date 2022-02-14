@@ -34,7 +34,7 @@ func newTestApp() proxy.AppConns {
 
 func makeAndCommitGoodBlock(
 	state sm.State,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	height int64,
 	lastCommit *types.Commit,
 	proposerProTxHash crypto.ProTxHash,
@@ -57,7 +57,7 @@ func makeAndCommitGoodBlock(
 	return state, blockID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, nodeProTxHash *crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte,
+func makeAndApplyGoodBlock(state sm.State, nodeProTxHash crypto.ProTxHash, height int64, lastCommit *types.Commit, proposerProTxHash []byte,
 	blockExec *sm.BlockExecutor, evidence []types.Evidence, proposedAppVersion uint64) (sm.State, types.BlockID, error) {
 	block, _ := state.MakeBlock(height, nil, factory.MakeTenTxs(height), lastCommit, evidence, proposerProTxHash, proposedAppVersion)
 	if err := blockExec.ValidateBlock(state, block); err != nil {

@@ -23,7 +23,7 @@ import (
 // exclusively and explicitly for testing.
 func UpdateState(
 	state State,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	blockID types.BlockID,
 	header *types.Header,
 	abciResponses *tmstate.ABCIResponses,

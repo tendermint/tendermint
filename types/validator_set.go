@@ -104,10 +104,10 @@ func NewValidatorSetWithLocalNodeProTxHash(
 	newThresholdPublicKey crypto.PubKey,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	localNodeProTxHash *crypto.ProTxHash,
+	localNodeProTxHash crypto.ProTxHash,
 ) *ValidatorSet {
 	vals := NewValidatorSet(valz, newThresholdPublicKey, quorumType, quorumHash, false)
-	if localNodeProTxHash != nil && vals.HasProTxHash(*localNodeProTxHash) {
+	if vals.HasProTxHash(localNodeProTxHash) {
 		vals.HasPublicKeys = true
 	}
 	return vals

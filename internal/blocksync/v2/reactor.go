@@ -59,14 +59,14 @@ type BlockchainReactor struct {
 type blockApplier interface {
 	ApplyBlock(
 		state state.State,
-		nodeProTxHash *crypto.ProTxHash,
+		nodeProTxHash crypto.ProTxHash,
 		blockID types.BlockID,
 		block *types.Block,
 	) (state.State, error)
 }
 
 // XXX: unify naming in this package around tmState
-func newReactor(state state.State, nodeProTxHash *crypto.ProTxHash, store blockStore, reporter behavior.Reporter,
+func newReactor(state state.State, nodeProTxHash crypto.ProTxHash, store blockStore, reporter behavior.Reporter,
 	blockApplier blockApplier, blockSync bool, metrics *consensus.Metrics) *BlockchainReactor {
 	initHeight := state.LastBlockHeight + 1
 	if initHeight == 1 {
@@ -96,7 +96,7 @@ func NewBlockchainReactor(
 	state state.State,
 	blockApplier blockApplier,
 	store blockStore,
-	nodeProTxHash *crypto.ProTxHash,
+	nodeProTxHash crypto.ProTxHash,
 	blockSync bool,
 	metrics *consensus.Metrics) *BlockchainReactor {
 	reporter := behavior.NewMockReporter()
