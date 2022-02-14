@@ -433,16 +433,18 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, store Store,
-	initialHeight int64) abci.LastCommitInfo {
+func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.LastCommitInfo {
+
+	if block.Height == initialHeight {
+		return abci.LastCommitInfo{
+			Round: 0,
+			Votes: make([]abci.VoteInfo, 0),
+		}
+	}
 
 	lci := abci.LastCommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: make([]abci.VoteInfo, block.LastCommit.Size()),
-	}
-
-	if block.Height <= initialHeight {
-		return lci
 	}
 
 	// Initial block -> LastCommitInfo.Votes are empty.
