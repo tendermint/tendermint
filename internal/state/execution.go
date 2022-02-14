@@ -435,42 +435,46 @@ func execBlockOnProxyApp(
 
 func getBeginBlockValidatorInfo(block *types.Block, store Store,
 	initialHeight int64) abci.LastCommitInfo {
-	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
+
+	lci := abci.LastCommitInfo{
+		Round: block.LastCommit.Round,
+		Votes: make([]abci.VoteInfo, block.LastCommit.Size()),
+	}
+
+	if block.Height <= initialHeight {
+		return lci
+	}
+
 	// Initial block -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
-	if block.Height > initialHeight {
-		lastValSet, err := store.LoadValidators(block.Height - 1)
-		if err != nil {
-			panic(err)
-		}
-
-		// Sanity check that commit size matches validator set size - only applies
-		// after first block.
-		var (
-			commitSize = block.LastCommit.Size()
-			valSetLen  = len(lastValSet.Validators)
-		)
-		if commitSize != valSetLen {
-			panic(fmt.Sprintf(
-				"commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators,
-			))
-		}
-
-		for i, val := range lastValSet.Validators {
-			commitSig := block.LastCommit.Signatures[i]
-			voteInfos[i] = abci.VoteInfo{
-				Validator:       types.TM2PB.Validator(val),
-				SignedLastBlock: !commitSig.Absent(),
-			}
-		}
+	lastValSet, err := store.LoadValidators(block.Height - 1)
+	if err != nil {
+		panic(err)
 	}
 
-	return abci.LastCommitInfo{
-		Round: block.LastCommit.Round,
-		Votes: voteInfos,
+	// Sanity check that commit size matches validator set size - only applies
+	// after first block.
+	var (
+		commitSize = block.LastCommit.Size()
+		valSetLen  = len(lastValSet.Validators)
+	)
+
+	if commitSize != valSetLen {
+		panic(fmt.Sprintf(
+			"commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+			commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators,
+		))
 	}
+
+	for i, val := range lastValSet.Validators {
+		commitSig := block.LastCommit.Signatures[i]
+		lci.Votes[i] = abci.VoteInfo{
+			Validator:       types.TM2PB.Validator(val),
+			SignedLastBlock: !commitSig.Absent(),
+		}
+	}
+	return lci
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
