@@ -434,49 +434,47 @@ func execBlockOnProxyApp(
 }
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.LastCommitInfo {
-
 	if block.Height == initialHeight {
+		// there is no last commmit for the initial height.
+		// return an empty value.
 		return abci.LastCommitInfo{
 			Round: 0,
 			Votes: make([]abci.VoteInfo, 0),
 		}
 	}
 
-	lci := abci.LastCommitInfo{
-		Round: block.LastCommit.Round,
-		Votes: make([]abci.VoteInfo, block.LastCommit.Size()),
-	}
-
-	// Initial block -> LastCommitInfo.Votes are empty.
-	// Remember that the first LastCommit is intentionally empty, so it makes
-	// sense for LastCommitInfo.Votes to also be empty.
 	lastValSet, err := store.LoadValidators(block.Height - 1)
 	if err != nil {
 		panic(err)
 	}
 
-	// Sanity check that commit size matches validator set size - only applies
-	// after first block.
 	var (
 		commitSize = block.LastCommit.Size()
 		valSetLen  = len(lastValSet.Validators)
 	)
 
+	// ensure that the size of the validator set in the last commit matches
+	// the size of the validator set in the state store.
 	if commitSize != valSetLen {
 		panic(fmt.Sprintf(
-			"commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+			"commit size (%d) doesn't match validator set length (%d) at height %d\n\n%v\n\n%v",
 			commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators,
 		))
 	}
 
+	votes := make([]abci.VoteInfo, block.LastCommit.Size())
 	for i, val := range lastValSet.Validators {
 		commitSig := block.LastCommit.Signatures[i]
-		lci.Votes[i] = abci.VoteInfo{
+		votes[i] = abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
 			SignedLastBlock: !commitSig.Absent(),
 		}
 	}
-	return lci
+
+	return abci.LastCommitInfo{
+		Round: block.LastCommit.Round,
+		Votes: votes,
+	}
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
