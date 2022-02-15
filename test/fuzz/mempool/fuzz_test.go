@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	mempool "github.com/tendermint/tendermint/test/fuzz/mempool"
 )
 

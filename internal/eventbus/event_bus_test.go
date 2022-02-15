@@ -83,14 +83,12 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	bps, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-	resultBeginBlock := abci.ResponseBeginBlock{
+	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{
+				{Key: "baz", Value: "1"},
+				{Key: "foz", Value: "2"},
+			}},
 		},
 	}
 
@@ -111,15 +109,13 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		edt := msg.Data().(types.EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
 		assert.Equal(t, blockID, edt.BlockID)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultFinalizeBlock, edt.ResultFinalizeBlock)
 	}()
 
 	err = eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
-		Block:            block,
-		BlockID:          blockID,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Block:               block,
+		BlockID:             blockID,
+		ResultFinalizeBlock: resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 
@@ -256,14 +252,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{
+	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{
+				{Key: "baz", Value: "1"},
+				{Key: "foz", Value: "2"},
+			}},
 		},
 	}
 
@@ -283,14 +277,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 
 		edt := msg.Data().(types.EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultFinalizeBlock, edt.ResultFinalizeBlock)
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
-		Header:           block.Header,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Header:              block.Header,
+		ResultFinalizeBlock: resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 

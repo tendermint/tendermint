@@ -14,6 +14,7 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/inspect"
@@ -263,13 +264,13 @@ func TestBlockResults(t *testing.T) {
 	stateStoreMock := &statemocks.Store{}
 	//	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	stateStoreMock.On("LoadABCIResponses", testHeight).Return(&state.ABCIResponses{
-		DeliverTxs: []*abcitypes.ResponseDeliverTx{
-			{
-				GasUsed: testGasUsed,
+		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
+			Txs: []*abcitypes.ResponseDeliverTx{
+				{
+					GasUsed: testGasUsed,
+				},
 			},
 		},
-		EndBlock:   &abcitypes.ResponseEndBlock{},
-		BeginBlock: &abcitypes.ResponseBeginBlock{},
 	}, nil)
 	blockStoreMock := &statemocks.BlockStore{}
 	blockStoreMock.On("Base").Return(int64(0))

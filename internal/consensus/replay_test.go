@@ -663,12 +663,13 @@ func TestMockProxyApp(t *testing.T) {
 
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
-	txIndex := 0
+	txCount := 0
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.FinalizeBlock = new(abci.ResponseFinalizeBlock)
+		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = append(abciResWithEmptyDeliverTx.FinalizeBlock.Txs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
@@ -683,25 +684,27 @@ func TestMockProxyApp(t *testing.T) {
 		require.NoError(t, err)
 
 		abciRes := new(tmstate.ABCIResponses)
-		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
+		abciRes.FinalizeBlock = new(abci.ResponseFinalizeBlock)
+		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
 
 		someTx := []byte("tx")
-		resp, err := mock.DeliverTx(ctx, abci.RequestDeliverTx{Tx: someTx})
+		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
+		require.NoError(t, err)
 		// TODO: make use of res.Log
 		// TODO: make use of this info
 		// Blocks may include invalid txs.
-		if resp.Code == abci.CodeTypeOK {
-			validTxs++
-		} else {
-			invalidTxs++
+		for _, tx := range resp.Txs {
+			if tx.Code == abci.CodeTypeOK {
+				validTxs++
+			} else {
+				invalidTxs++
+			}
+			txCount++
 		}
-		abciRes.DeliverTxs[txIndex] = resp
-		txIndex++
-
-		assert.NoError(t, err)
 	})
-	assert.True(t, validTxs == 1)
-	assert.True(t, invalidTxs == 0)
+	require.Equal(t, 1, txCount)
+	require.Equal(t, 1, validTxs)
+	require.Zero(t, invalidTxs)
 }
 
 func tempWALWithData(t *testing.T, data []byte) string {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
+
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/libs/log"

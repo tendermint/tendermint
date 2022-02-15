@@ -226,10 +226,6 @@ func (cli *socketClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestFlush())
 }
 
-func (cli *socketClient) DeliverTxAsync(ctx context.Context, req types.RequestDeliverTx) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestDeliverTx(req))
-}
-
 func (cli *socketClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestCheckTx(req))
 }
@@ -280,18 +276,6 @@ func (cli *socketClient) Info(
 	return reqres.Response.GetInfo(), nil
 }
 
-func (cli *socketClient) DeliverTx(
-	ctx context.Context,
-	req types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-
-	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestDeliverTx(req))
-	if err != nil {
-		return nil, err
-	}
-	return reqres.Response.GetDeliverTx(), nil
-}
-
 func (cli *socketClient) CheckTx(
 	ctx context.Context,
 	req types.RequestCheckTx,
@@ -332,30 +316,6 @@ func (cli *socketClient) InitChain(
 		return nil, err
 	}
 	return reqres.Response.GetInitChain(), nil
-}
-
-func (cli *socketClient) BeginBlock(
-	ctx context.Context,
-	req types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-
-	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestBeginBlock(req))
-	if err != nil {
-		return nil, err
-	}
-	return reqres.Response.GetBeginBlock(), nil
-}
-
-func (cli *socketClient) EndBlock(
-	ctx context.Context,
-	req types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-
-	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestEndBlock(req))
-	if err != nil {
-		return nil, err
-	}
-	return reqres.Response.GetEndBlock(), nil
 }
 
 func (cli *socketClient) ListSnapshots(
@@ -447,6 +407,17 @@ func (cli *socketClient) VerifyVoteExtension(
 		return nil, err
 	}
 	return reqres.Response.GetVerifyVoteExtension(), nil
+}
+
+func (cli *socketClient) FinalizeBlock(
+	ctx context.Context,
+	req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+
+	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestFinalizeBlock(req))
+	if err != nil {
+		return nil, err
+	}
+	return reqres.Response.GetFinalizeBlock(), nil
 }
 
 //----------------------------------------
@@ -550,8 +521,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Flush)
 	case *types.Request_Info:
 		_, ok = res.Value.(*types.Response_Info)
-	case *types.Request_DeliverTx:
-		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
 	case *types.Request_Commit:
@@ -566,10 +535,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ExtendVote)
 	case *types.Request_VerifyVoteExtension:
 		_, ok = res.Value.(*types.Response_VerifyVoteExtension)
-	case *types.Request_BeginBlock:
-		_, ok = res.Value.(*types.Response_BeginBlock)
-	case *types.Request_EndBlock:
-		_, ok = res.Value.(*types.Response_EndBlock)
 	case *types.Request_ApplySnapshotChunk:
 		_, ok = res.Value.(*types.Response_ApplySnapshotChunk)
 	case *types.Request_LoadSnapshotChunk:
@@ -578,6 +543,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_FinalizeBlock:
+		_, ok = res.Value.(*types.Response_FinalizeBlock)
 	}
 	return ok
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
@@ -16,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 
 	_ "github.com/lib/pq" // for the psql sink
 )
@@ -154,9 +155,9 @@ func TestReIndexEvent(t *testing.T) {
 
 	dtx := abcitypes.ResponseDeliverTx{}
 	abciResp := &prototmstate.ABCIResponses{
-		DeliverTxs: []*abcitypes.ResponseDeliverTx{&dtx},
-		EndBlock:   &abcitypes.ResponseEndBlock{},
-		BeginBlock: &abcitypes.ResponseBeginBlock{},
+		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
+			Txs: []*abcitypes.ResponseDeliverTx{&dtx},
+		},
 	}
 
 	mockStateStore.
