@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tendermint/tendermint/internal/eventlog"
@@ -89,6 +90,7 @@ func TestPruneTime(t *testing.T) {
 // Run a publisher and concurrent subscribers to tickle the race detector with
 // concurrent add and scan operations.
 func TestConcurrent(t *testing.T) {
+	defer leaktest.Check(t)
 	if testing.Short() {
 		t.Skip("Skipping concurrency exercise because -short is set")
 	}
