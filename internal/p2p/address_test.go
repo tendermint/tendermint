@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/types"

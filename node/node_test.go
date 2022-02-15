@@ -13,8 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
-
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
@@ -22,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/dash/quorum"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -35,6 +34,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -62,6 +62,13 @@ func TestNodeStartStop(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}
+
+	// check if we can read node ID of this node
+	va, err := types.ParseValidatorAddress(cfg.P2P.ListenAddress)
+	assert.NoError(t, err)
+	nodeAddress, err := quorum.NewTCPNodeIDResolver().Resolve(va)
+	assert.Equal(t, n.nodeInfo.ID(), nodeAddress.NodeID)
+	assert.NoError(t, err)
 
 	// stop the node
 	go func() {

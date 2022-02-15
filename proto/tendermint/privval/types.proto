@@ -58,11 +58,11 @@ message ProTxHashResponse {
 
 // SignVoteRequest is a request to sign a vote
 message SignVoteRequest {
-  tendermint.types.Vote vote        = 1;
-  string                chain_id    = 2;
-  int32                 quorum_type = 3;
-  bytes                 quorum_hash = 4;
-  tendermint.types.StateID state_id  = 5;
+  tendermint.types.Vote    vote        = 1;
+  string                   chain_id    = 2;
+  int32                    quorum_type = 3;
+  bytes                    quorum_hash = 4;
+  tendermint.types.StateID state_id    = 5;
 }
 
 // SignedVoteResponse is a response containing a signed vote or an error

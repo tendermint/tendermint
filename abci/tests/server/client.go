@@ -23,7 +23,7 @@ func InitChain(client abcicli.Client) error {
 		pubkey := privKeys[i].PubKey().Bytes()
 		proTxHash := proTxHashes[i]
 		power := 100
-		vals[i] = types.UpdateValidator(proTxHash, pubkey, int64(power))
+		vals[i] = types.UpdateValidator(proTxHash, pubkey, int64(power), "")
 	}
 	abciThresholdPublicKey, err := encoding.PubKeyToProto(thresholdPublicKey)
 	if err != nil {

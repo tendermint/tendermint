@@ -321,25 +321,25 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 //			for _, step := range tt.msgs {
 //				switch step.evType {
 //				case "AddPeer":
-//					reactor.scheduler.send(bcAddNewPeer{peerID: p2p.ID(step.peer)})
+//					reactor.scheduler.send(bcAddNewPeer{peerID: types.NodeID(step.peer)})
 //				case "RemovePeer":
-//					reactor.scheduler.send(bcRemovePeer{peerID: p2p.ID(step.peer)})
+//					reactor.scheduler.send(bcRemovePeer{peerID: types.NodeID(step.peer)})
 //				case "ReceiveS":
 //					reactor.scheduler.send(bcStatusResponse{
-//						peerID: p2p.ID(step.peer),
+//						peerID: types.NodeID(step.peer),
 //						height: step.height,
 //						time:   time.Now(),
 //					})
 //				case "ReceiveB":
 //					reactor.scheduler.send(bcBlockResponse{
-//						peerID: p2p.ID(step.peer),
+//						peerID: types.NodeID(step.peer),
 //						block:  refStore.LoadBlock(step.height),
 //						size:   10,
 //						time:   time.Now(),
 //					})
 //				case "ReceiveNB":
 //					reactor.scheduler.send(bcNoBlockResponse{
-//						peerID: p2p.ID(step.peer),
+//						peerID: types.NodeID(step.peer),
 //						height: step.height,
 //						time:   time.Now(),
 //					})

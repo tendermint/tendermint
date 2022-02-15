@@ -21,7 +21,7 @@ const (
 )
 
 // UNSTABLE
-// XXX: duplicate of p2p.ID to avoid dependence between packages.
+// XXX: duplicate of types.NodeID to avoid dependence between packages.
 // Perhaps we can have a minimal types package containing this (and other things?)
 // that both `types` and `p2p` import ?
 type P2PID string

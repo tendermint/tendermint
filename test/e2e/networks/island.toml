@@ -1,0 +1,81 @@
+initial_height = 1000
+initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+initial_core_chain_locked_height = 3400
+
+[chainlock_updates]
+1000 = 3450
+1004 = 3451
+1009 = 3452
+1020 = 3454
+1040 = 3500
+
+[validator_update.0]
+validator01 = 100
+validator02 = 100
+validator03 = 100
+validator04 = 100
+
+[validator_update.1010]
+validator02 = 100
+validator04 = 100
+validator06 = 100
+validator07 = 100
+
+[validator_update.1020]
+validator01 = 100
+validator03 = 100
+validator05 = 100
+validator07 = 100
+
+[validator_update.1030]
+validator01 = 100
+validator02 = 100
+validator03 = 100
+validator04 = 100
+validator05 = 100
+validator06 = 100
+validator07 = 100
+
+[node.validator01]
+snapshot_interval = 5
+perturb = ["disconnect"]
+privval_protocol = "dashcore"
+
+[node.validator02]
+database = "boltdb"
+abci_protocol = "tcp"
+privval_protocol = "dashcore"
+persist_interval = 0
+perturb = ["restart"]
+
+[node.validator03]
+database = "badgerdb"
+privval_protocol = "dashcore"
+persist_interval = 3
+retain_blocks = 3
+perturb = ["kill"]
+
+[node.validator04]
+database = "rocksdb"
+abci_protocol = "builtin"
+privval_protocol = "dashcore"
+perturb = ["pause"]
+
+[node.validator05]
+start_at = 1005
+database = "cleveldb"
+fast_sync = "v0"
+privval_protocol = "dashcore"
+perturb = ["kill", "pause", "disconnect", "restart"]
+
+[node.validator06]
+database = "rocksdb"
+fast_sync = "v0"
+privval_protocol = "dashcore"
+
+[node.validator07]
+start_at = 1005
+database = "cleveldb"
+fast_sync = "v0"
+privval_protocol = "dashcore"
+perturb = ["pause"]

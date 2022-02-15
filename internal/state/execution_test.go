@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
-
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -25,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -160,6 +159,8 @@ func TestValidateValidatorUpdates(t *testing.T) {
 		PubKeyTypes: []string{types.ABCIPubKeyTypeBLS12381},
 	}
 
+	addr := types.RandValidatorAddress()
+
 	testCases := []struct {
 		name string
 
@@ -170,25 +171,30 @@ func TestValidateValidatorUpdates(t *testing.T) {
 	}{
 		{
 			"adding a validator is OK",
+			[]abci.ValidatorUpdate{{PubKey: &pk2, Power: 100, ProTxHash: proTxHash2, NodeAddress: addr.String()}},
+			defaultValidatorParams,
+			false,
+		},
+		{"adding a validator without address is OK",
 			[]abci.ValidatorUpdate{{PubKey: &pk2, Power: 100, ProTxHash: proTxHash2}},
 			defaultValidatorParams,
 			false,
 		},
 		{
 			"updating a validator is OK",
-			[]abci.ValidatorUpdate{{PubKey: &pk1, Power: 100, ProTxHash: proTxHash1}},
+			[]abci.ValidatorUpdate{{PubKey: &pk1, Power: 100, ProTxHash: proTxHash1, NodeAddress: addr.String()}},
 			defaultValidatorParams,
 			false,
 		},
 		{
 			"removing a validator is OK",
-			[]abci.ValidatorUpdate{{Power: 0, ProTxHash: proTxHash2}},
+			[]abci.ValidatorUpdate{{Power: 0, ProTxHash: proTxHash2, NodeAddress: addr.String()}},
 			defaultValidatorParams,
 			false,
 		},
 		{
 			"adding a validator with negative power results in error",
-			[]abci.ValidatorUpdate{{PubKey: &pk2, Power: -100, ProTxHash: proTxHash2}},
+			[]abci.ValidatorUpdate{{PubKey: &pk2, Power: -100, ProTxHash: proTxHash2, NodeAddress: addr.String()}},
 			defaultValidatorParams,
 			true,
 		},
@@ -370,6 +376,13 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		}
 	}
 
+	// Ensure new validators have some node addresses set
+	for _, validator := range newVals.Validators {
+		if validator.NodeAddress.Zero() {
+			validator.NodeAddress = types.RandValidatorAddress()
+		}
+	}
+
 	app.ValidatorSetUpdate = newVals.ABCIEquivalentValidatorUpdates()
 
 	state, err = blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
@@ -392,6 +405,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 			"Expected event of type EventDataValidatorSetUpdate, got %T",
 			msg.Data(),
 		)
+		assert.Len(t, event.QuorumHash, crypto.QuorumHashSize)
 		if assert.NotEmpty(t, event.ValidatorSetUpdates) {
 			assert.Equal(t, addProTxHash, event.ValidatorSetUpdates[pos].ProTxHash)
 			assert.EqualValues(

@@ -7,13 +7,15 @@ import (
 	crypto2 "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
-func UpdateValidator(proTxHash []byte, pk []byte, power int64) ValidatorUpdate {
+func UpdateValidator(proTxHash crypto.ProTxHash, pubkeyBytes []byte, power int64, nodeAddress string) ValidatorUpdate {
 	valUpdate := ValidatorUpdate{
-		Power:     power,
-		ProTxHash: proTxHash,
+		Power:       power,
+		ProTxHash:   proTxHash,
+		NodeAddress: nodeAddress,
 	}
-	if len(pk) > 0 {
-		pke := bls12381.PubKey(pk)
+
+	if len(pubkeyBytes) > 0 {
+		pke := bls12381.PubKey(pubkeyBytes)
 		pkp, err := cryptoenc.PubKeyToProto(pke)
 		if err != nil {
 			panic(err)

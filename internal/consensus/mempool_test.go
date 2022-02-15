@@ -27,25 +27,31 @@ func assertMempool(txn txNotifier) mempool.Mempool {
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	baseConfig := configSetup(t)
+	for proofBlockRange := int64(1); proofBlockRange <= 3; proofBlockRange++ {
+		t.Logf("Checking proof block range %d", proofBlockRange)
+		config, err := ResetConfig("consensus_mempool_txs_available_test")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
-	config, err := ResetConfig("consensus_mempool_txs_available_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
+		config.Consensus.CreateEmptyBlocks = false
+		config.Consensus.CreateProofBlockRange = proofBlockRange
 
-	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(baseConfig, 1, false, types.DefaultDashVotingPower)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
-	assertMempool(cs.txNotifier).EnableTxsAvailable()
-	height, round := cs.Height, cs.Round
-	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
-	startTestRound(cs, height, round)
+		state, privVals := randGenesisState(baseConfig, 1, false, types.DefaultDashVotingPower)
+		cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+		assertMempool(cs.txNotifier).EnableTxsAvailable()
+		height, round := cs.Height, cs.Round
+		newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+		startTestRound(cs, height, round)
 
-	ensureNewEventOnChannel(newBlockCh) // first block gets committed
-	ensureNoNewEventOnChannel(newBlockCh)
-	deliverTxsRange(cs, 0, 1)
-	ensureNewEventOnChannel(newBlockCh) // commit txs
-	ensureNewEventOnChannel(newBlockCh) // commit updated app hash
-	ensureNoNewEventOnChannel(newBlockCh)
+		ensureNewEventOnChannel(newBlockCh) // first block gets committed
+		ensureNoNewEventOnChannel(newBlockCh)
+		deliverTxsRange(cs, 0, 1)
+		ensureNewEventOnChannel(newBlockCh) // commit txs
+		for i := int64(0); i < proofBlockRange; i++ {
+			ensureNewEventOnChannel(newBlockCh) // commit updated app hash
+		}
+		ensureNoNewEventOnChannel(newBlockCh)
+	}
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {

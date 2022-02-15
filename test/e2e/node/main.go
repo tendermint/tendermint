@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/dashevo/dashd-go/btcjson"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"

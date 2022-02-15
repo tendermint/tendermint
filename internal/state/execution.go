@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto/bls12381"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -565,6 +564,13 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 				valUpdate,
 				valUpdate.ProTxHash,
 			)
+		}
+
+		if valUpdate.NodeAddress != "" {
+			_, err := types.ParseValidatorAddress(valUpdate.NodeAddress)
+			if err != nil {
+				return fmt.Errorf("cannot parse validator address %s: %w", valUpdate.NodeAddress, err)
+			}
 		}
 	}
 	return nil

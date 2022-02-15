@@ -79,7 +79,7 @@ func GenerateValidatorSet(valParams []ValSetParam, opts ...ValSetOptionFunc) (*V
 	for i := 0; i < n; i++ {
 		privValidators[i] = mockPVFunc(orderedProTxHashes[i], privateKeys[i])
 		opt := valzOptsMap[orderedProTxHashes[i].String()]
-		valz[i] = NewValidator(privateKeys[i].PubKey(), opt.VotingPower, orderedProTxHashes[i])
+		valz[i] = NewValidator(privateKeys[i].PubKey(), opt.VotingPower, orderedProTxHashes[i], "")
 	}
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators

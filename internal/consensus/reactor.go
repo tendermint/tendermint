@@ -654,7 +654,15 @@ OUTER_LOOP:
 // there is a vote to send and false otherwise.
 func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
-		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
+		ps.logger.Debug(
+			"Sending vote message",
+			"ps", ps,
+			"peer_id", ps.peerID,
+			"vote", vote,
+			"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
+			"height", vote.Height,
+			"round", vote.Round,
+		)
 		r.voteCh.Out <- p2p.Envelope{
 			To: ps.peerID,
 			Message: &tmcons.Vote{

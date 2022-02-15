@@ -54,12 +54,12 @@ message RequestInfo {
 message RequestInitChain {
   google.protobuf.Timestamp time = 1
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string             chain_id            = 2;
-  tendermint.types.ConsensusParams    consensus_params    = 3;
-  ValidatorSetUpdate validator_set       = 4 [(gogoproto.nullable) = true];
-  bytes              app_state_bytes     = 5;
-  int64              initial_height      = 6;
-  uint32             initial_core_height = 7;
+  string                           chain_id            = 2;
+  tendermint.types.ConsensusParams consensus_params    = 3;
+  ValidatorSetUpdate               validator_set       = 4 [(gogoproto.nullable) = true];
+  bytes                            app_state_bytes     = 5;
+  int64                            initial_height      = 6;
+  uint32                           initial_core_height = 7;
 }
 
 message RequestQuery {
@@ -160,16 +160,19 @@ message ResponseInfo {
   string version     = 2;
   uint64 app_version = 3;
 
-  int64  last_block_height             = 4;
-  bytes  last_block_app_hash           = 5;
-  uint32 last_core_chain_locked_height = 100;
+  int64 last_block_height   = 4;
+  bytes last_block_app_hash = 5;
+
+  reserved "last_core_chain_locked_height";
+  reserved 100;
 }
 
 message ResponseInitChain {
-  tendermint.types.ConsensusParams consensus_params = 1;
-  bytes                          app_hash                    = 3;
-  ValidatorSetUpdate             validator_set_update        = 100 [(gogoproto.nullable) = false];
-  tendermint.types.CoreChainLock next_core_chain_lock_update = 101;
+  tendermint.types.ConsensusParams consensus_params            = 1;
+  bytes                            app_hash                    = 3;
+  ValidatorSetUpdate               validator_set_update        = 100 [(gogoproto.nullable) = false];
+  tendermint.types.CoreChainLock   next_core_chain_lock_update = 101;
+  uint32                           initial_core_height         = 102;
 }
 
 message ResponseQuery {
@@ -220,7 +223,7 @@ message ResponseDeliverTx {
 
 message ResponseEndBlock {
   tendermint.types.ConsensusParams consensus_param_updates = 2;
-  repeated Event  events                  = 3
+  repeated Event                   events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   tendermint.types.CoreChainLock next_core_chain_lock_update = 100;
   ValidatorSetUpdate             validator_set_update        = 101 [(gogoproto.nullable) = true];
@@ -316,9 +319,10 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.crypto.PublicKey pub_key     = 1 [(gogoproto.nullable) = true];
-  int64                       power       = 2;
-  bytes                       pro_tx_hash = 3;
+  tendermint.crypto.PublicKey pub_key      = 1 [(gogoproto.nullable) = true];
+  int64                       power        = 2;
+  bytes                       pro_tx_hash  = 3;
+  string                      node_address = 4 [(gogoproto.nullable) = true];  // address of the Validator, correct URI
 }
 
 message ValidatorSetUpdate {

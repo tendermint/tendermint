@@ -183,9 +183,9 @@ func makeApplyBlock(
 	}
 
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
-	for _, tx := range txs {
+	for i, tx := range txs {
 		if r := kvstore.DeliverTx(types.RequestDeliverTx{Tx: tx}); r.IsErr() {
-			t.Fatal(r)
+			t.Fatal(fmt.Sprintf("i=%d, tx=%s, err=%s", i, tx, r.String()))
 		}
 	}
 	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})

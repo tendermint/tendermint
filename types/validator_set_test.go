@@ -415,7 +415,8 @@ func randPubKey() crypto.PubKey {
 func randModuloValidator(totalVotingPower int64) *Validator {
 	// this modulo limits the ProposerPriority/VotingPower to stay in the
 	// bounds of MaxTotalVotingPower minus the already existing voting power:
-	val := NewValidator(randPubKey(), DefaultDashVotingPower, crypto.RandProTxHash())
+	address := RandValidatorAddress().String()
+	val := NewValidator(randPubKey(), DefaultDashVotingPower, crypto.RandProTxHash(), address)
 	val.ProposerPriority = rand.Int63() % (MaxTotalVotingPower - totalVotingPower)
 	return val
 }
@@ -430,7 +431,8 @@ func randValidatorInQuorum(quorumHash crypto.QuorumHash) (*Validator, PrivValida
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}
-	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
+	address := RandValidatorAddress().String()
+	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash, address)
 	return val, privVal
 }
 

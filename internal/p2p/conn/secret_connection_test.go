@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/async"
@@ -43,18 +42,6 @@ func (drw kvstoreConn) Close() (err error) {
 	}
 	return err1
 }
-
-type privKeyWithNilPubKey struct {
-	orig crypto.PrivKey
-}
-
-func (pk privKeyWithNilPubKey) Bytes() []byte                         { return pk.orig.Bytes() }
-func (pk privKeyWithNilPubKey) Sign(msg []byte) ([]byte, error)       { return pk.orig.Sign(msg) }
-func (pk privKeyWithNilPubKey) SignDigest(msg []byte) ([]byte, error) { return pk.orig.SignDigest(msg) }
-func (pk privKeyWithNilPubKey) PubKey() crypto.PubKey                 { return nil }
-func (pk privKeyWithNilPubKey) Equals(pk2 crypto.PrivKey) bool        { return pk.orig.Equals(pk2) }
-func (pk privKeyWithNilPubKey) Type() string                          { return "privKeyWithNilPubKey" }
-func (pk privKeyWithNilPubKey) TypeValue() crypto.KeyType             { return crypto.KeyTypeAny }
 
 func TestSecretConnectionHandshake(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)
@@ -260,18 +247,31 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	}
 }
 
+// TestNilPubkey ensures that we can retrieve peer public key without revealing ours
 func TestNilPubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
 	t.Cleanup(closeAll(t, fooConn, barConn))
 	var fooPrvKey = ed25519.GenPrivKey()
-	var barPrvKey = privKeyWithNilPubKey{ed25519.GenPrivKey()}
 
-	go MakeSecretConnection(fooConn, fooPrvKey) //nolint:errcheck // ignore for tests
-
-	_, err := MakeSecretConnection(barConn, barPrvKey)
-	require.Error(t, err)
-	wantErr := "toproto: key type <nil> is not supported"
-	assert.Containsf(t, err.Error(), wantErr, "expected error containing %q, got %s", wantErr, err)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	// Foo thread never receives peer's public key
+	go func() {
+		_, err := MakeSecretConnection(fooConn, fooPrvKey)
+		fooConn.Close()
+		assert.Error(t, err)
+		wg.Done()
+	}()
+	// Bar thread never sends its public key, but receives peers
+	go func() {
+		sc, err := MakeSecretConnection(barConn, nil)
+		barConn.Close()
+		require.NoError(t, err)
+		require.NotNil(t, sc)
+		assert.NotNil(t, sc.RemotePubKey())
+		wg.Done()
+	}()
+	wg.Wait()
 }
 
 func TestNonEd25519Pubkey(t *testing.T) {

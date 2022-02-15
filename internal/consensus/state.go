@@ -1136,19 +1136,35 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	}
 }
 
-// needProofBlock returns true on the first height (so the genesis app hash is signed right away)
-// and where the last block (height-1) caused the app hash to change
+// needProofBlock returns true if additional proof block needs to be created.
+// It happens on the first height (so the genesis app hash is signed right away) and
+// where at least one of the last `proofBlockRange` blocks caused the app hash to change.
 func (cs *State) needProofBlock(height int64) bool {
 	if height == cs.state.InitialHeight {
 		return true
 	}
 
-	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-	if lastBlockMeta == nil {
-		panic(fmt.Sprintf("needProofBlock: last block meta for height %d not found", height-1))
+	proofBlockRange := cs.config.CreateProofBlockRange
+
+	for blockHeight := height - 1; blockHeight >= height-proofBlockRange; blockHeight-- {
+		if blockHeight >= cs.state.InitialHeight {
+			blockMeta := cs.blockStore.LoadBlockMeta(blockHeight)
+			if blockMeta == nil {
+				panic(fmt.Sprintf("needProofBlock (height=%d): last block meta for height %d not found", height, blockHeight))
+			}
+			if !bytes.Equal(cs.state.AppHash, blockMeta.Header.AppHash) {
+				cs.Logger.Debug(
+					"needProofBlock: proof block needed",
+					"height", height,
+					"modified_height", blockHeight,
+					"range", proofBlockRange,
+				)
+				return true
+			}
+		}
 	}
 
-	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
+	return false
 }
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
@@ -2174,7 +2190,11 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
 // once we have the full block.
-func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID, fromReplay bool) (added bool, err error) {
+func (cs *State) addProposalBlockPart(
+	msg *BlockPartMessage,
+	peerID types.NodeID,
+	fromReplay bool,
+) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -2410,9 +2430,9 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 
 	cs.Logger.Debug(
 		"adding vote",
-		"vote_height", vote.Height,
-		"vote_round", vote.Round,
-		"vote_type", vote.Type,
+		"height", vote.Height,
+		"round", vote.Round,
+		"type", vote.Type,
 		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
 		"vote_block_key", vote.BlockID.Key(),
 		"vote_block_signature", vote.BlockSignature,

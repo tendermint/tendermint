@@ -72,7 +72,7 @@ func TestValidatorValidateBasic(t *testing.T) {
 			msg: "no error",
 		},
 		{
-			val: NewValidator(pubKey, -1, priv.ProTxHash),
+			val: NewValidator(pubKey, -1, priv.ProTxHash, ""),
 			err: true,
 			msg: "validator has negative voting power",
 		},

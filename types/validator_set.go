@@ -10,13 +10,11 @@ import (
 	"strings"
 
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/tendermint/tendermint/crypto/merkle"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-
+	"github.com/tendermint/tendermint/crypto/merkle"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -954,7 +952,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
 
 	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
-		canonicalVoteBlockSignBytes := commit.StateID.SignBytes(chainID)
+		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
 		return fmt.Errorf(
 			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
 			canonicalVoteBlockSignBytes, blockSignID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
@@ -1013,7 +1011,7 @@ func (vals *ValidatorSet) ABCIEquivalentValidatorUpdates() *abci.ValidatorSetUpd
 	var valUpdates []abci.ValidatorUpdate
 	for i := 0; i < len(vals.Validators); i++ {
 		valUpdate := TM2PB.NewValidatorUpdate(vals.Validators[i].PubKey, DefaultDashVotingPower,
-			vals.Validators[i].ProTxHash)
+			vals.Validators[i].ProTxHash, vals.Validators[i].NodeAddress.String())
 		valUpdates = append(valUpdates, valUpdate)
 	}
 	abciThresholdPublicKey, err := cryptoenc.PubKeyToProto(vals.ThresholdPublicKey)
@@ -1272,6 +1270,7 @@ func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abc
 			privateKeys[i].PubKey(),
 			DefaultDashVotingPower,
 			orderedProTxHashes[i],
+			"",
 		)
 		valUpdates = append(valUpdates, valUpdate)
 	}

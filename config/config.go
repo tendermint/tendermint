@@ -1135,6 +1135,9 @@ type ConsensusConfig struct {
 	// EmptyBlocks mode and possible interval between empty blocks
 	CreateEmptyBlocks         bool          `mapstructure:"create-empty-blocks"`
 	CreateEmptyBlocksInterval time.Duration `mapstructure:"create-empty-blocks-interval"`
+	// CreateProofBlockRange determines how many past blocks are inspected in order to determine if we need to create
+	// additional proof block.
+	CreateProofBlockRange int64 `mapstructure:"create-proof-block-range"`
 
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer-gossip-sleep-duration"`
@@ -1163,6 +1166,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		DontAutoPropose:             false,
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0 * time.Second,
+		CreateProofBlockRange:       1,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
@@ -1265,6 +1269,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
 		return errors.New("create-empty-blocks-interval can't be negative")
+	}
+	if cfg.CreateProofBlockRange < 1 {
+		return errors.New("create-proof-block-range must be greater or equal to 1")
 	}
 	if cfg.PeerGossipSleepDuration < 0 {
 		return errors.New("peer-gossip-sleep-duration can't be negative")

@@ -30,6 +30,7 @@ func init() {
 	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
+	tmjson.RegisterType(&CommitMessage{}, "tendermint/CommitMessage")
 }
 
 // NewRoundStepMessage is sent for every step taken in the ConsensusState.

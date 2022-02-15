@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -66,6 +67,9 @@ func TestValidator_Sets(t *testing.T) {
 				require.Equal(t, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes(),
 					"mismatching validator %X publicKey at height %v (%X <=> %X",
 					valScheduleValidator.ProTxHash, h, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes())
+
+				// Validators in the schedule don't contain addresses
+				validator.NodeAddress = types.ValidatorAddress{}
 			}
 			require.Equal(t, valSchedule.Set.Validators, validators,
 				"incorrect validator set at height %v", h)
@@ -112,7 +116,7 @@ func TestValidator_Propose(t *testing.T) {
 type validatorSchedule struct {
 	Set                       *types.ValidatorSet
 	height                    int64
-	updates                   map[int64]map[*e2e.Node]crypto.PubKey
+	updates                   map[int64]e2e.ValidatorsMap
 	thresholdPublicKeyUpdates map[int64]crypto.PubKey
 	quorumHashUpdates         map[int64]crypto.QuorumHash
 }
@@ -173,10 +177,15 @@ func (s *validatorSchedule) Increment(heights int64) {
 	}
 }
 
-func makeVals(valMap map[*e2e.Node]crypto.PubKey) []*types.Validator {
+func makeVals(valMap e2e.ValidatorsMap) []*types.Validator {
 	vals := make([]*types.Validator, 0, len(valMap))
-	for node, pubkey := range valMap {
-		vals = append(vals, types.NewValidatorDefaultVotingPower(pubkey, node.ProTxHash))
+	for node, valUpdate := range valMap {
+		pubkey := valUpdate.PubKey
+		pk, err := cryptoenc.PubKeyFromProto(*pubkey)
+		if err != nil {
+			panic(err)
+		}
+		vals = append(vals, types.NewValidatorDefaultVotingPower(pk, node.ProTxHash))
 	}
 	return vals
 }

@@ -13,15 +13,15 @@ message ProtocolVersion {
 }
 
 message NodeInfo {
-  ProtocolVersion      protocol_version = 1 [(gogoproto.nullable) = false];
-  string               node_id  = 2 [(gogoproto.customname) = "NodeID"];
-  string               listen_addr      = 3;
-  string               network          = 4;
-  string               version          = 5;
-  bytes                channels         = 6;
-  string               moniker          = 7;
-  NodeInfoOther        other            = 8 [(gogoproto.nullable) = false];
-  bytes                pro_tx_hash      = 9;
+  ProtocolVersion protocol_version = 1 [(gogoproto.nullable) = false];
+  string          node_id          = 2 [(gogoproto.customname) = "NodeID"];
+  string          listen_addr      = 3;
+  string          network          = 4;
+  string          version          = 5;
+  bytes           channels         = 6;
+  string          moniker          = 7;
+  NodeInfoOther   other            = 8 [(gogoproto.nullable) = false];
+  bytes           pro_tx_hash      = 9;
 }
 
 message NodeInfoOther {

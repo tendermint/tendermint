@@ -4,6 +4,7 @@
 initial_height = 1000
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
 initial_core_chain_locked_height = 3400
+init_app_core_chain_locked_height = 2308 # should override initial_core_chain_locked_height
 
 [chainlock_updates]
 1000 = 3450
@@ -34,6 +35,12 @@ initial_core_chain_locked_height = 3400
     validator11 = 100
     validator12 = 100
 
+    [validator_update.1030]
+    validator02 = 100
+    validator03 = 100
+    validator04 = 100
+    validator05 = 100
+    validator09 = 100
 [node.seed01]
 mode = "seed"
 seeds = ["seed02"]

@@ -595,8 +595,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 
 	// cleanup any history
 	r.attemptsToDial.Delete(addr.DialString())
-
-	fmt.Printf("dialing success to %v", addr.DialString())
+	r.Logger.Debug("dialing success", "address", addr.DialString())
 	return nil
 }
 

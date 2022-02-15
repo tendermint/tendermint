@@ -134,17 +134,20 @@ const (
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
-		IPv6:             ipv6.Choose(r).(bool),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r),
-		InitialHeight:    int64(opt["initialHeight"].(int)),
-		InitialState:     opt["initialState"].(map[string]string),
-		Validators:       &map[string]int64{},
-		ValidatorUpdates: map[string]map[string]int64{},
-		Nodes:            map[string]*e2e.ManifestNode{},
-		KeyType:          keyType.Choose(r).(string),
-		Evidence:         evidence.Choose(r).(int),
-		QueueType:        opt["queueType"].(string),
-		TxSize:           int64(txSize.Choose(r).(int)),
+		IPv6:                         ipv6.Choose(r).(bool),
+		ABCIProtocol:                 nodeABCIProtocols.Choose(r),
+		InitialHeight:                int64(opt["initialHeight"].(int)),
+		GenesisCoreChainLockedHeight: uint32(opt["initialCoreChainLockedHeight"].(int)),
+		InitAppCoreChainLockedHeight: uint32(opt["initAppCoreChainLockedHeight"].(int)),
+		InitialState:                 opt["initialState"].(map[string]string),
+		Validators:                   &map[string]int64{},
+		ValidatorUpdates:             map[string]map[string]int64{},
+		ChainLockUpdates:             map[string]int64{},
+		Nodes:                        map[string]*e2e.ManifestNode{},
+		KeyType:                      keyType.Choose(r).(string),
+		Evidence:                     evidence.Choose(r).(int),
+		QueueType:                    opt["queueType"].(string),
+		TxSize:                       int64(txSize.Choose(r).(int)),
 	}
 
 	p2pMode := opt["p2p"].(P2PMode)
