@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/config"
@@ -13,7 +14,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )

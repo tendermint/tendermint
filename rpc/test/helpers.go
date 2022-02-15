@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -57,8 +58,8 @@ func makeAddrs() (p2pAddr, rpcAddr string) {
 	return fmt.Sprintf(addrTemplate, randPort()), fmt.Sprintf(addrTemplate, randPort())
 }
 
-func CreateConfig(testName string) (*config.Config, error) {
-	c, err := config.ResetTestRoot(testName)
+func CreateConfig(t *testing.T, testName string) (*config.Config, error) {
+	c, err := config.ResetTestRoot(t.TempDir(), testName)
 	if err != nil {
 		return nil, err
 	}

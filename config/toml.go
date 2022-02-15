@@ -504,13 +504,13 @@ namespace = "{{ .Instrumentation.Namespace }}"
 
 /****** these are for test settings ***********/
 
-func ResetTestRoot(testName string) (*Config, error) {
-	return ResetTestRootWithChainID(testName, "")
+func ResetTestRoot(dir, testName string) (*Config, error) {
+	return ResetTestRootWithChainID(dir, testName, "")
 }
 
-func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) {
+func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, error) {
 	// create a unique, concurrency-safe test directory under os.TempDir()
-	rootDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s_", chainID, testName))
+	rootDir, err := os.MkdirTemp(dir, fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
 		return nil, err
 	}

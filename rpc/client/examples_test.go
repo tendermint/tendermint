@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/rpc/coretypes"
@@ -22,7 +23,7 @@ func TestHTTPSimple(t *testing.T) {
 
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	conf, err := rpctest.CreateConfig("ExampleHTTP_simple")
+	conf, err := rpctest.CreateConfig(t, "ExampleHTTP_simple")
 	require.NoError(t, err)
 
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
@@ -72,7 +73,7 @@ func TestHTTPBatching(t *testing.T) {
 
 	// Start a tendermint node (and kvstore) in the background to test against
 	app := kvstore.NewApplication()
-	conf, err := rpctest.CreateConfig("ExampleHTTP_batching")
+	conf, err := rpctest.CreateConfig(t, "ExampleHTTP_batching")
 	require.NoError(t, err)
 
 	_, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
