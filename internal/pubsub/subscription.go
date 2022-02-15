@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/queue"
 	"github.com/tendermint/tendermint/types"

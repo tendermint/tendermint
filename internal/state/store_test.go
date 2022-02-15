@@ -110,7 +110,7 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	cfg, err := config.ResetTestRoot("state_")
+	cfg, err := config.ResetTestRoot(b.TempDir(), "state_")
 	require.NoError(b, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -238,10 +238,12 @@ func TestPruneStates(t *testing.T) {
 				require.NoError(t, err)
 
 				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
-					DeliverTxs: []*abci.ResponseDeliverTx{
-						{Data: []byte{1}},
-						{Data: []byte{2}},
-						{Data: []byte{3}},
+					FinalizeBlock: &abci.ResponseFinalizeBlock{
+						Txs: []*abci.ResponseDeliverTx{
+							{Data: []byte{1}},
+							{Data: []byte{2}},
+							{Data: []byte{3}},
+						},
 					},
 				})
 				require.NoError(t, err)
@@ -300,20 +302,20 @@ func TestPruneStates(t *testing.T) {
 
 func TestABCIResponsesResultsHash(t *testing.T) {
 	responses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+		FinalizeBlock: &abci.ResponseFinalizeBlock{
+			Txs: []*abci.ResponseDeliverTx{
+				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+			},
 		},
-		EndBlock: &abci.ResponseEndBlock{},
 	}
 
 	root := sm.ABCIResponsesResultsHash(responses)
 
-	// root should be Merkle tree root of DeliverTxs responses
-	results := types.NewResults(responses.DeliverTxs)
+	// root should be Merkle tree root of FinalizeBlock tx responses
+	results := types.NewResults(responses.FinalizeBlock.Txs)
 	assert.Equal(t, root, results.Hash())
 
-	// test we can prove first DeliverTx
+	// test we can prove first tx in FinalizeBlock
 	proof := results.ProveResult(0)
 	bz, err := results[0].Marshal()
 	require.NoError(t, err)

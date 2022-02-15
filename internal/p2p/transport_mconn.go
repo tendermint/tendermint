@@ -138,19 +138,35 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 		return nil, errors.New("transport is not listening")
 	}
 
-	tcpConn, err := m.listener.Accept()
-	if err != nil {
-		select {
-		case <-ctx.Done():
-			return nil, io.EOF
-		case <-m.doneCh:
-			return nil, io.EOF
-		default:
-			return nil, err
+	conCh := make(chan net.Conn)
+	errCh := make(chan error)
+	go func() {
+		tcpConn, err := m.listener.Accept()
+		if err != nil {
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+			}
 		}
+		select {
+		case conCh <- tcpConn:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		m.listener.Close()
+		return nil, io.EOF
+	case <-m.doneCh:
+		m.listener.Close()
+		return nil, io.EOF
+	case err := <-errCh:
+		return nil, err
+	case tcpConn := <-conCh:
+		return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 	}
 
-	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 }
 
 // Dial implements Transport.

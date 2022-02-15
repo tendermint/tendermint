@@ -23,7 +23,7 @@ func getFreeLocalhostAddrPort(t *testing.T) string {
 
 func getDialerTestCases(t *testing.T) []dialerTestCase {
 	tcpAddr := getFreeLocalhostAddrPort(t)
-	unixFilePath, err := testUnixAddr()
+	unixFilePath, err := testUnixAddr(t)
 	require.NoError(t, err)
 	unixAddr := fmt.Sprintf("unix://%s", unixFilePath)
 

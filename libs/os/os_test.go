@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 func TestCopyFile(t *testing.T) {
-	tmpfile, err := os.CreateTemp("", "example")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "example")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,12 +41,10 @@ func TestCopyFile(t *testing.T) {
 }
 
 func TestEnsureDir(t *testing.T) {
-	tmp, err := os.MkdirTemp("", "ensure-dir")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	// Should be possible to create a new directory.
-	err = tmos.EnsureDir(filepath.Join(tmp, "dir"), 0755)
+	err := tmos.EnsureDir(filepath.Join(tmp, "dir"), 0755)
 	require.NoError(t, err)
 	require.DirExists(t, filepath.Join(tmp, "dir"))
 
@@ -76,11 +75,7 @@ func TestEnsureDir(t *testing.T) {
 // the origin is positively a non-directory and that it is ready for copying.
 // See https://github.com/tendermint/tendermint/issues/6427
 func TestTrickedTruncation(t *testing.T) {
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "pwn_truncate")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmpDir)
+	tmpDir := t.TempDir()
 
 	originalWALPath := filepath.Join(tmpDir, "wal")
 	originalWALContent := []byte("I AM BECOME DEATH, DESTROYER OF ALL WORLDS!")

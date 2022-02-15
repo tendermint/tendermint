@@ -12,10 +12,10 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/libs/log"
@@ -42,7 +42,7 @@ type reactorTestSuite struct {
 func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
-	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
+	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
@@ -172,9 +172,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	// run the router
 	rts.start(ctx, t)
 
-	closer := tmsync.NewCloser()
-	primaryReactor.peerWG.Add(1)
-	go primaryReactor.broadcastTxRoutine(ctx, secondary, closer)
+	go primaryReactor.broadcastTxRoutine(ctx, secondary)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
@@ -188,7 +186,6 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 
 	err := primaryReactor.Stop()
 	require.NoError(t, err)
-	primaryReactor.peerWG.Wait()
 	wg.Wait()
 }
 

@@ -68,8 +68,7 @@ type ResultBlockResults struct {
 	Height                int64                     `json:"height,string"`
 	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
 	TotalGasUsed          int64                     `json:"total_gas_used,string"`
-	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
-	EndBlockEvents        []abci.Event              `json:"end_block_events"`
+	FinalizeBlockEvents   []abci.Event              `json:"finalize_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
 	ConsensusParamUpdates *tmproto.ConsensusParams  `json:"consensus_param_updates"`
 }
