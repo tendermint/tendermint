@@ -55,6 +55,10 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 - [Write-Ahead Log](./consensus/wal.md): Details about how the consensus
   engine preserves data and recovers from crash failures
 
+### Ivy Proofs
+
+- [Ivy Proofs](./ivy-proofs/README.md)
+
 ## Overview
 
 Tendermint provides Byzantine Fault Tolerant State Machine Replication using
