@@ -67,6 +67,7 @@ func CreateConfig(t *testing.T, testName string) (*config.Config, error) {
 	p2pAddr, rpcAddr := makeAddrs()
 	c.P2P.ListenAddress = p2pAddr
 	c.RPC.ListenAddress = rpcAddr
+	c.RPC.EventLogWindowSize = 5 * time.Minute
 	c.Consensus.WalPath = "rpc-test"
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	return c, nil
