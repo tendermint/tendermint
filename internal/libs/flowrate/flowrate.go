@@ -178,7 +178,6 @@ func (m *Monitor) Limit(want int, rate int64, block bool) (n int) {
 		return want
 	}
 	m.mu.Lock()
-
 	// Determine the maximum number of bytes that can be sent in one sample
 	limit := round(float64(rate) * m.sRate.Seconds())
 	if limit <= 0 {
@@ -272,4 +271,18 @@ func (m *Monitor) waitNextSample(now time.Duration) time.Duration {
 		now = m.update(0)
 	}
 	return now
+}
+
+// CurrentTransferRate returns the current transfer rate
+func (m *Monitor) CurrentTransferRate() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	_ = m.update(0)
+
+	if m.sLast > m.start && m.active {
+		return round(m.rEMA)
+	}
+
+	return 0
 }
