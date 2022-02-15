@@ -198,6 +198,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 
 		var commit *types.Commit
+		var votes []*types.Vote
 		switch {
 		case lazyProposer.Height == lazyProposer.state.InitialHeight:
 			// We're creating a proposal for the first block.
@@ -206,6 +207,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyProposer.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
 			commit = lazyProposer.LastCommit.MakeCommit()
+			votes = lazyProposer.LastCommit.GetVotes()
 		default: // This shouldn't happen.
 			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
@@ -223,7 +225,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		proposerAddr := lazyProposer.privValidatorPubKey.Address()
 
 		block, err := lazyProposer.blockExec.CreateProposalBlock(
-			lazyProposer.Height, lazyProposer.state, commit, proposerAddr, nil)
+			lazyProposer.Height, lazyProposer.state, commit, proposerAddr, votes)
 		require.NoError(t, err)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)

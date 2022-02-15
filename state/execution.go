@@ -302,7 +302,6 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) (types.VoteExtensio
 	if err != nil {
 		return types.VoteExtension{}, err
 	}
-
 	return types.VoteExtensionFromProto(resp.VoteExtension), nil
 }
 
