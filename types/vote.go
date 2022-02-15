@@ -331,14 +331,13 @@ func VotesToProto(votes []*Vote) []*tmproto.Vote {
 		return nil
 	}
 
-	res := make([]*tmproto.Vote, len(votes))
-	for i, vote := range votes {
+	res := make([]*tmproto.Vote, 0, len(votes))
+	for _, vote := range votes {
 		v := vote.ToProto()
 		// protobuf crashes when serializing "repeated" fields with nil elements
-		if v == nil {
-			v = &tmproto.Vote{}
+		if v != nil {
+			res = append(res, v)
 		}
-		res[i] = v
 	}
 	return res
 }
