@@ -326,12 +326,12 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 }
 
-func VotesToProto(votes []*Vote) (res []*tmproto.Vote) {
+func VotesToProto(votes []*Vote) []*tmproto.Vote {
 	if votes == nil {
 		return nil
 	}
 
-	res = make([]*tmproto.Vote, len(votes))
+	res := make([]*tmproto.Vote, len(votes))
 	for i, vote := range votes {
 		v := vote.ToProto()
 		// protobuf crashes when serializing "repeated" fields with nil elements
@@ -340,7 +340,7 @@ func VotesToProto(votes []*Vote) (res []*tmproto.Vote) {
 		}
 		res[i] = v
 	}
-	return
+	return res
 }
 
 func VoteExtensionFromProto(pext *tmproto.VoteExtension) VoteExtension {
