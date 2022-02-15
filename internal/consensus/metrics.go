@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
+
 	"github.com/tendermint/tendermint/types"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
