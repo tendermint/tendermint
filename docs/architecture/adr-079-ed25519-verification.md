@@ -1,4 +1,4 @@
-# RFC 013: Ed25519 Verification
+# ADR 079: Ed25519 Verification
 
 ## Changelog
 

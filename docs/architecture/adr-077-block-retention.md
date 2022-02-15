@@ -1,4 +1,4 @@
-# RFC 011: Configurable Block Retention
+# ADR 077: Configurable Block Retention
 
 ## Changelog
 
@@ -6,7 +6,7 @@
 - 2020-03-25: Use local config for snapshot interval (@erikgrinaker)
 - 2020-03-31: Use ABCI commit response for block retention hint
 - 2020-04-02: Resolved open questions
-- 2021-02-11: Migrate RFC to tendermint repo (Originally [RFC 001](https://github.com/tendermint/spec/pull/84))
+- 2021-02-11: Migrate to tendermint repo (Originally [RFC 001](https://github.com/tendermint/spec/pull/84))
 
 ## Author(s)
 
@@ -74,7 +74,7 @@ The returned `retain_height` would be the lowest height that satisfies:
 
 - Local config: archive nodes may want to retain more or all blocks, e.g. via a local config option `min-retain-blocks`. There may also be a need to vary rentention for other nodes, e.g. sentry nodes which do not need historical blocks.
 
-![Cosmos SDK block retention diagram](images/block-retention.png)
+![Cosmos SDK block retention diagram](img/block-retention.png)
 
 ## Status
 

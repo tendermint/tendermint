@@ -1,4 +1,4 @@
-# RFC 006: Semantic Versioning
+# RFC 012: Semantic Versioning
 
 ## Changelog
 
