@@ -2,6 +2,7 @@ package evidence
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/internal/eventbus"
 	clist "github.com/tendermint/tendermint/internal/libs/clist"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
@@ -49,17 +51,29 @@ type Pool struct {
 
 	pruningHeight int64
 	pruningTime   time.Time
+
+	// Eventbus to emit events when evidence is validated
+	// Not part of the constructor but it can be configured via setEventsBus below
+	eventBus *eventbus.EventBus
+	ctx      context.Context //Required for event publishing
+
+	Metrics *Metrics
+}
+
+func (p *Pool) SetEventBus(e *eventbus.EventBus) {
+	p.eventBus = e
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
 // it will add all pending evidence to the concurrent list.
-func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
+func NewPool(ctx context.Context, logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore, metrics *Metrics) (*Pool, error) {
 	state, err := stateDB.Load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state: %w", err)
 	}
 
 	pool := &Pool{
+		ctx:             ctx,
 		stateDB:         stateDB,
 		blockStore:      blockStore,
 		state:           state,
@@ -67,6 +81,7 @@ func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore 
 		evidenceStore:   evidenceDB,
 		evidenceList:    clist.New(),
 		consensusBuffer: make([]duplicateVoteSet, 0),
+		Metrics:         metrics,
 	}
 
 	// If pending evidence already in db, in event of prior failure, then check
@@ -78,10 +93,13 @@ func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore 
 	}
 
 	atomic.StoreUint32(&pool.evidenceSize, uint32(len(evList)))
+	pool.Metrics.NumEvidence.Set(float64(pool.evidenceSize))
 
 	for _, ev := range evList {
 		pool.evidenceList.PushBack(ev)
 	}
+
+	pool.eventBus = eventbus.NewDefault(logger.With("module", "Evidence"))
 
 	return pool, nil
 }
@@ -317,6 +335,16 @@ func (evpool *Pool) addPendingEvidence(ev types.Evidence) error {
 	}
 
 	atomic.AddUint32(&evpool.evidenceSize, 1)
+	evpool.Metrics.NumEvidence.Set(float64(evpool.evidenceSize))
+
+	err = evpool.eventBus.PublishEventEvidenceValidated(evpool.ctx, types.EventDataEvidenceValidated{
+		Evidence: ev,
+		Height:   ev.Height(),
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -369,6 +397,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList, height 
 
 	// update the evidence size
 	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap)-1))
+	evpool.Metrics.NumEvidence.Set(float64(evpool.evidenceSize))
 }
 
 // listEvidence retrieves lists evidence from oldest to newest within maxBytes.

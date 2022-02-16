@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/internal/eventbus"
 	clist "github.com/tendermint/tendermint/internal/libs/clist"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
@@ -53,9 +52,6 @@ type Reactor struct {
 
 	mtx sync.Mutex
 
-	// Eventbus to emit events when evidence is validated
-	// Not part of the constructor but it can be configured via setEventsBus below
-	eventBus     *eventbus.EventBus
 	peerRoutines map[types.NodeID]context.CancelFunc
 }
 
@@ -84,13 +80,7 @@ func NewReactor(
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
 
-	r.eventBus = eventbus.NewDefault(logger.With("module", "Evidence"))
-
 	return r, err
-}
-
-func (r *Reactor) SetEventBus(e *eventbus.EventBus) {
-	r.eventBus = e
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
@@ -127,21 +117,13 @@ func (r *Reactor) handleEvidenceMessage(ctx context.Context, envelope *p2p.Envel
 			logger.Error("failed to convert evidence", "err", err)
 			return err
 		}
-		if evAdded, err := r.evpool.AddEvidence(ev); err != nil {
+		if _, err := r.evpool.AddEvidence(ev); err != nil {
 			// If we're given invalid evidence by the peer, notify the router that
 			// we should remove this peer by returning an error.
 			if _, ok := err.(*types.ErrInvalidEvidence); ok {
 				return err
 			}
-			if evAdded {
-				err := r.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
-					Evidence: ev,
-					Height:   ev.Height(),
-				})
-				if err != nil {
-					return err
-				}
-			}
+
 		}
 
 	default:

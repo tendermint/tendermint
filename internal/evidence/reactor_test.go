@@ -80,7 +80,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 			}
 			return nil
 		})
-		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore)
+		rts.pools[nodeID], err = evidence.NewPool(ctx, logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
 
 		require.NoError(t, err)
 
@@ -284,12 +284,24 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	rts := setup(ctx, t, stateDBs, 0)
+	// eventBus := eventbus.NewDefault(log.TestingLogger())
+	// err := eventBus.Start(ctx)
+	// require.NoError(t, err)
+	// const query = `tm.event='EvidenceValidated'`
+	// evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+	// 	ClientID: "test",
+	// 	Query:    tmquery.MustCompile(query),
+	// })
+
+	// require.NoError(t, err)
+
 	rts.start(ctx, t)
 
 	// Create a series of fixtures where each suite contains a reactor and
 	// evidence pool. In addition, we mark a primary suite and the rest are
 	// secondaries where each secondary is added as a peer via a PeerUpdate to the
 	// primary. As a result, the primary will gossip all evidence to each secondary.
+
 	primary := rts.network.RandomNode()
 	secondaries := make([]*p2ptest.Node, 0, len(rts.network.NodeIDs())-1)
 	secondaryIDs := make([]types.NodeID, 0, cap(secondaries))
@@ -320,6 +332,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, pool := range rts.pools {
 		require.Equal(t, numEvidence, int(pool.Size()))
 	}
+
 }
 
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
