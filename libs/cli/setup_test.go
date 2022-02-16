@@ -60,13 +60,6 @@ func TestSetupEnv(t *testing.T) {
 	}
 }
 
-func tempDir(t *testing.T) string {
-	t.Helper()
-	cdir, err := os.MkdirTemp("", "test-cli")
-	require.NoError(t, err)
-	return cdir
-}
-
 // writeConfigVals writes a toml file with the given values.
 // It returns an error if writing was impossible.
 func writeConfigVals(dir string, vals map[string]string) error {
@@ -86,7 +79,7 @@ func TestSetupConfig(t *testing.T) {
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1 := "fubble"
-	conf1 := tempDir(t)
+	conf1 := t.TempDir()
 	err := writeConfigVals(conf1, map[string]string{"boo": cval1})
 	require.NoError(t, err)
 
@@ -147,11 +140,11 @@ func TestSetupUnmarshal(t *testing.T) {
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1, cval2 := "someone", "else"
-	conf1 := tempDir(t)
+	conf1 := t.TempDir()
 	err := writeConfigVals(conf1, map[string]string{"name": cval1})
 	require.NoError(t, err)
 	// even with some ignored fields, should be no problem
-	conf2 := tempDir(t)
+	conf2 := t.TempDir()
 	err = writeConfigVals(conf2, map[string]string{"name": cval2, "foo": "bar"})
 	require.NoError(t, err)
 
