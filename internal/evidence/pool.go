@@ -60,8 +60,8 @@ type Pool struct {
 	Metrics *Metrics
 }
 
-func (p *Pool) SetEventBus(e *eventbus.EventBus) {
-	p.eventBus = e
+func (evpool *Pool) SetEventBus(e *eventbus.EventBus) {
+	evpool.eventBus = e
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
