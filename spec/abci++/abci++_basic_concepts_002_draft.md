@@ -206,8 +206,9 @@ the local process is the proposer of the round.
 When Tendermint's consensus is about to send a non-`nil` precommit message, it calls
 method `ExtendVote`, which gives the Application the opportunity to include
 non-deterministic data, opaque to Tendermint, that will be attached to the precommit
-message. The data, called _vote extension_, will also be part of the proposed block
-in the next height, along with the vote it is extending.
+message. The data, called _vote extension_, will also be made available to the
+application in the next height, along with the vote it is extending, in the rounds
+where the local process is the proposer.
 
 The vote extension data is split into two parts, one signed by Tendermint as part
 of the vote data structure, and the other (optionally) signed by the Application.
