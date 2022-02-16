@@ -1,4 +1,4 @@
-# RFC 012: ABCI++
+# RFC 013: ABCI++
 
 ## Changelog
 
