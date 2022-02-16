@@ -178,6 +178,7 @@ func (m *Monitor) Limit(want int, rate int64, block bool) (n int) {
 		return want
 	}
 	m.mu.Lock()
+
 	// Determine the maximum number of bytes that can be sent in one sample
 	limit := round(float64(rate) * m.sRate.Seconds())
 	if limit <= 0 {
