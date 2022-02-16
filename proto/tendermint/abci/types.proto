@@ -75,7 +75,7 @@ message RequestQuery {
 message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
+  CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
@@ -127,9 +127,9 @@ message RequestPrepareProposal {
   tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
   // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  repeated bytes    txs                  = 3;
-  LastCommitInfo    last_commit_info     = 4 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes     txs                  = 3;
+  ExtendedCommitInfo local_last_commit    = 4 [(gogoproto.nullable) = false];
+  repeated Evidence  byzantine_validators = 5 [(gogoproto.nullable) = false];
   // the modified transactions cannot exceed this size.
   int64 max_tx_bytes = 6;
 }
@@ -138,7 +138,7 @@ message RequestProcessProposal {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   repeated bytes          txs                  = 3;
-  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  CommitInfo              proposed_last_commit = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
 }
 
@@ -150,18 +150,17 @@ message RequestExtendVote {
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
-  bytes app_signed        = 1;
-  bytes tendermint_signed = 2;
-  bytes hash              = 3;
-  bytes validator_address = 4;
-  int64 height            = 5;
+  bytes hash              = 1;
+  bytes validator_address = 2;
+  int64 height            = 3;
+  bytes vote_extension    = 4;
 }
 
 message RequestFinalizeBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   repeated bytes          txs                  = 3;
-  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
+  CommitInfo              decided_last_commit  = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
 }
 
@@ -335,8 +334,7 @@ message ResponseProcessProposal {
 }
 
 message ResponseExtendVote {
-  bytes app_signed        = 1;
-  bytes tendermint_signed = 2;
+  bytes vote_extension = 1;
 }
 
 message ResponseVerifyVoteExtension {
@@ -356,9 +354,14 @@ message ResponseFinalizeBlock {
 //----------------------------------------
 // Misc.
 
-message LastCommitInfo {
+message CommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
+}
+
+message ExtendedCommitInfo {
+  int32                     round = 1;
+  repeated ExtendedVoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
 // Event allows application developers to attach additional information to
@@ -432,10 +435,25 @@ message ValidatorUpdate {
 
 // VoteInfo
 message VoteInfo {
-  Validator validator                   = 1 [(gogoproto.nullable) = false];
-  bool      signed_last_block           = 2;
-  bytes     tendermint_signed_extension = 3;
-  bytes     app_signed_extension        = 4;
+  Validator validator         = 1 [(gogoproto.nullable) = false];
+  bool      signed_last_block = 2;
+}
+
+// ExtendedVoteInfo
+message ExtendedVoteInfo {
+  Validator validator         = 1 [(gogoproto.nullable) = false];
+  bool      signed_last_block = 2;
+  bytes     vote_extension    = 3;
+}
+
+// CanonicalVoteExtension
+// TODO: move this to core Tendermint data structures
+message CanonicalVoteExtension {
+  bytes  extension = 1;
+  int64  height    = 2;
+  int32  round     = 3;
+  string chain_id  = 4;
+  bytes  address   = 5;
 }
 
 enum EvidenceType {
