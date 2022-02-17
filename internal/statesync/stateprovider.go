@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -88,7 +89,7 @@ func NewRPCStateProvider(
 }
 
 func (s *stateProviderRPC) verifyLightBlockAtHeight(ctx context.Context, height uint64, ts time.Time) (*types.LightBlock, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	return s.lc.VerifyLightBlockAtHeight(ctx, int64(height), ts)
 }
@@ -242,7 +243,7 @@ func NewP2PStateProvider(
 }
 
 func (s *stateProviderP2P) verifyLightBlockAtHeight(ctx context.Context, height uint64, ts time.Time) (*types.LightBlock, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	return s.lc.VerifyLightBlockAtHeight(ctx, int64(height), ts)
 }
@@ -358,7 +359,10 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // providers it returns an error; however, it will retry indefinitely
 // (with backoff) until the context is canceled.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
-	iterCount := 0
+	var iterCount int64
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 	for {
 		params, err := s.tryGetConsensusParamsFromWitnesses(ctx, height)
 		if err != nil {
@@ -369,10 +373,13 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		}
 		iterCount++
 
+		// jitter+backoff the retry loop
+		timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
+			time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
 		select {
 		case <-ctx.Done():
 			return types.ConsensusParams{}, ctx.Err()
-		case <-time.After(time.Duration(iterCount) * consensusParamsResponseTimeout):
+		case <-timer.C:
 		}
 	}
 }
@@ -384,6 +391,8 @@ func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
 	ctx context.Context,
 	height int64,
 ) (*types.ConsensusParams, error) {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 	for _, provider := range s.lc.Witnesses() {
 		p, ok := provider.(*BlockProvider)
 		if !ok {
@@ -405,9 +414,10 @@ func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
 			return nil, err
 		}
 
+		timer.Reset(consensusParamsResponseTimeout)
 		select {
 		// if we get no response from this provider we move on to the next one
-		case <-time.After(consensusParamsResponseTimeout):
+		case <-timer.C:
 			continue
 		case <-ctx.Done():
 			return nil, ctx.Err()
