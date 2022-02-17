@@ -177,6 +177,7 @@ func makeNode(
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	closers = append(closers, func() error { indexerService.Stop(); return nil })
 
 	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
 	if err != nil {
@@ -363,7 +364,6 @@ func makeNode(
 
 		services: []service.Service{
 			eventBus,
-			indexerService,
 			evReactor,
 			mpReactor,
 			csReactor,
@@ -473,10 +473,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 	for _, reactor := range n.services {
 		if err := reactor.Start(ctx); err != nil {
-			if errors.Is(err, service.ErrAlreadyStarted) {
-				continue
-			}
-
 			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
 		}
 	}
@@ -515,9 +511,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		if err != nil {
 			n.logger.Error("state sync failed; shutting down this node", "err", err)
 			// stop the node
-			if err := n.Stop(); err != nil {
-				n.logger.Error("failed to shut down node", "err", err)
-			}
+			n.Stop()
 			return err
 		}
 

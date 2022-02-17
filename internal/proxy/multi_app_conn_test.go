@@ -23,7 +23,7 @@ type noopStoppableClientImpl struct {
 	count int
 }
 
-func (c *noopStoppableClientImpl) Stop() error { c.count++; return nil }
+func (c *noopStoppableClientImpl) Stop() { c.count++ }
 
 func TestAppConns_Start_Stop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
