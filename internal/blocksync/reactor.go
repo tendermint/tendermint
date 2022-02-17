@@ -187,9 +187,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
 	if r.blockSync.IsSet() {
-		if err := r.pool.Stop(); err != nil {
-			r.logger.Error("failed to stop pool", "err", err)
-		}
+		r.pool.Stop()
 	}
 
 	// wait for the poolRoutine and requestRoutine goroutines to gracefully exit
@@ -485,9 +483,7 @@ FOR_LOOP:
 				continue
 			}
 
-			if err := r.pool.Stop(); err != nil {
-				r.logger.Error("failed to stop pool", "err", err)
-			}
+			r.pool.Stop()
 
 			r.blockSync.UnSet()
 

@@ -281,9 +281,7 @@ func (c *MConnection) _recover(ctx context.Context) {
 }
 
 func (c *MConnection) stopForError(ctx context.Context, r interface{}) {
-	if err := c.Stop(); err != nil {
-		c.logger.Error("error stopping connection", "err", err)
-	}
+	c.Stop()
 
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {

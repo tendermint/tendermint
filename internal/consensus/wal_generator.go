@@ -102,14 +102,10 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 
 	select {
 	case <-numBlocksWritten:
-		if err := consensusState.Stop(); err != nil {
-			t.Error(err)
-		}
+		consensusState.Stop()
 		return nil
 	case <-time.After(1 * time.Minute):
-		if err := consensusState.Stop(); err != nil {
-			t.Error(err)
-		}
+		consensusState.Stop()
 		return fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
@@ -219,5 +215,5 @@ func (w *byteBufferWAL) SearchForEndHeight(
 }
 
 func (w *byteBufferWAL) Start(context.Context) error { return nil }
-func (w *byteBufferWAL) Stop() error                 { return nil }
+func (w *byteBufferWAL) Stop()                       {}
 func (w *byteBufferWAL) Wait()                       {}
