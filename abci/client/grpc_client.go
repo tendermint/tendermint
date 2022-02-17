@@ -77,7 +77,6 @@ func (cli *grpcClient) OnStart(ctx context.Context) error {
 			defer cli.mtx.Unlock()
 
 			reqres.SetDone()
-			reqres.Done()
 
 			// Notify client listener if set
 			if cli.resCb != nil {
@@ -162,9 +161,7 @@ func (cli *grpcClient) StopForError(err error) {
 	cli.mtx.Unlock()
 
 	cli.logger.Error("Stopping abci.grpcClient for error", "err", err)
-	if err := cli.Stop(); err != nil {
-		cli.logger.Error("error stopping abci.grpcClient", "err", err)
-	}
+	cli.Stop()
 }
 
 func (cli *grpcClient) Error() error {

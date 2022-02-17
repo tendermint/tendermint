@@ -79,7 +79,7 @@ type VersionParams struct {
 // SynchronyParams influence the validity of block timestamps.
 // For more information on the relationship of the synchrony parameters to
 // block validity, see the Proposer-Based Timestamps specification:
-// https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/README.md
+// https://github.com/tendermint/tendermint/blob/master/spec/consensus/proposer-based-timestamp/README.md
 type SynchronyParams struct {
 	Precision    time.Duration `json:"precision,string"`
 	MessageDelay time.Duration `json:"message_delay,string"`

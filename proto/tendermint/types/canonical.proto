@@ -1,8 +1,6 @@
 syntax = "proto3";
 package tendermint.types;
 
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
-
 import "gogoproto/gogo.proto";
 import "tendermint/types/types.proto";
 import "google/protobuf/timestamp.proto";
@@ -34,5 +32,4 @@ message CanonicalVote {
   CanonicalBlockID          block_id  = 4 [(gogoproto.customname) = "BlockID"];
   google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
-  VoteExtensionToSign       vote_extension = 7;
 }
