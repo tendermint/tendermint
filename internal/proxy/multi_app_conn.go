@@ -10,13 +10,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-const (
-	connConsensus = "consensus"
-	connMempool   = "mempool"
-	connQuery     = "query"
-	connSnapshot  = "snapshot"
-)
-
 // AppConns is the Tendermint's interface to the application that consists of
 // multiple connections.
 type AppConns interface {
