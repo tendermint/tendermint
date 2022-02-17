@@ -76,7 +76,7 @@ type Metrics struct {
 
 	// Time taken to receive a block in seconds, measured between when a new block is first
 	// discovered to when the block is completed.
-	BlockGossipReceiveTime metrics.Gauge
+	BlockGossipReceiveTime metrics.Histogram
 	blockGossipStart       time.Time
 
 	// Number of block parts received by the node, seperated by whether the part
@@ -235,18 +235,19 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-		BlockGossipReceiveTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		BlockGossipReceiveTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_gossip_receive_time",
 			Help: "Difference in seconds between when the validator learns of a new block" +
 				"and when the validator receives the last piece of the block.",
+			Buckets: stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
 		}, labels).With(labelsAndValues...),
 		BlockGossipPartsReceived: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_gossip_parts_received",
-			Help: "Number of block parts received by the node, labeled by whether the" +
+			Help: "Number of block parts received by the node, labeled by whether the " +
 				"part was relevant to the block the node was currently gathering or not",
 		}, append(labels, "matches_current")).With(labelsAndValues...),
 		StepDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
