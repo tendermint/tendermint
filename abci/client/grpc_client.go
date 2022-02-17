@@ -77,7 +77,6 @@ func (cli *grpcClient) OnStart(ctx context.Context) error {
 			defer cli.mtx.Unlock()
 
 			reqres.SetDone()
-			reqres.Done()
 
 			// Notify client listener if set
 			if cli.resCb != nil {
