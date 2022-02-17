@@ -74,7 +74,7 @@ type Metrics struct {
 	StepDuration metrics.Histogram
 	stepStart    time.Time
 
-	// Time taken to receive a block in seconds, measured between when a new block is first
+	// Histogram of time taken to receive a block in seconds, measured between when a new block is first
 	// discovered to when the block is completed.
 	BlockGossipReceiveTime metrics.Histogram
 	blockGossipStart       time.Time
