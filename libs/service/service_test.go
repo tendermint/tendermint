@@ -96,7 +96,7 @@ func TestBaseService(t *testing.T) {
 
 		require.True(t, ts.isStarted())
 
-		require.NoError(t, ts.Stop())
+		ts.Stop()
 		require.True(t, ts.isStopped())
 		require.False(t, ts.IsRunning())
 	})
@@ -107,10 +107,10 @@ func TestBaseService(t *testing.T) {
 
 			require.NoError(t, ts.Start(ctx))
 			require.True(t, ts.isStarted())
-			require.NoError(t, ts.Stop())
+			ts.Stop()
 			require.True(t, ts.isStopped())
 			require.False(t, ts.isMultiStopped())
-			require.Error(t, ts.Stop())
+			ts.Stop()
 			require.False(t, ts.isMultiStopped())
 		})
 		t.Run("MultiThreaded", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestBaseService(t *testing.T) {
 			require.NoError(t, ts.Start(ctx))
 			require.True(t, ts.isStarted())
 
-			go func() { _ = ts.Stop() }()
+			go ts.Stop()
 			go cancel()
 
 			ts.Wait()
