@@ -12,6 +12,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -440,7 +441,14 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
 		n.logger.Info("Genesis time is in the future. Sleeping until then...", "genTime", genTime)
-		time.Sleep(genTime.Sub(now))
+
+		timer := time.NewTimer(genTime.Sub(now))
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 
 	// Start the RPC server before the P2P server

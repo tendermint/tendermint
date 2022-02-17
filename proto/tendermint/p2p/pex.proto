@@ -1,0 +1,24 @@
+syntax = "proto3";
+package tendermint.p2p;
+
+import "gogoproto/gogo.proto";
+
+message PexAddress {
+  string url = 1 [(gogoproto.customname) = "URL"];
+
+  reserved 2, 3;  // See https://github.com/tendermint/spec/pull/352
+}
+
+message PexRequest {}
+
+message PexResponse {
+  repeated PexAddress addresses = 1 [(gogoproto.nullable) = false];
+}
+
+message PexMessage {
+  reserved 1, 2;  // See https://github.com/tendermint/spec/pull/352
+  oneof sum {
+    PexRequest  pex_request  = 3;
+    PexResponse pex_response = 4;
+  }
+}

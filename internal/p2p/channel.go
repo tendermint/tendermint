@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/types"
 )
 

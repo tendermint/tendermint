@@ -329,7 +329,7 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 // NOTE: changes to the Header should be duplicated in:
 // - header.Hash()
 // - abci.Header
-// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
+// - https://github.com/tendermint/tendermint/blob/master/spec/core/data_structures.md
 type Header struct {
 	// basic block info
 	Version version.Consensus `json:"version"`
@@ -518,7 +518,8 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerAddress,
-		indent, h.Hash())
+		indent, h.Hash(),
+	)
 }
 
 // ToProto converts Header to protobuf
