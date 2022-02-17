@@ -45,7 +45,7 @@ sections.
 - [RFC-005: Event System](./rfc-005-event-system.rst)
 - [RFC-006: Event Subscription](./rfc-006-event-subscription.md)
 - [RFC-007: Deterministic Proto Byte Serialization](./rfc-007-deterministic-proto-bytes.md)
-- [RFC-008: Don't Panic](./rfc-008-don't-panic.md)
+- [RFC-008: Don't Panic](./rfc-008-do-not-panic.md)
 - [RFC-009: Consensus Parameter Upgrades](./rfc-009-consensus-parameter-upgrades.md)
 - [RFC-010: P2P Light Client](./rfc-010-p2p-light-client.rst)
 - [RFC-011: Delete Gas](./rfc-011-delete-gas.md)
