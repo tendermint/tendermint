@@ -77,7 +77,6 @@ type ReqRes struct {
 	*types.Response // Not set atomically, so be sure to use WaitGroup.
 
 	mtx    sync.Mutex
-	done   bool // Gets set to true once *after* WaitGroup.Done().
 	signal chan struct{}
 	cb     func(*types.Response) // A single callback that may be set.
 }
@@ -87,7 +86,6 @@ func NewReqRes(req *types.Request) *ReqRes {
 		Request:  req,
 		Response: nil,
 		signal:   make(chan struct{}),
-		done:     false,
 		cb:       nil,
 	}
 }
@@ -98,14 +96,14 @@ func NewReqRes(req *types.Request) *ReqRes {
 func (r *ReqRes) SetCallback(cb func(res *types.Response)) {
 	r.mtx.Lock()
 
-	if r.done {
+	select {
+	case <-r.signal:
 		r.mtx.Unlock()
 		cb(r.Response)
-		return
+	default:
+		r.cb = cb
+		r.mtx.Unlock()
 	}
-
-	r.cb = cb
-	r.mtx.Unlock()
 }
 
 // InvokeCallback invokes a thread-safe execution of the configured callback
