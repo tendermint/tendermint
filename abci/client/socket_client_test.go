@@ -29,7 +29,7 @@ func TestProperSyncCalls(t *testing.T) {
 
 	resp := make(chan error, 1)
 	go func() {
-		rsp, err := c.BeginBlock(ctx, types.RequestBeginBlock{})
+		rsp, err := c.FinalizeBlock(ctx, types.RequestFinalizeBlock{})
 		assert.NoError(t, err)
 		assert.NoError(t, c.Flush(ctx))
 		assert.NotNil(t, rsp)
@@ -79,7 +79,7 @@ type slowApp struct {
 	types.BaseApplication
 }
 
-func (slowApp) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+func (slowApp) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	time.Sleep(200 * time.Millisecond)
-	return types.ResponseBeginBlock{}
+	return types.ResponseFinalizeBlock{}
 }

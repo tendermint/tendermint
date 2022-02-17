@@ -40,29 +40,6 @@ func (_m *Client) ApplySnapshotChunk(_a0 context.Context, _a1 types.RequestApply
 	return r0, r1
 }
 
-// BeginBlock provides a mock function with given fields: _a0, _a1
-func (_m *Client) BeginBlock(_a0 context.Context, _a1 types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 *types.ResponseBeginBlock
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestBeginBlock) *types.ResponseBeginBlock); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.ResponseBeginBlock)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, types.RequestBeginBlock) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // CheckTx provides a mock function with given fields: _a0, _a1
 func (_m *Client) CheckTx(_a0 context.Context, _a1 types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	ret := _m.Called(_a0, _a1)
@@ -132,52 +109,6 @@ func (_m *Client) Commit(_a0 context.Context) (*types.ResponseCommit, error) {
 	return r0, r1
 }
 
-// DeliverTx provides a mock function with given fields: _a0, _a1
-func (_m *Client) DeliverTx(_a0 context.Context, _a1 types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 *types.ResponseDeliverTx
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *types.ResponseDeliverTx); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.ResponseDeliverTx)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, types.RequestDeliverTx) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// DeliverTxAsync provides a mock function with given fields: _a0, _a1
-func (_m *Client) DeliverTxAsync(_a0 context.Context, _a1 types.RequestDeliverTx) (*abciclient.ReqRes, error) {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 *abciclient.ReqRes
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestDeliverTx) *abciclient.ReqRes); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abciclient.ReqRes)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, types.RequestDeliverTx) error); ok {
-		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // Echo provides a mock function with given fields: ctx, msg
 func (_m *Client) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	ret := _m.Called(ctx, msg)
@@ -194,29 +125,6 @@ func (_m *Client) Echo(ctx context.Context, msg string) (*types.ResponseEcho, er
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = rf(ctx, msg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// EndBlock provides a mock function with given fields: _a0, _a1
-func (_m *Client) EndBlock(_a0 context.Context, _a1 types.RequestEndBlock) (*types.ResponseEndBlock, error) {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 *types.ResponseEndBlock
-	if rf, ok := ret.Get(0).(func(context.Context, types.RequestEndBlock) *types.ResponseEndBlock); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.ResponseEndBlock)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, types.RequestEndBlock) error); ok {
-		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -253,6 +161,29 @@ func (_m *Client) ExtendVote(_a0 context.Context, _a1 types.RequestExtendVote) (
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, types.RequestExtendVote) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FinalizeBlock provides a mock function with given fields: _a0, _a1
+func (_m *Client) FinalizeBlock(_a0 context.Context, _a1 types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseFinalizeBlock
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestFinalizeBlock) *types.ResponseFinalizeBlock); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseFinalizeBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestFinalizeBlock) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
