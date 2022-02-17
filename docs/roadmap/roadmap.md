@@ -8,7 +8,7 @@ order: 1
 
 This document endeavours to inform the wider Tendermint community about development plans and priorities for Tendermint Core, and when we expect features to be delivered. It is intended to broadly inform all users of Tendermint, including application developers, node operators, integrators, and the engineering and research teams.
 
-Anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/spec/issues/new/choose) in the spec. Bug reports and other implementation concerns should be brought up in the [core repository](https://github.com/tendermint/tendermint).
+Anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/tendermint/issues/new/choose). Bug reports and other implementation concerns should be brought up in the [core repository](https://github.com/tendermint/tendermint).
 
 This roadmap should be read as a high-level guide to plans and priorities, rather than a commitment to schedules and deliverables. Features earlier on the roadmap will generally be more specific and detailed than those later on. We will update this document periodically to reflect the current status.
 
@@ -43,7 +43,7 @@ Added a new `EventSink` interface to allow alternatives to Tendermint's propriet
 
 ### ABCI++
 
-An overhaul of the existing interface between the application and consensus, to give the application more control over block construction. ABCI++ adds new hooks allowing modification of transactions before they get into a block, verification of a block before voting, and complete delivery of blocks after agreement (to allow for concurrent execution). It enables both immediate and delayed agreement. [More](https://github.com/tendermint/spec/blob/master/spec/abci++/README.md)
+An overhaul of the existing interface between the application and consensus, to give the application more control over block construction. ABCI++ adds new hooks allowing modification of transactions before they get into a block, verification of a block before voting, and complete delivery of blocks after agreement (to allow for concurrent execution). It enables both immediate and delayed agreement. [More](https://github.com/tendermint/tendermint/blob/master/spec/abci++/README.md)
 
 ### Proposer-Based Timestamps
 
