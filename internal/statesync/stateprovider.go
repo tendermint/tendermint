@@ -359,7 +359,7 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // providers it returns an error; however, it will retry indefinitely
 // (with backoff) until the context is canceled.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
-	iterCount := 0
+	var iterCount int64
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -374,7 +374,8 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 		iterCount++
 
 		// jitter+backoff the retry loop
-		timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout + time.Duration(1+rand.Int63n(int64(iterCount)))) // nolint:gosec
+		timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
+			time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
 		select {
 		case <-ctx.Done():
 			return types.ConsensusParams{}, ctx.Err()
