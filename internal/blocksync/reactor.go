@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -92,11 +91,6 @@ type Reactor struct {
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
 
-	// poolWG is used to synchronize the graceful shutdown of the poolRoutine and
-	// requestRoutine spawned goroutines when stopping the reactor and before
-	// stopping the p2p Channel(s).
-	poolWG sync.WaitGroup
-
 	metrics  *consensus.Metrics
 	eventBus *eventbus.EventBus
 
@@ -169,10 +163,8 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		if err := r.pool.Start(ctx); err != nil {
 			return err
 		}
-		r.poolWG.Add(1)
 		go r.requestRoutine(ctx)
 
-		r.poolWG.Add(1)
 		go r.poolRoutine(ctx, false)
 	}
 
@@ -191,9 +183,6 @@ func (r *Reactor) OnStop() {
 			r.logger.Error("failed to stop pool", "err", err)
 		}
 	}
-
-	// wait for the poolRoutine and requestRoutine goroutines to gracefully exit
-	r.poolWG.Wait()
 }
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
@@ -378,10 +367,8 @@ func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 
 	r.syncStartTime = time.Now()
 
-	r.poolWG.Add(1)
 	go r.requestRoutine(ctx)
 
-	r.poolWG.Add(1)
 	go r.poolRoutine(ctx, true)
 
 	return nil
@@ -391,17 +378,20 @@ func (r *Reactor) requestRoutine(ctx context.Context) {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	defer statusUpdateTicker.Stop()
 
-	defer r.poolWG.Done()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case request := <-r.requestsCh:
-			r.blockSyncOutBridgeCh <- p2p.Envelope{
+			select {
+			case <-ctx.Done():
+				return
+			case r.blockSyncOutBridgeCh <- p2p.Envelope{
 				To:      request.PeerID,
 				Message: &bcproto.BlockRequest{Height: request.Height},
+			}:
 			}
+
 		case pErr := <-r.errorsCh:
 			if err := r.blockSyncCh.SendError(ctx, p2p.PeerError{
 				NodeID: pErr.peerID,
@@ -410,17 +400,14 @@ func (r *Reactor) requestRoutine(ctx context.Context) {
 				return
 			}
 		case <-statusUpdateTicker.C:
-			r.poolWG.Add(1)
-
 			go func() {
-				defer r.poolWG.Done()
-
 				select {
+				case <-ctx.Done():
+					return
 				case r.blockSyncOutBridgeCh <- p2p.Envelope{
 					Broadcast: true,
 					Message:   &bcproto.StatusRequest{},
 				}:
-				case <-ctx.Done():
 				}
 			}()
 		}
@@ -450,11 +437,12 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool) {
 	defer trySyncTicker.Stop()
 	defer switchToConsensusTicker.Stop()
 
-	defer r.poolWG.Done()
-
-FOR_LOOP:
 	for {
 		select {
+		case <-ctx.Done():
+			return
+		case <-r.pool.exitedCh:
+			return
 		case <-switchToConsensusTicker.C:
 			var (
 				height, numPending, lenRequesters = r.pool.GetStatus()
@@ -495,14 +483,13 @@ FOR_LOOP:
 				r.consReactor.SwitchToConsensus(ctx, state, blocksSynced > 0 || stateSynced)
 			}
 
-			break FOR_LOOP
+			return
 
 		case <-trySyncTicker.C:
 			select {
 			case didProcessCh <- struct{}{}:
 			default:
 			}
-
 		case <-didProcessCh:
 			// NOTE: It is a subtle mistake to process more than a single block at a
 			// time (e.g. 10) here, because we only send one BlockRequest per loop
@@ -517,7 +504,7 @@ FOR_LOOP:
 			first, second := r.pool.PeekTwoBlocks()
 			if first == nil || second == nil {
 				// we need both to sync the first block
-				continue FOR_LOOP
+				continue
 			} else {
 				// try again quickly next loop
 				didProcessCh <- struct{}{}
@@ -528,7 +515,7 @@ FOR_LOOP:
 				r.logger.Error("failed to make ",
 					"height", first.Height,
 					"err", err.Error())
-				break FOR_LOOP
+				return
 			}
 
 			var (
@@ -557,7 +544,7 @@ FOR_LOOP:
 					NodeID: peerID,
 					Err:    err,
 				}); serr != nil {
-					break FOR_LOOP
+					return
 				}
 
 				peerID2 := r.pool.RedoRequest(second.Height)
@@ -566,11 +553,9 @@ FOR_LOOP:
 						NodeID: peerID2,
 						Err:    err,
 					}); serr != nil {
-						break FOR_LOOP
+						return
 					}
 				}
-
-				continue FOR_LOOP
 			} else {
 				r.pool.PopRequest()
 
@@ -603,13 +588,6 @@ FOR_LOOP:
 					lastHundred = time.Now()
 				}
 			}
-
-			continue FOR_LOOP
-
-		case <-ctx.Done():
-			break FOR_LOOP
-		case <-r.pool.exitedCh:
-			break FOR_LOOP
 		}
 	}
 }

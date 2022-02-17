@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -90,6 +91,7 @@ func setup(
 			}
 		}
 	})
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }
