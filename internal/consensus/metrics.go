@@ -248,7 +248,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "block_gossip_parts_received",
 			Help: "Number of block parts received by the node, labeled by whether the " +
-				"part was relevant to the block the node was currently gathering or not",
+				"part was relevant to the block the node was currently gathering or not.",
 		}, append(labels, "matches_current")).With(labelsAndValues...),
 		StepDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
