@@ -438,7 +438,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				}
 			}
 
-			require.NoError(t, router.Stop())
+			router.Stop()
 			mockTransport.AssertExpectations(t)
 			mockConnection.AssertExpectations(t)
 		})
@@ -478,7 +478,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 
 	require.NoError(t, router.Start(ctx))
 	time.Sleep(time.Second)
-	require.NoError(t, router.Stop())
+	router.Stop()
 
 	mockTransport.AssertExpectations(t)
 }
@@ -516,7 +516,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 
 	require.NoError(t, router.Start(ctx))
 	time.Sleep(time.Second)
-	require.NoError(t, router.Stop())
+	router.Stop()
 
 	mockTransport.AssertExpectations(t)
 }
@@ -573,7 +573,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	close(closeCh)
 	time.Sleep(100 * time.Millisecond)
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
 }
@@ -687,7 +687,7 @@ func TestRouter_DialPeers(t *testing.T) {
 				}
 			}
 
-			require.NoError(t, router.Stop())
+			router.Stop()
 			mockTransport.AssertExpectations(t)
 			mockConnection.AssertExpectations(t)
 		})
@@ -778,7 +778,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	close(closeCh)
 	time.Sleep(500 * time.Millisecond)
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
 }
@@ -845,7 +845,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 	})
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
 }
@@ -895,7 +895,7 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, router.Start(ctx))
 	time.Sleep(1 * time.Second)
-	require.NoError(t, router.Stop())
+	router.Stop()
 	require.Empty(t, peerManager.Peers())
 
 	mockConnection.AssertExpectations(t)
@@ -964,6 +964,6 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 		Message: &p2ptest.Message{Value: "Hi"},
 	}))
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 }

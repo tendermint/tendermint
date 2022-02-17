@@ -125,9 +125,7 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		t.Cleanup(signerServer.Wait)
 
 		<-endpointIsOpenCh
-		if err := signerServer.Stop(); err != nil {
-			t.Error(err)
-		}
+		signerServer.Stop()
 
 		dialerEndpoint2 := NewSignerDialerEndpoint(
 			logger,
@@ -138,8 +136,8 @@ func TestRetryConnToRemoteSigner(t *testing.T) {
 		// let some pings pass
 		require.NoError(t, signerServer2.Start(ctx))
 		assert.True(t, signerServer2.IsRunning())
+		t.Cleanup(signerServer2.Stop)
 		t.Cleanup(signerServer2.Wait)
-		t.Cleanup(func() { _ = signerServer2.Stop() })
 
 		// give the client some time to re-establish the conn to the remote signer
 		// should see sth like this in the logs:

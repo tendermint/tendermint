@@ -47,7 +47,7 @@ type Fireable interface {
 type EventSwitch interface {
 	service.Service
 	Fireable
-	Stop() error
+	Stop()
 
 	AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error
 	RemoveListenerForEvent(event string, listenerID string)

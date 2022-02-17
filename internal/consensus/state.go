@@ -396,10 +396,7 @@ func (cs *State) OnStart(ctx context.Context) error {
 			cs.logger.Error("the WAL file is corrupted; attempting repair", "err", err)
 
 			// 1) prep work
-			if err := cs.wal.Stop(); err != nil {
-
-				return err
-			}
+			cs.wal.Stop()
 
 			repairAttempted = true
 
@@ -494,19 +491,11 @@ func (cs *State) OnStop() {
 	close(cs.onStopCh)
 
 	if cs.evsw.IsRunning() {
-		if err := cs.evsw.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				cs.logger.Error("failed trying to stop eventSwitch", "error", err)
-			}
-		}
+		cs.evsw.Stop()
 	}
 
 	if cs.timeoutTicker.IsRunning() {
-		if err := cs.timeoutTicker.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				cs.logger.Error("failed trying to stop timeoutTicket", "error", err)
-			}
-		}
+		cs.timeoutTicker.Stop()
 	}
 	// WAL is stopped in receiveRoutine.
 }
@@ -515,6 +504,7 @@ func (cs *State) OnStop() {
 // NOTE: be sure to Stop() the event switch and drain
 // any event channels or this may deadlock
 func (cs *State) Wait() {
+	cs.evsw.Wait()
 	<-cs.done
 }
 
@@ -840,12 +830,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		// priv_val tracks LastSig
 
 		// close wal now that we're done writing to it
-		if err := cs.wal.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				cs.logger.Error("failed trying to stop WAL", "error", err)
-			}
-		}
-
+		cs.wal.Stop()
 		cs.wal.Wait()
 		close(cs.done)
 	}
