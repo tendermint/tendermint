@@ -76,7 +76,6 @@ func (cli *grpcClient) OnStart(ctx context.Context) error {
 			defer cli.mtx.Unlock()
 
 			reqres.SetDone()
-			reqres.Done()
 
 			// Notify reqRes listener if set
 			reqres.InvokeCallback()

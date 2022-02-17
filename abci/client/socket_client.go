@@ -187,7 +187,7 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	}
 
 	reqres.Response = res
-	reqres.Done()            // release waiters
+	reqres.SetDone()         // release waiters
 	cli.reqSent.Remove(next) // pop first item from linked list
 
 	// Notify client listener if set (global callback).
@@ -226,15 +226,8 @@ func (cli *socketClient) Flush(ctx context.Context) error {
 		return err
 	}
 
-	gotResp := make(chan struct{})
-	go func() {
-		// NOTE: if we don't flush the queue, its possible to get stuck here
-		reqRes.Wait()
-		close(gotResp)
-	}()
-
 	select {
-	case <-gotResp:
+	case <-reqRes.signal:
 		return cli.Error()
 	case <-ctx.Done():
 		return ctx.Err()
@@ -477,7 +470,7 @@ func (cli *socketClient) drainQueue(ctx context.Context) {
 	// mark all in-flight messages as resolved (they will get cli.Error())
 	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
 		reqres := req.Value.(*ReqRes)
-		reqres.Done()
+		reqres.SetDone()
 	}
 
 	// Mark all queued messages as resolved.
@@ -490,7 +483,7 @@ func (cli *socketClient) drainQueue(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
-			reqres.Done()
+			reqres.SetDone()
 		default:
 			return
 		}
