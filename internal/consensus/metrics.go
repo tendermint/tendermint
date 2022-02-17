@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"time"
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
 
@@ -66,9 +68,10 @@ type Metrics struct {
 	// Histogram of time taken per step annotated with reason that the step proceeded.
 	StepTime metrics.Histogram
 
-	// Histogram of time taken to receive a block, measured between receiving the first piece of the
-	// the block and receiving the final piece of the block.
-	BlockGossipReceiveTime metrics.Histogram
+	// Time taken to receive a block in seconds, measured between when a new block is first
+	// discovered to when the block is completed.
+	BlockGossipReceiveTime metrics.Gauge
+	blockGossipStart       time.Time
 
 	// QuroumPrevoteMessageDelay is the interval in seconds between the proposal
 	// timestamp and the timestamp of the earliest prevote that achieved a quorum
@@ -216,14 +219,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-		BlockGossipReceiveTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		BlockGossipReceiveTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_gossip_receive_time",
-			Help: "Difference in seconds between when the validator receives the" +
-				"first piece of a block and when the validator receives the last" +
-				" piece of a block.",
-			Buckets: stdprometheus.ExponentialBucketsRange(0, 100, 8),
+			Help: "Difference in seconds between when the validator learns of a new block" +
+				"and when the validator receives the last piece of the block.",
 		}, labels).With(labelsAndValues...),
 		StepTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
@@ -284,7 +285,7 @@ func NopMetrics() *Metrics {
 		BlockSyncing:                discard.NewGauge(),
 		StateSyncing:                discard.NewGauge(),
 		BlockParts:                  discard.NewCounter(),
-		BlockGossipReceiveTime:      discard.NewHistogram(),
+		BlockGossipReceiveTime:      discard.NewGauge(),
 		QuorumPrevoteMessageDelay:   discard.NewGauge(),
 		FullPrevoteMessageDelay:     discard.NewGauge(),
 		ProposalTimestampDifference: discard.NewHistogram(),
@@ -297,4 +298,12 @@ func (m *Metrics) RecordConsMetrics(block *types.Block) {
 	m.TotalTxs.Add(float64(len(block.Data.Txs)))
 	m.BlockSizeBytes.Observe(float64(block.Size()))
 	m.CommittedHeight.Set(float64(block.Height))
+}
+
+func (m *Metrics) MarkBlockGossipStarted() {
+	m.blockGossipStart = time.Now()
+}
+
+func (m *Metrics) MarkBlockGossipComplete() {
+	m.BlockGossipReceiveTime.Set(float64(time.Now().Sub(m.blockGossipStart).Seconds()))
 }

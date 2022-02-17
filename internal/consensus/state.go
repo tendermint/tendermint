@@ -1668,6 +1668,7 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
+		cs.metrics.MarkBlockGossipStarted()
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 	}
 
@@ -1758,6 +1759,7 @@ func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int3
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
+			cs.metrics.MarkBlockGossipStarted()
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 
 			if err := cs.eventBus.PublishEventValidBlock(ctx, cs.RoundStateEvent()); err != nil {
@@ -2034,6 +2036,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
+		cs.metrics.MarkBlockGossipStarted()
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
 
@@ -2081,6 +2084,7 @@ func (cs *State) addProposalBlockPart(
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
+		cs.metrics.MarkBlockGossipComplete()
 		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
@@ -2293,6 +2297,7 @@ func (cs *State) addVote(
 				}
 
 				if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
+					cs.metrics.MarkBlockGossipStarted()
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 
