@@ -281,6 +281,9 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 	s.subs.Lock()
 	defer s.subs.Unlock()
 
+	if s.subs.index == nil {
+		return ErrServerStopped
+	}
 	evict := s.subs.index.findClientID(clientID)
 	if len(evict) == 0 {
 		return ErrSubscriptionNotFound

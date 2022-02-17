@@ -49,5 +49,7 @@ sections.
 - [RFC-009: Consensus Parameter Upgrades](./rfc-009-consensus-parameter-upgrades.md)
 - [RFC-010: P2P Light Client](./rfc-010-p2p-light-client.rst)
 - [RFC-011: Delete Gas](./rfc-011-delete-gas.md)
+- [RFC-013: ABCI++](./rfc-013-abci++.md)
+- [RFC-014: Semantic Versioning](./rfc-014-semantic-versioning.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
