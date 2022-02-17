@@ -63,6 +63,7 @@ Special thanks to external contributors on this release:
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 - [consensus] \#6969 remove logic to 'unlock' a locked block.
 - [evidence] \#7700 Evidence messages contain single Evidence instead of EvidenceList (@jmalicevic)
+- [evidence] \#7802 Evidence pool emits events when evidence is validated and updates a metric when the number of evidence in the evidence pool changes. (@jmalicevic)
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 - [node] \#7521 Define concrete type for seed node implementation (@spacech1mp)
 - [rpc] \#7612 paginate mempool /unconfirmed_txs rpc endpoint (@spacech1mp)
