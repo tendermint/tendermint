@@ -170,7 +170,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 
 	var (
 		perPage            = 100
-		vals               = []*types.Validator{}
+		vals               []*types.Validator
 		thresholdPublicKey crypto.PubKey
 		quorumType         btcjson.LLMQType
 		quorumHash         crypto.QuorumHash

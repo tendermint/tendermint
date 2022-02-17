@@ -83,6 +83,11 @@ type QuorumKeys struct {
 	ThresholdPublicKey PubKey  `json:"threshold_public_key"`
 }
 
+// Validator is a validator interface
+type Validator interface {
+	Validate() error
+}
+
 type PubKey interface {
 	HexStringer
 	Address() Address

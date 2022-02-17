@@ -269,8 +269,7 @@ func makeNode(cfg *config.Config,
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// This is used for light client verification only
-		mockClient := dashcore.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
-		dashCoreRPCClient = mockClient
+		dashCoreRPCClient = dashcore.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
 	}
 
 	weAreOnlyValidator := onlyValidatorIsUs(state, proTxHash)
@@ -311,7 +310,7 @@ func makeNode(cfg *config.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
+	nodeInfo, err := makeNodeInfo(cfg, nodeKey, proTxHash, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
@@ -841,7 +840,6 @@ func (n *nodeImpl) OnStart() error {
 		// FIXME: We shouldn't allow state sync to silently error out without
 		// bubbling up the error and gracefully shutting down the rest of the node
 		go func() {
-
 			n.Logger.Info("starting state sync")
 			state, err := n.stateSyncReactor.Sync(context.TODO())
 			if err != nil {

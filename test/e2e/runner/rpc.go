@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	WaitForHeightTimeout = 20 * time.Second
+	WaitForHeightTimeout = time.Minute
 )
 
 // waitForHeight waits for the network to reach a certain height (or above),
@@ -74,7 +74,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 					clients[node.Name] = client
 				}
 
-				wctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				wctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				defer cancel()
 				result, err := client.Status(wctx)
 				if err != nil {

@@ -184,11 +184,8 @@ func TestValidatorConnExecutor_Myself(t *testing.T) {
 					mock.NewValidator(5),
 				},
 				expectedHistory: []mock.HistoryEvent{
-					{
-						Operation: mock.OpStop,
-						Params:    []string{mock.NewNodeID(1)},
-					},
-					{Operation: mock.OpStop, Params: []string{mock.NewNodeID(3)}},
+					{Operation: mock.OpStop, Params: []string{mock.NewNodeID(1), mock.NewNodeID(3), mock.NewNodeID(5)}},
+					{Operation: mock.OpStop, Params: []string{mock.NewNodeID(1), mock.NewNodeID(3), mock.NewNodeID(5)}},
 					{Operation: mock.OpDial, Params: []string{mock.NewNodeID(5)}},
 					// {Operation: mock.OpDial, Params: []string{mock.NewNodeID(2), mock.NewNodeID(5)}},
 				},

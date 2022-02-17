@@ -37,6 +37,17 @@ const (
 	KeyType = "bls12381"
 )
 
+var (
+	errPubKeyIsEmpty     = errors.New("public key should not be empty")
+	errPubKeyInvalidSize = errors.New("invalid public key size")
+
+	emptyPubKeyVal = []byte{
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	}
+)
+
 func init() {
 	tmjson.RegisterType(PubKey{}, PubKeyName)
 	tmjson.RegisterType(PrivKey{}, PrivKeyName)
@@ -531,4 +542,16 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	}
 
 	return false
+}
+
+// Validate validates a public key value
+func (pubKey PubKey) Validate() error {
+	size := len(pubKey)
+	if size != PubKeySize {
+		return fmt.Errorf("public key has wrong size %d: %w", size, errPubKeyInvalidSize)
+	}
+	if bytes.Equal(pubKey, emptyPubKeyVal) {
+		return errPubKeyIsEmpty
+	}
+	return nil
 }

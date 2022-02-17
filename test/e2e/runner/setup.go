@@ -200,6 +200,10 @@ services:
     - 6060
 {{- if $.Debug }}
     - {{ debugPort $index }}:{{ debugPort $index }}
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
 {{- end }}
     volumes:
     - ./{{ .Name }}:/tenderdash
@@ -294,7 +298,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
 	cfg.Consensus.AppHashSize = crypto.DefaultAppHashSize
-	cfg.BaseConfig.LogLevel = "debug"
+	cfg.BaseConfig.LogLevel = "info"
 	cfg.P2P.UseLegacy = node.UseLegacyP2P
 	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database

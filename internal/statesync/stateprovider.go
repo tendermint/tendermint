@@ -53,6 +53,7 @@ func NewRPCStateProvider(
 	chainID string,
 	initialHeight int64,
 	servers []string,
+	trustHeight int64,
 	logger log.Logger,
 	dashCoreClient dashcore.Client,
 ) (StateProvider, error) {
@@ -74,7 +75,7 @@ func NewRPCStateProvider(
 		providerRemotes[provider] = server
 	}
 
-	lc, err := light.NewClient(ctx, chainID, providers[0], providers[1:],
+	lc, err := light.NewClientAtHeight(ctx, trustHeight, chainID, providers[0], providers[1:],
 		lightdb.New(dbm.NewMemDB()), dashCoreClient, light.Logger(logger))
 	if err != nil {
 		return nil, err
@@ -161,6 +162,8 @@ func (s *stateProviderRPC) State(ctx context.Context, height uint64) (sm.State, 
 	state.LastBlockHeight = lastLightBlock.Height
 	state.LastBlockTime = lastLightBlock.Time
 	state.LastBlockID = lastLightBlock.Commit.BlockID
+	state.LastStateID = lastLightBlock.Commit.StateID
+	state.LastCoreChainLockedBlockHeight = lastLightBlock.Header.CoreChainLockedHeight
 	state.AppHash = currentLightBlock.AppHash
 	state.LastResultsHash = currentLightBlock.LastResultsHash
 	state.LastValidators = lastLightBlock.ValidatorSet
@@ -211,6 +214,7 @@ func NewP2PStateProvider(
 	ctx context.Context,
 	chainID string,
 	initialHeight int64,
+	trustHeight int64,
 	providers []lightprovider.Provider,
 	paramsSendCh chan<- p2p.Envelope,
 	logger log.Logger,
@@ -220,7 +224,7 @@ func NewP2PStateProvider(
 		return nil, fmt.Errorf("at least 2 peers are required, got %d", len(providers))
 	}
 
-	lc, err := light.NewClientAtHeight(ctx, initialHeight, chainID, providers[0], providers[1:],
+	lc, err := light.NewClientAtHeight(ctx, trustHeight, chainID, providers[0], providers[1:],
 		lightdb.New(dbm.NewMemDB()), dashCoreClient, light.Logger(logger))
 	if err != nil {
 		return nil, err
@@ -307,6 +311,8 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 	state.LastBlockHeight = lastLightBlock.Height
 	state.LastBlockTime = lastLightBlock.Time
 	state.LastBlockID = lastLightBlock.Commit.BlockID
+	state.LastStateID = lastLightBlock.Commit.StateID
+	state.LastCoreChainLockedBlockHeight = lastLightBlock.Header.CoreChainLockedHeight
 	state.AppHash = currentLightBlock.AppHash
 	state.LastResultsHash = currentLightBlock.LastResultsHash
 	state.LastValidators = lastLightBlock.ValidatorSet

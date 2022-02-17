@@ -20,7 +20,7 @@ import (
 func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan error, h *types.SignedHeader,
 	witness provider.Provider, witnessIndex int) {
 
-	lightBlock, err := witness.LightBlock(ctx, h.Height)
+	lightBlock, err := c.getLightBlock(ctx, witness, h.Height)
 	switch err {
 	// no error means we move on to checking the hash of the two headers
 	case nil:
@@ -69,7 +69,11 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		time.Sleep(2*c.maxClockDrift + c.maxBlockLag)
 		isTargetHeight, lightBlock, err = c.getTargetBlockOrLatest(ctx, h.Height, witness)
 		if err != nil {
-			errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				errc <- err
+			} else {
+				errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
+			}
 			return
 		}
 		if isTargetHeight {

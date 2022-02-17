@@ -23,7 +23,7 @@ type Manifest struct {
 	GenesisCoreChainLockedHeight uint32 `toml:"initial_core_chain_locked_height"`
 
 	// InitAppCoreChainLockedHeight specifies initial core chain locked block height, returned by the App
-	// in response to InitApp ABCI request. It overrides value set in InitialCoreChainLockedHeight.
+	// in response to InitApp ABCI request. It overrides value set in GenesisCoreChainLockedHeight.
 	InitAppCoreChainLockedHeight uint32 `toml:"init_app_core_chain_locked_height"`
 
 	// InitialState is an initial set of key/value pairs for the application,
@@ -39,7 +39,7 @@ type Manifest struct {
 	// specifying an empty set will start with no validators in genesis, and
 	// the application must return the validator set in InitChain via the
 	// setting validator_update.0 (see below).
-	Validators *map[string]int64 `toml:"validators"`
+	Validators map[string]int64 `toml:"validators"`
 
 	// ValidatorUpdates is a map of heights to validator proTxHashes and their power,
 	// and will be returned by the ABCI application. For example, the following

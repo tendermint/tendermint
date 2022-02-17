@@ -20,7 +20,8 @@ RUN go mod download
 
 # Install BLS library
 COPY third_party ./third_party
-COPY Makefile *.mk ./
+COPY test/Makefile ./test/Makefile
+COPY Makefile ./
 RUN make install-bls
 
 # Copy Tenderdash source

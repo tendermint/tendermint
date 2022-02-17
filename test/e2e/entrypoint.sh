@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-make app
+make node

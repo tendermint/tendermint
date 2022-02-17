@@ -135,9 +135,6 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	// always request the proof
 	opts.Prove = true
 
-	// always request the proof
-	opts.Prove = true
-
 	res, err := c.next.ABCIQueryWithOptions(ctx, path, data, opts)
 	if err != nil {
 		return nil, err

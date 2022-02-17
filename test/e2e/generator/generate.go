@@ -24,6 +24,9 @@ var (
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
+		// Tenderdash-specific
+		"initialCoreChainLockedHeight": {0},
+		"initAppCoreChainLockedHeight": {0},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
@@ -140,7 +143,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		GenesisCoreChainLockedHeight: uint32(opt["initialCoreChainLockedHeight"].(int)),
 		InitAppCoreChainLockedHeight: uint32(opt["initAppCoreChainLockedHeight"].(int)),
 		InitialState:                 opt["initialState"].(map[string]string),
-		Validators:                   &map[string]int64{},
+		Validators:                   map[string]int64{},
 		ValidatorUpdates:             map[string]map[string]int64{},
 		ChainLockUpdates:             map[string]int64{},
 		Nodes:                        map[string]*e2e.ManifestNode{},
@@ -200,8 +203,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	switch opt["validators"].(string) {
 	case "genesis":
 	case "initchain":
-		manifest.ValidatorUpdates["0"] = *manifest.Validators
-		manifest.Validators = &map[string]int64{}
+		manifest.ValidatorUpdates["0"] = manifest.Validators
+		manifest.Validators = map[string]int64{}
 	default:
 		return manifest, fmt.Errorf("invalid validators option %q", opt["validators"])
 	}
@@ -224,7 +227,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numChainLocks; i++ {
 		startAtChainLocks += r.Intn(5)
 		startAtChainLocksHeight += r.Intn(5)
-		//manifest.ChainLockUpdates[fmt.Sprintf("%d", startAtChainLocks)] = int64(startAtChainLocksHeight)
+		manifest.ChainLockUpdates[fmt.Sprintf("%d", startAtChainLocks)] = int64(startAtChainLocksHeight)
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with

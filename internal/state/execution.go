@@ -9,7 +9,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -228,7 +227,6 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 	block *types.Block,
 	logger log.Logger,
 ) (State, error) {
-
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, ErrInvalidBlock(err)
 	}
@@ -290,7 +288,6 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 		if err != nil {
 			return state, 0, fmt.Errorf("unable to load store when applying block: %v", err)
 		}*/
-
 	// Update the state with the block and responses.
 	state, err = updateState(
 		state, proTxHash, blockID, &block.Header,
@@ -538,16 +535,8 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 					pk.Type(),
 				)
 			}
-
-			if len(pk.Bytes()) != bls12381.PubKeySize {
-				return fmt.Errorf("validator %X has incorrect public key size %v",
-					valUpdate.ProTxHash, pk.String())
-			}
-
-			if pk.String() ==
-				"PubKeyBLS12381{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}" {
-				return fmt.Errorf("validator %X public key should not be empty %v",
-					valUpdate.ProTxHash, pk.String())
+			if err := validatePubKey(pk); err != nil {
+				return fmt.Errorf("public key in validator %X is invalid: %w", valUpdate.ProTxHash, err)
 			}
 		}
 
@@ -558,7 +547,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 			)
 		}
 
-		if len(valUpdate.ProTxHash) != 32 {
+		if len(valUpdate.ProTxHash) != crypto.ProTxHashSize {
 			return fmt.Errorf(
 				"validator %v is using protxhash %s, which is not the required length",
 				valUpdate,
@@ -791,4 +780,15 @@ func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) (uint64, error) 
 		return 0, fmt.Errorf("failed to prune state store: %w", err)
 	}
 	return pruned, nil
+}
+
+func validatePubKey(pk crypto.PubKey) error {
+	v, ok := pk.(crypto.Validator)
+	if !ok {
+		return nil
+	}
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
