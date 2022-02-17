@@ -18,26 +18,26 @@ The upgrades are split into two components: **Epics**, the features that define 
 
 ### Prioritized Mempool
 
-Transactions were previously added to blocks in the order with which they arrived to the mempool. Adding a priority field via `CheckTx` gives applications more control over which transactions make it into a block. This is important in the presence of transaction fees. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-067-mempool-refactor.md)
+Transactions were previously added to blocks in the order with which they arrived to the mempool. Adding a priority field via `CheckTx` gives applications more control over which transactions make it into a block. This is important in the presence of transaction fees. [More](https://github.com/tendermint/tendermint/blob/v0.35.x/docs/architecture/adr-067-mempool-refactor.md)
 
 ### Refactor of the P2P Framework
 
-The Tendermint P2P system is undergoing a large redesign to improve its performance and reliability. The first phase of this redesign is included in 0.35. This phase cleans and decouples abstractions, improves peer lifecycle management, peer address handling and enables pluggable transports. It is implemented to be protocol-compatible with the previous implementation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-062-p2p-architecture.md)
+The Tendermint P2P system is undergoing a large redesign to improve its performance and reliability. The first phase of this redesign is included in 0.35. This phase cleans and decouples abstractions, improves peer lifecycle management, peer address handling and enables pluggable transports. It is implemented to be protocol-compatible with the previous implementation. [More](https://github.com/tendermint/tendermint/blob/v0.35.x/docs/architecture/adr-062-p2p-architecture.md)
 
 ### State Sync Improvements
 
-Following the initial version of state sync, several improvements have been made. These include the addition of [Reverse Sync](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-068-reverse-sync.md) needed for evidence handling, the introduction of a [P2P State Provider](https://github.com/tendermint/tendermint/pull/6807) as an alternative to RPC endpoints, new configuration parameters to adjust throughput, and several bug fixes.
+Following the initial version of state sync, several improvements have been made. These include the addition of [Reverse Sync](https://github.com/tendermint/tendermint/blob/v0.35.x/docs/architecture/adr-068-reverse-sync.md) needed for evidence handling, the introduction of a [P2P State Provider](https://github.com/tendermint/tendermint/pull/6807) as an alternative to RPC endpoints, new configuration parameters to adjust throughput, and several bug fixes.
 
 ### Custom event indexing + PSQL Indexer
 
-Added a new `EventSink` interface to allow alternatives to Tendermint's proprietary transaction indexer. We also added a PostgreSQL Indexer implementation, allowing rich SQL-based index queries. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-065-custom-event-indexing.md)
+Added a new `EventSink` interface to allow alternatives to Tendermint's proprietary transaction indexer. We also added a PostgreSQL Indexer implementation, allowing rich SQL-based index queries. [More](https://github.com/tendermint/tendermint/blob/v0.35.x/docs/architecture/adr-065-custom-event-indexing.md)
 
 ### Minor Works
 
 - Several Go packages were reorganized to make the distinction between public APIs and implementation details more clear.
 - Block indexer to index begin-block and end-block events. [More](https://github.com/tendermint/tendermint/pull/6226)
 - Block, state, evidence, and light storage keys were reworked to preserve lexicographic order. This change requires a database migration. [More](https://github.com/tendermint/tendermint/pull/5771)
-- Introduciton of Tendermint modes. Part of this change includes the possibility to run a separate seed node that runs the PEX reactor only. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
+- Introduciton of Tendermint modes. Part of this change includes the possibility to run a separate seed node that runs the PEX reactor only. [More](https://github.com/tendermint/tendermint/blob/v0.35.x/docs/architecture/adr-052-tendermint-mode.md)
 
 ## V0.36 (expected Q1 2022)
 
@@ -74,7 +74,7 @@ Tendermint currently has an abstraction to allow support for multiple database b
 
 ### Evaluate Interprocess Communication
 
-Tendermint nodes currently have multiple areas of communication with other processes (ABCI, remote-signer, P2P, JSONRPC, websockets, events as examples). Many of these have multiple implementations in which a single suffices. Consolidate and clean up IPC. [More](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-002-ipc-ecosystem.md)
+Tendermint nodes currently have multiple areas of communication with other processes (ABCI, remote-signer, P2P, JSONRPC, websockets, events as examples). Many of these have multiple implementations in which a single suffices. Consolidate and clean up IPC. [More](https://github.com/tendermint/tendermint/blob/v0.35.x/docs/rfc/rfc-002-ipc-ecosystem.md)
 
 ### Minor Works
 
