@@ -333,18 +333,18 @@ func (m *Metrics) MarkBlockGossipStarted() {
 }
 
 func (m *Metrics) MarkBlockGossipComplete() {
-	m.BlockGossipReceiveLatency.Observe(float64(time.Now().Sub(m.blockGossipStart).Seconds()))
+	m.BlockGossipReceiveLatency.Observe(time.Now().Sub(m.blockGossipStart).Seconds())
 }
 
 func (m *Metrics) MarkRound(r int32, st time.Time) {
 	m.Rounds.Set(float64(r))
-	roundTime := float64(time.Now().Sub(st).Seconds())
+	roundTime := time.Now().Sub(st).Seconds()
 	m.RoundDuration.Observe(roundTime)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {
 	if !m.stepStart.IsZero() {
-		stepTime := float64(time.Now().Sub(m.stepStart).Seconds())
+		stepTime := time.Now().Sub(m.stepStart).Seconds()
 		stepName := strings.TrimPrefix(s.String(), "RoundStep")
 		m.StepDuration.With("step", stepName).Observe(stepTime)
 	}
