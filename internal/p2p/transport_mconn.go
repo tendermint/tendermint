@@ -478,12 +478,13 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 func (c *mConnConnection) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
+		defer close(c.doneCh)
+
 		if c.mconn != nil && c.mconn.IsRunning() {
-			err = c.mconn.Stop()
+			c.mconn.Stop()
 		} else {
 			err = c.conn.Close()
 		}
-		close(c.doneCh)
 	})
 	return err
 }

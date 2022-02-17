@@ -235,9 +235,7 @@ func (pool *BlockPool) PopRequest() {
 	defer pool.mtx.Unlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
-		if err := r.Stop(); err != nil {
-			pool.logger.Error("error stopping requester", "err", err)
-		}
+		r.Stop()
 		delete(pool.requesters, pool.height)
 		pool.height++
 		pool.lastAdvance = time.Now()
@@ -676,9 +674,7 @@ OUTER_LOOP:
 			case <-ctx.Done():
 				return
 			case <-bpr.pool.exitedCh:
-				if err := bpr.Stop(); err != nil {
-					bpr.logger.Error("error stopped requester", "err", err)
-				}
+				bpr.Stop()
 				return
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {

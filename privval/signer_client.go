@@ -41,12 +41,12 @@ func NewSignerClient(ctx context.Context, endpoint *SignerListenerEndpoint, chai
 
 // Close closes the underlying connection
 func (sc *SignerClient) Close() error {
-	err := sc.endpoint.Stop()
-	cerr := sc.endpoint.Close()
+	sc.endpoint.Stop()
+	err := sc.endpoint.Close()
 	if err != nil {
 		return err
 	}
-	return cerr
+	return nil
 }
 
 // IsConnected indicates with the signer is connected to a remote signing service

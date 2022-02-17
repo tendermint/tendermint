@@ -219,11 +219,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 func (r *Reactor) OnStop() {
 	r.unsubscribeFromBroadcastEvents()
 
-	if err := r.state.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			r.logger.Error("failed to stop consensus state", "err", err)
-		}
-	}
+	r.state.Stop()
 
 	if !r.WaitSync() {
 		r.state.Wait()

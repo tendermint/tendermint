@@ -179,9 +179,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
 	if r.blockSync.IsSet() {
-		if err := r.pool.Stop(); err != nil {
-			r.logger.Error("failed to stop pool", "err", err)
-		}
+		r.pool.Stop()
 	}
 }
 
@@ -473,9 +471,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool) {
 				continue
 			}
 
-			if err := r.pool.Stop(); err != nil {
-				r.logger.Error("failed to stop pool", "err", err)
-			}
+			r.pool.Stop()
 
 			r.blockSync.UnSet()
 
