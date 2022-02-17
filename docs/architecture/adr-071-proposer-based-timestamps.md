@@ -61,7 +61,7 @@ The following protocols and application features require a reliable source of ti
 * Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/spec/blob/master/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
 * Tendermint Evidence validity is determined [either in terms of heights or in terms of time](https://github.com/tendermint/spec/blob/8029cf7a0fcc89a5004e173ec065aa48ad5ba3c8/spec/consensus/evidence.md#verification).
 * Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21 days](https://github.com/cosmos/governance/blob/ce75de4019b0129f6efcbb0e752cd2cc9e6136d3/params-change/Staking.md#unbondingtime).
-* IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.43/ibc/overview.html#acknowledgements).
+* IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.44/ibc/overview.html#acknowledgements)
 
 Finally, inflation distribution in the Cosmos Hub uses an approximation of time to calculate an annual percentage rate.
 This approximation of time is calculated using [block heights with an estimated number of blocks produced in a year](https://github.com/cosmos/governance/blob/master/params-change/Mint.md#blocksperyear).
@@ -116,7 +116,7 @@ This timestamp is therefore no longer useful as part of consensus and may option
 type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
 	Height           int64                 `json:"height"`
-	Round            int32                 `json:"round"`   
+	Round            int32                 `json:"round"`
 	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
 --	Timestamp        time.Time             `json:"timestamp"`
 	ValidatorAddress Address               `json:"validator_address"`
@@ -135,7 +135,7 @@ A validator will only Prevote a proposal if the proposal timestamp is considered
 A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the Unix time known to the validator.
 More specifically, a proposal timestamp is `timely` if `proposalTimestamp - PRECISION ≤ validatorLocalTime ≤ proposalTimestamp + PRECISION + MSGDELAY`.
 
-Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/types/params.proto#L13) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
+Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/spec/blob/master/proto/tendermint/types/params.proto#L11) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
 
 The consensus parameters will be updated to include this `Synchrony` field as follows:
 

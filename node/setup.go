@@ -487,19 +487,17 @@ func makeSeedNodeInfo(
 			Block: state.Version.Consensus.Block,
 			App:   state.Version.Consensus.App,
 		},
-		NodeID:   nodeKey.ID,
-		Network:  genDoc.ChainID,
-		Version:  version.TMVersion,
-		Channels: []byte{},
-		Moniker:  cfg.Moniker,
+		NodeID:  nodeKey.ID,
+		Network: genDoc.ChainID,
+		Version: version.TMVersion,
+		Channels: []byte{
+			pex.PexChannel,
+		},
+		Moniker: cfg.Moniker,
 		Other: types.NodeInfoOther{
 			TxIndex:    "off",
 			RPCAddress: cfg.RPC.ListenAddress,
 		},
-	}
-
-	if cfg.P2P.PexReactor {
-		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
 	}
 
 	nodeInfo.ListenAddr = cfg.P2P.ExternalAddress
