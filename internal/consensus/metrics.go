@@ -130,7 +130,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "round_duration",
-			Help:      "Time spent in a round",
+			Help:      "Time spent in a round.",
 			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
 		}, labels).With(labelsAndValues...),
 		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
