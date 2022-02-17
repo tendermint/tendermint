@@ -80,7 +80,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 			}
 			return nil
 		})
-		rts.pools[nodeID], err = evidence.NewPool(ctx, logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
+		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
 
 		require.NoError(t, err)
 
@@ -218,7 +218,7 @@ func createEvidenceList(
 			evidenceChainID,
 		)
 		require.NoError(t, err)
-		_, err = pool.AddEvidence(ev)
+		err = pool.AddEvidence(ctx, ev)
 		require.NoError(t, err,
 			"adding evidence it#%d of %d to pool with height %d",
 			i, numEvidence, pool.State().LastBlockHeight)
@@ -394,7 +394,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// Manually add half the evidence to the secondary which will mark them as
 	// pending.
 	for i := 0; i < numEvidence/2; i++ {
-		_, err := rts.pools[secondary.NodeID].AddEvidence(evList[i])
+		err := rts.pools[secondary.NodeID].AddEvidence(ctx, evList[i])
 		require.NoError(t, err)
 	}
 
@@ -437,7 +437,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	// Manually add half the evidence to the secondary which will mark them as
 	// pending.
 	for i := 0; i < numEvidence/2; i++ {
-		_, err := rts.pools[secondary.NodeID].AddEvidence(evList[i])
+		err := rts.pools[secondary.NodeID].AddEvidence(ctx, evList[i])
 		require.NoError(t, err)
 	}
 
@@ -449,7 +449,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 
 	// update the secondary's pool such that all pending evidence is committed
 	state.LastBlockHeight++
-	rts.pools[secondary.NodeID].Update(state, evList[:numEvidence/2])
+	rts.pools[secondary.NodeID].Update(ctx, state, evList[:numEvidence/2])
 
 	// the secondary should have half the evidence as committed
 	require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
@@ -511,7 +511,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		// commit state so we do not continue to repeat gossiping the same evidence
 		state := pool.State()
 		state.LastBlockHeight++
-		pool.Update(state, evList)
+		pool.Update(ctx, state, evList)
 	}
 }
 

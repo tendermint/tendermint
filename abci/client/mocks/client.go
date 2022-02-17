@@ -446,20 +446,6 @@ func (_m *Client) Start(_a0 context.Context) error {
 	return r0
 }
 
-// String provides a mock function with given fields:
-func (_m *Client) String() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
 // VerifyVoteExtension provides a mock function with given fields: _a0, _a1
 func (_m *Client) VerifyVoteExtension(_a0 context.Context, _a1 types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
 	ret := _m.Called(_a0, _a1)

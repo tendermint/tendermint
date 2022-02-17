@@ -75,7 +75,7 @@ func makeAndApplyGoodBlock(
 	block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
 	require.NoError(t, err)
 
-	require.NoError(t, blockExec.ValidateBlock(state, block))
+	require.NoError(t, blockExec.ValidateBlock(ctx, state, block))
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
