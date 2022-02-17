@@ -66,6 +66,10 @@ type Metrics struct {
 	// Histogram of time taken per step annotated with reason that the step proceeded.
 	StepTime metrics.Histogram
 
+	// Histogram of time taken to receive a block, measured between receiving the first piece of the
+	// the block and receiving the final piece of the block.
+	BlockGossipReceiveTime metrics.Histogram
+
 	// QuroumPrevoteMessageDelay is the interval in seconds between the proposal
 	// timestamp and the timestamp of the earliest prevote that achieved a quorum
 	// during the prevote step.
@@ -212,6 +216,15 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+		BlockGossipReceiveTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "block_gossip_receive_time",
+			Help: "Difference in seconds between when the validator receives the" +
+				"first piece of a block and when the validator receives the last" +
+				" piece of a block.",
+			Buckets: stdprometheus.ExponentialBucketsRange(0, 100, 8),
+		}, labels).With(labelsAndValues...),
 		StepTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -271,6 +284,7 @@ func NopMetrics() *Metrics {
 		BlockSyncing:                discard.NewGauge(),
 		StateSyncing:                discard.NewGauge(),
 		BlockParts:                  discard.NewCounter(),
+		BlockGossipReceiveTime:      discard.NewHistogram(),
 		QuorumPrevoteMessageDelay:   discard.NewGauge(),
 		FullPrevoteMessageDelay:     discard.NewGauge(),
 		ProposalTimestampDifference: discard.NewHistogram(),
