@@ -628,6 +628,14 @@ func (cs *State) updateHeight(height int64) {
 }
 
 func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
+	if !cs.replayMode {
+		if round != cs.Round || round == 0 && step == cstypes.RoundStepNewRound {
+			cs.metrics.MarkRound(cs.Round, cs.StartTime)
+		}
+		if cs.Step != step {
+			cs.metrics.MarkStep(cs.Step)
+		}
+	}
 	cs.Round = round
 	cs.Step = step
 }
@@ -1124,9 +1132,6 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 	if err := cs.eventBus.PublishEventNewRound(ctx, cs.NewRoundEvent()); err != nil {
 		cs.logger.Error("failed publishing new round", "err", err)
 	}
-
-	cs.metrics.Rounds.Set(float64(round))
-
 	// Wait for txs to be available in the mempool
 	// before we enterPropose in round 0. If the last block changed the app hash,
 	// we may need an empty "proof" block, and enterPropose immediately.

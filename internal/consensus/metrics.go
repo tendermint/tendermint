@@ -1,11 +1,13 @@
 package consensus
 
 import (
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
 
+	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/types"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -28,6 +30,9 @@ type Metrics struct {
 
 	// Number of rounds.
 	Rounds metrics.Gauge
+
+	// Histogram of round duration.
+	RoundDuration metrics.Histogram
 
 	// Number of validators.
 	Validators metrics.Gauge
@@ -65,8 +70,9 @@ type Metrics struct {
 	// Number of blockparts transmitted by peer.
 	BlockParts metrics.Counter
 
-	// Histogram of time taken per step annotated with reason that the step proceeded.
-	StepTime metrics.Histogram
+	// Histogram of step duration.
+	StepDuration metrics.Histogram
+	stepStart    time.Time
 
 	// Time taken to receive a block in seconds, measured between when a new block is first
 	// discovered to when the block is completed.
@@ -120,7 +126,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "rounds",
 			Help:      "Number of rounds.",
 		}, labels).With(labelsAndValues...),
-
+		RoundDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "round_duration",
+			Help:      "Time spent in a round",
+			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
+		}, labels).With(labelsAndValues...),
 		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -237,12 +249,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help: "Number of block parts received by the node, labeled by whether the" +
 				"part was relevant to the block the node was currently gathering or not",
 		}, append(labels, "matches_current")).With(labelsAndValues...),
-		StepTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		StepDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "step_time",
+			Name:      "step_duration",
 			Help:      "Time spent per step.",
-		}, append(labels, "step", "reason")).With(labelsAndValues...),
+			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
+		}, append(labels, "step")).With(labelsAndValues...),
 		QuorumPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -276,7 +289,9 @@ func NopMetrics() *Metrics {
 
 		ValidatorLastSignedHeight: discard.NewGauge(),
 
-		Rounds: discard.NewGauge(),
+		Rounds:        discard.NewGauge(),
+		RoundDuration: discard.NewHistogram(),
+		StepDuration:  discard.NewHistogram(),
 
 		Validators:               discard.NewGauge(),
 		ValidatorsPower:          discard.NewGauge(),
@@ -296,7 +311,7 @@ func NopMetrics() *Metrics {
 		BlockSyncing:                discard.NewGauge(),
 		StateSyncing:                discard.NewGauge(),
 		BlockParts:                  discard.NewCounter(),
-		BlockGossipReceiveTime:      discard.NewGauge(),
+		BlockGossipReceiveTime:      discard.NewHistogram(),
 		BlockGossipPartsReceived:    discard.NewCounter(),
 		QuorumPrevoteMessageDelay:   discard.NewGauge(),
 		FullPrevoteMessageDelay:     discard.NewGauge(),
@@ -317,5 +332,20 @@ func (m *Metrics) MarkBlockGossipStarted() {
 }
 
 func (m *Metrics) MarkBlockGossipComplete() {
-	m.BlockGossipReceiveTime.Set(float64(time.Now().Sub(m.blockGossipStart).Seconds()))
+	m.BlockGossipReceiveTime.Observe(float64(time.Now().Sub(m.blockGossipStart).Seconds()))
+}
+
+func (m *Metrics) MarkRound(r int32, st time.Time) {
+	m.Rounds.Set(float64(r))
+	roundTime := float64(time.Now().Sub(st).Seconds())
+	m.RoundDuration.Observe(roundTime)
+}
+
+func (m *Metrics) MarkStep(s cstypes.RoundStepType) {
+	if !m.stepStart.IsZero() {
+		stepTime := float64(time.Now().Sub(m.stepStart).Seconds())
+		stepName := strings.TrimPrefix(s.String(), "RoundStep")
+		m.StepDuration.With("step", stepName).Observe(stepTime)
+	}
+	m.stepStart = time.Now()
 }
