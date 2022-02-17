@@ -20,7 +20,7 @@ Special thanks to external contributors on this release:
 
 - Apps
 
-  - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
+  - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
 
 - P2P Protocol
 

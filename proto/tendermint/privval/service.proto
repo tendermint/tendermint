@@ -1,6 +1,6 @@
 syntax = "proto3";
 package tendermint.privval;
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
+option  go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
 
 import "tendermint/privval/types.proto";
 
