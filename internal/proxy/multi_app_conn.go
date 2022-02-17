@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"syscall"
 
@@ -53,10 +52,7 @@ type multiAppConn struct {
 	queryConn     AppConnQuery
 	snapshotConn  AppConnSnapshot
 
-	consensusConnClient stoppableClient
-	mempoolConnClient   stoppableClient
-	queryConnClient     stoppableClient
-	snapshotConnClient  stoppableClient
+	client stoppableClient
 
 	clientCreator abciclient.Creator
 }
@@ -89,122 +85,45 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 	var err error
 	defer func() {
 		if err != nil {
-			app.stopAllClients()
+			app.client.Stop()
 		}
 	}()
 
-	app.queryConnClient, err = app.abciClientFor(ctx, connQuery)
+	var client abciclient.Client
+	client, err = app.clientCreator(app.logger)
 	if err != nil {
 		return err
 	}
-	app.queryConn = NewAppConnQuery(app.queryConnClient, app.metrics)
 
-	app.snapshotConnClient, err = app.abciClientFor(ctx, connSnapshot)
-	if err != nil {
-		return err
-	}
-	app.snapshotConn = NewAppConnSnapshot(app.snapshotConnClient, app.metrics)
+	app.queryConn = NewAppConnQuery(client, app.metrics)
+	app.snapshotConn = NewAppConnSnapshot(client, app.metrics)
+	app.mempoolConn = NewAppConnMempool(client, app.metrics)
+	app.consensusConn = NewAppConnConsensus(client, app.metrics)
 
-	app.mempoolConnClient, err = app.abciClientFor(ctx, connMempool)
-	if err != nil {
-		return err
-	}
-	app.mempoolConn = NewAppConnMempool(app.mempoolConnClient, app.metrics)
-
-	app.consensusConnClient, err = app.abciClientFor(ctx, connConsensus)
-	if err != nil {
-		return err
-	}
-	app.consensusConn = NewAppConnConsensus(app.consensusConnClient, app.metrics)
+	app.client = client.(stoppableClient)
 
 	// Kill Tendermint if the ABCI application crashes.
-	app.startWatchersForClientErrorToKillTendermint(ctx)
+	go func() {
+		app.client.Wait()
+		if ctx.Err() != nil {
+			return
+		}
+
+		if err := app.client.Error(); err != nil {
+			app.logger.Error("client connection terminated. Did the application crash? Please restart tendermint",
+				"err", err)
+			if killErr := kill(); killErr != nil {
+				app.logger.Error("Failed to kill this process - please do so manually",
+					"err", killErr)
+			}
+		}
+
+	}()
 
 	return nil
 }
 
-func (app *multiAppConn) OnStop() { app.stopAllClients() }
-
-func (app *multiAppConn) startWatchersForClientErrorToKillTendermint(ctx context.Context) {
-	// this function starts a number of threads (per abci client)
-	// that will SIGTERM's our own PID if any of the ABCI clients
-	// exit/return early. If the context is canceled then these
-	// functions will not kill tendermint.
-
-	killFn := func(conn string, err error, logger log.Logger) {
-		logger.Error(
-			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
-			"err", err)
-		if killErr := kill(); killErr != nil {
-			logger.Error("Failed to kill this process - please do so manually", "err", killErr)
-		}
-	}
-
-	for _, client := range []struct {
-		connClient stoppableClient
-		name       string
-	}{
-		{
-			connClient: app.consensusConnClient,
-			name:       connConsensus,
-		},
-		{
-			connClient: app.mempoolConnClient,
-			name:       connMempool,
-		},
-		{
-			connClient: app.queryConnClient,
-			name:       connQuery,
-		},
-		{
-			connClient: app.snapshotConnClient,
-			name:       connSnapshot,
-		},
-	} {
-		go func(name string, client stoppableClient) {
-			client.Wait()
-			if ctx.Err() != nil {
-				return
-			}
-			if err := client.Error(); err != nil {
-				killFn(name, err, app.logger)
-			}
-		}(client.name, client.connClient)
-	}
-}
-
-func (app *multiAppConn) stopAllClients() {
-	for _, client := range []stoppableClient{
-		app.consensusConnClient,
-		app.mempoolConnClient,
-		app.queryConnClient,
-		app.snapshotConnClient,
-	} {
-		if client != nil {
-			client.Stop()
-		}
-	}
-}
-
-func (app *multiAppConn) abciClientFor(ctx context.Context, conn string) (stoppableClient, error) {
-	c, err := app.clientCreator(app.logger.With(
-		"module", "abci-client",
-		"connection", conn))
-	if err != nil {
-		return nil, fmt.Errorf("error creating ABCI client (%s connection): %w", conn, err)
-	}
-
-	if err := c.Start(ctx); err != nil {
-		return nil, fmt.Errorf("error starting ABCI client (%s connection): %w", conn, err)
-	}
-
-	client, ok := c.(stoppableClient)
-	if !ok {
-		return nil, fmt.Errorf("%T is not a stoppable client", c)
-	}
-
-	return client, nil
-}
+func (app *multiAppConn) OnStop() { app.client.Stop() }
 
 func kill() error {
 	p, err := os.FindProcess(os.Getpid())
