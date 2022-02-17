@@ -11,6 +11,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -21,6 +22,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 )
 
 const evidenceChainID = "test_chain"
@@ -297,6 +301,56 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
 	}
+}
+
+// Check that we generate events when evidence is added into the evidence pool
+func TestEventOnEvidenceValidated(t *testing.T) {
+	var height int64 = 1
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	eventBus := eventbus.NewDefault(log.TestingLogger())
+	err := eventBus.Start(ctx)
+	require.NoError(t, err)
+
+	pool, val := defaultTestPool(ctx, t, height)
+	pool.SetEventBus(eventBus)
+
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
+		ctx,
+		height,
+		defaultEvidenceTime.Add(1*time.Minute),
+		val,
+		evidenceChainID,
+	)
+	require.NoError(t, err)
+
+	const query = `tm.event='EvidenceValidated'`
+	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: "test",
+		Query:    tmquery.MustCompile(query),
+	})
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		msg, err := evSub.Next(ctx)
+		assert.NoError(t, err)
+
+		edt := msg.Data().(types.EventDataEvidenceValidated)
+		assert.Equal(t, ev, edt.Evidence)
+	}()
+	err = pool.AddEvidence(ctx, ev)
+	require.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("did not receive a block header after 1 sec.")
+	}
+
 }
 
 // check that valid light client evidence is correctly validated and stored in
