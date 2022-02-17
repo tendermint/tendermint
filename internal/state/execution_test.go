@@ -439,7 +439,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	eventBus := eventbus.NewDefault(logger)
 	err = eventBus.Start(ctx)
 	require.NoError(t, err)
-	defer eventBus.Stop() //nolint:errcheck // ignore for tests
+	defer eventBus.Stop()
 
 	blockExec.SetEventBus(eventBus)
 

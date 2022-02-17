@@ -915,15 +915,9 @@ type mockTicker struct {
 	fired    bool
 }
 
-func (m *mockTicker) Start(context.Context) error {
-	return nil
-}
-
-func (m *mockTicker) Stop() error {
-	return nil
-}
-
-func (m *mockTicker) IsRunning() bool { return false }
+func (m *mockTicker) Start(context.Context) error { return nil }
+func (m *mockTicker) Stop()                       {}
+func (m *mockTicker) IsRunning() bool             { return false }
 
 func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 	m.mtx.Lock()
@@ -940,8 +934,6 @@ func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
-
-func (*mockTicker) SetLogger(log.Logger) {}
 
 func newPersistentKVStore(t *testing.T, logger log.Logger) abci.Application {
 	t.Helper()

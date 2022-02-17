@@ -110,7 +110,8 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 	t.Cleanup(func() {
 		for _, r := range rts.reactors {
 			if r.IsRunning() {
-				require.NoError(t, r.Stop())
+				r.Stop()
+				r.Wait()
 				require.False(t, r.IsRunning())
 			}
 		}
