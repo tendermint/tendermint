@@ -74,22 +74,19 @@ type Callback func(*types.Request, *types.Response)
 
 type ReqRes struct {
 	*types.Request
-	*sync.WaitGroup
 	*types.Response // Not set atomically, so be sure to use WaitGroup.
 
-	mtx  sync.Mutex
-	done bool                  // Gets set to true once *after* WaitGroup.Done().
-	cb   func(*types.Response) // A single callback that may be set.
+	mtx    sync.Mutex
+	signal chan struct{}
+	cb     func(*types.Response) // A single callback that may be set.
 }
 
 func NewReqRes(req *types.Request) *ReqRes {
 	return &ReqRes{
-		Request:   req,
-		WaitGroup: waitGroup1(),
-		Response:  nil,
-
-		done: false,
-		cb:   nil,
+		Request:  req,
+		Response: nil,
+		signal:   make(chan struct{}),
+		cb:       nil,
 	}
 }
 
@@ -99,14 +96,14 @@ func NewReqRes(req *types.Request) *ReqRes {
 func (r *ReqRes) SetCallback(cb func(res *types.Response)) {
 	r.mtx.Lock()
 
-	if r.done {
+	select {
+	case <-r.signal:
 		r.mtx.Unlock()
 		cb(r.Response)
-		return
+	default:
+		r.cb = cb
+		r.mtx.Unlock()
 	}
-
-	r.cb = cb
-	r.mtx.Unlock()
 }
 
 // InvokeCallback invokes a thread-safe execution of the configured callback
@@ -135,12 +132,7 @@ func (r *ReqRes) GetCallback() func(*types.Response) {
 // SetDone marks the ReqRes object as done.
 func (r *ReqRes) SetDone() {
 	r.mtx.Lock()
-	r.done = true
-	r.mtx.Unlock()
-}
+	defer r.mtx.Unlock()
 
-func waitGroup1() (wg *sync.WaitGroup) {
-	wg = &sync.WaitGroup{}
-	wg.Add(1)
-	return
+	close(r.signal)
 }
