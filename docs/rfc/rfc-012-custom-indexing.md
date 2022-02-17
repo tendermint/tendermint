@@ -1,7 +1,9 @@
-# RFC 011: Event Indexing Revisited
+# RFC 012: Event Indexing Revisited
 
 ## Changelog
 
+- 11-Feb-2022: Add terminological notes.
+- 10-Feb-2022: Updated from review feedback.
 - 07-Feb-2022: Initial draft (@creachadair)
 
 ## Abstract
@@ -25,6 +27,42 @@ meant to unify and focus some of the disparate discussions of the topic.
 
 
 ## Background
+
+- **Terminological Note**: The term "event" in Tendermint can be confusing,
+  because the word is used for multiple related (but different) concepts:
+
+  1. **ABCI Events** refer to the key-value metadata attached to blocks and
+     transactions by the application. These values are represented by the ABCI
+     `Event` protobuf message type.
+
+  2. **Consensus Events** refer to the data published by the Tendermint node to
+     its pubsub bus in response to various consensus state transitions and
+     other important activities, such as round updates, votes, transaction
+     delivery, and block completion.
+
+  This confusion is compounded because some "consensus event" values also have
+  "ABCI event" metadata attached to them. Notably, block and transaction items
+  typically have ABCI metadata assigned by the application.
+
+  Indexers and RPC clients subscribed to the pubsub bus receive **consensus
+  events**, but they identify which ones to care about using query expressions
+  that match against the **ABCI events** associated with them.
+
+  In the discussion that follows, we will use the term **event item** to refer
+  to a datum published to or received from the pubsub bus, and **ABCI event**
+  or **event metadata** to refer to the key/value annotations.
+
+  **Indexing** in this context means recording the association between certain
+  ABCI metadata and the blocks or transactions they're attached to. The ABCI
+  metadata typically carry application-specific details like sender and
+  recipient addresses, catgory tags, and so forth, that are not part of
+  consensus but are used by UI tools to find and display transactions of
+  interest.
+
+  The consensus node records the blocks and transactions as part of its block
+  store, but does not persist the application metadata. Metadata persistence is
+  the task of the indexer, which can be (optionally) enabled by the node
+  operator.
 
 The [original indexer][kv-index] built in to Tendermint stored index data in an
 embedded [`tm-db` database][tmdb] with a proprietary key layout.
@@ -83,9 +121,9 @@ potentially significant complication to the build process.
 The `EventSink` interface retains several limitations of the original
 proprietary indexer. These include:
 
-- The indexer has no control over which events are reported. Only the exact
-  block and transaction events that were reported to the original indexer are
-  reported to a custom indexer.
+- The indexer has no control over which event items are reported. Only the
+  exact block and transaction events that were reported to the original indexer
+  are reported to a custom indexer.
 
 - The interface requires the implementation to define methods for the legacy
   search and query API. This requirement comes from the integation with the
@@ -106,13 +144,13 @@ developer would have to re-implement the entire query language.
 ### Issue 3: Indexing Delays Consensus
 
 Within the node, indexing hooks in to the same internal pubsub dispatcher that
-is used to export events to the [event subscription RPC API][event-rpc]. In
-contrast with RPC subscribers, however, indexing is a "privileged" subscriber:
-If an RPC subscriber is "too slow", the node may terminate the subscription and
-disconnect the client. That means that RPC subscribers may lose (miss) events.
-The indexer, however, is "unbuffered", and the publisher will never drop or
-disconnect from it. If the indexer is slow, the publisher will block until it
-returns, to ensure that no events are lost.
+is used to export event items to the [event subscription RPC API][event-rpc].
+In contrast with RPC subscribers, however, indexing is a "privileged"
+subscriber: If an RPC subscriber is "too slow", the node may terminate the
+subscription and disconnect the client. That means that RPC subscribers may
+lose (miss) event items.  The indexer, however, is "unbuffered", and the
+publisher will never drop or disconnect from it. If the indexer is slow, the
+publisher will block until it returns, to ensure that no event items are lost.
 
 In practice, this means that the performance of the indexer has a direct effect
 on the performance of the consensus node: If the indexer is slow or stalls, it
@@ -124,8 +162,9 @@ risk a much larger surface area.
 
 ## Discussion
 
-It is not possible to simultaneously guarantee that publishing events will not
-delay consensus, and also that all events are always completely indexed.
+It is not possible to simultaneously guarantee that publishing event items will
+not delay consensus, and also that all event items of interest are always
+completely indexed.
 
 Therefore, our choice is between eliminating delay (and minimizing loss) or
 eliminating loss (and minimizing delay).  Currently, we take the second
@@ -134,7 +173,7 @@ indexing and subscription overhead.
 
 - If we agree that consensus performance supersedes index completeness, our
   design choices are to constrain the likelihood and frequency of missing event
-  data.
+  items.
 
 - If we decide that consensus performance is more important than index
   completeness, our option is to minimize overhead on the event delivery path
@@ -179,13 +218,14 @@ there are some specific principles that a solution should include:
    safe" with respect to consensus (even if that means the indexer may miss
    some data, in sufficiently-extreme circumstances).
 
-3. **Custom indexers control which events they index.** A custom indexer is not
-   limited to only the current transaction and block events, but can observe
-   any event published by the node.
+3. **Custom indexers control which event items they index.** A custom indexer
+   is not limited to only the current transaction and block events, but can
+   observe any event item published by the node.
 
-4. **Custom indexing is forward-compatible.** Adding new event types or event
-   data to the consensus node should not require existing custom indexers to be
-   rebuilt or modified, unless they want to take advantage of the new data.
+4. **Custom indexing is forward-compatible.** Adding new event item types or
+   metadata to the consensus node should not require existing custom indexers
+   to be rebuilt or modified, unless they want to take advantage of the new
+   data.
 
 5. **Indexers are responsible for answering queries.** An indexer plugin is not
    required to support the legacy query filter language, nor to be compatible
@@ -202,17 +242,17 @@ must answer to guide any specific changes:
 
    There are two parts to this question: One is what constitutes an extreme
    operational problem, the other is how likely we are to miss some number of
-   events.
+   events items.
 
-   - If the consensus is that no events must ever be missed, no matter how bad
-     the operational circumstances, then we _must_ accept that indexing can
+   - If the consensus is that no event item must ever be missed, no matter how
+     bad the operational circumstances, then we _must_ accept that indexing can
      slow or halt consensus arbitrarily. It is impossible to guarantee complete
      index coverage without potentially unbounded delays.
 
    - Otherwise, how much data can we afford to lose and how often? For example,
-     if we can ensure no events will be lost unless the indexer halts for at
-     least five minutes, is that acceptable? What probabilities and time ranges
-     are reasonable for real production environments?
+     if we can ensure no event item will be lost unless the indexer halts for
+     at least five minutes, is that acceptable? What probabilities and time
+     ranges are reasonable for real production environments?
 
 2. **What level of operational overhead is acceptable to impose on node
    operators to support indexing?**
@@ -227,9 +267,9 @@ must answer to guide any specific changes:
    to satisfy the suggested design principles.
 
    Relatedly, to what extent do we need to be concerned about the cost of
-   encoding and sending events to an external process (e.g., as JSON blobs or
-   protobuf wire messages)? Given that the node already encodes events as JSON
-   for event subscription purposes, the overhead would be negligible for the
+   encoding and sending event items to an external process (e.g., as JSON blobs
+   or protobuf wire messages)? Given that the node already encodes event items
+   as JSON for subscription purposes, the overhead would be negligible for the
    node itself, but the indexer would have to decode to process the results.
 
 3. **What (if any) query APIs does the consensus node need to export,
@@ -254,7 +294,7 @@ something like this (subject to refinement):
 
 1. A custom indexer runs as a separate process from the node.
 
-2. The indexer subscribes to events via the (ADR 075) event subscription API.
+2. The indexer subscribes to event items via the ADR 075 events API.
 
    This means indexers would receive event payloads as JSON rather than
    protobuf, but since we already have to support JSON encoding for the RPC
