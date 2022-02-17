@@ -41,6 +41,10 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	if rollbackBlock == nil {
 		return -1, nil, fmt.Errorf("block at height %d not found", rollbackHeight)
 	}
+	lastBlock := bs.LoadBlockMeta(invalidState.LastBlockHeight)
+	if lastBlock == nil {
+		return -1, nil, fmt.Errorf("block at height %d not found", invalidState.LastBlockHeight)
+	}
 
 	previousLastValidatorSet, err := ss.LoadValidators(rollbackHeight)
 	if err != nil {
@@ -90,7 +94,7 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 		LastHeightConsensusParamsChanged: paramsChangeHeight,
 
 		LastResultsHash: rollbackBlock.Header.LastResultsHash,
-		AppHash:         rollbackBlock.Header.AppHash,
+		AppHash:         lastBlock.Header.AppHash,
 	}
 
 	// persist the new state. This overrides the invalid one. NOTE: this will also
