@@ -254,8 +254,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
-	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+	evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
+	evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
 		[]abci.Evidence{})
 
