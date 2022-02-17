@@ -32,7 +32,6 @@ type Client interface {
 
 	// Asynchronous requests
 	FlushAsync(context.Context) (*ReqRes, error)
-	CheckTxAsync(context.Context, types.RequestCheckTx) (*ReqRes, error)
 
 	// Synchronous requests
 	Flush(context.Context) error

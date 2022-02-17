@@ -204,11 +204,12 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 	return txmp.txsAvailable
 }
 
-// CheckTx executes the ABCI CheckTx method for a given transaction. It acquires
-// a read-lock attempts to execute the application's CheckTx ABCI method via
-// CheckTxAsync. We return an error if any of the following happen:
+// CheckTx executes the ABCI CheckTx method for a given
+// transaction. It acquires a read-lock attempts to execute the
+// application's CheckTx ABCI method via. We return an error if any of
+// the following happen:
 //
-// - The CheckTxAsync execution fails.
+// - The CheckTx execution fails.
 // - The transaction already exists in the cache and we've already received the
 //   transaction from the peer. Otherwise, if it solely exists in the cache, we
 //   return nil.
@@ -590,12 +591,13 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 	txmp.notifyTxsAvailable()
 }
 
-// defaultTxCallback is the CheckTx application callback used when a transaction
-// is being re-checked (if re-checking is enabled). The caller must hold a mempool
-// write-lock (via Lock()) and when executing Update(), if the mempool is non-empty
-// and Recheck is enabled, then all remaining transactions will be rechecked via
-// CheckTxAsync. The order transactions are rechecked must be the same as the
-// order in which this callback is called.
+// defaultTxCallback is the CheckTx application callback used when a
+// transaction is being re-checked (if re-checking is enabled). The
+// caller must hold a mempool write-lock (via Lock()) and when
+// executing Update(), if the mempool is non-empty and Recheck is
+// enabled, then all remaining transactions will be rechecked via
+// CheckTx. The order transactions are rechecked must be the same as
+// the order in which this callback is called.
 func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx) {
 	if txmp.recheckCursor == nil {
 		return
@@ -618,7 +620,7 @@ func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx)
 		txmp.logger.Error(
 			"re-CheckTx transaction mismatch",
 			"got", wtx.tx.Hash(),
-			"expected", types.Tx(tx).Key(),
+			"expected", tx.Key(),
 		)
 
 		if txmp.recheckCursor == txmp.recheckEnd {
@@ -680,7 +682,7 @@ func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx)
 }
 
 // updateReCheckTxs updates the recheck cursors using the gossipIndex. For
-// each transaction, it executes CheckTxAsync. The global callback defined on
+// each transaction, it executes CheckTx. The global callback defined on
 // the proxyAppConn will be executed for each transaction after CheckTx is
 // executed.
 //
@@ -700,7 +702,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
 		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			res, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+			res, err := txmp.proxyAppConn.CheckTx(ctx, abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
 			})
@@ -709,7 +711,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 				txmp.logger.Error("failed to execute CheckTx during rechecking", "err", err)
 				continue
 			}
-			txmp.defaultTxCallback(wtx.tx, res.Response.GetCheckTx())
+			txmp.defaultTxCallback(wtx.tx, res)
 		}
 	}
 
