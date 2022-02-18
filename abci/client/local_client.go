@@ -16,9 +16,8 @@ import (
 type localClient struct {
 	service.BaseService
 
-	mtx *sync.Mutex
+	mtx sync.Mutex
 	types.Application
-	Callback
 }
 
 var _ Client = (*localClient)(nil)
@@ -27,12 +26,8 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) Client {
-	if mtx == nil {
-		mtx = new(sync.Mutex)
-	}
+func NewLocalClient(logger log.Logger, app types.Application) Client {
 	cli := &localClient{
-		mtx:         mtx,
 		Application: app,
 	}
 	cli.BaseService = *service.NewBaseService(logger, "localClient", cli)
@@ -42,31 +37,9 @@ func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) C
 func (*localClient) OnStart(context.Context) error { return nil }
 func (*localClient) OnStop()                       {}
 
-func (app *localClient) SetResponseCallback(cb Callback) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	app.Callback = cb
-}
-
 // TODO: change types.Application to include Error()?
 func (app *localClient) Error() error {
 	return nil
-}
-
-func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	// Do nothing
-	return newLocalReqRes(types.ToRequestFlush(), nil), nil
-}
-
-func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.CheckTx(req)
-	return app.callback(
-		types.ToRequestCheckTx(req),
-		types.ToResponseCheckTx(res),
-	), nil
 }
 
 //-------------------------------------------------------
@@ -228,18 +201,4 @@ func (app *localClient) FinalizeBlock(
 
 	res := app.Application.FinalizeBlock(req)
 	return &res, nil
-}
-
-//-------------------------------------------------------
-
-func (app *localClient) callback(req *types.Request, res *types.Response) *ReqRes {
-	app.Callback(req, res)
-	return newLocalReqRes(req, res)
-}
-
-func newLocalReqRes(req *types.Request, res *types.Response) *ReqRes {
-	reqRes := NewReqRes(req)
-	reqRes.Response = res
-	reqRes.SetDone()
-	return reqRes
 }

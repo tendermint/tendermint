@@ -107,16 +107,6 @@ func (cli *socketClient) Error() error {
 	return cli.err
 }
 
-// SetResponseCallback sets a callback, which will be executed for each
-// non-error & non-empty response from the server.
-//
-// NOTE: callback may get internally generated flush responses.
-func (cli *socketClient) SetResponseCallback(resCb Callback) {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-	cli.resCb = resCb
-}
-
 //----------------------------------------
 
 func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer) {
@@ -197,7 +187,7 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	}
 
 	reqres.Response = res
-	reqres.Done()            // release waiters
+	reqres.SetDone()         // release waiters
 	cli.reqSent.Remove(next) // pop first item from linked list
 
 	// Notify client listener if set (global callback).
@@ -216,16 +206,6 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *socketClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestFlush())
-}
-
-func (cli *socketClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestCheckTx(req))
-}
-
-//----------------------------------------
-
 func (cli *socketClient) Flush(ctx context.Context) error {
 	reqRes, err := cli.queueRequest(ctx, types.ToRequestFlush())
 	if err != nil {
@@ -236,15 +216,8 @@ func (cli *socketClient) Flush(ctx context.Context) error {
 		return err
 	}
 
-	gotResp := make(chan struct{})
-	go func() {
-		// NOTE: if we don't flush the queue, its possible to get stuck here
-		reqRes.Wait()
-		close(gotResp)
-	}()
-
 	select {
-	case <-gotResp:
+	case <-reqRes.signal:
 		return cli.Error()
 	case <-ctx.Done():
 		return ctx.Err()
@@ -437,19 +410,6 @@ func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request) (
 	return reqres, nil
 }
 
-func (cli *socketClient) queueRequestAsync(
-	ctx context.Context,
-	req *types.Request,
-) (*ReqRes, error) {
-
-	reqres, err := cli.queueRequest(ctx, req)
-	if err != nil {
-		return nil, queueErr(err)
-	}
-
-	return reqres, cli.Error()
-}
-
 func (cli *socketClient) queueRequestAndFlush(
 	ctx context.Context,
 	req *types.Request,
@@ -480,7 +440,7 @@ func (cli *socketClient) drainQueue(ctx context.Context) {
 	// mark all in-flight messages as resolved (they will get cli.Error())
 	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
 		reqres := req.Value.(*ReqRes)
-		reqres.Done()
+		reqres.SetDone()
 	}
 
 	// Mark all queued messages as resolved.
@@ -493,7 +453,7 @@ func (cli *socketClient) drainQueue(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
-			reqres.Done()
+			reqres.SetDone()
 		default:
 			return
 		}

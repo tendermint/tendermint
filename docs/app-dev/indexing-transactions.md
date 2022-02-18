@@ -15,7 +15,7 @@ the block itself is never stored.
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
 details on `Events`, see the
-[ABCI](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
+[ABCI](https://github.com/tendermint/tendermint/blob/master/spec/abci/abci.md#events)
 documentation.
 
 An `Event` has a composite key associated with it. A `compositeKey` is
