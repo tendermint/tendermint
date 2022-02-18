@@ -19,8 +19,8 @@ const (
 
 // Client defines an interface for an ABCI client.
 //
-// All `Async` methods return a `ReqRes` object and an error.
-// All `Sync` methods return the appropriate protobuf ResponseXxx struct and an error.
+// All methods return the appropriate protobuf ResponseXxx struct and
+// an error.
 //
 // NOTE these are client errors, eg. ABCI socket connectivity issues.
 // Application-related errors are reflected in response via ABCI error codes
@@ -52,65 +52,35 @@ type Client interface {
 
 // NewClient returns a new ABCI client of the specified transport type.
 // It returns an error if the transport is not "socket" or "grpc"
-func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (client Client, err error) {
+func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (Client, error) {
 	switch transport {
 	case "socket":
-		client = NewSocketClient(logger, addr, mustConnect)
+		return NewSocketClient(logger, addr, mustConnect), nil
 	case "grpc":
-		client = NewGRPCClient(logger, addr, mustConnect)
+		return NewGRPCClient(logger, addr, mustConnect), nil
 	default:
-		err = fmt.Errorf("unknown abci transport %s", transport)
+		return nil, fmt.Errorf("unknown abci transport %s", transport)
 	}
-	return
 }
 
-type ReqRes struct {
+type requestAndResponse struct {
 	*types.Request
-	*types.Response // Not set atomically, so be sure to use WaitGroup.
+	*types.Response
 
 	mtx    sync.Mutex
 	signal chan struct{}
-	cb     func(*types.Response) // A single callback that may be set.
 }
 
-func NewReqRes(req *types.Request) *ReqRes {
-	return &ReqRes{
+func makeReqRes(req *types.Request) *requestAndResponse {
+	return &requestAndResponse{
 		Request:  req,
 		Response: nil,
 		signal:   make(chan struct{}),
-		cb:       nil,
 	}
 }
 
-// Sets sets the callback. If reqRes is already done, it will call the cb
-// immediately. Note, reqRes.cb should not change if reqRes.done and only one
-// callback is supported.
-func (r *ReqRes) SetCallback(cb func(res *types.Response)) {
-	r.mtx.Lock()
-
-	select {
-	case <-r.signal:
-		r.mtx.Unlock()
-		cb(r.Response)
-	default:
-		r.cb = cb
-		r.mtx.Unlock()
-	}
-}
-
-// InvokeCallback invokes a thread-safe execution of the configured callback
-// if non-nil.
-func (r *ReqRes) InvokeCallback() {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-
-	if r.cb != nil {
-		r.cb(r.Response)
-	}
-}
-
-// SetDone marks the ReqRes object as done.
-func (r *ReqRes) SetDone() {
+// markDone marks the ReqRes object as done.
+func (r *requestAndResponse) markDone() {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
