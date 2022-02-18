@@ -53,11 +53,6 @@ func (app *localClient) Error() error {
 	return nil
 }
 
-func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	// Do nothing
-	return newLocalReqRes(types.ToRequestFlush(), nil), nil
-}
-
 func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
