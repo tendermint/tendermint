@@ -42,17 +42,6 @@ func (app *localClient) Error() error {
 	return nil
 }
 
-func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.CheckTx(req)
-	return app.callback(
-		types.ToRequestCheckTx(req),
-		types.ToResponseCheckTx(res),
-	), nil
-}
-
 //-------------------------------------------------------
 
 func (app *localClient) Flush(ctx context.Context) error {
@@ -212,17 +201,4 @@ func (app *localClient) FinalizeBlock(
 
 	res := app.Application.FinalizeBlock(req)
 	return &res, nil
-}
-
-//-------------------------------------------------------
-
-func (app *localClient) callback(req *types.Request, res *types.Response) *ReqRes {
-	return newLocalReqRes(req, res)
-}
-
-func newLocalReqRes(req *types.Request, res *types.Response) *ReqRes {
-	reqRes := NewReqRes(req)
-	reqRes.Response = res
-	reqRes.SetDone()
-	return reqRes
 }
