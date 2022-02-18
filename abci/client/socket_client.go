@@ -390,7 +390,7 @@ func (cli *socketClient) FinalizeBlock(
 //----------------------------------------
 
 // queueRequest enqueues req onto the queue. The request can break early if the
-// the context is cancelled. If the queue is full, this method blocks to allow
+// the context is canceled. If the queue is full, this method blocks to allow
 // the request to be placed onto the queue. This has the effect of creating an
 // unbounded queue of goroutines waiting to write to this queue which is a bit
 // antithetical to the purposes of a queue, however, undoing this behavior has
