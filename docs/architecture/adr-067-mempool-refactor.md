@@ -106,7 +106,7 @@ invasive in the required  set of protocol and implementation changes, which
 simply extends the existing `CheckTx` ABCI method. The second candidate essentially
 involves the introduction of new ABCI method(s) and would require a higher degree
 of complexity in protocol and implementation changes, some of which may either
-overlap or conflict with the upcoming introduction of [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md).
+overlap or conflict with the upcoming introduction of [ABCI++](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-013-abci%2B%2B.md).
 
 For more information on the various approaches and proposals, please see the
 [mempool discussion](https://github.com/tendermint/tendermint/discussions/6295).
@@ -171,7 +171,7 @@ message ResponseCheckTx {
 ```
 
 It is entirely up the application in determining how these fields are populated
-and with what values, e.g. the `sender` could be the signer and fee payer 
+and with what values, e.g. the `sender` could be the signer and fee payer
 of the transaction, the `priority` could be the cumulative sum of the fee(s).
 
 Only `sender` is required, while `priority` can be omitted which would result in
@@ -289,7 +289,7 @@ non-contentious and backwards compatible manner.
   trying again at a later point in time or by ensuring the "child" priority is
   lower than the "parent" priority. In other words, if parents always have
   priories that are higher than their children, then the new mempool design will
-  maintain causal ordering.  
+  maintain causal ordering.
 
 ### Neutral
 
@@ -299,5 +299,5 @@ non-contentious and backwards compatible manner.
 
 ## References
 
-- [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
+- [ABCI++](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-013-abci%2B%2B.md)
 - [Mempool Discussion](https://github.com/tendermint/tendermint/discussions/6295)

@@ -81,7 +81,7 @@ func TestSignerClose(t *testing.T) {
 			}()
 
 			assert.NoError(t, tc.signerClient.Close())
-			assert.NoError(t, tc.signerServer.Stop())
+			tc.signerServer.Stop()
 		})
 	}
 }
