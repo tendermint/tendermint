@@ -97,6 +97,9 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 
 	// Kill Tendermint if the ABCI application crashes.
 	go func() {
+		if !client.IsRunning() {
+			return
+		}
 		app.client.Wait()
 		if ctx.Err() != nil {
 			return
@@ -113,7 +116,7 @@ func (app *multiAppConn) OnStart(ctx context.Context) error {
 
 	}()
 
-	return nil
+	return client.Start(ctx)
 }
 
 func (app *multiAppConn) OnStop() { app.client.Stop() }
