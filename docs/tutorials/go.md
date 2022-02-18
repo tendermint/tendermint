@@ -384,7 +384,6 @@ func main() {
  c := make(chan os.Signal, 1)
  signal.Notify(c, os.Interrupt, syscall.SIGTERM)
  <-c
- os.Exit(0)
 }
 ```
 
@@ -425,7 +424,6 @@ defer server.Stop()
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
-os.Exit(0)
 ```
 
 ## 1.5 Getting Up and Running

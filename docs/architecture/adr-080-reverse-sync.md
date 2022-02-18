@@ -19,7 +19,7 @@ Two new features: [Block pruning](https://github.com/tendermint/tendermint/issue
 and [State sync](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-042-state-sync.md)
 meant nodes no longer needed a complete history of the blockchain. This
 introduced some challenges of its own which were covered and subsequently
-tackled with [RFC-001](https://github.com/tendermint/spec/blob/master/rfc/001-block-retention.md).
+tackled with [RFC-001](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-077-block-retention.md).
 The RFC allowed applications to set a block retention height; an upper bound on
 what blocks would be pruned. However nodes who state sync past this upper bound
 (which is necessary as snapshots must be saved within the trusting period for
@@ -199,5 +199,5 @@ nodes to freely fetch and verify prior blocks
 
 ## References
 
-- [RFC-001: Block retention](https://github.com/tendermint/spec/blob/master/rfc/001-block-retention.md)
+- [RFC-001: Block retention](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-077-block-retention.md)
 - [Original issue](https://github.com/tendermint/tendermint/issues/4629)
