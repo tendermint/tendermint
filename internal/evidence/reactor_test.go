@@ -17,6 +17,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -69,6 +70,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 
 	idx := 0
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
 	for nodeID := range rts.network.Nodes {
 		logger := rts.logger.With("validator", idx)
 		evidenceDB := dbm.NewMemDB()
@@ -83,6 +85,10 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
 
 		require.NoError(t, err)
+		eventBus := eventbus.NewDefault(logger)
+		err = eventBus.Start(ctx)
+		require.NoError(t, err)
+		rts.pools[nodeID].SetEventBus(eventBus)
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)

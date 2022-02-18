@@ -335,18 +335,14 @@ func (evpool *Pool) addPendingEvidence(ctx context.Context, ev types.Evidence) e
 	atomic.AddUint32(&evpool.evidenceSize, 1)
 	evpool.Metrics.NumEvidence.Set(float64(evpool.evidenceSize))
 
-	// This should normally never be false
-	if evpool.eventBus != nil {
-		err = evpool.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
-			Evidence: ev,
-			Height:   ev.Height(),
-		})
-		if err != nil {
-			return err
-		}
+	// This should normally never be true
+	if evpool.eventBus == nil {
+		return errors.New("event bus is not configured")
 	}
-
-	return nil
+	return evpool.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
+		Evidence: ev,
+		Height:   ev.Height(),
+	})
 }
 
 // markEvidenceAsCommitted processes all the evidence in the block, marking it as

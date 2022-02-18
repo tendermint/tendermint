@@ -105,6 +105,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
+			evpool.SetEventBus(eventBus)
 
 			cs.SetTimeoutTicker(tickerFunc())
 

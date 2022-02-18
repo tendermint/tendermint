@@ -53,6 +53,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
+	require.NoError(t, setupEventBus(ctx, pool))
 	// evidence not seen yet:
 	evs, size := pool.PendingEvidence(defaultEvidenceMaxBytes)
 	require.Equal(t, 0, len(evs))
@@ -117,6 +118,8 @@ func TestAddExpiredEvidence(t *testing.T) {
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
 
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	testCases := []struct {
 		evHeight      int64
 		evTime        time.Time
@@ -157,6 +160,9 @@ func TestReportConflictingVotes(t *testing.T) {
 	defer cancel()
 
 	pool, pv := defaultTestPool(ctx, t, height)
+
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
 
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height+1, defaultEvidenceTime, pv, evidenceChainID)
@@ -196,6 +202,9 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	defer cancel()
 
 	pool, val := defaultTestPool(ctx, t, height)
+
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	state := pool.State()
 
 	// create two lots of old evidence that we expect to be pruned when we update
@@ -265,6 +274,9 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 	defer cancel()
 
 	pool, val := defaultTestPool(ctx, t, height)
+
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
 		height,
@@ -284,6 +296,8 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	defer cancel()
 
 	pool, val := defaultTestPool(ctx, t, height)
+
+	require.NoError(t, setupEventBus(ctx, pool))
 
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
@@ -307,11 +321,7 @@ func TestEventOnEvidenceValidated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger())
-	require.NoError(t, eventBus.Start(ctx))
-
 	pool, val := defaultTestPool(ctx, t, height)
-	pool.SetEventBus(eventBus)
 
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
@@ -321,6 +331,11 @@ func TestEventOnEvidenceValidated(t *testing.T) {
 		evidenceChainID,
 	)
 	require.NoError(t, err)
+
+	eventBus := eventbus.NewDefault(log.TestingLogger())
+	require.NoError(t, eventBus.Start(ctx))
+
+	pool.SetEventBus(eventBus)
 
 	const query = `tm.event='EvidenceValidated'`
 	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
@@ -382,6 +397,8 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
 
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	hash := ev.Hash()
 
 	err = pool.AddEvidence(ctx, ev)
@@ -435,6 +452,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	// create previous pool and populate it
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
+
+	require.NoError(t, setupEventBus(ctx, pool))
 
 	goodEvidence, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
@@ -596,4 +615,14 @@ func createState(height int64, valSet *types.ValidatorSet) sm.State {
 		Validators:      valSet,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
+}
+
+func setupEventBus(ctx context.Context, evpool *evidence.Pool) (err error) {
+	eventBus := eventbus.NewDefault(log.TestingLogger())
+	err = eventBus.Start(ctx)
+	if err != nil {
+		return
+	}
+	evpool.SetEventBus(eventBus)
+	return
 }

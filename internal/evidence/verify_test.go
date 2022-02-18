@@ -126,6 +126,9 @@ func TestVerify_LunaticAttackAgainstState(t *testing.T) {
 	ev.Timestamp = defaultEvidenceTime.Add(1 * time.Minute)
 	pool, err = evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
+
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	err = pool.AddEvidence(ctx, ev)
 	assert.Error(t, err)
 	ev.Timestamp = defaultEvidenceTime
@@ -178,6 +181,8 @@ func TestVerify_ForwardLunaticAttack(t *testing.T) {
 	blockStore.On("Height").Return(nodeHeight)
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
+
+	require.NoError(t, setupEventBus(ctx, pool))
 
 	// check that the evidence pool correctly verifies the evidence
 	assert.NoError(t, pool.CheckEvidence(ctx, types.EvidenceList{ev}))
@@ -287,6 +292,8 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
 
+	require.NoError(t, setupEventBus(ctx, pool))
+
 	evList := types.EvidenceList{ev}
 	err = pool.CheckEvidence(ctx, evList)
 	assert.NoError(t, err)
@@ -373,6 +380,8 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
+
+	require.NoError(t, setupEventBus(ctx, pool))
 
 	evList := types.EvidenceList{ev}
 	err = pool.CheckEvidence(ctx, evList)
@@ -471,6 +480,8 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
+
+	require.NoError(t, setupEventBus(ctx, pool))
 
 	evList := types.EvidenceList{goodEv}
 	err = pool.CheckEvidence(ctx, evList)
