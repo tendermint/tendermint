@@ -32,16 +32,18 @@ require (
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
+	golang.org/x/tools v0.1.11-0.20220316014157-77aa08bb151a
 	google.golang.org/grpc v1.47.0
 	pgregory.net/rapid v0.4.7
 )
+
+require github.com/google/go-cmp v0.5.8
 
 require (
 	github.com/bufbuild/buf v1.4.0
 	github.com/creachadair/atomicfile v0.2.6
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.46.0
-	github.com/google/go-cmp v0.5.8
 	github.com/vektra/mockery/v2 v2.12.3
 	gotest.tools v2.2.0+incompatible
 )
@@ -223,7 +225,6 @@ require (
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.11-0.20220316014157-77aa08bb151a // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
