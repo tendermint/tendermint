@@ -407,7 +407,7 @@ discussed.
 
 ## References
 
-[abci]: https://github.com/tendermint/spec/tree/95cf253b6df623066ff7cd4074a94e7a3f147c7a/spec/abci
+[abci]: https://github.com/tendermint/tendermint/tree/master/spec/abci
 [rpc-service]: https://docs.tendermint.com/master/rpc/
 [light-client]: https://docs.tendermint.com/master/tendermint-core/light-client.html
 [tm-cli]: https://github.com/tendermint/tendermint/tree/master/cmd/tendermint
@@ -416,5 +416,5 @@ discussed.
 [socket-server]: https://github.com/tendermint/tendermint/blob/master/abci/server/socket_server.go
 [sdk-grpc]: https://pkg.go.dev/github.com/cosmos/cosmos-sdk/types/tx#ServiceServer
 [json-rpc]: https://www.jsonrpc.org/specification
-[abci-conn]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#state
+[abci-conn]: https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#state
 [adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
