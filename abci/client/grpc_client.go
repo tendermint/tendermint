@@ -24,9 +24,8 @@ type grpcClient struct {
 
 	mustConnect bool
 
-	client   types.ABCIApplicationClient
-	conn     *grpc.ClientConn
-	chReqRes chan *ReqRes // dispatches "async" responses to callbacks *in order*, needed by mempool
+	client types.ABCIApplicationClient
+	conn   *grpc.ClientConn
 
 	mtx  sync.Mutex
 	addr string
@@ -38,25 +37,11 @@ var _ Client = (*grpcClient)(nil)
 // NewGRPCClient creates a gRPC client, which will connect to addr upon the
 // start. Note Client#Start returns an error if connection is unsuccessful and
 // mustConnect is true.
-//
-// GRPC calls are synchronous, but some callbacks expect to be called
-// asynchronously (eg. the mempool expects to be able to lock to remove bad txs
-// from cache). To accommodate, we finish each call in its own go-routine,
-// which is expensive, but easy - if you want something better, use the socket
-// protocol! maybe one day, if people really want it, we use grpc streams, but
-// hopefully not :D
 func NewGRPCClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		logger:      logger,
 		addr:        addr,
 		mustConnect: mustConnect,
-		// Buffering the channel is needed to make calls appear asynchronous,
-		// which is required when the caller makes multiple async calls before
-		// processing callbacks (e.g. due to holding locks). 64 means that a
-		// caller can make up to 64 async calls before a callback must be
-		// processed (otherwise it deadlocks). It also means that we can make 64
-		// gRPC calls while processing a slow callback at the channel head.
-		chReqRes: make(chan *ReqRes, 64),
 	}
 	cli.BaseService = *service.NewBaseService(logger, "grpcClient", cli)
 	return cli
@@ -67,35 +52,6 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 }
 
 func (cli *grpcClient) OnStart(ctx context.Context) error {
-	// This processes asynchronous request/response messages and dispatches
-	// them to callbacks.
-	go func() {
-		// Use a separate function to use defer for mutex unlocks (this handles panics)
-		callCb := func(reqres *ReqRes) {
-			cli.mtx.Lock()
-			defer cli.mtx.Unlock()
-
-			reqres.SetDone()
-
-			// Notify reqRes listener if set
-			reqres.InvokeCallback()
-		}
-
-		for {
-			select {
-			case reqres := <-cli.chReqRes:
-				if reqres != nil {
-					callCb(reqres)
-				} else {
-					cli.logger.Error("Received nil reqres")
-				}
-			case <-ctx.Done():
-				return
-			}
-
-		}
-	}()
-
 RETRY_LOOP:
 	for {
 		conn, err := grpc.Dial(cli.addr,
@@ -138,22 +94,6 @@ func (cli *grpcClient) OnStop() {
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
-	close(cli.chReqRes)
-}
-
-func (cli *grpcClient) StopForError(err error) {
-	if !cli.IsRunning() {
-		return
-	}
-
-	cli.mtx.Lock()
-	if cli.err == nil {
-		cli.err = err
-	}
-	cli.mtx.Unlock()
-
-	cli.logger.Error("Stopping abci.grpcClient for error", "err", err)
-	cli.Stop()
 }
 
 func (cli *grpcClient) Error() error {
