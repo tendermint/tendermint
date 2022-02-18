@@ -721,7 +721,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 func TestSyncer_verifyApp(t *testing.T) {
 	boom := errors.New("boom")
-	appVersion := uint64(9)
+	const appVersion = 9
 	appVersionMismatchErr := errors.New("app version mismatch. Expected: 9, got: 2")
 	s := &snapshot{Height: 3, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
 
