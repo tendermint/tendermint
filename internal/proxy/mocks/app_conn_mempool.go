@@ -90,8 +90,3 @@ func (_m *AppConnMempool) Flush(_a0 context.Context) error {
 
 	return r0
 }
-
-// SetResponseCallback provides a mock function with given fields: _a0
-func (_m *AppConnMempool) SetResponseCallback(_a0 abciclient.Callback) {
-	_m.Called(_a0)
-}

@@ -404,11 +404,6 @@ func (_m *Client) Query(_a0 context.Context, _a1 types.RequestQuery) (*types.Res
 	return r0, r1
 }
 
-// SetResponseCallback provides a mock function with given fields: _a0
-func (_m *Client) SetResponseCallback(_a0 abciclient.Callback) {
-	_m.Called(_a0)
-}
-
 // Start provides a mock function with given fields: _a0
 func (_m *Client) Start(_a0 context.Context) error {
 	ret := _m.Called(_a0)

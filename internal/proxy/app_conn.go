@@ -16,7 +16,6 @@ import (
 // Enforce which abci msgs can be sent on a connection at the type level
 
 type AppConnConsensus interface {
-	SetResponseCallback(abciclient.Callback)
 	Error() error
 
 	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
@@ -30,7 +29,6 @@ type AppConnConsensus interface {
 }
 
 type AppConnMempool interface {
-	SetResponseCallback(abciclient.Callback)
 	Error() error
 
 	CheckTxAsync(context.Context, types.RequestCheckTx) (*abciclient.ReqRes, error)
@@ -71,10 +69,6 @@ func NewAppConnConsensus(appConn abciclient.Client, metrics *Metrics) AppConnCon
 		metrics: metrics,
 		appConn: appConn,
 	}
-}
-
-func (app *appConnConsensus) SetResponseCallback(cb abciclient.Callback) {
-	app.appConn.SetResponseCallback(cb)
 }
 
 func (app *appConnConsensus) Error() error {
@@ -147,10 +141,6 @@ func NewAppConnMempool(appConn abciclient.Client, metrics *Metrics) AppConnMempo
 		metrics: metrics,
 		appConn: appConn,
 	}
-}
-
-func (app *appConnMempool) SetResponseCallback(cb abciclient.Callback) {
-	app.appConn.SetResponseCallback(cb)
 }
 
 func (app *appConnMempool) Error() error {

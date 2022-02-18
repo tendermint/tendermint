@@ -16,9 +16,8 @@ import (
 type localClient struct {
 	service.BaseService
 
-	mtx *sync.Mutex
+	mtx sync.Mutex
 	types.Application
-	Callback
 }
 
 var _ Client = (*localClient)(nil)
@@ -27,12 +26,8 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) Client {
-	if mtx == nil {
-		mtx = new(sync.Mutex)
-	}
+func NewLocalClient(logger log.Logger, app types.Application) Client {
 	cli := &localClient{
-		mtx:         mtx,
 		Application: app,
 	}
 	cli.BaseService = *service.NewBaseService(logger, "localClient", cli)
@@ -41,12 +36,6 @@ func NewLocalClient(logger log.Logger, mtx *sync.Mutex, app types.Application) C
 
 func (*localClient) OnStart(context.Context) error { return nil }
 func (*localClient) OnStop()                       {}
-
-func (app *localClient) SetResponseCallback(cb Callback) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	app.Callback = cb
-}
 
 // TODO: change types.Application to include Error()?
 func (app *localClient) Error() error {
@@ -228,7 +217,6 @@ func (app *localClient) FinalizeBlock(
 //-------------------------------------------------------
 
 func (app *localClient) callback(req *types.Request, res *types.Response) *ReqRes {
-	app.Callback(req, res)
 	return newLocalReqRes(req, res)
 }
 
