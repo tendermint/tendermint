@@ -401,7 +401,7 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 //
 // See merkle.SimpleHashFromByteSlices
 func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
-	return types.NewResults(ar.DeliverTxs).Hash()
+	return types.NewResults(ar.FinalizeBlock.Txs).Hash()
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
@@ -444,13 +444,13 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	// strip nil values,
-	for _, tx := range abciResponses.DeliverTxs {
+	for _, tx := range abciResponses.FinalizeBlock.Txs {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
 		}
 	}
 
-	abciResponses.DeliverTxs = dtxs
+	abciResponses.FinalizeBlock.Txs = dtxs
 
 	bz, err := abciResponses.Marshal()
 	if err != nil {

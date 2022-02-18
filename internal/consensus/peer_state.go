@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,7 @@ type PeerState struct {
 
 	// NOTE: Modify below using setters, never directly.
 	mtx     sync.RWMutex
+	cancel  context.CancelFunc
 	running bool
 	PRS     cstypes.PeerRoundState `json:"round_state"`
 	Stats   *peerStateStats        `json:"stats"`

@@ -24,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
@@ -225,7 +226,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
 	require.NoError(t, err)
-	block.Evidence = types.EvidenceData{Evidence: ev}
+	block.Evidence = ev
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -237,6 +238,47 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	// TODO check state and mempool
 	assert.Equal(t, abciEv, app.ByzantineValidators)
+}
+
+func TestProcessProposal(t *testing.T) {
+	height := 1
+	runTest := func(txs types.Txs, expectAccept bool) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		app := &testApp{}
+		cc := abciclient.NewLocalCreator(app)
+		logger := log.TestingLogger()
+		proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+		err := proxyApp.Start(ctx)
+		require.NoError(t, err)
+
+		state, stateDB, _ := makeState(t, 1, height)
+		stateStore := sm.NewStore(stateDB)
+		blockStore := store.NewBlockStore(dbm.NewMemDB())
+
+		blockExec := sm.NewBlockExecutor(
+			stateStore,
+			logger,
+			proxyApp.Consensus(),
+			mmock.Mempool{},
+			sm.EmptyEvidencePool{},
+			blockStore,
+		)
+
+		block, err := sf.MakeBlock(state, int64(height), new(types.Commit))
+		require.NoError(t, err)
+		block.Txs = txs
+		acceptBlock, err := blockExec.ProcessProposal(ctx, block)
+		require.NoError(t, err)
+		require.Equal(t, expectAccept, acceptBlock)
+	}
+	goodTxs := factory.MakeTenTxs(int64(height))
+	runTest(goodTxs, true)
+	// testApp has process proposal fail if any tx is 0-len
+	badTxs := factory.MakeTenTxs(int64(height))
+	badTxs[0] = types.Tx{}
+	runTest(badTxs, false)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -397,7 +439,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	eventBus := eventbus.NewDefault(logger)
 	err = eventBus.Start(ctx)
 	require.NoError(t, err)
-	defer eventBus.Stop() //nolint:errcheck // ignore for tests
+	defer eventBus.Stop()
 
 	blockExec.SetEventBus(eventBus)
 

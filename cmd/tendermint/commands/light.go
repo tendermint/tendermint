@@ -83,9 +83,11 @@ will be verified before passing them back to the caller. Other than
 that, it will present the same interface as a full Tendermint node.
 
 Furthermore to the chainID, a fresh instance of a light client will
-need a primary RPC address, a trusted hash and height and witness RPC addresses
-(if not using sequential verification). To restart the node, thereafter
-only the chainID is required.
+need a primary RPC address and a trusted hash and height. It is also highly
+recommended to provide additional witness RPC addresses, especially if
+not using sequential verification.
+
+To restart the node, thereafter only the chainID is required.
 
 When /abci_query is called, the Merkle key path format is:
 
@@ -125,6 +127,10 @@ for applications built w/ Cosmos SDK).
 				if err != nil {
 					logger.Error("Unable to save primary and or witness addresses", "err", err)
 				}
+			}
+
+			if len(witnessesAddrs) < 1 && !sequential {
+				logger.Info("In skipping verification mode it is highly recommended to provide at least one witness")
 			}
 
 			trustLevel, err := tmmath.ParseFraction(trustLevelStr)

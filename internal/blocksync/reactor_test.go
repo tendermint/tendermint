@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -90,6 +91,7 @@ func setup(
 			}
 		}
 	})
+	t.Cleanup(leaktest.Check(t))
 
 	return rts
 }
@@ -203,7 +205,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -243,7 +245,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -271,7 +273,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
@@ -323,7 +325,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot("block_sync_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 

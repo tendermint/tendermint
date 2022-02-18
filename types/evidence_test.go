@@ -33,6 +33,44 @@ func TestEvidenceList(t *testing.T) {
 	assert.False(t, evl.Has(&DuplicateVoteEvidence{}))
 }
 
+// TestEvidenceListProtoBuf to ensure parity in protobuf output and input
+func TestEvidenceListProtoBuf(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	const chainID = "mychain"
+	ev, err := NewMockDuplicateVoteEvidence(ctx, math.MaxInt64, time.Now(), chainID)
+	require.NoError(t, err)
+	data := EvidenceList{ev}
+	testCases := []struct {
+		msg      string
+		data1    *EvidenceList
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", &data, true, true},
+		{"empty evidenceData", &EvidenceList{}, true, true},
+		{"fail nil Data", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		protoData, err := tc.data1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		eviD := new(EvidenceList)
+		err = eviD.FromProto(protoData)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.data1, eviD, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
 func randomDuplicateVoteEvidence(ctx context.Context, t *testing.T) *DuplicateVoteEvidence {
 	t.Helper()
 	val := NewMockPV()

@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 )
 
@@ -44,12 +45,6 @@ func ToRequestInfo(req RequestInfo) *Request {
 	}
 }
 
-func ToRequestDeliverTx(req RequestDeliverTx) *Request {
-	return &Request{
-		Value: &Request_DeliverTx{&req},
-	}
-}
-
 func ToRequestCheckTx(req RequestCheckTx) *Request {
 	return &Request{
 		Value: &Request_CheckTx{&req},
@@ -71,18 +66,6 @@ func ToRequestQuery(req RequestQuery) *Request {
 func ToRequestInitChain(req RequestInitChain) *Request {
 	return &Request{
 		Value: &Request_InitChain{&req},
-	}
-}
-
-func ToRequestBeginBlock(req RequestBeginBlock) *Request {
-	return &Request{
-		Value: &Request_BeginBlock{&req},
-	}
-}
-
-func ToRequestEndBlock(req RequestEndBlock) *Request {
-	return &Request{
-		Value: &Request_EndBlock{&req},
 	}
 }
 
@@ -128,6 +111,18 @@ func ToRequestPrepareProposal(req RequestPrepareProposal) *Request {
 	}
 }
 
+func ToRequestProcessProposal(req RequestProcessProposal) *Request {
+	return &Request{
+		Value: &Request_ProcessProposal{&req},
+	}
+}
+
+func ToRequestFinalizeBlock(req RequestFinalizeBlock) *Request {
+	return &Request{
+		Value: &Request_FinalizeBlock{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -153,11 +148,6 @@ func ToResponseInfo(res ResponseInfo) *Response {
 		Value: &Response_Info{&res},
 	}
 }
-func ToResponseDeliverTx(res ResponseDeliverTx) *Response {
-	return &Response{
-		Value: &Response_DeliverTx{&res},
-	}
-}
 
 func ToResponseCheckTx(res ResponseCheckTx) *Response {
 	return &Response{
@@ -180,18 +170,6 @@ func ToResponseQuery(res ResponseQuery) *Response {
 func ToResponseInitChain(res ResponseInitChain) *Response {
 	return &Response{
 		Value: &Response_InitChain{&res},
-	}
-}
-
-func ToResponseBeginBlock(res ResponseBeginBlock) *Response {
-	return &Response{
-		Value: &Response_BeginBlock{&res},
-	}
-}
-
-func ToResponseEndBlock(res ResponseEndBlock) *Response {
-	return &Response{
-		Value: &Response_EndBlock{&res},
 	}
 }
 
@@ -234,5 +212,17 @@ func ToResponseVerifyVoteExtension(res ResponseVerifyVoteExtension) *Response {
 func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {
 	return &Response{
 		Value: &Response_PrepareProposal{&res},
+	}
+}
+
+func ToResponseProcessProposal(res ResponseProcessProposal) *Response {
+	return &Response{
+		Value: &Response_ProcessProposal{&res},
+	}
+}
+
+func ToResponseFinalizeBlock(res ResponseFinalizeBlock) *Response {
+	return &Response{
+		Value: &Response_FinalizeBlock{&res},
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"os"
 	"testing"
 
 	dbm "github.com/tendermint/tm-db"
@@ -15,10 +14,7 @@ import (
 )
 
 func BenchmarkTxSearch(b *testing.B) {
-	dbDir, err := os.MkdirTemp("", "benchmark_tx_search_test")
-	if err != nil {
-		b.Errorf("failed to create temporary directory: %s", err)
-	}
+	dbDir := b.TempDir()
 
 	db, err := dbm.NewGoLevelDB("benchmark_tx_search_test", dbDir)
 	if err != nil {

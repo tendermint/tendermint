@@ -21,7 +21,7 @@ func TestWriteFileAtomic(t *testing.T) {
 		perm os.FileMode = 0600
 	)
 
-	f, err := os.CreateTemp("/tmp", "write-atomic-test-")
+	f, err := os.CreateTemp(t.TempDir(), "write-atomic-test-")
 	if err != nil {
 		t.Fatal(err)
 	}

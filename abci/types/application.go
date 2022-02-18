@@ -19,18 +19,15 @@ type Application interface {
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain w validators/other info from TendermintCore
 	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
-	// Signals the beginning of a block
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock
-	// Deliver a tx for full processing
-	DeliverTx(RequestDeliverTx) ResponseDeliverTx
-	// Signals the end of a block, returns changes to the validator set
-	EndBlock(RequestEndBlock) ResponseEndBlock
+	ProcessProposal(RequestProcessProposal) ResponseProcessProposal
 	// Commit the state and return the application Merkle root hash
 	Commit() ResponseCommit
 	// Create application specific vote extension
 	ExtendVote(RequestExtendVote) ResponseExtendVote
 	// Verify application's vote extension data
 	VerifyVoteExtension(RequestVerifyVoteExtension) ResponseVerifyVoteExtension
+	// Deliver the decided block with its txs to the Application
+	FinalizeBlock(RequestFinalizeBlock) ResponseFinalizeBlock
 
 	// State Sync Connection
 	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
@@ -55,10 +52,6 @@ func (BaseApplication) Info(req RequestInfo) ResponseInfo {
 	return ResponseInfo{}
 }
 
-func (BaseApplication) DeliverTx(req RequestDeliverTx) ResponseDeliverTx {
-	return ResponseDeliverTx{Code: CodeTypeOK}
-}
-
 func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
 }
@@ -72,7 +65,9 @@ func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
 }
 
 func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
-	return ResponseVerifyVoteExtension{}
+	return ResponseVerifyVoteExtension{
+		Result: ResponseVerifyVoteExtension_ACCEPT,
+	}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
@@ -81,14 +76,6 @@ func (BaseApplication) Query(req RequestQuery) ResponseQuery {
 
 func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {
 	return ResponseInitChain{}
-}
-
-func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
-	return ResponseBeginBlock{}
-}
-
-func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
-	return ResponseEndBlock{}
 }
 
 func (BaseApplication) ListSnapshots(req RequestListSnapshots) ResponseListSnapshots {
@@ -109,6 +96,20 @@ func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) Respons
 
 func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
 	return ResponsePrepareProposal{}
+}
+
+func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
+	return ResponseProcessProposal{}
+}
+
+func (BaseApplication) FinalizeBlock(req RequestFinalizeBlock) ResponseFinalizeBlock {
+	txs := make([]*ResponseDeliverTx, len(req.Txs))
+	for i := range req.Txs {
+		txs[i] = &ResponseDeliverTx{Code: CodeTypeOK}
+	}
+	return ResponseFinalizeBlock{
+		Txs: txs,
+	}
 }
 
 //-------------------------------------------------------
@@ -135,11 +136,6 @@ func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*Respon
 	return &res, nil
 }
 
-func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
-	res := app.app.DeliverTx(*req)
-	return &res, nil
-}
-
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	res := app.app.CheckTx(*req)
 	return &res, nil
@@ -157,16 +153,6 @@ func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*Re
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
 	res := app.app.InitChain(*req)
-	return &res, nil
-}
-
-func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
-	res := app.app.BeginBlock(*req)
-	return &res, nil
-}
-
-func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
-	res := app.app.EndBlock(*req)
 	return &res, nil
 }
 
@@ -209,5 +195,17 @@ func (app *GRPCApplication) VerifyVoteExtension(
 func (app *GRPCApplication) PrepareProposal(
 	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
 	res := app.app.PrepareProposal(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ProcessProposal(
+	ctx context.Context, req *RequestProcessProposal) (*ResponseProcessProposal, error) {
+	res := app.app.ProcessProposal(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) FinalizeBlock(
+	ctx context.Context, req *RequestFinalizeBlock) (*ResponseFinalizeBlock, error) {
+	res := app.app.FinalizeBlock(*req)
 	return &res, nil
 }

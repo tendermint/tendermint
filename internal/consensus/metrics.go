@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
+
 	"github.com/tendermint/tendermint/types"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -223,14 +224,14 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "quorum_prevote_message_delay",
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved a quorum in the prevote step.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "proposer_address")).With(labelsAndValues...),
 		FullPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "full_prevote_message_delay",
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "proposer_address")).With(labelsAndValues...),
 		ProposalTimestampDifference: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,

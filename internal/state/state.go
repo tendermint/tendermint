@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+
 	tmtime "github.com/tendermint/tendermint/libs/time"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"

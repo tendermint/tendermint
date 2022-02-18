@@ -391,7 +391,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		defer os.RemoveAll(thisConfig.RootDir)
@@ -471,7 +471,7 @@ func TestReactorWithEvidence(t *testing.T) {
 			}
 
 			block := msg.Data().(types.EventDataNewBlock).Block
-			require.Len(t, block.Evidence.Evidence, 1)
+			require.Len(t, block.Evidence, 1)
 		}(sub)
 	}
 

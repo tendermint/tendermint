@@ -77,7 +77,6 @@ func (cli *grpcClient) OnStart(ctx context.Context) error {
 			defer cli.mtx.Unlock()
 
 			reqres.SetDone()
-			reqres.Done()
 
 			// Notify client listener if set
 			if cli.resCb != nil {
@@ -162,9 +161,7 @@ func (cli *grpcClient) StopForError(err error) {
 	cli.mtx.Unlock()
 
 	cli.logger.Error("Stopping abci.grpcClient for error", "err", err)
-	if err := cli.Stop(); err != nil {
-		cli.logger.Error("error stopping abci.grpcClient", "err", err)
-	}
+	cli.Stop()
 }
 
 func (cli *grpcClient) Error() error {
@@ -191,16 +188,6 @@ func (cli *grpcClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 		return nil, err
 	}
 	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Flush{Flush: res}})
-}
-
-// NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
-	req := types.ToRequestDeliverTx(params)
-	res, err := cli.client.DeliverTx(ctx, req.GetDeliverTx(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -271,18 +258,6 @@ func (cli *grpcClient) Info(
 	return cli.client.Info(ctx, req.GetInfo(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) DeliverTx(
-	ctx context.Context,
-	params types.RequestDeliverTx,
-) (*types.ResponseDeliverTx, error) {
-
-	reqres, err := cli.DeliverTxAsync(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishSyncCall(reqres).GetDeliverTx(), cli.Error()
-}
-
 func (cli *grpcClient) CheckTx(
 	ctx context.Context,
 	params types.RequestCheckTx,
@@ -315,24 +290,6 @@ func (cli *grpcClient) InitChain(
 
 	req := types.ToRequestInitChain(params)
 	return cli.client.InitChain(ctx, req.GetInitChain(), grpc.WaitForReady(true))
-}
-
-func (cli *grpcClient) BeginBlock(
-	ctx context.Context,
-	params types.RequestBeginBlock,
-) (*types.ResponseBeginBlock, error) {
-
-	req := types.ToRequestBeginBlock(params)
-	return cli.client.BeginBlock(ctx, req.GetBeginBlock(), grpc.WaitForReady(true))
-}
-
-func (cli *grpcClient) EndBlock(
-	ctx context.Context,
-	params types.RequestEndBlock,
-) (*types.ResponseEndBlock, error) {
-
-	req := types.ToRequestEndBlock(params)
-	return cli.client.EndBlock(ctx, req.GetEndBlock(), grpc.WaitForReady(true))
 }
 
 func (cli *grpcClient) ListSnapshots(
@@ -377,6 +334,14 @@ func (cli *grpcClient) PrepareProposal(
 	return cli.client.PrepareProposal(ctx, req.GetPrepareProposal(), grpc.WaitForReady(true))
 }
 
+func (cli *grpcClient) ProcessProposal(
+	ctx context.Context,
+	params types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+
+	req := types.ToRequestProcessProposal(params)
+	return cli.client.ProcessProposal(ctx, req.GetProcessProposal(), grpc.WaitForReady(true))
+}
+
 func (cli *grpcClient) ExtendVote(
 	ctx context.Context,
 	params types.RequestExtendVote) (*types.ResponseExtendVote, error) {
@@ -391,4 +356,12 @@ func (cli *grpcClient) VerifyVoteExtension(
 
 	req := types.ToRequestVerifyVoteExtension(params)
 	return cli.client.VerifyVoteExtension(ctx, req.GetVerifyVoteExtension(), grpc.WaitForReady(true))
+}
+
+func (cli *grpcClient) FinalizeBlock(
+	ctx context.Context,
+	params types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+
+	req := types.ToRequestFinalizeBlock(params)
+	return cli.client.FinalizeBlock(ctx, req.GetFinalizeBlock(), grpc.WaitForReady(true))
 }

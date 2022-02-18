@@ -7,10 +7,12 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -29,7 +31,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/libs/strings"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -176,6 +177,7 @@ func makeNode(
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	closers = append(closers, func() error { indexerService.Stop(); return nil })
 
 	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
 	if err != nil {
@@ -362,7 +364,6 @@ func makeNode(
 
 		services: []service.Service{
 			eventBus,
-			indexerService,
 			evReactor,
 			mpReactor,
 			csReactor,
@@ -440,7 +441,14 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
 		n.logger.Info("Genesis time is in the future. Sleeping until then...", "genTime", genTime)
-		time.Sleep(genTime.Sub(now))
+
+		timer := time.NewTimer(genTime.Sub(now))
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 
 	// Start the RPC server before the P2P server
@@ -465,10 +473,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 	for _, reactor := range n.services {
 		if err := reactor.Start(ctx); err != nil {
-			if errors.Is(err, service.ErrAlreadyStarted) {
-				continue
-			}
-
 			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
 		}
 	}
@@ -507,9 +511,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		if err != nil {
 			n.logger.Error("state sync failed; shutting down this node", "err", err)
 			// stop the node
-			if err := n.Stop(); err != nil {
-				n.logger.Error("failed to shut down node", "err", err)
-			}
+			n.Stop()
 			return err
 		}
 
@@ -550,7 +552,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 // OnStop stops the Node. It implements service.Service.
 func (n *nodeImpl) OnStop() {
 	n.logger.Info("Stopping Node")
-
 	for _, es := range n.eventSinks {
 		if err := es.Stop(); err != nil {
 			n.logger.Error("failed to stop event sink", "err", err)

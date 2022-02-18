@@ -19,7 +19,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/mocks"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
@@ -385,12 +384,12 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
 
 			// Set up a mock transport that handshakes.
-			closer := tmsync.NewCloser()
+			connCtx, connCancel := context.WithCancel(context.Background())
 			mockConnection := &mocks.Connection{}
 			mockConnection.On("String").Maybe().Return("mock")
 			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 				Return(tc.peerInfo, tc.peerKey, nil)
-			mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil).Maybe()
+			mockConnection.On("Close").Run(func(_ mock.Arguments) { connCancel() }).Return(nil).Maybe()
 			mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 			if tc.ok {
 				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF).Maybe()
@@ -433,13 +432,13 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				time.Sleep(time.Millisecond)
 			} else {
 				select {
-				case <-closer.Done():
+				case <-connCtx.Done():
 				case <-time.After(100 * time.Millisecond):
 					require.Fail(t, "connection not closed")
 				}
 			}
 
-			require.NoError(t, router.Stop())
+			router.Stop()
 			mockTransport.AssertExpectations(t)
 			mockConnection.AssertExpectations(t)
 		})
@@ -479,7 +478,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 
 	require.NoError(t, router.Start(ctx))
 	time.Sleep(time.Second)
-	require.NoError(t, router.Stop())
+	router.Stop()
 
 	mockTransport.AssertExpectations(t)
 }
@@ -517,7 +516,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 
 	require.NoError(t, router.Start(ctx))
 	time.Sleep(time.Second)
-	require.NoError(t, router.Stop())
+	router.Stop()
 
 	mockTransport.AssertExpectations(t)
 }
@@ -574,7 +573,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	close(closeCh)
 	time.Sleep(100 * time.Millisecond)
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
 }
@@ -620,13 +619,14 @@ func TestRouter_DialPeers(t *testing.T) {
 			endpoint := p2p.Endpoint{Protocol: "mock", Path: string(tc.dialID)}
 
 			// Set up a mock transport that handshakes.
-			closer := tmsync.NewCloser()
+			connCtx, connCancel := context.WithCancel(context.Background())
+			defer connCancel()
 			mockConnection := &mocks.Connection{}
 			mockConnection.On("String").Maybe().Return("mock")
 			if tc.dialErr == nil {
 				mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 					Return(tc.peerInfo, tc.peerKey, nil)
-				mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil).Maybe()
+				mockConnection.On("Close").Run(func(_ mock.Arguments) { connCancel() }).Return(nil).Maybe()
 			}
 			if tc.ok {
 				mockConnection.On("ReceiveMessage", mock.Anything).Return(chID, nil, io.EOF).Maybe()
@@ -644,7 +644,7 @@ func TestRouter_DialPeers(t *testing.T) {
 				mockTransport.On("Dial", mock.Anything, endpoint).Maybe().Return(nil, io.EOF)
 			} else {
 				mockTransport.On("Dial", mock.Anything, endpoint).Once().
-					Run(func(_ mock.Arguments) { closer.Close() }).
+					Run(func(_ mock.Arguments) { connCancel() }).
 					Return(nil, tc.dialErr)
 			}
 
@@ -681,13 +681,13 @@ func TestRouter_DialPeers(t *testing.T) {
 				time.Sleep(time.Millisecond)
 			} else {
 				select {
-				case <-closer.Done():
+				case <-connCtx.Done():
 				case <-time.After(100 * time.Millisecond):
 					require.Fail(t, "connection not closed")
 				}
 			}
 
-			require.NoError(t, router.Stop())
+			router.Stop()
 			mockTransport.AssertExpectations(t)
 			mockConnection.AssertExpectations(t)
 		})
@@ -778,7 +778,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	close(closeCh)
 	time.Sleep(500 * time.Millisecond)
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
 }
@@ -845,7 +845,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 	})
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 	mockConnection.AssertExpectations(t)
 }
@@ -895,7 +895,7 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, router.Start(ctx))
 	time.Sleep(1 * time.Second)
-	require.NoError(t, router.Stop())
+	router.Stop()
 	require.Empty(t, peerManager.Peers())
 
 	mockConnection.AssertExpectations(t)
@@ -964,6 +964,6 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 		Message: &p2ptest.Message{Value: "Hi"},
 	}))
 
-	require.NoError(t, router.Stop())
+	router.Stop()
 	mockTransport.AssertExpectations(t)
 }
