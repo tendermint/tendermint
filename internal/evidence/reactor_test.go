@@ -285,16 +285,6 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	rts := setup(ctx, t, stateDBs, 0)
-	// eventBus := eventbus.NewDefault(log.TestingLogger())
-	// err := eventBus.Start(ctx)
-	// require.NoError(t, err)
-	// const query = `tm.event='EvidenceValidated'`
-	// evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
-	// 	ClientID: "test",
-	// 	Query:    tmquery.MustCompile(query),
-	// })
-
-	// require.NoError(t, err)
 
 	rts.start(ctx, t)
 
