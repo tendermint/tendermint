@@ -28,7 +28,6 @@ const (
 type Client interface {
 	service.Service
 
-	SetResponseCallback(Callback)
 	Error() error
 
 	// Asynchronous requests
@@ -69,8 +68,6 @@ func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (cli
 	}
 	return
 }
-
-type Callback func(*types.Request, *types.Response)
 
 type ReqRes struct {
 	*types.Request
@@ -115,18 +112,6 @@ func (r *ReqRes) InvokeCallback() {
 	if r.cb != nil {
 		r.cb(r.Response)
 	}
-}
-
-// GetCallback returns the configured callback of the ReqRes object which may be
-// nil. Note, it is not safe to concurrently call this in cases where it is
-// marked done and SetCallback is called before calling GetCallback as that
-// will invoke the callback twice and create a potential race condition.
-//
-// ref: https://github.com/tendermint/tendermint/issues/5439
-func (r *ReqRes) GetCallback() func(*types.Response) {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	return r.cb
 }
 
 // SetDone marks the ReqRes object as done.

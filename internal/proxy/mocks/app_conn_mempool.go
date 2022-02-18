@@ -113,8 +113,3 @@ func (_m *AppConnMempool) FlushAsync(_a0 context.Context) (*abciclient.ReqRes, e
 
 	return r0, r1
 }
-
-// SetResponseCallback provides a mock function with given fields: _a0
-func (_m *AppConnMempool) SetResponseCallback(_a0 abciclient.Callback) {
-	_m.Called(_a0)
-}
