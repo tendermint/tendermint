@@ -6,11 +6,7 @@ import (
 
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
-<<<<<<< HEAD
-=======
-
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
->>>>>>> 165cc2947 (consensus: additional timing metrics (#7849))
 	"github.com/tendermint/tendermint/types"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -294,7 +290,6 @@ func NopMetrics() *Metrics {
 
 		BlockIntervalSeconds: discard.NewHistogram(),
 
-<<<<<<< HEAD
 		NumTxs:                    discard.NewGauge(),
 		BlockSizeBytes:            discard.NewHistogram(),
 		TotalTxs:                  discard.NewGauge(),
@@ -302,22 +297,10 @@ func NopMetrics() *Metrics {
 		BlockSyncing:              discard.NewGauge(),
 		StateSyncing:              discard.NewGauge(),
 		BlockParts:                discard.NewCounter(),
+		BlockGossipReceiveLatency: discard.NewHistogram(),
+		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
-=======
-		NumTxs:                      discard.NewGauge(),
-		BlockSizeBytes:              discard.NewHistogram(),
-		TotalTxs:                    discard.NewGauge(),
-		CommittedHeight:             discard.NewGauge(),
-		BlockSyncing:                discard.NewGauge(),
-		StateSyncing:                discard.NewGauge(),
-		BlockParts:                  discard.NewCounter(),
-		BlockGossipReceiveLatency:   discard.NewHistogram(),
-		BlockGossipPartsReceived:    discard.NewCounter(),
-		QuorumPrevoteMessageDelay:   discard.NewGauge(),
-		FullPrevoteMessageDelay:     discard.NewGauge(),
-		ProposalTimestampDifference: discard.NewHistogram(),
->>>>>>> 165cc2947 (consensus: additional timing metrics (#7849))
 	}
 }
 

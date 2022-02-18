@@ -1880,12 +1880,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
-<<<<<<< HEAD
 		cs.Logger.Debug("received block part from wrong height", "height", height, "round", round)
-=======
-		cs.logger.Debug("received block part from wrong height", "height", height, "round", round)
 		cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
->>>>>>> 165cc2947 (consensus: additional timing metrics (#7849))
 		return false, nil
 	}
 
@@ -1920,12 +1916,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
-<<<<<<< HEAD
-		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
-=======
 		cs.metrics.MarkBlockGossipComplete()
-		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
->>>>>>> 165cc2947 (consensus: additional timing metrics (#7849))
+		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}
