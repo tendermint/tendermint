@@ -39,7 +39,7 @@ func NewDashDialer() *DashDialer {
 	return isw
 }
 
-// DialPeersAsync implements p2p.DashDialer.
+// ConnectAsync implements p2p.DashDialer.
 // It emulates connecting to provided address, adds is as a connected peer
 // and emits history event OpDial.
 func (sw *DashDialer) ConnectAsync(addr p2p.NodeAddress) error {
@@ -52,7 +52,7 @@ func (sw *DashDialer) ConnectAsync(addr p2p.NodeAddress) error {
 	return nil
 }
 
-// IsDialingOrExistingAddress implements p2p.DashDialer.
+// IsDialingOrConnected implements p2p.DashDialer.
 // It checks if provided peer is connected or dial is in progress.
 func (sw *DashDialer) IsDialingOrConnected(id types.NodeID) bool {
 	sw.mux.Lock()
@@ -60,7 +60,7 @@ func (sw *DashDialer) IsDialingOrConnected(id types.NodeID) bool {
 	return sw.ConnectedPeers[id]
 }
 
-// StopPeerGracefully implements p2p.DashDialer.
+// DisconnectAsync implements p2p.DashDialer.
 // It removes the peer from list of connected peers and emits history
 // event OpStop
 func (sw *DashDialer) DisconnectAsync(id types.NodeID) error {

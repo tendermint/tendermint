@@ -1389,3 +1389,31 @@ func keyPeerInfoRange() ([]byte, []byte) {
 	}
 	return start, end
 }
+
+// EvictPeer evicts a peer by a node id
+func (m *PeerManager) EvictPeer(nodeID types.NodeID) {
+	m.mtx.Lock()
+	m.evict[nodeID] = true
+	m.mtx.Unlock()
+	m.evictWaker.Wake()
+}
+
+// UpdatePeerInfo modifies a peer-info using a function modificator, this operation is a transactional
+func (m *PeerManager) UpdatePeerInfo(nodeID types.NodeID, modifier func(peerInfo peerInfo) peerInfo) error {
+	// peerManager.store assumes that peerManager is managing it
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peer, ok := m.store.Get(nodeID)
+	if !ok {
+		return errPeerNotFound(fmt.Errorf("peer with id %s not found", nodeID))
+	}
+	peer = modifier(peer)
+	return m.store.Set(peer)
+}
+
+// IsDialingOrConnected returns true if dialing to a peer at the moment or already connected otherwise false
+func (m *PeerManager) IsDialingOrConnected(nodeID types.NodeID) bool {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	return m.dialing[nodeID] || m.connected[nodeID]
+}
