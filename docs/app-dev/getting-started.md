@@ -68,7 +68,7 @@ tendermint start
 ```
 
 If you have used Tendermint, you may want to reset the data for a new
-blockchain by running `tendermint unsafe_reset_all`. Then you can run
+blockchain by running `tendermint unsafe-reset-all`. Then you can run
 `tendermint start` to start Tendermint, and connect to the app. For more
 details, see [the guide on using Tendermint](../tendermint-core/using-tendermint.md).
 
@@ -182,7 +182,7 @@ node example/counter.js
 In another window, reset and start `tendermint`:
 
 ```sh
-tendermint unsafe_reset_all
+tendermint unsafe-reset-all
 tendermint start
 ```
 
