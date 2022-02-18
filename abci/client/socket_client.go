@@ -417,19 +417,6 @@ func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request, s
 	return reqres, nil
 }
 
-func (cli *socketClient) queueRequestAsync(
-	ctx context.Context,
-	req *types.Request,
-) (*ReqRes, error) {
-
-	reqres, err := cli.queueRequest(ctx, req, false)
-	if err != nil {
-		return nil, queueErr(err)
-	}
-
-	return reqres, cli.Error()
-}
-
 func (cli *socketClient) queueRequestAndFlush(
 	ctx context.Context,
 	req *types.Request,

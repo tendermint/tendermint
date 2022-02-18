@@ -202,12 +202,3 @@ func (app *localClient) FinalizeBlock(
 	res := app.Application.FinalizeBlock(req)
 	return &res, nil
 }
-
-//-------------------------------------------------------
-
-func newLocalReqRes(req *types.Request, res *types.Response) *ReqRes {
-	reqRes := NewReqRes(req)
-	reqRes.Response = res
-	reqRes.SetDone()
-	return reqRes
-}
