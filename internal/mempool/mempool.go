@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -205,11 +204,12 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 	return txmp.txsAvailable
 }
 
-// CheckTx executes the ABCI CheckTx method for a given transaction. It acquires
-// a read-lock attempts to execute the application's CheckTx ABCI method via
-// CheckTxAsync. We return an error if any of the following happen:
+// CheckTx executes the ABCI CheckTx method for a given transaction.
+// It acquires a read-lock and attempts to execute the application's
+// CheckTx ABCI method synchronously. We return an error if any of
+// the following happen:
 //
-// - The CheckTxAsync execution fails.
+// - The CheckTx execution fails.
 // - The transaction already exists in the cache and we've already received the
 //   transaction from the peer. Otherwise, if it solely exists in the cache, we
 //   return nil.
@@ -228,7 +228,7 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 func (txmp *TxMempool) CheckTx(
 	ctx context.Context,
 	tx types.Tx,
-	cb func(*abci.Response),
+	cb func(*abci.ResponseCheckTx),
 	txInfo TxInfo,
 ) error {
 	txmp.mtx.RLock()
@@ -261,31 +261,29 @@ func (txmp *TxMempool) CheckTx(
 		return types.ErrTxInCache
 	}
 
-	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	res, err := txmp.proxyAppConn.CheckTx(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		txmp.cache.Remove(tx)
 		return err
 	}
 
-	reqRes.SetCallback(func(res *abci.Response) {
-		if txmp.recheckCursor != nil {
-			panic("recheck cursor is non-nil in CheckTx callback")
-		}
+	if txmp.recheckCursor != nil {
+		return errors.New("recheck cursor is non-nil")
+	}
 
-		wtx := &WrappedTx{
-			tx:        tx,
-			hash:      txHash,
-			timestamp: time.Now().UTC(),
-			height:    txmp.height,
-		}
+	wtx := &WrappedTx{
+		tx:        tx,
+		hash:      txHash,
+		timestamp: time.Now().UTC(),
+		height:    txmp.height,
+	}
 
-		txmp.defaultTxCallback(reqRes.Request, res)
-		txmp.initTxCallback(wtx, res, txInfo)
+	txmp.defaultTxCallback(tx, res)
+	txmp.initTxCallback(wtx, res, txInfo)
 
-		if cb != nil {
-			cb(res)
-		}
-	})
+	if cb != nil {
+		cb(res)
+	}
 
 	return nil
 }
@@ -491,25 +489,20 @@ func (txmp *TxMempool) Update(
 //
 // NOTE:
 // - An explicit lock is NOT required.
-func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo TxInfo) {
-	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-	if !ok {
-		return
-	}
-
+func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx, txInfo TxInfo) {
 	var err error
 	if txmp.postCheck != nil {
-		err = txmp.postCheck(wtx.tx, checkTxRes.CheckTx)
+		err = txmp.postCheck(wtx.tx, res)
 	}
 
-	if err != nil || checkTxRes.CheckTx.Code != abci.CodeTypeOK {
+	if err != nil || res.Code != abci.CodeTypeOK {
 		// ignore bad transactions
 		txmp.logger.Info(
 			"rejected bad transaction",
 			"priority", wtx.priority,
 			"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 			"peer_id", txInfo.SenderNodeID,
-			"code", checkTxRes.CheckTx.Code,
+			"code", res.Code,
 			"post_check_err", err,
 		)
 
@@ -519,13 +512,13 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			txmp.cache.Remove(wtx.tx)
 		}
 		if err != nil {
-			checkTxRes.CheckTx.MempoolError = err.Error()
+			res.MempoolError = err.Error()
 		}
 		return
 	}
 
-	sender := checkTxRes.CheckTx.Sender
-	priority := checkTxRes.CheckTx.Priority
+	sender := res.Sender
+	priority := res.Priority
 
 	if len(sender) > 0 {
 		if wtx := txmp.txStore.GetTxBySender(sender); wtx != nil {
@@ -577,7 +570,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 		}
 	}
 
-	wtx.gasWanted = checkTxRes.CheckTx.GasWanted
+	wtx.gasWanted = res.GasWanted
 	wtx.priority = priority
 	wtx.sender = sender
 	wtx.peers = map[uint16]struct{}{
@@ -598,28 +591,20 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 	txmp.notifyTxsAvailable()
 }
 
-// defaultTxCallback is the CheckTx application callback used when a transaction
-// is being re-checked (if re-checking is enabled). The caller must hold a mempool
-// write-lock (via Lock()) and when executing Update(), if the mempool is non-empty
-// and Recheck is enabled, then all remaining transactions will be rechecked via
-// CheckTxAsync. The order transactions are rechecked must be the same as the
-// order in which this callback is called.
-func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) {
+// defaultTxCallback is the CheckTx application callback used when a
+// transaction is being re-checked (if re-checking is enabled). The
+// caller must hold a mempool write-lock (via Lock()) and when
+// executing Update(), if the mempool is non-empty and Recheck is
+// enabled, then all remaining transactions will be rechecked via
+// CheckTx. The order transactions are rechecked must be the same as
+// the order in which this callback is called.
+func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx) {
 	if txmp.recheckCursor == nil {
 		return
 	}
 
 	txmp.metrics.RecheckTimes.Add(1)
 
-	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-	if !ok {
-		txmp.logger.Error("received incorrect type in mempool callback",
-			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
-			"got", reflect.TypeOf(res.Value).Name(),
-		)
-		return
-	}
-	tx := req.GetCheckTx().Tx
 	wtx := txmp.recheckCursor.Value.(*WrappedTx)
 
 	// Search through the remaining list of tx to recheck for a transaction that matches
@@ -635,7 +620,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 		txmp.logger.Error(
 			"re-CheckTx transaction mismatch",
 			"got", wtx.tx.Hash(),
-			"expected", types.Tx(tx).Key(),
+			"expected", tx.Key(),
 		)
 
 		if txmp.recheckCursor == txmp.recheckEnd {
@@ -656,18 +641,18 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 	if !txmp.txStore.IsTxRemoved(wtx.hash) {
 		var err error
 		if txmp.postCheck != nil {
-			err = txmp.postCheck(tx, checkTxRes.CheckTx)
+			err = txmp.postCheck(tx, res)
 		}
 
-		if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
-			wtx.priority = checkTxRes.CheckTx.Priority
+		if res.Code == abci.CodeTypeOK && err == nil {
+			wtx.priority = res.Priority
 		} else {
 			txmp.logger.Debug(
 				"existing transaction no longer valid; failed re-CheckTx callback",
 				"priority", wtx.priority,
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err,
-				"code", checkTxRes.CheckTx.Code,
+				"code", res.Code,
 			)
 
 			if wtx.gossipEl != txmp.recheckCursor {
@@ -697,7 +682,7 @@ func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) 
 }
 
 // updateReCheckTxs updates the recheck cursors using the gossipIndex. For
-// each transaction, it executes CheckTxAsync. The global callback defined on
+// each transaction, it executes CheckTx. The global callback defined on
 // the proxyAppConn will be executed for each transaction after CheckTx is
 // executed.
 //
@@ -717,7 +702,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
 		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			res, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+			res, err := txmp.proxyAppConn.CheckTx(ctx, abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
 			})
@@ -726,7 +711,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 				txmp.logger.Error("failed to execute CheckTx during rechecking", "err", err)
 				continue
 			}
-			txmp.defaultTxCallback(res.Request, res.Response)
+			txmp.defaultTxCallback(wtx.tx, res)
 		}
 	}
 

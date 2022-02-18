@@ -30,10 +30,6 @@ type Client interface {
 
 	Error() error
 
-	// Asynchronous requests
-	CheckTxAsync(context.Context, types.RequestCheckTx) (*ReqRes, error)
-
-	// Synchronous requests
 	Flush(context.Context) error
 	Echo(ctx context.Context, msg string) (*types.ResponseEcho, error)
 	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
