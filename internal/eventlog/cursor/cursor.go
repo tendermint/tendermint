@@ -37,7 +37,7 @@ func (s *Source) nextCounter() int64 {
 func (s *Source) Cursor() Cursor {
 	return Cursor{
 		timestamp: uint64(s.timeIndex()),
-		sequence:  uint16(s.nextCounter() & 65535),
+		sequence:  uint16(s.nextCounter() & 0xffff),
 	}
 }
 
