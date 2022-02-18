@@ -730,7 +730,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		}
 	}
 
-	if _, err := txmp.proxyAppConn.FlushAsync(ctx); err != nil {
+	if err := txmp.proxyAppConn.Flush(ctx); err != nil {
 		txmp.logger.Error("failed to flush transactions during rechecking", "err", err)
 	}
 }
