@@ -295,10 +295,6 @@ type BlockEventPublisher interface {
 	PublishEventValidatorSetUpdates(context.Context, EventDataValidatorSetUpdates) error
 }
 
-//Todo EvidenceEventPublisher
-type EvidenceEventPublisher interface {
-	PublishEventEvidenceValidated(ctx context.Context, evidence EventDataEvidenceValidated) error
-}
 type TxEventPublisher interface {
 	PublishEventTx(context.Context, EventDataTx) error
 }
