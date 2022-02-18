@@ -7,8 +7,8 @@
 //
 // ## Socket client
 //
-// the client blocks on 1) enqueuing the  request 2) enqueuing the
-// Flush requests 3) waiting for the Flush response
+// The client blocks for enqueuing the request, for enqueuing the
+// Flush to send the request, and for the Flush response to return.
 //
 // ## Local client
 //
