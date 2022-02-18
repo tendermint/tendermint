@@ -204,9 +204,9 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 	return txmp.txsAvailable
 }
 
-// CheckTx executes the ABCI CheckTx method for a given
-// transaction. It acquires a read-lock attempts to execute the
-// application's CheckTx ABCI method via. We return an error if any of
+// CheckTx executes the ABCI CheckTx method for a given transaction.
+// It acquires a read-lock and attempts to execute the application's
+// CheckTx ABCI method synchronously. We return an error if any of
 // the following happen:
 //
 // - The CheckTx execution fails.
