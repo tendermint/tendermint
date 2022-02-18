@@ -454,9 +454,8 @@ func newStateWithConfigAndBlockStore(
 	t.Helper()
 
 	// one for mempool, one for consensus
-	mtx := new(sync.Mutex)
-	proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-	proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+	proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 	// Make Mempool
 

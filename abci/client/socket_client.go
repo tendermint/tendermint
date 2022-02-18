@@ -107,16 +107,6 @@ func (cli *socketClient) Error() error {
 	return cli.err
 }
 
-// SetResponseCallback sets a callback, which will be executed for each
-// non-error & non-empty response from the server.
-//
-// NOTE: callback may get internally generated flush responses.
-func (cli *socketClient) SetResponseCallback(resCb Callback) {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-	cli.resCb = resCb
-}
-
 //----------------------------------------
 
 func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer) {

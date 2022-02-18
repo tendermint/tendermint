@@ -121,8 +121,6 @@ func NewTxMempool(
 		txmp.cache = NewLRUTxCache(cfg.CacheSize)
 	}
 
-	proxyAppConn.SetResponseCallback(txmp.defaultTxCallback)
-
 	for _, opt := range options {
 		opt(txmp)
 	}
@@ -280,6 +278,8 @@ func (txmp *TxMempool) CheckTx(
 			timestamp: time.Now().UTC(),
 			height:    txmp.height,
 		}
+
+		txmp.defaultTxCallback(reqRes.Request, res)
 		txmp.initTxCallback(wtx, res, txInfo)
 
 		if cb != nil {
@@ -717,14 +717,16 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) {
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
 		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+			res, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
 			})
 			if err != nil {
 				// no need in retrying since the tx will be rechecked after the next block
 				txmp.logger.Error("failed to execute CheckTx during rechecking", "err", err)
+				continue
 			}
+			txmp.defaultTxCallback(res.Request, res.Response)
 		}
 	}
 
