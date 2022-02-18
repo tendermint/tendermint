@@ -172,7 +172,7 @@ func (lg *Log) state() logState {
 }
 
 // waitStateChange blocks until either ctx ends or the head of the log is
-// modified, then returns the statee of the log.  An error is reported only if
+// modified, then returns the state of the log.  An error is reported only if
 // ctx terminates before head changes.
 func (lg *Log) waitStateChange(ctx context.Context) (logState, error) {
 	lg.mu.Lock()
