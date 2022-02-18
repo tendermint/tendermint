@@ -71,7 +71,6 @@ type ReqRes struct {
 
 	mtx    sync.Mutex
 	signal chan struct{}
-	cb     func(*types.Response) // A single callback that may be set.
 }
 
 func NewReqRes(req *types.Request) *ReqRes {
@@ -79,34 +78,6 @@ func NewReqRes(req *types.Request) *ReqRes {
 		Request:  req,
 		Response: nil,
 		signal:   make(chan struct{}),
-		cb:       nil,
-	}
-}
-
-// Sets sets the callback. If reqRes is already done, it will call the cb
-// immediately. Note, reqRes.cb should not change if reqRes.done and only one
-// callback is supported.
-func (r *ReqRes) SetCallback(cb func(res *types.Response)) {
-	r.mtx.Lock()
-
-	select {
-	case <-r.signal:
-		r.mtx.Unlock()
-		cb(r.Response)
-	default:
-		r.cb = cb
-		r.mtx.Unlock()
-	}
-}
-
-// InvokeCallback invokes a thread-safe execution of the configured callback
-// if non-nil.
-func (r *ReqRes) InvokeCallback() {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-
-	if r.cb != nil {
-		r.cb(r.Response)
 	}
 }
 
