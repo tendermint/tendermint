@@ -158,7 +158,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
 	assert.NotNil(t, gr)
-	t.Cleanup(func() { _ = gr.Close(); gr.Wait() })
+	t.Cleanup(func() { _ = gr.Close() })
 
 	dec := NewWALDecoder(gr)
 	msg, err := dec.Decode()
@@ -205,7 +205,6 @@ func TestWALPeriodicSync(t *testing.T) {
 	assert.NotNil(t, gr)
 	if gr != nil {
 		gr.Close()
-		gr.Wait()
 	}
 
 	t.Cleanup(leaktest.Check(t))
