@@ -206,29 +206,6 @@ func (_m *Client) Flush(_a0 context.Context) error {
 	return r0
 }
 
-// FlushAsync provides a mock function with given fields: _a0
-func (_m *Client) FlushAsync(_a0 context.Context) (*abciclient.ReqRes, error) {
-	ret := _m.Called(_a0)
-
-	var r0 *abciclient.ReqRes
-	if rf, ok := ret.Get(0).(func(context.Context) *abciclient.ReqRes); ok {
-		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abciclient.ReqRes)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // Info provides a mock function with given fields: _a0, _a1
 func (_m *Client) Info(_a0 context.Context, _a1 types.RequestInfo) (*types.ResponseInfo, error) {
 	ret := _m.Called(_a0, _a1)

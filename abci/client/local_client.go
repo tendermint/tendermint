@@ -42,11 +42,6 @@ func (app *localClient) Error() error {
 	return nil
 }
 
-func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	// Do nothing
-	return newLocalReqRes(types.ToRequestFlush(), nil), nil
-}
-
 //-------------------------------------------------------
 
 func (app *localClient) Flush(ctx context.Context) error {
