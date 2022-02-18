@@ -331,8 +331,16 @@ func (pool *BlockPool) SetPeerRange(peerID types.NodeID, base int64, height int6
 		peer.base = base
 		peer.height = height
 	} else {
-		peer = newBPPeer(pool, peerID, base, height)
-		peer.logger = pool.logger.With("peer", peerID)
+		peer = &bpPeer{
+			pool:       pool,
+			id:         peerID,
+			base:       base,
+			height:     height,
+			numPending: 0,
+			logger:     pool.logger.With("peer", peerID),
+			startAt:    time.Now(),
+		}
+
 		pool.peers[peerID] = peer
 	}
 
@@ -490,24 +498,13 @@ type bpPeer struct {
 	recvMonitor *flowrate.Monitor
 
 	timeout *time.Timer
+	startAt time.Time
 
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID types.NodeID, base int64, height int64) *bpPeer {
-	peer := &bpPeer{
-		pool:       pool,
-		id:         peerID,
-		base:       base,
-		height:     height,
-		numPending: 0,
-		logger:     log.NewNopLogger(),
-	}
-	return peer
-}
-
 func (peer *bpPeer) resetMonitor() {
-	peer.recvMonitor = flowrate.New(time.Second, time.Second*40)
+	peer.recvMonitor = flowrate.New(peer.startAt, time.Second, time.Second*40)
 	initialValue := float64(minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }
