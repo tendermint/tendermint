@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -587,4 +589,9 @@ func (ps *PeerState) StringIndented(indent string) string {
 		indent, ps.Stats,
 		indent,
 	)
+}
+
+// MarshalZerologObject formats this object for logging purposes
+func (ps *PeerState) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("peer_state", ps.String())
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/types"
 )
@@ -92,4 +94,9 @@ func (prs PeerRoundState) StringIndented(indent string) string {
 		indent, prs.LastPrecommits, prs.LastCommitRound,
 		indent, prs.CatchupCommit, prs.CatchupCommitRound,
 		indent)
+}
+
+// MarshalZerologObject formats this object for logging purposes
+func (prs PeerRoundState) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("peer_state", prs.String())
 }
