@@ -206,12 +206,6 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *socketClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestFlush())
-}
-
-//----------------------------------------
-
 func (cli *socketClient) Flush(ctx context.Context) error {
 	reqRes, err := cli.queueRequest(ctx, types.ToRequestFlush(), true)
 	if err != nil {

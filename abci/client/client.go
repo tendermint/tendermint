@@ -30,9 +30,6 @@ type Client interface {
 
 	Error() error
 
-	// Asynchronous requests
-	FlushAsync(context.Context) (*ReqRes, error)
-
 	// Synchronous requests
 	Flush(context.Context) error
 	Echo(ctx context.Context, msg string) (*types.ResponseEcho, error)

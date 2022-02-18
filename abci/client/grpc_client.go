@@ -164,16 +164,6 @@ func (cli *grpcClient) Error() error {
 
 //----------------------------------------
 
-// NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	req := types.ToRequestFlush()
-	res, err := cli.client.Flush(ctx, req.GetFlush(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Flush{Flush: res}})
-}
-
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
 // with the response. We don't complete it until it's been ordered via the channel.
 func (cli *grpcClient) finishAsyncCall(ctx context.Context, req *types.Request, res *types.Response) (*ReqRes, error) {
