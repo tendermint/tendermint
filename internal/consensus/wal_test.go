@@ -151,13 +151,14 @@ func TestWALSearchForEndHeight(t *testing.T) {
 
 	wal, err := NewWAL(ctx, logger, walFile)
 	require.NoError(t, err)
+	t.Cleanup(func() { wal.Stop(); wal.Wait() })
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
 	assert.NotNil(t, gr)
-	t.Cleanup(func() { _ = gr.Close() })
+	t.Cleanup(func() { _ = gr.Close(); gr.Wait() })
 
 	dec := NewWALDecoder(gr)
 	msg, err := dec.Decode()
@@ -165,6 +166,8 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
 	assert.Equal(t, rs.Height, h+1, "wrong height")
+
+	t.Cleanup(leaktest.Check(t))
 }
 
 func TestWALPeriodicSync(t *testing.T) {
@@ -188,10 +191,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	assert.NotZero(t, wal.Group().Buffered())
 
 	require.NoError(t, wal.Start(ctx))
-	t.Cleanup(func() {
-		wal.Stop()
-		wal.Wait()
-	})
+	t.Cleanup(func() { wal.Stop(); wal.Wait() })
 
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 
@@ -205,5 +205,8 @@ func TestWALPeriodicSync(t *testing.T) {
 	assert.NotNil(t, gr)
 	if gr != nil {
 		gr.Close()
+		gr.Wait()
 	}
+
+	t.Cleanup(leaktest.Check(t))
 }
