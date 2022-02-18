@@ -108,7 +108,7 @@ This is done with:
 func (c *Client) examineConflictingHeaderAgainstTrace(
 	trace []*types.LightBlock,
 	targetBlock *types.LightBlock,
-	source provider.Provider, 
+	source provider.Provider,
 	now time.Time,
 	) ([]*types.LightBlock, *types.LightBlock, error)
 ```
@@ -123,17 +123,17 @@ as a sanity check. If this fails we have to drop the witness.
 intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails
 or the witness stops responding then we can call the witness faulty and drop it.
 
-3. We eventually reach a verified header by the witness which is not the same as the intermediary header 
+3. We eventually reach a verified header by the witness which is not the same as the intermediary header
 (In the above example this is E). This is the point of bifurcation (This could also be the last header).
 
-4. There is a unique case where the trace that is being examined against has blocks that have a greater 
-height than the targetBlock. This can occur as part of a forward lunatic attack where the primary has 
-provided a light block that has a height greater than the head of the chain (see Appendix B). In this 
-case, the light client will verify the sources blocks up to the targetBlock and return the block in the 
+4. There is a unique case where the trace that is being examined against has blocks that have a greater
+height than the targetBlock. This can occur as part of a forward lunatic attack where the primary has
+provided a light block that has a height greater than the head of the chain (see Appendix B). In this
+case, the light client will verify the sources blocks up to the targetBlock and return the block in the
 trace that is directly after the targetBlock in height as the `ConflictingBlock`
 
 This function then returns the trace of blocks from the witness node between the common header and the
-divergent header of the primary as it is likely, as seen in the example to the right, that multiple 
+divergent header of the primary as it is likely, as seen in the example to the right, that multiple
 headers where required in order to verify the divergent one. This trace will
 be used later (as is also described later in this document).
 
@@ -179,7 +179,7 @@ This then ends the process and the verify function that was called at the start 
 the user.
 
 For a detailed overview of how each of these three attacks can be conducted please refer to the
-[fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md).
+[fork accountability spec](https://github.com/tendermint/tendermint/blob/master/spec/consensus/light-client/accountability.md).
 
 ## Full Node Verification
 
@@ -212,7 +212,7 @@ clear from the current information which nodes behaved maliciously.
 
 ## References
 
-* [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+* [Fork accountability spec](https://github.com/tendermint/tendermint/blob/master/spec/consensus/light-client/accountability.md)
 * [ADR 056: Light client amnesia attacks](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-light-client-amnesia-attacks.md)
 * [ADR-059: Evidence Composition and Lifecycle](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
 * [Informal's Light Client Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
@@ -238,7 +238,7 @@ a phantom validator. Given this, it was removed.
 
 A unique flavor of lunatic attack is a forward lunatic attack. This is where a malicious
 node provides a header with a height greater than the height of the blockchain. Thus there
-are no witnesses capable of rebutting the malicious header. Such an attack will also 
+are no witnesses capable of rebutting the malicious header. Such an attack will also
 require an accomplice, i.e. at least one other witness to also return the same forged header.
 Although such attacks can be any arbitrary height ahead, they must still remain within the
 clock drift of the light clients real time. Therefore, to detect such an attack, a light
@@ -251,4 +251,4 @@ client will wait for a time
 for a witness to provide the latest block it has. Given the time constraints, if the witness
 is operating at the head of the blockchain, it will have a header with an earlier height but
 a later timestamp. This can be used to prove that the primary has submitted a lunatic header
-which violates monotonically increasing time. 
+which violates monotonically increasing time.

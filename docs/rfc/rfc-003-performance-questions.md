@@ -1,4 +1,4 @@
-# RFC 003: Taxonomy of potential performance issues in Tendermint 
+# RFC 003: Taxonomy of potential performance issues in Tendermint
 
 ## Changelog
 
@@ -35,7 +35,7 @@ This section attempts to delineate the different sections of Tendermint function
 that are often cited as having performance issues. It raises questions and suggests
 lines of inquiry that may be valuable for better understanding Tendermint's performance issues.
 
-As a note: We should avoid quickly adding many microbenchmarks or package level benchmarks. 
+As a note: We should avoid quickly adding many microbenchmarks or package level benchmarks.
 These are prone to being worse than useless as they can obscure what _should_ be
 focused on: performance of the system from the perspective of a user. We should,
 instead, tune performance with an eye towards user needs and actions users make. These users comprise
@@ -116,7 +116,7 @@ the Tendermint node.
 
 ABCI delivers blocks in several methods: `BeginBlock`, `DeliverTx`, `EndBlock`, `Commit`.
 
-Tendermint delivers transactions one-by-one via the `DeliverTx` call. Most of the 
+Tendermint delivers transactions one-by-one via the `DeliverTx` call. Most of the
 transaction delivery in Tendermint occurs asynchronously and therefore appears unlikely to
 form a bottleneck in ABCI.
 
@@ -153,7 +153,7 @@ slow during queries, as ABCI is no longer able to make progress. This is known
 to be causing issue in the cosmos-sdk and is being addressed [in the sdk][sdk-query-fix]
 but a more robust solution may be required. Adding metrics to each ABCI client connection
 and message as described in the Application section of this document would allow us
-to further introspect the issue here. 
+to further introspect the issue here.
 
 #### Claim: RPC Serialization may cause slowdown
 
@@ -169,8 +169,8 @@ The other JSON-RPC methods are much less critical to the core functionality of T
 While there may other points of performance consideration within the RPC, methods that do not
 receive high volumes of requests should not be prioritized for performance consideration.
 
-NOTE: Previous discussion of the RPC framework was done in [ADR 57][adr-57] and 
-there is ongoing work to inspect and alter the JSON-RPC framework in [RFC 002][rfc-002]. 
+NOTE: Previous discussion of the RPC framework was done in [ADR 57][adr-57] and
+there is ongoing work to inspect and alter the JSON-RPC framework in [RFC 002][rfc-002].
 Much of these RPC-related performance considerations can either wait until the work of RFC 002 work is done or be
 considered concordantly with the in-flight changes to the JSON-RPC.
 
@@ -207,7 +207,7 @@ in Tendermint. Namely, it is being considered as part of the [modular hashing pr
 It is currently unknown if hashing transactions in the Mempool forms a significant bottleneck.
 Although it does not appear to be documented as slow, there are a few open github
 issues that indicate a possible user preference for a faster hashing algorithm,
-including [issue 2187][issue-2187] and [issue 2186][issue-2186]. 
+including [issue 2187][issue-2187] and [issue 2186][issue-2186].
 
 It is likely worth investigating what order of magnitude Tx hashing takes in comparison to other
 aspects of adding a Tx to the mempool. It is not currently clear if the rate of adding Tx
@@ -272,7 +272,7 @@ event sends. The following metrics would be a good start for tracking this perfo
 [rfc-002]: https://github.com/tendermint/tendermint/pull/6913
 [adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
 [issue-1319]: https://github.com/tendermint/tendermint/issues/1319
-[abci-commit-description]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#commit
+[abci-commit-description]: https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#commit
 [abci-local-client-code]: https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84
 [hub-signature]: https://github.com/cosmos/gaia/blob/0ecb6ed8a244d835807f1ced49217d54a9ca2070/docs/resources/genesis.md#consensus-parameters
 [ed25519-bench]: https://github.com/oasisprotocol/curve25519-voi/blob/d2e7fc59fe38c18ca990c84c4186cba2cc45b1f9/PERFORMANCE.md

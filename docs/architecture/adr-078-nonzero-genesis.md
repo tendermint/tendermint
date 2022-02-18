@@ -15,7 +15,7 @@
 ## Context
 
 The recommended upgrade path for block protocol-breaking upgrades is currently to hard fork the
-chain (see e.g. [`cosmoshub-3` upgrade](https://blog.cosmos.network/cosmos-hub-3-upgrade-announcement-39c9da941aee)).
+chain (see e.g. [`cosmoshub-3` upgrade](https://blog.cosmos.network/cosmos-hub-3-upgrade-announcement-39c9da941aee).
 This is done by halting all validators at a predetermined height, exporting the application
 state via application-specific tooling, and creating an entirely new chain using the exported
 application state.
