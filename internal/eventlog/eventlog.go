@@ -72,10 +72,10 @@ func (lg *Log) Add(etype string, data types.EventData) error {
 	lg.updateHead(head)
 	size := lg.numItems
 	age := head.item.Cursor.Diff(lg.oldestCursor)
-	lg.mu.Unlock()
 
 	// If the log requires pruning, do the pruning step outside the lock.  This
 	// permits readers to continue to make progress while we're working.
+	lg.mu.Unlock()
 	return lg.checkPrune(head, size, age)
 }
 
