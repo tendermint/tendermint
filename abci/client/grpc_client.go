@@ -96,21 +96,6 @@ func (cli *grpcClient) OnStop() {
 	}
 }
 
-func (cli *grpcClient) StopForError(err error) {
-	if !cli.IsRunning() {
-		return
-	}
-
-	cli.mtx.Lock()
-	if cli.err == nil {
-		cli.err = err
-	}
-	cli.mtx.Unlock()
-
-	cli.logger.Error("Stopping abci.grpcClient for error", "err", err)
-	cli.Stop()
-}
-
 func (cli *grpcClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()

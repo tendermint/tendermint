@@ -30,7 +30,6 @@ type Client interface {
 
 	Error() error
 
-	// Synchronous requests
 	Flush(context.Context) error
 	Echo(ctx context.Context, msg string) (*types.ResponseEcho, error)
 	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
@@ -53,36 +52,35 @@ type Client interface {
 
 // NewClient returns a new ABCI client of the specified transport type.
 // It returns an error if the transport is not "socket" or "grpc"
-func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (client Client, err error) {
+func NewClient(logger log.Logger, addr, transport string, mustConnect bool) (Client, error) {
 	switch transport {
 	case "socket":
-		client = NewSocketClient(logger, addr, mustConnect)
+		return NewSocketClient(logger, addr, mustConnect), nil
 	case "grpc":
-		client = NewGRPCClient(logger, addr, mustConnect)
+		return NewGRPCClient(logger, addr, mustConnect), nil
 	default:
-		err = fmt.Errorf("unknown abci transport %s", transport)
+		return nil, fmt.Errorf("unknown abci transport %s", transport)
 	}
-	return
 }
 
-type ReqRes struct {
+type requestAndResponse struct {
 	*types.Request
-	*types.Response // Not set atomically, so be sure to use WaitGroup.
+	*types.Response
 
 	mtx    sync.Mutex
 	signal chan struct{}
 }
 
-func NewReqRes(req *types.Request) *ReqRes {
-	return &ReqRes{
+func makeReqRes(req *types.Request) *requestAndResponse {
+	return &requestAndResponse{
 		Request:  req,
 		Response: nil,
 		signal:   make(chan struct{}),
 	}
 }
 
-// SetDone marks the ReqRes object as done.
-func (r *ReqRes) SetDone() {
+// markDone marks the ReqRes object as done.
+func (r *requestAndResponse) markDone() {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
