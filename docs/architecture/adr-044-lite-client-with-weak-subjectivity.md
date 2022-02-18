@@ -119,7 +119,7 @@ network usage.
 ---
 
 Check out the formal specification
-[here](https://github.com/tendermint/spec/tree/master/spec/light-client).
+[here](https://github.com/tendermint/tendermint/tree/master/spec/light-client).
 
 ## Status
 
