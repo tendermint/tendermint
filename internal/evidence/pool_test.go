@@ -215,10 +215,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = pool.AddEvidence(ctx, prunedEv)
-	require.NoError(t, err)
-	err = pool.AddEvidence(ctx, notPrunedEv)
-	require.NoError(t, err)
+	require.NoError(t, pool.AddEvidence(ctx, prunedEv))
+	require.NoError(t, pool.AddEvidence(ctx, notPrunedEv))
 
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
@@ -275,8 +273,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 		evidenceChainID,
 	)
 	require.NoError(t, err)
-	err = pool.AddEvidence(ctx, ev)
-	require.NoError(t, err)
+	require.NoError(t, pool.AddEvidence(ctx, ev))
 	require.NoError(t, pool.CheckEvidence(ctx, types.EvidenceList{ev}))
 }
 
@@ -305,14 +302,13 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 
 // Check that we generate events when evidence is added into the evidence pool
 func TestEventOnEvidenceValidated(t *testing.T) {
-	var height int64 = 1
+	const height = 1
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err := eventBus.Start(ctx)
-	require.NoError(t, err)
+	require.NoError(t, eventBus.Start(ctx))
 
 	pool, val := defaultTestPool(ctx, t, height)
 	pool.SetEventBus(eventBus)
