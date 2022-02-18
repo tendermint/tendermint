@@ -134,7 +134,7 @@ func (app *localClient) ProcessProposal(_ context.Context, req types.RequestProc
 	return &res, nil
 }
 
-func (app *localClient) ExtendVote(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+func (app *localClient) ExtendVote(_ context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 

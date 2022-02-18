@@ -12,10 +12,9 @@
 //
 // ## Local client
 //
-// global mutex is locked during each call
+// The global mutex is locked during each call
 //
 // ## gRPC client
 //
-// waits for all calls to complete (essentially what Flush does in
-// the socket client).
+// The client waits for all calls to complete.
 package abciclient
