@@ -34,7 +34,6 @@ type AppConnMempool interface {
 	CheckTxAsync(context.Context, types.RequestCheckTx) (*abciclient.ReqRes, error)
 	CheckTx(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
 
-	FlushAsync(context.Context) (*abciclient.ReqRes, error)
 	Flush(context.Context) error
 }
 
@@ -146,11 +145,6 @@ func NewAppConnMempool(appConn abciclient.Client, metrics *Metrics) AppConnMempo
 
 func (app *appConnMempool) Error() error {
 	return app.appConn.Error()
-}
-
-func (app *appConnMempool) FlushAsync(ctx context.Context) (*abciclient.ReqRes, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "async"))()
-	return app.appConn.FlushAsync(ctx)
 }
 
 func (app *appConnMempool) Flush(ctx context.Context) error {

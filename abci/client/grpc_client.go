@@ -165,15 +165,6 @@ func (cli *grpcClient) Error() error {
 //----------------------------------------
 
 // NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
-	req := types.ToRequestFlush()
-	res, err := cli.client.Flush(ctx, req.GetFlush(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Flush{Flush: res}})
-}
-
 // NOTE: call is synchronous, use ctx to break early if needed
 func (cli *grpcClient) CheckTxAsync(ctx context.Context, params types.RequestCheckTx) (*ReqRes, error) {
 	req := types.ToRequestCheckTx(params)
