@@ -442,7 +442,7 @@ func (cs *State) OnStart(ctx context.Context) error {
 	}
 
 	// now start the receiveRoutine
-	go cs.receiveRoutine(ctx, 0)
+	go cs.receiveRoutine(ctx, testIterator{}, 0)
 
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
@@ -462,7 +462,7 @@ func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
 		return
 	}
 
-	go cs.receiveRoutine(ctx, maxSteps)
+	go cs.receiveRoutine(ctx, testIterator{}, maxSteps)
 }
 
 // loadWalFile loads WAL data from file. It overwrites cs.wal.
@@ -831,7 +831,7 @@ func (cs *State) newStep(ctx context.Context) {
 // It keeps the RoundState and is the only thing that updates it.
 // Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
 // State must be locked before any internal state is updated.
-func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
+func (cs *State) receiveRoutine(ctx context.Context, iter Iterator, maxSteps int) {
 	onExit := func(cs *State) {
 		// NOTE: the internalMsgQueue may have signed messages from our
 		// priv_val that haven't hit the WAL, but its ok because
@@ -858,7 +858,9 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		}
 	}()
 
-	for {
+	for iter.Next(ctx) {
+		// multi iterator
+		e := iter.Event()
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
 				cs.logger.Debug("reached max steps; exiting receive routine")
@@ -866,50 +868,27 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 				return
 			}
 		}
-
-		rs := cs.RoundState
-		var mi msgInfo
-
 		select {
-		case <-cs.txNotifier.TxsAvailable():
-			cs.handleTxsAvailable(ctx)
-
-		case mi = <-cs.peerMsgQueue:
-			if err := cs.wal.Write(mi); err != nil {
-				cs.logger.Error("failed writing to WAL", "err", err)
-			}
-
-			// handles proposals, block parts, votes
-			// may generate internal events (votes, complete proposals, 2/3 majorities)
-			cs.handleMsg(ctx, mi)
-
-		case mi = <-cs.internalMsgQueue:
-			err := cs.wal.WriteSync(mi) // NOTE: fsync
-			if err != nil {
-				panic(fmt.Sprintf(
-					"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
-					mi, err,
-				))
-			}
-
-			// handles proposals, block parts, votes
-			cs.handleMsg(ctx, mi)
-
-		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
-			if err := cs.wal.Write(ti); err != nil {
-				cs.logger.Error("failed writing to WAL", "err", err)
-			}
-
-			// if the timeout is relevant to the rs
-			// go to the next step
-			cs.handleTimeout(ctx, ti, rs)
-
 		case <-ctx.Done():
 			onExit(cs)
 			return
+		default:
+		}
 
+		switch msg := e.Message.(type) {
+		case txAvailable:
+			cs.handleTxsAvailable(ctx)
+
+		case msgInfo:
+			cs.handleMsg(ctx, msg)
+
+		case timeoutInfo:
+			cs.handleTimeout(ctx, msg, cs.RoundState)
 		}
 		// TODO should we handle context cancels here?
+	}
+	if err := iter.Error(); err != nil {
+		cs.logger.Error("error iterating over consensus messages", "err", err)
 	}
 }
 

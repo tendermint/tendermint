@@ -141,29 +141,31 @@ func (cs *State) catchupReplay(ctx context.Context, csHeight int64) error {
 
 	cs.logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
-	var msg *TimedWALMessage
 	dec := WALDecoder{gr}
 
-LOOP:
-	for {
-		msg, err = dec.Decode()
-		switch {
-		case err == io.EOF:
-			break LOOP
-		case IsDataCorruptionError(err):
-			cs.logger.Error("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
-			return err
-		case err != nil:
-			return err
-		}
+	cs.receiveRoutine(ctx, WALReadingIterator{dec: dec}, 0)
+	/*
+		LOOP:
+			for {
+				msg, err = dec.Decode()
+				switch {
+				case err == io.EOF:
+					break LOOP
+				case IsDataCorruptionError(err):
+					cs.logger.Error("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
+					return err
+				case err != nil:
+					return err
+				}
 
-		// NOTE: since the priv key is set when the msgs are received
-		// it will attempt to eg double sign but we can just ignore it
-		// since the votes will be replayed and we'll get to the next step
-		if err := cs.readReplayMessage(ctx, msg, nil); err != nil {
-			return err
-		}
-	}
+				// NOTE: since the priv key is set when the msgs are received
+				// it will attempt to eg double sign but we can just ignore it
+				// since the votes will be replayed and we'll get to the next step
+				if err := cs.readReplayMessage(ctx, msg, nil); err != nil {
+					return err
+				}
+			}
+	*/
 	cs.logger.Info("Replay: Done")
 	return nil
 }
