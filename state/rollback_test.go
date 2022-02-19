@@ -49,13 +49,8 @@ func TestRollback(t *testing.T) {
 		BlockID: initialState.LastBlockID,
 		Header: types.Header{
 			Height:          initialState.LastBlockHeight,
-<<<<<<< HEAD:state/rollback_test.go
-			AppHash:         initialState.AppHash,
-			LastBlockID:     makeBlockIDRandom(),
-=======
 			AppHash:         factory.RandomHash(),
 			LastBlockID:     factory.MakeBlockID(),
->>>>>>> 8a238fdcb (fix app hash in state rollback (#7837)):internal/state/rollback_test.go
 			LastResultsHash: initialState.LastResultsHash,
 		},
 	}
