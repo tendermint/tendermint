@@ -23,6 +23,7 @@ import (
 )
 
 var ctx = context.Background()
+
 const testAppVersion = 9
 
 func TestSyncer_SyncAny(t *testing.T) {
@@ -701,14 +702,14 @@ func TestSyncer_verifyApp(t *testing.T) {
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			rts := setup(ctx, t, nil, nil, nil, 2)
+			rts := setup(t, nil, nil, nil, 2)
 
 			rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
 			err := rts.syncer.verifyApp(ctx, s, appVersion)
 			require.NoError(t, err)
 			unwrapped := errors.Unwrap(err)
 			if unwrapped != nil {
-				err = unwrapped.
+				err = unwrapped
 			}
 			require.Equal(t, tc.expectErr, err)
 		})
