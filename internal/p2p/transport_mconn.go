@@ -376,7 +376,7 @@ func (c *mConnConnection) handshake(
 		return nil, types.NodeInfo{}, nil, err
 	}
 
-	mconn := conn.NewMConnectionWithConfig(
+	mconn := conn.NewMConnection(
 		c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)),
 		secretConn,
 		c.channelDescs,
