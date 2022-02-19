@@ -134,6 +134,9 @@ type MConnConfig struct {
 
 	// Maximum wait time for pongs
 	PongTimeout time.Duration `mapstructure:"pong_timeout"`
+
+	// Process/Transport Start time
+	StartTime time.Time `mapstructure:",omitempty"`
 }
 
 // DefaultMConnConfig returns the default config.
@@ -145,28 +148,12 @@ func DefaultMConnConfig() MConnConfig {
 		FlushThrottle:           defaultFlushThrottle,
 		PingInterval:            defaultPingInterval,
 		PongTimeout:             defaultPongTimeout,
+		StartTime:               time.Now(),
 	}
 }
 
-// NewMConnection wraps net.Conn and creates multiplex connection
+// NewMConnection wraps net.Conn and creates multiplex connection with a config
 func NewMConnection(
-	logger log.Logger,
-	conn net.Conn,
-	chDescs []*ChannelDescriptor,
-	onReceive receiveCbFunc,
-	onError errorCbFunc,
-) *MConnection {
-	return NewMConnectionWithConfig(
-		logger,
-		conn,
-		chDescs,
-		onReceive,
-		onError,
-		DefaultMConnConfig())
-}
-
-// NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
-func NewMConnectionWithConfig(
 	logger log.Logger,
 	conn net.Conn,
 	chDescs []*ChannelDescriptor,
@@ -183,8 +170,8 @@ func NewMConnectionWithConfig(
 		conn:          conn,
 		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
 		bufConnWriter: bufio.NewWriterSize(conn, minWriteBufferSize),
-		sendMonitor:   flowrate.New(0, 0),
-		recvMonitor:   flowrate.New(0, 0),
+		sendMonitor:   flowrate.New(config.StartTime, 0, 0),
+		recvMonitor:   flowrate.New(config.StartTime, 0, 0),
 		send:          make(chan struct{}, 1),
 		pong:          make(chan struct{}, 1),
 		onReceive:     onReceive,
@@ -294,9 +281,7 @@ func (c *MConnection) _recover(ctx context.Context) {
 }
 
 func (c *MConnection) stopForError(ctx context.Context, r interface{}) {
-	if err := c.Stop(); err != nil {
-		c.logger.Error("error stopping connection", "err", err)
-	}
+	c.Stop()
 
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {

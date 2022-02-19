@@ -373,6 +373,15 @@ func (cs *State) OnStart(ctx context.Context) error {
 		}
 	}
 
+	// we need the timeoutRoutine for replay so
+	// we don't block on the tick chan.
+	// NOTE: we will get a build up of garbage go routines
+	// firing on the tockChan until the receiveRoutine is started
+	// to deal with them (by that point, at most one will be valid)
+	if err := cs.timeoutTicker.Start(ctx); err != nil {
+		return err
+	}
+
 	// We may have lost some votes if the process crashed reload from consensus
 	// log to catchup.
 	if cs.doWALCatchup {
@@ -396,10 +405,7 @@ func (cs *State) OnStart(ctx context.Context) error {
 			cs.logger.Error("the WAL file is corrupted; attempting repair", "err", err)
 
 			// 1) prep work
-			if err := cs.wal.Stop(); err != nil {
-
-				return err
-			}
+			cs.wal.Stop()
 
 			repairAttempted = true
 
@@ -427,15 +433,6 @@ func (cs *State) OnStart(ctx context.Context) error {
 	}
 
 	if err := cs.evsw.Start(ctx); err != nil {
-		return err
-	}
-
-	// we need the timeoutRoutine for replay so
-	// we don't block on the tick chan.
-	// NOTE: we will get a build up of garbage go routines
-	// firing on the tockChan until the receiveRoutine is started
-	// to deal with them (by that point, at most one will be valid)
-	if err := cs.timeoutTicker.Start(ctx); err != nil {
 		return err
 	}
 
@@ -494,19 +491,11 @@ func (cs *State) OnStop() {
 	close(cs.onStopCh)
 
 	if cs.evsw.IsRunning() {
-		if err := cs.evsw.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				cs.logger.Error("failed trying to stop eventSwitch", "error", err)
-			}
-		}
+		cs.evsw.Stop()
 	}
 
 	if cs.timeoutTicker.IsRunning() {
-		if err := cs.timeoutTicker.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				cs.logger.Error("failed trying to stop timeoutTicket", "error", err)
-			}
-		}
+		cs.timeoutTicker.Stop()
 	}
 	// WAL is stopped in receiveRoutine.
 }
@@ -515,6 +504,7 @@ func (cs *State) OnStop() {
 // NOTE: be sure to Stop() the event switch and drain
 // any event channels or this may deadlock
 func (cs *State) Wait() {
+	cs.evsw.Wait()
 	<-cs.done
 }
 
@@ -638,6 +628,14 @@ func (cs *State) updateHeight(height int64) {
 }
 
 func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
+	if !cs.replayMode {
+		if round != cs.Round || round == 0 && step == cstypes.RoundStepNewRound {
+			cs.metrics.MarkRound(cs.Round, cs.StartTime)
+		}
+		if cs.Step != step {
+			cs.metrics.MarkStep(cs.Step)
+		}
+	}
 	cs.Round = round
 	cs.Step = step
 }
@@ -840,12 +838,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		// priv_val tracks LastSig
 
 		// close wal now that we're done writing to it
-		if err := cs.wal.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				cs.logger.Error("failed trying to stop WAL", "error", err)
-			}
-		}
-
+		cs.wal.Stop()
 		cs.wal.Wait()
 		close(cs.done)
 	}
@@ -1139,9 +1132,6 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 	if err := cs.eventBus.PublishEventNewRound(ctx, cs.NewRoundEvent()); err != nil {
 		cs.logger.Error("failed publishing new round", "err", err)
 	}
-
-	cs.metrics.Rounds.Set(float64(round))
-
 	// Wait for txs to be available in the mempool
 	// before we enterPropose in round 0. If the last block changed the app hash,
 	// we may need an empty "proof" block, and enterPropose immediately.
@@ -1683,6 +1673,7 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
+		cs.metrics.MarkBlockGossipStarted()
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 	}
 
@@ -1773,6 +1764,7 @@ func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int3
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
+			cs.metrics.MarkBlockGossipStarted()
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 
 			if err := cs.eventBus.PublishEventValidBlock(ctx, cs.RoundStateEvent()); err != nil {
@@ -2049,6 +2041,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
+		cs.metrics.MarkBlockGossipStarted()
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
 
@@ -2069,11 +2062,13 @@ func (cs *State) addProposalBlockPart(
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
 		cs.logger.Debug("received block part from wrong height", "height", height, "round", round)
+		cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		return false, nil
 	}
 
 	// We're not expecting a block part.
 	if cs.ProposalBlockParts == nil {
+		cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		// NOTE: this can happen when we've gone to a higher round and
 		// then receive parts from the previous round - not necessarily a bad peer.
 		cs.logger.Debug(
@@ -2088,14 +2083,21 @@ func (cs *State) addProposalBlockPart(
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
+		if errors.Is(err, types.ErrPartSetInvalidProof) || errors.Is(err, types.ErrPartSetUnexpectedIndex) {
+			cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
+		}
 		return added, err
 	}
+
+	cs.metrics.BlockGossipPartsReceived.With("matches_current", "true").Add(1)
+
 	if cs.ProposalBlockParts.ByteSize() > cs.state.ConsensusParams.Block.MaxBytes {
 		return added, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
 			cs.ProposalBlockParts.ByteSize(), cs.state.ConsensusParams.Block.MaxBytes,
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
+		cs.metrics.MarkBlockGossipComplete()
 		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
@@ -2308,6 +2310,7 @@ func (cs *State) addVote(
 				}
 
 				if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
+					cs.metrics.MarkBlockGossipStarted()
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 

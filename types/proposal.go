@@ -89,7 +89,7 @@ func (p *Proposal) ValidateBasic() error {
 // localtime <= proposedBlockTime + MsgDelay + Precision
 //
 // For more information on the meaning of 'timely', see the proposer-based timestamp specification:
-// https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp
+// https://github.com/tendermint/tendermint/tree/master/spec/consensus/proposer-based-timestamp
 func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32) bool {
 	// The message delay values are scaled as rounds progress.
 	// Every 10 rounds, the message delay is doubled to allow consensus to

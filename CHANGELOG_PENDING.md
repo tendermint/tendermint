@@ -20,7 +20,7 @@ Special thanks to external contributors on this release:
 
 - Apps
 
-  - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
+  - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
 
 - P2P Protocol
 
@@ -74,3 +74,4 @@ Special thanks to external contributors on this release:
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
 - [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
 - [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
+- [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)

@@ -213,4 +213,4 @@ type Logger interface {
 }
 ```
 
-See [The Hunt for a Logger Interface](https://go-talks.appspot.com/github.com/ChrisHines/talks/structured-logging/structured-logging.slide). The advantage is greater composability (check out how go-kit defines colored logging or log-leveled logging on top of this interface https://github.com/go-kit/kit/tree/master/log).
+See [The Hunt for a Logger Interface](https://web.archive.org/web/20210902161539/https://go-talks.appspot.com/github.com/ChrisHines/talks/structured-logging/structured-logging.slide#1). The advantage is greater composability (check out how go-kit defines colored logging or log-leveled logging on top of this interface https://github.com/go-kit/kit/tree/master/log).

@@ -204,8 +204,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// Try to send the tx through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
-		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, func(r *abci.Response) {
-			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
+		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, func(r *abci.ResponseCheckTx) {
+			if r.Code != code.CodeTypeBadNonce {
 				t.Errorf("expected checktx to return bad nonce, got %v", r)
 				return
 			}
