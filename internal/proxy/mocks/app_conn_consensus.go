@@ -5,8 +5,6 @@ package mocks
 import (
 	context "context"
 
-	abciclient "github.com/tendermint/tendermint/abci/client"
-
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/tendermint/tendermint/abci/types"
@@ -167,11 +165,6 @@ func (_m *AppConnConsensus) ProcessProposal(_a0 context.Context, _a1 types.Reque
 	}
 
 	return r0, r1
-}
-
-// SetResponseCallback provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) SetResponseCallback(_a0 abciclient.Callback) {
-	_m.Called(_a0)
 }
 
 // VerifyVoteExtension provides a mock function with given fields: _a0, _a1

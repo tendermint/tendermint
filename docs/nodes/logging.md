@@ -50,7 +50,7 @@ little overview what they do.
   they are coming from peers or the application.
 - `p2p` Provides an abstraction around peer-to-peer communication. For
   more details, please check out the
-  [README](https://github.com/tendermint/spec/tree/master/spec/p2p).
+  [README](https://github.com/tendermint/tendermint/tree/master/spec/p2p).
 - `rpc-server` RPC server. For implementation details, please read the
   [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
@@ -120,7 +120,7 @@ Next follows a standard block creation cycle, where we enter a new
 round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
 please refer to [Byzantine Consensus
-Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
+Algorithm](https://github.com/tendermint/tendermint/blob/master/spec/consensus/consensus.md).
 
 ```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus

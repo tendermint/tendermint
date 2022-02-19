@@ -406,9 +406,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(sync.Mutex)
-		proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-		proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+		proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+		proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 		mempool := mempool.NewTxMempool(
 			log.TestingLogger().With("module", "mempool"),
