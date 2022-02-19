@@ -1,8 +1,10 @@
 package stepper
 
 import (
+	"context"
 	"errors"
 
+	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/consensus/types"
 )
 
@@ -11,11 +13,13 @@ var (
 )
 
 type (
-	Transition func(types.RoundState) types.RoundState
+	Transition func(types.RoundState) (types.RoundState, consensus.Message)
 	Predicate  func(types.RoundState) bool
 )
 
-var emptyTransition = func(types.RoundState) types.RoundState { return types.RoundState{} }
+var emptyTransition = func(types.RoundState) (types.RoundState, consensus.Message) {
+	return types.RoundState{}, &consensus.VoteMessage{}
+}
 
 type Operation struct {
 	P Predicate
@@ -30,16 +34,19 @@ func New(ops []Operation) stepper {
 	return stepper{ops: ops}
 }
 
-func (s *stepper) Next(state types.RoundState) (types.RoundState, error) {
+func (s *stepper) Next(ctx context.Context, state types.RoundState) (types.RoundState, consensus.Message, error) {
 	if t, ok := s.pickTransition(state); ok {
-		return t(state), nil
+		s, msg := t(state)
+		return s, msg, nil
 	}
-	return types.RoundState{}, ErrNoValidTransition
+	return types.RoundState{}, nil, ErrNoValidTransition
 }
 
 func (s *stepper) pickTransition(state types.RoundState) (Transition, bool) {
 	for _, op := range s.ops {
-		return op.T, true
+		if op.P(state) {
+			return op.T, true
+		}
 	}
 	return emptyTransition, false
 }

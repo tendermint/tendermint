@@ -68,6 +68,7 @@ type RoundState struct {
 	Height    int64         `json:"height,string"` // Height we are working on
 	Round     int32         `json:"round"`
 	Step      RoundStepType `json:"step"`
+	StepTime  time.Time     `json:"step_time"`
 	StartTime time.Time     `json:"start_time"`
 
 	// Subjective time when +2/3 precommits for Block at Round were found
