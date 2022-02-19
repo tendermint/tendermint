@@ -25,7 +25,7 @@ var _ Client = (*localClient)(nil)
 // NewLocalClient creates a local client, which will be directly calling the
 // methods of the given app.
 //
-// Both Async and Sync methods ignore the given context.Context parameter.
+// The client methods ignore their context argument.
 func NewLocalClient(logger log.Logger, app types.Application) Client {
 	cli := &localClient{
 		Application: app,
@@ -36,19 +36,13 @@ func NewLocalClient(logger log.Logger, app types.Application) Client {
 
 func (*localClient) OnStart(context.Context) error { return nil }
 func (*localClient) OnStop()                       {}
-
-// TODO: change types.Application to include Error()?
-func (app *localClient) Error() error {
-	return nil
-}
+func (*localClient) Error() error                  { return nil }
 
 //-------------------------------------------------------
 
-func (app *localClient) Flush(ctx context.Context) error {
-	return nil
-}
+func (*localClient) Flush(context.Context) error { return nil }
 
-func (app *localClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+func (app *localClient) Echo(_ context.Context, msg string) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: msg}, nil
 }
 
@@ -60,10 +54,7 @@ func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types
 	return &res, nil
 }
 
-func (app *localClient) CheckTx(
-	ctx context.Context,
-	req types.RequestCheckTx,
-) (*types.ResponseCheckTx, error) {
+func (app *localClient) CheckTx(_ context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -71,10 +62,7 @@ func (app *localClient) CheckTx(
 	return &res, nil
 }
 
-func (app *localClient) Query(
-	ctx context.Context,
-	req types.RequestQuery,
-) (*types.ResponseQuery, error) {
+func (app *localClient) Query(_ context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -90,11 +78,7 @@ func (app *localClient) Commit(ctx context.Context) (*types.ResponseCommit, erro
 	return &res, nil
 }
 
-func (app *localClient) InitChain(
-	ctx context.Context,
-	req types.RequestInitChain,
-) (*types.ResponseInitChain, error) {
-
+func (app *localClient) InitChain(_ context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -102,11 +86,7 @@ func (app *localClient) InitChain(
 	return &res, nil
 }
 
-func (app *localClient) ListSnapshots(
-	ctx context.Context,
-	req types.RequestListSnapshots,
-) (*types.ResponseListSnapshots, error) {
-
+func (app *localClient) ListSnapshots(_ context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -114,11 +94,7 @@ func (app *localClient) ListSnapshots(
 	return &res, nil
 }
 
-func (app *localClient) OfferSnapshot(
-	ctx context.Context,
-	req types.RequestOfferSnapshot,
-) (*types.ResponseOfferSnapshot, error) {
-
+func (app *localClient) OfferSnapshot(_ context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -126,10 +102,7 @@ func (app *localClient) OfferSnapshot(
 	return &res, nil
 }
 
-func (app *localClient) LoadSnapshotChunk(
-	ctx context.Context,
-	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-
+func (app *localClient) LoadSnapshotChunk(_ context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -137,10 +110,7 @@ func (app *localClient) LoadSnapshotChunk(
 	return &res, nil
 }
 
-func (app *localClient) ApplySnapshotChunk(
-	ctx context.Context,
-	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-
+func (app *localClient) ApplySnapshotChunk(_ context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -148,10 +118,7 @@ func (app *localClient) ApplySnapshotChunk(
 	return &res, nil
 }
 
-func (app *localClient) PrepareProposal(
-	ctx context.Context,
-	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-
+func (app *localClient) PrepareProposal(_ context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -159,10 +126,7 @@ func (app *localClient) PrepareProposal(
 	return &res, nil
 }
 
-func (app *localClient) ProcessProposal(
-	ctx context.Context,
-	req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-
+func (app *localClient) ProcessProposal(_ context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -170,10 +134,7 @@ func (app *localClient) ProcessProposal(
 	return &res, nil
 }
 
-func (app *localClient) ExtendVote(
-	ctx context.Context,
-	req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-
+func (app *localClient) ExtendVote(_ context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -181,10 +142,7 @@ func (app *localClient) ExtendVote(
 	return &res, nil
 }
 
-func (app *localClient) VerifyVoteExtension(
-	ctx context.Context,
-	req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-
+func (app *localClient) VerifyVoteExtension(_ context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -192,10 +150,7 @@ func (app *localClient) VerifyVoteExtension(
 	return &res, nil
 }
 
-func (app *localClient) FinalizeBlock(
-	ctx context.Context,
-	req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-
+func (app *localClient) FinalizeBlock(_ context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
