@@ -42,7 +42,7 @@ func createMConnectionWithCallbacks(
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond
 	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnectionWithConfig(logger, conn, chDescs, onReceive, onError, cfg)
+	c := NewMConnection(logger, conn, chDescs, onReceive, onError, cfg)
 	return c
 }
 
@@ -453,7 +453,7 @@ func newClientAndServerConnsForReadErrors(
 	}
 	logger := log.TestingLogger()
 
-	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
+	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError, DefaultMConnConfig())
 	err := mconnClient.Start(ctx)
 	require.NoError(t, err)
 

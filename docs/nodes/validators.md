@@ -109,9 +109,9 @@ Currently Tendermint uses [Ed25519](https://ed25519.cr.yp.to/) keys which are wi
 > **+2/3 is short for "more than 2/3"**
 
 A block is committed when +2/3 of the validator set sign [precommit
-votes](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#vote) for that block at the same `round`.
+votes](https://github.com/tendermint/tendermint/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#vote) for that block at the same `round`.
 The +2/3 set of precommit votes is called a
-[_commit_](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#commit). While any +2/3 set of
+[_commit_](https://github.com/tendermint/tendermint/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#commit). While any +2/3 set of
 precommits for the same block at the same height&round can serve as
 validation, the canonical commit is included in the next block (see
-[LastCommit](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#lastcommit)).
+[LastCommit](https://github.com/tendermint/tendermint/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#lastcommit)).

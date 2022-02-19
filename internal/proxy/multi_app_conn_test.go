@@ -30,9 +30,10 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	defer cancel()
 
 	clientMock := &abcimocks.Client{}
-	clientMock.On("Start", mock.Anything).Return(nil).Times(4)
+	clientMock.On("Start", mock.Anything).Return(nil)
 	clientMock.On("Error").Return(nil)
-	clientMock.On("Wait").Return(nil).Times(4)
+	clientMock.On("IsRunning").Return(true)
+	clientMock.On("Wait").Return(nil).Times(1)
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
 	creatorCallCount := 0
@@ -46,14 +47,14 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	err := appConns.Start(ctx)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	cancel()
 	appConns.Wait()
 
 	clientMock.AssertExpectations(t)
-	assert.Equal(t, 4, cl.count)
-	assert.Equal(t, 4, creatorCallCount)
+	assert.Equal(t, 1, cl.count)
+	assert.Equal(t, 1, creatorCallCount)
 }
 
 // Upon failure, we call tmos.Kill
@@ -74,7 +75,7 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock := &abcimocks.Client{}
 	clientMock.On("SetLogger", mock.Anything).Return()
 	clientMock.On("Start", mock.Anything).Return(nil)
-
+	clientMock.On("IsRunning").Return(true)
 	clientMock.On("Wait").Return(nil)
 	clientMock.On("Error").Return(errors.New("EOF"))
 	cl := &noopStoppableClientImpl{Client: clientMock}
