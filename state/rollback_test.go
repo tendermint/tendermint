@@ -49,12 +49,27 @@ func TestRollback(t *testing.T) {
 		BlockID: initialState.LastBlockID,
 		Header: types.Header{
 			Height:          initialState.LastBlockHeight,
+<<<<<<< HEAD:state/rollback_test.go
 			AppHash:         initialState.AppHash,
 			LastBlockID:     makeBlockIDRandom(),
+=======
+			AppHash:         factory.RandomHash(),
+			LastBlockID:     factory.MakeBlockID(),
+>>>>>>> 8a238fdcb (fix app hash in state rollback (#7837)):internal/state/rollback_test.go
 			LastResultsHash: initialState.LastResultsHash,
 		},
 	}
-	blockStore.On("LoadBlockMeta", initialState.LastBlockHeight).Return(block)
+	nextBlock := &types.BlockMeta{
+		BlockID: initialState.LastBlockID,
+		Header: types.Header{
+			Height:          nextState.LastBlockHeight,
+			AppHash:         initialState.AppHash,
+			LastBlockID:     block.BlockID,
+			LastResultsHash: nextState.LastResultsHash,
+		},
+	}
+	blockStore.On("LoadBlockMeta", height).Return(block)
+	blockStore.On("LoadBlockMeta", nextHeight).Return(nextBlock)
 	blockStore.On("Height").Return(nextHeight)
 
 	// rollback the state
@@ -84,6 +99,7 @@ func TestRollbackNoBlocks(t *testing.T) {
 	stateStore := setupStateStore(t, height)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("Height").Return(height)
+	blockStore.On("LoadBlockMeta", height).Return(nil)
 	blockStore.On("LoadBlockMeta", height-1).Return(nil)
 
 	_, _, err := state.Rollback(blockStore, stateStore)
