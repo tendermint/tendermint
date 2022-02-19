@@ -23,6 +23,7 @@ import (
 )
 
 var ctx = context.Background()
+const testAppVersion = 9
 
 func TestSyncer_SyncAny(t *testing.T) {
 	state := sm.State{
@@ -177,7 +178,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot.On("ApplySnapshotChunkSync", ctx, abci.RequestApplySnapshotChunk{
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
-	connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
+	connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(&abci.ResponseInfo{
 		AppVersion:       testAppVersion,
 		LastBlockHeight:  1,
 		LastBlockAppHash: []byte("app_hash"),
@@ -707,7 +708,7 @@ func TestSyncer_verifyApp(t *testing.T) {
 			require.NoError(t, err)
 			unwrapped := errors.Unwrap(err)
 			if unwrapped != nil {
-				err = unwrapped
+				err = unwrapped.
 			}
 			require.Equal(t, tc.expectErr, err)
 		})
