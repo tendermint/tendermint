@@ -301,12 +301,16 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		return sm.State{}, nil, err
 	}
 
+<<<<<<< HEAD:statesync/syncer.go
 	// Verify app and update app version
 	appVersion, err := s.verifyApp(snapshot)
 	if err != nil {
+=======
+	// Verify app and app version
+	if err := s.verifyApp(ctx, snapshot, state.Version.Consensus.App); err != nil {
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer.go
 		return sm.State{}, nil, err
 	}
-	state.Version.Consensus.App = appVersion
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
@@ -476,25 +480,49 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}))
 }
 
+<<<<<<< HEAD:statesync/syncer.go
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
 // app version, which should be returned as part of the initial state.
 func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 	resp, err := s.connQuery.InfoSync(proxy.RequestInfo)
+=======
+// verifyApp verifies the sync, checking the app hash, last block height and app version
+func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot, appVersion uint64) error {
+	resp, err := s.connQuery.Info(ctx, proxy.RequestInfo)
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer.go
 	if err != nil {
-		return 0, fmt.Errorf("failed to query ABCI app for appHash: %w", err)
+		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
+	}
+
+	// sanity check that the app version in the block matches the application's own record
+	// of its version
+	if resp.AppVersion != appVersion {
+		// An error here most likely means that the app hasn't inplemented state sync
+		// or the Info call correctly
+		return fmt.Errorf("app version mismatch. Expected: %d, got: %d",
+			appVersion, resp.AppVersion)
 	}
 	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
 		s.logger.Error("appHash verification failed",
 			"expected", snapshot.trustedAppHash,
 			"actual", resp.LastBlockAppHash)
-		return 0, errVerifyFailed
+		return errVerifyFailed
 	}
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
+<<<<<<< HEAD:statesync/syncer.go
 		s.logger.Error("ABCI app reported unexpected last block height",
 			"expected", snapshot.Height, "actual", resp.LastBlockHeight)
 		return 0, errVerifyFailed
+=======
+		s.logger.Error(
+			"ABCI app reported unexpected last block height",
+			"expected", snapshot.Height,
+			"actual", resp.LastBlockHeight,
+		)
+		return errVerifyFailed
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer.go
 	}
 
 	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", snapshot.trustedAppHash)
-	return resp.AppVersion, nil
+	return nil
 }

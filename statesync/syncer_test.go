@@ -51,7 +51,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		Version: tmstate.Version{
 			Consensus: tmversion.Consensus{
 				Block: version.BlockProtocol,
-				App:   0,
+				App:   testAppVersion,
 			},
 			Software: version.TMCoreSemVer,
 		},
@@ -183,8 +183,13 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
+<<<<<<< HEAD:statesync/syncer_test.go
 	connQuery.On("InfoSync", proxy.RequestInfo).Return(&abci.ResponseInfo{
 		AppVersion:       9,
+=======
+	connQuery.On("Info", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
+		AppVersion:       testAppVersion,
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer_test.go
 		LastBlockHeight:  1,
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
@@ -198,12 +203,26 @@ func TestSyncer_SyncAny(t *testing.T) {
 	assert.Equal(t, map[uint32]int{0: 1, 1: 2, 2: 1}, chunkRequests)
 	chunkRequestsMtx.Unlock()
 
-	// The syncer should have updated the state app version from the ABCI info response.
 	expectState := state
+<<<<<<< HEAD:statesync/syncer_test.go
 	expectState.Version.Consensus.App = 9
 
 	assert.Equal(t, expectState, newState)
 	assert.Equal(t, commit, lastCommit)
+=======
+	require.Equal(t, expectState, newState)
+	require.Equal(t, commit, lastCommit)
+
+	require.Equal(t, len(chunks), int(rts.syncer.processingSnapshot.Chunks))
+	require.Equal(t, expectState.LastBlockHeight, rts.syncer.lastSyncedSnapshotHeight)
+	require.True(t, rts.syncer.avgChunkTime > 0)
+
+	require.Equal(t, int64(rts.syncer.processingSnapshot.Chunks), rts.reactor.SnapshotChunksTotal())
+	require.Equal(t, rts.syncer.lastSyncedSnapshotHeight, rts.reactor.SnapshotHeight())
+	require.Equal(t, time.Duration(rts.syncer.avgChunkTime), rts.reactor.ChunkProcessAvgTime())
+	require.Equal(t, int64(len(rts.syncer.snapshots.snapshots)), rts.reactor.TotalSnapshots())
+	require.Equal(t, int64(0), rts.reactor.SnapshotChunksCount())
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer_test.go
 
 	connSnapshot.AssertExpectations(t)
 	connQuery.AssertExpectations(t)
@@ -613,6 +632,8 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 func TestSyncer_verifyApp(t *testing.T) {
 	boom := errors.New("boom")
+	const appVersion = 9
+	appVersionMismatchErr := errors.New("app version mismatch. Expected: 9, got: 2")
 	s := &snapshot{Height: 3, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
 
 	testcases := map[string]struct {
@@ -623,17 +644,22 @@ func TestSyncer_verifyApp(t *testing.T) {
 		"verified": {&abci.ResponseInfo{
 			LastBlockHeight:  3,
 			LastBlockAppHash: []byte("app_hash"),
-			AppVersion:       9,
+			AppVersion:       appVersion,
 		}, nil, nil},
+		"invalid app version": {&abci.ResponseInfo{
+			LastBlockHeight:  3,
+			LastBlockAppHash: []byte("app_hash"),
+			AppVersion:       2,
+		}, nil, appVersionMismatchErr},
 		"invalid height": {&abci.ResponseInfo{
 			LastBlockHeight:  5,
 			LastBlockAppHash: []byte("app_hash"),
-			AppVersion:       9,
+			AppVersion:       appVersion,
 		}, nil, errVerifyFailed},
 		"invalid hash": {&abci.ResponseInfo{
 			LastBlockHeight:  3,
 			LastBlockAppHash: []byte("xxx"),
-			AppVersion:       9,
+			AppVersion:       appVersion,
 		}, nil, errVerifyFailed},
 		"error": {nil, boom, boom},
 	}
@@ -647,16 +673,25 @@ func TestSyncer_verifyApp(t *testing.T) {
 			cfg := config.DefaultStateSyncConfig()
 			syncer := newSyncer(*cfg, log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
 
+<<<<<<< HEAD:statesync/syncer_test.go
 			connQuery.On("InfoSync", proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := syncer.verifyApp(s)
+=======
+			rts.connQuery.On("Info", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
+			err := rts.syncer.verifyApp(ctx, s, appVersion)
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer_test.go
 			unwrapped := errors.Unwrap(err)
 			if unwrapped != nil {
 				err = unwrapped
 			}
+<<<<<<< HEAD:statesync/syncer_test.go
 			assert.Equal(t, tc.expectErr, err)
 			if err == nil {
 				assert.Equal(t, tc.response.AppVersion, version)
 			}
+=======
+			require.Equal(t, tc.expectErr, err)
+>>>>>>> 4425e62e9 (statesync: assert app version matches (#7856)):internal/statesync/syncer_test.go
 		})
 	}
 }
