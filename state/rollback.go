@@ -43,7 +43,8 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 	if rollbackBlock == nil {
 		return -1, nil, fmt.Errorf("block at height %d not found", rollbackHeight)
 	}
-	// we also need to retrieve the latest block because the app hash and last results hash is only agreed upon in the following block
+	// We also need to retrieve the latest block because the app hash and last
+	// results hash is only agreed upon in the following block.
 	latestBlock := bs.LoadBlockMeta(invalidState.LastBlockHeight)
 	if latestBlock == nil {
 		return -1, nil, fmt.Errorf("block at height %d not found", invalidState.LastBlockHeight)

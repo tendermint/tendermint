@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -49,8 +50,8 @@ func TestRollback(t *testing.T) {
 		BlockID: initialState.LastBlockID,
 		Header: types.Header{
 			Height:          initialState.LastBlockHeight,
-			AppHash:         factory.RandomHash(),
-			LastBlockID:     factory.MakeBlockID(),
+			AppHash:         crypto.CRandBytes(tmhash.Size),
+			LastBlockID:     makeBlockIDRandom(),
 			LastResultsHash: initialState.LastResultsHash,
 		},
 	}
