@@ -2,22 +2,9 @@ package consensus
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
 	"time"
 )
-
-const (
-	Timeout EventType = iota
-	ReceiveMessage
-)
-
-var (
-	ErrEndOfIterator = errors.New("end of iterator")
-)
-
-type EventType int64
 
 type txAvailable struct{}
 
@@ -39,7 +26,6 @@ type WALReadingIterator struct {
 }
 
 func (w WALReadingIterator) Next(ctx context.Context) bool {
-	fmt.Println("hello")
 	wm, err := w.dec.Decode()
 	if err != nil {
 		if err != io.EOF {
@@ -78,6 +64,42 @@ func (t testIterator) Next(ctx context.Context) bool {
 func (t testIterator) Event() Event {
 	return t.events[t.i]
 }
+
 func (t testIterator) Error() error {
 	return t.e
+}
+
+type LiveIterator struct {
+	peerMsgQueue     chan msgInfo
+	internalMsgQueue chan msgInfo
+	timeoutTicker    TimeoutTicker
+	txNotifier       txNotifier
+
+	err error
+	e   Event
+}
+
+func (l *LiveIterator) Next(ctx context.Context) bool {
+	select {
+	case m := <-l.peerMsgQueue:
+		l.e = Event{m, time.Now()}
+	case m := <-l.internalMsgQueue:
+		l.e = Event{m, time.Now()}
+	case t := <-l.timeoutTicker.Chan():
+		l.e = Event{Message: t, Time: time.Now()}
+	case <-l.txNotifier.TxsAvailable():
+		l.e = Event{txAvailable{}, time.Now()}
+	case <-ctx.Done():
+		l.err = ctx.Err()
+		return false
+	}
+	return true
+}
+
+func (l *LiveIterator) Event() Event {
+	return l.e
+}
+
+func (l *LiveIterator) Error() error {
+	return l.err
 }

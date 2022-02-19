@@ -442,7 +442,14 @@ func (cs *State) OnStart(ctx context.Context) error {
 	}
 
 	// now start the receiveRoutine
-	go cs.receiveRoutine(ctx, testIterator{}, 0)
+	iter := LiveIterator{
+		peerMsgQueue:     cs.peerMsgQueue,
+		internalMsgQueue: cs.internalMsgQueue,
+		timeoutTicker:    cs.timeoutTicker,
+		txNotifier:       cs.txNotifier,
+	}
+
+	go cs.receiveRoutine(ctx, &iter, 0)
 
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
