@@ -177,13 +177,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot.On("ApplySnapshotChunkSync", ctx, abci.RequestApplySnapshotChunk{
 		Index: 2, Chunk: []byte{1, 1, 2},
 	}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
-<<<<<<< HEAD
-	connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(&abci.ResponseInfo{
-		AppVersion:       9,
-=======
-	connQuery.On("Info", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
+	connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
 		AppVersion:       testAppVersion,
->>>>>>> 4425e62e9 (statesync: assert app version matches (#7856))
 		LastBlockHeight:  1,
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
@@ -705,17 +700,11 @@ func TestSyncer_verifyApp(t *testing.T) {
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			rts := setup(t, nil, nil, nil, 2)
-
-<<<<<<< HEAD
-			rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(tc.response, tc.err)
-			version, err := rts.syncer.verifyApp(s)
-=======
 			rts := setup(ctx, t, nil, nil, nil, 2)
 
-			rts.connQuery.On("Info", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
+			rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
 			err := rts.syncer.verifyApp(ctx, s, appVersion)
->>>>>>> 4425e62e9 (statesync: assert app version matches (#7856))
+			require.NoError(t, err)
 			unwrapped := errors.Unwrap(err)
 			if unwrapped != nil {
 				err = unwrapped

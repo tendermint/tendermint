@@ -365,14 +365,8 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		return sm.State{}, nil, err
 	}
 
-<<<<<<< HEAD
-	// Verify app and update app version
-	appVersion, err := s.verifyApp(snapshot)
-	if err != nil {
-=======
-	// Verify app and app version
+	// Verify app hash and version
 	if err := s.verifyApp(ctx, snapshot, state.Version.Consensus.App); err != nil {
->>>>>>> 4425e62e9 (statesync: assert app version matches (#7856))
 		return sm.State{}, nil, err
 	}
 
@@ -566,16 +560,9 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 }
 
-<<<<<<< HEAD
-// verifyApp verifies the sync, checking the app hash and last block height. It returns the
-// app version, which should be returned as part of the initial state.
-func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
-	resp, err := s.connQuery.InfoSync(context.Background(), proxy.RequestInfo)
-=======
 // verifyApp verifies the sync, checking the app hash, last block height and app version
 func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot, appVersion uint64) error {
 	resp, err := s.connQuery.Info(ctx, proxy.RequestInfo)
->>>>>>> 4425e62e9 (statesync: assert app version matches (#7856))
 	if err != nil {
 		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}
