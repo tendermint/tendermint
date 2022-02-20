@@ -674,44 +674,42 @@ func TestSyncer_verifyApp(t *testing.T) {
 
 	testcases := map[string]struct {
 		response  *abci.ResponseInfo
-		err       error
 		expectErr error
 	}{
 		"verified": {&abci.ResponseInfo{
 			LastBlockHeight:  3,
 			LastBlockAppHash: []byte("app_hash"),
 			AppVersion:       appVersion,
-		}, nil, nil},
+		}, nil},
 		"invalid app version": {&abci.ResponseInfo{
 			LastBlockHeight:  3,
 			LastBlockAppHash: []byte("app_hash"),
 			AppVersion:       2,
-		}, nil, appVersionMismatchErr},
+		}, appVersionMismatchErr},
 		"invalid height": {&abci.ResponseInfo{
 			LastBlockHeight:  5,
 			LastBlockAppHash: []byte("app_hash"),
 			AppVersion:       appVersion,
-		}, nil, errVerifyFailed},
+		}, errVerifyFailed},
 		"invalid hash": {&abci.ResponseInfo{
 			LastBlockHeight:  3,
 			LastBlockAppHash: []byte("xxx"),
 			AppVersion:       appVersion,
-		}, nil, errVerifyFailed},
-		"error": {nil, boom, boom},
+		}, errVerifyFailed},
+		"error": {nil, boom},
 	}
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			rts := setup(t, nil, nil, nil, 2)
 
-			rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
+			rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.expectErr)
 			err := rts.syncer.verifyApp(ctx, s, appVersion)
-			require.NoError(t, err)
-			unwrapped := errors.Unwrap(err)
-			if unwrapped != nil {
-				err = unwrapped
+			if tc.expectErr != nil {
+				require.ErrorIs(t, err, tc.expectErr)
+			} else {
+				require.NoError(t, err)
 			}
-			require.Equal(t, tc.expectErr, err)
 		})
 	}
 }
