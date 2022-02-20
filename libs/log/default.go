@@ -55,7 +55,7 @@ func NewDefaultLogger(format, level string) (Logger, error) {
 	// make the writer thread-safe
 	logWriter = newSyncWriter(logWriter)
 
-	return defaultLogger{
+	return &defaultLogger{
 		Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger(),
 	}, nil
 }
@@ -76,9 +76,7 @@ func (l defaultLogger) Info(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) Error(msg string, keyVals ...interface{}) {
-	e := l.Logger.Error()
-
-	e.Fields(getLogFields(keyVals...)).Msg(msg)
+	l.Logger.Error().Fields(getLogFields(keyVals...)).Msg(msg)
 }
 
 func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
@@ -86,9 +84,31 @@ func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
-	return defaultLogger{
+	return &defaultLogger{
 		Logger: l.Logger.With().Fields(getLogFields(keyVals...)).Logger(),
 	}
+}
+
+// OverrideWithNewLogger replaces an existing logger's internal with
+// a new logger, and makes it possible to reconfigure an existing
+// logger that has already been propagated to callers.
+func OverrideWithNewLogger(logger Logger, format, level string) error {
+	ol, ok := logger.(*defaultLogger)
+	if !ok {
+		return fmt.Errorf("logger %T cannot be overridden", logger)
+	}
+
+	newLogger, err := NewDefaultLogger(format, level)
+	if err != nil {
+		return err
+	}
+	nl, ok := newLogger.(*defaultLogger)
+	if !ok {
+		return fmt.Errorf("logger %T cannot be overridden by %T", logger, newLogger)
+	}
+
+	ol.Logger = nl.Logger
+	return nil
 }
 
 func getLogFields(keyVals ...interface{}) map[string]interface{} {
