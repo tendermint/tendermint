@@ -61,8 +61,8 @@ func (lg *Log) pruneSize(head *logEntry, newSize int) (logState, error) {
 	}
 
 	// Initialize: New head has the same item as the old head.
-	pruned := &logEntry{item: head.item} // new head
-	last := pruned                       // new tail (last copied cons)
+	first := &logEntry{item: head.item} // new head
+	last := first                       // new tail (last copied cons)
 
 	cur := head.next
 	for i := 1; i < newSize; i++ {
@@ -79,9 +79,9 @@ func (lg *Log) pruneSize(head *logEntry, newSize int) (logState, error) {
 
 	return logState{
 		oldest: last.item.Cursor,
-		newest: pruned.item.Cursor,
+		newest: first.item.Cursor,
 		size:   newSize,
-		head:   pruned,
+		head:   first,
 	}, err
 }
 
