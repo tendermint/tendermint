@@ -552,7 +552,7 @@ library will deny making connections to peers with the same IP address.
 ### Upgrading
 
 See the
-[UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
+[UPGRADING.md](https://github.com/tendermint/tendermint/blob/v0.33.x/UPGRADING.md)
 guide. You may need to reset your chain between major breaking releases.
 Although, we expect Tendermint to have fewer breaking releases in the future
 (especially after 1.0 release).
