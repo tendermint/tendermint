@@ -64,7 +64,7 @@ the 0.35.x line.
    git rm -r docs/rfc docs/architecture
 
    # Update absolute links to point to the backport.
-   go run ./scripts/linkpatch -recur -target v0.35.x -skip-path docs/DOCS_README.md docs
+   go run ./scripts/linkpatch -recur -target v0.35.x -skip-path docs/DOCS_README.md,docs/README.md docs
 
    # Create and push the PR.
    git checkout -b update-docs-v035x
