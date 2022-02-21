@@ -58,13 +58,13 @@ to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe
 
 ### Install
 
-See the [install instructions](/docs/introduction/install.md).
+See the [install instructions](./docs/introduction/install.md).
 
 ### Quick Start
 
-- [Single node](/docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](/docs/tools/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](/docs/tools/terraform-and-ansible.md)
+- [Single node](./docs/introduction/quick-start.md)
+- [Local cluster using docker-compose](./docs/tools/docker-compose.md)
+- [Remote cluster using Terraform and Ansible](./docs/tools/terraform-and-ansible.md)
 
 ## Contributing
 
