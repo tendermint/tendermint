@@ -49,8 +49,10 @@ module.exports = {
               path: '/DEV_SESSIONS.html'
             },
             {
+              // TODO(creachadair): Figure out how to make this per-branch.
+              // See: https://github.com/tendermint/tendermint/issues/7908
               title: 'RPC',
-              path: 'https://docs.tendermint.com/master/rpc/',
+              path: 'https://docs.tendermint.com/v0.35/rpc/',
               static: true
             },
           ]
