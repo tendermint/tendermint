@@ -31,12 +31,8 @@ module.exports = {
         "key": "v0.8"
       },
       {
-        "label": "v0.35",
-        "key": "v0.35"
-      },
-      {
-        "label": "master",
-        "key": "master"
+        "label": "v0.9",
+        "key": "v0.9"
       }
     ],
     topbar: {
