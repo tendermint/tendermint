@@ -508,18 +508,33 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub) {
+type makeStateArgs struct {
+	validators  int
+	application abci.Application
+}
+
+func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log.Logger, args makeStateArgs) (*State, []*validatorStub) {
 	t.Helper()
 	// Get State
+	validators := 4
+	if args.validators != 0 {
+		validators = args.validators
+	}
+	var app abci.Application
+	app = kvstore.NewApplication()
+	if args.application != nil {
+		app = args.application
+	}
+
 	state, privVals := makeGenesisState(ctx, t, cfg, genesisStateArgs{
-		Validators: nValidators,
+		Validators: validators,
 	})
 
-	vss := make([]*validatorStub, nValidators)
+	vss := make([]*validatorStub, validators)
 
-	cs := newState(ctx, t, logger, state, privVals[0], kvstore.NewApplication())
+	cs := newState(ctx, t, logger, state, privVals[0], app)
 
-	for i := 0; i < nValidators; i++ {
+	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
 	}
 	// since cs1 starts at 1

@@ -70,7 +70,7 @@ func TestStateProposerSelection0(t *testing.T) {
 	config := configSetup(t)
 	logger := log.NewNopLogger()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	height, round := cs1.Height, cs1.Round
 
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
@@ -114,7 +114,7 @@ func TestStateProposerSelection2(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cs1, vss := makeState(ctx, t, config, logger, 4) // test needs more work for more than 3 validators
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{}) // test needs more work for more than 3 validators
 	height := cs1.Height
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
 
@@ -153,7 +153,7 @@ func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, _ := makeState(ctx, t, config, logger, 1)
+	cs, _ := makeState(ctx, t, config, logger, makeStateArgs{validators: 1})
 	cs.SetPrivValidator(ctx, nil)
 	height, round := cs.Height, cs.Round
 
@@ -177,7 +177,7 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, _ := makeState(ctx, t, config, logger, 1)
+	cs, _ := makeState(ctx, t, config, logger, makeStateArgs{validators: 1})
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event
@@ -212,7 +212,7 @@ func TestStateBadProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 2)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 2})
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
 
@@ -274,7 +274,7 @@ func TestStateOversizedBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 2)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 2})
 	cs1.state.ConsensusParams.Block.MaxBytes = 2000
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
@@ -340,7 +340,7 @@ func TestStateFullRound1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, vss := makeState(ctx, t, config, logger, 1)
+	cs, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 1})
 	height, round := cs.Height, cs.Round
 
 	voteCh := subscribe(ctx, t, cs.eventBus, types.EventQueryVote)
@@ -371,7 +371,7 @@ func TestStateFullRoundNil(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, _ := makeState(ctx, t, config, logger, 1)
+	cs, _ := makeState(ctx, t, config, logger, makeStateArgs{validators: 1})
 	height, round := cs.Height, cs.Round
 
 	voteCh := subscribe(ctx, t, cs.eventBus, types.EventQueryVote)
@@ -391,7 +391,7 @@ func TestStateFullRound2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 2)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 2})
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
@@ -436,7 +436,7 @@ func TestStateLock_NoPOL(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 2)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 2})
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
@@ -580,7 +580,7 @@ func TestStateLock_NoPOL(t *testing.T) {
 
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	cs2, _ := makeState(ctx, t, config, logger, 2) // needed so generated block is different than locked block
+	cs2, _ := makeState(ctx, t, config, logger, makeStateArgs{validators: 2}) // needed so generated block is different than locked block
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round+1)
 	require.NotNil(t, propBlock, "Failed to create proposal block with vs2")
@@ -643,7 +643,7 @@ func TestStateLock_POLUpdateLock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -753,7 +753,7 @@ func TestStateLock_POLRelock(t *testing.T) {
 	config := configSetup(t)
 	logger := log.NewNopLogger()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -853,7 +853,7 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 	config := configSetup(t)
 	logger := log.NewNopLogger()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -942,7 +942,7 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 		state.
 	*/
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1044,7 +1044,7 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 		state.
 	*/
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1178,7 +1178,7 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1269,7 +1269,7 @@ func TestStateLock_DoesNotLockOnOldProposal(t *testing.T) {
 	config := configSetup(t)
 	logger := log.NewNopLogger()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1347,7 +1347,7 @@ func TestStateLock_POLSafety1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1468,7 +1468,7 @@ func TestStateLock_POLSafety2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1564,7 +1564,7 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 	config := configSetup(t)
 	logger := log.NewNopLogger()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1707,7 +1707,7 @@ func TestProposeValidBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, cfg, logger, 4)
+	cs1, vss := makeState(ctx, t, cfg, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1802,7 +1802,7 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1872,7 +1872,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1927,6 +1927,55 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	assert.True(t, rs.ValidBlockParts.Header().Equals(blockID.PartSetHeader))
 	assert.True(t, rs.ValidRound == round)
 }
+func TestProcessProposalAccept(t *testing.T) {
+	cfg := configSetup(t)
+	logger := log.NewNopLogger()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cs1, vss := makeState(ctx, t, cfg, logger, makeStateArgs{})
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	partSize := types.BlockPartSizeBytes
+
+	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
+	timeoutWaitCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryTimeoutWait)
+	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
+	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+
+	// start round and wait for propose and prevote
+	startTestRound(ctx, cs1, cs1.Height, round)
+	ensureNewRound(t, newRoundCh, height, round)
+
+	ensureNewProposal(t, proposalCh, height, round)
+	rs := cs1.GetRoundState()
+	propBlock := rs.ProposalBlock
+	partSet, err := propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
+	blockID := types.BlockID{
+		Hash:          propBlock.Hash(),
+		PartSetHeader: partSet.Header(),
+	}
+
+	ensurePrevoteMatch(t, voteCh, height, round, blockID.Hash)
+
+	// the others sign a polka
+	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, cfg.ChainID(), blockID, vs2, vs3, vs4)
+
+	ensurePrecommit(t, voteCh, height, round)
+	// we should have precommitted the proposed block in this round.
+
+	validatePrecommit(ctx, t, cs1, round, round, vss[0], blockID.Hash, blockID.Hash)
+
+	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, cfg.ChainID(), types.BlockID{}, vs2, vs3, vs4)
+
+	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+}
 
 // 4 vals, 3 Nil Precommits at P0
 // What we want:
@@ -1937,7 +1986,7 @@ func TestWaitingTimeoutOnNilPolka(t *testing.T) {
 	config := configSetup(t)
 	logger := log.NewNopLogger()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1963,7 +2012,7 @@ func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -2003,7 +2052,7 @@ func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -2044,7 +2093,7 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, int32(1)
 
@@ -2075,7 +2124,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, int32(1)
 
@@ -2118,7 +2167,7 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, int32(1)
 
@@ -2181,7 +2230,7 @@ func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 	defer cancel()
 
 	config.Consensus.SkipTimeoutCommit = false
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	cs1.txNotifier = &fakeTxNotifier{ch: make(chan struct{})}
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -2248,7 +2297,7 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	defer cancel()
 
 	config.Consensus.SkipTimeoutCommit = false
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -2318,7 +2367,7 @@ func TestStateHalt1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, cfg, logger, 4)
+	cs1, vss := makeState(ctx, t, cfg, logger, makeStateArgs{})
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 	partSize := types.BlockPartSizeBytes
@@ -2394,7 +2443,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	defer cancel()
 
 	// create dummy peer
-	cs, _ := makeState(ctx, t, config, logger, 1)
+	cs, _ := makeState(ctx, t, config, logger, makeStateArgs{validators: 1})
 	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	require.NoError(t, err)
 
@@ -2442,7 +2491,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs, vss := makeState(ctx, t, config, logger, 2)
+	cs, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 2})
 	// create dummy peer
 	peerID, err := types.NewNodeID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	require.NoError(t, err)
@@ -2484,7 +2533,7 @@ func TestSignSameVoteTwice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, vss := makeState(ctx, t, config, logger, 2)
+	_, vss := makeState(ctx, t, config, logger, makeStateArgs{validators: 2})
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
@@ -2525,7 +2574,7 @@ func TestStateTimestamp_ProposalNotMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	height, round := cs1.Height, cs1.Round
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
@@ -2574,7 +2623,7 @@ func TestStateTimestamp_ProposalMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cs1, vss := makeState(ctx, t, config, logger, 4)
+	cs1, vss := makeState(ctx, t, config, logger, makeStateArgs{})
 	height, round := cs1.Height, cs1.Round
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
