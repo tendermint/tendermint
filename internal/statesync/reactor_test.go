@@ -218,7 +218,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	// app query returns valid state app hash
 	rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(&abci.ResponseInfo{
-		AppVersion:       9,
+		AppVersion:       0,
 		LastBlockHeight:  snapshotHeight,
 		LastBlockAppHash: chain[snapshotHeight+1].AppHash,
 	}, nil)
