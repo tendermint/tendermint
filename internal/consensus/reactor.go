@@ -1164,6 +1164,7 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 		return nil
 	}
 
+	logger.Debug("vote channel processing", "msg", envelope.Message)
 	switch msg := envelope.Message.(type) {
 	case *tmcons.Commit:
 		c, err := types.CommitFromProto(msg.Commit)
@@ -1283,7 +1284,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		return err
 	}
 
-	r.Logger.Debug("received message", "ch_id", chID, "message", msgI, "peer", envelope.From)
+	r.Logger.Debug("received message", "ch_id", chID, "msg", msgI, "peer", envelope.From)
 
 	switch chID {
 	case StateChannel:

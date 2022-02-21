@@ -1015,10 +1015,10 @@ func randConsensusNetWithPeers(
 		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
-		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
-		css[i].SetTimeoutTicker(tickerFunc())
 		proTxHash, _ := privVal.GetProTxHash(context.Background())
+		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetLogger(logger.With("validator", i, "proTxHash", proTxHash.ShortString(), "module", "consensus"))
+		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css, genDoc, peer0Config, func() {
 		for _, closer := range closeFuncs {

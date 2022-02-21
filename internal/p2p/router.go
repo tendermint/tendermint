@@ -942,7 +942,7 @@ func (r *Router) receivePeer(peerID types.NodeID, conn Connection) error {
 				"peer_id", string(peerID),
 				"message_type", r.metrics.ValueToMetricLabel(msg)).Add(float64(proto.Size(msg)))
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
-			r.logger.Debug("received message", "peer", peerID, "message", msg)
+			r.logger.Debug("received message", "peer", peerID, "msg", msg)
 
 		case <-queue.closed():
 			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)

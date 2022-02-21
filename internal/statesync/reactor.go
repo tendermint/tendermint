@@ -812,7 +812,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
+	r.Logger.Debug("received message", "msg", reflect.TypeOf(envelope.Message), "peer", envelope.From)
 
 	switch chID {
 	case SnapshotChannel:
