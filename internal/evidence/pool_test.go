@@ -617,12 +617,11 @@ func createState(height int64, valSet *types.ValidatorSet) sm.State {
 	}
 }
 
-func setupEventBus(ctx context.Context, evpool *evidence.Pool) (err error) {
+func setupEventBus(ctx context.Context, evpool *evidence.Pool) error {
 	eventBus := eventbus.NewDefault(log.TestingLogger())
-	err = eventBus.Start(ctx)
-	if err != nil {
-		return
+	if err := eventBus.Start(ctx); err != nil {
+		return err
 	}
 	evpool.SetEventBus(eventBus)
-	return
+	return nil
 }
