@@ -19,6 +19,8 @@ import (
 var (
 	ErrPeerStateHeightRegression = errors.New("peer state height regression")
 	ErrPeerStateInvalidStartTime = errors.New("peer state invalid startTime")
+	ErrPeerStateSetNilVote       = errors.New("peer state set a nil vote")
+	ErrPeerStateInvalidVoteIndex = errors.New("peer sent a vote with an invalid vote index")
 )
 
 // peerStateStats holds internal statistics for a peer.
@@ -356,17 +358,19 @@ func (ps *PeerState) BlockPartsSent() int {
 }
 
 // SetHasVote sets the given vote as known by the peer
-func (ps *PeerState) SetHasVote(vote *types.Vote) {
+func (ps *PeerState) SetHasVote(vote *types.Vote) error {
+	// sanity check
 	if vote == nil {
-		return
+		return ErrPeerStateSetNilVote
 	}
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
+	return ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
+// setHasVote will return an error when the index exceeds the bitArray length
+func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) error {
 	logger := ps.logger.With(
 		"peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 		"H/R", fmt.Sprintf("%d/%d", height, round),
@@ -377,8 +381,12 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 	// NOTE: some may be nil BitArrays -> no side effects
 	psVotes := ps.getVoteBitArray(height, round, voteType)
 	if psVotes != nil {
-		psVotes.SetIndex(int(index), true)
+		if ok := psVotes.SetIndex(int(index), true); !ok {
+			// https://github.com/tendermint/tendermint/issues/2871
+			return ErrPeerStateInvalidVoteIndex
+		}
 	}
+	return nil
 }
 
 // ApplyNewRoundStepMessage updates the peer state for the new round.
@@ -475,15 +483,15 @@ func (ps *PeerState) ApplyProposalPOLMessage(msg *ProposalPOLMessage) {
 }
 
 // ApplyHasVoteMessage updates the peer state for the new vote.
-func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
+func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
 	if ps.PRS.Height != msg.Height {
-		return
+		return nil
 	}
 
-	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
+	return ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
 }
 
 // ApplyVoteSetBitsMessage updates the peer state for the bit-array of votes
