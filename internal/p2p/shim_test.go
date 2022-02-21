@@ -110,6 +110,7 @@ func TestReactorShim_GetChannels(t *testing.T) {
 
 func TestReactorShim_AddPeer(t *testing.T) {
 	peerA, peerIDA := simplePeer(t, "aa")
+	peerA.On("NodeInfo").Return(types.NodeInfo{})
 	rts := setup(t, []p2p.Peer{peerA})
 
 	var wg sync.WaitGroup
@@ -130,6 +131,7 @@ func TestReactorShim_AddPeer(t *testing.T) {
 
 func TestReactorShim_RemovePeer(t *testing.T) {
 	peerA, peerIDA := simplePeer(t, "aa")
+	peerA.On("NodeInfo").Return(types.NodeInfo{})
 	rts := setup(t, []p2p.Peer{peerA})
 
 	var wg sync.WaitGroup

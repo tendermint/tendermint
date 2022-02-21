@@ -30,9 +30,10 @@ type Network struct {
 // NetworkOptions is an argument structure to parameterize the
 // MakeNetwork function.
 type NetworkOptions struct {
-	NumNodes   int
-	BufferSize int
-	NodeOpts   NodeOptions
+	NumNodes    int
+	BufferSize  int
+	NodeOpts    NodeOptions
+	ProTxHashes []crypto.ProTxHash
 }
 
 type NodeOptions struct {
@@ -58,7 +59,11 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 	}
 
 	for i := 0; i < opts.NumNodes; i++ {
-		node := network.MakeNode(t, opts.NodeOpts)
+		var proTxHash crypto.ProTxHash
+		if i < len(opts.ProTxHashes) {
+			proTxHash = opts.ProTxHashes[i]
+		}
+		node := network.MakeNode(t, proTxHash, opts.NodeOpts)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -96,8 +101,9 @@ func (n *Network) Start(t *testing.T) {
 			select {
 			case peerUpdate := <-sourceSub.Updates():
 				require.Equal(t, p2p.PeerUpdate{
-					NodeID: targetNode.NodeID,
-					Status: p2p.PeerStatusUp,
+					NodeID:    targetNode.NodeID,
+					Status:    p2p.PeerStatusUp,
+					ProTxHash: targetNode.NodeInfo.ProTxHash,
 				}, peerUpdate)
 			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
@@ -226,13 +232,14 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
+func (n *Network) MakeNode(t *testing.T, proTxHash crypto.ProTxHash, opts NodeOptions) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := types.NodeInfo{
 		NodeID:     nodeID,
 		ListenAddr: "0.0.0.0:0", // FIXME: We have to fake this for now.
 		Moniker:    string(nodeID),
+		ProTxHash:  proTxHash,
 	}
 
 	transport := n.memoryNetwork.CreateTransport(nodeID)

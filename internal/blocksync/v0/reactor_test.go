@@ -340,7 +340,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	otherGenDoc, otherPrivVals := factory.RandGenesisDoc(cfg, 1, 1)
-	newNode := rts.network.MakeNode(t, p2ptest.NodeOptions{
+	newNode := rts.network.MakeNode(t, nil, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),
 	})

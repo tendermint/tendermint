@@ -49,6 +49,8 @@ const (
 type PeerUpdate struct {
 	NodeID types.NodeID
 	Status PeerStatus
+	// ProTxHash is accessible only for validator
+	ProTxHash types.ProTxHash
 }
 
 // PeerUpdates is a peer update subscription with notifications about peer
@@ -565,7 +567,7 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 
 // Dialed marks a peer as successfully dialed. Any further connections will be
 // rejected, and once disconnected the peer may be dialed again.
-func (m *PeerManager) Dialed(address NodeAddress) error {
+func (m *PeerManager) Dialed(address NodeAddress, peerOpts ...func(*peerInfo)) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -599,6 +601,9 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 	}
 	now := time.Now().UTC()
 	peer.LastConnected = now
+	for _, opt := range peerOpts {
+		opt(&peer)
+	}
 	if addressInfo, ok := peer.AddressInfo[address]; ok {
 		addressInfo.DialFailures = 0
 		addressInfo.LastDialSuccess = now
@@ -696,10 +701,15 @@ func (m *PeerManager) Ready(peerID types.NodeID) {
 
 	if m.connected[peerID] {
 		m.ready[peerID] = true
-		m.broadcast(PeerUpdate{
+		pu := PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusUp,
-		})
+		}
+		peer, ok := m.store.Get(peerID)
+		if ok {
+			pu.ProTxHash = peer.ProTxHash
+		}
+		m.broadcast(pu)
 	}
 }
 
@@ -770,10 +780,15 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	delete(m.ready, peerID)
 
 	if ready {
-		m.broadcast(PeerUpdate{
+		pu := PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusDown,
-		})
+		}
+		peer, ok := m.store.Get(peerID)
+		if ok {
+			pu.ProTxHash = peer.ProTxHash
+		}
+		m.broadcast(pu)
 	}
 
 	m.dialWaker.Wake()
@@ -1061,6 +1076,13 @@ func (m *PeerManager) SetHeight(peerID types.NodeID, height int64) error {
 	return m.store.Set(peer)
 }
 
+// SetProTxHashToPeerInfo sets a proTxHash in peerInfo.proTxHash to keep this value in a store
+func SetProTxHashToPeerInfo(proTxHash types.ProTxHash) func(info *peerInfo) {
+	return func(info *peerInfo) {
+		info.ProTxHash = proTxHash
+	}
+}
+
 // peerStore stores information about peers. It is not thread-safe, assuming it
 // is only used by PeerManager which handles concurrency control. This allows
 // the manager to execute multiple operations atomically via its own mutex.
@@ -1226,6 +1248,8 @@ type peerInfo struct {
 	FixedScore PeerScore // mainly for tests
 
 	MutableScore int64 // updated by router
+
+	ProTxHash types.ProTxHash
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
@@ -1256,6 +1280,7 @@ func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	msg := &p2pproto.PeerInfo{
 		ID:            string(p.ID),
 		LastConnected: &p.LastConnected,
+		ProTxHash:     p.ProTxHash,
 	}
 	for _, addressInfo := range p.AddressInfo {
 		msg.AddressInfo = append(msg.AddressInfo, addressInfo.ToProto())

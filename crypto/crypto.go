@@ -1,12 +1,14 @@
 package crypto
 
 import (
-	bytes2 "bytes"
+	"bytes"
+	"errors"
+	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bytes"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
@@ -22,6 +24,11 @@ const (
 
 type KeyType int
 
+var (
+	// ErrInvalidProTxHash uses in proTxHash validation
+	ErrInvalidProTxHash = errors.New("proTxHash is invalid")
+)
+
 const (
 	Ed25519 KeyType = iota
 	BLS12381
@@ -32,11 +39,11 @@ const (
 // Address is an address is a []byte, but hex-encoded even in JSON.
 // []byte leaves us the option to change the address length.
 // Use an alias so Unmarshal methods (with ptr receivers) are available too.
-type Address = bytes.HexBytes
+type Address = tmbytes.HexBytes
 
-type ProTxHash = bytes.HexBytes
+type ProTxHash = tmbytes.HexBytes
 
-type QuorumHash = bytes.HexBytes
+type QuorumHash = tmbytes.HexBytes
 
 func ProTxHashFromSeedBytes(bz []byte) ProTxHash {
 	return tmhash.Sum(bz)
@@ -55,6 +62,19 @@ func RandProTxHashes(n int) []ProTxHash {
 	return proTxHashes
 }
 
+// ProTxHashValidate validates the proTxHash value
+func ProTxHashValidate(val ProTxHash) error {
+	if len(val) != ProTxHashSize {
+		return fmt.Errorf(
+			"incorrect size actual %d, expected %d: %w",
+			len(val),
+			ProTxHashSize,
+			ErrInvalidProTxHash,
+		)
+	}
+	return nil
+}
+
 func RandQuorumHash() QuorumHash {
 	return CRandBytes(ProTxHashSize)
 }
@@ -70,7 +90,7 @@ func (sptxh SortProTxHash) Len() int {
 }
 
 func (sptxh SortProTxHash) Less(i, j int) bool {
-	return bytes2.Compare(sptxh[i], sptxh[j]) == -1
+	return bytes.Compare(sptxh[i], sptxh[j]) == -1
 }
 
 func (sptxh SortProTxHash) Swap(i, j int) {

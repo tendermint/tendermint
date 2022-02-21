@@ -440,7 +440,7 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 	t.Helper()
 
 	for i := 0; i < nodes; i++ {
-		node := r.network.MakeNode(t, p2ptest.NodeOptions{
+		node := r.network.MakeNode(t, nil, p2ptest.NodeOptions{
 			MaxPeers:     r.opts.MaxPeers,
 			MaxConnected: r.opts.MaxConnected,
 		})

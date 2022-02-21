@@ -232,8 +232,9 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // The embedding reactor must be sure to listen for messages on this channel to
 // handle adding a peer.
 func (rs *ReactorShim) AddPeer(peer Peer) {
+	proTxHash := peer.NodeInfo().ProTxHash
 	select {
-	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp}:
+	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp, ProTxHash: proTxHash}:
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peer.ID(), "status", PeerStatusUp)
 
 	case <-rs.PeerUpdates.Done():
@@ -251,8 +252,9 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 // The embedding reactor must be sure to listen for messages on this channel to
 // handle removing a peer.
 func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
+	proTxHash := peer.NodeInfo().ProTxHash
 	select {
-	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusDown}:
+	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusDown, ProTxHash: proTxHash}:
 		rs.Logger.Debug(
 			"sent peer update",
 			"reactor", rs.Name,

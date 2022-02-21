@@ -41,13 +41,15 @@ type PeerState struct {
 	running bool
 	PRS     cstypes.PeerRoundState `json:"round_state"`
 	Stats   *peerStateStats        `json:"stats"`
+	// ProTxHash is accessible only for the validator
+	ProTxHash types.ProTxHash
 
 	broadcastWG sync.WaitGroup
 	closer      *tmsync.Closer
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
-func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
+func NewPeerState(logger log.Logger, peerID types.NodeID, proTxHash types.ProTxHash) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,
@@ -58,7 +60,8 @@ func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
 			LastCommitRound:    -1,
 			CatchupCommitRound: -1,
 		},
-		Stats: &peerStateStats{},
+		Stats:     &peerStateStats{},
+		ProTxHash: proTxHash,
 	}
 }
 

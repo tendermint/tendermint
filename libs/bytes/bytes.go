@@ -71,6 +71,9 @@ func (bz HexBytes) Bytes() []byte {
 }
 
 func (bz HexBytes) ShortString() string {
+	if len(bz) < 3 {
+		return ""
+	}
 	return strings.ToUpper(hex.EncodeToString(bz[:3]))
 }
 
