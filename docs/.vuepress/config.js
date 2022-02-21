@@ -23,10 +23,6 @@ module.exports = {
     },
     versions: [
       {
-        "label": "v0.32",
-        "key": "v0.32"
-      },
-      {
         "label": "v0.33",
         "key": "v0.33"
       },
@@ -35,13 +31,8 @@ module.exports = {
         "key": "v0.34"
       },
       {
-<<<<<<< HEAD
-        "label": "master",
-        "key": "master"
-=======
         "label": "v0.35",
         "key": "v0.35"
->>>>>>> 351adf8dd (Remove master from the docs site version config. (#7874))
       }
     ],
     topbar: {
