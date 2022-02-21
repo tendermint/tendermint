@@ -337,7 +337,7 @@ func (evpool *Pool) addPendingEvidence(ctx context.Context, ev types.Evidence) e
 
 	// This should normally never be true
 	if evpool.eventBus == nil {
-		return errors.New("event bus is not configured")
+		return fmt.Errorf("event bus is not configured")
 	}
 	return evpool.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
 		Evidence: ev,
