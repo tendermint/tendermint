@@ -671,6 +671,7 @@ The following alternative approaches were considered:
 [nginx]:         https://nginx.org/en/docs/
 [fcgi]:          http://www.mit.edu/~yandros/doc/specs/fcgi-spec.html
 [rp-ws]:         https://nginx.org/en/docs/http/websocket.html
+<!-- markdown-link-check-disable-next-line -->
 [ng-xm]:         https://www.nginx.com/resources/wiki/extending/
 [abci-event]:    https://pkg.go.dev/github.com/tendermint/tendermint/abci/types#Event
 [rfc001]:        https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-001-storage-engine.rst
