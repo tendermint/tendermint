@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 v0.32.x                 v0.32
+=======
+>>>>>>> 351adf8dd (Remove master from the docs site version config. (#7874))
 v0.33.x                 v0.33
 v0.34.x                 v0.34
 master                  master
