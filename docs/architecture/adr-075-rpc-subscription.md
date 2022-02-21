@@ -664,7 +664,7 @@ The following alternative approaches were considered:
    - [rpc: remove duplication of events when querying][i7273] (#7273)
 
 [rfc006]:        https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-006-event-subscription.md
-[rpc-service]:   https://docs.tendermint.com/master/rpc
+[rpc-service]:   https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
 [query-grammar]: https://pkg.go.dev/github.com/tendermint/tendermint@master/internal/pubsub/query/syntax
 [ws]:            https://datatracker.ietf.org/doc/html/rfc6455
 [jsonrpc2]:      https://www.jsonrpc.org/specification
