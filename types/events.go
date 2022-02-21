@@ -40,6 +40,10 @@ const (
 	EventTimeoutWaitValue     = "TimeoutWait"
 	EventValidBlockValue      = "ValidBlock"
 	EventVoteValue            = "Vote"
+
+	// Events emitted by the evidence reactor when evidence is validated
+	// and before it is committed
+	EventEvidenceValidatedValue = "EvidenceValidated"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -104,6 +108,7 @@ func init() {
 	jsontypes.MustRegister(EventDataTx{})
 	jsontypes.MustRegister(EventDataValidatorSetUpdates{})
 	jsontypes.MustRegister(EventDataVote{})
+	jsontypes.MustRegister(EventDataEvidenceValidated{})
 	jsontypes.MustRegister(EventDataString(""))
 }
 
@@ -223,6 +228,15 @@ type EventDataStateSyncStatus struct {
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataStateSyncStatus) TypeTag() string { return "tendermint/event/StateSyncStatus" }
 
+type EventDataEvidenceValidated struct {
+	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height,string"`
+}
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataEvidenceValidated) TypeTag() string { return "tendermint/event/EvidenceValidated" }
+
 // PUBSUB
 
 const (
@@ -261,6 +275,7 @@ var (
 	EventQueryVote                = QueryForEvent(EventVoteValue)
 	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
 	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
+	EventQueryEvidenceValidated   = QueryForEvent(EventEvidenceValidatedValue)
 )
 
 func EventQueryTxFor(tx Tx) *tmquery.Query {

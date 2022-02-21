@@ -427,14 +427,15 @@ func TestReactorWithEvidence(t *testing.T) {
 		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 1, defaultTestTime, privVals[vIdx], cfg.ChainID())
 		require.NoError(t, err)
 		evpool := &statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+		evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
 			ev}, int64(len(ev.Bytes())))
-		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+		evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 
 		evpool2 := sm.EmptyEvidencePool{}
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
+
 		cs := NewState(ctx, logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
 		cs.SetPrivValidator(ctx, pv)

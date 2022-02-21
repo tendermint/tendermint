@@ -219,6 +219,8 @@ func createEvidenceReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
+	metrics *evidence.Metrics,
+	eventBus *eventbus.EventBus,
 ) (*evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
@@ -227,10 +229,12 @@ func createEvidenceReactor(
 
 	logger = logger.With("module", "evidence")
 
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore, metrics)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
+
+	evidencePool.SetEventBus(eventBus)
 
 	evidenceReactor, err := evidence.NewReactor(
 		ctx,
@@ -295,7 +299,6 @@ func createConsensusReactor(
 	// Services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor.
 	reactor.SetEventBus(eventBus)
-
 	return reactor, consensusState, nil
 }
 

@@ -216,8 +216,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return(ev, int64(100))
-	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
-	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+	evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+	evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
