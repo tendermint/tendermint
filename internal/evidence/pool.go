@@ -188,7 +188,6 @@ func (evpool *Pool) AddEvidence(ctx context.Context, ev types.Evidence) error {
 	// 3) Add evidence to clist.
 	evpool.evidenceList.PushBack(ev)
 
-	// ToDo Emit evidence after validation
 	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
 	return nil
 }
@@ -337,7 +336,9 @@ func (evpool *Pool) addPendingEvidence(ctx context.Context, ev types.Evidence) e
 
 	// This should normally never be true
 	if evpool.eventBus == nil {
-		return fmt.Errorf("event bus is not configured")
+		evpool.logger.Debug("event bus is not configured")
+		return nil
+
 	}
 	return evpool.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
 		Evidence: ev,
