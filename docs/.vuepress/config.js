@@ -23,10 +23,6 @@ module.exports = {
     },
     versions: [
       {
-        "label": "v0.32",
-        "key": "v0.32"
-      },
-      {
         "label": "v0.33",
         "key": "v0.33"
       },
@@ -35,8 +31,8 @@ module.exports = {
         "key": "v0.34"
       },
       {
-        "label": "master",
-        "key": "master"
+        "label": "v0.35",
+        "key": "v0.35"
       }
     ],
     topbar: {
