@@ -365,12 +365,10 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		return sm.State{}, nil, err
 	}
 
-	// Verify app and update app version
-	appVersion, err := s.verifyApp(snapshot)
-	if err != nil {
+	// Verify app hash and version
+	if err := s.verifyApp(ctx, snapshot, state.Version.Consensus.App); err != nil {
 		return sm.State{}, nil, err
 	}
-	state.Version.Consensus.App = appVersion
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
@@ -562,19 +560,27 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 }
 
-// verifyApp verifies the sync, checking the app hash and last block height. It returns the
-// app version, which should be returned as part of the initial state.
-func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
-	resp, err := s.connQuery.InfoSync(context.Background(), proxy.RequestInfo)
+// verifyApp verifies the sync, checking the app hash, last block height and app version
+func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot, appVersion uint64) error {
+	resp, err := s.connQuery.InfoSync(ctx, proxy.RequestInfo)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query ABCI app for appHash: %w", err)
+		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
+	}
+
+	// sanity check that the app version in the block matches the application's own record
+	// of its version
+	if resp.AppVersion != appVersion {
+		// An error here most likely means that the app hasn't inplemented state sync
+		// or the Info call correctly
+		return fmt.Errorf("app version mismatch. Expected: %d, got: %d",
+			appVersion, resp.AppVersion)
 	}
 
 	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
 		s.logger.Error("appHash verification failed",
 			"expected", snapshot.trustedAppHash,
 			"actual", resp.LastBlockAppHash)
-		return 0, errVerifyFailed
+		return errVerifyFailed
 	}
 
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
@@ -583,9 +589,9 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 			"expected", snapshot.Height,
 			"actual", resp.LastBlockHeight,
 		)
-		return 0, errVerifyFailed
+		return errVerifyFailed
 	}
 
 	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", snapshot.trustedAppHash)
-	return resp.AppVersion, nil
+	return nil
 }
