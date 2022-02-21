@@ -45,15 +45,12 @@ module.exports = {
           title: 'Resources',
           children: [
             {
-<<<<<<< HEAD
               title: 'Developer Sessions',
               path: '/DEV_SESSIONS.html'
             },
             {
-=======
               // TODO(creachadair): Figure out how to make this per-branch.
               // See: https://github.com/tendermint/tendermint/issues/7908
->>>>>>> 3b20931da (docs: Pin the RPC docs to v0.35 instead of master (#7909))
               title: 'RPC',
               path: 'https://docs.tendermint.com/v0.35/rpc/',
               static: true
