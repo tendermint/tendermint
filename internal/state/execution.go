@@ -174,7 +174,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+func (blockExec *BlockExecutor) ValidateBlock(ctx context.Context, state State, block *types.Block) error {
 	hash := block.Hash()
 	if _, ok := blockExec.cache[hash.String()]; ok {
 		return nil
@@ -185,7 +185,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 		return err
 	}
 
-	err = blockExec.evpool.CheckEvidence(block.Evidence)
+	err = blockExec.evpool.CheckEvidence(ctx, block.Evidence)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 ) (State, error) {
 
 	// validate the block if we haven't already
-	if err := blockExec.ValidateBlock(state, block); err != nil {
+	if err := blockExec.ValidateBlock(ctx, state, block); err != nil {
 		return state, ErrInvalidBlock(err)
 	}
 
@@ -255,7 +255,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update evpool with the latest state.
-	blockExec.evpool.Update(state, block.Evidence)
+	blockExec.evpool.Update(ctx, state, block.Evidence)
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash

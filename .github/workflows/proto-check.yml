@@ -3,7 +3,7 @@ name: Proto Check
 # This workflow is only run when a file in the proto directory
 # has been modified.
 on:
-  workflow_dispatch: # allow running workflow manually
+  workflow_dispatch:  # allow running workflow manually
   pull_request:
     paths:
       - "proto/*"

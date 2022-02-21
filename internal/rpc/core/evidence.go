@@ -19,7 +19,7 @@ func (env *Environment) BroadcastEvidence(
 	if err := ev.Value.ValidateBasic(); err != nil {
 		return nil, fmt.Errorf("evidence.ValidateBasic failed: %w", err)
 	}
-	if err := env.EvidencePool.AddEvidence(ev.Value); err != nil {
+	if err := env.EvidencePool.AddEvidence(ctx, ev.Value); err != nil {
 		return nil, fmt.Errorf("failed to add evidence: %w", err)
 	}
 	return &coretypes.ResultBroadcastEvidence{Hash: ev.Value.Hash()}, nil
