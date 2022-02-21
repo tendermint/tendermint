@@ -442,14 +442,21 @@ func (cs *State) OnStart(ctx context.Context) error {
 	}
 
 	// now start the receiveRoutine
-	iter := LiveIterator{
+	var iter Iterator
+
+	iter = &LiveIterator{
 		peerMsgQueue:     cs.peerMsgQueue,
 		internalMsgQueue: cs.internalMsgQueue,
 		timeoutTicker:    cs.timeoutTicker,
 		txNotifier:       cs.txNotifier,
 	}
 
-	go cs.receiveRoutine(ctx, &iter, 0)
+	iter = &WALWritingIterator{
+		wal:     cs.wal,
+		Wrapped: iter,
+	}
+
+	go cs.receiveRoutine(ctx, iter, 0)
 
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
@@ -469,7 +476,13 @@ func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
 		return
 	}
 
-	go cs.receiveRoutine(ctx, testIterator{}, maxSteps)
+	iter := &LiveIterator{
+		peerMsgQueue:     cs.peerMsgQueue,
+		internalMsgQueue: cs.internalMsgQueue,
+		timeoutTicker:    cs.timeoutTicker,
+		txNotifier:       cs.txNotifier,
+	}
+	go cs.receiveRoutine(ctx, iter, maxSteps)
 }
 
 // loadWalFile loads WAL data from file. It overwrites cs.wal.
@@ -866,7 +879,6 @@ func (cs *State) receiveRoutine(ctx context.Context, iter Iterator, maxSteps int
 	}()
 
 	for iter.Next(ctx) {
-		// multi iterator
 		e := iter.Event()
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
@@ -874,12 +886,6 @@ func (cs *State) receiveRoutine(ctx context.Context, iter Iterator, maxSteps int
 				cs.nSteps = 0
 				return
 			}
-		}
-		select {
-		case <-ctx.Done():
-			onExit(cs)
-			return
-		default:
 		}
 
 		switch msg := e.Message.(type) {
@@ -896,6 +902,12 @@ func (cs *State) receiveRoutine(ctx context.Context, iter Iterator, maxSteps int
 	}
 	if err := iter.Error(); err != nil {
 		cs.logger.Error("error iterating over consensus messages", "err", err)
+	}
+	select {
+	case <-ctx.Done():
+		onExit(cs)
+		return
+	default:
 	}
 }
 

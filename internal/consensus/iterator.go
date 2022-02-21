@@ -88,7 +88,7 @@ func (l *LiveIterator) Next(ctx context.Context) bool {
 	case t := <-l.timeoutTicker.Chan():
 		l.e = Event{Message: t, Time: time.Now()}
 	case <-l.txNotifier.TxsAvailable():
-		l.e = Event{txAvailable{}, time.Now()}
+		l.e = Event{Message: txAvailable{}, Time: time.Now()}
 	case <-ctx.Done():
 		l.err = ctx.Err()
 		return false
@@ -102,4 +102,40 @@ func (l *LiveIterator) Event() Event {
 
 func (l *LiveIterator) Error() error {
 	return l.err
+}
+
+type WALWritingIterator struct {
+	wal     WAL
+	Wrapped Iterator
+
+	err error
+	e   Event
+}
+
+func (w *WALWritingIterator) Next(ctx context.Context) bool {
+	if !w.Wrapped.Next(ctx) {
+		return false
+	}
+	w.e = w.Wrapped.Event()
+
+	switch m := w.e.Message.(type) {
+	case msgInfo, timeoutInfo:
+		if err := w.wal.WriteSync(m); err != nil {
+			w.err = err
+			return false
+		}
+	default:
+	}
+	return true
+}
+
+func (w *WALWritingIterator) Event() Event {
+	return w.e
+}
+
+func (w *WALWritingIterator) Error() error {
+	if w.err != nil {
+		return w.err
+	}
+	return w.Wrapped.Error()
 }
