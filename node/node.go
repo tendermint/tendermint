@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/eventlog"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -170,6 +171,19 @@ func makeNode(
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	if err := eventBus.Start(ctx); err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
+	}
+
+	var eventLog *eventlog.Log
+	if w := cfg.RPC.EventLogWindowSize; w > 0 {
+		var err error
+		eventLog, err = eventlog.New(eventlog.LogSettings{
+			WindowSize: w,
+			MaxItems:   cfg.RPC.EventLogMaxItems,
+			Metrics:    nodeMetrics.eventlog,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("initializing event log: %w", err)
+		}
 	}
 
 	indexerService, eventSinks, err := createAndStartIndexerService(
@@ -396,6 +410,7 @@ func makeNode(
 			GenDoc:     genDoc,
 			EventSinks: eventSinks,
 			EventBus:   eventBus,
+			EventLog:   eventLog,
 			Mempool:    mp,
 			Logger:     logger.With("module", "rpc"),
 			Config:     *cfg.RPC,
@@ -684,6 +699,7 @@ func defaultGenesisDocProviderFunc(cfg *config.Config) genesisDocProvider {
 
 type nodeMetrics struct {
 	consensus *consensus.Metrics
+	eventlog  *eventlog.Metrics
 	indexer   *indexer.Metrics
 	mempool   *mempool.Metrics
 	p2p       *p2p.Metrics
@@ -703,6 +719,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 		if cfg.Prometheus {
 			return &nodeMetrics{
 				consensus: consensus.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				eventlog:  eventlog.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				indexer:   indexer.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				mempool:   mempool.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				p2p:       p2p.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
