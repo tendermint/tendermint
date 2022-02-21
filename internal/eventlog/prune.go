@@ -88,8 +88,8 @@ func (lg *Log) pruneSize(head *logEntry, newSize int) (logState, error) {
 // pruneAge returns a new log state by pruning items older than the window
 // prior to the head element.
 func (lg *Log) pruneAge(head *logEntry) logState {
-	pruned := &logEntry{item: head.item}
-	last := pruned
+	first := &logEntry{item: head.item}
+	last := first
 
 	size := 1
 	for cur := head.next; cur != nil; cur = cur.next {
@@ -104,8 +104,8 @@ func (lg *Log) pruneAge(head *logEntry) logState {
 	}
 	return logState{
 		oldest: last.item.Cursor,
-		newest: pruned.item.Cursor,
+		newest: first.item.Cursor,
 		size:   size,
-		head:   pruned,
+		head:   first,
 	}
 }
