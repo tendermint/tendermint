@@ -383,8 +383,6 @@ func execBlockOnProxyApp(
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
 	abciResponses.DeliverTxs = dtxs
 
-	commitInfo := buildLastCommitInfo(block, store, initialHeight)
-
 	// Begin block
 	var err error
 	pbh := block.Header.ToProto()
@@ -397,7 +395,7 @@ func execBlockOnProxyApp(
 		abci.RequestBeginBlock{
 			Hash:                block.Hash(),
 			Header:              *pbh,
-			LastCommitInfo:      commitInfo,
+			LastCommitInfo:      buildLastCommitInfo(block, store, initialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 		},
 	)
