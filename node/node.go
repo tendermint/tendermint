@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
@@ -264,7 +265,7 @@ func makeNode(
 	}
 
 	evReactor, evPool, err := createEvidenceReactor(ctx,
-		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger,
+		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -689,6 +690,7 @@ type nodeMetrics struct {
 	proxy     *proxy.Metrics
 	state     *sm.Metrics
 	statesync *statesync.Metrics
+	evidence  *evidence.Metrics
 }
 
 // metricsProvider returns consensus, p2p, mempool, state, statesync Metrics.
@@ -707,6 +709,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 				proxy:     proxy.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				state:     sm.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 				statesync: statesync.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
+				evidence:  evidence.PrometheusMetrics(cfg.Namespace, "chain_id", chainID),
 			}
 		}
 		return &nodeMetrics{
@@ -717,6 +720,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 			proxy:     proxy.NopMetrics(),
 			state:     sm.NopMetrics(),
 			statesync: statesync.NopMetrics(),
+			evidence:  evidence.NopMetrics(),
 		}
 	}
 }
