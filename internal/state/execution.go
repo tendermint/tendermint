@@ -166,7 +166,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		return false, ErrInvalidBlock(err)
 	}
 
-	return resp.IsOK(), nil
+	return resp.Accept, nil
 }
 
 // ValidateBlock validates the given block against the given state.
