@@ -268,6 +268,7 @@ func TestProcessProposal(t *testing.T) {
 	)
 
 	block0, err := sf.MakeBlock(state, int64(height-1), new(types.Commit))
+	require.NoError(t, err)
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
@@ -275,6 +276,7 @@ func TestProcessProposal(t *testing.T) {
 	voteInfos := []abci.VoteInfo{}
 	for _, privVal := range privVals {
 		vote, err := factory.MakeVote(ctx, privVal, block0.Header.ChainID, 0, 0, 0, 2, blockID, time.Now())
+		require.NoError(t, err)
 		pk, err := privVal.GetPubKey(ctx)
 		require.NoError(t, err)
 		addr := pk.Address()

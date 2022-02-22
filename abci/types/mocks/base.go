@@ -78,14 +78,14 @@ func (m baseMock) PrepareProposal(input types.RequestPrepareProposal) types.Resp
 }
 
 func (m baseMock) ProcessProposal(input types.RequestProcessProposal) types.ResponseProcessProposal {
-	var r types.ResponseProcessProposal
+	var ret types.ResponseProcessProposal
 	defer func() {
 		if r := recover(); r != nil {
-			r = m.base.ProcessProposal(input)
+			ret = m.base.ProcessProposal(input)
 		}
 	}()
-	r = m.Application.ProcessProposal(input)
-	return r
+	ret = m.Application.ProcessProposal(input)
+	return ret
 }
 
 // Commit the state and return the application Merkle root hash
