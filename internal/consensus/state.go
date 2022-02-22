@@ -1086,6 +1086,8 @@ func (cs *State) handleTxsAvailable(ctx context.Context) {
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
 // NOTE: cs.StartTime was already set for height.
 func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
+	// TODO: remove panics in this function and return an error
+
 	logger := cs.logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
@@ -1106,7 +1108,11 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 	validators := cs.Validators
 	if cs.Round < round {
 		validators = validators.Copy()
-		validators.IncrementProposerPriority(tmmath.SafeSubInt32(round, cs.Round))
+		r, err := tmmath.SafeSubInt32(round, cs.Round)
+		if err != nil {
+			panic(err)
+		}
+		validators.IncrementProposerPriority(r)
 	}
 
 	// Setup new round
@@ -1126,7 +1132,12 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 		cs.ProposalBlockParts = nil
 	}
 
-	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
+	r, err := tmmath.SafeAddInt32(round, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	cs.Votes.SetRound(r) // also track next round (round+1) to allow round-skipping
 	cs.TriggeredTimeoutPrecommit = false
 
 	if err := cs.eventBus.PublishEventNewRound(ctx, cs.NewRoundEvent()); err != nil {

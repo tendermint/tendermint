@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -149,7 +148,7 @@ for applications built w/ Cosmos SDK).
 			// Initiate the light client. If the trusted store already has blocks in it, this
 			// will be used else we use the trusted options.
 			c, err := light.NewHTTPClient(
-				context.Background(),
+				cmd.Context(),
 				chainID,
 				light.TrustOptions{
 					Period: trustingPeriod,

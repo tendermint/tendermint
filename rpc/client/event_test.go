@@ -51,7 +51,7 @@ func testTxEventsSent(ctx context.Context, t *testing.T, broadcastMethod string,
 	}()
 
 	// and wait for confirmation
-	evt, err := client.WaitForOneEvent(c, types.EventTxValue, waitForEventTimeout)
+	evt, err := client.WaitForOneEvent(ctx, c, types.EventTxValue, waitForEventTimeout)
 	require.NoError(t, err)
 
 	// and make sure it has the proper info
