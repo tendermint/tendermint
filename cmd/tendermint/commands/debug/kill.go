@@ -15,89 +15,96 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
+	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
-var killCmd = &cobra.Command{
-	Use:   "kill [pid] [compressed-output-file]",
-	Short: "Kill a Tendermint process while aggregating and packaging debugging data",
-	Long: `Kill a Tendermint process while also aggregating Tendermint process data
+func getKillCmd(logger log.Logger) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "kill [pid] [compressed-output-file]",
+		Short: "Kill a Tendermint process while aggregating and packaging debugging data",
+		Long: `Kill a Tendermint process while also aggregating Tendermint process data
 such as the latest node state, including consensus and networking state,
 go-routine state, and the node's WAL and config information. This aggregated data
 is packaged into a compressed archive.
 
 Example:
 $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
-	Args: cobra.ExactArgs(2),
-	RunE: killCmdHandler,
-}
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			pid, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return err
+			}
 
-func killCmdHandler(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-	pid, err := strconv.ParseInt(args[0], 10, 64)
-	if err != nil {
-		return err
+			outFile := args[1]
+			if outFile == "" {
+				return errors.New("invalid output file")
+			}
+			nodeRPCAddr, err := cmd.Flags().GetString(flagNodeRPCAddr)
+			if err != nil {
+				return fmt.Errorf("flag %q not defined: %w", flagNodeRPCAddr, err)
+			}
+
+			rpc, err := rpchttp.New(nodeRPCAddr)
+			if err != nil {
+				return fmt.Errorf("failed to create new http client: %w", err)
+			}
+
+			home := viper.GetString(cli.HomeFlag)
+			conf := config.DefaultConfig()
+			conf = conf.SetRoot(home)
+			config.EnsureRoot(conf.RootDir)
+
+			// Create a temporary directory which will contain all the state dumps and
+			// relevant files and directories that will be compressed into a file.
+			tmpDir, err := os.MkdirTemp(os.TempDir(), "tendermint_debug_tmp")
+			if err != nil {
+				return fmt.Errorf("failed to create temporary directory: %w", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			logger.Info("getting node status...")
+			if err := dumpStatus(ctx, rpc, tmpDir, "status.json"); err != nil {
+				return err
+			}
+
+			logger.Info("getting node network info...")
+			if err := dumpNetInfo(ctx, rpc, tmpDir, "net_info.json"); err != nil {
+				return err
+			}
+
+			logger.Info("getting node consensus state...")
+			if err := dumpConsensusState(ctx, rpc, tmpDir, "consensus_state.json"); err != nil {
+				return err
+			}
+
+			logger.Info("copying node WAL...")
+			if err := copyWAL(conf, tmpDir); err != nil {
+				if !os.IsNotExist(err) {
+					return err
+				}
+
+				logger.Info("node WAL does not exist; continuing...")
+			}
+
+			logger.Info("copying node configuration...")
+			if err := copyConfig(home, tmpDir); err != nil {
+				return err
+			}
+
+			logger.Info("killing Tendermint process")
+			if err := killProc(int(pid), tmpDir); err != nil {
+				return err
+			}
+
+			logger.Info("archiving and compressing debug directory...")
+			return zipDir(tmpDir, outFile)
+		},
 	}
 
-	outFile := args[1]
-	if outFile == "" {
-		return errors.New("invalid output file")
-	}
-
-	rpc, err := rpchttp.New(nodeRPCAddr)
-	if err != nil {
-		return fmt.Errorf("failed to create new http client: %w", err)
-	}
-
-	home := viper.GetString(cli.HomeFlag)
-	conf := config.DefaultConfig()
-	conf = conf.SetRoot(home)
-	config.EnsureRoot(conf.RootDir)
-
-	// Create a temporary directory which will contain all the state dumps and
-	// relevant files and directories that will be compressed into a file.
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "tendermint_debug_tmp")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	logger.Info("getting node status...")
-	if err := dumpStatus(ctx, rpc, tmpDir, "status.json"); err != nil {
-		return err
-	}
-
-	logger.Info("getting node network info...")
-	if err := dumpNetInfo(ctx, rpc, tmpDir, "net_info.json"); err != nil {
-		return err
-	}
-
-	logger.Info("getting node consensus state...")
-	if err := dumpConsensusState(ctx, rpc, tmpDir, "consensus_state.json"); err != nil {
-		return err
-	}
-
-	logger.Info("copying node WAL...")
-	if err := copyWAL(conf, tmpDir); err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-
-		logger.Info("node WAL does not exist; continuing...")
-	}
-
-	logger.Info("copying node configuration...")
-	if err := copyConfig(home, tmpDir); err != nil {
-		return err
-	}
-
-	logger.Info("killing Tendermint process")
-	if err := killProc(int(pid), tmpDir); err != nil {
-		return err
-	}
-
-	logger.Info("archiving and compressing debug directory...")
-	return zipDir(tmpDir, outFile)
+	return cmd
 }
 
 // killProc attempts to kill the Tendermint process with a given PID with an
