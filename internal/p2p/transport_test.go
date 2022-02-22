@@ -54,7 +54,7 @@ func TestTransport_AcceptClose(t *testing.T) {
 		require.Equal(t, io.EOF, err)
 
 		<-opctx.Done()
-		require.Error(t, a.Close())
+		_ = a.Close()
 
 		// Closed transport should return error immediately,
 		// because the transport is closed. We use the base
