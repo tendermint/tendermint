@@ -7,12 +7,8 @@
     "vuepress-theme-cosmos": "^1.0.180"
   },
   "devDependencies": {
-<<<<<<< HEAD
-    "watchpack": "^2.1.1"
-=======
     "@vuepress/plugin-html-redirect": "^0.1.4",
     "watchpack": "^2.3.1"
->>>>>>> 70ee282d9 (docs: redirect master links to the latest release version (#7936))
   },
   "scripts": {
     "preserve": "./pre.sh",
