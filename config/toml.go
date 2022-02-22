@@ -233,6 +233,33 @@ experimental_websocket_write_buffer_size = {{ .RPC.WebSocketWriteBufferSize }}
 # predictability in subscription behavior.
 experimental_close_on_slow_client = {{ .RPC.CloseOnSlowClient }}
 
+# If true, disable the websocket interface to the RPC service.  This has
+# the effect of disabling the /subscribe, /unsubscribe, and /unsubscribe_all
+# methods for event subscription.
+#
+# EXPERIMENTAL: This setting will be removed in Tendermint v0.37.
+experimental-disable-websocket = {{ .RPC.ExperimentalDisableWebsocket }}
+
+# The time window size for the event log. All events up to this long before
+# the latest (up to EventLogMaxItems) will be available for subscribers to
+# fetch via the /events method.  If 0 (the default) the event log and the
+# /events RPC method are disabled.
+event-log-window-size = "{{ .RPC.EventLogWindowSize }}"
+
+# The maxiumum number of events that may be retained by the event log.  If
+# this value is 0, no upper limit is set. Otherwise, items in excess of
+# this number will be discarded from the event log.
+#
+# Warning: This setting is a safety valve. Setting it too low may cause
+# subscribers to miss events.  Try to choose a value higher than the
+# maximum worst-case expected event load within the chosen window size in
+# ordinary operation.
+#
+# For example, if the window size is 10 minutes and the node typically
+# averages 1000 events per ten minutes, but with occasional known spikes of
+# up to 2000, choose a value > 2000.
+event-log-max-items = {{ .RPC.EventLogMaxItems }}
+
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
 # global HTTP write timeout, which applies to all connections and endpoints.

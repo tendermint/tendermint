@@ -49,6 +49,7 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof" //nolint: gosec // securely exposed on separate, optional port
@@ -1116,25 +1117,27 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-	// we may expose the rpc over both a unix and tcp socket
+	// We may expose the RPC over both TCP and a Unix-domain socket.
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes,
-			rpcserver.OnDisconnect(func(remoteAddr string) {
-				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
-				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
-				}
-			}),
-			rpcserver.ReadLimit(config.MaxBodyBytes),
-			rpcserver.WriteChanCapacity(n.config.RPC.WebSocketWriteBufferSize),
-		)
-		wm.SetLogger(wmLogger)
-		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
+		if n.config.RPC.ExperimentalDisableWebsocket {
+			rpcLogger.Info("Disabling websocket endpoints (experimental-disable-websocket=true)")
+		} else {
+			wmLogger := rpcLogger.With("protocol", "websocket")
+			wm := rpcserver.NewWebsocketManager(rpccore.Routes,
+				rpcserver.OnDisconnect(func(remoteAddr string) {
+					err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+					if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
+						wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+					}
+				}),
+				rpcserver.ReadLimit(config.MaxBodyBytes),
+			)
+			mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		}
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,
