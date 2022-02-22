@@ -86,11 +86,18 @@ func StartTendermint(
 	for _, opt := range opts {
 		opt(nodeOpts)
 	}
-	var logger log.Logger
+	var (
+		logger log.Logger
+		err    error
+	)
 	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()
 	} else {
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+		logger, err = log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+		if err != nil {
+			return nil, func(_ context.Context) error { cancel(); return nil }, err
+		}
+
 	}
 	papp := abciclient.NewLocalCreator(app)
 	tmNode, err := node.New(ctx, conf, logger, papp, nil)
