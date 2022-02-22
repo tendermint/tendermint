@@ -140,7 +140,7 @@ func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
 	time.Sleep(d)
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	w.mtx.Lock()
 	defer w.mtx.Unlock()

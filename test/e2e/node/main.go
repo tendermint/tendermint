@@ -175,7 +175,7 @@ func startLightNode(ctx context.Context, cfg *Config) error {
 	providers := rpcEndpoints(tmcfg.P2P.PersistentPeers)
 
 	c, err := light.NewHTTPClient(
-		context.Background(),
+		ctx,
 		cfg.ChainID,
 		light.TrustOptions{
 			Period: tmcfg.StateSync.TrustPeriod,
