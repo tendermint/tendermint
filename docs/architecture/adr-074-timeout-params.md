@@ -35,7 +35,7 @@ The configurable values are as follows:
 	* How much the `TimeoutPrevote` increases with each round.
 * `TimeoutPrecommit`
 	* How long the consensus algorithm waits after receiving +2/3 precommits that
-	do not have a quorum for a value before entering the next round. 
+	do not have a quorum for a value before entering the next round.
 	(See the [arXiv paper][arxiv-paper], Algorithm 1, Line 47)
 * `TimeoutPrecommitDelta`
 	* How much the `TimeoutPrecommit` increases with each round.
@@ -48,7 +48,7 @@ The configurable values are as follows:
 
 ### Overview of Change
 
-We will consolidate the timeout parameters and migrate them from the node-local 
+We will consolidate the timeout parameters and migrate them from the node-local
 `config.toml` file into the network-global consensus parameters.
 
 The 8 timeout parameters will be consolidated down to 6. These will be as follows:
@@ -84,7 +84,7 @@ a `config.toml` with Tendermint's default values for these parameters.
 ### Why this parameter consolidation?
 
 Reducing the number of parameters is good for UX. Fewer superfluous parameters makes
-running and operating a Tendermint network less confusing. 
+running and operating a Tendermint network less confusing.
 
 The Prevote and Precommit messages are both similar sizes, require similar amounts
 of processing so there is no strong need for them to be configured separately.
@@ -125,7 +125,7 @@ would use this exact same set of values.
 While Tendermint nodes often run with similar bandwidth and on similar cloud-hosted
 machines, there are enough points of variability to make configuring
 consensus timeouts meaningful. Namely, Tendermint network topologies are likely to be
-very different from chain to chain. Additionally, applications may vary greatly in 
+very different from chain to chain. Additionally, applications may vary greatly in
 how long the `Commit` phase may take. Applications that perform more work during `Commit`
 require a longer `TimeoutCommit` to allow the application to complete its work
 and be prepared for the next height.
@@ -166,10 +166,10 @@ namely, each value must be non-negative.
 ### Migration
 
 The new `ConsensusParameters` will be added during an upcoming release. In this
-release, the old `config.toml` parameters will cease to control the timeouts and 
+release, the old `config.toml` parameters will cease to control the timeouts and
 an error will be logged on nodes that continue to specify these values. The specific
-mechanism by which these parameters will added to a chain is being discussed in 
-[RFC-009][rfc-009] and will be decided ahead of the next release. 
+mechanism by which these parameters will added to a chain is being discussed in
+[RFC-009][rfc-009] and will be decided ahead of the next release.
 
 The specific mechanism for adding these parameters depends on work related to
 [soft upgrades][soft-upgrades], which is still ongoing.

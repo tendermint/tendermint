@@ -23,7 +23,7 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master.
 
 ## Built-in app vs external app
 
@@ -57,7 +57,7 @@ go mod init github.com/<github_username>/<repo_name>
 
 Inside the example directory create a `main.go` file with the following content:
 
-> Note: there is no need to clone or fork Tendermint in this tutorial. 
+> Note: there is no need to clone or fork Tendermint in this tutorial.
 
 ```go
 package main
@@ -642,16 +642,13 @@ Now open another tab in your terminal and try sending a transaction:
 ```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "check_tx": {
-      "gasWanted": "1"
-    },
-    "deliver_tx": {},
-    "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
-    "height": "128"
-  }
+  "check_tx": {
+    "gasWanted": "1",
+    ...
+  },
+  "deliver_tx": { ... },
+  "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
+  "height": "128"
 }
 ```
 
@@ -662,14 +659,16 @@ Now let's check if the given key now exists and its value:
 ```json
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "response": {
-      "log": "exists",
-      "key": "dGVuZGVybWludA==",
-      "value": "cm9ja3M="
-    }
+  "response": {
+    "code": 0,
+    "log": "exists",
+    "info": "",
+    "index": "0",
+    "key": "dGVuZGVybWludA==",
+    "value": "cm9ja3M=",
+    "proofOps": null,
+    "height": "6",
+    "codespace": ""
   }
 }
 ```

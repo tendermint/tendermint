@@ -94,7 +94,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			block, err := statefactory.MakeBlock(state, height, lastCommit)
 			require.NoError(t, err)
 			tc.malleateBlock(block)
-			err = blockExec.ValidateBlock(state, block)
+			err = blockExec.ValidateBlock(ctx, state, block)
 			t.Logf("%s: %v", tc.name, err)
 			require.Error(t, err, tc.name)
 		}
@@ -110,7 +110,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	block, err := statefactory.MakeBlock(state, nextHeight, lastCommit)
 	require.NoError(t, err)
 	state.InitialHeight = nextHeight + 1
-	err = blockExec.ValidateBlock(state, block)
+	err = blockExec.ValidateBlock(ctx, state, block)
 	require.Error(t, err, "expected an error when state is ahead of block")
 	assert.Contains(t, err.Error(), "lower than initial height")
 }
@@ -164,7 +164,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			)
 			block, err := statefactory.MakeBlock(state, height, wrongHeightCommit)
 			require.NoError(t, err)
-			err = blockExec.ValidateBlock(state, block)
+			err = blockExec.ValidateBlock(ctx, state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
 			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
 
@@ -173,7 +173,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			*/
 			block, err = statefactory.MakeBlock(state, height, wrongSigsCommit)
 			require.NoError(t, err)
-			err = blockExec.ValidateBlock(state, block)
+			err = blockExec.ValidateBlock(ctx, state, block)
 			_, isErrInvalidCommitSignatures := err.(types.ErrInvalidCommitSignatures)
 			require.True(t, isErrInvalidCommitSignatures,
 				"expected ErrInvalidCommitSignatures at height %d, but got: %v",
@@ -254,8 +254,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
-	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+	evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
+	evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
 		[]abci.Evidence{})
 
@@ -290,7 +290,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			block, _, err := state.MakeBlock(height, testfactory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
 			require.NoError(t, err)
 
-			err = blockExec.ValidateBlock(state, block)
+			err = blockExec.ValidateBlock(ctx, state, block)
 			if assert.Error(t, err) {
 				_, ok := err.(*types.ErrEvidenceOverflow)
 				require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d but got %v", height, err)

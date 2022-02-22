@@ -79,9 +79,7 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 
 	require.NoError(t, cs.Start(ctx))
 	defer func() {
-		if err := cs.Stop(); err != nil {
-			t.Error(err)
-		}
+		cs.Stop()
 	}()
 	t.Cleanup(cs.Wait)
 	// This is just a signal that we haven't halted; its not something contained
@@ -142,7 +140,7 @@ func TestWALCrash(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			consensusReplayConfig, err := ResetConfig(tc.name)
+			consensusReplayConfig, err := ResetConfig(t.TempDir(), tc.name)
 			require.NoError(t, err)
 			crashWALandCheckLiveness(ctx, t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
@@ -208,7 +206,7 @@ LOOP:
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
 
 			// stop consensus state and transactions sender (initFn)
-			cs.Stop() //nolint:errcheck // Logging this error causes failure
+			cs.Stop()
 			cancel()
 
 			// if we reached the required height, exit
@@ -292,7 +290,7 @@ func (w *crashingWAL) SearchForEndHeight(
 }
 
 func (w *crashingWAL) Start(ctx context.Context) error { return w.next.Start(ctx) }
-func (w *crashingWAL) Stop() error                     { return w.next.Stop() }
+func (w *crashingWAL) Stop()                           { w.next.Stop() }
 func (w *crashingWAL) Wait()                           { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
@@ -665,12 +663,13 @@ func TestMockProxyApp(t *testing.T) {
 
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
-	txIndex := 0
+	txCount := 0
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.FinalizeBlock = new(abci.ResponseFinalizeBlock)
+		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = append(abciResWithEmptyDeliverTx.FinalizeBlock.Txs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
@@ -685,31 +684,33 @@ func TestMockProxyApp(t *testing.T) {
 		require.NoError(t, err)
 
 		abciRes := new(tmstate.ABCIResponses)
-		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
+		abciRes.FinalizeBlock = new(abci.ResponseFinalizeBlock)
+		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
 
 		someTx := []byte("tx")
-		resp, err := mock.DeliverTx(ctx, abci.RequestDeliverTx{Tx: someTx})
+		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
+		require.NoError(t, err)
 		// TODO: make use of res.Log
 		// TODO: make use of this info
 		// Blocks may include invalid txs.
-		if resp.Code == abci.CodeTypeOK {
-			validTxs++
-		} else {
-			invalidTxs++
+		for _, tx := range resp.Txs {
+			if tx.Code == abci.CodeTypeOK {
+				validTxs++
+			} else {
+				invalidTxs++
+			}
+			txCount++
 		}
-		abciRes.DeliverTxs[txIndex] = resp
-		txIndex++
-
-		assert.NoError(t, err)
 	})
-	assert.True(t, validTxs == 1)
-	assert.True(t, invalidTxs == 0)
+	require.Equal(t, 1, txCount)
+	require.Equal(t, 1, validTxs)
+	require.Zero(t, invalidTxs)
 }
 
 func tempWALWithData(t *testing.T, data []byte) string {
 	t.Helper()
 
-	walFile, err := os.CreateTemp("", "wal")
+	walFile, err := os.CreateTemp(t.TempDir(), "wal")
 	require.NoError(t, err, "failed to create temp WAL file")
 
 	_, err = walFile.Write(data)
@@ -743,7 +744,7 @@ func testHandshakeReplay(
 
 	logger := log.TestingLogger()
 	if testValidatorsChange {
-		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		testConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		stateDB = dbm.NewMemDB()
@@ -754,7 +755,7 @@ func testHandshakeReplay(
 		commits = sim.Commits
 		store = newMockBlockStore(t, cfg, genesisState.ConsensusParams)
 	} else { // test single node
-		testConfig, err := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		testConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		require.NoError(t, err)
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		walBody, err := WALWithNBlocks(ctx, t, logger, numBlocks)
@@ -1004,7 +1005,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig(t.TempDir(), "handshake_test_")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
@@ -1288,7 +1289,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := abciclient.NewLocalCreator(app)
 
-	cfg, err := ResetConfig("handshake_test_")
+	cfg, err := ResetConfig(t.TempDir(), "handshake_test_")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
 

@@ -3,7 +3,6 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 
@@ -25,12 +24,14 @@ const (
 )
 
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
-	req := types.RequestDeliverTx{Tx: tx}
-	ar := app.DeliverTx(req)
-	require.False(t, ar.IsErr(), ar)
+	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
+	ar := app.FinalizeBlock(req)
+	require.Equal(t, 1, len(ar.Txs))
+	require.False(t, ar.Txs[0].IsErr())
 	// repeating tx doesn't raise error
-	ar = app.DeliverTx(req)
-	require.False(t, ar.IsErr(), ar)
+	ar = app.FinalizeBlock(req)
+	require.Equal(t, 1, len(ar.Txs))
+	require.False(t, ar.Txs[0].IsErr())
 	// commit
 	app.Commit()
 
@@ -72,10 +73,7 @@ func TestKVStoreKV(t *testing.T) {
 }
 
 func TestPersistentKVStoreKV(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	logger := log.NewTestingLogger(t)
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
@@ -90,10 +88,7 @@ func TestPersistentKVStoreKV(t *testing.T) {
 }
 
 func TestPersistentKVStoreInfo(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	logger := log.NewTestingLogger(t)
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
@@ -111,8 +106,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	header := tmproto.Header{
 		Height: height,
 	}
-	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
-	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
+	kvstore.FinalizeBlock(types.RequestFinalizeBlock{Hash: hash, Header: header, Height: height})
 	kvstore.Commit()
 
 	resInfo = kvstore.Info(types.RequestInfo{})
@@ -124,10 +118,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValUpdates(t *testing.T) {
-	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	logger := log.NewTestingLogger(t)
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
@@ -204,16 +195,16 @@ func makeApplyBlock(
 		Height: height,
 	}
 
-	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
-	for _, tx := range txs {
-		if r := kvstore.DeliverTx(types.RequestDeliverTx{Tx: tx}); r.IsErr() {
-			t.Fatal(r)
-		}
-	}
-	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
+	resFinalizeBlock := kvstore.FinalizeBlock(types.RequestFinalizeBlock{
+		Hash:   hash,
+		Header: header,
+		Height: height,
+		Txs:    txs,
+	})
+
 	kvstore.Commit()
 
-	valsEqual(t, diff, resEndBlock.ValidatorUpdates)
+	valsEqual(t, diff, resFinalizeBlock.ValidatorUpdates)
 
 }
 
@@ -330,13 +321,15 @@ func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client)
 }
 
 func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
-	ar, err := app.DeliverTx(ctx, types.RequestDeliverTx{Tx: tx})
+	ar, err := app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
-	require.False(t, ar.IsErr(), ar)
-	// repeating tx doesn't raise error
-	ar, err = app.DeliverTx(ctx, types.RequestDeliverTx{Tx: tx})
+	require.Equal(t, 1, len(ar.Txs))
+	require.False(t, ar.Txs[0].IsErr())
+	// repeating FinalizeBlock doesn't raise error
+	ar, err = app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
-	require.False(t, ar.IsErr(), ar)
+	require.Equal(t, 1, len(ar.Txs))
+	require.False(t, ar.Txs[0].IsErr())
 	// commit
 	_, err = app.Commit(ctx)
 	require.NoError(t, err)

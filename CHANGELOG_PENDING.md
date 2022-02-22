@@ -17,10 +17,11 @@ Special thanks to external contributors on this release:
   - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
   - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
   - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
+  - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
 
 - Apps
 
-  - [proto/tendermint] \#6976 Remove core protobuf files in favor of only housing them in the [tendermint/spec](https://github.com/tendermint/spec) repository.
+  - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
 
 - P2P Protocol
 
@@ -63,6 +64,7 @@ Special thanks to external contributors on this release:
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 - [consensus] \#6969 remove logic to 'unlock' a locked block.
 - [evidence] \#7700 Evidence messages contain single Evidence instead of EvidenceList (@jmalicevic)
+- [evidence] \#7802 Evidence pool emits events when evidence is validated and updates a metric when the number of evidence in the evidence pool changes. (@jmalicevic)
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 - [node] \#7521 Define concrete type for seed node implementation (@spacech1mp)
 - [rpc] \#7612 paginate mempool /unconfirmed_txs rpc endpoint (@spacech1mp)
@@ -74,3 +76,4 @@ Special thanks to external contributors on this release:
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
 - [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
 - [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
+- [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)

@@ -50,23 +50,23 @@ type cleanupFunc func()
 func configSetup(t *testing.T) *config.Config {
 	t.Helper()
 
-	cfg, err := ResetConfig("consensus_reactor_test")
+	cfg, err := ResetConfig(t.TempDir(), "consensus_reactor_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
-	consensusReplayConfig, err := ResetConfig("consensus_replay_test")
+	consensusReplayConfig, err := ResetConfig(t.TempDir(), "consensus_replay_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(consensusReplayConfig.RootDir) })
 
-	configStateTest, err := ResetConfig("consensus_state_test")
+	configStateTest, err := ResetConfig(t.TempDir(), "consensus_state_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(configStateTest.RootDir) })
 
-	configMempoolTest, err := ResetConfig("consensus_mempool_test")
+	configMempoolTest, err := ResetConfig(t.TempDir(), "consensus_mempool_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(configMempoolTest.RootDir) })
 
-	configByzantineTest, err := ResetConfig("consensus_byzantine_test")
+	configByzantineTest, err := ResetConfig(t.TempDir(), "consensus_byzantine_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
 
@@ -78,8 +78,8 @@ func ensureDir(t *testing.T, dir string, mode os.FileMode) {
 	require.NoError(t, tmos.EnsureDir(dir, mode))
 }
 
-func ResetConfig(name string) (*config.Config, error) {
-	return config.ResetTestRoot(name)
+func ResetConfig(dir, name string) (*config.Config, error) {
+	return config.ResetTestRoot(dir, name)
 }
 
 //-------------------------------------------------------------------------------
@@ -422,7 +422,7 @@ func newState(
 ) *State {
 	t.Helper()
 
-	cfg, err := config.ResetTestRoot("consensus_state_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "consensus_state_test")
 	require.NoError(t, err)
 
 	return newStateWithConfig(ctx, t, logger, cfg, state, pv, app)
@@ -454,9 +454,8 @@ func newStateWithConfigAndBlockStore(
 	t.Helper()
 
 	// one for mempool, one for consensus
-	mtx := new(sync.Mutex)
-	proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-	proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+	proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 	// Make Mempool
 
@@ -784,7 +783,7 @@ func makeConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -842,7 +841,7 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		state, _ := sm.MakeGenesisState(genDoc)
-		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -854,10 +853,10 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+			tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
 			require.NoError(t, err)
 
-			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+			tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 			require.NoError(t, err)
 
 			privVal, err = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
@@ -930,15 +929,9 @@ type mockTicker struct {
 	fired    bool
 }
 
-func (m *mockTicker) Start(context.Context) error {
-	return nil
-}
-
-func (m *mockTicker) Stop() error {
-	return nil
-}
-
-func (m *mockTicker) IsRunning() bool { return false }
+func (m *mockTicker) Start(context.Context) error { return nil }
+func (m *mockTicker) Stop()                       {}
+func (m *mockTicker) IsRunning() bool             { return false }
 
 func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 	m.mtx.Lock()
@@ -956,13 +949,10 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
-func (*mockTicker) SetLogger(log.Logger) {}
-
 func newPersistentKVStore(t *testing.T, logger log.Logger) abci.Application {
 	t.Helper()
 
-	dir, err := os.MkdirTemp("", "persistent-kvstore")
-	require.NoError(t, err)
+	dir := t.TempDir()
 
 	return kvstore.NewPersistentKVStoreApplication(logger, dir)
 }

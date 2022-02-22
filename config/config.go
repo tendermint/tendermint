@@ -442,6 +442,33 @@ type RPCConfig struct {
 	// to the estimated maximum number of broadcast_tx_commit calls per block.
 	MaxSubscriptionsPerClient int `mapstructure:"max-subscriptions-per-client"`
 
+	// If true, disable the websocket interface to the RPC service.  This has
+	// the effect of disabling the /subscribe, /unsubscribe, and /unsubscribe_all
+	// methods for event subscription.
+	//
+	// EXPERIMENTAL: This setting will be removed in Tendermint v0.37.
+	ExperimentalDisableWebsocket bool `mapstructure:"experimental-disable-websocket"`
+
+	// The time window size for the event log. All events up to this long before
+	// the latest (up to EventLogMaxItems) will be available for subscribers to
+	// fetch via the /events method.  If 0 (the default) the event log and the
+	// /events RPC method are disabled.
+	EventLogWindowSize time.Duration `mapstructure:"event-log-window-size"`
+
+	// The maxiumum number of events that may be retained by the event log.  If
+	// this value is 0, no upper limit is set. Otherwise, items in excess of
+	// this number will be discarded from the event log.
+	//
+	// Warning: This setting is a safety valve. Setting it too low may cause
+	// subscribers to miss events.  Try to choose a value higher than the
+	// maximum worst-case expected event load within the chosen window size in
+	// ordinary operation.
+	//
+	// For example, if the window size is 10 minutes and the node typically
+	// averages 1000 events per ten minutes, but with occasional known spikes of
+	// up to 2000, choose a value > 2000.
+	EventLogMaxItems int `mapstructure:"event-log-max-items"`
+
 	// How long to wait for a tx to be committed during /broadcast_tx_commit
 	// WARNING: Using a value larger than 10s will result in increasing the
 	// global HTTP write timeout, which applies to all connections and endpoints.
@@ -487,9 +514,14 @@ func DefaultRPCConfig() *RPCConfig {
 		Unsafe:             false,
 		MaxOpenConnections: 900,
 
-		MaxSubscriptionClients:    100,
-		MaxSubscriptionsPerClient: 5,
-		TimeoutBroadcastTxCommit:  10 * time.Second,
+		// Settings for event subscription.
+		MaxSubscriptionClients:       100,
+		MaxSubscriptionsPerClient:    5,
+		ExperimentalDisableWebsocket: false, // compatible with TM v0.35 and earlier
+		EventLogWindowSize:           0,     // disables /events RPC by default
+		EventLogMaxItems:             0,
+
+		TimeoutBroadcastTxCommit: 10 * time.Second,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
@@ -518,6 +550,12 @@ func (cfg *RPCConfig) ValidateBasic() error {
 	}
 	if cfg.MaxSubscriptionsPerClient < 0 {
 		return errors.New("max-subscriptions-per-client can't be negative")
+	}
+	if cfg.EventLogWindowSize < 0 {
+		return errors.New("event-log-window-size must not be negative")
+	}
+	if cfg.EventLogMaxItems < 0 {
+		return errors.New("event-log-max-items must not be negative")
 	}
 	if cfg.TimeoutBroadcastTxCommit < 0 {
 		return errors.New("timeout-broadcast-tx-commit can't be negative")

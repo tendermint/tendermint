@@ -40,6 +40,10 @@ const (
 	EventTimeoutWaitValue     = "TimeoutWait"
 	EventValidBlockValue      = "ValidBlock"
 	EventVoteValue            = "Vote"
+
+	// Events emitted by the evidence reactor when evidence is validated
+	// and before it is committed
+	EventEvidenceValidatedValue = "EvidenceValidated"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -104,6 +108,7 @@ func init() {
 	jsontypes.MustRegister(EventDataTx{})
 	jsontypes.MustRegister(EventDataValidatorSetUpdates{})
 	jsontypes.MustRegister(EventDataVote{})
+	jsontypes.MustRegister(EventDataEvidenceValidated{})
 	jsontypes.MustRegister(EventDataString(""))
 }
 
@@ -114,8 +119,7 @@ type EventDataNewBlock struct {
 	Block   *Block  `json:"block"`
 	BlockID BlockID `json:"block_id"`
 
-	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
-	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.
@@ -124,9 +128,8 @@ func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
-	NumTxs           int64                   `json:"num_txs,string"` // Number of txs in a block
-	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
-	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+	NumTxs              int64                      `json:"num_txs,string"` // Number of txs in a block
+	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.
@@ -225,6 +228,15 @@ type EventDataStateSyncStatus struct {
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataStateSyncStatus) TypeTag() string { return "tendermint/event/StateSyncStatus" }
 
+type EventDataEvidenceValidated struct {
+	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height,string"`
+}
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataEvidenceValidated) TypeTag() string { return "tendermint/event/EvidenceValidated" }
+
 // PUBSUB
 
 const (
@@ -263,6 +275,7 @@ var (
 	EventQueryVote                = QueryForEvent(EventVoteValue)
 	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
 	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
+	EventQueryEvidenceValidated   = QueryForEvent(EventEvidenceValidatedValue)
 )
 
 func EventQueryTxFor(tx Tx) *tmquery.Query {

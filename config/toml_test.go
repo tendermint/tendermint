@@ -20,9 +20,7 @@ func ensureFiles(t *testing.T, rootDir string, files ...string) {
 
 func TestEnsureRoot(t *testing.T) {
 	// setup temp dir for test
-	tmpDir, err := os.MkdirTemp("", "config-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// create root dir
 	EnsureRoot(tmpDir)
@@ -42,7 +40,7 @@ func TestEnsureTestRoot(t *testing.T) {
 	testName := "ensureTestRoot"
 
 	// create root dir
-	cfg, err := ResetTestRoot(testName)
+	cfg, err := ResetTestRoot(t.TempDir(), testName)
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir

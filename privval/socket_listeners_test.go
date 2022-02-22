@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
@@ -28,14 +29,17 @@ type listenerTestCase struct {
 
 // testUnixAddr will attempt to obtain a platform-independent temporary file
 // name for a Unix socket
-func testUnixAddr() (string, error) {
-	f, err := os.CreateTemp("", "tendermint-privval-test-*")
+func testUnixAddr(t *testing.T) (string, error) {
+	// N.B. We can't use t.TempDir here because socket filenames have a
+	// restrictive length limit (~100 bytes) for silly historical reasons.
+	f, err := os.CreateTemp("", "tendermint-privval-test-*.sock")
 	if err != nil {
 		return "", err
 	}
 	addr := f.Name()
 	f.Close()
-	os.Remove(addr)
+	os.Remove(addr)                       // remove so the test can bind it
+	t.Cleanup(func() { os.Remove(addr) }) // clean up after the test
 	return addr, nil
 }
 
@@ -56,7 +60,7 @@ func tcpListenerTestCase(t *testing.T, timeoutAccept, timeoutReadWrite time.Dura
 }
 
 func unixListenerTestCase(t *testing.T, timeoutAccept, timeoutReadWrite time.Duration) listenerTestCase {
-	addr, err := testUnixAddr()
+	addr, err := testUnixAddr(t)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -41,7 +42,7 @@ type reactorTestSuite struct {
 func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
-	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
+	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
@@ -95,7 +96,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	t.Cleanup(func() {
 		for nodeID := range rts.reactors {
 			if rts.reactors[nodeID].IsRunning() {
-				require.NoError(t, rts.reactors[nodeID].Stop())
+				rts.reactors[nodeID].Stop()
 				rts.reactors[nodeID].Wait()
 				require.False(t, rts.reactors[nodeID].IsRunning())
 			}
@@ -183,8 +184,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 		}()
 	}
 
-	err := primaryReactor.Stop()
-	require.NoError(t, err)
+	primaryReactor.Stop()
 	wg.Wait()
 }
 

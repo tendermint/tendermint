@@ -391,7 +391,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		defer os.RemoveAll(thisConfig.RootDir)
@@ -406,9 +406,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(sync.Mutex)
-		proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-		proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+		proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+		proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 		mempool := mempool.NewTxMempool(
 			log.TestingLogger().With("module", "mempool"),
@@ -428,14 +427,15 @@ func TestReactorWithEvidence(t *testing.T) {
 		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 1, defaultTestTime, privVals[vIdx], cfg.ChainID())
 		require.NoError(t, err)
 		evpool := &statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+		evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
 			ev}, int64(len(ev.Bytes())))
-		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+		evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 
 		evpool2 := sm.EmptyEvidencePool{}
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
+
 		cs := NewState(ctx, logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
 		cs.SetPrivValidator(ctx, pv)

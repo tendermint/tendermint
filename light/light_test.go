@@ -2,7 +2,6 @@ package light_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ func TestClientIntegration_Update(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf, err := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
 	logger := log.NewTestingLogger(t)
@@ -42,10 +41,7 @@ func TestClientIntegration_Update(t *testing.T) {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
-	dbDir, err := os.MkdirTemp("", "light-client-test-update-example")
-	require.NoError(t, err)
-	defer os.RemoveAll(dbDir)
-
+	dbDir := t.TempDir()
 	chainID := conf.ChainID()
 
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
@@ -91,7 +87,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf, err := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
 	logger := log.NewTestingLogger(t)
@@ -103,10 +99,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, closer(ctx)) }()
 
-	dbDir, err := os.MkdirTemp("", "light-client-test-verify-example")
-	require.NoError(t, err)
-	defer os.RemoveAll(dbDir)
-
+	dbDir := t.TempDir()
 	chainID := conf.ChainID()
 
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
@@ -171,7 +164,7 @@ func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*type
 func TestClientStatusRPC(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf, err := rpctest.CreateConfig(t.Name())
+	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
 	// Start a test application
@@ -181,10 +174,7 @@ func TestClientStatusRPC(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, closer(ctx)) }()
 
-	dbDir, err := os.MkdirTemp("", "light-client-test-status-example")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(dbDir) })
-
+	dbDir := t.TempDir()
 	chainID := conf.ChainID()
 
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)

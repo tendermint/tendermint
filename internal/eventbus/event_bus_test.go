@@ -83,14 +83,12 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	bps, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-	resultBeginBlock := abci.ResponseBeginBlock{
+	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{
+				{Key: "baz", Value: "1"},
+				{Key: "foz", Value: "2"},
+			}},
 		},
 	}
 
@@ -111,15 +109,13 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		edt := msg.Data().(types.EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
 		assert.Equal(t, blockID, edt.BlockID)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultFinalizeBlock, edt.ResultFinalizeBlock)
 	}()
 
 	err = eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
-		Block:            block,
-		BlockID:          blockID,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Block:               block,
+		BlockID:             blockID,
+		ResultFinalizeBlock: resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 
@@ -256,14 +252,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{
+	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{
+				{Key: "baz", Value: "1"},
+				{Key: "foz", Value: "2"},
+			}},
 		},
 	}
 
@@ -283,14 +277,12 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 
 		edt := msg.Data().(types.EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultFinalizeBlock, edt.ResultFinalizeBlock)
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
-		Header:           block.Header,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Header:              block.Header,
+		ResultFinalizeBlock: resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 
@@ -301,6 +293,48 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	}
 }
 
+func TestEventBusPublishEventEvidenceValidated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	eventBus := eventbus.NewDefault(log.TestingLogger())
+	err := eventBus.Start(ctx)
+	require.NoError(t, err)
+
+	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id")
+	require.NoError(t, err)
+
+	const query = `tm.event='EvidenceValidated'`
+	evSub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: "test",
+		Query:    tmquery.MustCompile(query),
+	})
+
+	require.NoError(t, err)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		msg, err := evSub.Next(ctx)
+		assert.NoError(t, err)
+
+		edt := msg.Data().(types.EventDataEvidenceValidated)
+		assert.Equal(t, ev, edt.Evidence)
+		assert.Equal(t, int64(1), edt.Height)
+	}()
+
+	err = eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
+		Evidence: ev,
+		Height:   int64(1),
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("did not receive a block header after 1 sec.")
+	}
+
+}
 func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

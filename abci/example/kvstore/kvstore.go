@@ -86,14 +86,13 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+func (app *Application) HandleTx(tx []byte) *types.ResponseDeliverTx {
 	var key, value string
-
-	parts := bytes.Split(req.Tx, []byte("="))
+	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
 		key, value = string(parts[0]), string(parts[1])
 	} else {
-		key, value = string(req.Tx), string(req.Tx)
+		key, value = string(tx), string(tx)
 	}
 
 	err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
@@ -114,7 +113,15 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 		},
 	}
 
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+	return &types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+}
+
+func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+	txs := make([]*types.ResponseDeliverTx, len(req.Txs))
+	for i, tx := range req.Txs {
+		txs[i] = app.HandleTx(tx)
+	}
+	return types.ResponseFinalizeBlock{Txs: txs}
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {

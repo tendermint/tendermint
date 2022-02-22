@@ -138,19 +138,35 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 		return nil, errors.New("transport is not listening")
 	}
 
-	tcpConn, err := m.listener.Accept()
-	if err != nil {
-		select {
-		case <-ctx.Done():
-			return nil, io.EOF
-		case <-m.doneCh:
-			return nil, io.EOF
-		default:
-			return nil, err
+	conCh := make(chan net.Conn)
+	errCh := make(chan error)
+	go func() {
+		tcpConn, err := m.listener.Accept()
+		if err != nil {
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+			}
 		}
+		select {
+		case conCh <- tcpConn:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		m.listener.Close()
+		return nil, io.EOF
+	case <-m.doneCh:
+		m.listener.Close()
+		return nil, io.EOF
+	case err := <-errCh:
+		return nil, err
+	case tcpConn := <-conCh:
+		return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 	}
 
-	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 }
 
 // Dial implements Transport.
@@ -360,7 +376,7 @@ func (c *mConnConnection) handshake(
 		return nil, types.NodeInfo{}, nil, err
 	}
 
-	mconn := conn.NewMConnectionWithConfig(
+	mconn := conn.NewMConnection(
 		c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)),
 		secretConn,
 		c.channelDescs,
@@ -462,12 +478,13 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 func (c *mConnConnection) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
+		defer close(c.doneCh)
+
 		if c.mconn != nil && c.mconn.IsRunning() {
-			err = c.mconn.Stop()
+			c.mconn.Stop()
 		} else {
 			err = c.conn.Close()
 		}
-		close(c.doneCh)
 	})
 	return err
 }

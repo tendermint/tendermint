@@ -64,21 +64,21 @@ func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.Respo
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) HandleTx(tx []byte) *types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey!power"
-	if isValidatorTx(req.Tx) {
+	if isValidatorTx(tx) {
 		// update validators in the merkle tree
 		// and in app.ValUpdates
-		return app.execValidatorTx(req.Tx)
+		return app.execValidatorTx(tx)
 	}
 
-	if isPrepareTx(req.Tx) {
-		return app.execPrepareTx(req.Tx)
+	if isPrepareTx(tx) {
+		return app.execPrepareTx(tx)
 	}
 
 	// otherwise, update the key-value store
-	return app.app.DeliverTx(req)
+	return app.app.HandleTx(tx)
 }
 
 func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
@@ -121,7 +121,9 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 }
 
 // Track the block hash and header information
-func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+// Execute transactions
+// Update the validator set
+func (app *PersistentKVStoreApplication) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	// reset valset changes
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
@@ -143,12 +145,12 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		}
 	}
 
-	return types.ResponseBeginBlock{}
-}
+	respTxs := make([]*types.ResponseDeliverTx, len(req.Txs))
+	for i, tx := range req.Txs {
+		respTxs[i] = app.HandleTx(tx)
+	}
 
-// Update the validator set
-func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
+	return types.ResponseFinalizeBlock{Txs: respTxs, ValidatorUpdates: app.ValUpdates}
 }
 
 func (app *PersistentKVStoreApplication) ListSnapshots(
@@ -238,13 +240,13 @@ func isValidatorTx(tx []byte) bool {
 
 // format is "val:pubkey!power"
 // pubkey is a base64-encoded 32-byte ed25519 key
-func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) *types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
 	//  get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "!")
 	if len(pubKeyAndPower) != 2 {
-		return types.ResponseDeliverTx{
+		return &types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
 	}
@@ -253,7 +255,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	// decode the pubkey
 	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
 	if err != nil {
-		return types.ResponseDeliverTx{
+		return &types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
 	}
@@ -261,7 +263,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)
 	if err != nil {
-		return types.ResponseDeliverTx{
+		return &types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
 	}
@@ -271,7 +273,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 }
 
 // add, update, or remove a validator
-func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) *types.ResponseDeliverTx {
 	pubkey, err := encoding.PubKeyFromProto(v.PubKey)
 	if err != nil {
 		panic(fmt.Errorf("can't decode public key: %w", err))
@@ -286,7 +288,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 		}
 		if !hasKey {
 			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
-			return types.ResponseDeliverTx{
+			return &types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
@@ -298,7 +300,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
 		if err := types.WriteMessage(&v, value); err != nil {
-			return types.ResponseDeliverTx{
+			return &types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("error encoding validator: %v", err)}
 		}
@@ -311,7 +313,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	// we only update the changes array if we successfully updated the tree
 	app.ValUpdates = append(app.ValUpdates, v)
 
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+	return &types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
 // -----------------------------
@@ -324,9 +326,9 @@ func isPrepareTx(tx []byte) bool {
 
 // execPrepareTx is noop. tx data is considered as placeholder
 // and is substitute at the PrepareProposal.
-func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) *types.ResponseDeliverTx {
 	// noop
-	return types.ResponseDeliverTx{}
+	return &types.ResponseDeliverTx{}
 }
 
 // substPrepareTx subst all the preparetx in the blockdata

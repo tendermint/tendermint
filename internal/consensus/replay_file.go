@@ -142,9 +142,7 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 
 // go back count steps by resetting the state and running (pb.count - count) steps
 func (pb *playback) replayReset(ctx context.Context, count int, newStepSub eventbus.Subscription) error {
-	if err := pb.cs.Stop(); err != nil {
-		return err
-	}
+	pb.cs.Stop()
 	pb.cs.Wait()
 
 	newCS := NewState(ctx, pb.cs.logger, pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,

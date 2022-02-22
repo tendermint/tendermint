@@ -219,11 +219,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 func (r *Reactor) OnStop() {
 	r.unsubscribeFromBroadcastEvents()
 
-	if err := r.state.Stop(); err != nil {
-		if !errors.Is(err, service.ErrAlreadyStopped) {
-			r.logger.Error("failed to stop consensus state", "err", err)
-		}
-	}
+	r.state.Stop()
 
 	if !r.WaitSync() {
 		r.state.Wait()
@@ -660,7 +656,10 @@ func (r *Reactor) pickSendVote(ctx context.Context, ps *PeerState, votes types.V
 		return false, err
 	}
 
-	ps.SetHasVote(vote)
+	if err := ps.SetHasVote(vote); err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
 
@@ -1064,8 +1063,10 @@ func (r *Reactor) handleStateMessage(ctx context.Context, envelope *p2p.Envelope
 		ps.ApplyNewValidBlockMessage(msgI.(*NewValidBlockMessage))
 
 	case *tmcons.HasVote:
-		ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage))
-
+		if err := ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage)); err != nil {
+			r.logger.Error("applying HasVote message", "msg", msg, "err", err)
+			return err
+		}
 	case *tmcons.VoteSetMaj23:
 		r.state.mtx.RLock()
 		height, votes := r.state.Height, r.state.Votes
@@ -1199,7 +1200,9 @@ func (r *Reactor) handleVoteMessage(ctx context.Context, envelope *p2p.Envelope,
 
 		ps.EnsureVoteBitArrays(height, valSize)
 		ps.EnsureVoteBitArrays(height-1, lastCommitSize)
-		ps.SetHasVote(vMsg.Vote)
+		if err := ps.SetHasVote(vMsg.Vote); err != nil {
+			return err
+		}
 
 		select {
 		case r.state.peerMsgQueue <- msgInfo{vMsg, envelope.From, tmtime.Now()}:

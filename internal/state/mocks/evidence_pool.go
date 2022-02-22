@@ -3,8 +3,11 @@
 package mocks
 
 import (
+	context "context"
+
 	mock "github.com/stretchr/testify/mock"
 	state "github.com/tendermint/tendermint/internal/state"
+
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -13,13 +16,13 @@ type EvidencePool struct {
 	mock.Mock
 }
 
-// AddEvidence provides a mock function with given fields: _a0
-func (_m *EvidencePool) AddEvidence(_a0 types.Evidence) error {
-	ret := _m.Called(_a0)
+// AddEvidence provides a mock function with given fields: _a0, _a1
+func (_m *EvidencePool) AddEvidence(_a0 context.Context, _a1 types.Evidence) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(types.Evidence) error); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.Evidence) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -27,13 +30,13 @@ func (_m *EvidencePool) AddEvidence(_a0 types.Evidence) error {
 	return r0
 }
 
-// CheckEvidence provides a mock function with given fields: _a0
-func (_m *EvidencePool) CheckEvidence(_a0 types.EvidenceList) error {
-	ret := _m.Called(_a0)
+// CheckEvidence provides a mock function with given fields: _a0, _a1
+func (_m *EvidencePool) CheckEvidence(_a0 context.Context, _a1 types.EvidenceList) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(types.EvidenceList) error); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.EvidenceList) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -64,7 +67,7 @@ func (_m *EvidencePool) PendingEvidence(maxBytes int64) ([]types.Evidence, int64
 	return r0, r1
 }
 
-// Update provides a mock function with given fields: _a0, _a1
-func (_m *EvidencePool) Update(_a0 state.State, _a1 types.EvidenceList) {
-	_m.Called(_a0, _a1)
+// Update provides a mock function with given fields: _a0, _a1, _a2
+func (_m *EvidencePool) Update(_a0 context.Context, _a1 state.State, _a2 types.EvidenceList) {
+	_m.Called(_a0, _a1, _a2)
 }

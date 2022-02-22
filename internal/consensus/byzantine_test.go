@@ -60,7 +60,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, stateStore.Save(state))
 
-			thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+			thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 			require.NoError(t, err)
 
 			defer os.RemoveAll(thisConfig.RootDir)
@@ -74,9 +74,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			blockStore := store.NewBlockStore(blockDB)
 
 			// one for mempool, one for consensus
-			mtx := new(sync.Mutex)
-			proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-			proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+			proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+			proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 			// Make Mempool
 			mempool := mempool.NewTxMempool(
@@ -91,7 +90,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make a full instance of the evidence pool
 			evidenceDB := dbm.NewMemDB()
-			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
+			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore, evidence.NopMetrics())
 			require.NoError(t, err)
 
 			// Make State
@@ -105,6 +104,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
+			evpool.SetEventBus(eventBus)
 
 			cs.SetTimeoutTicker(tickerFunc())
 
@@ -180,6 +180,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		require.NotNil(t, lazyNodeState.privValidator)
 
 		var commit *types.Commit
+		var votes []*types.Vote
 		switch {
 		case lazyNodeState.Height == lazyNodeState.state.InitialHeight:
 			// We're creating a proposal for the first block.
@@ -188,6 +189,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyNodeState.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
 			commit = lazyNodeState.LastCommit.MakeCommit()
+			votes = lazyNodeState.LastCommit.GetVotes()
 		default: // This shouldn't happen.
 			lazyNodeState.logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
@@ -205,7 +207,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
 
 		block, blockParts, err := lazyNodeState.blockExec.CreateProposalBlock(
-			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr,
+			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr, votes,
 		)
 		require.NoError(t, err)
 

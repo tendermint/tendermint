@@ -22,7 +22,7 @@ var _ mempool.Mempool = emptyMempool{}
 func (emptyMempool) Lock()     {}
 func (emptyMempool) Unlock()   {}
 func (emptyMempool) Size() int { return 0 }
-func (emptyMempool) CheckTx(_ context.Context, _ types.Tx, _ func(*abci.Response), _ mempool.TxInfo) error {
+func (emptyMempool) CheckTx(context.Context, types.Tx, func(*abci.ResponseCheckTx), mempool.TxInfo) error {
 	return nil
 }
 func (emptyMempool) RemoveTxByKey(txKey types.TxKey) error   { return nil }
@@ -87,18 +87,13 @@ type mockProxyApp struct {
 	abciResponses *tmstate.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTxs[mock.txCount]
+func (mock *mockProxyApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+	r := mock.abciResponses.FinalizeBlock
 	mock.txCount++
 	if r == nil {
-		return abci.ResponseDeliverTx{}
+		return abci.ResponseFinalizeBlock{}
 	}
 	return *r
-}
-
-func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	mock.txCount = 0
-	return *mock.abciResponses.EndBlock
 }
 
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {

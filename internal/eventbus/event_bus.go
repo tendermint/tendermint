@@ -89,7 +89,7 @@ func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData typ
 }
 
 func (b *EventBus) PublishEventNewBlock(ctx context.Context, data types.EventDataNewBlock) error {
-	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	events := data.ResultFinalizeBlock.Events
 
 	// add Tendermint-reserved new block event
 	events = append(events, types.EventNewBlock)
@@ -100,7 +100,7 @@ func (b *EventBus) PublishEventNewBlock(ctx context.Context, data types.EventDat
 func (b *EventBus) PublishEventNewBlockHeader(ctx context.Context, data types.EventDataNewBlockHeader) error {
 	// no explicit deadline for publishing events
 
-	events := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	events := data.ResultFinalizeBlock.Events
 
 	// add Tendermint-reserved new block header event
 	events = append(events, types.EventNewBlockHeader)
@@ -196,6 +196,10 @@ func (b *EventBus) PublishEventLock(ctx context.Context, data types.EventDataRou
 
 func (b *EventBus) PublishEventValidatorSetUpdates(ctx context.Context, data types.EventDataValidatorSetUpdates) error {
 	return b.Publish(ctx, types.EventValidatorSetUpdatesValue, data)
+}
+
+func (b *EventBus) PublishEventEvidenceValidated(ctx context.Context, evidence types.EventDataEvidenceValidated) error {
+	return b.Publish(ctx, types.EventEvidenceValidatedValue, evidence)
 }
 
 //-----------------------------------------------------------------------------

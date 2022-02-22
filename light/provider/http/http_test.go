@@ -35,7 +35,7 @@ func TestNewProvider(t *testing.T) {
 func TestProvider(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cfg, err := rpctest.CreateConfig(t.Name())
+	cfg, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
 	// start a tendermint node in the background to test against

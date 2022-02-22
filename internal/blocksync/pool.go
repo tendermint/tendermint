@@ -235,9 +235,7 @@ func (pool *BlockPool) PopRequest() {
 	defer pool.mtx.Unlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
-		if err := r.Stop(); err != nil {
-			pool.logger.Error("error stopping requester", "err", err)
-		}
+		r.Stop()
 		delete(pool.requesters, pool.height)
 		pool.height++
 		pool.lastAdvance = time.Now()
@@ -333,8 +331,16 @@ func (pool *BlockPool) SetPeerRange(peerID types.NodeID, base int64, height int6
 		peer.base = base
 		peer.height = height
 	} else {
-		peer = newBPPeer(pool, peerID, base, height)
-		peer.logger = pool.logger.With("peer", peerID)
+		peer = &bpPeer{
+			pool:       pool,
+			id:         peerID,
+			base:       base,
+			height:     height,
+			numPending: 0,
+			logger:     pool.logger.With("peer", peerID),
+			startAt:    time.Now(),
+		}
+
 		pool.peers[peerID] = peer
 	}
 
@@ -492,24 +498,13 @@ type bpPeer struct {
 	recvMonitor *flowrate.Monitor
 
 	timeout *time.Timer
+	startAt time.Time
 
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID types.NodeID, base int64, height int64) *bpPeer {
-	peer := &bpPeer{
-		pool:       pool,
-		id:         peerID,
-		base:       base,
-		height:     height,
-		numPending: 0,
-		logger:     log.NewNopLogger(),
-	}
-	return peer
-}
-
 func (peer *bpPeer) resetMonitor() {
-	peer.recvMonitor = flowrate.New(time.Second, time.Second*40)
+	peer.recvMonitor = flowrate.New(peer.startAt, time.Second, time.Second*40)
 	initialValue := float64(minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }
@@ -676,9 +671,7 @@ OUTER_LOOP:
 			case <-ctx.Done():
 				return
 			case <-bpr.pool.exitedCh:
-				if err := bpr.Stop(); err != nil {
-					bpr.logger.Error("error stopped requester", "err", err)
-				}
+				bpr.Stop()
 				return
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {
