@@ -26,20 +26,6 @@ func (_m *Application) ApplySnapshotChunk(_a0 types.RequestApplySnapshotChunk) t
 	return r0
 }
 
-// BeginBlock provides a mock function with given fields: _a0
-func (_m *Application) BeginBlock(_a0 types.RequestBeginBlock) types.ResponseBeginBlock {
-	ret := _m.Called(_a0)
-
-	var r0 types.ResponseBeginBlock
-	if rf, ok := ret.Get(0).(func(types.RequestBeginBlock) types.ResponseBeginBlock); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(types.ResponseBeginBlock)
-	}
-
-	return r0
-}
-
 // CheckTx provides a mock function with given fields: _a0
 func (_m *Application) CheckTx(_a0 types.RequestCheckTx) types.ResponseCheckTx {
 	ret := _m.Called(_a0)
@@ -68,34 +54,6 @@ func (_m *Application) Commit() types.ResponseCommit {
 	return r0
 }
 
-// DeliverTx provides a mock function with given fields: _a0
-func (_m *Application) DeliverTx(_a0 types.RequestDeliverTx) types.ResponseDeliverTx {
-	ret := _m.Called(_a0)
-
-	var r0 types.ResponseDeliverTx
-	if rf, ok := ret.Get(0).(func(types.RequestDeliverTx) types.ResponseDeliverTx); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(types.ResponseDeliverTx)
-	}
-
-	return r0
-}
-
-// EndBlock provides a mock function with given fields: _a0
-func (_m *Application) EndBlock(_a0 types.RequestEndBlock) types.ResponseEndBlock {
-	ret := _m.Called(_a0)
-
-	var r0 types.ResponseEndBlock
-	if rf, ok := ret.Get(0).(func(types.RequestEndBlock) types.ResponseEndBlock); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(types.ResponseEndBlock)
-	}
-
-	return r0
-}
-
 // ExtendVote provides a mock function with given fields: _a0
 func (_m *Application) ExtendVote(_a0 types.RequestExtendVote) types.ResponseExtendVote {
 	ret := _m.Called(_a0)
@@ -105,6 +63,20 @@ func (_m *Application) ExtendVote(_a0 types.RequestExtendVote) types.ResponseExt
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(types.ResponseExtendVote)
+	}
+
+	return r0
+}
+
+// FinalizeBlock provides a mock function with given fields: _a0
+func (_m *Application) FinalizeBlock(_a0 types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+	ret := _m.Called(_a0)
+
+	var r0 types.ResponseFinalizeBlock
+	if rf, ok := ret.Get(0).(func(types.RequestFinalizeBlock) types.ResponseFinalizeBlock); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(types.ResponseFinalizeBlock)
 	}
 
 	return r0

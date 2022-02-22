@@ -88,42 +88,6 @@ func (m baseMock) ProcessProposal(input types.RequestProcessProposal) types.Resp
 	return r
 }
 
-// Signals the beginning of a block
-func (m baseMock) BeginBlock(input types.RequestBeginBlock) types.ResponseBeginBlock {
-	var ret types.ResponseBeginBlock
-	defer func() {
-		if r := recover(); r != nil {
-			ret = m.base.BeginBlock(input)
-		}
-	}()
-	ret = m.Application.BeginBlock(input)
-	return ret
-}
-
-// Deliver a tx for full processing
-func (m baseMock) DeliverTx(input types.RequestDeliverTx) types.ResponseDeliverTx {
-	var ret types.ResponseDeliverTx
-	defer func() {
-		if r := recover(); r != nil {
-			ret = m.base.DeliverTx(input)
-		}
-	}()
-	ret = m.Application.DeliverTx(input)
-	return ret
-}
-
-// Signals the end of a block, returns changes to the validator set
-func (m baseMock) EndBlock(input types.RequestEndBlock) types.ResponseEndBlock {
-	var ret types.ResponseEndBlock
-	defer func() {
-		if r := recover(); r != nil {
-			ret = m.base.EndBlock(input)
-		}
-	}()
-	ret = m.Application.EndBlock(input)
-	return ret
-}
-
 // Commit the state and return the application Merkle root hash
 func (m baseMock) Commit() types.ResponseCommit {
 	var ret types.ResponseCommit
@@ -203,5 +167,16 @@ func (m baseMock) ApplySnapshotChunk(input types.RequestApplySnapshotChunk) type
 		}
 	}()
 	ret = m.Application.ApplySnapshotChunk(input)
+	return ret
+}
+
+func (m baseMock) FinalizeBlock(input types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+	var ret types.ResponseFinalizeBlock
+	defer func() {
+		if r := recover(); r != nil {
+			ret = m.base.FinalizeBlock(input)
+		}
+	}()
+	ret = m.Application.FinalizeBlock(input)
 	return ret
 }
