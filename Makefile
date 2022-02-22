@@ -89,7 +89,7 @@ proto-all: proto-lint proto-check-breaking
 
 proto-gen:
 	@echo "Generating Protobuf files"
-	@$(DOCKER_PROTO_BUILDER) buf generate --template=./buf.gen.yaml --config ./buf.yaml
+	@$(DOCKER_PROTO_BUILDER) buf generate --template=./buf.gen.yaml --config ./buf.yaml --path proto/tendermint
 	@mv -f ./proto/tendermint/abci/types.pb.go ./abci/types/
 .PHONY: proto-gen
 
