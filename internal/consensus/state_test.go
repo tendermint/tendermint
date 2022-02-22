@@ -1934,19 +1934,19 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 
 func TestProcessProposalAccept(t *testing.T) {
 	for _, testCase := range []struct {
-		name         string
-		accept       bool
-		prevoteIsNil bool
+		name               string
+		accept             bool
+		expectedNilPrevote bool
 	}{
 		{
-			name:         "accepted block is prevoted",
-			accept:       true,
-			prevoteIsNil: false,
+			name:               "accepted block is prevoted",
+			accept:             true,
+			expectedNilPrevote: false,
 		},
 		{
-			name:         "rejected block is not prevoted",
-			accept:       false,
-			prevoteIsNil: true,
+			name:               "rejected block is not prevoted",
+			accept:             false,
+			expectedNilPrevote: true,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1981,7 +1981,7 @@ func TestProcessProposalAccept(t *testing.T) {
 				PartSetHeader: partSet.Header(),
 			}
 			var prevoteHash tmbytes.HexBytes
-			if !testCase.prevoteIsNil {
+			if !testCase.expectedNilPrevote {
 				prevoteHash = blockID.Hash
 			}
 			ensurePrevoteMatch(t, voteCh, height, round, prevoteHash)
