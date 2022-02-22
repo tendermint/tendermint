@@ -11,35 +11,35 @@ var ErrOverflowInt8 = errors.New("int8 overflow")
 
 // SafeAddInt32 adds two int32 integers
 // If there is an overflow this will panic
-func SafeAddInt32(a, b int32) int32 {
+func SafeAddInt32(a, b int32) (int32, error) {
 	if b > 0 && (a > math.MaxInt32-b) {
-		panic(ErrOverflowInt32)
+		return 0, ErrOverflowInt32
 	} else if b < 0 && (a < math.MinInt32-b) {
-		panic(ErrOverflowInt32)
+		return 0, ErrOverflowInt32
 	}
-	return a + b
+	return a + b, nil
 }
 
 // SafeSubInt32 subtracts two int32 integers
 // If there is an overflow this will panic
-func SafeSubInt32(a, b int32) int32 {
+func SafeSubInt32(a, b int32) (int32, error) {
 	if b > 0 && (a < math.MinInt32+b) {
-		panic(ErrOverflowInt32)
+		return 0, ErrOverflowInt32
 	} else if b < 0 && (a > math.MaxInt32+b) {
-		panic(ErrOverflowInt32)
+		return 0, ErrOverflowInt32
 	}
-	return a - b
+	return a - b, nil
 }
 
 // SafeConvertInt32 takes a int and checks if it overflows
 // If there is an overflow this will panic
-func SafeConvertInt32(a int64) int32 {
+func SafeConvertInt32(a int64) (int32, error) {
 	if a > math.MaxInt32 {
-		panic(ErrOverflowInt32)
+		return 0, ErrOverflowInt32
 	} else if a < math.MinInt32 {
-		panic(ErrOverflowInt32)
+		return 0, ErrOverflowInt32
 	}
-	return int32(a)
+	return int32(a), nil
 }
 
 // SafeConvertUint8 takes an int64 and checks if it overflows
