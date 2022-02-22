@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,7 +22,7 @@ import (
 //
 // Metrics are based of the `benchmarkLength`, the amount of consecutive blocks
 // sampled from in the testnet
-func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64) error {
+func Benchmark(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, benchmarkLength int64) error {
 	block, err := getLatestBlock(ctx, testnet)
 	if err != nil {
 		return err
