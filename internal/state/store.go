@@ -504,8 +504,12 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 		if err != nil {
 			return nil, err
 		}
+		h, err := tmmath.SafeConvertInt32(height - lastStoredHeight)
+		if err != nil {
+			return nil, err
+		}
 
-		vs.IncrementProposerPriority(tmmath.SafeConvertInt32(height - lastStoredHeight)) // mutate
+		vs.IncrementProposerPriority(h) // mutate
 		vi2, err := vs.ToProto()
 		if err != nil {
 			return nil, err
