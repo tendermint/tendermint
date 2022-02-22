@@ -86,7 +86,7 @@ func (hvs *HeightVoteSet) SetRound(round int32) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	newRound, err := tmmath.SafeSubInt32(hvs.round, 1)
-	if err != err {
+	if err != nil {
 		panic(err)
 	}
 
