@@ -1462,7 +1462,6 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	if err != nil {
 		panic(fmt.Sprintf("ProcessProposal: %v", err))
 	}
-	fmt.Println("valid? ", isAppValid)
 
 	// Vote nil if the Application rejected the block
 	if !isAppValid {

@@ -1967,22 +1967,15 @@ func TestProcessProposalAccept(t *testing.T) {
 			addr := pv1.Address()
 			voteCh := subscribeToVoter(ctx, t, cs1, addr)
 
-			// start round and wait for propose and prevote
 			startTestRound(ctx, cs1, cs1.Height, round)
 			ensureNewRound(t, newRoundCh, height, round)
 
 			ensureNewProposal(t, proposalCh, height, round)
 			rs := cs1.GetRoundState()
-			propBlock := rs.ProposalBlock
-			partSet, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
 			require.NoError(t, err)
-			blockID := types.BlockID{
-				Hash:          propBlock.Hash(),
-				PartSetHeader: partSet.Header(),
-			}
 			var prevoteHash tmbytes.HexBytes
 			if !testCase.expectedNilPrevote {
-				prevoteHash = blockID.Hash
+				prevoteHash = rs.ProposalBlock.Hash()
 			}
 			ensurePrevoteMatch(t, voteCh, height, round, prevoteHash)
 		})
