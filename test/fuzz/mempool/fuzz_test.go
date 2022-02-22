@@ -1,6 +1,7 @@
 package mempool_test
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +15,9 @@ import (
 const testdataCasesDir = "testdata/cases"
 
 func TestMempoolTestdataCases(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	entries, err := os.ReadDir(testdataCasesDir)
 	require.NoError(t, err)
 
@@ -28,7 +32,7 @@ func TestMempoolTestdataCases(t *testing.T) {
 			require.NoError(t, err)
 			input, err := io.ReadAll(f)
 			require.NoError(t, err)
-			mempool.Fuzz(input)
+			require.NoError(t, mempool.Fuzz(ctx, input))
 		})
 	}
 }

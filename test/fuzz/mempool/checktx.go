@@ -10,40 +10,36 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-var mp *mempool.TxMempool
-var getMp func() mempool.Mempool
-
-func init() {
+func getMp(ctx context.Context) (mempool.Mempool, error) {
 	app := kvstore.NewApplication()
 	cc := abciclient.NewLocalCreator(app)
 	appConnMem, _ := cc(log.NewNopLogger())
-	err := appConnMem.Start(context.TODO())
+	err := appConnMem.Start(ctx)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	getMp = func() mempool.Mempool {
-		if mp == nil {
-			mp = mempool.NewTxMempool(
-				log.NewNopLogger(),
-				cfg,
-				appConnMem,
-				0,
-			)
-
-		}
-		return mp
-	}
+	return mempool.NewTxMempool(
+		log.NewNopLogger(),
+		cfg,
+		appConnMem,
+		0,
+	), nil
 }
 
-func Fuzz(data []byte) int {
-	err := getMp().CheckTx(context.Background(), data, nil, mempool.TxInfo{})
+func Fuzz(ctx context.Context, data []byte) error {
+	mp, err := getMp(ctx)
 	if err != nil {
-		return 0
+		return err
 	}
 
-	return 1
+	err = mp.CheckTx(ctx, data, nil, mempool.TxInfo{})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
