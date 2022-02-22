@@ -17,6 +17,7 @@ Special thanks to external contributors on this release:
   - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
   - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
   - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
+  - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
 
 - Apps
 

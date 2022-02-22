@@ -239,23 +239,29 @@ func (env *Environment) StartService(ctx context.Context, conf *config.Config) (
 		cfg.WriteTimeout = conf.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-	// we may expose the rpc over both a unix and tcp socket
+	// We may expose the RPC over both TCP and a Unix-domain socket.
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := env.Logger.With("module", "rpc-server")
-		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(wmLogger, routes,
-			rpcserver.OnDisconnect(func(remoteAddr string) {
-				err := env.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
-				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
-				}
-			}),
-			rpcserver.ReadLimit(cfg.MaxBodyBytes),
-		)
-		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
+
+		if conf.RPC.ExperimentalDisableWebsocket {
+			rpcLogger.Info("Disabling websocket endpoints (experimental-disable-websocket=true)")
+		} else {
+			wmLogger := rpcLogger.With("protocol", "websocket")
+			wm := rpcserver.NewWebsocketManager(wmLogger, routes,
+				rpcserver.OnDisconnect(func(remoteAddr string) {
+					err := env.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
+					if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
+						wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+					}
+				}),
+				rpcserver.ReadLimit(cfg.MaxBodyBytes),
+			)
+			mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		}
+
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			cfg.MaxOpenConnections,
