@@ -25,7 +25,7 @@ func (m baseMock) Info(input types.RequestInfo) types.ResponseInfo {
 			ret = m.base.Info(input)
 		}
 	}()
-	ret = m.base.Info(input)
+	ret = m.Application.Info(input)
 	return ret
 }
 
@@ -36,7 +36,7 @@ func (m baseMock) Query(input types.RequestQuery) types.ResponseQuery {
 			ret = m.base.Query(input)
 		}
 	}()
-	ret = m.base.Query(input)
+	ret = m.Application.Query(input)
 	return ret
 }
 
@@ -49,7 +49,7 @@ func (m baseMock) CheckTx(input types.RequestCheckTx) types.ResponseCheckTx {
 			ret = m.base.CheckTx(input)
 		}
 	}()
-	ret = m.base.CheckTx(input)
+	ret = m.Application.CheckTx(input)
 	return ret
 }
 
@@ -62,7 +62,7 @@ func (m baseMock) InitChain(input types.RequestInitChain) types.ResponseInitChai
 			ret = m.base.InitChain(input)
 		}
 	}()
-	ret = m.base.InitChain(input)
+	ret = m.Application.InitChain(input)
 	return ret
 }
 
@@ -73,7 +73,7 @@ func (m baseMock) PrepareProposal(input types.RequestPrepareProposal) types.Resp
 			ret = m.base.PrepareProposal(input)
 		}
 	}()
-	ret = m.base.PrepareProposal(input)
+	ret = m.Application.PrepareProposal(input)
 	return ret
 }
 
@@ -96,7 +96,7 @@ func (m baseMock) BeginBlock(input types.RequestBeginBlock) types.ResponseBeginB
 			ret = m.base.BeginBlock(input)
 		}
 	}()
-	ret = m.base.BeginBlock(input)
+	ret = m.Application.BeginBlock(input)
 	return ret
 }
 
@@ -108,7 +108,7 @@ func (m baseMock) DeliverTx(input types.RequestDeliverTx) types.ResponseDeliverT
 			ret = m.base.DeliverTx(input)
 		}
 	}()
-	ret = m.base.DeliverTx(input)
+	ret = m.Application.DeliverTx(input)
 	return ret
 }
 
@@ -120,7 +120,7 @@ func (m baseMock) EndBlock(input types.RequestEndBlock) types.ResponseEndBlock {
 			ret = m.base.EndBlock(input)
 		}
 	}()
-	ret = m.base.EndBlock(input)
+	ret = m.Application.EndBlock(input)
 	return ret
 }
 
@@ -132,7 +132,7 @@ func (m baseMock) Commit() types.ResponseCommit {
 			ret = m.base.Commit()
 		}
 	}()
-	ret = m.base.Commit()
+	ret = m.Application.Commit()
 	return ret
 }
 
@@ -144,7 +144,7 @@ func (m baseMock) ExtendVote(input types.RequestExtendVote) types.ResponseExtend
 			ret = m.base.ExtendVote(input)
 		}
 	}()
-	ret = m.base.ExtendVote(input)
+	ret = m.Application.ExtendVote(input)
 	return ret
 }
 
@@ -156,7 +156,7 @@ func (m baseMock) VerifyVoteExtension(input types.RequestVerifyVoteExtension) ty
 			ret = m.base.VerifyVoteExtension(input)
 		}
 	}()
-	ret = m.base.VerifyVoteExtension(input)
+	ret = m.Application.VerifyVoteExtension(input)
 	return ret
 }
 
@@ -169,7 +169,7 @@ func (m baseMock) ListSnapshots(input types.RequestListSnapshots) types.Response
 			ret = m.base.ListSnapshots(input)
 		}
 	}()
-	ret = m.base.ListSnapshots(input)
+	ret = m.Application.ListSnapshots(input)
 	return ret
 }
 
@@ -180,7 +180,7 @@ func (m baseMock) OfferSnapshot(input types.RequestOfferSnapshot) types.Response
 			ret = m.base.OfferSnapshot(input)
 		}
 	}()
-	ret = m.base.OfferSnapshot(input)
+	ret = m.Application.OfferSnapshot(input)
 	return ret
 }
 
@@ -191,7 +191,7 @@ func (m baseMock) LoadSnapshotChunk(input types.RequestLoadSnapshotChunk) types.
 			ret = m.base.LoadSnapshotChunk(input)
 		}
 	}()
-	ret = m.base.LoadSnapshotChunk(input)
+	ret = m.Application.LoadSnapshotChunk(input)
 	return ret
 }
 
@@ -202,6 +202,6 @@ func (m baseMock) ApplySnapshotChunk(input types.RequestApplySnapshotChunk) type
 			ret = m.base.ApplySnapshotChunk(input)
 		}
 	}()
-	ret = m.base.ApplySnapshotChunk(input)
+	ret = m.Application.ApplySnapshotChunk(input)
 	return ret
 }
