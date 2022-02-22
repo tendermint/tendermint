@@ -43,7 +43,7 @@ func main() {
 		commands.MakeInspectCommand(conf, logger),
 		commands.MakeRollbackStateCommand(conf),
 		commands.MakeKeyMigrateCommand(conf, logger),
-		debug.DebugCmd,
+		debug.GetDebugCommand(logger),
 		commands.NewCompletionCmd(rcmd, true),
 	)
 
