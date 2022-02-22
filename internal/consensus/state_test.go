@@ -8,15 +8,18 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -1928,54 +1931,62 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	assert.True(t, rs.ValidBlockParts.Header().Equals(blockID.PartSetHeader))
 	assert.True(t, rs.ValidRound == round)
 }
+
 func TestProcessProposalAccept(t *testing.T) {
-	cfg := configSetup(t)
-	logger := log.NewNopLogger()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	for _, testCase := range []struct {
+		name         string
+		accept       bool
+		prevoteIsNil bool
+	}{
+		{
+			name:         "accepted block is prevoted",
+			accept:       true,
+			prevoteIsNil: false,
+		},
+		{
+			name:         "rejected block is not prevoted",
+			accept:       false,
+			prevoteIsNil: true,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			cfg := configSetup(t)
+			logger := log.NewNopLogger()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-	cs1, vss := makeState(ctx, t, cfg, logger, makeStateArgs{application: abcimocks.NewBaseMock()})
-	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, cs1.Round
+			m := abcimocks.NewBaseMock()
+			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Accept: testCase.accept})
+			cs1, _ := makeState(ctx, t, cfg, logger, makeStateArgs{application: m})
+			height, round := cs1.Height, cs1.Round
 
-	partSize := types.BlockPartSizeBytes
+			proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
+			newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
+			pv1, err := cs1.privValidator.GetPubKey(ctx)
+			require.NoError(t, err)
+			addr := pv1.Address()
+			voteCh := subscribeToVoter(ctx, t, cs1, addr)
 
-	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	timeoutWaitCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryTimeoutWait)
-	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
-	pv1, err := cs1.privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
-	addr := pv1.Address()
-	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+			// start round and wait for propose and prevote
+			startTestRound(ctx, cs1, cs1.Height, round)
+			ensureNewRound(t, newRoundCh, height, round)
 
-	// start round and wait for propose and prevote
-	startTestRound(ctx, cs1, cs1.Height, round)
-	ensureNewRound(t, newRoundCh, height, round)
-
-	ensureNewProposal(t, proposalCh, height, round)
-	rs := cs1.GetRoundState()
-	propBlock := rs.ProposalBlock
-	partSet, err := propBlock.MakePartSet(partSize)
-	require.NoError(t, err)
-	blockID := types.BlockID{
-		Hash:          propBlock.Hash(),
-		PartSetHeader: partSet.Header(),
+			ensureNewProposal(t, proposalCh, height, round)
+			rs := cs1.GetRoundState()
+			propBlock := rs.ProposalBlock
+			partSet, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
+			require.NoError(t, err)
+			blockID := types.BlockID{
+				Hash:          propBlock.Hash(),
+				PartSetHeader: partSet.Header(),
+			}
+			var prevoteHash tmbytes.HexBytes
+			if !testCase.prevoteIsNil {
+				prevoteHash = blockID.Hash
+			}
+			ensurePrevoteMatch(t, voteCh, height, round, prevoteHash)
+		})
 	}
-
-	ensurePrevoteMatch(t, voteCh, height, round, blockID.Hash)
-
-	// the others sign a polka
-	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, cfg.ChainID(), blockID, vs2, vs3, vs4)
-
-	ensurePrecommit(t, voteCh, height, round)
-	// we should have precommitted the proposed block in this round.
-
-	validatePrecommit(ctx, t, cs1, round, round, vss[0], blockID.Hash, blockID.Hash)
-
-	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, cfg.ChainID(), types.BlockID{}, vs2, vs3, vs4)
-
-	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
-
 }
 
 // 4 vals, 3 Nil Precommits at P0
