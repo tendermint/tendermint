@@ -56,7 +56,11 @@ func TestTransport_AcceptClose(t *testing.T) {
 		<-opctx.Done()
 		require.Error(t, a.Close())
 
-		// Closed transport should return error immediately.
+		// Closed transport should return error immediately,
+		// because the transport is closed. We use the base
+		// context (ctx) rather than the operation context
+		// (opctx) because using the later would mean this
+		// could error because the context was canceled.
 		_, err = a.Accept(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
