@@ -95,7 +95,7 @@ func TestClientOperations(t *testing.T) {
 
 	logger := log.NewTestingLogger(t)
 
-	_, conf := NodeSuite(t, logger)
+	_, conf := NodeSuite(ctx, t, logger)
 
 	t.Run("NilCustomHTTPClient", func(t *testing.T) {
 		_, err := rpchttp.NewWithClient("http://example.com", nil)
@@ -193,7 +193,7 @@ func TestClientMethodCalls(t *testing.T) {
 	defer cancel()
 	logger := log.NewTestingLogger(t)
 
-	n, conf := NodeSuite(t, logger)
+	n, conf := NodeSuite(ctx, t, logger)
 
 	// for broadcast tx tests
 	pool := getMempool(t, n)
@@ -471,7 +471,7 @@ func TestClientMethodCalls(t *testing.T) {
 			})
 			t.Run("Events", func(t *testing.T) {
 				t.Run("Header", func(t *testing.T) {
-					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
+					evt, err := client.WaitForOneEvent(ctx, c, types.EventNewBlockHeaderValue, waitForEventTimeout)
 					require.NoError(t, err, "%d: %+v", i, err)
 					_, ok := evt.(types.EventDataNewBlockHeader)
 					require.True(t, ok, "%d: %#v", i, evt)
@@ -583,7 +583,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 	logger := log.NewTestingLogger(t)
 
-	n, conf := NodeSuite(t, logger)
+	n, conf := NodeSuite(ctx, t, logger)
 	pool := getMempool(t, n)
 
 	t.Run("UnconfirmedTxs", func(t *testing.T) {

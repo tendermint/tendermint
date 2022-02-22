@@ -15,10 +15,10 @@ import (
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func NodeSuite(t *testing.T, logger log.Logger) (service.Service, *config.Config) {
+func NodeSuite(ctx context.Context, t *testing.T, logger log.Logger) (service.Service, *config.Config) {
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 
 	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
