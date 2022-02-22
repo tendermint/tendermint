@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +17,8 @@ const testdataCasesDir = "testdata/cases"
 func TestServerTestdataCases(t *testing.T) {
 	entries, err := os.ReadDir(testdataCasesDir)
 	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for _, e := range entries {
 		entry := e
@@ -28,7 +31,7 @@ func TestServerTestdataCases(t *testing.T) {
 			require.NoError(t, err)
 			input, err := io.ReadAll(f)
 			require.NoError(t, err)
-			server.Fuzz(input)
+			require.NoError(t, server.Fuzz(ctx, input))
 		})
 	}
 }
