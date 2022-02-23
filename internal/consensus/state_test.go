@@ -1972,7 +1972,6 @@ func TestProcessProposalAccept(t *testing.T) {
 
 			ensureNewProposal(t, proposalCh, height, round)
 			rs := cs1.GetRoundState()
-			require.NoError(t, err)
 			var prevoteHash tmbytes.HexBytes
 			if !testCase.expectedNilPrevote {
 				prevoteHash = rs.ProposalBlock.Hash()
