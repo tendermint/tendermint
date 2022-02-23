@@ -98,12 +98,13 @@ func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInit
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("error updating validators", "r", r)
+			panic("problem updating validators")
 		}
 	}
 	return types.ResponseInitChain{}
 }
 
-func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 	return types.ResponseInfo{
@@ -184,8 +185,7 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 				app.logger.Info("Decreased val power by 1 because of the equivocation",
 					"val", addr)
 			} else {
-				app.logger.Error("Wanted to punish val, but can't find it",
-					"val", addr)
+				panic(fmt.Errorf("wanted to punish val %q but can't find it", addr))
 			}
 		}
 	}
@@ -221,7 +221,7 @@ func (app *Application) Commit() types.ResponseCommit {
 }
 
 // Returns an associated value or nil if missing.
-func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -232,9 +232,10 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 			panic(err)
 		}
 
-		resQuery.Key = reqQuery.Data
-		resQuery.Value = value
-		return
+		return types.ResponseQuery{
+			Key:   reqQuery.Data,
+			Value: value,
+		}
 	}
 
 	if reqQuery.Prove {
@@ -242,31 +243,39 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 		if err != nil {
 			panic(err)
 		}
+
+		resQuery := types.ResponseQuery{
+			Index:  -1,
+			Key:    reqQuery.Data,
+			Value:  value,
+			Height: app.state.Height,
+		}
+
 		if value == nil {
 			resQuery.Log = "does not exist"
 		} else {
 			resQuery.Log = "exists"
 		}
-		resQuery.Index = -1 // TODO make Proof return index
-		resQuery.Key = reqQuery.Data
-		resQuery.Value = value
-		resQuery.Height = app.state.Height
 
-		return
+		return resQuery
 	}
 
-	resQuery.Key = reqQuery.Data
 	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
 	if err != nil {
 		panic(err)
 	}
+
+	resQuery := types.ResponseQuery{
+		Key:    reqQuery.Data,
+		Value:  value,
+		Height: app.state.Height,
+	}
+
 	if value == nil {
 		resQuery.Log = "does not exist"
 	} else {
 		resQuery.Log = "exists"
 	}
-	resQuery.Value = value
-	resQuery.Height = app.state.Height
 
 	return resQuery
 }
