@@ -118,10 +118,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValUpdates(t *testing.T) {
-	dir := t.TempDir()
-	logger := log.NewTestingLogger(t)
-
-	kvstore := NewPersistentKVStoreApplication(logger, dir)
+	kvstore := NewApplication()
 
 	// init with some validators
 	total := 10
@@ -210,6 +207,7 @@ func makeApplyBlock(
 
 // order doesn't matter
 func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
+	t.Helper()
 	if len(vals1) != len(vals2) {
 		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	}

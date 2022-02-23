@@ -23,10 +23,13 @@ func NodeSuite(ctx context.Context, t *testing.T, logger log.Logger) (service.Se
 	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
-	// start a tendermint node in the background to test against
+	// start an application. this could be the ephemeral
+	// application *except* that application doesn't handle
+	// evidence correctly, so we use this one.
 	dir := t.TempDir()
 	app := kvstore.NewPersistentKVStoreApplication(logger, dir)
 
+	// start a tendermint node in the background to test against.
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	t.Cleanup(func() {
