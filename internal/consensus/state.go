@@ -2392,6 +2392,14 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 
 		added, err = cs.LastPrecommits.AddVote(vote)
 		if !added {
+			cs.Logger.Debug(
+				"vote not added",
+				"height", vote.Height,
+				"vote_type", vote.Type,
+				"val_index", vote.ValidatorIndex,
+				"cs_height", cs.Height,
+				"error", err,
+			)
 			return
 		}
 

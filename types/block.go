@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/rs/zerolog"
 
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -839,6 +841,16 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, base64.StdEncoding.EncodeToString(commit.ThresholdBlockSignature),
 		indent, base64.StdEncoding.EncodeToString(commit.ThresholdStateSignature),
 		indent, commit.hash)
+}
+
+// MarshalZerologObject formats this object for logging purposes
+func (commit *Commit) MarshalZerologObject(e *zerolog.Event) {
+	e.Int64("height", commit.Height)
+	e.Int32("round", commit.Round)
+	e.Str("BlockID.Hash", commit.BlockID.Hash.String())
+	e.Str("StateID", commit.StateID.String())
+	e.Str("BlockSignature", hex.EncodeToString(commit.ThresholdBlockSignature))
+	e.Str("StateSignature", hex.EncodeToString(commit.ThresholdStateSignature))
 }
 
 // ToProto converts Commit to protobuf

@@ -1284,7 +1284,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		return err
 	}
 
-	r.Logger.Debug("received message", "ch_id", chID, "msg", msgI, "peer", envelope.From)
+	// r.Logger.Debug("received message", "ch_id", chID, "msg", msgI, "peer", envelope.From)
 
 	switch chID {
 	case StateChannel:

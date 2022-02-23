@@ -308,7 +308,7 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 
 	select {
 	case msg := <-c.receiveCh:
-		c.logger.Debug("received message", "chID", msg.channelID, "msg", msg.message)
+		// c.logger.Debug("received message", "chID", msg.channelID, "msg", msg.message)
 		return msg.channelID, msg.message, nil
 	case <-c.closer.Done():
 		return 0, nil, io.EOF
@@ -327,7 +327,7 @@ func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error)
 
 	select {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
-		c.logger.Debug("sent message", "chID", chID, "msg", msg)
+		// c.logger.Debug("sent message", "chID", chID, "msg", msg)
 		return true, nil
 	case <-c.closer.Done():
 		return false, io.EOF
@@ -346,7 +346,7 @@ func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, err
 
 	select {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
-		c.logger.Debug("sent message", "chID", chID, "msg", msg)
+		// c.logger.Debug("sent message", "chID", chID, "msg", msg)
 		return true, nil
 	case <-c.closer.Done():
 		return false, io.EOF
