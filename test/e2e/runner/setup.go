@@ -19,6 +19,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
@@ -38,7 +39,7 @@ const (
 )
 
 // Setup sets up the testnet configuration.
-func Setup(testnet *e2e.Testnet) error {
+func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 	logger.Info(fmt.Sprintf("Generating testnet files in %q", testnet.Dir))
 
 	err := os.MkdirAll(testnet.Dir, os.ModePerm)

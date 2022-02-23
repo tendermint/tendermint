@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctypes "github.com/tendermint/tendermint/rpc/coretypes"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -127,7 +128,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 }
 
 // waitForNode waits for a node to become available and catch up to the given block height.
-func waitForNode(ctx context.Context, node *e2e.Node, height int64) (*rpctypes.ResultStatus, error) {
+func waitForNode(ctx context.Context, logger log.Logger, node *e2e.Node, height int64) (*rpctypes.ResultStatus, error) {
 	// If the node is the light client or seed note, we do not check for the last height.
 	// The light client and seed note can be behind the full node and validator
 	if node.Mode == e2e.ModeSeed {
