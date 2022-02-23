@@ -275,7 +275,8 @@ func (app *Application) PrepareProposal(
 	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
 }
 
-// ProcessProposal implements ABCI
+// ProcessProposal implements part of the Application interface.
+// It accepts any proposal that does not contain a malformed transaction.
 func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		_, _, err := parseTx(tx)
