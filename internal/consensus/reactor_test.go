@@ -612,7 +612,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
-		newPersistentKVStore,
+		newKVStore,
 	)
 
 	t.Cleanup(cleanup)
@@ -722,7 +722,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		nPeers,
 		"consensus_val_set_changes_test",
 		newMockTickerFunc(true),
-		newPersistentKVStoreWithPath,
+		newEpehemeralKVStore,
 	)
 	t.Cleanup(cleanup)
 

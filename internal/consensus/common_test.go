@@ -946,6 +946,9 @@ func newKVStore(_ *testing.T, _ log.Logger) abci.Application {
 	return kvstore.NewApplication()
 }
 
+func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
+	return kvstore.NewApplication()
+}
 func newPersistentKVStoreWithPath(logger log.Logger, dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 }

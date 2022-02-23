@@ -20,7 +20,7 @@ const (
 var _ types.Application = (*PersistentKVStoreApplication)(nil)
 
 type PersistentKVStoreApplication struct {
-	app *Application
+	*Application
 }
 
 func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *PersistentKVStoreApplication {
@@ -30,51 +30,12 @@ func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *Persisten
 	}
 
 	return &PersistentKVStoreApplication{
-		app: &Application{
+		Application: &Application{
 			valAddrToPubKeyMap: make(map[string]cryptoproto.PublicKey),
 			state:              loadState(db),
 			logger:             logger,
 		},
 	}
-}
-
-func (app *PersistentKVStoreApplication) Close() error {
-	return app.app.Close()
-}
-
-func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.ResponseInfo {
-	return app.app.Info(req)
-}
-
-func (app *PersistentKVStoreApplication) handleTx(tx []byte) *types.ResponseDeliverTx {
-	return app.app.handleTx(tx)
-}
-
-func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	return app.app.CheckTx(req)
-}
-
-// Commit will panic if InitChain was not called
-func (app *PersistentKVStoreApplication) Commit() types.ResponseCommit {
-	return app.app.Commit()
-}
-
-// When path=/val and data={validator address}, returns the validator update (types.ValidatorUpdate) varint encoded.
-// For any other path, returns an associated value or nil if missing.
-func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-	return app.app.Query(reqQuery)
-}
-
-// Save the validators in the merkle tree
-func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
-	return app.app.InitChain(req)
-}
-
-// Track the block hash and header information
-// Execute transactions
-// Update the validator set
-func (app *PersistentKVStoreApplication) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
-	return app.app.FinalizeBlock(req)
 }
 
 func (app *PersistentKVStoreApplication) ListSnapshots(req types.RequestListSnapshots) types.ResponseListSnapshots {
@@ -99,14 +60,6 @@ func (app *PersistentKVStoreApplication) ExtendVote(req types.RequestExtendVote)
 
 func (app *PersistentKVStoreApplication) VerifyVoteExtension(req types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
 	return types.RespondVerifyVoteExtension(app.verifyExtension(req.Vote.ValidatorAddress, req.Vote.VoteExtension))
-}
-
-func (app *PersistentKVStoreApplication) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	return app.app.PrepareProposal(req)
-}
-
-func (app *PersistentKVStoreApplication) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
-	return app.app.ProcessProposal(req)
 }
 
 // -----------------------------
