@@ -292,7 +292,6 @@ func TestProcessProposal(t *testing.T) {
 	}
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
-	require.NoError(t, err)
 	block1, err := sf.MakeBlock(state, height, lastCommit)
 	require.NoError(t, err)
 	block1.Txs = txs
