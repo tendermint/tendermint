@@ -681,7 +681,7 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	return false
 }
 
-// ToABCI converts the evidence list to a list of the equivalent abci proto type
+// ToABCI converts the evidence list to a slice of the ABCI protobuf messages
 // for use when communicating the evidence to an application.
 func (evl EvidenceList) ToABCI() []abci.Evidence {
 	el := make([]abci.Evidence, 0)
