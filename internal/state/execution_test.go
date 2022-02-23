@@ -242,8 +242,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 }
 
 func TestProcessProposal(t *testing.T) {
-	height := 2
-	txs := factory.MakeTenTxs(int64(height))
+	const height = 2
+	txs := factory.MakeTenTxs(height)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -267,7 +267,7 @@ func TestProcessProposal(t *testing.T) {
 		blockStore,
 	)
 
-	block0, err := sf.MakeBlock(state, int64(height-1), new(types.Commit))
+	block0, err := sf.MakeBlock(state, height-1, new(types.Commit))
 	require.NoError(t, err)
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
@@ -285,9 +285,9 @@ func TestProcessProposal(t *testing.T) {
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
 
-	lastCommit := types.NewCommit(int64(height-1), 0, types.BlockID{}, lastCommitSig)
+	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
 	require.NoError(t, err)
-	block1, err := sf.MakeBlock(state, int64(height), lastCommit)
+	block1, err := sf.MakeBlock(state, height, lastCommit)
 	require.NoError(t, err)
 	block1.Txs = txs
 
