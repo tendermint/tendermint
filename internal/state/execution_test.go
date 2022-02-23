@@ -310,7 +310,7 @@ func TestProcessProposal(t *testing.T) {
 	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Accept: true})
 	acceptBlock, err := blockExec.ProcessProposal(ctx, block1, state)
 	require.NoError(t, err)
-	require.Equal(t, true, acceptBlock)
+	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
 	app.AssertCalled(t, "ProcessProposal", expectedRpp)
 }
