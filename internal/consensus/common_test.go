@@ -932,6 +932,7 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
 }
+
 func newPersistentKVStore(logger log.Logger, dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 }
