@@ -91,6 +91,9 @@ func NewApplication() *Application {
 }
 
 func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	for _, v := range req.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
@@ -195,7 +198,7 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 	return types.ResponseFinalizeBlock{Txs: respTxs, ValidatorUpdates: app.ValUpdates}
 }
 
-func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+func (*Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
@@ -275,7 +278,7 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
 }
 
-func (app *Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
+func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
 			return types.ResponseProcessProposal{Result: types.ResponseProcessProposal_REJECT}
