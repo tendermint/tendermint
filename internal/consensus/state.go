@@ -1453,12 +1453,13 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	}
 
 	/*
-		Before prevoting on the block received from the proposer for the current round and height,
-		we request the Application, via `ProcessProposal` ABCI call, to confirm that the block is
-		valid. If the Application does not accept the block, Tendermint prevotes `nil`.
+		The block has now passed Tendermint's validation rules.
+		Before prevoting the block received from the proposer for the current round and height,
+		we request the Application, via the ProcessProposal, ABCI call to confirm that the block is
+		valid. If the Application does not accept the block, Tendermint prevotes nil.
 
 		WARNING: misuse of block rejection by the Application can seriously compromise Tendermint's
-		liveness properties. Please see `PrepareProposal`-`ProcessProposal` coherence and determinism
+		liveness properties. Please see PrepareProposal-ProcessProposal coherence and determinism
 		properties in the ABCI++ specification.
 	*/
 	isAppValid, err := cs.blockExec.ProcessProposal(ctx, cs.ProposalBlock, cs.state)
