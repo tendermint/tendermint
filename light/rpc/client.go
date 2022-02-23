@@ -12,6 +12,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
@@ -597,6 +598,17 @@ func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64)
 
 func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 	c.prt.RegisterOpDecoder(typ, dec)
+}
+
+// TODO(creachadair): Remove this once the RPC clients support the new method.
+// This is just a placeholder to let things build during development.
+func (c *Client) Events(ctx *rpctypes.Context,
+	filter *ctypes.EventFilter,
+	maxItems int,
+	before, after cursor.Cursor,
+	waitTime time.Duration,
+) (*ctypes.ResultEvents, error) {
+	return nil, errors.New("the /events method is not implemented")
 }
 
 // SubscribeWS subscribes for events using the given query and remote address as
