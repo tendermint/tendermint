@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -750,7 +749,6 @@ func makeConsensusState(
 	nValidators int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func(t *testing.T, logger log.Logger) abci.Application,
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 	t.Helper()
@@ -779,11 +777,8 @@ func makeConsensusState(
 
 		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 
-		app := appFunc(t, logger)
-
-		if appCloser, ok := app.(io.Closer); ok {
-			closeFuncs = append(closeFuncs, appCloser.Close)
-		}
+		app := kvstore.NewApplication()
+		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -934,22 +929,10 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
-func newPersistentKVStore(t *testing.T, logger log.Logger) abci.Application {
-	t.Helper()
-
-	dir := t.TempDir()
-
-	return kvstore.NewPersistentKVStoreApplication(logger, dir)
-}
-
-func newKVStore(_ *testing.T, _ log.Logger) abci.Application {
-	return kvstore.NewApplication()
-}
-
 func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
 }
-func newPersistentKVStoreWithPath(logger log.Logger, dbDir string) abci.Application {
+func newPersistentKVStore(logger log.Logger, dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 }
 
