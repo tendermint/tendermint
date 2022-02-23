@@ -214,9 +214,9 @@ func (env *Environment) BlockResults(ctx context.Context, heightPtr *int64) (*co
 
 	return &coretypes.ResultBlockResults{
 		Height:                height,
-		TxsResults:            results.FinalizeBlock.Txs,
+		TxsResults:            results.FinalizeBlock.TxResults,
 		TotalGasUsed:          totalGasUsed,
-		FinalizeBlockEvents:   results.FinalizeBlock.Events,
+		FinalizeBlockEvents:   results.FinalizeBlock.BlockEvents,
 		ValidatorUpdates:      results.FinalizeBlock.ValidatorUpdates,
 		ConsensusParamUpdates: results.FinalizeBlock.ConsensusParamUpdates,
 	}, nil

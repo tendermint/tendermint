@@ -109,10 +109,10 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, 2)
 	abciResponses.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-	abciResponses.FinalizeBlock.Txs = dtxs
+	abciResponses.FinalizeBlock.TxResults = dtxs
 
-	abciResponses.FinalizeBlock.Txs[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
-	abciResponses.FinalizeBlock.Txs[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
+	abciResponses.FinalizeBlock.TxResults[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
+	abciResponses.FinalizeBlock.TxResults[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
 	pbpk, err := encoding.PubKeyToProto(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
 	abciResponses.FinalizeBlock.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}

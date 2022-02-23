@@ -222,7 +222,7 @@ func newTestBlockHeader() types.EventDataNewBlockHeader {
 	return types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
 		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
-			Events: []abci.Event{
+			BlockEvents: []abci.Event{
 				makeIndexedEvent("finalize_event.proposer", "FCAA001"),
 				makeIndexedEvent("thingy.whatzit", "O.O"),
 				makeIndexedEvent("my_event.foo", "100"),

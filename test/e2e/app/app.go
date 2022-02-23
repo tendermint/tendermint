@@ -178,7 +178,7 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 	return abci.ResponseFinalizeBlock{
 		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
-		Events: []abci.Event{
+		BlockEvents: []abci.Event{
 			{
 				Type: "val_updates",
 				Attributes: []abci.EventAttribute{

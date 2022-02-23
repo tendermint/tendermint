@@ -213,7 +213,7 @@ func eventReIndex(cmd *cobra.Command, args eventReIndexArgs) error {
 						Height: b.Height,
 						Index:  uint32(i),
 						Tx:     b.Data.Txs[i],
-						Result: *(r.FinalizeBlock.Txs[i]),
+						Result: *(r.FinalizeBlock.TxResults[i]),
 					}
 
 					_ = batch.Add(&tr)

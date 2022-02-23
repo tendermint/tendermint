@@ -89,7 +89,7 @@ func (b *EventBus) Publish(ctx context.Context, eventValue string, eventData typ
 }
 
 func (b *EventBus) PublishEventNewBlock(ctx context.Context, data types.EventDataNewBlock) error {
-	events := data.ResultFinalizeBlock.Events
+	events := data.ResultFinalizeBlock.BlockEvents
 
 	// add Tendermint-reserved new block event
 	events = append(events, types.EventNewBlock)
@@ -100,7 +100,7 @@ func (b *EventBus) PublishEventNewBlock(ctx context.Context, data types.EventDat
 func (b *EventBus) PublishEventNewBlockHeader(ctx context.Context, data types.EventDataNewBlockHeader) error {
 	// no explicit deadline for publishing events
 
-	events := data.ResultFinalizeBlock.Events
+	events := data.ResultFinalizeBlock.BlockEvents
 
 	// add Tendermint-reserved new block header event
 	events = append(events, types.EventNewBlockHeader)

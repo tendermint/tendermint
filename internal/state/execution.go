@@ -253,7 +253,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, abciResponses.FinalizeBlock.Txs)
+	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, abciResponses.FinalizeBlock.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -383,7 +383,7 @@ func execBlockOnProxyApp(
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
-	abciResponses.FinalizeBlock.Txs = dtxs
+	abciResponses.FinalizeBlock.TxResults = dtxs
 
 	// Begin block
 	var err error
@@ -583,9 +583,9 @@ func fireEvents(
 	}
 
 	// sanity check
-	if len(abciResponses.FinalizeBlock.Txs) != len(block.Data.Txs) {
+	if len(abciResponses.FinalizeBlock.TxResults) != len(block.Data.Txs) {
 		panic(fmt.Sprintf("number of TXs (%d) and ABCI TX responses (%d) do not match",
-			len(block.Data.Txs), len(abciResponses.FinalizeBlock.Txs)))
+			len(block.Data.Txs), len(abciResponses.FinalizeBlock.TxResults)))
 	}
 
 	for i, tx := range block.Data.Txs {
@@ -594,7 +594,7 @@ func fireEvents(
 				Height: block.Height,
 				Index:  uint32(i),
 				Tx:     tx,
-				Result: *(abciResponses.FinalizeBlock.Txs[i]),
+				Result: *(abciResponses.FinalizeBlock.TxResults[i]),
 			},
 		}); err != nil {
 			logger.Error("failed publishing event TX", "err", err)

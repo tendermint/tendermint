@@ -239,7 +239,7 @@ func TestPruneStates(t *testing.T) {
 
 				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
 					FinalizeBlock: &abci.ResponseFinalizeBlock{
-						TxResults: []*abci.ResponseDeliverTx{
+						TxResults: []*abci.ExecTxResult{
 							{Data: []byte{1}},
 							{Data: []byte{2}},
 							{Data: []byte{3}},
@@ -303,7 +303,7 @@ func TestPruneStates(t *testing.T) {
 func TestABCIResponsesResultsHash(t *testing.T) {
 	responses := &tmstate.ABCIResponses{
 		FinalizeBlock: &abci.ResponseFinalizeBlock{
-			TxResults: []*abci.ResponseDeliverTx{
+			TxResults: []*abci.ExecTxResult{
 				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
 			},
 		},
@@ -312,7 +312,7 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 	root := sm.ABCIResponsesResultsHash(responses)
 
 	// root should be Merkle tree root of FinalizeBlock tx responses
-	results := types.NewResults(responses.FinalizeBlock.Txs)
+	results := types.NewResults(responses.FinalizeBlock.TxResults)
 	assert.Equal(t, root, results.Hash())
 
 	// test we can prove first tx in FinalizeBlock

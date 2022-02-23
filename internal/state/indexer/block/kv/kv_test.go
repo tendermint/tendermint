@@ -21,7 +21,7 @@ func TestBlockIndexer(t *testing.T) {
 	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
 		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
-			Events: []abci.Event{
+			BlockEvents: []abci.Event{
 				{
 					Type: "finalize_event1",
 					Attributes: []abci.EventAttribute{
@@ -54,7 +54,7 @@ func TestBlockIndexer(t *testing.T) {
 		require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
 			Header: types.Header{Height: int64(i)},
 			ResultFinalizeBlock: abci.ResponseFinalizeBlock{
-				Events: []abci.Event{
+				BlockEvents: []abci.Event{
 					{
 						Type: "finalize_event1",
 						Attributes: []abci.EventAttribute{

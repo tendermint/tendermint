@@ -84,7 +84,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 	resultFinalizeBlock := abci.ResponseFinalizeBlock{
-		Events: []abci.Event{
+		BlockEvents: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{
 				{Key: "baz", Value: "1"},
 				{Key: "foz", Value: "2"},
@@ -253,7 +253,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
 	resultFinalizeBlock := abci.ResponseFinalizeBlock{
-		Events: []abci.Event{
+		BlockEvents: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{
 				{Key: "baz", Value: "1"},
 				{Key: "foz", Value: "2"},

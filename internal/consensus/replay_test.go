@@ -668,8 +668,8 @@ func TestMockProxyApp(t *testing.T) {
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
 		abciResWithEmptyDeliverTx.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = append(abciResWithEmptyDeliverTx.FinalizeBlock.Txs, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.FinalizeBlock.TxResults = make([]*abci.ResponseDeliverTx, 0)
+		abciResWithEmptyDeliverTx.FinalizeBlock.TxResults = append(abciResWithEmptyDeliverTx.FinalizeTxResults.Txs, &abci.ResponseDeliverTx{})
 
 		// called when saveABCIResponses:
 		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
@@ -685,7 +685,7 @@ func TestMockProxyApp(t *testing.T) {
 
 		abciRes := new(tmstate.ABCIResponses)
 		abciRes.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
+		abciRes.FinalizeBlock.TxResults = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.TxResults))
 
 		someTx := []byte("tx")
 		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})

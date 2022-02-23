@@ -156,7 +156,7 @@ func TestReIndexEvent(t *testing.T) {
 	dtx := abcitypes.ResponseDeliverTx{}
 	abciResp := &prototmstate.ABCIResponses{
 		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
-			TxResults: []*abcitypes.ResponseDeliverTx{&dtx},
+			TxResults: []*abcitypes.ExecTxResult{&dtx},
 		},
 	}
 

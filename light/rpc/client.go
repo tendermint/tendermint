@@ -452,7 +452,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 
 	// proto-encode FinalizeBlock events
 	bbeBytes, err := proto.Marshal(&abci.ResponseFinalizeBlock{
-		Events: res.FinalizeBlockEvents,
+		BlockEvents: res.FinalizeBlockEvents,
 	})
 	if err != nil {
 		return nil, err

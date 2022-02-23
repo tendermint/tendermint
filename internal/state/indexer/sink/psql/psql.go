@@ -170,7 +170,7 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
 			return fmt.Errorf("block meta-events: %w", err)
 		}
 		// Insert all the block events. Order is important here,
-		if err := insertEvents(dbtx, blockID, 0, h.ResultFinalizeBlock.Events); err != nil {
+		if err := insertEvents(dbtx, blockID, 0, h.ResultFinalizeBlock.BlockEvents); err != nil {
 			return fmt.Errorf("finalize-block events: %w", err)
 		}
 		return nil
