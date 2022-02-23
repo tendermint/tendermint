@@ -415,10 +415,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	if block.Height == initialHeight {
 		// there is no last commmit for the initial height.
 		// return an empty value.
-		return abci.LastCommitInfo{
-			Round: 0,
-			Votes: make([]abci.VoteInfo, 0),
-		}
+		return abci.LastCommitInfo{}
 	}
 
 	lastValSet, err := store.LoadValidators(block.Height - 1)
