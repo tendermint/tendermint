@@ -4,10 +4,11 @@
   "description": "Tendermint Core Documentation",
   "main": "index.js",
   "dependencies": {
-    "vuepress-theme-cosmos": "^1.0.180"
+    "vuepress-theme-cosmos": "^1.0.183"
   },
   "devDependencies": {
-    "watchpack": "^2.1.1"
+    "@vuepress/plugin-html-redirect": "^0.1.4",
+    "watchpack": "^2.3.1"
   },
   "scripts": {
     "preserve": "./pre.sh",
