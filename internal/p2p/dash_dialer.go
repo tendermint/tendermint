@@ -118,5 +118,5 @@ func (cm *routerDashDialer) lookupIPPort(ctx context.Context, ip net.IP, port ui
 		}
 	}
 
-	return NodeAddress{}, errPeerNotFound(fmt.Errorf("peer %s:%dd not found in the address book", ip, port))
+	return NodeAddress{}, errPeerNotFound(fmt.Errorf("peer %s:%d not found in the address book", ip, port))
 }

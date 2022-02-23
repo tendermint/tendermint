@@ -20,6 +20,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -298,7 +299,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
 	cfg.Consensus.AppHashSize = crypto.DefaultAppHashSize
-	cfg.BaseConfig.LogLevel = "info"
 	cfg.P2P.UseLegacy = node.UseLegacyP2P
 	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database

@@ -21,6 +21,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lib/pq v1.10.4
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.2

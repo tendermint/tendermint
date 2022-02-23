@@ -31,8 +31,6 @@ var (
 	ErrNoHostname = errors.New("no hostname")
 	// ErrNoPort is returned when no valid port is set for the validator address
 	ErrNoPort = errors.New("no port")
-	// ErrNoNodeID is returned when node ID is not set for the node ID
-	ErrNoNodeID = errors.New("no node ID")
 )
 
 // ParseValidatorAddress parses provided address, which should be in `proto://nodeID@host:port` form.

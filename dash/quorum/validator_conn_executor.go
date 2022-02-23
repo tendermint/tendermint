@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/dash/quorum/selectpeers"
@@ -24,6 +25,9 @@ const (
 	defaultTimeout = 1 * time.Second
 	// defaultEventBusCapacity determines how many events can wait in the event bus for processing. 10 looks very safe.
 	defaultEventBusCapacity = 10
+
+	resolverAddressBook = "DashDialer"
+	resolverTCP         = "TCPNodeIDResolver"
 )
 
 type optionFunc func(vc *ValidatorConnExecutor) error
@@ -50,7 +54,7 @@ type ValidatorConnExecutor struct {
 	// quorumHash contains current quorum hash
 	quorumHash tmbytes.HexBytes
 	// nodeIDResolvers can be used to determine a node ID for a validator
-	nodeIDResolvers []p2p.NodeIDResolver
+	nodeIDResolvers map[string]p2p.NodeIDResolver
 	// mux is a mutex to ensure only one goroutine is processing connections
 	mux sync.Mutex
 
@@ -81,9 +85,9 @@ func NewValidatorConnExecutor(
 		connectedValidators: validatorMap{},
 		quorumHash:          make(tmbytes.HexBytes, crypto.QuorumHashSize),
 	}
-	vc.nodeIDResolvers = []p2p.NodeIDResolver{
-		vc.dialer,
-		NewTCPNodeIDResolver(),
+	vc.nodeIDResolvers = map[string]p2p.NodeIDResolver{
+		resolverAddressBook: vc.dialer,
+		resolverTCP:         NewTCPNodeIDResolver(),
 	}
 	baseService := service.NewBaseService(log.NewNopLogger(), validatorConnExecutorName, vc)
 	vc.BaseService = *baseService
@@ -125,7 +129,6 @@ func (vc *ValidatorConnExecutor) OnStart() error {
 	if err := vc.subscribe(); err != nil {
 		return err
 	}
-	// establish connection with validators retrieves from genesis or init-chain
 	err := vc.updateConnections()
 	if err != nil {
 		return err
@@ -242,20 +245,27 @@ func (vc *ValidatorConnExecutor) resolveNodeID(va *types.ValidatorAddress) error
 	if va.NodeID != "" {
 		return nil
 	}
-	for _, resolver := range vc.nodeIDResolvers {
+	var allErrors error
+	for _, method := range []string{resolverAddressBook, resolverTCP} {
+		resolver, ok := vc.nodeIDResolvers[method]
+		if !ok {
+			return errors.New("invalid node ID resolver: " + method)
+		}
 		address, err := resolver.Resolve(*va)
 		if err == nil && address.NodeID != "" {
 			va.NodeID = address.NodeID
-			return nil
+			return nil // success
 		}
 		vc.Logger.Debug(
 			"warning: validator node id lookup method failed",
 			"url", va.String(),
-			"method", reflect.TypeOf(resolver).String(),
+			"method", method,
 			"error", err,
 		)
+		allErrors = multierror.Append(allErrors, fmt.Errorf(method+" error: %w", err))
 	}
-	return types.ErrNoNodeID
+
+	return allErrors
 }
 
 // selectValidators selects `count` validators from current ValidatorSet.
@@ -273,16 +283,27 @@ func (vc *ValidatorConnExecutor) selectValidators() (validatorMap, error) {
 	if err != nil {
 		return validatorMap{}, err
 	}
+
 	// fetch node IDs
-	for _, validator := range selectedValidators {
+	selectedValidators = vc.ensureValidatorsHaveNodeIDs(selectedValidators)
+	return newValidatorMap(selectedValidators), nil
+}
+
+// ensureValidatorsHaveNodeIDs iterates through all `validators` and determines their Node IDs where validtes.
+// Returns a slice that contains only validators with valid node ID.
+// Validators where node ID lookup failed are skipped (no error reported).
+// Note that this function modifies validators which are in the input slice.
+func (vc *ValidatorConnExecutor) ensureValidatorsHaveNodeIDs(validators []*types.Validator) (results []*types.Validator) {
+	results = make([]*types.Validator, 0, len(validators))
+	for _, validator := range validators {
 		err := vc.resolveNodeID(&validator.NodeAddress)
 		if err != nil {
-			vc.Logger.Debug("cannot determine node id for validator", "url", validator.String(), "error", err)
-			// no return, as it's not critical
+			vc.Logger.Error("cannot determine node id for validator, skipping", "url", validator.String(), "error", err)
+			continue
 		}
+		results = append(results, validator)
 	}
-
-	return newValidatorMap(selectedValidators), nil
+	return results
 }
 
 func (vc *ValidatorConnExecutor) disconnectValidator(validator types.Validator) error {

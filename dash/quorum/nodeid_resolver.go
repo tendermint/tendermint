@@ -49,7 +49,7 @@ func (resolver tcpNodeIDResolver) connect(host string, port uint16) (net.Conn, e
 	return connection, nil
 }
 
-// Resolve implements NodeIDResolver
+// Resolve implements NodeIDResolver
 // Resolve retrieves a node ID from remote validator and generates a correct node address.
 // Note that it is quite expensive, as it establishes secure connection to the other node
 // which is dropped afterwards.
