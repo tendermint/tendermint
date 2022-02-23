@@ -65,6 +65,4 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 }
 
 // OnStop stops the gRPC server.
-func (s *GRPCServer) OnStop() {
-	s.server.Stop()
-}
+func (s *GRPCServer) OnStop() { s.server.Stop() }

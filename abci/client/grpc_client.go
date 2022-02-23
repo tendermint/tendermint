@@ -91,14 +91,18 @@ RETRY_LOOP:
 }
 
 func (cli *grpcClient) OnStop() {
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
+
 	if cli.conn != nil {
-		cli.conn.Close()
+		cli.err = cli.conn.Close()
 	}
 }
 
 func (cli *grpcClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
+
 	return cli.err
 }
 
