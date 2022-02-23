@@ -684,7 +684,7 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 // ToABCI converts the evidence list to a slice of the ABCI protobuf messages
 // for use when communicating the evidence to an application.
 func (evl EvidenceList) ToABCI() []abci.Evidence {
-	el := make([]abci.Evidence, 0)
+	var el []abci.Evidence
 	for _, e := range evl {
 		el = append(el, e.ABCI()...)
 	}
