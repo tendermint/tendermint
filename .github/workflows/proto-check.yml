@@ -6,19 +6,25 @@ on:
   workflow_dispatch:  # allow running workflow manually
   pull_request:
     paths:
-      - "proto/*"
+      - "proto/**"
+
 jobs:
-  proto-lint:
+  lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2.4.0
-      - name: lint
-        run: make proto-lint
-  proto-breakage:
+    - uses: actions/checkout@v2
+    - uses: bufbuild/buf-setup-action@v1.0.0
+    - uses: bufbuild/buf-lint-action@v1
+      with:
+        input: 'proto'
+
+  break-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v2.4.0
-      - name: check-breakage
-        run: make proto-check-breaking-ci
+      - uses: actions/checkout@v2
+      - uses: bufbuild/buf-setup-action@v1.0.0
+      - uses: bufbuild/buf-breaking-action@v1
+        with:
+          input: 'proto'
+          against: 'https://github.com/${{ github.repository }}.git#branch=${{ github.event.pull_request.base.ref }},ref=HEAD~1,subdir=proto'
