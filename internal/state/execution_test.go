@@ -280,7 +280,14 @@ func TestProcessProposal(t *testing.T) {
 		pk, err := privVal.GetPubKey(ctx)
 		require.NoError(t, err)
 		addr := pk.Address()
-		voteInfos = append(voteInfos, abci.VoteInfo{SignedLastBlock: true, Validator: abci.Validator{Address: addr, Power: 1000}})
+		voteInfos = append(voteInfos,
+			abci.VoteInfo{
+				SignedLastBlock: true,
+				Validator: abci.Validator{
+					Address: addr,
+					Power:   1000,
+				},
+			})
 		require.NoError(t, err)
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
