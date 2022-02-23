@@ -107,12 +107,12 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	require.NoError(t, err)
 
 	abciResponses := new(tmstate.ABCIResponses)
-	dtxs := make([]*abci.ResponseDeliverTx, 2)
+	dtxs := make([]*abci.ExecTxResult, 2)
 	abciResponses.FinalizeBlock = new(abci.ResponseFinalizeBlock)
 	abciResponses.FinalizeBlock.TxResults = dtxs
 
-	abciResponses.FinalizeBlock.TxResults[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
-	abciResponses.FinalizeBlock.TxResults[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
+	abciResponses.FinalizeBlock.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
+	abciResponses.FinalizeBlock.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
 	pbpk, err := encoding.PubKeyToProto(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
 	abciResponses.FinalizeBlock.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
@@ -136,23 +136,23 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	cases := [...]struct {
 		// Height is implied to equal index+2,
 		// as block 1 is created from genesis.
-		added    []*abci.ResponseDeliverTx
-		expected []*abci.ResponseDeliverTx
+		added    []*abci.ExecTxResult
+		expected []*abci.ExecTxResult
 	}{
 		0: {
 			nil,
 			nil,
 		},
 		1: {
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
 			},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{Code: 32, Data: []byte("Hello")},
 			},
 		},
 		2: {
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{Code: 383},
 				{
 					Data: []byte("Gotcha!"),
@@ -162,7 +162,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 					},
 				},
 			},
-			[]*abci.ResponseDeliverTx{
+			[]*abci.ExecTxResult{
 				{Code: 383, Data: nil},
 				{Code: 0, Data: []byte("Gotcha!"), Events: []abci.Event{
 					{Type: "type1", Attributes: []abci.EventAttribute{{Key: "a", Value: "1"}}},
@@ -175,7 +175,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			nil,
 		},
 		4: {
-			[]*abci.ResponseDeliverTx{nil},
+			[]*abci.ExecTxResult{nil},
 			nil,
 		},
 	}

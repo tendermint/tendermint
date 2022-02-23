@@ -27,12 +27,12 @@ const (
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
 	ar := app.FinalizeBlock(req)
-	require.Equal(t, 1, len(ar.Txs))
-	require.False(t, ar.Txs[0].IsErr())
+	require.Equal(t, 1, len(ar.TxResults))
+	require.False(t, ar.TxResults[0].IsErr())
 	// repeating tx doesn't raise error
 	ar = app.FinalizeBlock(req)
-	require.Equal(t, 1, len(ar.Txs))
-	require.False(t, ar.Txs[0].IsErr())
+	require.Equal(t, 1, len(ar.TxResults))
+	require.False(t, ar.TxResults[0].IsErr())
 	// commit
 	app.Commit()
 
@@ -326,13 +326,13 @@ func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client)
 func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
 	ar, err := app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
-	require.Equal(t, 1, len(ar.Txs))
-	require.False(t, ar.Txs[0].IsErr())
+	require.Equal(t, 1, len(ar.TxResults))
+	require.False(t, ar.TxResults[0].IsErr())
 	// repeating FinalizeBlock doesn't raise error
 	ar, err = app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
-	require.Equal(t, 1, len(ar.Txs))
-	require.False(t, ar.Txs[0].IsErr())
+	require.Equal(t, 1, len(ar.TxResults))
+	require.False(t, ar.TxResults[0].IsErr())
 	// commit
 	_, err = app.Commit(ctx)
 	require.NoError(t, err)

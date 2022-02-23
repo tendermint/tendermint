@@ -442,7 +442,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 }
 
 func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
-	var dtxs []*abci.ResponseDeliverTx
+	var dtxs []*abci.ExecTxResult
 	// strip nil values,
 	for _, tx := range abciResponses.FinalizeBlock.TxResults {
 		if tx != nil {

@@ -299,12 +299,12 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 	app.CommitVotes = req.LastCommitInfo.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
-	resTxs := make([]*abci.ResponseDeliverTx, len(req.Txs))
+	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		if len(tx) > 0 {
-			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 		} else {
-			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK + 10} // error
+			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK + 10} // error
 		}
 	}
 

@@ -155,7 +155,7 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 
 // FinalizeBlock implements ABCI.
 func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	var txs = make([]*abci.ResponseDeliverTx, len(req.Txs))
+	var txs = make([]*abci.ExecTxResult, len(req.Txs))
 
 	app.mu.Lock()
 	defer app.mu.Unlock()
@@ -167,7 +167,7 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 		}
 		app.state.Set(key, value)
 
-		txs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
+		txs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
 
 	valUpdates, err := app.validatorUpdates(uint64(req.Height))

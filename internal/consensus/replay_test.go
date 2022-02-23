@@ -668,8 +668,8 @@ func TestMockProxyApp(t *testing.T) {
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
 		abciResWithEmptyDeliverTx.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-		abciResWithEmptyDeliverTx.FinalizeBlock.TxResults = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.FinalizeBlock.TxResults = append(abciResWithEmptyDeliverTx.FinalizeTxResults.Txs, &abci.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.FinalizeBlock.TxResults = make([]*abci.ExecTxResult, 0)
+		abciResWithEmptyDeliverTx.FinalizeBlock.TxResults = append(abciResWithEmptyDeliverTx.FinalizeBlock.TxResults, &abci.ExecTxResult{})
 
 		// called when saveABCIResponses:
 		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
@@ -685,7 +685,7 @@ func TestMockProxyApp(t *testing.T) {
 
 		abciRes := new(tmstate.ABCIResponses)
 		abciRes.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-		abciRes.FinalizeBlock.TxResults = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.TxResults))
+		abciRes.FinalizeBlock.TxResults = make([]*abci.ExecTxResult, len(loadedAbciRes.FinalizeBlock.TxResults))
 
 		someTx := []byte("tx")
 		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
@@ -693,7 +693,7 @@ func TestMockProxyApp(t *testing.T) {
 		// TODO: make use of res.Log
 		// TODO: make use of this info
 		// Blocks may include invalid txs.
-		for _, tx := range resp.Txs {
+		for _, tx := range resp.TxResults {
 			if tx.Code == abci.CodeTypeOK {
 				validTxs++
 			} else {

@@ -418,7 +418,7 @@ func (txmp *TxMempool) Update(
 	ctx context.Context,
 	blockHeight int64,
 	blockTxs types.Txs,
-	deliverTxResponses []*abci.ResponseDeliverTx,
+	execTxResult []*abci.ExecTxResult,
 	newPreFn PreCheckFunc,
 	newPostFn PostCheckFunc,
 ) error {
@@ -434,7 +434,7 @@ func (txmp *TxMempool) Update(
 	}
 
 	for i, tx := range blockTxs {
-		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+		if execTxResult[i].Code == abci.CodeTypeOK {
 			// add the valid committed transaction to the cache (if missing)
 			_ = txmp.cache.Push(tx)
 		} else if !txmp.config.KeepInvalidTxsInCache {

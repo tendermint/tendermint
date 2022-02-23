@@ -208,8 +208,8 @@ func (env *Environment) BlockResults(ctx context.Context, heightPtr *int64) (*co
 	}
 
 	var totalGasUsed int64
-	for _, tx := range results.FinalizeBlock.GetTxs() {
-		totalGasUsed += tx.GetGasUsed()
+	for _, res := range results.FinalizeBlock.GetTxResults() {
+		totalGasUsed += res.GetGasUsed()
 	}
 
 	return &coretypes.ResultBlockResults{

@@ -326,7 +326,7 @@ func (blockExec *BlockExecutor) Commit(
 	ctx context.Context,
 	state State,
 	block *types.Block,
-	deliverTxResponses []*abci.ResponseDeliverTx,
+	txResults []*abci.ExecTxResult,
 ) ([]byte, int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -359,7 +359,7 @@ func (blockExec *BlockExecutor) Commit(
 		ctx,
 		block.Height,
 		block.Txs,
-		deliverTxResponses,
+		txResults,
 		TxPreCheck(state),
 		TxPostCheck(state),
 	)
@@ -382,7 +382,7 @@ func execBlockOnProxyApp(
 ) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
-	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
+	dtxs := make([]*abci.ExecTxResult, len(block.Txs))
 	abciResponses.FinalizeBlock.TxResults = dtxs
 
 	// Begin block

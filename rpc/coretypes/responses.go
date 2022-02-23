@@ -241,10 +241,10 @@ type ResultBroadcastTx struct {
 
 // CheckTx and DeliverTx results
 type ResultBroadcastTxCommit struct {
-	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
-	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      bytes.HexBytes         `json:"hash"`
-	Height    int64                  `json:"height,string"`
+	CheckTx  abci.ResponseCheckTx `json:"check_tx"`
+	TxResult abci.ExecTxResult    `json:"tx_result"`
+	Hash     bytes.HexBytes       `json:"hash"`
+	Height   int64                `json:"height,string"`
 }
 
 // ResultCheckTx wraps abci.ResponseCheckTx.
@@ -254,12 +254,12 @@ type ResultCheckTx struct {
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     bytes.HexBytes         `json:"hash"`
-	Height   int64                  `json:"height,string"`
-	Index    uint32                 `json:"index"`
-	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Hash     bytes.HexBytes    `json:"hash"`
+	Height   int64             `json:"height,string"`
+	Index    uint32            `json:"index"`
+	TxResult abci.ExecTxResult `json:"tx_result"`
+	Tx       types.Tx          `json:"tx"`
+	Proof    types.TxProof     `json:"proof,omitempty"`
 }
 
 // Result of searching for txs
