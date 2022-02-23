@@ -86,13 +86,11 @@ func StartTendermint(
 	for _, opt := range opts {
 		opt(nodeOpts)
 	}
-	var (
-		logger log.Logger
-		err    error
-	)
+	var logger log.Logger
 	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()
 	} else {
+		var err error
 		logger, err = log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 		if err != nil {
 			return nil, func(_ context.Context) error { cancel(); return nil }, err

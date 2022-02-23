@@ -57,7 +57,7 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 	// Capture the current ID, since it can change in the future.
 	subscriptionID := callInfo.RPCRequest.ID
 	go func() {
-		opctx, opcancel := context.WithCancel(context.Background())
+		opctx, opcancel := context.WithCancel(context.TODO())
 		defer opcancel()
 
 		for {
