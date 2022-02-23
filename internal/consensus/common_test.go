@@ -508,11 +508,13 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 }
 
 type makeStateArgs struct {
+	config      *config.Config
+	logger      log.Logger
 	validators  int
 	application abci.Application
 }
 
-func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log.Logger, args makeStateArgs) (*State, []*validatorStub) {
+func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
 	t.Helper()
 	// Get State
 	validators := 4
@@ -524,14 +526,20 @@ func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log
 	if args.application != nil {
 		app = args.application
 	}
+	if args.config == nil {
+		args.config = configSetup(t)
+	}
+	if args.logger == nil {
+		args.logger = log.NewNopLogger()
+	}
 
-	state, privVals := makeGenesisState(ctx, t, cfg, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
 		Validators: validators,
 	})
 
 	vss := make([]*validatorStub, validators)
 
-	cs := newState(ctx, t, logger, state, privVals[0], app)
+	cs := newState(ctx, t, args.logger, state, privVals[0], app)
 
 	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
