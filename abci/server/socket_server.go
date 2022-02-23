@@ -71,7 +71,7 @@ func (s *SocketServer) OnStop() {
 
 	for id := range s.conns {
 		if err := s.unsafeRmConn(id); err != nil {
-			s.logger.Error("error closing connection", "id", id, "conn", conn, "err", err)
+			s.logger.Error("error closing connection", "id", id, "err", err)
 		}
 	}
 }
