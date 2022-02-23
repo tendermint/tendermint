@@ -305,6 +305,31 @@ paths:
         that match the query. Each item returned includes a cursor that marks
         its location in the log. Cursors can be passed via the "before" and
         "after" parameters to fetch events earlier in the log.
+      parameters:
+        - in: query
+          name: filter
+          schema:
+            $ref: "#/components/schemas/EventFilter"
+        - in: query
+          name: maxItems
+          schema:
+            type: integer
+            example: 10
+        - in: query
+          name: after
+          schema:
+            type: string
+            example: "0005d7c09065e9a7-01cf"
+        - in: query
+          name: before
+          schema:
+            type: string
+            example: "0005d7c09065e9a7-01cf"
+        - in: query
+          name: waitTime
+          schema:
+            type: integer
+            example: 5000000000
       responses:
         "200":
           description: Reports a batch of matching events
@@ -1479,6 +1504,13 @@ components:
             value:
               type: string
               format: json
+    EventFilter:
+      description: Event filter query
+      type: object
+      properties:
+        filter:
+          type: string
+          example: "tm.event = 'Tx'"
     EventsResponse:
       description: Events response
       allOf:
