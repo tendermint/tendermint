@@ -278,7 +278,7 @@ func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci
 		app.txCount++
 		respTxs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 	}
-	return abci.ResponseFinalizeBlock{Txs: respTxs}
+	return abci.ResponseFinalizeBlock{TxResults: respTxs}
 }
 
 func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {

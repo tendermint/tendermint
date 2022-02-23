@@ -192,7 +192,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		h := int64(i + 1) // last block height, one below what we save
 		responses := &tmstate.ABCIResponses{
 			FinalizeBlock: &abci.ResponseFinalizeBlock{
-				Txs: tc.added,
+				TxResults: tc.added,
 			},
 		}
 		err := stateStore.SaveABCIResponses(h, responses)
@@ -207,7 +207,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			t.Log(res)
 			responses := &tmstate.ABCIResponses{
 				FinalizeBlock: &abci.ResponseFinalizeBlock{
-					Txs: tc.expected,
+					TxResults: tc.expected,
 				},
 			}
 			sm.ABCIResponsesResultsHash(res)

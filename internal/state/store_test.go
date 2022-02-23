@@ -239,7 +239,7 @@ func TestPruneStates(t *testing.T) {
 
 				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
 					FinalizeBlock: &abci.ResponseFinalizeBlock{
-						Txs: []*abci.ResponseDeliverTx{
+						TxResults: []*abci.ResponseDeliverTx{
 							{Data: []byte{1}},
 							{Data: []byte{2}},
 							{Data: []byte{3}},
@@ -303,7 +303,7 @@ func TestPruneStates(t *testing.T) {
 func TestABCIResponsesResultsHash(t *testing.T) {
 	responses := &tmstate.ABCIResponses{
 		FinalizeBlock: &abci.ResponseFinalizeBlock{
-			Txs: []*abci.ResponseDeliverTx{
+			TxResults: []*abci.ResponseDeliverTx{
 				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
 			},
 		},

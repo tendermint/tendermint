@@ -176,7 +176,7 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 	}
 
 	return abci.ResponseFinalizeBlock{
-		Txs:              txs,
+		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
 		Events: []abci.Event{
 			{
