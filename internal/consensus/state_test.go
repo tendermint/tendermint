@@ -574,7 +574,9 @@ func TestStateLock_NoPOL(t *testing.T) {
 
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	cs2, _ := makeState(ctx, t, makeStateArgs{config: config, validators: 2}) // needed so generated block is different than locked block
+	// cs1 is locked on a block at this point, so we must generate a new consensus
+	// state to force a new proposal block to be generated.
+	cs2, _ := makeState(ctx, t, makeStateArgs{config: config, validators: 2})
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round+1)
 	require.NotNil(t, propBlock, "Failed to create proposal block with vs2")
