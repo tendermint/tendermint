@@ -46,23 +46,22 @@ func TestTransport_AcceptClose(t *testing.T) {
 
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
-		opctx, opcancel := context.WithCancel(ctx)
-
-		// In-progress Accept should error on concurrent close.
-		errCh := make(chan error, 1)
-		go func() {
-			time.Sleep(200 * time.Millisecond)
-			opcancel()
-			errCh <- a.Close()
-		}()
+		opctx, opcancel := context.WithTimeout(ctx, 200*time.Millisecond)
+		defer opcancel()
 
 		_, err := a.Accept(opctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
-		require.NoError(t, <-errCh)
 
-		// Closed transport should return error immediately.
-		_, err = a.Accept(opctx)
+		<-opctx.Done()
+		_ = a.Close()
+
+		// Closed transport should return error immediately,
+		// because the transport is closed. We use the base
+		// context (ctx) rather than the operation context
+		// (opctx) because using the later would mean this
+		// could error because the context was canceled.
+		_, err = a.Accept(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
 	})
