@@ -288,7 +288,6 @@ func TestProcessProposal(t *testing.T) {
 					Power:   1000,
 				},
 			})
-		require.NoError(t, err)
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
 
