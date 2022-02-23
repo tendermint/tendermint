@@ -102,12 +102,12 @@ endif
 # For CI-based checks, see ./.github/workflows/proto-check.yml
 proto-lint: check-proto-lint-deps
 	@echo "Linting Protobuf files"
-	buf lint
+	@buf lint
 .PHONY: proto-lint
 
 proto-check-breaking: check-proto-lint-deps
 	@echo "Checking for breaking changes in Protobuf files"
-	buf breaking
+	@buf breaking
 .PHONY: proto-check-breaking
 
 ###############################################################################
