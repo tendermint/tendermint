@@ -104,11 +104,10 @@ func (s *Stream) Run(ctx context.Context, accept func(*coretypes.EventItem) erro
 		// Deliver events from the current batch to the receiver.  We visit the
 		// batch in reverse order so the receiver sees them in forward order.
 		for i := len(items) - 1; i >= 0; i-- {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
+			if err := ctx.Err(); err != nil {
+				return err
 			}
+
 			itm := items[i]
 			err := accept(itm)
 			if itm.Cursor > s.newestSeen {
