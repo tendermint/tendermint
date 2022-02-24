@@ -33,7 +33,7 @@ func TestKVStore(t *testing.T) {
 	defer cancel()
 	logger := log.NewNopLogger()
 
-	logger.Info("### Testing KVStore")
+	t.Log("### Testing KVStore")
 	testBulk(ctx, t, logger, kvstore.NewApplication())
 }
 
@@ -42,7 +42,7 @@ func TestBaseApp(t *testing.T) {
 	defer cancel()
 	logger := log.NewNopLogger()
 
-	logger.Info("### Testing BaseApp")
+	t.Log("### Testing BaseApp")
 	testBulk(ctx, t, logger, types.NewBaseApplication())
 }
 
@@ -52,7 +52,7 @@ func TestGRPC(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	logger.Info("### Testing GRPC")
+	t.Log("### Testing GRPC")
 	testGRPCSync(ctx, t, logger, types.NewGRPCApplication(types.NewBaseApplication()))
 }
 
