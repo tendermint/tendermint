@@ -95,7 +95,6 @@ func (s *Stream) Reset() { s.newestSeen = "" }
 // current scan position falls out of the event log window.
 // This method updates s.newestSeen.
 func (s *Stream) fetchPages(ctx context.Context) ([]*coretypes.EventItem, error) {
-	after := s.newestSeen // request (only) items after this
 	var pageCursor string // if non-empty, page through items before this
 	var items []*coretypes.EventItem
 
@@ -104,7 +103,7 @@ func (s *Stream) fetchPages(ctx context.Context) ([]*coretypes.EventItem, error)
 		rsp, err := s.client.Events(ctx, &coretypes.RequestEvents{
 			Filter:   s.filter,
 			MaxItems: s.batchSize,
-			After:    after,
+			After:    s.newestSeen,
 			Before:   pageCursor,
 			WaitTime: s.waitTime,
 		})
