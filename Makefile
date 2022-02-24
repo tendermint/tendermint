@@ -76,6 +76,13 @@ $(BUILDDIR)/:
 ###                                Protobuf                                 ###
 ###############################################################################
 
+PROTO_INPUT_DIR := ./proto
+PROTO_OUTPUT_DIR := ./proto
+PROTO_PLUGIN := gogofaster
+PROTO_PLUGIN_OPTS := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc,paths=source_relative
+PROTO_INCLUDES := -I=$(PROTO_INPUT_DIR) -I=./third_party/proto/
+PROTO_COMPILE := protoc $(PROTO_INCLUDES) --$(PROTO_PLUGIN)_out=$(PROTO_PLUGIN_OPTS):$(PROTO_OUTPUT_DIR)
+
 check-proto-gen-deps:
 ifeq (,$(shell which protoc))
 	$(error "Protocol buffers compiler protoc is required. See https://github.com/protocolbuffers/protobuf/#protocol-compiler-installation for installation instructions.")
@@ -87,7 +94,8 @@ endif
 
 proto-gen: check-proto-gen-deps
 	@echo "Generating Protobuf files"
-	@./scripts/proto-gen.sh
+	@find $(PROTO_INPUT_DIR) -name '*.proto' -exec $(PROTO_COMPILE) {} \;
+	@mv $(PROTO_INPUT_DIR)/tendermint/abci/types.pb.go ./abci/types/
 .PHONY: proto-gen
 
 check-proto-lint-deps:
