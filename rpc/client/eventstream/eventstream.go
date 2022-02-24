@@ -129,13 +129,10 @@ func (s *Stream) fetchPages(ctx context.Context) ([]*coretypes.EventItem, error)
 			// will get the next chunk.
 			pageCursor = items[len(items)-1].Cursor
 		} else if len(items) != 0 {
-			// We got everything so far; skip the base past what we've seen.
-			pageCursor = ""
-			after = items[0].Cursor
-			break
+			// We got everything matching so far.
+			return items, nil
 		}
 	}
-	return items, nil
 }
 
 // StreamOptions are optional settings for a Stream value. A nil *StreamOptions
