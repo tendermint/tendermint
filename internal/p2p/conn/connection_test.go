@@ -39,8 +39,8 @@ func createMConnectionWithCallbacks(
 	onError func(ctx context.Context, r interface{}),
 ) *MConnection {
 	cfg := DefaultMConnConfig()
-	cfg.PingInterval = 90 * time.Millisecond
-	cfg.PongTimeout = 45 * time.Millisecond
+	cfg.PingInterval = 500 * time.Millisecond
+	cfg.PongTimeout = 250 * time.Millisecond
 	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := NewMConnection(logger, conn, chDescs, onReceive, onError, cfg)
 	return c
@@ -189,15 +189,15 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 	serverGotPing := make(chan struct{})
 	go func() {
+		defer close(serverGotPing)
 		// read ping
 		var pkt tmp2p.Packet
 		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
 		require.NoError(t, err)
-		serverGotPing <- struct{}{}
 	}()
 	<-serverGotPing
 
-	pongTimerExpired := mconn.config.PongTimeout + 200*time.Millisecond
+	pongTimerExpired := mconn.config.PongTimeout + 800*time.Millisecond
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected error, but got %v", msgBytes)
@@ -249,11 +249,11 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 
 	serverGotPing := make(chan struct{})
 	go func() {
+		defer close(serverGotPing)
 		// read ping (one byte)
 		var packet tmp2p.Packet
 		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
 		require.NoError(t, err)
-		serverGotPing <- struct{}{}
 
 		// respond with pong
 		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
@@ -357,6 +357,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 	serverGotPing := make(chan struct{})
 	go func() {
+		defer close(serverGotPing)
 		protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
 		protoWriter := protoio.NewDelimitedWriter(server)
 		var pkt tmp2p.PacketPing
@@ -364,7 +365,6 @@ func TestMConnectionPingPongs(t *testing.T) {
 		// read ping
 		_, err = protoReader.ReadMsg(&pkt)
 		require.NoError(t, err)
-		serverGotPing <- struct{}{}
 
 		// respond with pong
 		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
@@ -375,16 +375,14 @@ func TestMConnectionPingPongs(t *testing.T) {
 		// read ping
 		_, err = protoReader.ReadMsg(&pkt)
 		require.NoError(t, err)
-		serverGotPing <- struct{}{}
 
 		// respond with pong
 		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 		require.NoError(t, err)
 	}()
 	<-serverGotPing
-	<-serverGotPing
 
-	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
+	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 4
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected no data, but got %v", msgBytes)

@@ -211,7 +211,7 @@ func (c *MConnection) OnStart(ctx context.Context) error {
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
 	c.quitRecvRoutine = make(chan struct{})
-	c.setRecvLastMsgAt(time.Now().Add(c.config.PongTimeout))
+	c.setRecvLastMsgAt(time.Now())
 	go c.sendRoutine(ctx)
 	go c.recvRoutine(ctx)
 	return nil
