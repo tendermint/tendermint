@@ -59,46 +59,10 @@ func New(cli Client, query string, opts *StreamOptions) *Stream {
 // report an error of concrete type *MissedItemsError.  Call Reset to reset the
 // stream to the head of the log, and call Run again to resume.
 func (s *Stream) Run(ctx context.Context, accept func(*coretypes.EventItem) error) error {
-	after := s.newestSeen // request (only) items after this
-	var pageCursor string // if non-empty, page through items before this
 	for {
-		var items []*coretypes.EventItem
-
-		// Fetch another batch of events from the service.
-		for {
-			rsp, err := s.client.Events(ctx, &coretypes.RequestEvents{
-				Filter:   s.filter,
-				MaxItems: s.batchSize,
-				After:    after,
-				Before:   pageCursor,
-				WaitTime: s.waitTime,
-			})
-			if err != nil {
-				return err
-			}
-
-			// If the oldest item in the log is newer than our most recent item,
-			// it means we might have missed some events matching our query.
-			if s.newestSeen != "" && s.newestSeen < rsp.Oldest {
-				return &MissedItemsError{
-					Query:         s.filter.Query,
-					NewestSeen:    s.newestSeen,
-					OldestPresent: rsp.Oldest,
-				}
-			}
-			items = append(items, rsp.Items...)
-
-			if rsp.More {
-				// There are more results matching this request, leave the baseline
-				// where it is and set the page cursor so that subsequent requests
-				// will get the next chunk.
-				pageCursor = items[len(items)-1].Cursor
-			} else if len(items) != 0 {
-				// We got everything so far; skip the base past what we've seen.
-				pageCursor = ""
-				after = items[0].Cursor
-				break
-			}
+		items, err := s.fetchPages(ctx)
+		if err != nil {
+			return err
 		}
 
 		// Deliver events from the current batch to the receiver.  We visit the
@@ -125,6 +89,54 @@ func (s *Stream) Run(ctx context.Context, accept func(*coretypes.EventItem) erro
 // Reset updates the stream's current cursor position to the head of the log.
 // This method may safely be called only when Run is not executing.
 func (s *Stream) Reset() { s.newestSeen = "" }
+
+// fetchPages fetches the next batch of matching results. If there are multiple
+// pages, all the matching pages are retrieved. An error is reported if the
+// current scan position falls out of the event log window.
+// This method updates s.newestSeen.
+func (s *Stream) fetchPages(ctx context.Context) ([]*coretypes.EventItem, error) {
+	after := s.newestSeen // request (only) items after this
+	var pageCursor string // if non-empty, page through items before this
+	var items []*coretypes.EventItem
+
+	// Fetch the next paginated batch of matching responses.
+	for {
+		rsp, err := s.client.Events(ctx, &coretypes.RequestEvents{
+			Filter:   s.filter,
+			MaxItems: s.batchSize,
+			After:    after,
+			Before:   pageCursor,
+			WaitTime: s.waitTime,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// If the oldest item in the log is newer than our most recent item,
+		// it means we might have missed some events matching our query.
+		if s.newestSeen != "" && s.newestSeen < rsp.Oldest {
+			return nil, &MissedItemsError{
+				Query:         s.filter.Query,
+				NewestSeen:    s.newestSeen,
+				OldestPresent: rsp.Oldest,
+			}
+		}
+		items = append(items, rsp.Items...)
+
+		if rsp.More {
+			// There are more results matching this request, leave the baseline
+			// where it is and set the page cursor so that subsequent requests
+			// will get the next chunk.
+			pageCursor = items[len(items)-1].Cursor
+		} else if len(items) != 0 {
+			// We got everything so far; skip the base past what we've seen.
+			pageCursor = ""
+			after = items[0].Cursor
+			break
+		}
+	}
+	return items, nil
+}
 
 // StreamOptions are optional settings for a Stream value. A nil *StreamOptions
 // is ready for use and provides default values as described.
