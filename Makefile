@@ -110,8 +110,8 @@ ifeq (,$(shell which clang-format))
 endif
 .PHONY: check-proto-format-deps
 
-# These targets are provided for convenience and for local execution only. For
-# CI-based checks, see ./.github/workflows/proto-check.yml
+# These targets are provided for convenience and are intended for local
+# execution only.
 proto-lint: check-proto-lint-deps
 	@echo "Linting Protobuf files"
 	@buf lint
