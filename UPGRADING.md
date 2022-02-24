@@ -44,7 +44,7 @@ Consumers use the new `events` JSON-RPC method to poll for events matching
 their query in the log. Unlike the streaming API, events are not discarded if
 the caller is slow, loses its connection, or crashes. As long as the client
 recovers before its events expire from the log window, it will be able to
-replay and catch up after recovering. Also unlike the streaming API, the clientnena
+replay and catch up after recovering. Also unlike the streaming API, the client
 can tell if it has truly missed events because they have expired from the log.
 
 The `events` method is a normal JSON-RPC method, and does not require any
