@@ -6,58 +6,40 @@ parent:
   order: 7
 ---
 
-# Tendermint Spec
+# Tendermint Specifications
 
-This is a Markdown specification of the Tendermint blockchain.
-It defines the base data structures, how they are validated,
-and how they are communicated over the network.
+This directory hosts the canonical Markdown specifications of the Tendermint Protocol.
+
+It shall be used to describe protocol semantics, namely the BFT consensus engine, leader election, block propagation and light client verification. The specification includes encoding descriptions used in interprocess communication to comply with the protocol. It defines the interface between the application and Tendermint. The english specifications are often accompanies with a TLA+ specification.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Application Blockchain Interface](./abci++/README.md)
+- [Encoding and Digests](./core/encoding.md)
+- [Core Data Structures](./core/data_structures.md)
+- [State](./core/state.md)
+- [Consensus Algorithm](./consensus/consensus.md)
+- [Creating a proposal](./consensus/creating-proposal.md)
+- [Time](./consensus/proposer-based-timestamp/README.md)
+- [Light Client](./consensus/light-client/README.md)
+- [The Base P2P Layer](./p2p/node.md)
+- [Peer Exchange (PEX)](./p2p/messages/pex.md)
+- [Remote Procedure Calls](./rpc/README.md)
+- [Write-Ahead Log](./consensus/wal.md)
+- [Ivy Proofs](./ivy-proofs/README.md)
+
+## Contibuting
+
+Contributions are welcome.
+
+Proposals at an early stage can first be drafted as Github issues. To progress, a proposal will often need to be written out and approved as a [Request For Comment (RFC)](../docs/rfc/README.md).
+
+The standard language for coding blocks is Golang.
 
 If you find discrepancies between the spec and the code that
 do not have an associated issue or pull request on github,
 please submit them to our [bug bounty](https://tendermint.com/security)!
-
-## Contents
-
-- [Overview](#overview)
-
-### Data Structures
-
-- [Encoding and Digests](./core/encoding.md)
-- [Blockchain](./core/data_structures.md)
-- [State](./core/state.md)
-
-### Consensus Protocol
-
-- [Consensus Algorithm](./consensus/consensus.md)
-- [Creating a proposal](./consensus/creating-proposal.md)
-- [Time](./consensus/bft-time.md)
-- [Light-Client](./consensus/light-client/README.md)
-
-### P2P and Network Protocols
-
-- [The Base P2P Layer](./p2p/node.md): multiplex the protocols ("reactors") on authenticated and encrypted TCP connections
-- [Peer Exchange (PEX)](./p2p/messages/pex.md): gossip known peer addresses so peers can find each other
-- [Block Sync](./p2p/messages/block-sync.md): gossip blocks so peers can catch up quickly
-- [Consensus](./p2p/messages/consensus.md): gossip votes and block parts so new blocks can be committed
-- [Mempool](./p2p/messages/mempool.md): gossip transactions so they get included in blocks
-- [Evidence](./p2p/messages/evidence.md): sending invalid evidence will stop the peer
-
-### RPC
-
-- [RPC SPEC](./rpc/README.md): Specification of the Tendermint remote procedure call interface.
-
-### Software
-
-- [ABCI](./abci/README.md): Details about interactions between the
-  application and consensus engine over ABCI
-- [ABCI++](./abci++/README.md): Specification of interactions between the
-  application and consensus engine over ABCI++
-- [Write-Ahead Log](./consensus/wal.md): Details about how the consensus
-  engine preserves data and recovers from crash failures
-
-### Ivy Proofs
-
-- [Ivy Proofs](./ivy-proofs/README.md)
 
 ## Overview
 

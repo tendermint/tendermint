@@ -160,6 +160,12 @@ module.exports = {
       {
         ga: 'UA-51029217-11'
       }
+    ],
+    [
+      '@vuepress/plugin-html-redirect',
+      {
+        countdown: 0
+      }
     ]
   ]
 };
