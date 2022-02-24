@@ -12,7 +12,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
@@ -573,11 +572,11 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string,
 }
 
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	return c.next.Unsubscribe(ctx, subscriber, query)
+	return c.next.Unsubscribe(ctx, subscriber, query) //nolint:staticcheck
 }
 
 func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	return c.next.UnsubscribeAll(ctx, subscriber)
+	return c.next.UnsubscribeAll(ctx, subscriber) //nolint:staticcheck
 }
 
 func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64) (*types.LightBlock, error) {
@@ -600,15 +599,8 @@ func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 	c.prt.RegisterOpDecoder(typ, dec)
 }
 
-// TODO(creachadair): Remove this once the RPC clients support the new method.
-// This is just a placeholder to let things build during development.
-func (c *Client) Events(ctx *rpctypes.Context,
-	filter *ctypes.EventFilter,
-	maxItems int,
-	before, after cursor.Cursor,
-	waitTime time.Duration,
-) (*ctypes.ResultEvents, error) {
-	return nil, errors.New("the /events method is not implemented")
+func (c *Client) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error) {
+	return c.next.Events(ctx, req)
 }
 
 // SubscribeWS subscribes for events using the given query and remote address as
@@ -643,7 +635,7 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
 func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
-	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -653,7 +645,7 @@ func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Res
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
 func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
-	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr()) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}

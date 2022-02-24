@@ -148,7 +148,25 @@ func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 // If maxItems ≤ 0, a default positive number of events is chosen. The values
 // of maxItems and waitTime may be capped to sensible internal maxima without
 // reporting an error to the caller.
-func Events(ctx context.Context,
+func Events(ctx *rpctypes.Context,
+	filter string,
+	maxItems int,
+	before, after string,
+	waitTime time.Duration,
+) (*ctypes.ResultEvents, error) {
+	var curBefore, curAfter cursor.Cursor
+	if err := curBefore.UnmarshalText([]byte(before)); err != nil {
+		return nil, err
+	}
+	if err := curAfter.UnmarshalText([]byte(after)); err != nil {
+		return nil, err
+	}
+	return EventsWithContext(ctx.Context(), &ctypes.EventFilter{
+		Query: filter,
+	}, maxItems, curBefore, curAfter, waitTime)
+}
+
+func EventsWithContext(ctx context.Context,
 	filter *ctypes.EventFilter,
 	maxItems int,
 	before, after cursor.Cursor,
@@ -254,6 +272,7 @@ func cursorInRange(c, before, after cursor.Cursor) bool {
 func marshalItems(items []*eventlog.Item) ([]*ctypes.EventItem, error) {
 	out := make([]*ctypes.EventItem, len(items))
 	for i, itm := range items {
+		// FIXME: align usage after remove type-tag
 		v, err := json.Marshal(itm.Data)
 		if err != nil {
 			return nil, fmt.Errorf("encoding event data: %w", err)

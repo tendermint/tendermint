@@ -35,12 +35,13 @@ type Client interface {
 	service.Service
 	ABCIClient
 	EventsClient
+	EvidenceClient
 	HistoryClient
+	MempoolClient
 	NetworkClient
 	SignClient
 	StatusClient
-	EvidenceClient
-	MempoolClient
+	SubscriptionClient
 }
 
 // ABCIClient groups together the functionality that principally affects the
@@ -115,20 +116,40 @@ type NetworkClient interface {
 	Health(context.Context) (*ctypes.ResultHealth, error)
 }
 
-// EventsClient is reactive, you can subscribe to any message, given the proper
-// string. see tendermint/types/events.go
+// EventsClient exposes the methods to retrieve events from the consensus engine.
 type EventsClient interface {
-	// Subscribe subscribes given subscriber to query. Returns a channel with
-	// cap=1 onto which events are published. An error is returned if it fails to
-	// subscribe. outCapacity can be used optionally to set capacity for the
-	// channel. Channel is never closed to prevent accidental reads.
+	// Events fetches a batch of events from the server matching the given query
+	// and time range.
+	Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error)
+}
+
+// TODO(creachadair): This interface should be removed once the streaming event
+// interface is removed in Tendermint v0.37.
+type SubscriptionClient interface {
+	// Subscribe issues a subscription request for the given subscriber ID and
+	// query. This method does not block: If subscription fails, it reports an
+	// error, and if subscription succeeds it returns a channel that delivers
+	// matching events until the subscription is stopped. The channel is never
+	// closed; the client is responsible for knowing when no further data will
+	// be sent.
+	//
+	// The context only governs the initial subscription, it does not control
+	// the lifetime of the channel. To cancel a subscription call Unsubscribe or
+	// UnsubscribeAll.
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
 	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
 	// Unsubscribe unsubscribes given subscriber from query.
+	//
+	// Deprecated: This method will be removed in Tendermint v0.37, use Events
+	// instead.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
+
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.
+	//
+	// Deprecated: This method will be removed in Tendermint v0.37, use Events
+	// instead.
 	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
