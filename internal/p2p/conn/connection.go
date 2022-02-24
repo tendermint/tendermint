@@ -108,8 +108,8 @@ type MConnection struct {
 	pingTimer  *time.Ticker         // send pings periodically
 
 	// close conn if pong is not received in pongTimeout
-	pongTimer     *time.Timer
-	pongTimeoutCh chan bool // true - timeout, false - peer sent pong
+	lastMsgRecvMu sync.RWMutex
+	lastMsgRecvAt time.Time
 
 	chStatsTimer *time.Ticker // update channel stats periodically
 
@@ -205,14 +205,27 @@ func NewMConnection(
 func (c *MConnection) OnStart(ctx context.Context) error {
 	c.flushTimer = timer.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = time.NewTicker(c.config.PingInterval)
-	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTimer = time.NewTicker(updateStats)
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
 	c.quitRecvRoutine = make(chan struct{})
+	c.setRecvLastMsgAt(time.Now().Add(c.config.PongTimeout))
 	go c.sendRoutine(ctx)
 	go c.recvRoutine(ctx)
 	return nil
+}
+
+func (c *MConnection) setRecvLastMsgAt(t time.Time) {
+	c.lastMsgRecvMu.Lock()
+	defer c.lastMsgRecvMu.Unlock()
+
+	c.lastMsgRecvAt = t
+}
+
+func (c *MConnection) getLastMessageAt() time.Time {
+	c.lastMsgRecvMu.RLock()
+	defer c.lastMsgRecvMu.RUnlock()
+	return c.lastMsgRecvAt
 }
 
 // stopServices stops the BaseService and timers and closes the quitSendRoutine.
@@ -345,19 +358,6 @@ FOR_LOOP:
 			}
 			c.sendMonitor.Update(_n)
 			c.logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
-			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
-				select {
-				case c.pongTimeoutCh <- true:
-				default:
-				}
-			})
-			c.flush()
-		case timeout := <-c.pongTimeoutCh:
-			if timeout {
-				err = errors.New("pong timeout")
-			} else {
-				c.stopPongTimer()
-			}
 		case <-c.pong:
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
@@ -382,6 +382,9 @@ FOR_LOOP:
 			}
 		}
 
+		if time.Since(c.getLastMessageAt()) > c.config.PongTimeout {
+			err = errors.New("pong timeout")
+		}
 		if !c.IsRunning() {
 			break FOR_LOOP
 		}
@@ -393,7 +396,6 @@ FOR_LOOP:
 	}
 
 	// Cleanup
-	c.stopPongTimer()
 	close(c.doneSendRoutine)
 }
 
@@ -505,6 +507,9 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 
+		// record for pong/heartbeat
+		c.setRecvLastMsgAt(time.Now())
+
 		// Read more depending on packet type.
 		switch pkt := packet.Sum.(type) {
 		case *tmp2p.Packet_PacketPing:
@@ -516,11 +521,9 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketPong:
-			select {
-			case c.pongTimeoutCh <- false:
-			default:
-				// never block
-			}
+			// do nothing, we updated the "last message
+			// recieved" timestamp above, so we can ignore
+			// this message
 		case *tmp2p.Packet_PacketMsg:
 			channelID := ChannelID(pkt.PacketMsg.ChannelID)
 			channel, ok := c.channelsIdx[channelID]
@@ -556,14 +559,6 @@ FOR_LOOP:
 	close(c.pong)
 	for range c.pong {
 		// Drain
-	}
-}
-
-// not goroutine-safe
-func (c *MConnection) stopPongTimer() {
-	if c.pongTimer != nil {
-		_ = c.pongTimer.Stop()
-		c.pongTimer = nil
 	}
 }
 
