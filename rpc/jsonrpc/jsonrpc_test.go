@@ -5,11 +5,9 @@ import (
 	"context"
 	crand "crypto/rand"
 	"encoding/json"
-	"fmt"
-	stdlog "log"
+	"errors"
 	mrand "math/rand"
 	"net/http"
-	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -81,21 +79,8 @@ func EchoDataBytesResult(ctx context.Context, v tmbytes.HexBytes) (*ResultEchoDa
 	return &ResultEchoDataBytes{v}, nil
 }
 
-func TestMain(m *testing.M) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if err := setup(ctx); err != nil {
-		stdlog.Fatal(err.Error())
-	}
-	code := m.Run()
-	os.Exit(code)
-}
-
 // launch unix and tcp servers
-func setup(ctx context.Context) error {
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-
+func setup(ctx context.Context, t *testing.T, logger log.Logger) error {
 	cmd := exec.Command("rm", "-f", unixSocket)
 	err := cmd.Start()
 	if err != nil {
@@ -117,7 +102,9 @@ func setup(ctx context.Context) error {
 	}
 	go func() {
 		if err := server.Serve(ctx, listener1, mux, tcpLogger, config); err != nil {
-			panic(err)
+			if !errors.Is(err, http.ErrServerClosed) {
+				require.NoError(t, err)
+			}
 		}
 	}()
 
@@ -132,7 +119,9 @@ func setup(ctx context.Context) error {
 	}
 	go func() {
 		if err := server.Serve(ctx, listener2, mux2, unixLogger, config); err != nil {
-			panic(err)
+			if !errors.Is(err, http.ErrServerClosed) {
+				require.NoError(t, err)
+			}
 		}
 	}()
 
@@ -265,95 +254,96 @@ func testWithWSClient(ctx context.Context, t *testing.T, cl *client.WSClient) {
 
 //-------------
 
-func TestServersAndClientsBasic(t *testing.T) {
-	// TODO: reenable the leak detector once the test fixture is
-	// managed in the context of this test.
-	//
-	// t.Cleanup(leaktest.Check(t))
+func TestRPC(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logger := log.NewNopLogger()
 
-	bctx, bcancel := context.WithCancel(context.Background())
-	defer bcancel()
+	t.Cleanup(leaktest.Check(t))
+	require.NoError(t, setup(ctx, t, logger))
+	t.Run("ServersAndClientsBasic", func(t *testing.T) {
+		serverAddrs := [...]string{tcpAddr, unixAddr}
+		for _, addr := range serverAddrs {
+			t.Run(addr, func(t *testing.T) {
+				tctx, tcancel := context.WithCancel(ctx)
+				defer tcancel()
 
-	serverAddrs := [...]string{tcpAddr, unixAddr}
-	for _, addr := range serverAddrs {
-		t.Run(addr, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(bctx)
-			defer cancel()
+				logger := log.NewNopLogger()
 
-			logger := log.NewNopLogger()
+				cl2, err := client.New(addr)
+				require.NoError(t, err)
+				t.Logf("testing server with JSONRPC client")
+				testWithHTTPClient(tctx, t, cl2)
 
-			cl2, err := client.New(addr)
-			require.NoError(t, err)
-			fmt.Printf("=== testing server on %s using JSONRPC client", addr)
-			testWithHTTPClient(ctx, t, cl2)
+				cl3, err := client.NewWS(addr, websocketEndpoint)
+				require.NoError(t, err)
+				cl3.Logger = logger
+				err = cl3.Start(tctx)
+				require.NoError(t, err)
+				t.Logf("testing server with WS client")
+				testWithWSClient(tctx, t, cl3)
+			})
+		}
+	})
+	t.Run("WSNewWSRPCFunc", func(t *testing.T) {
+		t.Cleanup(leaktest.CheckTimeout(t, 4*time.Second))
 
-			cl3, err := client.NewWS(addr, websocketEndpoint)
-			require.NoError(t, err)
-			cl3.Logger = logger
-			err = cl3.Start(ctx)
-			require.NoError(t, err)
-			fmt.Printf("=== testing server on %s using WS client", addr)
-			testWithWSClient(ctx, t, cl3)
-			cancel()
+		cl, err := client.NewWS(tcpAddr, websocketEndpoint)
+		require.NoError(t, err)
+		cl.Logger = log.NewNopLogger()
+		tctx, tcancel := context.WithCancel(ctx)
+		defer tcancel()
+
+		require.NoError(t, cl.Start(tctx))
+		t.Cleanup(func() {
+			if err := cl.Stop(); err != nil {
+				t.Error(err)
+			}
 		})
-	}
-}
 
-func TestWSNewWSRPCFunc(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
+		val := testVal
+		params := map[string]interface{}{
+			"arg": val,
+		}
+		err = cl.Call(tctx, "echo_ws", params)
+		require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+		select {
+		case <-tctx.Done():
+			t.Fatal(tctx.Err())
+		case msg := <-cl.ResponsesCh:
+			if msg.Error != nil {
+				t.Fatal(err)
+			}
+			result := new(ResultEcho)
+			err = json.Unmarshal(msg.Result, result)
+			require.NoError(t, err)
+			got := result.Value
+			assert.Equal(t, got, val)
 
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.NoError(t, err)
-	cl.Logger = log.NewNopLogger()
-	err = cl.Start(ctx)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := cl.Stop(); err != nil {
-			t.Error(err)
 		}
 	})
+	t.Run("WSClientPingPong", func(t *testing.T) {
+		// TestWSClientPingPong checks that a client & server exchange pings
+		// & pongs so connection stays alive.
+		t.Cleanup(leaktest.CheckTimeout(t, 4*time.Second))
 
-	val := testVal
-	params := map[string]interface{}{
-		"arg": val,
-	}
-	err = cl.Call(ctx, "echo_ws", params)
-	require.NoError(t, err)
+		cl, err := client.NewWS(tcpAddr, websocketEndpoint)
+		require.NoError(t, err)
+		cl.Logger = log.NewNopLogger()
 
-	msg := <-cl.ResponsesCh
-	if msg.Error != nil {
-		t.Fatal(err)
-	}
-	result := new(ResultEcho)
-	err = json.Unmarshal(msg.Result, result)
-	require.NoError(t, err)
-	got := result.Value
-	assert.Equal(t, got, val)
-}
+		tctx, tcancel := context.WithCancel(ctx)
+		defer tcancel()
 
-// TestWSClientPingPong checks that a client & server exchange pings
-// & pongs so connection stays alive.
-func TestWSClientPingPong(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
+		require.NoError(t, cl.Start(tctx))
+		t.Cleanup(func() {
+			if err := cl.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cl, err := client.NewWS(tcpAddr, websocketEndpoint)
-	require.NoError(t, err)
-	cl.Logger = log.NewNopLogger()
-	err = cl.Start(ctx)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := cl.Stop(); err != nil {
-			t.Error(err)
-		}
+		time.Sleep(6 * time.Second)
 	})
-
-	time.Sleep(6 * time.Second)
 }
 
 func randBytes(t *testing.T) []byte {
