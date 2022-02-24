@@ -166,78 +166,70 @@ func (s *SocketServer) handleRequests(
 	responses chan<- *types.Response,
 ) {
 	var bufReader = bufio.NewReader(conn)
-	var err error
-	defer closer(err)
 
 	defer func() {
 		// make sure to recover from any app-related panics to allow proper socket cleanup
-		r := recover()
-		if r != nil {
+		if r := recover(); r != nil {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			err = fmt.Errorf("recovered from panic: %v\n%s", r, buf)
+			closer(fmt.Errorf("recovered from panic: %v\n%s", r, buf))
 		}
 	}()
 
 	for {
-		if ctx.Err() != nil {
+		req := &types.Request{}
+		if err := types.ReadMessage(bufReader, req); err != nil {
+			closer(fmt.Errorf("error reading message: %w", err))
 			return
 		}
 
-		req := &types.Request{}
-		err := types.ReadMessage(bufReader, req)
-		if err != nil {
-			err = fmt.Errorf("error reading message: %w", err)
+		resp := s.processRequest(req)
+		select {
+		case <-ctx.Done():
+			closer(ctx.Err())
 			return
+		case responses <- resp:
 		}
-		s.handleRequest(ctx, req, responses)
 	}
 }
 
-func (s *SocketServer) handleRequest(ctx context.Context, req *types.Request, responses chan<- *types.Response) {
-	var resp *types.Response
-
+func (s *SocketServer) processRequest(req *types.Request) *types.Response {
 	switch r := req.Value.(type) {
 	case *types.Request_Echo:
-		resp = types.ToResponseEcho(r.Echo.Message)
+		return types.ToResponseEcho(r.Echo.Message)
 	case *types.Request_Flush:
-		resp = types.ToResponseFlush()
+		return types.ToResponseFlush()
 	case *types.Request_Info:
-		resp = types.ToResponseInfo(s.app.Info(*r.Info))
+		return types.ToResponseInfo(s.app.Info(*r.Info))
 	case *types.Request_CheckTx:
-		resp = types.ToResponseCheckTx(s.app.CheckTx(*r.CheckTx))
+		return types.ToResponseCheckTx(s.app.CheckTx(*r.CheckTx))
 	case *types.Request_Commit:
-		resp = types.ToResponseCommit(s.app.Commit())
+		return types.ToResponseCommit(s.app.Commit())
 	case *types.Request_Query:
-		resp = types.ToResponseQuery(s.app.Query(*r.Query))
+		return types.ToResponseQuery(s.app.Query(*r.Query))
 	case *types.Request_InitChain:
-		resp = types.ToResponseInitChain(s.app.InitChain(*r.InitChain))
+		return types.ToResponseInitChain(s.app.InitChain(*r.InitChain))
 	case *types.Request_ListSnapshots:
-		resp = types.ToResponseListSnapshots(s.app.ListSnapshots(*r.ListSnapshots))
+		return types.ToResponseListSnapshots(s.app.ListSnapshots(*r.ListSnapshots))
 	case *types.Request_OfferSnapshot:
-		resp = types.ToResponseOfferSnapshot(s.app.OfferSnapshot(*r.OfferSnapshot))
+		return types.ToResponseOfferSnapshot(s.app.OfferSnapshot(*r.OfferSnapshot))
 	case *types.Request_PrepareProposal:
-		resp = types.ToResponsePrepareProposal(s.app.PrepareProposal(*r.PrepareProposal))
+		return types.ToResponsePrepareProposal(s.app.PrepareProposal(*r.PrepareProposal))
 	case *types.Request_ProcessProposal:
-		resp = types.ToResponseProcessProposal(s.app.ProcessProposal(*r.ProcessProposal))
+		return types.ToResponseProcessProposal(s.app.ProcessProposal(*r.ProcessProposal))
 	case *types.Request_LoadSnapshotChunk:
-		resp = types.ToResponseLoadSnapshotChunk(s.app.LoadSnapshotChunk(*r.LoadSnapshotChunk))
+		return types.ToResponseLoadSnapshotChunk(s.app.LoadSnapshotChunk(*r.LoadSnapshotChunk))
 	case *types.Request_ApplySnapshotChunk:
-		resp = types.ToResponseApplySnapshotChunk(s.app.ApplySnapshotChunk(*r.ApplySnapshotChunk))
+		return types.ToResponseApplySnapshotChunk(s.app.ApplySnapshotChunk(*r.ApplySnapshotChunk))
 	case *types.Request_ExtendVote:
-		resp = types.ToResponseExtendVote(s.app.ExtendVote(*r.ExtendVote))
+		return types.ToResponseExtendVote(s.app.ExtendVote(*r.ExtendVote))
 	case *types.Request_VerifyVoteExtension:
-		resp = types.ToResponseVerifyVoteExtension(s.app.VerifyVoteExtension(*r.VerifyVoteExtension))
+		return types.ToResponseVerifyVoteExtension(s.app.VerifyVoteExtension(*r.VerifyVoteExtension))
 	case *types.Request_FinalizeBlock:
-		resp = types.ToResponseFinalizeBlock(s.app.FinalizeBlock(*r.FinalizeBlock))
+		return types.ToResponseFinalizeBlock(s.app.FinalizeBlock(*r.FinalizeBlock))
 	default:
-		resp = types.ToResponseException("Unknown request")
-	}
-
-	select {
-	case <-ctx.Done():
-	case responses <- resp:
+		return types.ToResponseException("Unknown request")
 	}
 }
 
@@ -248,22 +240,19 @@ func (s *SocketServer) handleResponses(
 	conn io.Writer,
 	responses <-chan *types.Response,
 ) {
-	var err error
-	defer closer(err)
-
 	bw := bufio.NewWriter(conn)
 	for {
 		select {
 		case <-ctx.Done():
-			err = ctx.Err()
+			closer(ctx.Err())
 			return
 		case res := <-responses:
 			if err := types.WriteMessage(res, bw); err != nil {
-				err = fmt.Errorf("error writing message: %w", err)
+				closer(fmt.Errorf("error writing message: %w", err))
 				return
 			}
 			if err := bw.Flush(); err != nil {
-				err = fmt.Errorf("error writing message: %w", err)
+				closer(fmt.Errorf("error writing message: %w", err))
 				return
 			}
 		}
