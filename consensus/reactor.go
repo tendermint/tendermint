@@ -46,6 +46,7 @@ type Reactor struct {
 	mtx      tmsync.RWMutex
 	waitSync bool
 	eventBus *types.EventBus
+	rs       *cstypes.RoundState
 
 	Metrics *Metrics
 }
@@ -58,6 +59,7 @@ func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) 
 	conR := &Reactor{
 		conS:     consensusState,
 		waitSync: waitSync,
+		rs:       consensusState.GetRoundState(),
 		Metrics:  NopMetrics(),
 	}
 	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
@@ -78,6 +80,7 @@ func (conR *Reactor) OnStart() error {
 	go conR.peerStatsRoutine()
 
 	conR.subscribeToBroadcastEvents()
+	go conR.updateRoundStateRoutine()
 
 	if !conR.WaitSync() {
 		err := conR.conS.Start()
@@ -482,9 +485,33 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 }
 
 func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
-	rs := conR.conS.GetRoundState()
+	rs := conR.getRoundState()
 	nrsMsg := makeRoundStepMessage(rs)
 	peer.Send(StateChannel, MustEncode(nrsMsg))
+}
+
+func (conR *Reactor) updateRoundStateRoutine() {
+	for {
+		if !conR.IsRunning() {
+			return
+		}
+		rs := conR.conS.GetRoundState()
+		conR.mtx.Lock()
+		conR.rs = rs
+		conR.mtx.Unlock()
+	}
+}
+
+func (conR *Reactor) setRoundState(rs *cstypes.RoundState) {
+	conR.mtx.Lock()
+	defer conR.mtx.Unlock()
+	conR.rs = rs
+}
+
+func (conR *Reactor) getRoundState() *cstypes.RoundState {
+	conR.mtx.RLock()
+	defer conR.mtx.RUnlock()
+	return conR.rs
 }
 
 func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
@@ -497,7 +524,7 @@ OUTER_LOOP:
 			logger.Info("Stopping gossipDataRoutine for peer")
 			return
 		}
-		rs := conR.conS.GetRoundState()
+		rs := conR.getRoundState()
 		prs := ps.GetRoundState()
 
 		// Send proposal Block parts?
@@ -641,7 +668,7 @@ OUTER_LOOP:
 			logger.Info("Stopping gossipVotesRoutine for peer")
 			return
 		}
-		rs := conR.conS.GetRoundState()
+		rs := conR.getRoundState()
 		prs := ps.GetRoundState()
 
 		switch sleeping {
@@ -775,7 +802,7 @@ OUTER_LOOP:
 
 		// Maybe send Height/Round/Prevotes
 		{
-			rs := conR.conS.GetRoundState()
+			rs := conR.getRoundState()
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
@@ -792,7 +819,7 @@ OUTER_LOOP:
 
 		// Maybe send Height/Round/Precommits
 		{
-			rs := conR.conS.GetRoundState()
+			rs := conR.getRoundState()
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
@@ -809,7 +836,7 @@ OUTER_LOOP:
 
 		// Maybe send Height/Round/ProposalPOL
 		{
-			rs := conR.conS.GetRoundState()
+			rs := conR.getRoundState()
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
