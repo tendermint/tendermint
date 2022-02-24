@@ -522,7 +522,7 @@ FOR_LOOP:
 			}
 		case *tmp2p.Packet_PacketPong:
 			// do nothing, we updated the "last message
-			// recieved" timestamp above, so we can ignore
+			// received" timestamp above, so we can ignore
 			// this message
 		case *tmp2p.Packet_PacketMsg:
 			channelID := ChannelID(pkt.PacketMsg.ChannelID)
