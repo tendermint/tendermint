@@ -8,15 +8,23 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 #### ABCI++
 
+Coming soon...
+
 #### ABCI Mutex
 
 In previous versions of ABCI, Tendermint was prevented from making
 concurrent calls to ABCI implementations by virtue of mutexes in the
 implementation of Tendermint's ABCI infrastructure. These mutexes have
 been removed from the current implementation and applications will now
-be responsible for managing their own concurrency control. Test your
-application thoroughly using realistic workloads and the race detector
-to ensure your applications remains correct.
+be responsible for managing their own concurrency control. 
+
+To replicate the prior semantics, ensure that ABCI applications have a
+single mutex that protects all ABCI method calls from concurrent
+access. You can relax these requirements if your application can
+provide safe concurrent access via other means. This safety is an
+application concern so be very sure to test the application thoroughly
+using realistic workloads and the race detector to ensure your
+applications remains correct.
 
 ## v0.35
 
