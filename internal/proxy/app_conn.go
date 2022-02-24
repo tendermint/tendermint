@@ -105,7 +105,7 @@ func (app *appConnConsensus) EndBlockSync(
 	ctx context.Context,
 	req types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTiming.With("method", "end_block", "type", "sync"))()
 	return app.appConn.EndBlockSync(ctx, req)
 }
 
