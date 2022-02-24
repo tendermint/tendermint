@@ -2,6 +2,30 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## v0.36
+
+### ABCI Changes
+
+#### ABCI++
+
+Coming soon...
+
+#### ABCI Mutex
+
+In previous versions of ABCI, Tendermint was prevented from making
+concurrent calls to ABCI implementations by virtue of mutexes in the
+implementation of Tendermint's ABCI infrastructure. These mutexes have
+been removed from the current implementation and applications will now
+be responsible for managing their own concurrency control. 
+
+To replicate the prior semantics, ensure that ABCI applications have a
+single mutex that protects all ABCI method calls from concurrent
+access. You can relax these requirements if your application can
+provide safe concurrent access via other means. This safety is an
+application concern so be very sure to test the application thoroughly
+using realistic workloads and the race detector to ensure your
+applications remains correct.
+
 ## v0.35
 
 ### ABCI Changes
@@ -217,7 +241,7 @@ Note also that Tendermint 0.34 also requires Go 1.16 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
+  Read [the spec](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)
@@ -342,7 +366,6 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -617,7 +640,7 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
+<https://docs.tendermint.com/v0.35/introduction/install.html)
 
 ## v0.31.0
 

@@ -16,10 +16,9 @@ type GRPCServer struct {
 	service.BaseService
 	logger log.Logger
 
-	proto    string
-	addr     string
-	listener net.Listener
-	server   *grpc.Server
+	proto  string
+	addr   string
+	server *grpc.Server
 
 	app types.ABCIApplicationServer
 }
@@ -28,11 +27,10 @@ type GRPCServer struct {
 func NewGRPCServer(logger log.Logger, protoAddr string, app types.ABCIApplicationServer) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &GRPCServer{
-		logger:   logger,
-		proto:    proto,
-		addr:     addr,
-		listener: nil,
-		app:      app,
+		logger: logger,
+		proto:  proto,
+		addr:   addr,
+		app:    app,
 	}
 	s.BaseService = *service.NewBaseService(logger, "ABCIServer", s)
 	return s
@@ -40,13 +38,11 @@ func NewGRPCServer(logger log.Logger, protoAddr string, app types.ABCIApplicatio
 
 // OnStart starts the gRPC service.
 func (s *GRPCServer) OnStart(ctx context.Context) error {
-
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err
 	}
 
-	s.listener = ln
 	s.server = grpc.NewServer()
 	types.RegisterABCIApplicationServer(s.server, s.app)
 
@@ -57,7 +53,7 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 			s.server.GracefulStop()
 		}()
 
-		if err := s.server.Serve(s.listener); err != nil {
+		if err := s.server.Serve(ln); err != nil {
 			s.logger.Error("error serving gRPC server", "err", err)
 		}
 	}()
@@ -65,6 +61,4 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 }
 
 // OnStop stops the gRPC server.
-func (s *GRPCServer) OnStop() {
-	s.server.Stop()
-}
+func (s *GRPCServer) OnStop() { s.server.Stop() }

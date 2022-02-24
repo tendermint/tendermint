@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -198,7 +199,11 @@ func waitForAndValidateBlock(
 		require.NoError(t, validateBlock(newBlock, activeVals))
 
 		for _, tx := range txs {
-			require.NoError(t, assertMempool(t, states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{}))
+			err := assertMempool(t, states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{})
+			if errors.Is(err, types.ErrTxInCache) {
+				continue
+			}
+			require.NoError(t, err)
 		}
 	}
 
@@ -326,7 +331,7 @@ func TestReactorBasic(t *testing.T) {
 	n := 4
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
-		newMockTickerFunc(true), newKVStore)
+		newMockTickerFunc(true))
 	t.Cleanup(cleanup)
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
@@ -379,7 +384,6 @@ func TestReactorWithEvidence(t *testing.T) {
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
-	appFunc := newKVStore
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, n, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
@@ -397,7 +401,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		defer os.RemoveAll(thisConfig.RootDir)
 
 		ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc(t, logger)
+		app := kvstore.NewApplication()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -491,7 +495,6 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
-		newKVStore,
 		func(c *config.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		},
@@ -543,7 +546,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	n := 4
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
-		newMockTickerFunc(true), newKVStore)
+		newMockTickerFunc(true))
 	t.Cleanup(cleanup)
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
@@ -612,7 +615,6 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
-		newPersistentKVStore,
 	)
 
 	t.Cleanup(cleanup)
@@ -722,7 +724,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		nPeers,
 		"consensus_val_set_changes_test",
 		newMockTickerFunc(true),
-		newPersistentKVStoreWithPath,
+		newEpehemeralKVStore,
 	)
 	t.Cleanup(cleanup)
 

@@ -27,7 +27,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	n := 4
 	states, cleanup := makeConsensusState(ctx, t,
 		config, n, "consensus_reactor_test",
-		newMockTickerFunc(true), newKVStore)
+		newMockTickerFunc(true))
 	t.Cleanup(cleanup)
 
 	for i := 0; i < 4; i++ {
