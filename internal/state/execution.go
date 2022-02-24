@@ -398,7 +398,6 @@ func execBlockOnProxyApp(
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			Hash:                block.Hash(),
 			Header:              *pbh,
-			Height:              block.Height,
 			LastCommitInfo:      buildLastCommitInfo(block, store, initialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 		},

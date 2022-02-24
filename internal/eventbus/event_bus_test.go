@@ -27,9 +27,9 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := types.Tx("foo")
-	result := abci.ResponseDeliverTx{
+	result := abci.ExecTxResult{
 		Data: []byte("bar"),
-		Events: []abci.Event{
+		TxEvents: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
 		},
 	}
@@ -134,9 +134,9 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	tx := types.Tx("foo")
-	result := abci.ResponseDeliverTx{
+	result := abci.ExecTxResult{
 		Data: []byte("bar"),
-		Events: []abci.Event{
+		TxEvents: []abci.Event{
 			{
 				Type: "transfer",
 				Attributes: []abci.EventAttribute{

@@ -221,7 +221,7 @@ INSERT INTO `+tableTxResults+` (block_id, index, created_at, tx_hash, tx_result)
 				return fmt.Errorf("indexing transaction meta-events: %w", err)
 			}
 			// Index any events packaged with the transaction.
-			if err := insertEvents(dbtx, blockID, txID, txr.Result.Events); err != nil {
+			if err := insertEvents(dbtx, blockID, txID, txr.Result.TxEvents); err != nil {
 				return fmt.Errorf("indexing transaction events: %w", err)
 			}
 			return nil

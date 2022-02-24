@@ -43,11 +43,11 @@ func BenchmarkTxSearch(b *testing.B) {
 			Height: int64(i),
 			Index:  0,
 			Tx:     types.Tx(string(txBz)),
-			Result: abci.ResponseDeliverTx{
-				Data:   []byte{0},
-				Code:   abci.CodeTypeOK,
-				Log:    "",
-				Events: events,
+			Result: abci.ExecTxResult{
+				Data:     []byte{0},
+				Code:     abci.CodeTypeOK,
+				Log:      "",
+				TxEvents: events,
 			},
 		}
 

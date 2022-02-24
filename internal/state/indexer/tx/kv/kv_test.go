@@ -25,9 +25,9 @@ func TestTxIndex(t *testing.T) {
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
-		Result: abci.ResponseDeliverTx{
+		Result: abci.ExecTxResult{
 			Data: []byte{0},
-			Code: abci.CodeTypeOK, Log: "", Events: nil,
+			Code: abci.CodeTypeOK, Log: "", TxEvents: nil,
 		},
 	}
 	hash := tx.Hash()
@@ -48,9 +48,9 @@ func TestTxIndex(t *testing.T) {
 		Height: 1,
 		Index:  0,
 		Tx:     tx2,
-		Result: abci.ResponseDeliverTx{
+		Result: abci.ExecTxResult{
 			Data: []byte{0},
-			Code: abci.CodeTypeOK, Log: "", Events: nil,
+			Code: abci.CodeTypeOK, Log: "", TxEvents: nil,
 		},
 	}
 	hash2 := tx2.Hash()
@@ -322,11 +322,11 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
-		Result: abci.ResponseDeliverTx{
-			Data:   []byte{0},
-			Code:   abci.CodeTypeOK,
-			Log:    "",
-			Events: events,
+		Result: abci.ExecTxResult{
+			Data:     []byte{0},
+			Code:     abci.CodeTypeOK,
+			Log:      "",
+			TxEvents: events,
 		},
 	}
 }
@@ -346,11 +346,11 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 			Height: 1,
 			Index:  txIndex,
 			Tx:     tx,
-			Result: abci.ResponseDeliverTx{
-				Data:   []byte{0},
-				Code:   abci.CodeTypeOK,
-				Log:    "",
-				Events: []abci.Event{},
+			Result: abci.ExecTxResult{
+				Data:     []byte{0},
+				Code:     abci.CodeTypeOK,
+				Log:      "",
+				TxEvents: []abci.Event{},
 			},
 		}
 		if err := batch.Add(txResult); err != nil {

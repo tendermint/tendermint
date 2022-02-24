@@ -266,11 +266,11 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Height: 1,
 		Index:  0,
 		Tx:     types.Tx("HELLO WORLD"),
-		Result: abci.ResponseDeliverTx{
-			Data:   []byte{0},
-			Code:   abci.CodeTypeOK,
-			Log:    "",
-			Events: events,
+		Result: abci.ExecTxResult{
+			Data:     []byte{0},
+			Code:     abci.CodeTypeOK,
+			Log:      "",
+			TxEvents: events,
 		},
 	}
 }

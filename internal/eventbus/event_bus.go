@@ -132,7 +132,7 @@ func (b *EventBus) PublishEventStateSyncStatus(ctx context.Context, data types.E
 // predefined keys (EventTypeKey, TxHashKey). Existing events with the same keys
 // will be overwritten.
 func (b *EventBus) PublishEventTx(ctx context.Context, data types.EventDataTx) error {
-	events := data.Result.Events
+	events := data.Result.TxEvents
 
 	// add Tendermint-reserved events
 	events = append(events, types.EventTx)

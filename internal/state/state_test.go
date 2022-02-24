@@ -111,8 +111,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses.FinalizeBlock = new(abci.ResponseFinalizeBlock)
 	abciResponses.FinalizeBlock.TxResults = dtxs
 
-	abciResponses.FinalizeBlock.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
-	abciResponses.FinalizeBlock.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
+	abciResponses.FinalizeBlock.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), TxEvents: nil}
+	abciResponses.FinalizeBlock.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", TxEvents: nil}
 	pbpk, err := encoding.PubKeyToProto(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
 	abciResponses.FinalizeBlock.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
@@ -156,7 +156,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 383},
 				{
 					Data: []byte("Gotcha!"),
-					Events: []abci.Event{
+					TxEvents: []abci.Event{
 						{Type: "type1", Attributes: []abci.EventAttribute{{Key: "a", Value: "1"}}},
 						{Type: "type2", Attributes: []abci.EventAttribute{{Key: "build", Value: "stuff"}}},
 					},
@@ -164,7 +164,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			},
 			[]*abci.ExecTxResult{
 				{Code: 383, Data: nil},
-				{Code: 0, Data: []byte("Gotcha!"), Events: []abci.Event{
+				{Code: 0, Data: []byte("Gotcha!"), TxEvents: []abci.Event{
 					{Type: "type1", Attributes: []abci.EventAttribute{{Key: "a", Value: "1"}}},
 					{Type: "type2", Attributes: []abci.EventAttribute{{Key: "build", Value: "stuff"}}},
 				}},

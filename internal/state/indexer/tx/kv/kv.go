@@ -97,7 +97,7 @@ func (txi *TxIndex) Index(results []*abci.TxResult) error {
 }
 
 func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Batch) error {
-	for _, event := range result.Result.Events {
+	for _, event := range result.Result.TxEvents {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
 			continue
