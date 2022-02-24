@@ -2,7 +2,6 @@ package abciclient
 
 import (
 	"context"
-	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -15,8 +14,6 @@ import (
 // RPC endpoint), but defers are used everywhere for the sake of consistency.
 type localClient struct {
 	service.BaseService
-
-	mtx sync.Mutex
 	types.Application
 }
 
@@ -47,113 +44,71 @@ func (app *localClient) Echo(_ context.Context, msg string) (*types.ResponseEcho
 }
 
 func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.Info(req)
 	return &res, nil
 }
 
 func (app *localClient) CheckTx(_ context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.CheckTx(req)
 	return &res, nil
 }
 
 func (app *localClient) Query(_ context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.Query(req)
 	return &res, nil
 }
 
 func (app *localClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.Commit()
 	return &res, nil
 }
 
 func (app *localClient) InitChain(_ context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.InitChain(req)
 	return &res, nil
 }
 
 func (app *localClient) ListSnapshots(_ context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.ListSnapshots(req)
 	return &res, nil
 }
 
 func (app *localClient) OfferSnapshot(_ context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.OfferSnapshot(req)
 	return &res, nil
 }
 
 func (app *localClient) LoadSnapshotChunk(_ context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.LoadSnapshotChunk(req)
 	return &res, nil
 }
 
 func (app *localClient) ApplySnapshotChunk(_ context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.ApplySnapshotChunk(req)
 	return &res, nil
 }
 
 func (app *localClient) PrepareProposal(_ context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.PrepareProposal(req)
 	return &res, nil
 }
 
 func (app *localClient) ProcessProposal(_ context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.ProcessProposal(req)
 	return &res, nil
 }
 
 func (app *localClient) ExtendVote(_ context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.ExtendVote(req)
 	return &res, nil
 }
 
 func (app *localClient) VerifyVoteExtension(_ context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.VerifyVoteExtension(req)
 	return &res, nil
 }
 
 func (app *localClient) FinalizeBlock(_ context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.FinalizeBlock(req)
 	return &res, nil
 }
