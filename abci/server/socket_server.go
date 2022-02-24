@@ -27,7 +27,6 @@ type SocketServer struct {
 	listener net.Listener
 
 	connsMtx   sync.Mutex
-	conns      map[int]net.Conn
 	connsClose map[int]func()
 	nextConnID int
 
@@ -42,7 +41,6 @@ func NewSocketServer(logger log.Logger, protoAddr string, app types.Application)
 		addr:       addr,
 		listener:   nil,
 		app:        app,
-		conns:      make(map[int]net.Conn),
 		connsClose: make(map[int]func()),
 	}
 	s.BaseService = *service.NewBaseService(logger, "ABCIServer", s)
@@ -69,44 +67,29 @@ func (s *SocketServer) OnStop() {
 	s.connsMtx.Lock()
 	defer s.connsMtx.Unlock()
 
-	for id := range s.conns {
-		if err := s.unsafeRmConn(id); err != nil {
-			s.logger.Error("error closing connection", "id", id, "err", err)
-		}
+	for _, closer := range s.connsClose {
+		closer()
 	}
 }
 
-func (s *SocketServer) addConn(conn net.Conn, closer func()) int {
+func (s *SocketServer) addConn(closer func()) int {
 	s.connsMtx.Lock()
 	defer s.connsMtx.Unlock()
 
 	connID := s.nextConnID
 	s.nextConnID++
-	s.conns[connID] = conn
 	s.connsClose[connID] = closer
 	return connID
 }
 
 // deletes conn even if close errs
-func (s *SocketServer) rmConn(connID int) error {
+func (s *SocketServer) rmConn(connID int) {
 	s.connsMtx.Lock()
 	defer s.connsMtx.Unlock()
-	return s.unsafeRmConn(connID)
-}
-
-func (s *SocketServer) unsafeRmConn(connID int) error {
 	if closer, ok := s.connsClose[connID]; ok {
 		closer()
 		delete(s.connsClose, connID)
 	}
-
-	conn, ok := s.conns[connID]
-	if !ok {
-		return nil
-	}
-
-	delete(s.conns, connID)
-	return conn.Close()
 }
 
 func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
@@ -127,7 +110,7 @@ func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 		}
 
 		cctx, ccancel := context.WithCancel(ctx)
-		connID := s.addConn(conn, ccancel)
+		connID := s.addConn(ccancel)
 
 		s.logger.Info("Accepted a new connection", "id", connID)
 
@@ -137,16 +120,26 @@ func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 		closer := func(err error) {
 			ccancel()
 			once.Do(func() {
-				if rcerr := s.rmConn(connID); rcerr != nil {
+				if cerr := conn.Close(); err != nil {
 					s.logger.Error("error closing connection",
 						"id", connID,
-						"close_err", rcerr,
+						"close_err", cerr,
 						"err", err)
 				}
+				s.rmConn(connID)
 
 				switch {
+				case errors.Is(err, context.Canceled):
+					s.logger.Error("Connection terminated",
+						"id", connID,
+						"err", err)
+				case errors.Is(err, context.DeadlineExceeded):
+					s.logger.Error("Connection encountered timeout",
+						"id", connID,
+						"err", err)
 				case errors.Is(err, io.EOF):
-					s.logger.Error("Connection was closed by client", "id", connID)
+					s.logger.Error("Connection was closed by client",
+						"id", connID)
 				case err != nil:
 					s.logger.Error("Connection error",
 						"id", connID,
@@ -173,6 +166,8 @@ func (s *SocketServer) handleRequests(
 	responses chan<- *types.Response,
 ) {
 	var bufReader = bufio.NewReader(conn)
+	var err error
+	defer closer(err)
 
 	defer func() {
 		// make sure to recover from any app-related panics to allow proper socket cleanup
@@ -181,7 +176,7 @@ func (s *SocketServer) handleRequests(
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			closer(fmt.Errorf("recovered from panic: %v\n%s", r, buf))
+			err = fmt.Errorf("recovered from panic: %v\n%s", r, buf)
 		}
 	}()
 
@@ -190,10 +185,10 @@ func (s *SocketServer) handleRequests(
 			return
 		}
 
-		var req = &types.Request{}
+		req := &types.Request{}
 		err := types.ReadMessage(bufReader, req)
 		if err != nil {
-			closer(fmt.Errorf("error reading message: %w", err))
+			err = fmt.Errorf("error reading message: %w", err)
 			return
 		}
 		s.handleRequest(ctx, req, responses)
@@ -253,18 +248,22 @@ func (s *SocketServer) handleResponses(
 	conn io.Writer,
 	responses <-chan *types.Response,
 ) {
+	var err error
+	defer closer(err)
+
 	bw := bufio.NewWriter(conn)
 	for {
 		select {
 		case <-ctx.Done():
+			err = ctx.Err()
 			return
 		case res := <-responses:
 			if err := types.WriteMessage(res, bw); err != nil {
-				closer(fmt.Errorf("error writing message: %w", err))
+				err = fmt.Errorf("error writing message: %w", err)
 				return
 			}
 			if err := bw.Flush(); err != nil {
-				closer(fmt.Errorf("error writing message: %w", err))
+				err = fmt.Errorf("error writing message: %w", err)
 				return
 			}
 		}
