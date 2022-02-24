@@ -2,6 +2,22 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## v0.36
+
+### ABCI Changes
+
+#### ABCI++
+
+#### ABCI Mutex
+
+In previous versions of ABCI, Tendermint was prevented from making
+concurrent calls to ABCI implementations by virtue of mutexes in the
+implementation of Tendermint's ABCI infrastructure. These mutexes have
+been removed from the current implementation and applications will now
+be responsible for managing their own concurrency control. Test your
+application thoroughly using realistic workloads and the race detector
+to ensure your applications remains correct.
+
 ## v0.35
 
 ### ABCI Changes

@@ -22,6 +22,7 @@ Special thanks to external contributors on this release:
 - Apps
 
   - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
+  - [abci] \#7984 Remove the locks preventing concurrent use of ABCI applications by Tendermint. (@tychoish)
 
 - P2P Protocol
 
