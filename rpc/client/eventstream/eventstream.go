@@ -93,7 +93,6 @@ func (s *Stream) Reset() { s.newestSeen = "" }
 // fetchPages fetches the next batch of matching results. If there are multiple
 // pages, all the matching pages are retrieved. An error is reported if the
 // current scan position falls out of the event log window.
-// This method updates s.newestSeen.
 func (s *Stream) fetchPages(ctx context.Context) ([]*coretypes.EventItem, error) {
 	var pageCursor string // if non-empty, page through items before this
 	var items []*coretypes.EventItem
