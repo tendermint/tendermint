@@ -108,8 +108,10 @@ type MConnection struct {
 	pingTimer  *time.Ticker         // send pings periodically
 
 	// close conn if pong is not received in pongTimeout
-	lastMsgRecvMu sync.RWMutex
-	lastMsgRecvAt time.Time
+	lastMsgRecv struct {
+		sync.Mutex
+		at time.Time
+	}
 
 	chStatsTimer *time.Ticker // update channel stats periodically
 
@@ -216,16 +218,16 @@ func (c *MConnection) OnStart(ctx context.Context) error {
 }
 
 func (c *MConnection) setRecvLastMsgAt(t time.Time) {
-	c.lastMsgRecvMu.Lock()
-	defer c.lastMsgRecvMu.Unlock()
+	c.lastMsgRecv.Lock()
+	defer c.lastMsgRecv.Unlock()
 
-	c.lastMsgRecvAt = t
+	c.lastMsgRecv.at = t
 }
 
 func (c *MConnection) getLastMessageAt() time.Time {
-	c.lastMsgRecvMu.RLock()
-	defer c.lastMsgRecvMu.RUnlock()
-	return c.lastMsgRecvAt
+	c.lastMsgRecv.Lock()
+	defer c.lastMsgRecv.Unlock()
+	return c.lastMsgRecv.at
 }
 
 // stopServices stops the BaseService and timers and closes the quitSendRoutine.
