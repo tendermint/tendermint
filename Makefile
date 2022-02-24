@@ -96,14 +96,23 @@ ifeq (,$(shell which buf))
 endif
 .PHONY: check-proto-lint-deps
 
-# The proto-lint and proto-check-breaking targets are provided for convenience
-# and for local execution only.
-#
-# For CI-based checks, see ./.github/workflows/proto-check.yml
+check-proto-format-deps:
+ifeq (,$(shell which clang-format))
+	$(error "clang-format is required for Protobuf formatting. See instructions for your platform on how to install it.")
+endif
+.PHONY: check-proto-format-deps
+
+# These targets are provided for convenience and for local execution only. For
+# CI-based checks, see ./.github/workflows/proto-check.yml
 proto-lint: check-proto-lint-deps
 	@echo "Linting Protobuf files"
 	@buf lint
 .PHONY: proto-lint
+
+proto-format: check-proto-format-deps
+	@echo "Formatting Protobuf files"
+	@find . -name '*.proto' -path "./proto/*" -exec clang-format -i {} \;
+.PHONY: proto-format
 
 proto-check-breaking: check-proto-lint-deps
 	@echo "Checking for breaking changes in Protobuf files"
