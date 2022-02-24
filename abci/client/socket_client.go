@@ -461,7 +461,7 @@ func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request) (
 	reqres := NewReqRes(req)
 
 	select {
-	case cli.reqQueue <- &reqResWithContext{R: reqres, C: context.Background()}:
+	case cli.reqQueue <- &reqResWithContext{R: reqres, C: ctx}:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
