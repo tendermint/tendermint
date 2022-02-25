@@ -186,13 +186,15 @@ DESTINATION = ./index.html.md
 ###############################################################################
 
 build-docs:
-	cd docs && \
-	while read p; do \
-		(git checkout $${p} . && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
-		mkdir -p ~/output/$${p} ; \
-		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
-		cp ~/output/$${p}/index.html ~/output ; \
-	done < versions ;
+	@cd docs && \
+	while read -r branch path_prefix; do \
+		(git checkout $${branch} && npm ci && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
+		mkdir -p ~/output/$${path_prefix} ; \
+		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
+		cp ~/output/$${path_prefix}/index.html ~/output ; \
+	done < versions ; \
+	mkdir -p ~/output/master ; \
+	cp -r .vuepress/dist/* ~/output/master/
 .PHONY: build-docs
 
 sync-docs:
