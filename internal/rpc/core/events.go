@@ -38,6 +38,8 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 		return nil, errors.New("maximum query length exceeded")
 	}
 
+	env.Logger.Info("WARNING: Websocket subscriptions are deprecated and will be removed " +
+		"in Tendermint v0.37. See https://tinyurl.com/adr075 for more information.")
 	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)
 
 	q, err := tmquery.New(query)
