@@ -2,7 +2,9 @@ package proxy
 
 import (
 	"context"
+	"time"
 
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -25,6 +27,21 @@ func (p proxyService) ABCIQuery(ctx context.Context, path string, data tmbytes.H
 
 func (p proxyService) GetConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error) {
 	return p.ConsensusState(ctx)
+}
+
+func (p proxyService) Events(ctx context.Context,
+	filter *coretypes.EventFilter,
+	maxItems int,
+	before, after cursor.Cursor,
+	waitTime time.Duration,
+) (*coretypes.ResultEvents, error) {
+	return p.Client.Events(ctx, &coretypes.RequestEvents{
+		Filter:   filter,
+		MaxItems: maxItems,
+		Before:   before.String(),
+		After:    after.String(),
+		WaitTime: waitTime,
+	})
 }
 
 func (p proxyService) Subscribe(ctx context.Context, query string) (*coretypes.ResultSubscribe, error) {

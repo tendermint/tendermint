@@ -42,8 +42,7 @@ type Application interface {
 
 var _ Application = (*BaseApplication)(nil)
 
-type BaseApplication struct {
-}
+type BaseApplication struct{}
 
 func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}

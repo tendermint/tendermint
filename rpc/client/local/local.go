@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
@@ -127,6 +128,17 @@ func (c *Local) ConsensusState(ctx context.Context) (*coretypes.ResultConsensusS
 
 func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
 	return c.env.ConsensusParams(ctx, height)
+}
+
+func (c *Local) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
+	var before, after cursor.Cursor
+	if err := before.UnmarshalText([]byte(req.Before)); err != nil {
+		return nil, err
+	}
+	if err := after.UnmarshalText([]byte(req.After)); err != nil {
+		return nil, err
+	}
+	return c.env.Events(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
 }
 
 func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
