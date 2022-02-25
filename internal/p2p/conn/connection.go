@@ -163,10 +163,6 @@ func NewMConnection(
 	onError errorCbFunc,
 	config MConnConfig,
 ) *MConnection {
-	if config.PongTimeout >= config.PingInterval {
-		panic("pongTimeout must be less than pingInterval (otherwise, next ping will reset pong timer)")
-	}
-
 	mconn := &MConnection{
 		logger:        logger,
 		conn:          conn,
@@ -220,7 +216,6 @@ func (c *MConnection) OnStart(ctx context.Context) error {
 func (c *MConnection) setRecvLastMsgAt(t time.Time) {
 	c.lastMsgRecv.Lock()
 	defer c.lastMsgRecv.Unlock()
-
 	c.lastMsgRecv.at = t
 }
 
@@ -338,6 +333,8 @@ func (c *MConnection) sendRoutine(ctx context.Context) {
 	defer c._recover(ctx)
 	protoWriter := protoio.NewDelimitedWriter(c.bufConnWriter)
 
+	pongTimeout := time.NewTicker(c.config.PongTimeout)
+	defer pongTimeout.Stop()
 FOR_LOOP:
 	for {
 		var _n int
@@ -359,7 +356,7 @@ FOR_LOOP:
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
-			c.logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
+			c.flush()
 		case <-c.pong:
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 			if err != nil {
@@ -372,6 +369,10 @@ FOR_LOOP:
 			break FOR_LOOP
 		case <-c.quitSendRoutine:
 			break FOR_LOOP
+		case <-pongTimeout.C:
+			// the point of the pong timer is to check to
+			// see if we'e
+			break SELECTION
 		case <-c.send:
 			// Send some PacketMsgs
 			eof := c.sendSomePacketMsgs(ctx)
@@ -383,16 +384,16 @@ FOR_LOOP:
 				}
 			}
 		}
-
 		if time.Since(c.getLastMessageAt()) > c.config.PongTimeout {
 			err = errors.New("pong timeout")
 		}
-		if !c.IsRunning() {
-			break FOR_LOOP
-		}
+
 		if err != nil {
 			c.logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
 			c.stopForError(ctx, err)
+			break FOR_LOOP
+		}
+		if !c.IsRunning() {
 			break FOR_LOOP
 		}
 	}
@@ -466,6 +467,14 @@ func (c *MConnection) recvRoutine(ctx context.Context) {
 
 FOR_LOOP:
 	for {
+		select {
+		case <-ctx.Done():
+			break FOR_LOOP
+		case <-c.doneSendRoutine:
+			break FOR_LOOP
+		default:
+		}
+
 		// Block until .recvMonitor says we can read.
 		c.recvMonitor.Limit(c._maxPacketMsgSize, atomic.LoadInt64(&c.config.RecvRate), true)
 
