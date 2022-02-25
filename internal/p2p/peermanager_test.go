@@ -337,12 +337,8 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 		default:
 			t.Fatal("unexpected retry")
 		}
-<<<<<<< HEAD
 
 		require.NoError(t, peerManager.DialFailed(a))
-=======
-		require.NoError(t, peerManager.DialFailed(ctx, a))
->>>>>>> 89dbebd1c (p2p: retry failed connections slightly more aggressively (#8010))
 	}
 }
 
