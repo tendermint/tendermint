@@ -387,6 +387,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Query)
 	case *types.Request_InitChain:
 		_, ok = res.Value.(*types.Response_InitChain)
+	case *types.Request_ProcessProposal:
+		_, ok = res.Value.(*types.Response_ProcessProposal)
 	case *types.Request_PrepareProposal:
 		_, ok = res.Value.(*types.Response_PrepareProposal)
 	case *types.Request_ExtendVote:
