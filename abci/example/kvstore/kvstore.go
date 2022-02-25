@@ -290,10 +290,10 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
-			return types.ResponseProcessProposal{Result: types.ResponseProcessProposal_REJECT}
+			return types.ResponseProcessProposal{Accept: false}
 		}
 	}
-	return types.ResponseProcessProposal{Result: types.ResponseProcessProposal_ACCEPT}
+	return types.ResponseProcessProposal{Accept: true}
 }
 
 //---------------------------------------------
@@ -442,9 +442,4 @@ func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
 	}
 
 	return blockData
-}
-
-func (app *Application) ProcessProposal(
-	req types.RequestProcessProposal) types.ResponseProcessProposal {
-	return types.ResponseProcessProposal{Accept: true}
 }
