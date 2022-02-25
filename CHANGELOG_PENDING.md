@@ -18,10 +18,12 @@ Special thanks to external contributors on this release:
   - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
   - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
   - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
+  - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
 
 - Apps
 
   - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
+  - [abci] \#7984 Remove the locks preventing concurrent use of ABCI applications by Tendermint. (@tychoish)
 
 - P2P Protocol
 
