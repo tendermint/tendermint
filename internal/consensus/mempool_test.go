@@ -192,8 +192,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resDeliver := app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
-	assert.False(t, resDeliver.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
+	resFinalize := app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
 
 	resCommit := app.Commit()
 	assert.True(t, len(resCommit.Data) > 0)
