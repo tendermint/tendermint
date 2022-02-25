@@ -312,3 +312,8 @@ func (app *CounterApplication) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
 	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
 }
+
+func (app *CounterApplication) ProcessProposal(
+	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	return abci.ResponseProcessProposal{Accept: true}
+}
