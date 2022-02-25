@@ -155,9 +155,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
-	}
+	abciResponses := &tmstate.ABCIResponses{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
@@ -188,7 +186,7 @@ func makeHeaderPartsResponsesValPowerChange(
 	require.NoError(t, err)
 
 	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
+		FinalizeBlock: &abci.ResponseFinalizeBlock{},
 	}
 
 	// If the pubkey is new, remove the old and add the new.
