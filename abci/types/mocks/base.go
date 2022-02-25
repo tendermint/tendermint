@@ -4,6 +4,13 @@ import (
 	types "github.com/tendermint/tendermint/abci/types"
 )
 
+// BaseMock provides a wrapper around the generated Application mock and a BaseApplication.
+// BaseMock first tries to use the mock's implementation of the method.
+// If no functionality was provided for the mock by the user, BaseMock dispatches
+// to the BaseApplication and uses its functionality.
+// BaseMock allows users to provide mocked functionality for only the methods that matter
+// for their test while avoiding a panic if the code calls Application methods that are
+// not relevant to the test.
 type BaseMock struct {
 	base *types.BaseApplication
 	*Application
