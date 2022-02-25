@@ -125,7 +125,7 @@ func addCommands(cmd *cobra.Command, logger log.Logger) {
 	cmd.AddCommand(consoleCmd)
 	cmd.AddCommand(echoCmd)
 	cmd.AddCommand(infoCmd)
-	cmd.AddCommand(deliverTxCmd)
+	cmd.AddCommand(addTxCmd)
 	cmd.AddCommand(checkTxCmd)
 	cmd.AddCommand(commitCmd)
 	cmd.AddCommand(versionCmd)
@@ -150,10 +150,10 @@ where example.file looks something like:
 
     check_tx 0x00
     check_tx 0xff
-    deliver_tx 0x00
+    add_tx 0x00
     check_tx 0x00
-    deliver_tx 0x01
-    deliver_tx 0x04
+    add_tx 0x01
+    add_tx 0x04
     info
 `,
 	Args: cobra.ExactArgs(0),
@@ -169,7 +169,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "add_tx", "check_tx", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -188,12 +188,12 @@ var infoCmd = &cobra.Command{
 	RunE:  cmdInfo,
 }
 
-var deliverTxCmd = &cobra.Command{
-	Use:   "deliver_tx",
-	Short: "deliver a new transaction to the application",
-	Long:  "deliver a new transaction to the application",
+var addTxCmd = &cobra.Command{
+	Use:   "add_tx",
+	Short: "add a new transaction to the application",
+	Long:  "add a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
-	RunE:  cmdFinalizeBlock,
+	RunE:  cmdAddTx,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -426,8 +426,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
-	case "deliver_tx":
-		return cmdFinalizeBlock(cmd, actualArgs)
+	case "add_tx":
+		return cmdAddTx(cmd, actualArgs)
 	case "echo":
 		return cmdEcho(cmd, actualArgs)
 	case "info":
@@ -496,7 +496,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 const codeBad uint32 = 10
 
 // Append a new tx to application
-func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
+func cmdAddTx(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
