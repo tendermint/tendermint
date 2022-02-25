@@ -46,7 +46,7 @@ const (
 	defaultRecvRate            = int64(512000) // 500KB/s
 	defaultSendTimeout         = 10 * time.Second
 	defaultPingInterval        = 60 * time.Second
-	defaultPongTimeout         = 45 * time.Second
+	defaultPongTimeout         = 90 * time.Second
 )
 
 type receiveCbFunc func(ctx context.Context, chID ChannelID, msgBytes []byte)
