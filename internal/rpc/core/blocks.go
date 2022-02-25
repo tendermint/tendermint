@@ -193,8 +193,6 @@ func (env *Environment) Commit(ctx context.Context, heightPtr *int64) (*coretype
 // If no height is provided, it will fetch results for the latest block.
 //
 // Results are for the height of the block containing the txs.
-// Thus response.results.deliver_tx[5] is the results of executing
-// getBlock(h).Txs[5]
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_results
 func (env *Environment) BlockResults(ctx context.Context, heightPtr *int64) (*coretypes.ResultBlockResults, error) {
 	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
