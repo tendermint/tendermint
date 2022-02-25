@@ -371,7 +371,11 @@ FOR_LOOP:
 			break FOR_LOOP
 		case <-pongTimeout.C:
 			// the point of the pong timer is to check to
-			// see if we'e
+			// see if we've seen a message recently, so we
+			// want to make sure that we escape this
+			// select statement on an interval to ensure
+			// that we avoid hanging on to dead
+			// connections for too long.
 			break SELECTION
 		case <-c.send:
 			// Send some PacketMsgs
@@ -384,6 +388,7 @@ FOR_LOOP:
 				}
 			}
 		}
+
 		if time.Since(c.getLastMessageAt()) > c.config.PongTimeout {
 			err = errors.New("pong timeout")
 		}
