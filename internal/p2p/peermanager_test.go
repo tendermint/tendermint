@@ -3,6 +3,7 @@ package p2p_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -314,13 +315,14 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	for i := 0; i <= 5; i++ {
+	for i := 0; i <= 6; i++ {
 		start := time.Now()
 		dial, err := peerManager.DialNext(ctx)
 		require.NoError(t, err)
 		require.Equal(t, a, dial)
 		elapsed := time.Since(start).Round(time.Millisecond)
 
+		fmt.Println(elapsed, options.MinRetryTime)
 		switch i {
 		case 0:
 			require.LessOrEqual(t, elapsed, options.MinRetryTime)
@@ -329,12 +331,11 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 		case 2:
 			require.GreaterOrEqual(t, elapsed, 2*options.MinRetryTime)
 		case 3:
+			require.GreaterOrEqual(t, elapsed, 3*options.MinRetryTime)
+		case 4, 5, 6:
 			require.GreaterOrEqual(t, elapsed, 4*options.MinRetryTime)
-		case 4, 5:
-			require.GreaterOrEqual(t, elapsed, options.MaxRetryTime)
-			require.LessOrEqual(t, elapsed, 8*options.MinRetryTime)
 		default:
-			require.Fail(t, "unexpected retry")
+			t.Fatal("unexpected retry")
 		}
 
 		require.NoError(t, peerManager.DialFailed(a))
