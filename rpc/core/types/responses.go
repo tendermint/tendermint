@@ -262,7 +262,7 @@ type RequestEvents struct {
 
 	// The maximum number of eligible items to return.
 	// If zero or negative, the server will report a default number.
-	MaxItems int `json:"max_items"`
+	MaxItems int `json:"maxItems"`
 
 	// Return only items after this cursor. If empty, the limit is just
 	// before the the beginning of the event log.
@@ -273,7 +273,7 @@ type RequestEvents struct {
 	Before string `json:"before"`
 
 	// Wait for up to this long for events to be available.
-	WaitTime time.Duration `json:"wait_time"`
+	WaitTime time.Duration `json:"waitTime"`
 }
 
 // An EventFilter specifies which events are selected by an /events request.
