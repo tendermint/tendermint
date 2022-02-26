@@ -220,8 +220,8 @@ func (env *Environment) BlockResults(ctx context.Context, heightPtr *int64) (*co
 	}, nil
 }
 
-// BlockSearch searches for a paginated set of blocks matching BeginBlock and
-// EndBlock event search criteria.
+// BlockSearch searches for a paginated set of blocks matching the provided
+// query.
 func (env *Environment) BlockSearch(
 	ctx context.Context,
 	query string,

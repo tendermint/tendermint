@@ -270,12 +270,8 @@ const (
 	// see EventBus#PublishEventTx
 	TxHeightKey = "tx.height"
 
-	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
-	// events.
+	// BlockHeightKey is a reserved key used for indexing FinalizeBlock events.
 	BlockHeightKey = "block.height"
-
-	EventTypeBeginBlock = "begin_block"
-	EventTypeEndBlock   = "end_block"
 )
 
 var (
