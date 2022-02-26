@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -74,7 +75,7 @@ func TestKVStoreKV(t *testing.T) {
 
 func TestPersistentKVStoreKV(t *testing.T) {
 	dir := t.TempDir()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
 	key := testKey
@@ -89,7 +90,7 @@ func TestPersistentKVStoreKV(t *testing.T) {
 
 func TestPersistentKVStoreInfo(t *testing.T) {
 	dir := t.TempDir()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
 	InitKVStore(kvstore)
@@ -229,9 +230,11 @@ func makeSocketClientServer(
 	app types.Application,
 	name string,
 ) (abciclient.Client, service.Service, error) {
+	t.Helper()
 
 	ctx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
+	t.Cleanup(leaktest.Check(t))
 
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
@@ -261,6 +264,8 @@ func makeGRPCClientServer(
 ) (abciclient.Client, service.Service, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
+	t.Cleanup(leaktest.Check(t))
+
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 
@@ -284,7 +289,7 @@ func makeGRPCClientServer(
 func TestClientServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	// set up socket app
 	kvstore := NewApplication()

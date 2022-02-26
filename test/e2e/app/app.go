@@ -303,6 +303,18 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
 }
 
+// ProcessProposal implements part of the Application interface.
+// It accepts any proposal that does not contain a malformed transaction.
+func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		_, _, err := parseTx(tx)
+		if err != nil {
+			return abci.ResponseProcessProposal{Accept: false}
+		}
+	}
+	return abci.ResponseProcessProposal{Accept: true}
+}
+
 func (app *Application) Rollback() error {
 	app.mu.Lock()
 	defer app.mu.Unlock()
