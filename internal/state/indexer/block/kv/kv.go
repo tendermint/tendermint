@@ -65,7 +65,7 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
 	}
 
 	// 2. index FinalizeBlock events
-	if err := idx.indexEvents(batch, bh.ResultFinalizeBlock.BlockEvents, "finalize_block", height); err != nil {
+	if err := idx.indexEvents(batch, bh.ResultFinalizeBlock.BlockEvents, types.EventTypeFinalizeBlock, height); err != nil {
 		return fmt.Errorf("failed to index FinalizeBlock events: %w", err)
 	}
 

@@ -272,6 +272,9 @@ const (
 
 	// BlockHeightKey is a reserved key used for indexing FinalizeBlock events.
 	BlockHeightKey = "block.height"
+
+	// is a reserved key used for indexing FinalizeBlock events.
+	EventTypeFinalizeBlock = "finalize_block"
 )
 
 var (
