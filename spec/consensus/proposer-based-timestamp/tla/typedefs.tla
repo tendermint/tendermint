@@ -7,8 +7,9 @@
   @typeAlias: ACTION = Str;
   @typeAlias: TRACE = Seq(Str);
   @typeAlias: TIME = Int;
-  @typeAlias: PROPOSAL = <<VALUE, TIME, ROUND>>;
-  @typeAlias: DECISION = <<PROPOSAL, ROUND>>;
+  @typeAlias: PROPOSAL = <<VALUE, TIME>>;
+  @typeAlias: DECISION = <<VALUE, TIME, ROUND>>;
+  @typeAlias: RCVPROP = <<PROCESS, PROPMESSAGE>>;
   @typeAlias: PROPMESSAGE = 
   [
     type: STEP, 
