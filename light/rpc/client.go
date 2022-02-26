@@ -292,6 +292,10 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes
 	return res, nil
 }
 
+func (c *Client) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
+	return c.next.Events(ctx, req)
+}
+
 func (c *Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	return c.next.Health(ctx)
 }
@@ -597,15 +601,15 @@ func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*cor
 
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string,
 	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
-	return c.next.Subscribe(ctx, subscriber, query, outCapacity...)
+	return c.next.Subscribe(ctx, subscriber, query, outCapacity...) //nolint:staticcheck
 }
 
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	return c.next.Unsubscribe(ctx, subscriber, query)
+	return c.next.Unsubscribe(ctx, subscriber, query) //nolint:staticcheck
 }
 
 func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	return c.next.UnsubscribeAll(ctx, subscriber)
+	return c.next.UnsubscribeAll(ctx, subscriber) //nolint:staticcheck
 }
 
 func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64) (*types.LightBlock, error) {
@@ -636,7 +640,7 @@ func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.Resu
 	c.closers = append(c.closers, bcancel)
 
 	callInfo := rpctypes.GetCallInfo(ctx)
-	out, err := c.next.Subscribe(bctx, callInfo.RemoteAddr(), query)
+	out, err := c.next.Subscribe(bctx, callInfo.RemoteAddr(), query) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +664,7 @@ func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.Resu
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
 func (c *Client) UnsubscribeWS(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.Unsubscribe(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr(), query)
+	err := c.next.Unsubscribe(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr(), query) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -670,7 +674,7 @@ func (c *Client) UnsubscribeWS(ctx context.Context, query string) (*coretypes.Re
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
 func (c *Client) UnsubscribeAllWS(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.UnsubscribeAll(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr())
+	err := c.next.UnsubscribeAll(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr()) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}

@@ -94,17 +94,23 @@ type MemoryTransport struct {
 	bufferSize int
 
 	acceptCh chan *MemoryConnection
+	closeCh  chan struct{}
+	closeFn  func()
 }
 
 // newMemoryTransport creates a new MemoryTransport. This is for internal use by
 // MemoryNetwork, use MemoryNetwork.CreateTransport() instead.
 func newMemoryTransport(network *MemoryNetwork, nodeID types.NodeID) *MemoryTransport {
+	once := &sync.Once{}
+	closeCh := make(chan struct{})
 	return &MemoryTransport{
 		logger:     network.logger.With("local", nodeID),
 		network:    network,
 		nodeID:     nodeID,
 		bufferSize: network.bufferSize,
 		acceptCh:   make(chan *MemoryConnection),
+		closeCh:    closeCh,
+		closeFn:    func() { once.Do(func() { close(closeCh) }) },
 	}
 }
 
@@ -141,6 +147,8 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 // Accept implements Transport.
 func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
 	select {
+	case <-t.closeCh:
+		return nil, io.EOF
 	case conn := <-t.acceptCh:
 		t.logger.Info("accepted connection", "remote", conn.RemoteEndpoint().Path)
 		return conn, nil
@@ -197,6 +205,7 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)
+	t.closeFn()
 	return nil
 }
 

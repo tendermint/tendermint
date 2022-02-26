@@ -340,6 +340,14 @@ func (c *baseRPCClient) ConsensusParams(
 	return result, nil
 }
 
+func (c *baseRPCClient) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
+	result := new(coretypes.ResultEvents)
+	if err := c.caller.Call(ctx, "events", req, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 	result := new(coretypes.ResultHealth)
 	if err := c.caller.Call(ctx, "health", nil, result); err != nil {
