@@ -493,7 +493,7 @@ func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 func (conR *Reactor) updateRoundStateRoutine() {
 	t := time.NewTicker(100*time.Microsecond)
 	defer t.Stop()
-	for range t {
+	for range t.C {
 		if !conR.IsRunning() {
 			return
 		}
