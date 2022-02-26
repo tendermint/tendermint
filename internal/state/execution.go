@@ -485,7 +485,7 @@ func updateState(
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
-	// Copy the valset so we can apply changes from EndBlock
+	// Copy the valset so we can apply changes from FinalizeBlock
 	// and update s.LastValidators and s.Validators.
 	nValSet := state.NextValidators.Copy()
 

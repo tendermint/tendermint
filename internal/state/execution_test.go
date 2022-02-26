@@ -445,8 +445,8 @@ func TestUpdateValidators(t *testing.T) {
 	}
 }
 
-// TestEndBlockValidatorUpdates ensures we update validator set and send an event.
-func TestEndBlockValidatorUpdates(t *testing.T) {
+// TestFinalizeBlockValidatorUpdates ensures we update validator set and send an event.
+func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -478,7 +478,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	blockExec.SetEventBus(eventBus)
 
 	updatesSub, err := eventBus.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
-		ClientID: "TestEndBlockValidatorUpdates",
+		ClientID: "TestFinalizeBlockValidatorUpdates",
 		Query:    types.EventQueryValidatorSetUpdates,
 	})
 	require.NoError(t, err)
@@ -519,9 +519,9 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 }
 
-// TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
+// TestFinalizeBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
-func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
