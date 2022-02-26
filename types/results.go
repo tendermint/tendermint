@@ -13,7 +13,7 @@ type ABCIResults []*abci.ExecTxResult
 func NewResults(responses []*abci.ExecTxResult) ABCIResults {
 	res := make(ABCIResults, len(responses))
 	for i, d := range responses {
-		res[i] = deterministicResponseDeliverTx(d)
+		res[i] = deterministicExecTxResult(d)
 	}
 	return res
 }
@@ -42,9 +42,9 @@ func (a ABCIResults) toByteSlices() [][]byte {
 	return bzs
 }
 
-// deterministicResponseDeliverTx strips non-deterministic fields from
+// deterministicExecTxResult strips non-deterministic fields from
 // ResponseDeliverTx and returns another ResponseDeliverTx.
-func deterministicResponseDeliverTx(response *abci.ExecTxResult) *abci.ExecTxResult {
+func deterministicExecTxResult(response *abci.ExecTxResult) *abci.ExecTxResult {
 	return &abci.ExecTxResult{
 		Code:      response.Code,
 		Data:      response.Data,
