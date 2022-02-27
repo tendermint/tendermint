@@ -47,7 +47,7 @@ An overhaul of the existing interface between the application and consensus, to 
 
 ### Proposer-Based Timestamps
 
-Proposer-based timestamps are a replacement of [BFT time](https://docs.tendermint.com/master/spec/consensus/bft-time.html), whereby the proposer chooses a timestamp and validators vote on the block only if the timestamp is considered *timely*. This increases reliance on an accurate local clock, but in exchange makes block time more reliable and resistant to faults. This has important use cases in light clients, IBC relayers, CosmosHub inflation and enabling signature aggregation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-071-proposer-based-timestamps.md)
+Proposer-based timestamps are a replacement of [BFT time](https://github.com/tendermint/tendermint/blob/master/spec/consensus/bft-time.md), whereby the proposer chooses a timestamp and validators vote on the block only if the timestamp is considered *timely*. This increases reliance on an accurate local clock, but in exchange makes block time more reliable and resistant to faults. This has important use cases in light clients, IBC relayers, CosmosHub inflation and enabling signature aggregation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-071-proposer-based-timestamps.md)
 
 ### RPC Event Subscription
 
