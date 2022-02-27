@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
@@ -48,12 +49,14 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	byzState := rts.states[node.NodeID]
 	byzReactor := rts.reactors[node.NodeID]
 
+	calledDoPrevote := false
 	// Update the doPrevote function to just send a valid precommit for a random
 	// block and otherwise disable the priv validator.
 	byzState.mtx.Lock()
 	privVal := byzState.privValidator
 	byzState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, privVal)
+		calledDoPrevote = true
 	}
 	byzState.mtx.Unlock()
 
@@ -77,6 +80,9 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	}
 
 	wg.Wait()
+	if !calledDoPrevote {
+		t.Fatal("test failed to run core logic")
+	}
 }
 
 func invalidDoPrevoteFunc(
@@ -124,13 +130,22 @@ func invalidDoPrevoteFunc(
 		cs.privValidator = nil // disable priv val so we don't do normal votes
 		cs.mtx.Unlock()
 
+		count := 0
 		for _, ps := range r.peers {
-			require.NoError(t, r.voteCh.Send(ctx, p2p.Envelope{
+			count++
+			err := r.voteCh.Send(ctx, p2p.Envelope{
 				To: ps.peerID,
 				Message: &tmcons.Vote{
 					Vote: precommit.ToProto(),
 				},
-			}))
+			})
+			// we want to have sent some of these votes,
+			// but if the test completes without erroring
+			// and we get here, we shouldn't error
+			if errors.Is(err, context.Canceled) && count > 1 {
+				break
+			}
+			require.NoError(t, err)
 		}
 	}()
 }
