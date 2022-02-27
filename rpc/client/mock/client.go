@@ -91,23 +91,25 @@ func (c Client) ABCIQueryWithOptions(
 	path string,
 	data bytes.HexBytes,
 	opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
-	return c.env.ABCIQuery(ctx, path, data, opts.Height, opts.Prove)
+	return c.env.ABCIQuery(ctx, &coretypes.RequestABCIQuery{
+		Path: path, Data: data, Height: opts.Height, Prove: opts.Prove,
+	})
 }
 
 func (c Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
-	return c.env.BroadcastTxCommit(ctx, tx)
+	return c.env.BroadcastTxCommit(ctx, &coretypes.RequestBroadcastTx{Tx: tx})
 }
 
 func (c Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	return c.env.BroadcastTxAsync(ctx, tx)
+	return c.env.BroadcastTxAsync(ctx, &coretypes.RequestBroadcastTx{Tx: tx})
 }
 
 func (c Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	return c.env.BroadcastTxSync(ctx, tx)
+	return c.env.BroadcastTxSync(ctx, &coretypes.RequestBroadcastTx{Tx: tx})
 }
 
 func (c Client) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
-	return c.env.CheckTx(ctx, tx)
+	return c.env.CheckTx(ctx, &coretypes.RequestCheckTx{Tx: tx})
 }
 
 func (c Client) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
@@ -123,7 +125,7 @@ func (c Client) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpCo
 }
 
 func (c Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
-	return c.env.ConsensusParams(ctx, height)
+	return c.env.ConsensusParams(ctx, &coretypes.RequestConsensusParams{Height: height})
 }
 
 func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
@@ -131,7 +133,7 @@ func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 }
 
 func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-	return c.env.BlockchainInfo(ctx, minHeight, maxHeight)
+	return c.env.BlockchainInfo(ctx, &coretypes.RequestBlockchainInfo{MinHeight: minHeight, MaxHeight: maxHeight})
 }
 
 func (c Client) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
@@ -139,21 +141,23 @@ func (c Client) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
 }
 
 func (c Client) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
-	return c.env.Block(ctx, height)
+	return c.env.Block(ctx, &coretypes.RequestBlockInfo{Height: height})
 }
 
 func (c Client) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
-	return c.env.BlockByHash(ctx, hash)
+	return c.env.BlockByHash(ctx, &coretypes.RequestBlockByHash{Hash: hash})
 }
 
 func (c Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
-	return c.env.Commit(ctx, height)
+	return c.env.Commit(ctx, &coretypes.RequestBlockInfo{Height: height})
 }
 
 func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
-	return c.env.Validators(ctx, height, page, perPage)
+	return c.env.Validators(ctx, &coretypes.RequestValidators{
+		Height: height, Page: page, PerPage: perPage,
+	})
 }
 
 func (c Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
-	return c.env.BroadcastEvidence(ctx, coretypes.Evidence{Value: ev})
+	return c.env.BroadcastEvidence(ctx, &coretypes.RequestBroadcastEvidence{Evidence: ev})
 }
