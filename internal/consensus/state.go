@@ -876,8 +876,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			}
 		}
 
-		rs := cs.RoundState
-
 		select {
 		case <-cs.txNotifier.TxsAvailable():
 			cs.handleTxsAvailable(ctx)
@@ -910,7 +908,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 			// if the timeout is relevant to the rs
 			// go to the next step
-			cs.handleTimeout(ctx, ti, rs)
+			cs.handleTimeout(ctx, ti, cs.RoundState)
 
 		case <-ctx.Done():
 			onExit(cs)
