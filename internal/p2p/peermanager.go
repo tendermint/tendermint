@@ -675,10 +675,13 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 	return nil
 }
 
-// Ready marks a peer as ready, broadcasting status updates to subscribers. The
-// peer must already be marked as connected. This is separate from Dialed() and
-// Accepted() to allow the router to set up its internal queues before reactors
-// start sending messages.
+// Ready marks a peer as ready, broadcasting status updates to
+// subscribers. The peer must already be marked as connected. This is
+// separate from Dialed() and Accepted() to allow the router to set up
+// its internal queues before reactors start sending messages. The
+// channels set here are passed in the peer update broadcast to
+// reactors, which can then mediate their own behavior based on the
+// capability of the peers.
 func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID, channels ChannelIDSet) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()

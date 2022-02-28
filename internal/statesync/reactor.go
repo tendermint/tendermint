@@ -862,10 +862,10 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-		if peerUpdate.Channels.Check(SnapshotChannel) &&
-			peerUpdate.Channels.Check(ChunkChannel) &&
-			peerUpdate.Channels.Check(LightBlockChannel) &&
-			peerUpdate.Channels.Check(ParamsChannel) {
+		if peerUpdate.Channels.Contains(SnapshotChannel) &&
+			peerUpdate.Channels.Contains(ChunkChannel) &&
+			peerUpdate.Channels.Contains(LightBlockChannel) &&
+			peerUpdate.Channels.Contains(ParamsChannel) {
 
 			r.peers.Append(peerUpdate.NodeID)
 

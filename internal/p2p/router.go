@@ -1005,7 +1005,7 @@ func (r *Router) OnStop() {
 
 type ChannelIDSet map[ChannelID]struct{}
 
-func (cs ChannelIDSet) Check(id ChannelID) bool {
+func (cs ChannelIDSet) Contains(id ChannelID) bool {
 	_, ok := cs[id]
 	return ok
 }

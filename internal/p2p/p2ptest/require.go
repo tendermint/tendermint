@@ -154,10 +154,13 @@ func RequireUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates, expect []p2p.Pee
 	for {
 		select {
 		case update := <-peerUpdates.Updates():
-			update.Channels = nil
 			actual = append(actual, update)
 			if len(actual) == len(expect) {
-				require.Equal(t, expect, actual)
+				for idx := range expect {
+					require.Equal(t, expect[idx].NodeID, actual[idx].NodeID)
+					require.Equal(t, expect[idx].Status, actual[idx].Status)
+				}
+
 				return
 			}
 
