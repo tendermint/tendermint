@@ -600,7 +600,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	require.NoError(t, err)
 	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
-	actx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	actx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	appHash, err := rts.reactor.stateProvider.AppHash(actx, 5)
@@ -649,6 +649,12 @@ func TestReactor_Backfill(t *testing.T) {
 				rts.peerUpdateCh <- p2p.PeerUpdate{
 					NodeID: types.NodeID(peer),
 					Status: p2p.PeerStatusUp,
+					Channels: p2p.ChannelIDSet{
+						SnapshotChannel:   struct{}{},
+						ChunkChannel:      struct{}{},
+						LightBlockChannel: struct{}{},
+						ParamsChannel:     struct{}{},
+					},
 				}
 			}
 
