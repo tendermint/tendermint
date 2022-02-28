@@ -146,8 +146,10 @@ This work would be split up across multiple pull requests:
 
 ### Positive
 
-- Our and our consumers' (e.g. the Cosmos SDK) Protocol Buffers-related needs
-  are met
+- We will still offer Go stub generation, proto linting and breakage checking.
+- Breakage checking will only happen on minor/patch releases to increase
+  signal-to-noise ratio in CI.
+- Versioned protos will be made available via Buf's registry upon every release.
 
 ### Negative
 
