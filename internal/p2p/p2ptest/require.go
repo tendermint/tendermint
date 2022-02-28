@@ -120,11 +120,16 @@ func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUp
 
 	select {
 	case update := <-peerUpdates.Updates():
+<<<<<<< HEAD
 		require.Equal(t, expect, update, "peer update did not match")
 
 	case <-peerUpdates.Done():
 		require.Fail(t, "peer updates subscription is closed")
 
+=======
+		require.Equal(t, expect.NodeID, update.NodeID, "node id did not match")
+		require.Equal(t, expect.Status, update.Status, "statuses did not match")
+>>>>>>> 58dc17261 (p2p: plumb rudamentary service discovery to rectors and update statesync (#8030))
 	case <-timer.C:
 		require.Fail(t, "timed out waiting for peer update", "expected %v", expect)
 	}
@@ -142,7 +147,11 @@ func RequireUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates, expect []p2p.Pee
 		case update := <-peerUpdates.Updates():
 			actual = append(actual, update)
 			if len(actual) == len(expect) {
-				require.Equal(t, expect, actual)
+				for idx := range expect {
+					require.Equal(t, expect[idx].NodeID, actual[idx].NodeID)
+					require.Equal(t, expect[idx].Status, actual[idx].Status)
+				}
+
 				return
 			}
 
