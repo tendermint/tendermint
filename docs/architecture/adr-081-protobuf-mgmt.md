@@ -32,9 +32,9 @@ understood, are as follows.
    as possible to maintain, on which consumers can depend, and to be able to
    notify those consumers promptly when those interfaces change. To this end, we
    want to:
-   1. Be notified if any breaking changes are introduced in minor/patch releases
-      of Tendermint. Major releases can contain breaking changes, but
-      minor/patch releases should definitely not.
+   1. Prevent any breaking changes from being introduced in minor/patch releases
+      of Tendermint. Only major version updates should be able to contain
+      breaking interface changes.
    2. Ensure that `.proto` files don't contain invalid syntax.
    3. Ensure that `.proto` files look reasonably similar in format for code
       readability purposes.
