@@ -3,7 +3,6 @@ package statesync
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -355,76 +354,113 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // consensusParams sends out a request for consensus params blocking
 // until one is returned.
 //
-// If it fails to get a valid set of consensus params from any of the
-// providers it returns an error; however, it will retry indefinitely
-// (with backoff) until the context is canceled.
-func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
-	var iterCount int64
+// It attempts to send requests to all witnesses in parallel, but if
+// non responds it will retry them all sometime later until it
+// receives some response. This operation will block until it receives
+// a response or the context is canceled.
+func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (param types.ConsensusParams, err error) {
+	defer func() {
+		// it simplifies some of the concurrency handling if
+		// we let the retry thread panic, and just convert it
+		// into an error here.
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
 
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-	for {
-		params, err := s.tryGetConsensusParamsFromWitnesses(ctx, height)
-		if err != nil {
-			return types.ConsensusParams{}, fmt.Errorf("problem getting parameters from witnesses: %w", err)
-		}
-		if params != nil {
-			return *params, nil
-		}
-		iterCount++
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		// jitter+backoff the retry loop
-		timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
-			time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
-		select {
-		case <-ctx.Done():
-			return types.ConsensusParams{}, fmt.Errorf("problem waiting for request: %w", ctx.Err())
-		case <-timer.C:
-		}
-	}
-}
+	out := make(chan types.ConsensusParams)
 
-// tryGetConsensusParamsFromWitnesses attempts to get consensus
-// parameters from the light clients available witnesses. If both
-// return parameters are nil, then it can be retried.
-func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
-	ctx context.Context,
-	height int64,
-) (*types.ConsensusParams, error) {
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-	for _, provider := range s.lc.Witnesses() {
-		p, ok := provider.(*BlockProvider)
-		if !ok {
-			panic("expected p2p state provider to use p2p block providers")
-		}
-
-		// extract the nodeID of the provider
-		peer, err := types.NewNodeID(p.String())
-		if err != nil {
-			return nil, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
-		}
-
-		if err := s.paramsSendCh.Send(ctx, p2p.Envelope{
-			To: peer,
-			Message: &ssproto.ParamsRequest{
-				Height: uint64(height),
-			},
-		}); err != nil {
-			return nil, fmt.Errorf("problem sending request: %w", err)
-		}
-		select {
-		// if we get no response from this provider we move on to the next one
-		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for response for consensus params request: %w", ctx.Err())
-		case params, ok := <-s.paramsRecvCh:
+	retryAll := func() <-chan struct{} {
+		wg := &sync.WaitGroup{}
+		for _, provider := range s.lc.Witnesses() {
+			p, ok := provider.(*BlockProvider)
 			if !ok {
-				return nil, errors.New("params channel closed")
+				panic(fmt.Errorf("witness is not BlockProvider [%T]", provider))
 			}
-			return &params, nil
+
+			peer, err := types.NewNodeID(p.String())
+			if err != nil {
+				panic(fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err))
+			}
+
+			wg.Add(1)
+			go func(p *BlockProvider, peer types.NodeID) {
+				defer wg.Done()
+
+				timer := time.NewTimer(0)
+				defer timer.Stop()
+				var iterCount int64
+
+				for {
+					iterCount++
+					if err := s.paramsSendCh.Send(ctx, p2p.Envelope{
+						To: peer,
+						Message: &ssproto.ParamsRequest{
+							Height: uint64(height),
+						},
+					}); err != nil {
+						return
+					}
+
+					// jitter+backoff the retry loop
+					timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
+						time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
+
+					select {
+					case <-timer.C:
+						continue
+					case <-ctx.Done():
+						return
+					case params, ok := <-s.paramsRecvCh:
+						if !ok {
+							return
+						}
+						select {
+						case <-ctx.Done():
+							return
+						case out <- params:
+							return
+						}
+					}
+				}
+
+			}(p, peer)
+		}
+		sig := make(chan struct{})
+		go func() { wg.Wait(); close(sig) }()
+		return sig
+	}
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	var iterCount int64
+	for {
+		iterCount++
+		sig := retryAll()
+
+		select {
+		case <-sig:
+			// jitter+backoff the retry loop
+			timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
+				time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
+			select {
+			case param = <-out:
+				return
+			case <-ctx.Done():
+				err = ctx.Err()
+				return
+			case <-timer.C:
+			}
+		case <-ctx.Done():
+			err = ctx.Err()
+			return
+		case param = <-out:
+			return
 		}
 	}
 
-	// signal to caller to retry.
-	return nil, nil
 }
