@@ -136,9 +136,8 @@ func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUp
 
 	select {
 	case update := <-peerUpdates.Updates():
-		update.Channels = nil
-		require.Equal(t, expect, update, "peer update did not match")
-
+		require.Equal(t, expect.NodeID, update.NodeID, "node id did not match")
+		require.Equal(t, expect.Status, update.Status, "statuses did not match")
 	case <-timer.C:
 		require.Fail(t, "timed out waiting for peer update", "expected %v", expect)
 	}
