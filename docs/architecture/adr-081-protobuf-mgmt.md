@@ -13,8 +13,8 @@ Accepted
 At present, we manage the [Protocol Buffers] files ("protos") that define our
 wire-level data formats within the Tendermint repository itself (see the
 [`proto`](../../proto/) directory). Recently, we have been making use of [Buf],
-both locally and in CI, in order to generate Go stubs, lint and check `.proto`
-files for breaking changes.
+both locally and in CI, in order to generate Go stubs, and lint and check
+`.proto` files for breaking changes.
 
 The version of Buf used at the time of this decision was `v1beta1`, and it was
 discussed in [\#7975] and in weekly calls as to whether we should upgrade to
@@ -22,10 +22,10 @@ discussed in [\#7975] and in weekly calls as to whether we should upgrade to
 managing the Cosmos SDK was primarily interested in having our protos versioned
 and easily accessible from the [Buf] registry.
 
-The three main "customers" for the `.proto` files and their needs, as currently
+The three main customers for the `.proto` files and their needs, as currently
 understood, are as follows.
 
-1. Tendermint needs Go stubs generated from `.proto` files.
+1. Tendermint needs Go code generated from `.proto` files.
 2. Consumers of Tendermint's `.proto` files want to be able to access these
    files in a reliable and efficient way.
 3. The Tendermint Core team wants to provide stable interfaces that are as easy
@@ -81,6 +81,11 @@ themselves.
       containing our `.proto` files. This would require maintaining yet another
       script/CI workflow that we would maintain.
 
+### Popular alternatives to Buf
+
+[Prototool] was not considered as it appears deprecated, and the ecosystem seems
+to be converging on Buf at this time.
+
 ### Tooling complexity
 
 The more tools we have in our build/CI processes, the more complex and fragile
@@ -120,42 +125,41 @@ Along these lines, we could eventually consider coming up with a [Nix]-based
 approach to developer tooling to ensure tooling consistency across the team and
 for anyone who wants to be able to contribute to Tendermint.
 
-### Popular alternatives to Buf
-
-[Prototool] was not considered as it appears deprecated, and the ecosystem seems
-to be converging on Buf at this time.
-
 ## Decision
 
-We will adopt a hybrid approach for now that involves generating Go stubs using
-`protoc` locally (i.e. developers must manually generate Go stubs and commit
-them in their pull request submissions), but Buf for linting, breakage checking
-and its registry (mainly in CI, with optional usage locally).
+We will adopt a hybrid approach for now that involves generating Go code using
+`protoc` locally (i.e. developers must manually generate Go code and commit them
+in their pull request submissions), but Buf for linting, breakage checking and
+its registry (mainly in CI, with optional usage locally).
 
 Failing CI when checking for breaking changes in `.proto` files will only happen
 when performing minor/patch releases.
 
+Local tooling will be favored over Docker-based tooling.
+
 ## Detailed Design
 
-This work would be split up across multiple pull requests:
+We currently aim to:
 
 1. Update to Buf `v1` to facilitate linting, breakage checking and uploading to
    the Buf registry.
-2. Configure CI:
+2. Configure CI appropriately for proto management:
    1. Uploading protos to the Buf registry on every release (e.g. the
       [approach][cosmos-sdk-buf-registry-ci] used by the Cosmos SDK).
    2. Linting on every pull request (e.g. the
-      [approach][cosmos-sdk-buf-linting-ci] used by the Cosmos SDK).
-   3. Checking for breaking changes in minor/patch version releases - see
-      [\#8003].
-   4. Add [clang-format GitHub Action] to check `.proto` file formatting.
+      [approach][cosmos-sdk-buf-linting-ci] used by the Cosmos SDK). The linter
+      passing should be considered a requirement for accepting PRs.
+   3. Checking for breaking changes in minor/patch version releases and failing
+      CI accordingly - see [\#8003].
+   4. Add [clang-format GitHub Action] to check `.proto` file formatting. Format
+      checking should be considered a requirement for accepting PRs.
 3. Update the Tendermint [`Makefile`](../../Makefile) to primarily facilitate
    local Protobuf stub generation, linting, formatting and breaking change
-   checking:
+   checking. More specifically:
    1. This includes removing the dependency on Docker and introducing the
       dependency on local toolchain installation. CI-based equivalents, where
       relevant, will rely on specific GitHub Actions instead of the Makefile.
-   2. Go stub generation will rely on `protoc` directly.
+   2. Go code generation will rely on `protoc` directly.
 
 ## Consequences
 
