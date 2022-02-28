@@ -97,7 +97,7 @@ such a system would leave new issues and rough edges.
 #### No way of guaranteeing correct replacement
 
 If a user issues a transaction to the network and the transaction is replaced, the
-user has no guarantee that the replacement was correct. For example, suppose a set users issue
+user has no guarantee that the replacement was correct. For example, suppose a set of users issue
 transactions A, B, and C and they are all aggregated into a new transaction, D.
 There is nothing guaranteeing that D was constructed correctly from the inputs.
 The only way for users to ensure D is correct would be if D contained all of the
