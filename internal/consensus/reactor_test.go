@@ -188,6 +188,7 @@ func waitForAndValidateBlock(
 
 	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
+
 	fn := func(j int) {
 		msg, err := blocksSubs[j].Next(ctx)
 		switch {
@@ -196,8 +197,8 @@ func waitForAndValidateBlock(
 		case errors.Is(err, context.Canceled):
 			return
 		case err != nil:
-			t.Fatalf("problem waiting for %d subscription: %v", j, err)
 			cancel() // terminate other workers
+			require.NoError(t, err)
 			return
 		}
 
@@ -252,8 +253,8 @@ func waitForAndValidateBlockWithTx(
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				t.Fatalf("problem waiting for %d subscription: %v", j, err)
 				cancel() // terminate other workers
+				t.Fatalf("problem waiting for %d subscription: %v", j, err)
 				return
 			}
 
@@ -312,8 +313,8 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				t.Fatalf("problem waiting for %d subscription: %v", j, err)
 				cancel() // terminate other workers
+				t.Fatalf("problem waiting for %d subscription: %v", j, err)
 				return
 			}
 
