@@ -26,15 +26,18 @@ The three main "customers" for the `.proto` files and their needs, as currently
 understood, are as follows.
 
 1. Tendermint needs Go stubs generated from `.proto` files.
-2. The Tendermint Core team wants to:
+2. Consumers of Tendermint's `.proto` files want to be able to access these
+   files in a reliable and efficient way.
+3. The Tendermint Core team wants to provide stable interfaces that are as easy
+   as possible to maintain, on which consumers can depend, and to be able to
+   notify those consumers promptly when those interfaces change. To this end, we
+   want to:
    1. Be notified if any breaking changes are introduced in minor/patch releases
       of Tendermint. Major releases can contain breaking changes, but
       minor/patch releases should definitely not.
    2. Ensure that `.proto` files don't contain invalid syntax.
    3. Ensure that `.proto` files look reasonably similar in format for code
       readability purposes.
-3. Consumers of Tendermint's `.proto` files want to be able to access these
-   files in a versioned, reliable and efficient way.
 
 There was also discussion surrounding the notion of automated documentation
 generation and hosting, but it is not clear at this time whether this would be
@@ -44,7 +47,7 @@ themselves.
 
 ## Alternative Approaches
 
-### Required value-adds
+### Meeting stakeholders' needs
 
 1. Go stub generation from protos. We could use:
    1. [Buf]. This approach has been rather cumbersome up to this point, and it
