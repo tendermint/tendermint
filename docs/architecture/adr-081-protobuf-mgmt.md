@@ -134,8 +134,7 @@ This work would be split up across multiple pull requests:
       [approach][cosmos-sdk-buf-linting-ci] used by the Cosmos SDK).
    3. Checking for breaking changes in minor/patch version releases - see
       [\#8003].
-   4. Add [clang-format GitHub Action][clang-format-github-action] to check
-      `.proto` file formatting.
+   4. Add [clang-format GitHub Action] to check `.proto` file formatting.
 3. Update the Tendermint [`Makefile`](../../Makefile) to primarily facilitate
    local Protobuf stub generation, linting, formatting and breaking change
    checking:
