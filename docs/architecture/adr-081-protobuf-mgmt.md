@@ -177,3 +177,4 @@ This work would be split up across multiple pull requests:
 [\#8003]: https://github.com/tendermint/tendermint/issues/8003
 [Nix]: https://nixos.org/
 [gogoprotobuf]: https://github.com/gogo/protobuf
+[Prototool]: https://github.com/uber/prototool
