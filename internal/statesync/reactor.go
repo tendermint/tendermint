@@ -893,7 +893,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			r.peers.Append(peerUpdate.NodeID)
 
 		} else {
-			r.logger.Error("could not use peer for statesync", "peer", peerUpdate.NodeID)
+			r.Logger.Error("could not use peer for statesync", "peer", peerUpdate.NodeID)
 		}
 
 	case p2p.PeerStatusDown:
