@@ -36,6 +36,12 @@ understood, are as follows.
 3. Consumers of Tendermint's `.proto` files want to be able to access these
    files in a versioned, reliable and efficient way.
 
+There was also discussion surrounding the notion of automated documentation
+generation and hosting, but it is not clear at this time whether this would be
+that valuable to any of our stakeholders. What will, of course, be valuable at
+minimum would be better documentation (in comments) of the `.proto` files
+themselves.
+
 ## Alternative Approaches
 
 ### Required value-adds
@@ -65,7 +71,12 @@ understood, are as follows.
       the face of bigger changes.
    2. Uploading our `.proto` files to Buf's registry on every release. This is
       by far the most seamless for consumers of our `.proto` files, but requires
-      the dependency on Buf.
+      the dependency on Buf. This has the additional benefit that the Buf
+      registry will automatically [generate and host
+      documentation][buf-docs-gen] for these protos.
+   3. We could create a process that, upon release, creates a `.zip` file
+      containing our `.proto` files. This would require maintaining yet another
+      script/CI workflow that we would maintain.
 
 ### Tooling complexity
 
@@ -181,3 +192,4 @@ This work would be split up across multiple pull requests:
 [Nix]: https://nixos.org/
 [gogoprotobuf]: https://github.com/gogo/protobuf
 [Prototool]: https://github.com/uber/prototool
+[buf-docs-gen]: https://docs.buf.build/bsr/documentation
