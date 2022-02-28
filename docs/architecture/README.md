@@ -85,6 +85,7 @@ Note the context/background should be written in the present tense.
 - [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
+- [ADR-081: Protocol Buffers Management](./adr-081-protobuf-mgmt.md)
 
 ### Rejected
 
