@@ -190,8 +190,14 @@ func waitForAndValidateBlock(
 	defer cancel()
 	fn := func(j int) {
 		msg, err := blocksSubs[j].Next(ctx)
-		if !assert.NoError(t, err) {
-			cancel()
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			return
+		case errors.Is(err, context.Canceled):
+			return
+		case err != nil:
+			t.Fatalf("problem waiting for %d subscription: %v", j, err)
+			cancel() // terminate other workers
 			return
 		}
 
@@ -217,6 +223,10 @@ func waitForAndValidateBlock(
 	}
 
 	wg.Wait()
+
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("encountered timeout")
+	}
 }
 
 func waitForAndValidateBlockWithTx(
@@ -236,8 +246,14 @@ func waitForAndValidateBlockWithTx(
 		ntxs := 0
 		for {
 			msg, err := blocksSubs[j].Next(ctx)
-			if !assert.NoError(t, err) {
-				cancel()
+			switch {
+			case errors.Is(err, context.DeadlineExceeded):
+				return
+			case errors.Is(err, context.Canceled):
+				return
+			case err != nil:
+				t.Fatalf("problem waiting for %d subscription: %v", j, err)
+				cancel() // terminate other workers
 				return
 			}
 
@@ -268,6 +284,9 @@ func waitForAndValidateBlockWithTx(
 	}
 
 	wg.Wait()
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("encountered timeout")
+	}
 }
 
 func waitForBlockWithUpdatedValsAndValidateIt(
@@ -287,8 +306,14 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 
 		for {
 			msg, err := blocksSubs[j].Next(ctx)
-			if !assert.NoError(t, err) {
-				cancel()
+			switch {
+			case errors.Is(err, context.DeadlineExceeded):
+				return
+			case errors.Is(err, context.Canceled):
+				return
+			case err != nil:
+				t.Fatalf("problem waiting for %d subscription: %v", j, err)
+				cancel() // terminate other workers
 				return
 			}
 
@@ -311,6 +336,9 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	}
 
 	wg.Wait()
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("encountered timeout")
+	}
 }
 
 func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
@@ -349,13 +377,23 @@ func TestReactorBasic(t *testing.T) {
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
 			_, err := s.Next(ctx)
-			if !assert.NoError(t, err) {
-				cancel()
+			switch {
+			case errors.Is(err, context.DeadlineExceeded):
+				return
+			case errors.Is(err, context.Canceled):
+				return
+			case err != nil:
+				t.Fatalf("problem waiting for subscription: %v", err)
+				cancel() // terminate other workers
+				return
 			}
 		}(sub)
 	}
 
 	wg.Wait()
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("encountered timeout")
+	}
 
 	for _, sub := range rts.blocksyncSubs {
 		wg.Add(1)
@@ -364,8 +402,14 @@ func TestReactorBasic(t *testing.T) {
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
 			msg, err := s.Next(ctx)
-			if !assert.NoError(t, err) {
-				cancel()
+			switch {
+			case errors.Is(err, context.DeadlineExceeded):
+				return
+			case errors.Is(err, context.Canceled):
+				return
+			case err != nil:
+				t.Fatalf("problem waiting for subscription: %v", err)
+				cancel() // terminate other workers
 				return
 			}
 			ensureBlockSyncStatus(t, msg, true, 0)
@@ -373,6 +417,9 @@ func TestReactorBasic(t *testing.T) {
 	}
 
 	wg.Wait()
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("encountered timeout")
+	}
 }
 
 func TestReactorWithEvidence(t *testing.T) {
@@ -709,7 +756,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
@@ -752,13 +799,28 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		go func(s eventbus.Subscription) {
 			defer wg.Done()
 			_, err := s.Next(ctx)
-			if !assert.NoError(t, err) {
+			switch {
+			case err == nil:
+			case errors.Is(err, context.DeadlineExceeded):
+			default:
+				t.Log(err)
 				cancel()
 			}
 		}(sub)
 	}
 
 	wg.Wait()
+
+	// after the wait returns, either there was an error with a
+	// subscription (very unlikely, and causes the context to be
+	// canceled manually), there was a timeout and the test's root context
+	// was canceled (somewhat likely,) or the test can proceed
+	// (common.)
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("encountered timeout")
+	} else if errors.Is(err, context.Canceled) {
+		t.Fatal("subscription encountered unexpected error")
+	}
 
 	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
