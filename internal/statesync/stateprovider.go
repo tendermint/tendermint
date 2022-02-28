@@ -355,7 +355,7 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // until one is returned.
 //
 // It attempts to send requests to all witnesses in parallel, but if
-// non responds it will retry them all sometime later until it
+// none responds it will retry them all sometime later until it
 // receives some response. This operation will block until it receives
 // a response or the context is canceled.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (param types.ConsensusParams, err error) {
