@@ -10,7 +10,7 @@
 The specification of ABCI++ details a mechanism for proposers to replace transactions
 in the proposed block. This scheme requires the proposer to construct new transactions
 and mark these new transactions as replacing other removed transactions. The specification
-is somewhat ambiguous as to how the replacement may be communicated to peer nodes.
+is ambiguous as to how the replacement may be communicated to peer nodes.
 This RFC discusses issues with this mechanism and possible solutions.
 
 ## Background
