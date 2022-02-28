@@ -1215,7 +1215,7 @@ func (r *Reactor) handleVoteMessage(ctx context.Context, envelope *p2p.Envelope,
 // VoteSetBitsChannel. If we fail to find the peer state for the envelope sender,
 // we perform a no-op and return. This can happen when we process the envelope
 // after the peer is removed.
-func (r *Reactor) handleVoteSetBitsMessage(ctx context.Context, envelope *p2p.Envelope, msgI Message) error {
+func (r *Reactor) handleVoteSetBitsMessage(envelope *p2p.Envelope, msgI Message) error {
 	logger := r.logger.With("peer", envelope.From, "ch_id", "VoteSetBitsChannel")
 
 	ps, ok := r.GetPeerState(envelope.From)
@@ -1313,7 +1313,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 		err = r.handleVoteMessage(ctx, envelope, msgI)
 
 	case VoteSetBitsChannel:
-		err = r.handleVoteSetBitsMessage(ctx, envelope, msgI)
+		err = r.handleVoteSetBitsMessage(envelope, msgI)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
@@ -1332,6 +1332,10 @@ func (r *Reactor) processStateCh(ctx context.Context) {
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
 		if err := r.handleMessage(ctx, r.stateCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
 			r.logger.Error("failed to process message", "ch_id", r.stateCh.ID, "envelope", envelope, "err", err)
 			if serr := r.stateCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
@@ -1353,6 +1357,10 @@ func (r *Reactor) processDataCh(ctx context.Context) {
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
 		if err := r.handleMessage(ctx, r.dataCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
 			r.logger.Error("failed to process message", "ch_id", r.dataCh.ID, "envelope", envelope, "err", err)
 			if serr := r.dataCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
@@ -1374,6 +1382,10 @@ func (r *Reactor) processVoteCh(ctx context.Context) {
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
 		if err := r.handleMessage(ctx, r.voteCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
 			r.logger.Error("failed to process message", "ch_id", r.voteCh.ID, "envelope", envelope, "err", err)
 			if serr := r.voteCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
@@ -1396,10 +1408,6 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
 		envelope := iter.Envelope()
 
 		if err := r.handleMessage(ctx, r.voteSetBitsCh.ID, envelope); err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return
-			}
-
 			r.logger.Error("failed to process message", "ch_id", r.voteSetBitsCh.ID, "envelope", envelope, "err", err)
 			if serr := r.voteSetBitsCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
