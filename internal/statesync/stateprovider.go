@@ -358,32 +358,24 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // none responds it will retry them all sometime later until it
 // receives some response. This operation will block until it receives
 // a response or the context is canceled.
-func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (param types.ConsensusParams, err error) {
-	defer func() {
-		// it simplifies some of the concurrency handling if
-		// we let the retry thread panic, and just convert it
-		// into an error here.
-		if r := recover(); r != nil {
-			err = r.(error)
-		}
-	}()
-
+func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	out := make(chan types.ConsensusParams)
 
-	retryAll := func() <-chan struct{} {
+	retryAll := func() (<-chan struct{}, error) {
 		wg := &sync.WaitGroup{}
+
 		for _, provider := range s.lc.Witnesses() {
 			p, ok := provider.(*BlockProvider)
 			if !ok {
-				panic(fmt.Errorf("witness is not BlockProvider [%T]", provider))
+				return nil, fmt.Errorf("witness is not BlockProvider [%T]", provider)
 			}
 
 			peer, err := types.NewNodeID(p.String())
 			if err != nil {
-				panic(fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err))
+				return nil, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
 			}
 
 			wg.Add(1)
@@ -402,6 +394,11 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (p
 							Height: uint64(height),
 						},
 					}); err != nil {
+						// this only errors if
+						// the context is
+						// canceled which we
+						// don't need to
+						// propagate here
 						return
 					}
 
@@ -431,7 +428,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (p
 		}
 		sig := make(chan struct{})
 		go func() { wg.Wait(); close(sig) }()
-		return sig
+		return sig, nil
 	}
 
 	timer := time.NewTimer(0)
@@ -440,26 +437,26 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (p
 	var iterCount int64
 	for {
 		iterCount++
-		sig := retryAll()
-
+		sig, err := retryAll()
+		if err != nil {
+			return types.ConsensusParams{}, err
+		}
 		select {
 		case <-sig:
 			// jitter+backoff the retry loop
 			timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
 				time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
 			select {
-			case param = <-out:
-				return
+			case param := <-out:
+				return param, nil
 			case <-ctx.Done():
-				err = ctx.Err()
-				return
+				return types.ConsensusParams{}, ctx.Err()
 			case <-timer.C:
 			}
 		case <-ctx.Done():
-			err = ctx.Err()
-			return
-		case param = <-out:
-			return
+			return types.ConsensusParams{}, ctx.Err()
+		case param := <-out:
+			return param, nil
 		}
 	}
 
