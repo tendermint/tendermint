@@ -309,16 +309,6 @@ SELECT height FROM `+tableBlocks+` WHERE height = $1;
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}
-
-	// Verify the presence of begin_block and end_block events.
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeFinalizeBlock, chainID).Scan(&[]byte{}); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeFinalizeBlock, height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %c", err)
-	}
 }
 
 // verifyNotImplemented calls f and verifies that it returns both a
