@@ -131,7 +131,7 @@ Honest nodes will use the replacement mechanism to signal that a transaction has
 Malicious nodes will be granted a new vector for censoring transactions.
 There is no guarantee that a replaced transactions is actually executed at all.
 A malicious node could censor a transaction by simply listing it as replaced.
-Honest nodes, seeing the replacement would flush the transaction from their mempool
+Honest nodes seeing the replacement would flush the transaction from their mempool
 and not execute or propose it it in later blocks.
 
 ### Transaction tracking implementations
