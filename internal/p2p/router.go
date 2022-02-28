@@ -851,15 +851,9 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-<<<<<<< HEAD
-func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels channelIDs) {
+func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels ChannelIDSet) {
 	r.metrics.Peers.Add(1)
-	r.peerManager.Ready(peerID)
-=======
-func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connection, channels ChannelIDSet) {
-	r.metrics.Peers.Add(1)
-	r.peerManager.Ready(ctx, peerID, channels)
->>>>>>> 58dc17261 (p2p: plumb rudamentary service discovery to rectors and update statesync (#8030))
+	r.peerManager.Ready(peerID, channels)
 
 	sendQueue := r.getOrMakeQueue(peerID, channels)
 	defer func() {
@@ -1086,7 +1080,6 @@ func (r *Router) OnStop() {
 	}
 }
 
-<<<<<<< HEAD
 // stopCtx returns a new context that is canceled when the router stops.
 func (r *Router) stopCtx() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1099,10 +1092,7 @@ func (r *Router) stopCtx() context.Context {
 	return ctx
 }
 
-type channelIDs map[ChannelID]struct{}
-=======
 type ChannelIDSet map[ChannelID]struct{}
->>>>>>> 58dc17261 (p2p: plumb rudamentary service discovery to rectors and update statesync (#8030))
 
 func (cs ChannelIDSet) Contains(id ChannelID) bool {
 	_, ok := cs[id]

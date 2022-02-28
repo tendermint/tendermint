@@ -698,13 +698,6 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 	return nil
 }
 
-<<<<<<< HEAD
-// Ready marks a peer as ready, broadcasting status updates to subscribers. The
-// peer must already be marked as connected. This is separate from Dialed() and
-// Accepted() to allow the router to set up its internal queues before reactors
-// start sending messages.
-func (m *PeerManager) Ready(peerID types.NodeID) {
-=======
 // Ready marks a peer as ready, broadcasting status updates to
 // subscribers. The peer must already be marked as connected. This is
 // separate from Dialed() and Accepted() to allow the router to set up
@@ -712,23 +705,16 @@ func (m *PeerManager) Ready(peerID types.NodeID) {
 // channels set here are passed in the peer update broadcast to
 // reactors, which can then mediate their own behavior based on the
 // capability of the peers.
-func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID, channels ChannelIDSet) {
->>>>>>> 58dc17261 (p2p: plumb rudamentary service discovery to rectors and update statesync (#8030))
+func (m *PeerManager) Ready(peerID types.NodeID, channels ChannelIDSet) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	if m.connected[peerID] {
 		m.ready[peerID] = true
-<<<<<<< HEAD
 		m.broadcast(PeerUpdate{
-			NodeID: peerID,
-			Status: PeerStatusUp,
-=======
-		m.broadcast(ctx, PeerUpdate{
 			NodeID:   peerID,
 			Status:   PeerStatusUp,
 			Channels: channels,
->>>>>>> 58dc17261 (p2p: plumb rudamentary service discovery to rectors and update statesync (#8030))
 		})
 	}
 }
