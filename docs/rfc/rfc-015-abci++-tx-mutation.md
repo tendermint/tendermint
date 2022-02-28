@@ -52,7 +52,7 @@ transaction in the block chain. This [proof is built][inclusion-proof] as a merk
 of the hashes of all of the transactions in the block where the queried transaction was executed.
 
 To allow transaction replacement, these proofs would need to be updated to prove
-that a replaced transaction was included by replacement in some block.
+that a replaced transaction was included by replacement in the block.
 
 #### RPC-based transaction query parameters and results
 
