@@ -101,6 +101,7 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
 			case peerUpdate := <-sourceSub.Updates():
+				peerUpdate.Channels = nil
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID: targetNode.NodeID,
 					Status: p2p.PeerStatusUp,
@@ -114,6 +115,7 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
 			case peerUpdate := <-targetSub.Updates():
+				peerUpdate.Channels = nil
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID: sourceNode.NodeID,
 					Status: p2p.PeerStatusUp,
