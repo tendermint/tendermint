@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -1326,6 +1327,29 @@ func TestPeerManager_Ready(t *testing.T) {
 	peerManager.Ready(ctx, b.NodeID, nil)
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
 	require.Empty(t, sub.Updates())
+}
+
+func TestPeerManager_Ready_Channels(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pm, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	sub := pm.Subscribe(ctx)
+
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
+	added, err := pm.Add(a)
+	require.NoError(t, err)
+	require.True(t, added)
+	require.NoError(t, pm.Accepted(a.NodeID))
+
+	pm.Ready(ctx, a.NodeID, p2p.ChannelIDSet{42: struct{}{}})
+	require.NotEmpty(t, sub.Updates())
+	update := <-sub.Updates()
+	assert.Equal(t, a.NodeID, update.NodeID)
+	require.True(t, update.Channels.Contains(42))
+	require.False(t, update.Channels.Contains(48))
 }
 
 // See TryEvictNext for most tests, this just tests blocking behavior.
