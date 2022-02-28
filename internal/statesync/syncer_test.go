@@ -173,7 +173,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	// beginning. We also wait for a little while, to exercise the retry logic in fetchChunks().
 	connSnapshot.On("ApplySnapshotChunk", mock.Anything, abci.RequestApplySnapshotChunk{
 		Index: 2, Chunk: []byte{1, 1, 2},
-	}).Once().Run(func(args mock.Arguments) { time.Sleep(2 * time.Second) }).Return(
+	}).Once().Run(func(args mock.Arguments) { time.Sleep(1 * time.Second) }).Return(
 		&abci.ResponseApplySnapshotChunk{
 			Result:        abci.ResponseApplySnapshotChunk_RETRY_SNAPSHOT,
 			RefetchChunks: []uint32{1},

@@ -2,6 +2,67 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## v0.36
+
+### ABCI Changes
+
+#### ABCI++
+
+Coming soon...
+
+#### ABCI Mutex
+
+In previous versions of ABCI, Tendermint was prevented from making
+concurrent calls to ABCI implementations by virtue of mutexes in the
+implementation of Tendermint's ABCI infrastructure. These mutexes have
+been removed from the current implementation and applications will now
+be responsible for managing their own concurrency control.
+
+To replicate the prior semantics, ensure that ABCI applications have a
+single mutex that protects all ABCI method calls from concurrent
+access. You can relax these requirements if your application can
+provide safe concurrent access via other means. This safety is an
+application concern so be very sure to test the application thoroughly
+using realistic workloads and the race detector to ensure your
+applications remains correct.
+
+### RPC Changes
+
+Tendermint v0.36 adds a new RPC event subscription API. The existing event
+subscription API based on websockets is now deprecated. It will continue to
+work throughout the v0.36 release, but the `subscribe`, `unsubscribe`, and
+`unsubscribe_all` methods, along with websocket support, will be removed in
+Tendermint v0.37.  Callers currently using these features should migrate as
+soon as is practical to the new API.
+
+To enable the new API, node operators set a new `event-log-window-size`
+parameter in the `[rpc]` section of the `config.toml` file. This defines a
+duration of time during which the node will log all events published to the
+event bus for use by RPC consumers.
+
+Consumers use the new `events` JSON-RPC method to poll for events matching
+their query in the log. Unlike the streaming API, events are not discarded if
+the caller is slow, loses its connection, or crashes. As long as the client
+recovers before its events expire from the log window, it will be able to
+replay and catch up after recovering. Also unlike the streaming API, the client
+can tell if it has truly missed events because they have expired from the log.
+
+The `events` method is a normal JSON-RPC method, and does not require any
+non-standard response processing (in contrast with the old `subscribe`).
+Clients can modify their query at any time, and no longer need to coordinate
+subscribe and unsubscribe calls to handle multiple queries.
+
+The Go client implementations in the Tendermint Core repository have all been
+updated to add a new `Events` method, including the light client proxy.
+
+A new `rpc/client/eventstream` package has also been added to make it easier
+for users to update existing use of the streaming API to use the polling API
+The `eventstream` package handles polling and delivers matching events to a
+callback.
+
+For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
+defines and describes the new API in detail.
+
 ## v0.35
 
 ### ABCI Changes
@@ -113,11 +174,11 @@ To access any of the functionality previously available via the
 `node.Node` type, use the `*local.Local` "RPC" client, that exposes
 the full RPC interface provided as direct function calls. Import the
 `github.com/tendermint/tendermint/rpc/client/local` package and pass
-the node service as in the following: 
+the node service as in the following:
 
 ```go
     node := node.NewDefault() //construct the node object
-    // start and set up the node service 
+    // start and set up the node service
 
     client := local.New(node.(local.NodeService))
     // use client object to interact with the node
@@ -144,10 +205,10 @@ both stacks.
 The P2P library was reimplemented in this release. The new implementation is
 enabled by default in this version of Tendermint. The legacy implementation is still
 included in this version of Tendermint as a backstop to work around unforeseen
-production issues. The new and legacy version are interoperable. If necessary, 
+production issues. The new and legacy version are interoperable. If necessary,
 you can enable the legacy implementation in the server configuration file.
 
-To make use of the legacy P2P implemementation add or update the following field of 
+To make use of the legacy P2P implemementation add or update the following field of
 your server's configuration file under the `[p2p]` section:
 
 ```toml
@@ -172,8 +233,8 @@ in the order in which they were received.
 
 * `priority`: A priority queue of messages.
 
-* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A 
-weighted deficit round robin queue is created per peer. Each queue contains a 
+* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A
+weighted deficit round robin queue is created per peer. Each queue contains a
 separate 'flow' for each of the channels of communication that exist between any two
 peers. Tendermint maintains a channel per message type between peers. Each WDRR
 queue maintains a shared buffered with a fixed capacity through which messages on different
@@ -217,7 +278,7 @@ Note also that Tendermint 0.34 also requires Go 1.16 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
+  Read [the spec](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)
@@ -342,7 +403,6 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -617,7 +677,7 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
+<https://docs.tendermint.com/v0.35/introduction/install.html)
 
 ## v0.31.0
 

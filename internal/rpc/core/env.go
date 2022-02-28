@@ -287,6 +287,8 @@ func (env *Environment) StartService(ctx context.Context, conf *config.Config) (
 		if conf.RPC.ExperimentalDisableWebsocket {
 			rpcLogger.Info("Disabling websocket endpoints (experimental-disable-websocket=true)")
 		} else {
+			rpcLogger.Info("WARNING: Websocket RPC access is deprecated and will be removed " +
+				"in Tendermint v0.37. See https://tinyurl.com/adr075 for more information.")
 			wmLogger := rpcLogger.With("protocol", "websocket")
 			wm := rpcserver.NewWebsocketManager(wmLogger, routes,
 				rpcserver.OnDisconnect(func(remoteAddr string) {
