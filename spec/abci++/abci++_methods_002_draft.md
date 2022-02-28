@@ -393,7 +393,7 @@ and _p_'s _validValue_ is `nil`:
         * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
-        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`. As explained above, this compromises client traceability.
+        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`. As explained above, this compromises client traceability, unless it is implemented at the Application level.
         * reorder transactions - the Application reorders transactions in the list
 4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
    and includes the modified block in the return parameters (see the rules in section _Usage_).
