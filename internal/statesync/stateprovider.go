@@ -331,7 +331,7 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 	// We'll also need to fetch consensus params via P2P.
 	state.ConsensusParams, err = s.consensusParams(ctx, currentLightBlock.Height)
 	if err != nil {
-		return sm.State{}, err
+		return sm.State{}, fmt.Errorf("fetching consensus params: %w", err)
 	}
 	// validate the consensus params
 	if !bytes.Equal(nextLightBlock.ConsensusHash, state.ConsensusParams.HashConsensusParams()) {
@@ -366,7 +366,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 	for {
 		params, err := s.tryGetConsensusParamsFromWitnesses(ctx, height)
 		if err != nil {
-			return types.ConsensusParams{}, err
+			return types.ConsensusParams{}, fmt.Errorf("problem getting parameters from witnesses: %w", err)
 		}
 		if params != nil {
 			return *params, nil
@@ -378,7 +378,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
 		select {
 		case <-ctx.Done():
-			return types.ConsensusParams{}, ctx.Err()
+			return types.ConsensusParams{}, fmt.Errorf("problem waiting for request: %w", ctx.Err())
 		case <-timer.C:
 		}
 	}
@@ -411,16 +411,12 @@ func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
 				Height: uint64(height),
 			},
 		}); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("problem sending request: %w", err)
 		}
-
-		timer.Reset(consensusParamsResponseTimeout)
 		select {
 		// if we get no response from this provider we move on to the next one
-		case <-timer.C:
-			continue
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, fmt.Errorf("timed out waiting for response for consensus params request: %w", ctx.Err())
 		case params, ok := <-s.paramsRecvCh:
 			if !ok {
 				return nil, errors.New("params channel closed")
