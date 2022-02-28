@@ -370,6 +370,8 @@ func TestReactorBasic(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
+	errCh := make(chan error, len(rts.subs))
+
 	for _, sub := range rts.subs {
 		wg.Add(1)
 
@@ -383,7 +385,7 @@ func TestReactorBasic(t *testing.T) {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				t.Fatalf("problem waiting for subscription: %v", err)
+				errCh <- err
 				cancel() // terminate other workers
 				return
 			}
@@ -394,7 +396,11 @@ func TestReactorBasic(t *testing.T) {
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("encountered timeout")
 	}
+	if err := <-errCh; err != nil {
+		t.Fatal(err)
+	}
 
+	errCh = make(chan error, len(rts.blocksyncSubs))
 	for _, sub := range rts.blocksyncSubs {
 		wg.Add(1)
 
@@ -408,7 +414,7 @@ func TestReactorBasic(t *testing.T) {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				t.Fatalf("problem waiting for subscription: %v", err)
+				errCh <- err
 				cancel() // terminate other workers
 				return
 			}
@@ -419,6 +425,9 @@ func TestReactorBasic(t *testing.T) {
 	wg.Wait()
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("encountered timeout")
+	}
+	if err := <-errCh; err != nil {
+		t.Fatal(err)
 	}
 }
 
