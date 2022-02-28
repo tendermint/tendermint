@@ -865,6 +865,8 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		}
 	}()
 
+	var mi msgInfo
+
 	for {
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
@@ -875,7 +877,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		}
 
 		rs := cs.RoundState
-		var mi msgInfo
 
 		select {
 		case <-cs.txNotifier.TxsAvailable():
