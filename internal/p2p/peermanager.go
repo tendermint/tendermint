@@ -47,8 +47,9 @@ const (
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
 type PeerUpdate struct {
-	NodeID types.NodeID
-	Status PeerStatus
+	NodeID   types.NodeID
+	Status   PeerStatus
+	Channels ChannelIDSet
 }
 
 // PeerUpdates is a peer update subscription with notifications about peer
@@ -678,15 +679,16 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages.
-func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID) {
+func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID, channels ChannelIDSet) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	if m.connected[peerID] {
 		m.ready[peerID] = true
 		m.broadcast(ctx, PeerUpdate{
-			NodeID: peerID,
-			Status: PeerStatusUp,
+			NodeID:   peerID,
+			Status:   PeerStatusUp,
+			Channels: channels,
 		})
 	}
 }
@@ -1208,6 +1210,7 @@ type peerInfo struct {
 
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
+	Seed       bool
 	Height     int64
 	FixedScore PeerScore // mainly for tests
 
@@ -1230,6 +1233,7 @@ func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 			return nil, err
 		}
 		p.AddressInfo[addressInfo.Address] = addressInfo
+
 	}
 	return p, p.Validate()
 }
