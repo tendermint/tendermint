@@ -46,8 +46,7 @@ const (
 	dbName   = "postgres"
 	chainID  = "test-chainID"
 
-	viewBlockEvents = "block_events"
-	viewTxEvents    = "tx_events"
+	viewTxEvents = "tx_events"
 )
 
 func TestMain(m *testing.M) {
