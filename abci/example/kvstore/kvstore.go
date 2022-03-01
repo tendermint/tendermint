@@ -194,6 +194,7 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 	for i, tx := range req.Txs {
 		respTxs[i] = app.handleTx(tx)
 	}
+
 	return types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}
 }
 
