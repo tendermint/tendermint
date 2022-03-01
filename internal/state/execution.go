@@ -253,7 +253,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	state, err = updateState(state, blockID, &block.Header, finalizeBlockResponse, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -444,7 +444,7 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *tmstate.ABCIResponses,
+	finalizeBlockResponse *abci.ResponseFinalizeBlock,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
@@ -469,9 +469,9 @@ func updateState(
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
-	if abciResponses.FinalizeBlock.ConsensusParamUpdates != nil {
+	if finalizeBlockResponse.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate state.ConsensusParams
-		nextParams = state.ConsensusParams.UpdateConsensusParams(abciResponses.FinalizeBlock.ConsensusParamUpdates)
+		nextParams = state.ConsensusParams.UpdateConsensusParams(finalizeBlockResponse.ConsensusParamUpdates)
 		err := nextParams.ValidateConsensusParams()
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %w", err)
@@ -500,7 +500,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  ABCIResponsesResultsHash(abciResponses),
+		LastResultsHash:                  ABCIResponsesResultsHash(&tmstate.ABCIResponses{finalizeBlockResponse}),
 		AppHash:                          nil,
 	}, nil
 }
