@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -217,8 +216,18 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(ctx,
-		blockExec.logger, blockExec.proxyApp, block, blockExec.store, state.InitialHeight,
+	abciResponses := new(tmstate.ABCIResponses)
+	pbh := block.Header.ToProto()
+	var err error
+	abciResponses.FinalizeBlock, err = blockExec.proxyApp.FinalizeBlock(
+		ctx,
+		abci.RequestFinalizeBlock{
+			Hash:                block.Hash(),
+			Header:              *pbh,
+			Txs:                 block.Txs.ToSliceOfBytes(),
+			LastCommitInfo:      buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+			ByzantineValidators: block.Evidence.ToABCI(),
+		},
 	)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
@@ -365,49 +374,6 @@ func (blockExec *BlockExecutor) Commit(
 	)
 
 	return res.Data, res.RetainHeight, err
-}
-
-//---------------------------------------------------------
-// Helper functions for executing blocks and updating state
-
-// Executes block's transactions on proxyAppConn.
-// Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(
-	ctx context.Context,
-	logger log.Logger,
-	proxyAppConn proxy.AppConnConsensus,
-	block *types.Block,
-	store Store,
-	initialHeight int64,
-) (*tmstate.ABCIResponses, error) {
-	abciResponses := new(tmstate.ABCIResponses)
-	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
-	dtxs := make([]*abci.ExecTxResult, len(block.Txs))
-	abciResponses.FinalizeBlock.TxResults = dtxs
-
-	// Begin block
-	var err error
-	pbh := block.Header.ToProto()
-	if pbh == nil {
-		return nil, errors.New("nil header")
-	}
-
-	abciResponses.FinalizeBlock, err = proxyAppConn.FinalizeBlock(
-		ctx,
-		abci.RequestFinalizeBlock{
-			Hash:                block.Hash(),
-			Header:              *pbh,
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			LastCommitInfo:      buildLastCommitInfo(block, store, initialHeight),
-			ByzantineValidators: block.Evidence.ToABCI(),
-		},
-	)
-	if err != nil {
-		logger.Error("error in proxyAppConn.FinalizeBlock", "err", err)
-		return nil, err
-	}
-	logger.Info("executed block", "height", block.Height)
-	return abciResponses, nil
 }
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.LastCommitInfo {
@@ -623,11 +589,27 @@ func ExecCommitBlock(
 	initialHeight int64,
 	s State,
 ) ([]byte, error) {
-	abciResponses, err := execBlockOnProxyApp(ctx, logger, appConnConsensus, block, store, initialHeight)
+	abciResponses := new(tmstate.ABCIResponses)
+	// Begin block
+	pbh := block.Header.ToProto()
+
+	var err error
+	abciResponses.FinalizeBlock, err = appConnConsensus.FinalizeBlock(
+		ctx,
+		abci.RequestFinalizeBlock{
+			Hash:                block.Hash(),
+			Header:              *pbh,
+			Txs:                 block.Txs.ToSliceOfBytes(),
+			LastCommitInfo:      buildLastCommitInfo(block, store, initialHeight),
+			ByzantineValidators: block.Evidence.ToABCI(),
+		},
+	)
+
 	if err != nil {
-		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
+		logger.Error("error executing block", "err", err)
 		return nil, err
 	}
+	logger.Info("executed block", "height", block.Height)
 
 	// the BlockExecutor condition is using for the final block replay process.
 	if be != nil {
