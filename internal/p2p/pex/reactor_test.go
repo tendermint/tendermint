@@ -1,3 +1,5 @@
+//nolint:unused
+
 package pex_test
 
 import (
