@@ -272,7 +272,7 @@ func makeNode(
 	}
 
 	mpReactor, mp, err := createMempoolReactor(ctx,
-		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
+		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))

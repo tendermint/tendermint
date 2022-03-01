@@ -172,7 +172,7 @@ func createMempoolReactor(
 	ctx context.Context,
 	cfg *config.Config,
 	proxyApp proxy.AppConns,
-	state sm.State,
+	store sm.Store,
 	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -184,10 +184,9 @@ func createMempoolReactor(
 		logger,
 		cfg.Mempool,
 		proxyApp.Mempool(),
-		state.LastBlockHeight,
 		mempool.WithMetrics(memplMetrics),
-		mempool.WithPreCheck(sm.TxPreCheck(state)),
-		mempool.WithPostCheck(sm.TxPostCheck(state)),
+		mempool.WithPreCheck(sm.TxPreCheck(store)),
+		mempool.WithPostCheck(sm.TxPostCheck(store)),
 	)
 
 	reactor, err := mempool.NewReactor(
