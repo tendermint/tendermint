@@ -7,25 +7,25 @@
 
 ## Abstract
 
-The specification of ABCI++ details a mechanism for proposers to replace transactions
-in the proposed block. This scheme requires the proposer to construct new transactions
+A previous version of the ABCI++ specification detailed a mechanism for proposers to replace transactions
+in the proposed block. This scheme required the proposer to construct new transactions
 and mark these new transactions as replacing other removed transactions. The specification
-is ambiguous as to how the replacement may be communicated to peer nodes.
+was ambiguous as to how the replacement may be communicated to peer nodes.
 This RFC discusses issues with this mechanism and possible solutions.
 
 ## Background
 
 ### What is the proposed change?
 
-The ABCI++ specification proposes mechanisms for adding, removing, and replacing
+A previous version of the ABCI++ specification proposed mechanisms for adding, removing, and replacing
 transactions in a proposed block. To replace a transaction, the application running
-`ProcessProposal` can mark a transaction as replaced by other application-supplied
-transactions by returning a new transaction marked with the `ADDED` flag setting 
+`ProcessProposal` could mark a transaction as replaced by other application-supplied
+transactions by returning a new transaction marked with the `ADDED` flag setting
 the `new_hashes` field of the removed transaction to contain the list of transaction hashes
-that replace it. In the current specification for ABCI++, the full use of the
+that replace it. In that previous specification for ABCI++, the full use of the
 `new_hashes` field is left somewhat ambiguous. At present, these hashes are not
 gossiped and are not eventually included in the block to signal replacement to
-other nodes. The specification does indicate that the transactions specified in
+other nodes. The specification did indicate that the transactions specified in
 the `new_hashes` field will be removed from the mempool but it's not clear how
 peer nodes will learn about them.
 
