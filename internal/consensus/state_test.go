@@ -1972,12 +1972,12 @@ func TestFinalizeBlockCalled(t *testing.T) {
 		expectCalled bool
 	}{
 		{
-			name:         "finalze block called when block commited",
+			name:         "finalze block called when block committed",
 			voteNil:      false,
 			expectCalled: true,
 		},
 		{
-			name:         "not called when block not commited",
+			name:         "not called when block not committed",
 			voteNil:      true,
 			expectCalled: false,
 		},
