@@ -101,11 +101,10 @@ func (n *Network) Start(t *testing.T) {
 
 			select {
 			case peerUpdate := <-sourceSub.Updates():
-				require.Equal(t, p2p.PeerUpdate{
-					NodeID:    targetNode.NodeID,
-					Status:    p2p.PeerStatusUp,
-					ProTxHash: targetNode.NodeInfo.GetProTxHash(),
-				}, peerUpdate)
+
+				require.Equal(t, targetNode.NodeID, peerUpdate.NodeID)
+				require.Equal(t, p2p.PeerStatusUp, peerUpdate.Status)
+				require.EqualValues(t, targetNode.NodeInfo.ProTxHash, peerUpdate.ProTxHash)
 			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 					sourceNode.NodeID, targetNode.NodeID)
@@ -113,6 +112,7 @@ func (n *Network) Start(t *testing.T) {
 
 			select {
 			case peerUpdate := <-targetSub.Updates():
+				peerUpdate.Channels = nil
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID:    sourceNode.NodeID,
 					Status:    p2p.PeerStatusUp,
