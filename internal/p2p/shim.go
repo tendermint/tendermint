@@ -233,9 +233,8 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // handle adding a peer.
 func (rs *ReactorShim) AddPeer(peer Peer) {
 	select {
-	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp}:
+	case rs.PeerUpdates.reactorUpdatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp, Channels: toChannelIDs(peer.NodeInfo().Channels)}:
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peer.ID(), "status", PeerStatusUp)
-
 	case <-rs.PeerUpdates.Done():
 		// NOTE: We explicitly DO NOT close the PeerUpdatesCh's updateCh go channel.
 		// This is because there may be numerous spawned goroutines that are
