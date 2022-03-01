@@ -68,8 +68,10 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
-// TestFinalizeBlockValidators ensures we send absent validators list.
-func TestFinalizeBlockValidators(t *testing.T) {
+// TestFinalizeBlockLastCommitInfo ensures we correctly send the LastCommitInfo to the
+// applications. The test ensures that the LastCommitInfo properly reflects the
+// which validators signed the preceeding block.
+func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -121,7 +123,13 @@ func TestFinalizeBlockValidators(t *testing.T) {
 		block, err := sf.MakeBlock(state, 2, lastCommit)
 		require.NoError(t, err)
 
-		_, err = sm.ExecCommitBlock(ctx, nil, proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1, state)
+		blockStore := store.NewBlockStore(dbm.NewMemDB())
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mmock.Mempool{}, &mocks.EvidencePool{}, blockStore)
+
+		bps, err := block.MakePartSet(testPartSize)
+		require.NoError(t, err)
+		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+		_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 		require.NoError(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -269,6 +277,7 @@ func TestProcessProposal(t *testing.T) {
 
 	block0, err := sf.MakeBlock(state, height-1, new(types.Commit))
 	require.NoError(t, err)
+	buildLastCommitInfo()
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
