@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -253,7 +254,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, finalizeBlockResponse, validatorUpdates)
+	state, err = updateState(state, blockID, &block.Header, ABCIResponsesResultsHash(abciResponses), finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -444,7 +445,8 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	finalizeBlockResponse *abci.ResponseFinalizeBlock,
+	resultsHash []byte,
+	consensusParamUpdates *tmtypes.ConsensusParams,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 
@@ -469,9 +471,9 @@ func updateState(
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
-	if finalizeBlockResponse.ConsensusParamUpdates != nil {
+	if consensusParamUpdates != nil {
 		// NOTE: must not mutate state.ConsensusParams
-		nextParams = state.ConsensusParams.UpdateConsensusParams(finalizeBlockResponse.ConsensusParamUpdates)
+		nextParams = state.ConsensusParams.UpdateConsensusParams(consensusParamUpdates)
 		err := nextParams.ValidateConsensusParams()
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %w", err)
@@ -500,7 +502,7 @@ func updateState(
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  ABCIResponsesResultsHash(&tmstate.ABCIResponses{finalizeBlockResponse}),
+		LastResultsHash:                  resultsHash,
 		AppHash:                          nil,
 	}, nil
 }
