@@ -397,8 +397,12 @@ func TestReactorBasic(t *testing.T) {
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("encountered timeout")
 	}
-	if err := <-errCh; err != nil {
-		t.Fatal(err)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatal(err)
+		}
+	default:
 	}
 
 	errCh = make(chan error, len(rts.blocksyncSubs))
@@ -427,8 +431,13 @@ func TestReactorBasic(t *testing.T) {
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("encountered timeout")
 	}
-	if err := <-errCh; err != nil {
-		t.Fatal(err)
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatal(err)
+		}
+	default:
 	}
 }
 
