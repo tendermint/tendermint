@@ -82,68 +82,54 @@ func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := makeState(t, 2, 2)
+	state, stateDB, privVals := makeState(t, 7, 1)
 	stateStore := sm.NewStore(stateDB)
-
-	prevHash := state.LastBlockID.Hash
-	prevParts := types.PartSetHeader{}
-	prevBlockID := types.BlockID{Hash: prevHash, PartSetHeader: prevParts}
-
-	var (
-		now        = tmtime.Now()
-		commitSig0 = types.NewCommitSigForBlock(
-			[]byte("Signature1"),
-			state.Validators.Validators[0].Address,
-			now,
-			types.VoteExtensionToSign{},
-		)
-		commitSig1 = types.NewCommitSigForBlock(
-			[]byte("Signature2"),
-			state.Validators.Validators[1].Address,
-			now,
-			types.VoteExtensionToSign{},
-		)
-		absentSig = types.NewCommitSigAbsent()
-	)
+	absentSig := types.NewCommitSigAbsent()
 
 	testCases := []struct {
-		desc                     string
-		lastCommitSigs           []types.CommitSig
-		expectedAbsentValidators []int
+		name             string
+		absentCommitSigs map[int]struct{}
 	}{
-		{"none absent", []types.CommitSig{commitSig0, commitSig1}, []int{}},
-		{"one absent", []types.CommitSig{commitSig0, absentSig}, []int{1}},
-		{"multiple absent", []types.CommitSig{absentSig, absentSig}, []int{0, 1}},
+		{"none absent", map[int]struct{}{}},
+		{"one absent", map[int]struct{}{1: struct{}{}}},
+		{"multiple absent", map[int]struct{}{1: struct{}{}, 3: struct{}{}}},
 	}
 
 	for _, tc := range testCases {
-		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
+		t.Run(tc.name, func(t *testing.T) {
+			blockStore := store.NewBlockStore(dbm.NewMemDB())
+			evpool := &mocks.EvidencePool{}
+			evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, 0)
+			evpool.On("Update", ctx, mock.Anything, mock.Anything).Return()
+			evpool.On("CheckEvidence", ctx, mock.Anything).Return(nil)
 
-		// block for height 2
-		block, err := sf.MakeBlock(state, 2, lastCommit)
-		require.NoError(t, err)
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mmock.Mempool{}, evpool, blockStore)
+			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
-		blockStore := store.NewBlockStore(dbm.NewMemDB())
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mmock.Mempool{}, &mocks.EvidencePool{}, blockStore)
-
-		bps, err := block.MakePartSet(testPartSize)
-		require.NoError(t, err)
-		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-		_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
-		require.NoError(t, err, tc.desc)
-
-		// -> app receives a list of validators with a bool indicating if they signed
-		ctr := 0
-		for i, v := range app.CommitVotes {
-			if ctr < len(tc.expectedAbsentValidators) &&
-				tc.expectedAbsentValidators[ctr] == i {
-
-				assert.False(t, v.SignedLastBlock)
-				ctr++
-			} else {
-				assert.True(t, v.SignedLastBlock)
+			for idx := range tc.absentCommitSigs {
+				lastCommit.Signatures[idx] = absentSig
 			}
-		}
+
+			// block for height 2
+			block, err := sf.MakeBlock(state, 2, lastCommit)
+			require.NoError(t, err)
+
+			require.NoError(t, err)
+			bps, err := block.MakePartSet(testPartSize)
+			require.NoError(t, err)
+			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+			_, err = blockExec.ApplyBlock(ctx, state, blockID, block)
+			require.NoError(t, err)
+
+			// -> app receives a list of validators with a bool indicating if they signed
+			for i, v := range app.CommitVotes {
+				if _, ok := tc.absentCommitSigs[i]; ok {
+					assert.False(t, v.SignedLastBlock)
+				} else {
+					assert.True(t, v.SignedLastBlock)
+				}
+			}
+		})
 	}
 }
 
