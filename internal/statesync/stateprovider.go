@@ -3,7 +3,6 @@ package statesync
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -328,7 +327,7 @@ func (s *stateProviderP2P) State(ctx context.Context, height uint64) (sm.State, 
 	// We'll also need to fetch consensus params via P2P.
 	state.ConsensusParams, err = s.consensusParams(ctx, currentLightBlock.Height)
 	if err != nil {
-		return sm.State{}, err
+		return sm.State{}, fmt.Errorf("fetching consensus params: %w", err)
 	}
 	// validate the consensus params
 	if !bytes.Equal(nextLightBlock.ConsensusHash, state.ConsensusParams.HashConsensusParams()) {
@@ -352,24 +351,120 @@ func (s *stateProviderP2P) addProvider(p lightprovider.Provider) {
 // consensusParams sends out a request for consensus params blocking
 // until one is returned.
 //
-// If it fails to get a valid set of consensus params from any of the
-// providers it returns an error; however, it will retry indefinitely
-// (with backoff) until the context is canceled.
+// It attempts to send requests to all witnesses in parallel, but if
+// none responds it will retry them all sometime later until it
+// receives some response. This operation will block until it receives
+// a response or the context is canceled.
 func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (types.ConsensusParams, error) {
+<<<<<<< HEAD
 	iterCount := 0
+=======
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	out := make(chan types.ConsensusParams)
+
+	retryAll := func() (<-chan struct{}, error) {
+		wg := &sync.WaitGroup{}
+
+		for _, provider := range s.lc.Witnesses() {
+			p, ok := provider.(*BlockProvider)
+			if !ok {
+				return nil, fmt.Errorf("witness is not BlockProvider [%T]", provider)
+			}
+
+			peer, err := types.NewNodeID(p.String())
+			if err != nil {
+				return nil, fmt.Errorf("invalid provider (%s) node id: %w", p.String(), err)
+			}
+
+			wg.Add(1)
+			go func(p *BlockProvider, peer types.NodeID) {
+				defer wg.Done()
+
+				timer := time.NewTimer(0)
+				defer timer.Stop()
+				var iterCount int64
+
+				for {
+					iterCount++
+					if err := s.paramsSendCh.Send(ctx, p2p.Envelope{
+						To: peer,
+						Message: &ssproto.ParamsRequest{
+							Height: uint64(height),
+						},
+					}); err != nil {
+						// this only errors if
+						// the context is
+						// canceled which we
+						// don't need to
+						// propagate here
+						return
+					}
+
+					// jitter+backoff the retry loop
+					timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
+						time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
+
+					select {
+					case <-timer.C:
+						continue
+					case <-ctx.Done():
+						return
+					case params, ok := <-s.paramsRecvCh:
+						if !ok {
+							return
+						}
+						select {
+						case <-ctx.Done():
+							return
+						case out <- params:
+							return
+						}
+					}
+				}
+
+			}(p, peer)
+		}
+		sig := make(chan struct{})
+		go func() { wg.Wait(); close(sig) }()
+		return sig, nil
+	}
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	var iterCount int64
+>>>>>>> a965f03c1 (statesync: avoid compounding retry logic for fetching consensus parameters (#8032))
 	for {
-		params, err := s.tryGetConsensusParamsFromWitnesses(ctx, height)
+		iterCount++
+		sig, err := retryAll()
 		if err != nil {
 			return types.ConsensusParams{}, err
 		}
+<<<<<<< HEAD
 		if params != nil {
 			return *params, nil
 		}
 		iterCount++
 
+=======
+>>>>>>> a965f03c1 (statesync: avoid compounding retry logic for fetching consensus parameters (#8032))
 		select {
+		case <-sig:
+			// jitter+backoff the retry loop
+			timer.Reset(time.Duration(iterCount)*consensusParamsResponseTimeout +
+				time.Duration(100*rand.Int63n(iterCount))*time.Millisecond) // nolint:gosec
+			select {
+			case param := <-out:
+				return param, nil
+			case <-ctx.Done():
+				return types.ConsensusParams{}, ctx.Err()
+			case <-timer.C:
+			}
 		case <-ctx.Done():
 			return types.ConsensusParams{}, ctx.Err()
+<<<<<<< HEAD
 		case <-time.After(time.Duration(iterCount) * consensusParamsResponseTimeout):
 		}
 	}
@@ -416,9 +511,11 @@ func (s *stateProviderP2P) tryGetConsensusParamsFromWitnesses(
 				return nil, errors.New("params channel closed")
 			}
 			return &params, nil
+=======
+		case param := <-out:
+			return param, nil
+>>>>>>> a965f03c1 (statesync: avoid compounding retry logic for fetching consensus parameters (#8032))
 		}
 	}
 
-	// signal to caller to retry.
-	return nil, nil
 }
