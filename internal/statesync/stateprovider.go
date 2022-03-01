@@ -378,7 +378,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			}
 
 			wg.Add(1)
-			go func(p *BlockProvider, peer types.NodeID) {
+			go func(p *BlockProvider, peer types.NodeID, requestCh chan<- p2p.Envelope, responseCh <-chan types.ConsensusParams) {
 				defer wg.Done()
 
 				timer := time.NewTimer(0)
@@ -407,7 +407,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 						continue
 					case <-ctx.Done():
 						return
-					case params, ok := <-s.paramsRecvCh:
+					case params, ok := <-responseCh:
 						if !ok {
 							return
 						}
@@ -420,7 +420,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 					}
 				}
 
-			}(p, peer)
+			}(p, peer, s.paramsSendCh, s.paramsRecvCh)
 		}
 		sig := make(chan struct{})
 		go func() { wg.Wait(); close(sig) }()
