@@ -312,17 +312,20 @@ From the App's perspective, they'll probably skip ProcessProposal
     | app_signed_updates      | repeated bytes                                   | Optional changes to the *app_signed* part of vote extensions.                               | 7            |
 
 * **Usage**:
-    * Contains a preliminary block to be proposed, called _raw block_, which the Application can modify.
     * The first five parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
       and `RequestFinalizeBlock`.
     * The header contains the height, timestamp, and more - it exactly matches the
       Tendermint block header.
-    * The Application can modify the transactions received in `RequestPrepareProposal` before sending
-      them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified_tx` is set to true.
-    * If `ResponsePrepareProposal.modified_tx` is false, then Tendermint will ignore the contents of
-      `ResponsePrepareProposal.tx_records`.
-    * If the Application modifies the transactions, the modified transactions MUST NOT exceed the configured maximum size,
-      contained in `RequestPrepareProposal.max_tx_bytes`.
+    * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw block_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
+        * In this case, the Application should set `ResponsePrepareProposal.modified_tx` to true.
+        * The Application _can_ reorder, remove or add transactions to the raw block. Let `tx` be a transaction in `txs`:
+            * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
+            * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as "REMOVE". In this case, Tendermint will remove `tx` from the mempool.
+            * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as "ADD". In this case, Tendermint will add it to the mempool.
+        * The Application should be aware that removing and adding transactions may compromise _traceability_.
+          > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
+        * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
+    * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
     * If the Application modifies the *app_signed* part of vote extensions via `ResponsePrepareProposal.app_signed_updates`,
       the new total size of those extensions cannot exceed their initial size.
     * The Application may choose to not modify the *app_signed* part of vote extensions by leaving parameter
@@ -352,21 +355,9 @@ From the App's perspective, they'll probably skip ProcessProposal
       `ResponseFinalizeBlock`.
     * Likewise, in next-block execution mode, the Application must keep all responses to executing transactions
       until it can call `ResponseFinalizeBlock`.
-    * The Application can change the transaction list via `ResponsePrepareProposal.tx_records`.
-      See [TxRecord](#txrecord) for further information on how to use it. Some notes:
-        * To remove a transaction from the proposed block the Application _marks_ the transaction as
-          "REMOVE". It does not remove it from the list. The transaction will also be removed from the mempool.
-        * Removing a transaction from the list means it is too early to propose that transaction,
-          so it will be excluded from the proposal but will stay in the mempool for later proposals.
-          The Application should be extra-careful, as abusing this feature may cause transactions to
-          stay forever in the mempool.
-        * The `new_hashes` field, besides helping with mempool maintenance, helps Tendermint handle
-          queries such as "what happened with this Tx?", by answering "it was modified into these ones".
-        * The Application _can_ reorder the transactions in the list.
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
         * There is a duplicate transaction in the list.
-        * The `new_hashes` field contains a dangling reference to a non-existing transaction.
         * A new or modified transaction is marked as "TXUNMODIFIED" or "TXREMOVED".
         * An unmodified transaction is marked as "TXADDED".
         * A transaction is marked as "TXUNKNOWN".
@@ -403,7 +394,7 @@ and _p_'s _validValue_ is `nil`:
         * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
-        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`
+        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`. As explained above, this compromises client traceability, unless it is implemented at the Application level.
         * reorder transactions - the Application reorders transactions in the list
 4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
    and includes the modified block in the return parameters (see the rules in section _Usage_).
@@ -832,20 +823,18 @@ Most of the data structures used in ABCI are shared [common data structures](../
 ```protobuf
   enum TxAction {
     TXUNKNOWN    = 0;  // Unknown action
-    TXUNMODIFIED = 1;  // The Application did not modify this transaction. Ignore new_hashes field
-    TXADDED      = 2;  // The Application added this transaction. Ignore new_hashes field
+    TXUNMODIFIED = 1;  // The Application did not modify this transaction.
+    TXADDED      = 2;  // The Application added this transaction.
     TXREMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
-                       // Use new_hashes field if the transaction was modified
   }
 ```
 
 * **Usage**:
     * If `Action` is TXUNKNOWN, a problem happened in the Application. Tendermint will ignore this transaction. **TODO** should we panic?
-    * If `Action` is TXUNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool. Field `new_hashes` is ignored.
-    * If `Action` is TXADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped. Field `new_hashes` is ignored.
+    * If `Action` is TXUNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
+    * If `Action` is TXADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped.
     * If `Action` is TXREMOVED, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
-      similar to `CheckTx` returning _false_. Tendermint can use field `new_hashes` to help clients trace transactions that have been modified into other transactions.
-
+      similar to `CheckTx` returning _false_.
 ### TxRecord
 
 * **Fields**:
@@ -854,25 +843,3 @@ Most of the data structures used in ABCI are shared [common data structures](../
     |------------|-----------------------|------------------------------------------------------------------|--------------|
     | action     | [TxAction](#txaction) | What should Tendermint do with this transaction?                 | 1            |
     | tx         | bytes                 | Transaction contents                                             | 2            |
-    | new_hashes | repeated bytes        | List of hashes of successor transactions                         | 3            |
-
-* **Usage**:
-    * The hashes contained in `new_hashes` MUST follow the same algorithm used by Tendermint for hashing transactions
-      that are in the mempool.
-    * As `new_hashes` is a list, `TxRecord` allows to trace many-to-many modifications. Some examples:
-        * Transaction $t1$ modified into $t2$ is represented with these records
-            * $t2$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$]
-        * Transaction $t1$ modified into $t2$ and $t3$ is represented with these `TxRecord` records
-            * $t2$ "ADDED"
-            * $t3$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$, $id(t3)$]
-        * Transactions $t1$ and $t2$ aggregated into $t3$ is represented with these `TxRecord` records
-            * $t3$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t3)$]
-            * $t2$ "REMOVED"; `new_hashes` contains [$id(t3)$]
-        * Transactions $t1$ and $t2$ combined into $t3$ and $t4$ is represented with these `TxRecord` records
-            * $t3$ "ADDED"
-            * $t4$ "ADDED"
-            * $t1$ "REMOVED" and `new_hashes` containing [$id(t3)$, $id(t4)$]
-            * $t2$ "REMOVED" and `new_hashes` containing [$id(t3)$, $id(t4)$]
