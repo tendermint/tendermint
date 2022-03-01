@@ -206,20 +206,14 @@ func (blockExec *BlockExecutor) ValidateBlock(ctx context.Context, state State, 
 func (blockExec *BlockExecutor) ApplyBlock(
 	ctx context.Context,
 	state State,
-	blockID types.BlockID,
-	block *types.Block,
-) (State, error) {
-
+	blockID types.BlockID, block *types.Block) (State, error) {
 	// validate the block if we haven't already
 	if err := blockExec.ValidateBlock(ctx, state, block); err != nil {
 		return state, ErrInvalidBlock(err)
 	}
-
 	startTime := time.Now().UnixNano()
-	abciResponses := new(tmstate.ABCIResponses)
 	pbh := block.Header.ToProto()
-	var err error
-	abciResponses.FinalizeBlock, err = blockExec.proxyApp.FinalizeBlock(
+	finalizeBlockResponse, err := blockExec.proxyApp.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
@@ -235,19 +229,22 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrProxyAppConn(err)
 	}
 
+	abciResponses := &tmstate.ABCIResponses{
+		FinalizeBlock: finalizeBlockResponse,
+	}
+
 	// Save the results before we commit.
 	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
 		return state, err
 	}
 
 	// validate the validator updates and convert to tendermint types
-	abciValUpdates := abciResponses.FinalizeBlock.ValidatorUpdates
-	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
+	err = validateValidatorUpdates(finalizeBlockResponse.ValidatorUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, fmt.Errorf("error in validator updates: %w", err)
 	}
 
-	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(finalizeBlockResponse.ValidatorUpdates)
 	if err != nil {
 		return state, err
 	}
@@ -262,7 +259,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, abciResponses.FinalizeBlock.TxResults)
+	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, finalizeBlockResponse.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -291,7 +288,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(ctx, blockExec.logger, blockExec.eventBus, block, blockID, abciResponses, validatorUpdates)
+	fireEvents(ctx, blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 
 	return state, nil
 }
@@ -517,13 +514,13 @@ func fireEvents(
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
 	blockID types.BlockID,
-	abciResponses *tmstate.ABCIResponses,
+	finalizeBlockResponse *abci.ResponseFinalizeBlock,
 	validatorUpdates []*types.Validator,
 ) {
 	if err := eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
 		Block:               block,
 		BlockID:             blockID,
-		ResultFinalizeBlock: *abciResponses.FinalizeBlock,
+		ResultFinalizeBlock: *finalizeBlockResponse,
 	}); err != nil {
 		logger.Error("failed publishing new block", "err", err)
 	}
@@ -531,7 +528,7 @@ func fireEvents(
 	if err := eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
 		Header:              block.Header,
 		NumTxs:              int64(len(block.Txs)),
-		ResultFinalizeBlock: *abciResponses.FinalizeBlock,
+		ResultFinalizeBlock: *finalizeBlockResponse,
 	}); err != nil {
 		logger.Error("failed publishing new block header", "err", err)
 	}
@@ -548,9 +545,9 @@ func fireEvents(
 	}
 
 	// sanity check
-	if len(abciResponses.FinalizeBlock.TxResults) != len(block.Data.Txs) {
+	if len(finalizeBlockResponse.TxResults) != len(block.Data.Txs) {
 		panic(fmt.Sprintf("number of TXs (%d) and ABCI TX responses (%d) do not match",
-			len(block.Data.Txs), len(abciResponses.FinalizeBlock.TxResults)))
+			len(block.Data.Txs), len(finalizeBlockResponse.TxResults)))
 	}
 
 	for i, tx := range block.Data.Txs {
@@ -559,14 +556,14 @@ func fireEvents(
 				Height: block.Height,
 				Index:  uint32(i),
 				Tx:     tx,
-				Result: *(abciResponses.FinalizeBlock.TxResults[i]),
+				Result: *(finalizeBlockResponse.TxResults[i]),
 			},
 		}); err != nil {
 			logger.Error("failed publishing event TX", "err", err)
 		}
 	}
 
-	if len(validatorUpdates) > 0 {
+	if len(finalizeBlockResponse.ValidatorUpdates) > 0 {
 		if err := eventBus.PublishEventValidatorSetUpdates(ctx,
 			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
 			logger.Error("failed publishing event", "err", err)
@@ -589,12 +586,8 @@ func ExecCommitBlock(
 	initialHeight int64,
 	s State,
 ) ([]byte, error) {
-	abciResponses := new(tmstate.ABCIResponses)
-	// Begin block
 	pbh := block.Header.ToProto()
-
-	var err error
-	abciResponses.FinalizeBlock, err = appConnConsensus.FinalizeBlock(
+	finalizeBlockResponse, err := appConnConsensus.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
@@ -606,20 +599,19 @@ func ExecCommitBlock(
 	)
 
 	if err != nil {
-		logger.Error("error executing block", "err", err)
+		logger.Error("executing block", "err", err)
 		return nil, err
 	}
 	logger.Info("executed block", "height", block.Height)
 
 	// the BlockExecutor condition is using for the final block replay process.
 	if be != nil {
-		abciValUpdates := abciResponses.FinalizeBlock.ValidatorUpdates
-		err = validateValidatorUpdates(abciValUpdates, s.ConsensusParams.Validator)
+		err = validateValidatorUpdates(finalizeBlockResponse.ValidatorUpdates, s.ConsensusParams.Validator)
 		if err != nil {
 			logger.Error("err", err)
 			return nil, err
 		}
-		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+		validatorUpdates, err := types.PB2TM.ValidatorUpdates(finalizeBlockResponse.ValidatorUpdates)
 		if err != nil {
 			logger.Error("err", err)
 			return nil, err
@@ -631,7 +623,7 @@ func ExecCommitBlock(
 		}
 
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-		fireEvents(ctx, be.logger, be.eventBus, block, blockID, abciResponses, validatorUpdates)
+		fireEvents(ctx, be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 	}
 
 	// Commit block, get hash back
