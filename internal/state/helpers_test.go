@@ -187,6 +187,7 @@ func makeHeaderPartsResponsesValPowerChange(
 
 	abciResponses := &tmstate.ABCIResponses{}
 
+	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {

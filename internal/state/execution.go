@@ -440,7 +440,7 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 	return nil
 }
 
-// update returns a new State updated according to the header and responses.
+// Update returns a copy of state with the fields set using the arguments passed in.
 func (state State) Update(
 	blockID types.BlockID,
 	header *types.Header,
