@@ -2029,7 +2029,6 @@ func TestFinalizeBlockCalled(t *testing.T) {
 
 			signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), blockID, vss[1:]...)
 			ensurePrecommit(t, voteCh, height, round)
-			validatePrecommit(ctx, t, cs1, round, polRound, vss[0], blockID.Hash, blockID.Hash)
 
 			ensureNewRound(t, newRoundCh, nextHeight, nextRound)
 			m.AssertExpectations(t)
