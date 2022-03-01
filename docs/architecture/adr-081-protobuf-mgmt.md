@@ -10,8 +10,8 @@ Accepted
 
 ## Context
 
-At present, we manage the [Protocol Buffers] files ("protos") that define our
-wire-level data formats within the Tendermint repository itself (see the
+At present, we manage the [Protocol Buffers] schema files ("protos") that define
+our wire-level data formats within the Tendermint repository itself (see the
 [`proto`](../../proto/) directory). Recently, we have been making use of [Buf],
 both locally and in CI, in order to generate Go stubs, and lint and check
 `.proto` files for breaking changes.
@@ -26,8 +26,10 @@ The three main customers for the `.proto` files and their needs, as currently
 understood, are as follows.
 
 1. Tendermint needs Go code generated from `.proto` files.
-2. Consumers of Tendermint's `.proto` files want to be able to access these
-   files in a reliable and efficient way.
+2. Consumers of Tendermint's `.proto` files, specifically projects that want to
+   interoperate with Tendermint and need to generate code for their own
+   programming language, want to be able to access these files in a reliable and
+   efficient way.
 3. The Tendermint Core team wants to provide stable interfaces that are as easy
    as possible to maintain, on which consumers can depend, and to be able to
    notify those consumers promptly when those interfaces change. To this end, we
@@ -35,9 +37,7 @@ understood, are as follows.
    1. Prevent any breaking changes from being introduced in minor/patch releases
       of Tendermint. Only major version updates should be able to contain
       breaking interface changes.
-   2. Ensure that `.proto` files don't contain invalid syntax.
-   3. Ensure that `.proto` files look reasonably similar in format for code
-      readability purposes.
+   2. Prevent generated code from diverging from the Protobuf schema files.
 
 There was also discussion surrounding the notion of automated documentation
 generation and hosting, but it is not clear at this time whether this would be
@@ -56,10 +56,11 @@ themselves.
       generation.
    2. [protoc] - the Protocol Buffers compiler.
 2. Notification of breaking changes:
-   1. Buf in CI for releases only.
-   2. Buf in CI on every pull request (this was the case at the time of this
-      decision, and the team decided that the signal-to-noise ratio for this
-      approach was too low to be of value).
+   1. Buf in CI for all pull requests to *release* branches only (and not on
+      `master`).
+   2. Buf in CI on every pull request to every branch (this was the case at the
+      time of this decision, and the team decided that the signal-to-noise ratio
+      for this approach was too low to be of value).
 3. `.proto` linting:
    1. Buf in CI on every pull request
 4. `.proto` formatting:
@@ -78,8 +79,7 @@ themselves.
       registry will automatically [generate and host
       documentation][buf-docs-gen] for these protos.
    3. We could create a process that, upon release, creates a `.zip` file
-      containing our `.proto` files. This would require maintaining yet another
-      script/CI workflow that we would maintain.
+      containing our `.proto` files.
 
 ### Popular alternatives to Buf
 
@@ -121,9 +121,9 @@ The trouble with the Docker-based approach is that we make use of the
 to using Buf will mean that we will have to continue building our own custom
 Docker image with embedded gogoprotobuf.
 
-Along these lines, we could eventually consider coming up with a [Nix]-based
-approach to developer tooling to ensure tooling consistency across the team and
-for anyone who wants to be able to contribute to Tendermint.
+Along these lines, we could eventually consider coming up with a [Nix]- or
+[redo]-based approach to developer tooling to ensure tooling consistency across
+the team and for anyone who wants to be able to contribute to Tendermint.
 
 ## Decision
 
@@ -200,3 +200,4 @@ We currently aim to:
 [gogoprotobuf]: https://github.com/gogo/protobuf
 [Prototool]: https://github.com/uber/prototool
 [buf-docs-gen]: https://docs.buf.build/bsr/documentation
+[redo]: https://redo.readthedocs.io/en/latest/
