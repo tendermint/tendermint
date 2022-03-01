@@ -27,7 +27,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -263,7 +262,6 @@ func TestProcessProposal(t *testing.T) {
 
 	block0, err := sf.MakeBlock(state, height-1, new(types.Commit))
 	require.NoError(t, err)
-	buildLastCommitInfo()
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
