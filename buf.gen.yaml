@@ -1,7 +1,11 @@
 # The version of the generation template (required).
-# The only currently-valid value is v1beta1.
-version: v1beta1
-
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/tendermint/tendermint/proto
+    except:
+      - buf.build/gogo/protobuf
 # The plugins to run.
 plugins:
   # The name of the plugin.
@@ -11,4 +15,8 @@ plugins:
     out: proto
     # Set options to assign import paths to the well-known types
     # and to enable service generation.
-    opt: Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc,paths=source_relative
+    opt:
+      - Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types
+      - Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration
+      - paths=source_relative
+      - plugins=grpc
