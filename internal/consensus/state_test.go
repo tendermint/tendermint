@@ -1992,9 +1992,7 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			m.On("VerifyVoteExtension", mock.Anything).Return(abcitypes.ResponseVerifyVoteExtension{
 				Result: abcitypes.ResponseVerifyVoteExtension_ACCEPT,
 			})
-			if testCase.expectCalled {
-				m.On("FinalizeBlock", mock.Anything).Return(abcitypes.ResponseFinalizeBlock{})
-			}
+			m.On("FinalizeBlock", mock.Anything).Return(abcitypes.ResponseFinalizeBlock{}).Maybe()
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m, logger: log.NewTestingLogger(t)})
 			height, round := cs1.Height, cs1.Round
 
@@ -2014,7 +2012,6 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			nextRound := round + 1
 			nextHeight := height
 			if !testCase.voteNil {
-				polRound = 0
 				nextRound = 0
 				nextHeight = height + 1
 				blockID = types.BlockID{
@@ -2031,8 +2028,11 @@ func TestFinalizeBlockCalled(t *testing.T) {
 
 			ensureNewRound(t, newRoundCh, nextHeight, nextRound)
 			m.AssertExpectations(t)
-			if testCase.voteNil {
+
+			if !testCase.expectCalled {
 				m.AssertNotCalled(t, "FinalizeBlock", mock.Anything)
+			} else {
+				m.AssertCalled(t, "FinalizeBlock", mock.Anything)
 			}
 		})
 	}
