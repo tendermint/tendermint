@@ -87,11 +87,11 @@ func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 
 	testCases := []struct {
 		name             string
-		absentCommitSigs map[int]struct{}
+		absentCommitSigs map[int]bool
 	}{
-		{"none absent", map[int]struct{}{}},
-		{"one absent", map[int]struct{}{1: struct{}{}}},
-		{"multiple absent", map[int]struct{}{1: struct{}{}, 3: struct{}{}}},
+		{"none absent", map[int]bool{}},
+		{"one absent", map[int]bool{1: true}},
+		{"multiple absent", map[int]bool{1: true, 3: true}},
 	}
 
 	for _, tc := range testCases {
@@ -105,14 +105,14 @@ func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mmock.Mempool{}, evpool, blockStore)
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
-			for idx := range tc.absentCommitSigs {
-				lastCommit.Signatures[idx] = absentSig
+			for idx, isAbsent := range tc.absentCommitSigs {
+				if isAbsent {
+					lastCommit.Signatures[idx] = absentSig
+				}
 			}
 
 			// block for height 2
 			block, err := sf.MakeBlock(state, 2, lastCommit)
-			require.NoError(t, err)
-
 			require.NoError(t, err)
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 
 			// -> app receives a list of validators with a bool indicating if they signed
 			for i, v := range app.CommitVotes {
-				if _, ok := tc.absentCommitSigs[i]; ok {
+				if isAbsent, ok := tc.absentCommitSigs[i]; ok && isAbsent {
 					assert.False(t, v.SignedLastBlock)
 				} else {
 					assert.True(t, v.SignedLastBlock)
