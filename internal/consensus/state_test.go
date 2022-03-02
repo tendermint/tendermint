@@ -2011,7 +2011,6 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			rs := cs1.GetRoundState()
 
 			blockID := types.BlockID{}
-			var polRound int32 = -1
 			nextRound := round + 1
 			nextHeight := height
 			if !testCase.voteNil {
