@@ -73,7 +73,7 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
 }
 
 // Search performs a query for block heights that match a given FinalizeBlock
-// The given query can match against zero, one or more block heights. In the case
+// The given query can match against zero or more block heights. In the case
 // of height queries, i.e. block.height=H, if the height is indexed, that height
 // alone will be returned. An error and nil slice is returned. Otherwise, a
 // non-nil slice and nil error is returned.
