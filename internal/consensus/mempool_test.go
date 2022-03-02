@@ -118,7 +118,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	round = 0
 
 	ensureNewRound(t, newRoundCh, height, round) // first round at next height
-	checkTxsRange(ctx, t, cs, 0, 1)              // we deliver txs, but dont set a proposal so we get the next round
+	checkTxsRange(ctx, t, cs, 0, 1)              // we deliver txs, but don't set a proposal so we get the next round
 	ensureNewTimeout(t, timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
 
 	round++                                      // moving to the next round
