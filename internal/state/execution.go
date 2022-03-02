@@ -253,7 +253,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(ctx, block, abciResponses.FinalizeBlock.Txs)
+	appHash, retainHeight, err := blockExec.Commit(ctx, block, state, abciResponses.FinalizeBlock.Txs)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -325,6 +325,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 func (blockExec *BlockExecutor) Commit(
 	ctx context.Context,
 	block *types.Block,
+	state State,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 ) ([]byte, int64, error) {
 	blockExec.mempool.Lock()
@@ -359,8 +360,8 @@ func (blockExec *BlockExecutor) Commit(
 		block.Height,
 		block.Txs,
 		deliverTxResponses,
-		TxPreCheck(blockExec.store),
-		TxPostCheck(blockExec.store),
+		TxPreCheckForState(state),
+		TxPostCheckForState(state),
 	)
 
 	return res.Data, res.RetainHeight, err

@@ -53,12 +53,20 @@ func TxPreCheck(store Store) mempool.PreCheckFunc {
 		if err != nil {
 			return err
 		}
+
+		return TxPreCheckForState(state)(tx)
+	}
+}
+
+func TxPreCheckForState(state State) mempool.PreCheckFunc {
+	return func(tx types.Tx) error {
 		maxDataBytes := types.MaxDataBytesNoEvidence(
 			state.ConsensusParams.Block.MaxBytes,
 			state.Validators.Size(),
 		)
 		return mempool.PreCheckMaxBytes(maxDataBytes)(tx)
 	}
+
 }
 
 // TxPostCheck returns a function to filter transactions after processing.
@@ -71,6 +79,12 @@ func TxPostCheck(store Store) mempool.PostCheckFunc {
 		if err != nil {
 			return err
 		}
+		return mempool.PostCheckMaxGas(state.ConsensusParams.Block.MaxGas)(tx, resp)
+	}
+}
+
+func TxPostCheckForState(state State) mempool.PostCheckFunc {
+	return func(tx types.Tx, resp *abci.ResponseCheckTx) error {
 		return mempool.PostCheckMaxGas(state.ConsensusParams.Block.MaxGas)(tx, resp)
 	}
 }
