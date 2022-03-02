@@ -84,6 +84,7 @@ func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, types.NodeID) {
 	peerID := types.NodeID(id)
 	peer := &p2pmocks.Peer{}
 	peer.On("ID").Return(peerID)
+	peer.On("NodeInfo").Return(types.NodeInfo{NodeID: peerID}).Maybe()
 
 	return peer, peerID
 }
