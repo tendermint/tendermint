@@ -2,6 +2,27 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.2
+
+February 28, 2022
+
+Special thanks to external contributors on this release: @ashcherbakov, @yihuang, @waelsy123
+
+### IMPROVEMENTS
+
+- [consensus] [\#7875](https://github.com/tendermint/tendermint/pull/7875) additional timing metrics. (@williambanfield)
+
+### BUG FIXES
+
+- [abci] [\#7990](https://github.com/tendermint/tendermint/pull/7990) revert buffer limit change. (@williambanfield)
+- [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
+- [cli] [\#7869](https://github.com/tendermint/tendermint/pull/7869) Update unsafe-reset-all command to match release v35. (waelsy123)
+- [light] [\#7640](https://github.com/tendermint/tendermint/pull/7640) Light Client: fix absence proof verification (@ashcherbakov)
+- [light] [\#7641](https://github.com/tendermint/tendermint/pull/7641) Light Client: fix querying against the latest height (@ashcherbakov)
+- [mempool] [\#7718](https://github.com/tendermint/tendermint/pull/7718) return duplicate tx errors more consistently. (@tychoish)
+- [rpc] [\#7744](https://github.com/tendermint/tendermint/pull/7744) fix layout of endpoint list. (@creachadair)
+- [statesync] [\#7886](https://github.com/tendermint/tendermint/pull/7886) assert app version matches. (@cmwaters)
+
 ## v0.35.1
 
 January 26, 2022
