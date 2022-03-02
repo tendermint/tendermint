@@ -42,7 +42,7 @@ func TestWALTruncate(t *testing.T) {
 	require.NoError(t, err)
 	err = wal.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() { wal.Stop(); wal.Group().Wait(); wal.Wait() })
+	t.Cleanup(func() { wal.Stop(); wal.Group().Stop(); wal.Group().Wait(); wal.Wait() })
 
 	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
 	// when headBuf is full, truncate content will Flush to the file. at this
@@ -113,7 +113,7 @@ func TestWALWrite(t *testing.T) {
 	require.NoError(t, err)
 	err = wal.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() { wal.Stop(); wal.Group().Wait(); wal.Wait() })
+	t.Cleanup(func() { wal.Stop(); wal.Group().Stop(); wal.Group().Wait(); wal.Wait() })
 
 	// 1) Write returns an error if msg is too big
 	msg := &BlockPartMessage{
@@ -152,7 +152,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 
 	wal, err := NewWAL(ctx, logger, walFile)
 	require.NoError(t, err)
-	t.Cleanup(func() { wal.Stop(); wal.Group().Wait(); wal.Wait() })
+	t.Cleanup(func() { wal.Stop(); wal.Group().Stop(); wal.Group().Wait(); wal.Wait() })
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -193,11 +193,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	assert.NotZero(t, wal.Group().Buffered())
 
 	require.NoError(t, wal.Start(ctx))
-	defer wal.Stop()
-	t.Cleanup(func() {
-		wal.Group().Wait()
-		wal.Wait()
-	})
+	t.Cleanup(func() { wal.Stop(); wal.Group().Stop(); wal.Group().Wait(); wal.Wait() })
 
 	time.Sleep(walTestFlushInterval + (20 * time.Millisecond))
 
