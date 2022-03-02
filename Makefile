@@ -173,9 +173,7 @@ build-docs:
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
-	done < versions ; \
-	mkdir -p ~/output/master ; \
-	cp -r .vuepress/dist/* ~/output/master/
+	done < versions ;
 .PHONY: build-docs
 
 sync-docs:
@@ -245,3 +243,43 @@ endif
 contract-tests:
 	dredd
 .PHONY: contract-tests
+<<<<<<< HEAD
+=======
+
+clean:
+	rm -rf $(CURDIR)/artifacts/ $(BUILDDIR)/
+
+build-reproducible:
+	docker rm latest-build || true
+	docker run --volume=$(CURDIR):/sources:ro \
+		--env TARGET_PLATFORMS='linux/amd64 linux/arm64 darwin/amd64 windows/amd64' \
+		--env APP=tendermint \
+		--env COMMIT=$(shell git rev-parse --short=8 HEAD) \
+		--env VERSION=$(shell git describe --tags) \
+		--name latest-build cosmossdk/rbuilder:latest
+	docker cp -a latest-build:/home/builder/artifacts/ $(CURDIR)/
+.PHONY: build-reproducible
+
+# Implements test splitting and running. This is pulled directly from
+# the github action workflows for better local reproducibility.
+
+GO_TEST_FILES != find $(CURDIR) -name "*_test.go"
+
+# default to four splits by default
+NUM_SPLIT ?= 4
+
+$(BUILDDIR):
+	mkdir -p $@
+
+# The format statement filters out all packages that don't have tests.
+# Note we need to check for both in-package tests (.TestGoFiles) and
+# out-of-package tests (.XTestGoFiles).
+$(BUILDDIR)/packages.txt:$(GO_TEST_FILES) $(BUILDDIR)
+	go list -f "{{ if (or .TestGoFiles .XTestGoFiles) }}{{ .ImportPath }}{{ end }}" ./... | sort > $@
+
+split-test-packages:$(BUILDDIR)/packages.txt
+	split -d -n l/$(NUM_SPLIT) $< $<.
+test-group-%:split-test-packages
+	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=5m -race -coverprofile=$(BUILDDIR)/$*.profile.out
+
+>>>>>>> 59eaa4dba (Revert "Remove master from versions and copy it from the latest. (#7980)" (#8053))
