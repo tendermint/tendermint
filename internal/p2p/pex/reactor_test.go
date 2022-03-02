@@ -1,6 +1,4 @@
-// Temporarily disabled pending ttps://github.com/tendermint/tendermint/issues/7626.
-//go:build issue7626
-
+//nolint:unused
 package pex_test
 
 import (
@@ -103,6 +101,7 @@ func TestReactorSendsRequestsTooOften(t *testing.T) {
 }
 
 func TestReactorSendsResponseWithoutRequest(t *testing.T) {
+	t.Skip("This test needs updated https://github.com/tendermint/tendermint/issue/7634")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -124,6 +123,7 @@ func TestReactorSendsResponseWithoutRequest(t *testing.T) {
 }
 
 func TestReactorNeverSendsTooManyPeers(t *testing.T) {
+	t.Skip("This test needs updated https://github.com/tendermint/tendermint/issue/7634")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -235,6 +235,7 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 }
 
 func TestReactorWithNetworkGrowth(t *testing.T) {
+	t.Skip("This test needs updated https://github.com/tendermint/tendermint/issue/7634")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -686,20 +687,16 @@ func (r *reactorTestSuite) connectPeers(ctx context.Context, t *testing.T, sourc
 
 	select {
 	case peerUpdate := <-targetSub.Updates():
-		require.Equal(t, p2p.PeerUpdate{
-			NodeID: node1,
-			Status: p2p.PeerStatusUp,
-		}, peerUpdate)
+		require.Equal(t, peerUpdate.NodeID, node1)
+		require.Equal(t, peerUpdate.Status, p2p.PeerStatusUp)
 	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v accepting %v",
 			targetNode, sourceNode)
 	}
 	select {
 	case peerUpdate := <-sourceSub.Updates():
-		require.Equal(t, p2p.PeerUpdate{
-			NodeID: node2,
-			Status: p2p.PeerStatusUp,
-		}, peerUpdate)
+		require.Equal(t, peerUpdate.NodeID, node2)
+		require.Equal(t, peerUpdate.Status, p2p.PeerStatusUp)
 	case <-time.After(2 * time.Second):
 		require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 			sourceNode, targetNode)

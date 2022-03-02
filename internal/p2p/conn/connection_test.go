@@ -3,6 +3,7 @@ package conn
 import (
 	"context"
 	"encoding/hex"
+	"io"
 	"net"
 	"sync"
 	"testing"
@@ -39,10 +40,10 @@ func createMConnectionWithCallbacks(
 	onError func(ctx context.Context, r interface{}),
 ) *MConnection {
 	cfg := DefaultMConnConfig()
-	cfg.PingInterval = 90 * time.Millisecond
-	cfg.PongTimeout = 45 * time.Millisecond
+	cfg.PingInterval = 250 * time.Millisecond
+	cfg.PongTimeout = 500 * time.Millisecond
 	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnectionWithConfig(logger, conn, chDescs, onReceive, onError, cfg)
+	c := NewMConnection(logger, conn, chDescs, onReceive, onError, cfg)
 	return c
 }
 
@@ -160,51 +161,44 @@ func TestMConnectionReceive(t *testing.T) {
 	}
 }
 
-func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
+func TestMConnectionWillEventuallyTimeout(t *testing.T) {
 	server, client := net.Pipe()
 	t.Cleanup(closeAll(t, client, server))
-
-	receivedCh := make(chan []byte)
-	errorsCh := make(chan interface{})
-	onReceive := func(ctx context.Context, chID ChannelID, msgBytes []byte) {
-		select {
-		case receivedCh <- msgBytes:
-		case <-ctx.Done():
-		}
-	}
-	onError := func(ctx context.Context, r interface{}) {
-		select {
-		case errorsCh <- r:
-		case <-ctx.Done():
-		}
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(log.TestingLogger(), client, nil, nil)
 	err := mconn.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
+	require.True(t, mconn.IsRunning())
 
-	serverGotPing := make(chan struct{})
 	go func() {
-		// read ping
-		var pkt tmp2p.Packet
-		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
-	}()
-	<-serverGotPing
+		// read the send buffer so that the send receive
+		// doesn't get blocked.
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
 
-	pongTimerExpired := mconn.config.PongTimeout + 200*time.Millisecond
+		for {
+			select {
+			case <-ticker.C:
+				_, _ = io.ReadAll(server)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// wait for the send routine to die because it doesn't
 	select {
-	case msgBytes := <-receivedCh:
-		t.Fatalf("Expected error, but got %v", msgBytes)
-	case err := <-errorsCh:
-		assert.NotNil(t, err)
-	case <-time.After(pongTimerExpired):
-		t.Fatalf("Expected to receive error after %v", pongTimerExpired)
+	case <-mconn.doneSendRoutine:
+		require.True(t, time.Since(mconn.getLastMessageAt()) > mconn.config.PongTimeout,
+			"the connection state reflects that we've passed the pong timeout")
+		// since we hit the timeout, things should be shutdown
+		require.False(t, mconn.IsRunning())
+	case <-time.After(2 * mconn.config.PongTimeout):
+		t.Fatal("connection did not hit timeout", mconn.config.PongTimeout)
 	}
 }
 
@@ -247,19 +241,14 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 	require.NoError(t, err)
 
-	serverGotPing := make(chan struct{})
-	go func() {
-		// read ping (one byte)
-		var packet tmp2p.Packet
-		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
+	// read ping (one byte)
+	var packet tmp2p.Packet
+	_, err = protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
+	require.NoError(t, err)
 
-		// respond with pong
-		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
-		require.NoError(t, err)
-	}()
-	<-serverGotPing
+	// respond with pong
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
 	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
 	select {
@@ -355,36 +344,29 @@ func TestMConnectionPingPongs(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(waitAll(mconn))
 
-	serverGotPing := make(chan struct{})
-	go func() {
-		protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
-		protoWriter := protoio.NewDelimitedWriter(server)
-		var pkt tmp2p.PacketPing
+	protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
+	protoWriter := protoio.NewDelimitedWriter(server)
+	var pkt tmp2p.PacketPing
 
-		// read ping
-		_, err = protoReader.ReadMsg(&pkt)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
+	// read ping
+	_, err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
 
-		// respond with pong
-		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
-		require.NoError(t, err)
+	// respond with pong
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
-		time.Sleep(mconn.config.PingInterval)
+	time.Sleep(mconn.config.PingInterval)
 
-		// read ping
-		_, err = protoReader.ReadMsg(&pkt)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
+	// read ping
+	_, err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
 
-		// respond with pong
-		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
-		require.NoError(t, err)
-	}()
-	<-serverGotPing
-	<-serverGotPing
+	// respond with pong
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
-	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
+	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 4
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected no data, but got %v", msgBytes)
@@ -453,7 +435,7 @@ func newClientAndServerConnsForReadErrors(
 	}
 	logger := log.TestingLogger()
 
-	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError)
+	mconnClient := NewMConnection(logger.With("module", "client"), client, chDescs, onReceive, onError, DefaultMConnConfig())
 	err := mconnClient.Start(ctx)
 	require.NoError(t, err)
 

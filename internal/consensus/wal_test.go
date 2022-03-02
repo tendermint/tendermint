@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"errors"
 	"path/filepath"
 
 	"testing"
@@ -17,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -153,6 +151,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 
 	wal, err := NewWAL(ctx, logger, walFile)
 	require.NoError(t, err)
+	t.Cleanup(func() { wal.Stop(); wal.Wait() })
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -167,6 +166,8 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
 	assert.Equal(t, rs.Height, h+1, "wrong height")
+
+	t.Cleanup(leaktest.Check(t))
 }
 
 func TestWALPeriodicSync(t *testing.T) {
@@ -190,14 +191,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	assert.NotZero(t, wal.Group().Buffered())
 
 	require.NoError(t, wal.Start(ctx))
-	t.Cleanup(func() {
-		if err := wal.Stop(); err != nil {
-			if !errors.Is(err, service.ErrAlreadyStopped) {
-				t.Error(err)
-			}
-		}
-		wal.Wait()
-	})
+	t.Cleanup(func() { wal.Stop(); wal.Wait() })
 
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 
@@ -212,4 +206,6 @@ func TestWALPeriodicSync(t *testing.T) {
 	if gr != nil {
 		gr.Close()
 	}
+
+	t.Cleanup(leaktest.Check(t))
 }

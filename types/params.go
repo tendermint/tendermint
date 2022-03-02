@@ -79,7 +79,7 @@ type VersionParams struct {
 // SynchronyParams influence the validity of block timestamps.
 // For more information on the relationship of the synchrony parameters to
 // block validity, see the Proposer-Based Timestamps specification:
-// https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/README.md
+// https://github.com/tendermint/tendermint/blob/master/spec/consensus/proposer-based-timestamp/README.md
 type SynchronyParams struct {
 	Precision    time.Duration `json:"precision,string"`
 	MessageDelay time.Duration `json:"message_delay,string"`
@@ -128,11 +128,12 @@ func DefaultVersionParams() VersionParams {
 }
 
 func DefaultSynchronyParams() SynchronyParams {
-	// TODO(@wbanfield): Determine experimental values for these defaults
-	// https://github.com/tendermint/tendermint/issues/7202
 	return SynchronyParams{
-		Precision:    500 * time.Millisecond,
-		MessageDelay: 3 * time.Second,
+		// 505ms was selected as the default to enable chains that have validators in
+		// mixed leap-second handling environments.
+		// For more information, see: https://github.com/tendermint/tendermint/issues/7724
+		Precision:    505 * time.Millisecond,
+		MessageDelay: 12 * time.Second,
 	}
 }
 
@@ -143,6 +144,12 @@ func (val *ValidatorParams) IsValidPubkeyType(pubkeyType string) bool {
 		}
 	}
 	return false
+}
+
+func (params *ConsensusParams) Complete() {
+	if params.Synchrony == (SynchronyParams{}) {
+		params.Synchrony = DefaultSynchronyParams()
+	}
 }
 
 // Validate validates the ConsensusParams to ensure all values are within their

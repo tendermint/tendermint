@@ -95,7 +95,7 @@ func TestClientOperations(t *testing.T) {
 
 	logger := log.NewTestingLogger(t)
 
-	_, conf := NodeSuite(t, logger)
+	_, conf := NodeSuite(ctx, t, logger)
 
 	t.Run("NilCustomHTTPClient", func(t *testing.T) {
 		_, err := rpchttp.NewWithClient("http://example.com", nil)
@@ -193,7 +193,7 @@ func TestClientMethodCalls(t *testing.T) {
 	defer cancel()
 	logger := log.NewTestingLogger(t)
 
-	n, conf := NodeSuite(t, logger)
+	n, conf := NodeSuite(ctx, t, logger)
 
 	// for broadcast tx tests
 	pool := getMempool(t, n)
@@ -471,7 +471,10 @@ func TestClientMethodCalls(t *testing.T) {
 			})
 			t.Run("Events", func(t *testing.T) {
 				t.Run("Header", func(t *testing.T) {
-					evt, err := client.WaitForOneEvent(c, types.EventNewBlockHeaderValue, waitForEventTimeout)
+					ctx, cancel := context.WithTimeout(ctx, waitForEventTimeout)
+					defer cancel()
+					query := types.QueryForEvent(types.EventNewBlockHeaderValue).String()
+					evt, err := client.WaitForOneEvent(ctx, c, query)
 					require.NoError(t, err, "%d: %+v", i, err)
 					_, ok := evt.(types.EventDataNewBlockHeader)
 					require.True(t, ok, "%d: %#v", i, evt)
@@ -583,7 +586,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 	logger := log.NewTestingLogger(t)
 
-	n, conf := NodeSuite(t, logger)
+	n, conf := NodeSuite(ctx, t, logger)
 	pool := getMempool(t, n)
 
 	t.Run("UnconfirmedTxs", func(t *testing.T) {
@@ -594,7 +597,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 			_, _, tx := MakeTxKV()
 
 			txs[i] = tx
-			err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { ch <- nil }, mempool.TxInfo{})
+			err := pool.CheckTx(ctx, tx, func(_ *abci.ResponseCheckTx) { ch <- nil }, mempool.TxInfo{})
 
 			require.NoError(t, err)
 		}
@@ -636,7 +639,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 		_, _, tx := MakeTxKV()
 
-		err := pool.CheckTx(ctx, tx, func(_ *abci.Response) { close(ch) }, mempool.TxInfo{})
+		err := pool.CheckTx(ctx, tx, func(_ *abci.ResponseCheckTx) { close(ch) }, mempool.TxInfo{})
 		require.NoError(t, err)
 
 		// wait for tx to arrive in mempoool.

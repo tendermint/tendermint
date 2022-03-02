@@ -2,7 +2,6 @@ package client_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,18 +14,17 @@ import (
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
-func NodeSuite(t *testing.T, logger log.Logger) (service.Service, *config.Config) {
+func NodeSuite(ctx context.Context, t *testing.T, logger log.Logger) (service.Service, *config.Config) {
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 
 	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
-	// start a tendermint node in the background to test against
-	dir := t.TempDir()
-	app := kvstore.NewPersistentKVStoreApplication(logger, dir)
+	app := kvstore.NewApplication()
 
+	// start a tendermint node in the background to test against.
 	node, closer, err := rpctest.StartTendermint(ctx, conf, app, rpctest.SuppressStdout)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -34,7 +32,6 @@ func NodeSuite(t *testing.T, logger log.Logger) (service.Service, *config.Config
 		assert.NoError(t, closer(ctx))
 		assert.NoError(t, app.Close())
 		node.Wait()
-		_ = os.RemoveAll(dir)
 	})
 	return node, conf
 }

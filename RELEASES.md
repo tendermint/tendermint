@@ -42,15 +42,42 @@ In the following example, we'll assume that we're making a backport branch for
 the 0.35.x line.
 
 1. Start on `master`
+
 2. Create and push the backport branch:
    ```sh
    git checkout -b v0.35.x
    git push origin v0.35.x
    ```
 
+3. Create a PR to update the documentation directory for the backport branch.
+
+   We only maintain RFC and ADR documents on master, to avoid confusion.
+   In addition, we rewrite Markdown URLs pointing to master to point to the
+   backport branch, so that generated documentation will link to the correct
+   versions of files elsewhere in the repository. For context on the latter,
+   see https://github.com/tendermint/tendermint/issues/7675.
+
+   To prepare the PR:
+   ```sh
+   # Remove the RFC and ADR documents from the backport.
+   # We only maintain these on master to avoid confusion.
+   git rm -r docs/rfc docs/architecture
+
+   # Update absolute links to point to the backport.
+   go run ./scripts/linkpatch -recur -target v0.35.x -skip-path docs/DOCS_README.md,docs/README.md docs
+
+   # Create and push the PR.
+   git checkout -b update-docs-v035x
+   git commit -m "Update docs for v0.35.x backport branch." docs
+   git push -u origin update-docs-v035x
+   ```
+
+   Be sure to merge this PR before making other changes on the newly-created
+   backport branch.
+
 After doing these steps, go back to `master` and do the following:
 
-1. Tag `master` as the dev branch for the _next_ major release and push it back up.
+1. Tag `master` as the dev branch for the _next_ major release and push it up to GitHub.
    For example:
    ```sh
    git tag -a v0.36.0-dev -m "Development base for Tendermint v0.36."

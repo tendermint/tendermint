@@ -67,6 +67,10 @@ Note the context/background should be written in the present tense.
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
 - [ADR-066: E2E-Testing](./adr-066-e2e-testing.md)
 - [ADR-072: Restore Requests for Comments](./adr-072-request-for-comments.md)
+- [ADR-077: Block Retention](./adr-077-block-retention.md)
+- [ADR-078: Non-zero Genesis](./adr-078-nonzero-genesis.md)
+- [ADR-079: ED25519 Verification](./adr-079-ed25519-verification.md)
+- [ADR-080: Reverse Sync](./adr-080-reverse-sync.md)
 
 ### Accepted
 
@@ -82,12 +86,15 @@ Note the context/background should be written in the present tense.
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 
+### Deprecated
+
+None
+
 ### Rejected
 
 - [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
 - [ADR-029: Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
 - [ADR-058: Event-Hashing](./adr-058-event-hashing.md)
-
 
 ### Proposed
 

@@ -2,10 +2,11 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/internal/jsontypes"
+	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -52,33 +53,25 @@ func WaitForHeight(ctx context.Context, c StatusClient, h int64, waiter Waiter) 
 	return nil
 }
 
-// WaitForOneEvent subscribes to a websocket event for the given
-// event time and returns upon receiving it one time, or
-// when the timeout duration has expired.
-//
-// This handles subscribing and unsubscribing under the hood
-func WaitForOneEvent(c EventsClient, eventValue string, timeout time.Duration) (types.EventData, error) {
-	const subscriber = "helpers"
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	// register for the next event of this type
-	eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(eventValue).String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
-	}
-
-	// make sure to un-register after the test is over
-	defer func() {
-		if deferErr := c.UnsubscribeAll(ctx, subscriber); deferErr != nil {
-			panic(deferErr)
+// WaitForOneEvent waits for the first event matching the given query on c, or
+// until ctx ends. It reports an error if ctx ends before a matching event is
+// received.
+func WaitForOneEvent(ctx context.Context, c EventsClient, query string) (types.EventData, error) {
+	for {
+		rsp, err := c.Events(ctx, &coretypes.RequestEvents{
+			Filter:   &coretypes.EventFilter{Query: query},
+			MaxItems: 1,
+			WaitTime: 10 * time.Second, // duration doesn't matter, limited by ctx timeout
+		})
+		if err != nil {
+			return nil, err
+		} else if len(rsp.Items) == 0 {
+			continue // continue polling until ctx expires
 		}
-	}()
-
-	select {
-	case event := <-eventCh:
-		return event.Data, nil
-	case <-ctx.Done():
-		return nil, errors.New("timed out waiting for event")
+		var result types.EventData
+		if err := jsontypes.Unmarshal(rsp.Items[0].Data, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
 	}
 }

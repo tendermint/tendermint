@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+//go:generate ../../scripts/mockery_generate.sh Application
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
 // All methods take a RequestXxx argument and return a ResponseXxx argument,
@@ -41,8 +42,7 @@ type Application interface {
 
 var _ Application = (*BaseApplication)(nil)
 
-type BaseApplication struct {
-}
+type BaseApplication struct{}
 
 func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}

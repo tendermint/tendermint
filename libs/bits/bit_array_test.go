@@ -170,6 +170,8 @@ func TestBytes(t *testing.T) {
 	check(bA, []byte{0x80, 0x01})
 	bA.SetIndex(9, true)
 	check(bA, []byte{0x80, 0x03})
+
+	require.False(t, bA.SetIndex(-1, true))
 }
 
 func TestEmptyFull(t *testing.T) {

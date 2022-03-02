@@ -1,8 +1,6 @@
 syntax = "proto3";
 package tendermint.consensus;
 
-option go_package = "github.com/tendermint/tendermint/proto/tendermint/consensus";
-
 import "gogoproto/gogo.proto";
 import "tendermint/consensus/types.proto";
 import "tendermint/types/events.proto";

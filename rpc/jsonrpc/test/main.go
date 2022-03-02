@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	stdlog "log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,10 +26,12 @@ type Result struct {
 }
 
 func main() {
-	var (
-		mux    = http.NewServeMux()
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-	)
+	mux := http.NewServeMux()
+
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		stdlog.Fatalf("configuring logger: %v", err)
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -37,12 +40,10 @@ func main() {
 	config := rpcserver.DefaultConfig()
 	listener, err := rpcserver.Listen("tcp://127.0.0.1:8008", config.MaxOpenConnections)
 	if err != nil {
-		logger.Error("rpc listening", "err", err)
-		os.Exit(1)
+		stdlog.Fatalf("rpc listening: %v", err)
 	}
 
 	if err = rpcserver.Serve(ctx, listener, mux, logger, config); err != nil {
-		logger.Error("rpc serve", "err", err)
-		os.Exit(1)
+		logger.Error("rpc serve: %v", err)
 	}
 }

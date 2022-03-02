@@ -40,6 +40,10 @@ const (
 	EventTimeoutWaitValue     = "TimeoutWait"
 	EventValidBlockValue      = "ValidBlock"
 	EventVoteValue            = "Vote"
+
+	// Events emitted by the evidence reactor when evidence is validated
+	// and before it is committed
+	EventEvidenceValidatedValue = "EvidenceValidated"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -88,7 +92,13 @@ var (
 // ENCODING / DECODING
 
 // EventData is satisfied by types that can be published as event data.
+//
+// Implementations of this interface that contain ABCI event metadata should
+// also implement the eventlog.ABCIEventer extension interface to expose those
+// metadata to the event log machinery. Event data that do not contain ABCI
+// metadata can safely omit this.
 type EventData interface {
+	// The value must support encoding as a type-tagged JSON object.
 	jsontypes.Tagged
 }
 
@@ -104,6 +114,7 @@ func init() {
 	jsontypes.MustRegister(EventDataTx{})
 	jsontypes.MustRegister(EventDataValidatorSetUpdates{})
 	jsontypes.MustRegister(EventDataVote{})
+	jsontypes.MustRegister(EventDataEvidenceValidated{})
 	jsontypes.MustRegister(EventDataString(""))
 }
 
@@ -120,6 +131,9 @@ type EventDataNewBlock struct {
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
 
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataNewBlock) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
+
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
@@ -129,6 +143,9 @@ type EventDataNewBlockHeader struct {
 
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataNewBlockHeader) TypeTag() string { return "tendermint/event/NewBlockHeader" }
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
 
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
@@ -146,6 +163,15 @@ type EventDataTx struct {
 
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataTx) TypeTag() string { return "tendermint/event/Tx" }
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataTx) ABCIEvents() []abci.Event {
+	base := []abci.Event{
+		eventWithAttr(TxHashKey, fmt.Sprintf("%X", Tx(e.Tx).Hash())),
+		eventWithAttr(TxHeightKey, fmt.Sprintf("%d", e.Height)),
+	}
+	return append(base, e.Result.Events...)
+}
 
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
@@ -223,6 +249,15 @@ type EventDataStateSyncStatus struct {
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataStateSyncStatus) TypeTag() string { return "tendermint/event/StateSyncStatus" }
 
+type EventDataEvidenceValidated struct {
+	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height,string"`
+}
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataEvidenceValidated) TypeTag() string { return "tendermint/event/EvidenceValidated" }
+
 // PUBSUB
 
 const (
@@ -261,6 +296,7 @@ var (
 	EventQueryVote                = QueryForEvent(EventVoteValue)
 	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
 	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
+	EventQueryEvidenceValidated   = QueryForEvent(EventEvidenceValidatedValue)
 )
 
 func EventQueryTxFor(tx Tx) *tmquery.Query {
@@ -282,4 +318,17 @@ type BlockEventPublisher interface {
 
 type TxEventPublisher interface {
 	PublishEventTx(context.Context, EventDataTx) error
+}
+
+// eventWithAttr constructs a single abci.Event with a single attribute.
+// The type of the event and the name of the attribute are obtained by
+// splitting the event type on period (e.g., "foo.bar").
+func eventWithAttr(etype, value string) abci.Event {
+	parts := strings.SplitN(etype, ".", 2)
+	return abci.Event{
+		Type: parts[0],
+		Attributes: []abci.EventAttribute{{
+			Key: parts[1], Value: value,
+		}},
+	}
 }

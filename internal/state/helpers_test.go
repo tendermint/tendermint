@@ -75,7 +75,7 @@ func makeAndApplyGoodBlock(
 	block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
 	require.NoError(t, err)
 
-	require.NoError(t, blockExec.ValidateBlock(state, block))
+	require.NoError(t, blockExec.ValidateBlock(ctx, state, block))
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
@@ -335,8 +335,8 @@ func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQue
 func (app *testApp) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
-			return abci.ResponseProcessProposal{Result: abci.ResponseProcessProposal_REJECT}
+			return abci.ResponseProcessProposal{Accept: false}
 		}
 	}
-	return abci.ResponseProcessProposal{Result: abci.ResponseProcessProposal_ACCEPT}
+	return abci.ResponseProcessProposal{Accept: true}
 }

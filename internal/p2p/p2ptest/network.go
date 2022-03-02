@@ -101,10 +101,8 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
 			case peerUpdate := <-sourceSub.Updates():
-				require.Equal(t, p2p.PeerUpdate{
-					NodeID: targetNode.NodeID,
-					Status: p2p.PeerStatusUp,
-				}, peerUpdate)
+				require.Equal(t, targetNode.NodeID, peerUpdate.NodeID)
+				require.Equal(t, p2p.PeerStatusUp, peerUpdate.Status)
 			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
 					sourceNode.NodeID, targetNode.NodeID)
@@ -114,6 +112,7 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			case <-ctx.Done():
 				require.Fail(t, "operation canceled")
 			case peerUpdate := <-targetSub.Updates():
+				peerUpdate.Channels = nil
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID: sourceNode.NodeID,
 					Status: p2p.PeerStatusUp,
@@ -208,7 +207,8 @@ func (n *Network) Remove(ctx context.Context, t *testing.T, id types.NodeID) {
 	require.NoError(t, node.Transport.Close())
 	node.cancel()
 	if node.Router.IsRunning() {
-		require.NoError(t, node.Router.Stop())
+		node.Router.Stop()
+		node.Router.Wait()
 	}
 
 	for _, sub := range subs {
@@ -275,7 +275,8 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 
 	t.Cleanup(func() {
 		if router.IsRunning() {
-			require.NoError(t, router.Stop())
+			router.Stop()
+			router.Wait()
 		}
 		require.NoError(t, transport.Close())
 		cancel()

@@ -862,7 +862,17 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-		r.peers.Append(peerUpdate.NodeID)
+		if peerUpdate.Channels.Contains(SnapshotChannel) &&
+			peerUpdate.Channels.Contains(ChunkChannel) &&
+			peerUpdate.Channels.Contains(LightBlockChannel) &&
+			peerUpdate.Channels.Contains(ParamsChannel) {
+
+			r.peers.Append(peerUpdate.NodeID)
+
+		} else {
+			r.logger.Error("could not use peer for statesync", "peer", peerUpdate.NodeID)
+		}
+
 	case p2p.PeerStatusDown:
 		r.peers.Remove(peerUpdate.NodeID)
 	}
@@ -875,6 +885,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
+
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
 		err := r.syncer.AddPeer(ctx, peerUpdate.NodeID)

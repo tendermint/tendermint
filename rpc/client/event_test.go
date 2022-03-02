@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -51,7 +52,13 @@ func testTxEventsSent(ctx context.Context, t *testing.T, broadcastMethod string,
 	}()
 
 	// and wait for confirmation
-	evt, err := client.WaitForOneEvent(c, types.EventTxValue, waitForEventTimeout)
+	ectx, cancel := context.WithTimeout(ctx, waitForEventTimeout)
+	defer cancel()
+
+	// Wait for the transaction we sent to be confirmed.
+	query := fmt.Sprintf(`tm.event = '%s' AND tx.hash = '%X'`,
+		types.EventTxValue, types.Tx(tx).Hash())
+	evt, err := client.WaitForOneEvent(ectx, c, query)
 	require.NoError(t, err)
 
 	// and make sure it has the proper info

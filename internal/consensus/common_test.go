@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -454,9 +453,8 @@ func newStateWithConfigAndBlockStore(
 	t.Helper()
 
 	// one for mempool, one for consensus
-	mtx := new(sync.Mutex)
-	proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-	proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+	proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 	// Make Mempool
 
@@ -508,18 +506,41 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 	return privValidator
 }
 
-func makeState(ctx context.Context, t *testing.T, cfg *config.Config, logger log.Logger, nValidators int) (*State, []*validatorStub) {
+type makeStateArgs struct {
+	config      *config.Config
+	logger      log.Logger
+	validators  int
+	application abci.Application
+}
+
+func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
 	t.Helper()
 	// Get State
-	state, privVals := makeGenesisState(ctx, t, cfg, genesisStateArgs{
-		Validators: nValidators,
+	validators := 4
+	if args.validators != 0 {
+		validators = args.validators
+	}
+	var app abci.Application
+	app = kvstore.NewApplication()
+	if args.application != nil {
+		app = args.application
+	}
+	if args.config == nil {
+		args.config = configSetup(t)
+	}
+	if args.logger == nil {
+		args.logger = log.NewNopLogger()
+	}
+
+	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
+		Validators: validators,
 	})
 
-	vss := make([]*validatorStub, nValidators)
+	vss := make([]*validatorStub, validators)
 
-	cs := newState(ctx, t, logger, state, privVals[0], kvstore.NewApplication())
+	cs := newState(ctx, t, args.logger, state, privVals[0], app)
 
-	for i := 0; i < nValidators; i++ {
+	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
 	}
 	// since cs1 starts at 1
@@ -751,7 +772,6 @@ func makeConsensusState(
 	nValidators int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func(t *testing.T, logger log.Logger) abci.Application,
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 	t.Helper()
@@ -780,11 +800,8 @@ func makeConsensusState(
 
 		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 
-		app := appFunc(t, logger)
-
-		if appCloser, ok := app.(io.Closer); ok {
-			closeFuncs = append(closeFuncs, appCloser.Close)
-		}
+		app := kvstore.NewApplication()
+		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -915,15 +932,9 @@ type mockTicker struct {
 	fired    bool
 }
 
-func (m *mockTicker) Start(context.Context) error {
-	return nil
-}
-
-func (m *mockTicker) Stop() error {
-	return nil
-}
-
-func (m *mockTicker) IsRunning() bool { return false }
+func (m *mockTicker) Start(context.Context) error { return nil }
+func (m *mockTicker) Stop()                       {}
+func (m *mockTicker) IsRunning() bool             { return false }
 
 func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 	m.mtx.Lock()
@@ -941,21 +952,11 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
-func (*mockTicker) SetLogger(log.Logger) {}
-
-func newPersistentKVStore(t *testing.T, logger log.Logger) abci.Application {
-	t.Helper()
-
-	dir := t.TempDir()
-
-	return kvstore.NewPersistentKVStoreApplication(logger, dir)
-}
-
-func newKVStore(_ *testing.T, _ log.Logger) abci.Application {
+func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
 }
 
-func newPersistentKVStoreWithPath(logger log.Logger, dbDir string) abci.Application {
+func newPersistentKVStore(logger log.Logger, dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 }
 

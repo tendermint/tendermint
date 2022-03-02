@@ -252,11 +252,6 @@ N/A
 
 ## References
 
-- [this
-  branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
-  contains experimental work in the implementation of the node package
-  to unwind some of the hard dependencies between components.
-
 - [the component
   graph](https://peter.bourgon.org/go-for-industrial-programming/#the-component-graph)
   as a framing for internal service construction.

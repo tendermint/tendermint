@@ -178,7 +178,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 		err := signerServer.Start(ctx)
 		require.NoError(t, err)
 	}()
-	defer signerServer.Stop() //nolint:errcheck // ignore for tests
+	defer signerServer.Stop()
 
 	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
 	require.NoError(t, err)
@@ -242,7 +242,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		err := pvsc.Start(ctx)
 		require.NoError(t, err)
 	}()
-	defer pvsc.Stop() //nolint:errcheck // ignore for tests
+	defer pvsc.Stop()
 	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
 	require.NoError(t, err)
 
@@ -298,7 +298,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, stateStore, blockStore)
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics())
 	require.NoError(t, err)
 
 	// fill the evidence pool with more evidence
@@ -357,7 +357,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	}
 	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
 
-	err = blockExec.ValidateBlock(state, block)
+	err = blockExec.ValidateBlock(ctx, state, block)
 	assert.NoError(t, err)
 }
 

@@ -79,9 +79,7 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 
 	require.NoError(t, cs.Start(ctx))
 	defer func() {
-		if err := cs.Stop(); err != nil {
-			t.Error(err)
-		}
+		cs.Stop()
 	}()
 	t.Cleanup(cs.Wait)
 	// This is just a signal that we haven't halted; its not something contained
@@ -208,7 +206,7 @@ LOOP:
 			startNewStateAndWaitForBlock(ctx, t, consensusReplayConfig, cs.Height, blockDB, stateStore)
 
 			// stop consensus state and transactions sender (initFn)
-			cs.Stop() //nolint:errcheck // Logging this error causes failure
+			cs.Stop()
 			cancel()
 
 			// if we reached the required height, exit
@@ -292,7 +290,7 @@ func (w *crashingWAL) SearchForEndHeight(
 }
 
 func (w *crashingWAL) Start(ctx context.Context) error { return w.next.Start(ctx) }
-func (w *crashingWAL) Stop() error                     { return w.next.Stop() }
+func (w *crashingWAL) Stop()                           { w.next.Stop() }
 func (w *crashingWAL) Wait()                           { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
@@ -341,7 +339,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		nPeers,
 		"replay_test",
 		newMockTickerFunc(true),
-		newPersistentKVStoreWithPath)
+		newPersistentKVStore)
 	sim.Config = cfg
 
 	var err error

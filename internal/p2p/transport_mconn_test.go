@@ -32,9 +32,7 @@ func init() {
 		})
 		require.NoError(t, err)
 
-		t.Cleanup(func() {
-			require.NoError(t, transport.Close())
-		})
+		t.Cleanup(func() { _ = transport.Close() })
 
 		return transport
 	}

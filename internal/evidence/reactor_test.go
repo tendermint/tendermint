@@ -17,6 +17,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -69,6 +70,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 
 	idx := 0
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
 	for nodeID := range rts.network.Nodes {
 		logger := rts.logger.With("validator", idx)
 		evidenceDB := dbm.NewMemDB()
@@ -80,9 +82,13 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 			}
 			return nil
 		})
-		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore)
+		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
 
 		require.NoError(t, err)
+		eventBus := eventbus.NewDefault(logger)
+		err = eventBus.Start(ctx)
+		require.NoError(t, err)
+		rts.pools[nodeID].SetEventBus(eventBus)
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
@@ -110,7 +116,8 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 	t.Cleanup(func() {
 		for _, r := range rts.reactors {
 			if r.IsRunning() {
-				require.NoError(t, r.Stop())
+				r.Stop()
+				r.Wait()
 				require.False(t, r.IsRunning())
 			}
 		}
@@ -218,7 +225,8 @@ func createEvidenceList(
 			evidenceChainID,
 		)
 		require.NoError(t, err)
-		require.NoError(t, pool.AddEvidence(ev),
+		err = pool.AddEvidence(ctx, ev)
+		require.NoError(t, err,
 			"adding evidence it#%d of %d to pool with height %d",
 			i, numEvidence, pool.State().LastBlockHeight)
 		evList[i] = ev
@@ -283,12 +291,14 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	rts := setup(ctx, t, stateDBs, 0)
+
 	rts.start(ctx, t)
 
 	// Create a series of fixtures where each suite contains a reactor and
 	// evidence pool. In addition, we mark a primary suite and the rest are
 	// secondaries where each secondary is added as a peer via a PeerUpdate to the
 	// primary. As a result, the primary will gossip all evidence to each secondary.
+
 	primary := rts.network.RandomNode()
 	secondaries := make([]*p2ptest.Node, 0, len(rts.network.NodeIDs())-1)
 	secondaryIDs := make([]types.NodeID, 0, cap(secondaries))
@@ -319,6 +329,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, pool := range rts.pools {
 		require.Equal(t, numEvidence, int(pool.Size()))
 	}
+
 }
 
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
@@ -380,7 +391,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// Manually add half the evidence to the secondary which will mark them as
 	// pending.
 	for i := 0; i < numEvidence/2; i++ {
-		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
+		err := rts.pools[secondary.NodeID].AddEvidence(ctx, evList[i])
+		require.NoError(t, err)
 	}
 
 	// the secondary should have half the evidence as pending
@@ -422,7 +434,8 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	// Manually add half the evidence to the secondary which will mark them as
 	// pending.
 	for i := 0; i < numEvidence/2; i++ {
-		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
+		err := rts.pools[secondary.NodeID].AddEvidence(ctx, evList[i])
+		require.NoError(t, err)
 	}
 
 	// the secondary should have half the evidence as pending
@@ -433,7 +446,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 
 	// update the secondary's pool such that all pending evidence is committed
 	state.LastBlockHeight++
-	rts.pools[secondary.NodeID].Update(state, evList[:numEvidence/2])
+	rts.pools[secondary.NodeID].Update(ctx, state, evList[:numEvidence/2])
 
 	// the secondary should have half the evidence as committed
 	require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
@@ -495,7 +508,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		// commit state so we do not continue to repeat gossiping the same evidence
 		state := pool.State()
 		state.LastBlockHeight++
-		pool.Update(state, evList)
+		pool.Update(ctx, state, evList)
 	}
 }
 

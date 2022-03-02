@@ -14,6 +14,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
@@ -36,7 +37,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// kind of deadlock and hit the larger timeout. This timeout
 	// can be extended a bunch if needed, but it's good to avoid
 	// falling back to a much coarser timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	config := configSetup(t)
@@ -45,7 +46,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	prevoteHeight := int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
-	appFunc := newKVStore
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
 	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
@@ -66,7 +66,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			defer os.RemoveAll(thisConfig.RootDir)
 
 			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-			app := appFunc(t, logger)
+			app := kvstore.NewApplication()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -74,9 +74,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			blockStore := store.NewBlockStore(blockDB)
 
 			// one for mempool, one for consensus
-			mtx := new(sync.Mutex)
-			proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
-			proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
+			proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+			proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 			// Make Mempool
 			mempool := mempool.NewTxMempool(
@@ -91,7 +90,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make a full instance of the evidence pool
 			evidenceDB := dbm.NewMemDB()
-			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
+			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore, evidence.NopMetrics())
 			require.NoError(t, err)
 
 			// Make State
@@ -105,6 +104,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			err = eventBus.Start(ctx)
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
+			evpool.SetEventBus(eventBus)
 
 			cs.SetTimeoutTicker(tickerFunc())
 

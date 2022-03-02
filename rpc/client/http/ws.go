@@ -15,7 +15,7 @@ import (
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
-// wsEvents is a wrapper around WSClient, which implements EventsClient.
+// wsEvents is a wrapper around WSClient, which implements SubscriptionClient.
 type wsEvents struct {
 	Logger log.Logger
 	ws     *jsonrpcclient.WSClient
@@ -30,7 +30,7 @@ type wsSubscription struct {
 	query string
 }
 
-var _ rpcclient.EventsClient = (*wsEvents)(nil)
+var _ rpcclient.SubscriptionClient = (*wsEvents)(nil)
 
 func newWsEvents(remote string) (*wsEvents, error) {
 	w := &wsEvents{
@@ -64,7 +64,7 @@ func (w *wsEvents) Start(ctx context.Context) error {
 // Stop shuts down the websocket client.
 func (w *wsEvents) Stop() error { return w.ws.Stop() }
 
-// Subscribe implements EventsClient by using WSClient to subscribe given
+// Subscribe implements SubscriptionClient by using WSClient to subscribe given
 // subscriber to query. By default, it returns a channel with cap=1. Error is
 // returned if it fails to subscribe.
 //
@@ -97,8 +97,8 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 	return outc, nil
 }
 
-// Unsubscribe implements EventsClient by using WSClient to unsubscribe given
-// subscriber from query.
+// Unsubscribe implements SubscriptionClient by using WSClient to unsubscribe
+// given subscriber from query.
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) error {
@@ -119,8 +119,8 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	return nil
 }
 
-// UnsubscribeAll implements EventsClient by using WSClient to unsubscribe
-// given subscriber from all the queries.
+// UnsubscribeAll implements SubscriptionClient by using WSClient to
+// unsubscribe given subscriber from all the queries.
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
@@ -140,7 +140,7 @@ func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
 	time.Sleep(d)
 
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	w.mtx.Lock()
 	defer w.mtx.Unlock()

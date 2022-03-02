@@ -22,8 +22,7 @@ var mux *http.ServeMux
 
 func init() {
 	mux = http.NewServeMux()
-	lgr := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-	rs.RegisterRPCFuncs(mux, rpcFuncMap, lgr)
+	rs.RegisterRPCFuncs(mux, rpcFuncMap, log.NewNopLogger())
 }
 
 func Fuzz(data []byte) int {
