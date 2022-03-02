@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     container: tendermintdev/docker-tm-db-testing
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: test & coverage report creation
         run: |
           CGO_ENABLED=1 go test ./... -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic -tags=memdb,goleveldb,cleveldb,boltdb,rocksdb,badgerdb -v

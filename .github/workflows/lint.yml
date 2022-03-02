@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     container: tendermintdev/docker-tm-db-testing
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: golangci/golangci-lint-action@v3.1.0
         with:
           args: --timeout 10m
