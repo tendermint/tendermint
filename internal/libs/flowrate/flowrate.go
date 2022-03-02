@@ -279,8 +279,6 @@ func (m *Monitor) CurrentTransferRate() int64 {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_ = m.update(0)
-
 	if m.sLast > m.start && m.active {
 		return round(m.rEMA)
 	}
