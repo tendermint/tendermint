@@ -68,7 +68,7 @@ func TestApplyBlock(t *testing.T) {
 }
 
 // TestFinalizeBlockLastCommitInfo ensures we correctly send the LastCommitInfo to the
-// applications. The test ensures that the LastCommitInfo properly reflects the
+// application. The test ensures that the LastCommitInfo properly reflects
 // which validators signed the preceding block.
 func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
