@@ -2014,7 +2014,6 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			nextRound := round + 1
 			nextHeight := height
 			if !testCase.voteNil {
-				polRound = 0
 				nextRound = 0
 				nextHeight = height + 1
 				blockID = types.BlockID{
