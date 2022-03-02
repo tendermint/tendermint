@@ -90,6 +90,67 @@ func TestStream_lostItem(t *testing.T) {
 	s.stopWait()
 }
 
+func TestMinPollTime(t *testing.T) {
+	defer leaktest.Check(t)
+
+	s := newStreamTester(t, ``, eventlog.LogSettings{
+		WindowSize: 30 * time.Second,
+	}, nil)
+
+	s.publish("bad", "whatever")
+
+	// Waiting for an item on a log with no matching events incurs a minimum
+	// wait time and reports no events.
+	ctx := context.Background()
+	filter := &coretypes.EventFilter{Query: `tm.event = 'good'`}
+	var zero cursor.Cursor
+
+	t.Run("NoneMatch", func(t *testing.T) {
+		start := time.Now()
+
+		// Request a very short delay, and affirm we got the server's minimum.
+		rsp, err := s.Events(ctx, &coretypes.RequestEvents{
+			Filter:   filter,
+			MaxItems: 1,
+			After:    zero.String(),
+			Before:   zero.String(),
+			WaitTime: 10 * time.Millisecond,
+		})
+		if err != nil {
+			t.Fatalf("Events failed: %v", err)
+		} else if elapsed := time.Since(start); elapsed < time.Second {
+			t.Errorf("Events returned too quickly: got %v, wanted 1s", elapsed)
+		} else if len(rsp.Items) != 0 {
+			t.Errorf("Events returned %d items, expected none", len(rsp.Items))
+		}
+	})
+
+	s.publish("good", "whatever")
+
+	// Waiting for an available matching item incurs no delay.
+	t.Run("SomeMatch", func(t *testing.T) {
+		start := time.Now()
+
+		// Request a long-ish delay and affirm we don't block for it.
+		// Check for this by ensuring we return sooner than the minimum delay,
+		// since we don't know the exact timing.
+		rsp, err := s.Events(ctx, &coretypes.RequestEvents{
+			Filter:   filter,
+			MaxItems: 1,
+			After:    zero.String(),
+			Before:   zero.String(),
+			WaitTime: 10 * time.Second,
+		})
+		if err != nil {
+			t.Fatalf("Events failed: %v", err)
+		} else if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
+			t.Errorf("Events returned too slowly: got %v, wanted immediate", elapsed)
+		} else if len(rsp.Items) == 0 {
+			t.Error("Events returned no items, wanted at least 1")
+		}
+	})
+}
+
 // testItem is a wrapper for comparing item results in a friendly output format
 // for the cmp package.
 type testItem struct {
