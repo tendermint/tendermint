@@ -1993,7 +1993,7 @@ func TestFinalizeBlockCalled(t *testing.T) {
 				Result: abcitypes.ResponseVerifyVoteExtension_ACCEPT,
 			})
 			m.On("FinalizeBlock", mock.Anything).Return(abcitypes.ResponseFinalizeBlock{}).Maybe()
-			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m, logger: log.NewTestingLogger(t)})
+			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 			height, round := cs1.Height, cs1.Round
 
 			proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
