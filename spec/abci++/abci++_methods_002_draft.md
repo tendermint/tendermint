@@ -294,9 +294,6 @@ title: Methods
     | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 5            |
     | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 6            |
 
->**TODO**: DISCUSS: We need to make clear whether a proposer is also running the logic of a non-proposer node (in particular "ProcessProposal").
-From the App's perspective, they'll probably skip ProcessProposal
-
 * **Response**:
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
