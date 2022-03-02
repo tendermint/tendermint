@@ -380,15 +380,13 @@ message TxResult {
 message TxRecord {
   TxAction       action     = 1;
   bytes          tx         = 2;
-  repeated bytes new_hashes = 3;
 
   // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
   enum TxAction {
     UNKNOWN    = 0;  // Unknown action
-    UNMODIFIED = 1;  // The Application did not modify this transaction. Ignore new_hashes field
-    ADDED      = 2;  // The Application added this transaction. Ignore new_hashes field
+    UNMODIFIED = 1;  // The Application did not modify this transaction.
+    ADDED      = 2;  // The Application added this transaction.
     REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
-                     // Use #new_hashes field if the transaction was modified
   }
 }
 
