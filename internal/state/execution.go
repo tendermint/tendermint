@@ -609,12 +609,12 @@ func ExecCommitBlock(
 	if be != nil {
 		err = validateValidatorUpdates(finalizeBlockResponse.ValidatorUpdates, s.ConsensusParams.Validator)
 		if err != nil {
-			logger.Error("err", err)
+			logger.Error("validating validator updates", "err", err)
 			return nil, err
 		}
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(finalizeBlockResponse.ValidatorUpdates)
 		if err != nil {
-			logger.Error("err", err)
+			logger.Error("converting validator updates to native types", "err", err)
 			return nil, err
 		}
 
