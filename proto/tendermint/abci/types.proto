@@ -125,16 +125,6 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
-// Extends a vote with application-side injection
-message RequestExtendVote {
-  types.Vote vote = 1;
-}
-
-// Verify the vote extension
-message RequestVerifyVoteExtension {
-  types.Vote vote = 1;
-}
-
 message RequestPrepareProposal {
   // the modified transactions cannot exceed this size.
   int64 max_tx_bytes = 1;
@@ -161,6 +151,20 @@ message RequestProcessProposal {
   bytes                     next_validators_hash = 7;
   // address of the public key of the original proposer of the block.
   bytes proposer_address = 8;
+}
+
+// Extends a vote with application-side injection
+message RequestExtendVote {
+  bytes hash   = 1;
+  int64 height = 2;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  bytes hash              = 1;
+  bytes validator_address = 2;
+  int64 height            = 3;
+  bytes vote_extension    = 4;
 }
 
 message RequestFinalizeBlock {
@@ -301,21 +305,6 @@ message ResponseApplySnapshotChunk {
   }
 }
 
-message ResponseExtendVote {
-  tendermint.types.VoteExtension vote_extension = 1;
-}
-
-message ResponseVerifyVoteExtension {
-  Result result = 1;
-
-  enum Result {
-    UNKNOWN       = 0;  // Unknown result, treat as ACCEPT by default
-    ACCEPT        = 1;  // Vote extension verified, include the vote
-    SLASH         = 2;  // Vote extension verification aborted, continue but slash validator
-    REJECT        = 3;  // Vote extension invalidated
-  }
-}
-
 message ResponsePrepareProposal {
   repeated bytes txs = 1;
 }
@@ -328,6 +317,14 @@ message ResponseProcessProposal {
     ACCEPT  = 1;
     REJECT  = 2;
   }
+}
+
+message ResponseExtendVote {
+  bytes vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  bool accept = 1;
 }
 
 message ResponseFinalizeBlock {
@@ -408,29 +405,35 @@ message TxResult {
 //----------------------------------------
 // Blockchain Types
 
-// Validator
 message Validator {
   bytes address = 1;  // The first 20 bytes of SHA256(public key)
   // PubKey pub_key = 2 [(gogoproto.nullable)=false];
   int64 power = 3;  // The voting power
 }
 
-// ValidatorUpdate
 message ValidatorUpdate {
   tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
   int64                       power   = 2;
 }
 
-// VoteInfo
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
 }
 
+// TODO: move this to core Tendermint data structures
+message CanonicalVoteExtension {
+  bytes  extension = 1;
+  int64  height    = 2;
+  int32  round     = 3;
+  string chain_id  = 4;
+  bytes  address   = 5;
+}
+
 message ExtendedVoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
-  bytes     vote_extension    = 3;  // Reserved for future use
+  bytes     vote_extension    = 3;
 }
 
 enum MisbehaviorType {
