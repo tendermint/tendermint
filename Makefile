@@ -222,9 +222,7 @@ build-docs:
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
-	done < versions ; \
-	mkdir -p ~/output/master ; \
-	cp -r .vuepress/dist/* ~/output/master/
+	done < versions ;
 .PHONY: build-docs
 
 ###############################################################################
@@ -331,3 +329,4 @@ split-test-packages:$(BUILDDIR)/packages.txt
 	split -d -n l/$(NUM_SPLIT) $< $<.
 test-group-%:split-test-packages
 	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=5m -race -coverprofile=$(BUILDDIR)/$*.profile.out
+
