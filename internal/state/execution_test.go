@@ -122,11 +122,8 @@ func TestFinalizeBlockLastCommitInfo(t *testing.T) {
 
 			// -> app receives a list of validators with a bool indicating if they signed
 			for i, v := range app.CommitVotes {
-				if isAbsent, ok := tc.absentCommitSigs[i]; ok && isAbsent {
-					assert.False(t, v.SignedLastBlock)
-				} else {
-					assert.True(t, v.SignedLastBlock)
-				}
+				_, absent := tc.absentCommitSigs[i]
+				assert.Equal(t, !absent, v.SignedLastBlock)
 			}
 		})
 	}
