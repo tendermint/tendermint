@@ -274,6 +274,10 @@ func (g *Group) checkTotalSizeLimit(ctx context.Context) {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
+	if err := ctx.Err(); err != nil {
+		return
+	}
+
 	if g.totalSizeLimit == 0 {
 		return
 	}
@@ -290,6 +294,11 @@ func (g *Group) checkTotalSizeLimit(ctx context.Context) {
 			g.logger.Error("Group's head may grow without bound", "head", g.Head.Path)
 			return
 		}
+
+		if ctx.Err() != nil {
+			return
+		}
+
 		pathToRemove := filePathForIndex(g.Head.Path, index, gInfo.MaxIndex)
 		fInfo, err := os.Stat(pathToRemove)
 		if err != nil {
@@ -313,6 +322,10 @@ func (g *Group) checkTotalSizeLimit(ctx context.Context) {
 func (g *Group) rotateFile(ctx context.Context) {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return
+	}
 
 	headPath := g.Head.Path
 
