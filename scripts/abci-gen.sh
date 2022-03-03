@@ -2,7 +2,10 @@
 set -euo pipefail
 
 cp ./proto/intermediate/abci/types.proto ./proto/tendermint/abci/types.proto
+sed -i 's/package intermediate\./package tendermint\./g' ./proto/tendermint/abci/types.proto
+
 cp ./proto/intermediate/types/types.proto ./proto/tendermint/types/types.proto
+sed -i 's/package intermediate\./package tendermint\./g' ./proto/tendermint/types/types.proto
 
 MODNAME="$(go list -m)"
 find ./proto/tendermint -name '*.proto' -not -path "./proto/tendermint/abci/types.proto" -not -path "./proto/intermediate" \
