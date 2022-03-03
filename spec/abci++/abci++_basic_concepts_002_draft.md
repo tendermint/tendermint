@@ -71,7 +71,7 @@ Tendermint calls it when is about to send a non-`nil` precommit message.
 by Tendermint. This has a negative impact on Tendermint's liveness, i.e., if repeatedly vote extensions by correct validators cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should be used with special care.
 As a general rule, an Application that detects an invalid vote extension SHOULD
 accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic. Tendermint calls it when 
-a process receives a precommit message with a vote extension.
+a process receives a precommit message with a (possibly empty) vote extension.
 
 * [**FinalizeBlock:**](./abci++_methods_002_draft.md#finalizeblock) It delivers a decided block to the Application. The Application must execute the transactions in the block in order and update its state accordingly. Cryptographic commitments to the block and transaction results, via the corresponding
 parameters in `ResponseFinalizeBlock` are included in the header of the next block. Tendermint calls it when a new block is decided.
