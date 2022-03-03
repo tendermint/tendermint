@@ -217,6 +217,11 @@ func NewState(
 		onStopCh:         make(chan *cstypes.RoundState),
 	}
 
+	// set function defaults (may be overwritten before calling Start)
+	cs.decideProposal = cs.defaultDecideProposal
+	cs.doPrevote = cs.defaultDoPrevote
+	cs.setProposal = cs.defaultSetProposal
+
 	state, err := cs.stateStore.Load()
 	if err != nil {
 		return nil, fmt.Errorf("loading state: %w", err)
@@ -228,11 +233,6 @@ func NewState(
 	}
 
 	cs.updateToState(ctx, state)
-
-	// set function defaults (may be overwritten before calling Start)
-	cs.decideProposal = cs.defaultDecideProposal
-	cs.doPrevote = cs.defaultDoPrevote
-	cs.setProposal = cs.defaultSetProposal
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
