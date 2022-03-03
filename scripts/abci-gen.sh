@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+
+# This file was added during development of ABCI++. This file is a script to allow
+# the intermediate proto files to be built while active development proceeds
+# on ABCI++.
+# This file should be removed when work on ABCI++ is complete.
+# For more information, see https://github.com/tendermint/tendermint/issues/8066.
 set -euo pipefail
 
 cp ./proto/tendermint/abci/types.proto.intermediate ./proto/tendermint/abci/types.proto

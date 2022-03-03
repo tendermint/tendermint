@@ -1,8 +1,6 @@
 syntax = "proto3";
 package tendermint.abci;
 
-// For more information on gogo.proto, see:
-// https://github.com/gogo/protobuf/blob/master/extensions.md
 import "tendermint/crypto/proof.proto";
 import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
@@ -10,9 +8,15 @@ import "tendermint/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
 
-// This file is copied from http://github.com/tendermint/abci
-// NOTE: When using custom types, mind the warnings.
-// https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
+
+// This file is a temporary workaround to enable development during the ABCI++
+// project. This file should be deleted and any references to it removed when 
+// the ongoing work on ABCI++ is completed.
+//
+// For the duration of ABCI++, this file should be able to build the `abci/types/types.pb.go`
+// file. Any changes that that update that file must come as a result of a change in
+// this .proto file.
+// For more information, see https://github.com/tendermint/tendermint/issues/8066
 
 //----------------------------------------
 // Request types
