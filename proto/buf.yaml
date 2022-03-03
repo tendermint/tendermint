@@ -1,4 +1,6 @@
 version: v1
+deps:
+  - buf.build/gogo/protobuf
 breaking:
   use:
     - FILE
@@ -7,5 +9,3 @@ lint:
     - BASIC
     - FILE_LOWER_SNAKE_CASE
     - UNARY_RPC
-  ignore:
-    - gogoproto

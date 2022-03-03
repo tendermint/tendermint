@@ -76,33 +76,14 @@ $(BUILDDIR)/:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-PROTO_INPUT_DIR := ./proto
-PROTO_OUTPUT_DIR := ./proto
-PROTO_PLUGIN := gogofaster
-PROTO_PLUGIN_OPTS := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration,plugins=grpc,paths=source_relative
-PROTO_INCLUDES := -I=$(PROTO_INPUT_DIR) -I=./third_party/proto/
-PROTO_COMPILE := protoc $(PROTO_INCLUDES) --$(PROTO_PLUGIN)_out=$(PROTO_PLUGIN_OPTS):$(PROTO_OUTPUT_DIR)
-
-check-proto-gen-deps:
-ifeq (,$(shell which protoc))
-	$(error "Protocol buffers compiler protoc is required. See https://github.com/protocolbuffers/protobuf/#protocol-compiler-installation for installation instructions.")
+check-proto-deps:
+ifeq (,$(shell which buf))
+	$(error "buf is required for Protobuf building, linting and breakage checking. See https://docs.buf.build/installation for installation instructions.")
 endif
 ifeq (,$(shell which protoc-gen-gogofaster))
 	$(error "gogofaster plugin for protoc is required. Run 'go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest' to install")
 endif
-.PHONY: check-proto-gen-deps
-
-proto-gen: check-proto-gen-deps
-	@echo "Generating Protobuf files"
-	@find $(PROTO_INPUT_DIR) -name '*.proto' -exec $(PROTO_COMPILE) {} \;
-	@mv $(PROTO_INPUT_DIR)/tendermint/abci/types.pb.go ./abci/types/
-.PHONY: proto-gen
-
-check-proto-lint-deps:
-ifeq (,$(shell which buf))
-	$(error "buf is required for Protobuf linting. See https://docs.buf.build/installation for installation instructions.")
-endif
-.PHONY: check-proto-lint-deps
+.PHONY: check-proto-deps
 
 check-proto-format-deps:
 ifeq (,$(shell which clang-format))
@@ -110,9 +91,15 @@ ifeq (,$(shell which clang-format))
 endif
 .PHONY: check-proto-format-deps
 
+proto-gen: check-proto-deps
+	@echo "Generating Protobuf files"
+	@buf generate
+	@mv ./proto/tendermint/abci/types.pb.go ./abci/types/
+.PHONY: proto-gen
+
 # These targets are provided for convenience and are intended for local
 # execution only.
-proto-lint: check-proto-lint-deps
+proto-lint: check-proto-deps
 	@echo "Linting Protobuf files"
 	@buf lint
 .PHONY: proto-lint
@@ -122,7 +109,7 @@ proto-format: check-proto-format-deps
 	@find . -name '*.proto' -path "./proto/*" -exec clang-format -i {} \;
 .PHONY: proto-format
 
-proto-check-breaking: check-proto-lint-deps
+proto-check-breaking: check-proto-deps
 	@echo "Checking for breaking changes in Protobuf files"
 	@buf breaking
 .PHONY: proto-check-breaking
