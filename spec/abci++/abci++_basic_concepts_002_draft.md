@@ -44,7 +44,7 @@ for details on the possible call sequences of these methods.
 
 * [**InitChain:**](./abci++_methods_002_draft.md#initchain) This method initializes the blockchain. Tendermint calls it once upon genesis.
 
-* [**PrepareProposal:**](./abci++_methods_002_draft.md#prepareproposal) It allows the block proposer to perform application-dependent work in a block before sending its proposal. This enables, for instance, batch optimizations to a block, which has been empirically demonstrated to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is about to send
+* [**PrepareProposal:**](./abci++_methods_002_draft.md#prepareproposal) It allows the block proposer to perform application-dependent work in a block before using it as its proposal. This enables, for instance, batch optimizations to a block, which has been empirically demonstrated to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is about to send
 a proposal message, but no previous proposal has been locked at Tendermint level.
 Tendermint gathers outstanding transactions from the mempool, generates a block header, and uses
 them to create a block to propose. Then, it calls `RequestPrepareProposal`
