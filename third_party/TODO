@@ -1,0 +1,2 @@
+Remove this directory if we no longer use protoc directly (i.e. we use buf
+instead) to generate our proto types.
