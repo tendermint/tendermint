@@ -207,7 +207,7 @@ with the current _TimeoutPropose_ value so that the Application can adapt it at 
 ABCI++ applications must implement deterministic finite-state machines to be
 securely replicated by the Tendermint consensus engine. This means block execution
 over the Consensus Connection must be strictly deterministic: given the same
-ordered set of requests, all nodes will compute identical responses, for all
+ordered set of transactions, all nodes will compute identical responses, for all
 successive `FinalizeBlock` calls. This is critical because the
 responses are included in the header of the next block, either via a Merkle root
 or directly, so all nodes must agree on exactly what they are.
