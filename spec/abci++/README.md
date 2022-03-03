@@ -20,8 +20,7 @@ for handling all ABCI++ methods.
 Thus, Tendermint always sends the `Request*` messages and receives the `Response*` messages
 in return.
 
-All ABCI++ messages and methods are defined in
-[protocol buffers](https://github.com/tendermint/tendermint/blob/master/proto/spec/abci/types.proto).
+All ABCI++ messages and methods are defined in [protocol buffers](../../proto/tendermint/abci/types.proto).
 This allows Tendermint to run with applications written in many programming languages.
 
 This specification is split as follows:

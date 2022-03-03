@@ -370,7 +370,11 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte)
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
 		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-			ch <- msg
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case ch <- msg:
+			}
 		}
 		return nil
 	}, types.EventQueryVote); err != nil {
@@ -401,7 +405,10 @@ func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr
 			vote := msg.Data().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				ch <- msg
+				select {
+				case <-ctx.Done():
+				case ch <- msg:
+				}
 			}
 		}
 	}()
