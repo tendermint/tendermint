@@ -33,7 +33,7 @@ type reactorTestSuite struct {
 	nodes   []types.NodeID
 
 	reactors map[types.NodeID]*Reactor
-	app      map[types.NodeID]proxy.AppConns
+	app      map[types.NodeID]abciclient.Client
 
 	blockSyncChannels map[types.NodeID]*p2p.Channel
 	peerChans         map[types.NodeID]chan p2p.PeerUpdate
@@ -64,7 +64,7 @@ func setup(
 		network:           p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		nodes:             make([]types.NodeID, 0, numNodes),
 		reactors:          make(map[types.NodeID]*Reactor, numNodes),
-		app:               make(map[types.NodeID]proxy.AppConns, numNodes),
+		app:               make(map[types.NodeID]abciclient.Client, numNodes),
 		blockSyncChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
 		peerChans:         make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
 		peerUpdates:       make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
@@ -109,7 +109,7 @@ func (rts *reactorTestSuite) addNode(
 	logger := log.TestingLogger()
 
 	rts.nodes = append(rts.nodes, nodeID)
-	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}), logger, proxy.NopMetrics())
+	rts.app[nodeID] = proxy.New(abciclient.NewLocalCreator(&abci.BaseApplication{}), logger, proxy.NopMetrics())
 	require.NoError(t, rts.app[nodeID].Start(ctx))
 
 	blockDB := dbm.NewMemDB()
@@ -124,7 +124,7 @@ func (rts *reactorTestSuite) addNode(
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		rts.app[nodeID].Consensus(),
+		rts.app[nodeID],
 		mock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,

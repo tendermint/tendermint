@@ -325,7 +325,7 @@ func newConsensusStateForReplay(
 
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
-	proxyApp := proxy.NewAppConns(clientCreator, logger, proxy.NopMetrics())
+	proxyApp := proxy.New(clientCreator, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("starting proxy app conns: %w", err)
@@ -343,7 +343,7 @@ func newConsensusStateForReplay(
 	}
 
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mempool, evpool, blockStore)
 
 	consensusState := NewState(ctx, logger, csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)

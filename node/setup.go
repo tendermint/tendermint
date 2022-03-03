@@ -10,6 +10,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
@@ -20,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/internal/p2p/pex"
-	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/indexer/sink"
@@ -171,7 +171,7 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 func createMempoolReactor(
 	ctx context.Context,
 	cfg *config.Config,
-	proxyApp proxy.AppConns,
+	proxyApp abciclient.Client,
 	state sm.State,
 	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
@@ -183,7 +183,7 @@ func createMempoolReactor(
 	mp := mempool.NewTxMempool(
 		logger,
 		cfg.Mempool,
-		proxyApp.Mempool(),
+		proxyApp,
 		state.LastBlockHeight,
 		mempool.WithMetrics(memplMetrics),
 		mempool.WithPreCheck(sm.TxPreCheck(state)),
@@ -385,7 +385,7 @@ func createRouter(
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
 	cfg *config.Config,
-	proxyApp proxy.AppConns,
+	proxyApp abciclient.Client,
 ) (*p2p.Router, error) {
 
 	p2pLogger := logger.With("module", "p2p")

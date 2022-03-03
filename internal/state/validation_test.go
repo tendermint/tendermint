@@ -40,7 +40,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		proxyApp.Consensus(),
+		proxyApp,
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
@@ -128,7 +128,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		proxyApp.Consensus(),
+		proxyApp,
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
@@ -263,7 +263,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		proxyApp.Consensus(),
+		proxyApp,
 		memmock.Mempool{},
 		evpool,
 		blockStore,

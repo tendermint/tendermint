@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/cors"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
@@ -19,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/internal/eventlog"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/proxy"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -73,8 +73,7 @@ type peerManager interface {
 // to be setup once during startup.
 type Environment struct {
 	// external, thread safe interfaces
-	ProxyAppQuery   proxy.AppConnQuery
-	ProxyAppMempool proxy.AppConnMempool
+	ProxyApp abciclient.Client
 
 	// interfaces defined in types and above
 	StateStore       sm.Store

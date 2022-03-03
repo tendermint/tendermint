@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -54,8 +55,7 @@ var (
 type syncer struct {
 	logger        log.Logger
 	stateProvider StateProvider
-	conn          proxy.AppConnSnapshot
-	connQuery     proxy.AppConnQuery
+	conn          abciclient.Client
 	snapshots     *snapshotPool
 	snapshotCh    *p2p.Channel
 	chunkCh       *p2p.Channel
@@ -76,8 +76,7 @@ type syncer struct {
 func newSyncer(
 	cfg config.StateSyncConfig,
 	logger log.Logger,
-	conn proxy.AppConnSnapshot,
-	connQuery proxy.AppConnQuery,
+	conn abciclient.Client,
 	stateProvider StateProvider,
 	snapshotCh *p2p.Channel,
 	chunkCh *p2p.Channel,
@@ -88,7 +87,6 @@ func newSyncer(
 		logger:        logger,
 		stateProvider: stateProvider,
 		conn:          conn,
-		connQuery:     connQuery,
 		snapshots:     newSnapshotPool(),
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
@@ -547,7 +545,7 @@ func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uin
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version
 func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot, appVersion uint64) error {
-	resp, err := s.connQuery.Info(ctx, proxy.RequestInfo)
+	resp, err := s.conn.Info(ctx, proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

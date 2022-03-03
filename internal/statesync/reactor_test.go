@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	clientmocks "github.com/tendermint/tendermint/abci/client/mocks"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -71,21 +72,14 @@ type reactorTestSuite struct {
 func setup(
 	ctx context.Context,
 	t *testing.T,
-	conn *proxymocks.AppConnSnapshot,
-	connQuery *proxymocks.AppConnQuery,
+	conn *clientmocks.Client,
 	stateProvider *mocks.StateProvider,
 	chBuf uint,
 ) *reactorTestSuite {
 	t.Helper()
 
 	if conn == nil {
-		conn = &proxymocks.AppConnSnapshot{}
-	}
-	if connQuery == nil {
-		connQuery = &proxymocks.AppConnQuery{}
-	}
-	if stateProvider == nil {
-		stateProvider = &mocks.StateProvider{}
+		conn = &clientmocks.Client{}
 	}
 
 	rts := &reactorTestSuite{
@@ -102,7 +96,6 @@ func setup(
 		paramsOutCh:       make(chan p2p.Envelope, chBuf),
 		paramsPeerErrCh:   make(chan p2p.PeerError, chBuf),
 		conn:              conn,
-		connQuery:         connQuery,
 		stateProvider:     stateProvider,
 	}
 
@@ -171,7 +164,6 @@ func setup(
 		*cfg,
 		logger.With("component", "reactor"),
 		conn,
-		connQuery,
 		chCreator,
 		rts.peerUpdates,
 		rts.stateStore,

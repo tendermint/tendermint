@@ -33,10 +33,10 @@ type paramsChangeTestCase struct {
 	params types.ConsensusParams
 }
 
-func newTestApp() proxy.AppConns {
+func newTestApp() abciclient.Client {
 	app := &testApp{}
 	cc := abciclient.NewLocalCreator(app)
-	return proxy.NewAppConns(cc, log.NewNopLogger(), proxy.NopMetrics())
+	return proxy.New(cc, log.NewNopLogger(), proxy.NopMetrics())
 }
 
 func makeAndCommitGoodBlock(

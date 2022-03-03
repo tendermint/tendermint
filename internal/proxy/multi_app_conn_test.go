@@ -42,7 +42,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 		return cl, nil
 	}
 
-	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
+	appConns := New(creator, log.TestingLogger(), NopMetrics())
 
 	err := appConns.Start(ctx)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestAppConns_Failure(t *testing.T) {
 		return cl, nil
 	}
 
-	appConns := NewAppConns(creator, log.TestingLogger(), NopMetrics())
+	appConns := New(creator, log.TestingLogger(), NopMetrics())
 
 	err := appConns.Start(ctx)
 	require.NoError(t, err)

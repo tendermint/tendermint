@@ -159,7 +159,7 @@ func makeNode(
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
+	proxyApp := proxy.New(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
 	if err := proxyApp.Start(ctx); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
 	}
@@ -289,7 +289,7 @@ func makeNode(
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger.With("module", "state"),
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		evPool,
 		blockStore,
@@ -343,8 +343,8 @@ func makeNode(
 		genDoc.InitialHeight,
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
+		proxyApp,
+		proxyApp,
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		stateStore,
@@ -394,11 +394,7 @@ func makeNode(
 		shutdownOps: makeCloser(closers),
 
 		rpcEnv: &rpccore.Environment{
-			ProxyAppQuery:   proxyApp.Query(),
-			ProxyAppMempool: proxyApp.Mempool(),
-
-			StateStore:     stateStore,
-			BlockStore:     blockStore,
+			ProxyApp:       proxyApp,
 			EvidencePool:   evPool,
 			ConsensusState: csState,
 
@@ -769,14 +765,14 @@ func loadStateFromDBOrGenesisDocProvider(
 	return state, nil
 }
 
-func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
+func getRouterConfig(conf *config.Config, proxyApp abciclient.Client) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
 		QueueType: conf.P2P.QueueType,
 	}
 
 	if conf.FilterPeers && proxyApp != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
-			res, err := proxyApp.Query().Query(ctx, abci.RequestQuery{
+			res, err := proxyApp.Query(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
 			if err != nil {
@@ -790,7 +786,7 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 		}
 
 		opts.FilterPeerByIP = func(ctx context.Context, ip net.IP, port uint16) error {
-			res, err := proxyApp.Query().Query(ctx, abci.RequestQuery{
+			res, err := proxyApp.Query(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/addr/%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))),
 			})
 			if err != nil {

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -30,7 +30,7 @@ type BlockExecutor struct {
 	blockStore BlockStore
 
 	// execute the app against this
-	proxyApp proxy.AppConnConsensus
+	proxyApp abciclient.Client
 
 	// events
 	eventBus types.BlockEventPublisher
@@ -60,7 +60,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
-	proxyApp proxy.AppConnConsensus,
+	proxyApp abciclient.Client,
 	pool mempool.Mempool,
 	evpool EvidencePool,
 	blockStore BlockStore,
@@ -375,7 +375,7 @@ func (blockExec *BlockExecutor) Commit(
 func execBlockOnProxyApp(
 	ctx context.Context,
 	logger log.Logger,
-	proxyAppConn proxy.AppConnConsensus,
+	proxyAppConn abciclient.Client,
 	block *types.Block,
 	store Store,
 	initialHeight int64,
@@ -617,7 +617,7 @@ func fireEvents(
 func ExecCommitBlock(
 	ctx context.Context,
 	be *BlockExecutor,
-	appConnConsensus proxy.AppConnConsensus,
+	appConnConsensus abciclient.Client,
 	block *types.Block,
 	logger log.Logger,
 	store Store,

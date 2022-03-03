@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -237,10 +238,10 @@ func (h *Handshaker) NBlocks() int {
 }
 
 // TODO: retry the handshake/replay if it fails ?
-func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) error {
+func (h *Handshaker) Handshake(ctx context.Context, proxyApp abciclient.Client) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().Info(ctx, proxy.RequestInfo)
+	res, err := proxyApp.Info(ctx, proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("error calling Info: %w", err)
 	}
@@ -285,7 +286,7 @@ func (h *Handshaker) ReplayBlocks(
 	state sm.State,
 	appHash []byte,
 	appBlockHeight int64,
-	proxyApp proxy.AppConns,
+	proxyApp abciclient.Client,
 ) ([]byte, error) {
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
@@ -316,7 +317,7 @@ func (h *Handshaker) ReplayBlocks(
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
-		res, err := proxyApp.Consensus().InitChain(ctx, req)
+		res, err := proxyApp.InitChain(ctx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -413,7 +414,7 @@ func (h *Handshaker) ReplayBlocks(
 			// NOTE: We could instead use the cs.WAL on cs.Start,
 			// but we'd have to allow the WAL to replay a block that wrote it's #ENDHEIGHT
 			h.logger.Info("Replay last block using real app")
-			state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp.Consensus())
+			state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp)
 			return state.AppHash, err
 
 		case appBlockHeight == storeBlockHeight:
@@ -445,7 +446,7 @@ func (h *Handshaker) ReplayBlocks(
 func (h *Handshaker) replayBlocks(
 	ctx context.Context,
 	state sm.State,
-	proxyApp proxy.AppConns,
+	proxyApp abciclient.Client,
 	appBlockHeight,
 	storeBlockHeight int64,
 	mutateState bool) ([]byte, error) {
@@ -481,16 +482,16 @@ func (h *Handshaker) replayBlocks(
 			// We emit events for the index services at the final block due to the sync issue when
 			// the node shutdown during the block committing status.
 			blockExec := sm.NewBlockExecutor(
-				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
+				h.stateStore, h.logger, proxyApp, emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
 			blockExec.SetEventBus(h.eventBus)
 			appHash, err = sm.ExecCommitBlock(ctx,
-				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
+				blockExec, proxyApp, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			appHash, err = sm.ExecCommitBlock(ctx,
-				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
+				nil, proxyApp, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}
@@ -501,7 +502,7 @@ func (h *Handshaker) replayBlocks(
 
 	if mutateState {
 		// sync the final block
-		state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp.Consensus())
+		state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp)
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +518,7 @@ func (h *Handshaker) replayBlock(
 	ctx context.Context,
 	state sm.State,
 	height int64,
-	proxyApp proxy.AppConnConsensus,
+	proxyApp abciclient.Client,
 ) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
