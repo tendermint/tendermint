@@ -153,26 +153,6 @@ func BufferCapacity(cap int) Option {
 // BufferCapacity returns capacity of the publication queue.
 func (s *Server) BufferCapacity() int { return cap(s.queue) }
 
-// Subscribe creates a subscription for the given client ID and query.
-// If len(capacities) > 0, its first value is used as the queue capacity.
-//
-// Deprecated: Use SubscribeWithArgs. This method will be removed in v0.36.
-func (s *Server) Subscribe(ctx context.Context, clientID string, query *query.Query, capacities ...int) (*Subscription, error) {
-	args := SubscribeArgs{
-		ClientID: clientID,
-		Query:    query,
-		Limit:    1,
-	}
-	if len(capacities) > 0 {
-		args.Limit = capacities[0]
-		if len(capacities) > 1 {
-			args.Quota = capacities[1]
-		}
-		// bounds are checked below
-	}
-	return s.SubscribeWithArgs(ctx, args)
-}
-
 // Observe registers an observer function that will be called synchronously
 // with each published message matching any of the given queries, prior to it
 // being forwarded to any subscriber.  If no queries are specified, all
