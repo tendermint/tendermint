@@ -27,8 +27,8 @@ func (env *Environment) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, 
 	}
 
 	return &coretypes.ResultNetInfo{
-		Listening: env.P2PTransport.IsListening(),
-		Listeners: env.P2PTransport.Listeners(),
+		Listening: env.IsListening,
+		Listeners: env.Listeners,
 		NPeers:    len(peers),
 		Peers:     peers,
 	}, nil
