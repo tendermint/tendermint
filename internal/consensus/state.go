@@ -362,7 +362,7 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 func (cs *State) OnStart(ctx context.Context) error {
 	state, err := cs.stateStore.Load()
 	if err != nil {
-		return err
+		return fmt.Errorf("loading state: %w", err)
 	}
 
 	// We have no votes, so reconstruct LastCommit from SeenCommit.
