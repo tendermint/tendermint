@@ -58,7 +58,7 @@ modify the proposal at this point but can reject it if it realizes it is invalid
 If that is the case, Tendermint will prevote `nil` on the proposal, which has
 strong liveness implications for Tendermint. As a general rule, the Application
 SHOULD accept a prepared proposal passed via `ProcessProposal`, even if a part of
-the proposal is invalid (e.g., an invalid transaction); the Application can later
+the proposal is invalid (e.g., an invalid transaction); the Application can
 ignore the invalid part of the prepared proposal at block execution time.
 
 * [**ExtendVote:**](./abci++_methods_002_draft.md#extendvote) It allows applications to force their validators to do more than just validate within consensus. `ExtendVote` allows applications to include non-deterministic data, opaque to Tendermint, to precommit messages (the final round of voting). The data, called _vote extension_, will be part of the proposed block in the next height, along with the vote it is extending.
