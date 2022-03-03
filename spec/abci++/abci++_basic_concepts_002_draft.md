@@ -68,7 +68,7 @@ The Application may also choose not to include any vote extension.
 Tendermint calls it when is about to send a non-`nil` precommit message. 
 
 * [**VerifyVoteExtension:**](./abci++_methods_002_draft.md#verifyvoteextension) It allows validators to validate the vote extension data attached to a precommit message. If the validation fails, the precommit message will be deemed invalid and ignored
-by Tendermint. This has a negative impact on Tendermint's liveness, i.e., if repeatedly vote extensions by correct validators cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should be used with special care.
+by Tendermint. This has a negative impact on Tendermint's liveness, i.e., if vote extensions repeatedly cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should be used with special care.
 As a general rule, an Application that detects an invalid vote extension SHOULD
 accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic. Tendermint calls it when 
 a process receives a precommit message with a (possibly empty) vote extension.
