@@ -114,8 +114,14 @@ need to install [buf](https://buf.build/) and `gogoproto`. Then, from the root
 of the repository, run:
 
 ```bash
+# Lint all of the .proto files in proto/tendermint
 make proto-lint
+
+# Check if any of your local changes (prior to committing to the Git repository)
+# are breaking
 make proto-check-breaking
+
+# Generate Go code from the .proto files in proto/tendermint
 make proto-gen
 ```
 
