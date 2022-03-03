@@ -5,7 +5,7 @@ cp ./proto/intermediate/abci/types.proto ./proto/tendermint/abci/types.proto
 cp ./proto/intermediate/types/types.proto ./proto/tendermint/types/types.proto
 
 MODNAME="$(go list -m)"
-find ./proto/tendermint -name '*.proto' -not -path "./proto/tendermint/abci/types.proto" \
+find ./proto/tendermint -name '*.proto' -not -path "./proto/tendermint/abci/types.proto" -not -path "./proto/intermediate" \
 	-exec sh ./scripts/protopackage.sh {} "$MODNAME" ';'
 
 sh ./scripts/protopackage.sh ./proto/tendermint/abci/types.proto $MODNAME "abci/types"
