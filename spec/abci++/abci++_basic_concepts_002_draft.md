@@ -74,7 +74,7 @@ accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic. Tende
 a process receives a precommit message with a (possibly empty) vote extension.
 
 * [**FinalizeBlock:**](./abci++_methods_002_draft.md#finalizeblock) It delivers a decided block to the Application. The Application must execute the transactions in the block in order and update its state accordingly. Cryptographic commitments to the block and transaction results, via the corresponding
-parameters in `ResponseFinalizeBlock` are included in the header of the next block. Tendermint calls it when a new block is decided.
+parameters in `ResponseFinalizeBlock`, are included in the header of the next block. Tendermint calls it when a new block is decided.
 
 ### Mempool methods
 
