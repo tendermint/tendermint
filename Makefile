@@ -110,8 +110,11 @@ proto-format: check-proto-format-deps
 .PHONY: proto-format
 
 proto-check-breaking: check-proto-deps
-	@echo "Checking for breaking changes in Protobuf files"
-	@buf breaking
+	@echo "Checking for breaking changes in Protobuf files against local branch"
+	@echo "Note: This is only useful if your changes have not yet been committed."
+	@echo "      Otherwise read up on buf's \"breaking\" command usage:"
+	@echo "      https://docs.buf.build/breaking/usage"
+	@buf breaking --against ".git"
 .PHONY: proto-check-breaking
 
 ###############################################################################
