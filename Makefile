@@ -92,6 +92,10 @@ proto-gen:
 	@$(DOCKER_PROTO_BUILDER) buf generate --template=./buf.gen.yaml --config ./buf.yaml
 .PHONY: proto-gen
 
+abci-proto-gen:
+	./scripts/abci-gen.sh
+.PHONY: proto-gen
+
 proto-lint:
 	@$(DOCKER_PROTO_BUILDER) buf lint --error-format=json --config ./buf.yaml
 .PHONY: proto-lint
