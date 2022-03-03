@@ -267,7 +267,7 @@ func createConsensusReactor(
 ) (*consensus.Reactor, *consensus.State, error) {
 	logger = logger.With("module", "consensus")
 
-	consensusState := consensus.NewState(ctx,
+	consensusState, err := consensus.NewState(ctx,
 		logger,
 		cfg.Consensus,
 		store,
@@ -277,6 +277,9 @@ func createConsensusReactor(
 		evidencePool,
 		consensus.StateMetrics(csMetrics),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(ctx, privValidator)
