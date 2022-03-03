@@ -145,8 +145,11 @@ func (pb *playback) replayReset(ctx context.Context, count int, newStepSub event
 	pb.cs.Stop()
 	pb.cs.Wait()
 
-	newCS := NewState(ctx, pb.cs.logger, pb.cs.config, pb.stateStore, pb.cs.blockExec,
+	newCS, err := NewState(ctx, pb.cs.logger, pb.cs.config, pb.stateStore, pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
+	if err != nil {
+		return err
+	}
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
 
@@ -345,9 +348,11 @@ func newConsensusStateForReplay(
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(), mempool, evpool, blockStore)
 
-	consensusState := NewState(ctx, logger, csConfig, stateStore, blockExec,
+	consensusState, err := NewState(ctx, logger, csConfig, stateStore, blockExec,
 		blockStore, mempool, evpool)
-
+	if err != nil {
+		return nil, err
+	}
 	consensusState.SetEventBus(eventBus)
 	return consensusState, nil
 }

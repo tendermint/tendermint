@@ -196,7 +196,7 @@ func NewState(
 	txNotifier txNotifier,
 	evpool evidencePool,
 	options ...StateOption,
-) *State {
+) (*State, error) {
 	cs := &State{
 		logger:           logger,
 		config:           cfg,
@@ -217,19 +217,30 @@ func NewState(
 		onStopCh:         make(chan *cstypes.RoundState),
 	}
 
+	state, err := cs.stateStore.Load()
+	if err != nil {
+		return nil, fmt.Errorf("loading state: %w", err)
+	}
+
+	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		cs.reconstructLastCommit(state)
+	}
+
+	cs.updateToState(ctx, state)
+
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
-
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
 
-	return cs
+	return cs, nil
 }
 
 // SetEventBus sets event bus.
@@ -360,18 +371,6 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
 func (cs *State) OnStart(ctx context.Context) error {
-	state, err := cs.stateStore.Load()
-	if err != nil {
-		return fmt.Errorf("loading state: %w", err)
-	}
-
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
-	if state.LastBlockHeight > 0 {
-		cs.reconstructLastCommit(state)
-	}
-
-	cs.updateToState(ctx, state)
-
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
