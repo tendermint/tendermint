@@ -129,9 +129,7 @@ func parseParams(ctx context.Context, fn *RPCFunc, paramData []byte) ([]reflect.
 	// If fn does not accept parameters, there is no decoding to do, but verify
 	// that no parameters were passed.
 	if fn.param == nil {
-		if len(paramData) != 0 && !bytes.Equal(paramData, []byte("null")) {
-			return nil, errors.New("method does not take parameters")
-		}
+		// TODO(creachadair): Reject non-empty parameters maybe.
 		return []reflect.Value{reflect.ValueOf(ctx)}, nil
 	}
 	bits, err := adjustParams(fn, paramData)
