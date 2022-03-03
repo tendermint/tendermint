@@ -66,7 +66,7 @@ func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, er
 	}
 
 	result := &coretypes.ResultStatus{
-		NodeInfo:        env.P2PTransport.NodeInfo(),
+		NodeInfo:        env.NodeInfo,
 		ApplicationInfo: applicationInfo,
 		SyncInfo: coretypes.SyncInfo{
 			LatestBlockHash:     latestBlockHash,
