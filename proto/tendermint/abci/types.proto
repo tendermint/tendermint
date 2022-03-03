@@ -75,7 +75,7 @@ message RequestQuery {
 message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
+  LastCommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
@@ -149,16 +149,17 @@ message RequestProcessProposal {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   repeated bytes          txs                  = 3;
-  CommitInfo              proposed_last_commit = 4 [(gogoproto.nullable) = false];
+  LastCommitInfo              last_commit_info = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
 }
 
 message RequestFinalizeBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  CommitInfo              decided_last_commit  = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes          txs                  = 1;
+  bytes                   hash                 = 2;
+  int64                   height                 = 3;
+  tendermint.types.Header header               = 4 [(gogoproto.nullable) = false];
+  LastCommitInfo              last_commit_info  = 5 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 6 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------
@@ -340,19 +341,17 @@ message ResponseProcessProposal {
 }
 
 message ResponseFinalizeBlock {
-  repeated Event block_events = 1
+  repeated ResponseDeliverTx        txs              = 1;
+  repeated ValidatorUpdate         validator_updates       = 2 [(gogoproto.nullable) = false];
+  tendermint.types.ConsensusParams consensus_param_updates = 3;
+  repeated Event events = 4
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-  repeated ExecTxResult            tx_results              = 2;
-  repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
-  tendermint.types.ConsensusParams consensus_param_updates = 4;
-  bytes                            app_hash                = 5;
-  int64                            retain_height           = 6;
 }
 
 //----------------------------------------
 // Misc.
 
-message CommitInfo {
+message LastCommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
@@ -387,7 +386,7 @@ message ExecTxResult {
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
-  repeated Event tx_events  = 7
+  repeated Event events  = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
 }
@@ -399,7 +398,7 @@ message TxResult {
   int64             height = 1;
   uint32            index  = 2;
   bytes             tx     = 3;
-  ExecTxResult result = 4 [(gogoproto.nullable) = false];
+  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------
