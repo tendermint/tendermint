@@ -125,7 +125,7 @@ func addCommands(cmd *cobra.Command, logger log.Logger) {
 	cmd.AddCommand(consoleCmd)
 	cmd.AddCommand(echoCmd)
 	cmd.AddCommand(infoCmd)
-	cmd.AddCommand(addTxCmd)
+	cmd.AddCommand(finalizeBlockCmd)
 	cmd.AddCommand(checkTxCmd)
 	cmd.AddCommand(commitCmd)
 	cmd.AddCommand(versionCmd)
@@ -188,10 +188,10 @@ var infoCmd = &cobra.Command{
 	RunE:  cmdInfo,
 }
 
-var addTxCmd = &cobra.Command{
-	Use:   "add_tx",
-	Short: "add a new transaction to the application",
-	Long:  "add a new transaction to the application",
+var finalizeBlockCmd = &cobra.Command{
+	Use:   "finalize_block",
+	Short: "deliver a block to the application",
+	Long:  "deliver a block to the application",
 	Args:  cobra.ExactArgs(1),
 	RunE:  cmdAddTx,
 }
