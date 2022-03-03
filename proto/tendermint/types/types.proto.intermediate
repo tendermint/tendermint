@@ -7,6 +7,13 @@ import "tendermint/crypto/proof.proto";
 import "tendermint/version/types.proto";
 import "tendermint/types/validator.proto";
 
+// This file is a temporary workaround to enable development during the ABCI++
+// project. This file should be deleted and any references to it removed when 
+// the ongoing work on ABCI++ is completed.
+//
+// This file supports building of the `tendermint.abci` proto package.
+// For more information, see https://github.com/tendermint/tendermint/issues/8066
+
 // BlockIdFlag indicates which BlcokID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = true;

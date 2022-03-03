@@ -14,7 +14,7 @@ import "gogoproto/gogo.proto";
 // the ongoing work on ABCI++ is completed.
 //
 // For the duration of ABCI++, this file should be able to build the `abci/types/types.pb.go`
-// file. Any changes that that update that file must come as a result of a change in
+// file. Any changes that update that file must come as a result of a change in
 // this .proto file.
 // For more information, see https://github.com/tendermint/tendermint/issues/8066
 
