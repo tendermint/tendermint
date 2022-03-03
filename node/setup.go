@@ -185,8 +185,8 @@ func createMempoolReactor(
 		cfg.Mempool,
 		proxyApp.Mempool(),
 		mempool.WithMetrics(memplMetrics),
-		mempool.WithPreCheck(sm.TxPreCheck(store)),
-		mempool.WithPostCheck(sm.TxPostCheck(store)),
+		mempool.WithPreCheck(sm.TxPreCheckFromStore(store)),
+		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
 	)
 
 	reactor, err := mempool.NewReactor(
@@ -213,7 +213,7 @@ func createEvidenceReactor(
 	ctx context.Context,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-	stateDB dbm.DB,
+	store sm.Store,
 	blockStore *store.BlockStore,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -228,7 +228,7 @@ func createEvidenceReactor(
 
 	logger = logger.With("module", "evidence")
 
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore, metrics)
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
@@ -252,7 +252,7 @@ func createEvidenceReactor(
 func createConsensusReactor(
 	ctx context.Context,
 	cfg *config.Config,
-	state sm.State,
+	store sm.Store,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mp mempool.Mempool,
@@ -270,7 +270,7 @@ func createConsensusReactor(
 	consensusState := consensus.NewState(ctx,
 		logger,
 		cfg.Consensus,
-		state.Copy(),
+		store,
 		blockExec,
 		blockStore,
 		mp,

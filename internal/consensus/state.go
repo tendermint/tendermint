@@ -120,6 +120,7 @@ type State struct {
 
 	// store blocks and commits
 	blockStore sm.BlockStore
+	stateStore sm.Store
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
@@ -189,7 +190,7 @@ func NewState(
 	ctx context.Context,
 	logger log.Logger,
 	cfg *config.ConsensusConfig,
-	state sm.State,
+	store sm.Store,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
@@ -201,6 +202,7 @@ func NewState(
 		config:           cfg,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
+		stateStore:       store,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
@@ -219,13 +221,6 @@ func NewState(
 	cs.decideProposal = cs.defaultDecideProposal
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
-
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
-	if state.LastBlockHeight > 0 {
-		cs.reconstructLastCommit(state)
-	}
-
-	cs.updateToState(ctx, state)
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 
@@ -365,6 +360,18 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
 func (cs *State) OnStart(ctx context.Context) error {
+	state, err := cs.stateStore.Load()
+	if err != nil {
+		return err
+	}
+
+	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	if state.LastBlockHeight > 0 {
+		cs.reconstructLastCommit(state)
+	}
+
+	cs.updateToState(ctx, state)
+
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {

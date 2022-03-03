@@ -142,6 +142,7 @@ func makeNode(
 	genDoc, err := genesisDocProvider()
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
+		state
 	}
 
 	err = genDoc.ValidateAndComplete()
@@ -279,7 +280,7 @@ func makeNode(
 	}
 
 	evReactor, evPool, err := createEvidenceReactor(ctx,
-		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
+		cfg, dbProvider, stateStore, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -297,7 +298,7 @@ func makeNode(
 	)
 
 	csReactor, csState, err := createConsensusReactor(ctx,
-		cfg, state, blockExec, blockStore, mp, evPool,
+		cfg, stateStore, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, logger,
 	)
@@ -309,7 +310,7 @@ func makeNode(
 	// doing a state sync first.
 	bcReactor, err := blocksync.NewReactor(ctx,
 		logger.With("module", "blockchain"),
-		state.Copy(),
+		stateStore,
 		blockExec,
 		blockStore,
 		csReactor,
