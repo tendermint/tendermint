@@ -142,7 +142,6 @@ func makeNode(
 	genDoc, err := genesisDocProvider()
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
-		state
 	}
 
 	err = genDoc.ValidateAndComplete()
