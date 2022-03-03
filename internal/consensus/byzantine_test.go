@@ -82,7 +82,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				log.TestingLogger().With("module", "mempool"),
 				thisConfig.Mempool,
 				proxyAppConnMem,
-				0,
 			)
 			if thisConfig.Consensus.WaitForTxs() {
 				mempool.EnableTxsAvailable()
@@ -95,7 +94,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make State
 			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-			cs := NewState(ctx, logger, thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+			cs := NewState(ctx, logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool)
 			// set private validator
 			pv := privVals[i]
 			cs.SetPrivValidator(ctx, pv)

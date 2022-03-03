@@ -31,7 +31,6 @@ func init() {
 				log.NewNopLogger(),
 				cfg,
 				appConnMem,
-				0,
 			)
 
 		}

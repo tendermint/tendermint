@@ -483,7 +483,6 @@ func TestReactorWithEvidence(t *testing.T) {
 			log.TestingLogger().With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
-			0,
 		)
 
 		if thisConfig.Consensus.WaitForTxs() {
@@ -507,7 +506,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
 
 		cs := NewState(ctx, logger.With("validator", i, "module", "consensus"),
-			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
+			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2)
 		cs.SetPrivValidator(ctx, pv)
 
 		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
