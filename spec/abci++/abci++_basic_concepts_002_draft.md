@@ -227,7 +227,7 @@ the block decided.
 
 Additionally, vote extensions or the validation thereof (via `ExtendVote` or
 `VerifyVoteExtension`) must _never_ have side effects on the current state.
-They can only be used when their data is included in a block.
+They can only be used when their data is provided in a `RequestPrepareProposal` call.
 
 If there is some non-determinism in the state machine, consensus will eventually
 fail as nodes disagree over the correct values for the block header. The
