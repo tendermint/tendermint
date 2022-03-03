@@ -150,10 +150,9 @@ where example.file looks something like:
 
     check_tx 0x00
     check_tx 0xff
-    add_tx 0x00
+    finalize_block 0x00
     check_tx 0x00
-    add_tx 0x01
-    add_tx 0x04
+    finalize_block 0x01 0x04 0xff
     info
 `,
 	Args: cobra.ExactArgs(0),
@@ -169,7 +168,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "add_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -190,10 +189,10 @@ var infoCmd = &cobra.Command{
 
 var finalizeBlockCmd = &cobra.Command{
 	Use:   "finalize_block",
-	Short: "deliver a block to the application",
-	Long:  "deliver a block to the application",
-	Args:  cobra.ExactArgs(1),
-	RunE:  cmdAddTx,
+	Short: "deliver a block of transactions to the application",
+	Long:  "deliver a block of transactions to the application",
+	Args:  cobra.MinimumNArgs(1),
+	RunE:  cmdFinalizeBlock,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -426,8 +425,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
-	case "add_tx":
-		return cmdAddTx(cmd, actualArgs)
+	case "finalize_block":
+		return cmdFinalizeBlock(cmd, actualArgs)
 	case "echo":
 		return cmdEcho(cmd, actualArgs)
 	case "info":
@@ -496,19 +495,23 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 const codeBad uint32 = 10
 
 // Append a new tx to application
-func cmdAddTx(cmd *cobra.Command, args []string) error {
+func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
-			Log:  "want the tx",
+			Log:  "Must provide at least one transaction",
 		})
 		return nil
 	}
-	txBytes, err := stringOrHexToBytes(args[0])
-	if err != nil {
-		return err
+	txs := make([][]byte, len(args))
+	for i, arg := range args {
+		txBytes, err := stringOrHexToBytes(arg)
+		if err != nil {
+			return err
+		}
+		txs[i] = txBytes
 	}
-	res, err := client.FinalizeBlock(cmd.Context(), types.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	res, err := client.FinalizeBlock(cmd.Context(), types.RequestFinalizeBlock{Txs: txs})
 	if err != nil {
 		return err
 	}
