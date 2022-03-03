@@ -109,20 +109,14 @@ We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along
 with [`gogoproto`](https://github.com/gogo/protobuf) to generate code for use
 across Tendermint Core.
 
-To generate proto stubs, you will need to install
-[`protoc`](https://github.com/protocolbuffers/protobuf) and `gogoproto`. Then,
-from the root of the repository, run:
-
-```bash
-make proto-gen
-```
-
-To lint and check for breaking changes, you will need [buf](https://buf.build/)
-installed locally. Then you can run:
+To generate proto stubs, lint, and check protos for breaking changes, you will
+need to install [buf](https://buf.build/) and `gogoproto`. Then, from the root
+of the repository, run:
 
 ```bash
 make proto-lint
 make proto-check-breaking
+make proto-gen
 ```
 
 To automatically format `.proto` files, you will need
