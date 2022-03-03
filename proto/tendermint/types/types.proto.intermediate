@@ -1,5 +1,5 @@
 syntax = "proto3";
-package intermediate.types;
+package tendermint.types;
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";

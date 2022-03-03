@@ -1,5 +1,5 @@
 syntax = "proto3";
-package intermediate.abci;
+package tendermint.abci;
 
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
