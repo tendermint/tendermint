@@ -176,7 +176,7 @@ func (rts *reactorTestSuite) addNode(
 	rts.reactors[nodeID], err = NewReactor(
 		ctx,
 		rts.logger.With("nodeID", nodeID),
-		state.Copy(),
+		stateStore,
 		blockExec,
 		blockStore,
 		nil,

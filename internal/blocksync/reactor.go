@@ -70,6 +70,8 @@ type Reactor struct {
 
 	// immutable
 	initialState sm.State
+	// store
+	stateStore sm.Store
 
 	blockExec   *sm.BlockExecutor
 	store       *store.BlockStore
@@ -101,7 +103,7 @@ type Reactor struct {
 func NewReactor(
 	ctx context.Context,
 	logger log.Logger,
-	state sm.State,
+	stateStore sm.Store,
 	blockExec *sm.BlockExecutor,
 	store *store.BlockStore,
 	consReactor consensusReactor,
@@ -111,19 +113,6 @@ func NewReactor(
 	metrics *consensus.Metrics,
 	eventBus *eventbus.EventBus,
 ) (*Reactor, error) {
-
-	if state.LastBlockHeight != store.Height() {
-		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
-	}
-
-	startHeight := store.Height() + 1
-	if startHeight == 1 {
-		startHeight = state.InitialHeight
-	}
-
-	requestsCh := make(chan BlockRequest, maxTotalRequesters)
-	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
-
 	blockSyncCh, err := channelCreator(ctx, GetChannelDescriptor())
 	if err != nil {
 		return nil, err
@@ -131,20 +120,16 @@ func NewReactor(
 
 	r := &Reactor{
 		logger:               logger,
-		initialState:         state,
+		stateStore:           stateStore,
 		blockExec:            blockExec,
 		store:                store,
-		pool:                 NewBlockPool(logger, startHeight, requestsCh, errorsCh),
 		consReactor:          consReactor,
 		blockSync:            newAtomicBool(blockSync),
-		requestsCh:           requestsCh,
-		errorsCh:             errorsCh,
 		blockSyncCh:          blockSyncCh,
 		blockSyncOutBridgeCh: make(chan p2p.Envelope),
 		peerUpdates:          peerUpdates,
 		metrics:              metrics,
 		eventBus:             eventBus,
-		syncStartTime:        time.Time{},
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "BlockSync", r)
@@ -159,6 +144,27 @@ func NewReactor(
 // If blockSync is enabled, we also start the pool and the pool processing
 // goroutine. If the pool fails to start, an error is returned.
 func (r *Reactor) OnStart(ctx context.Context) error {
+	state, err := r.stateStore.Load()
+	if err != nil {
+		return err
+	}
+	r.initialState = state
+
+	if state.LastBlockHeight != r.store.Height() {
+		return fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, r.store.Height())
+	}
+
+	startHeight := r.store.Height() + 1
+	if startHeight == 1 {
+		startHeight = state.InitialHeight
+	}
+
+	requestsCh := make(chan BlockRequest, maxTotalRequesters)
+	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
+	r.pool = NewBlockPool(r.logger, startHeight, requestsCh, errorsCh)
+	r.requestsCh = requestsCh
+	r.errorsCh = errorsCh
+
 	if r.blockSync.IsSet() {
 		if err := r.pool.Start(ctx); err != nil {
 			return err

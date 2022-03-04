@@ -143,11 +143,8 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	err = genDoc.ValidateAndComplete()
-	if err != nil {
-		return nil, combineCloseError(
-			fmt.Errorf("error in genesis doc: %w", err),
-			makeCloser(closers))
+	if err = genDoc.ValidateAndComplete(); err != nil {
+		return nil, combineCloseError(fmt.Errorf("error in genesis doc: %w", err), makeCloser(closers))
 	}
 
 	state, err := loadStateFromDBOrGenesisDocProvider(stateStore, genDoc)
@@ -241,10 +238,6 @@ func makeNode(
 		}
 	}
 
-	// Determine whether we should do block sync. This must happen after the handshake, since the
-	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := !onlyValidatorIsUs(state, pubKey)
-
 	logNodeStartupInfo(state, pubKey, logger, cfg.Mode)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
@@ -271,14 +264,14 @@ func makeNode(
 	}
 
 	mpReactor, mp, err := createMempoolReactor(ctx,
-		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
+		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
 	evReactor, evPool, err := createEvidenceReactor(ctx,
-		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
+		cfg, dbProvider, stateStore, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -295,8 +288,12 @@ func makeNode(
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
+	// Determine whether we should do block sync. This must happen after the handshake, since the
+	// app may modify the validator set, specifying ourself as the only validator.
+	blockSync := !onlyValidatorIsUs(state, pubKey)
+
 	csReactor, csState, err := createConsensusReactor(ctx,
-		cfg, state, blockExec, blockStore, mp, evPool,
+		cfg, stateStore, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, logger,
 	)
@@ -308,7 +305,7 @@ func makeNode(
 	// doing a state sync first.
 	bcReactor, err := blocksync.NewReactor(ctx,
 		logger.With("module", "blockchain"),
-		state.Copy(),
+		stateStore,
 		blockExec,
 		blockStore,
 		csReactor,
@@ -728,10 +725,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 // loadStateFromDBOrGenesisDocProvider attempts to load the state from the
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
-func loadStateFromDBOrGenesisDocProvider(
-	stateStore sm.Store,
-	genDoc *types.GenesisDoc,
-) (sm.State, error) {
+func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.GenesisDoc) (sm.State, error) {
 
 	// 1. Attempt to load state form the database
 	state, err := stateStore.Load()
@@ -743,6 +737,12 @@ func loadStateFromDBOrGenesisDocProvider(
 		// 2. If it's not there, derive it from the genesis doc
 		state, err = sm.MakeGenesisState(genDoc)
 		if err != nil {
+			return sm.State{}, err
+		}
+
+		// 3. save the gensis document to the state store so
+		// its fetchable by other callers.
+		if err := stateStore.Save(state); err != nil {
 			return sm.State{}, err
 		}
 	}

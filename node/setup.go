@@ -172,7 +172,7 @@ func createMempoolReactor(
 	ctx context.Context,
 	cfg *config.Config,
 	proxyApp abciclient.Client,
-	state sm.State,
+	store sm.Store,
 	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -184,10 +184,9 @@ func createMempoolReactor(
 		logger,
 		cfg.Mempool,
 		proxyApp,
-		state.LastBlockHeight,
 		mempool.WithMetrics(memplMetrics),
-		mempool.WithPreCheck(sm.TxPreCheck(state)),
-		mempool.WithPostCheck(sm.TxPostCheck(state)),
+		mempool.WithPreCheck(sm.TxPreCheckFromStore(store)),
+		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
 	)
 
 	reactor, err := mempool.NewReactor(
@@ -214,7 +213,7 @@ func createEvidenceReactor(
 	ctx context.Context,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-	stateDB dbm.DB,
+	store sm.Store,
 	blockStore *store.BlockStore,
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
@@ -229,7 +228,7 @@ func createEvidenceReactor(
 
 	logger = logger.With("module", "evidence")
 
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore, metrics)
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
@@ -253,7 +252,7 @@ func createEvidenceReactor(
 func createConsensusReactor(
 	ctx context.Context,
 	cfg *config.Config,
-	state sm.State,
+	store sm.Store,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mp mempool.Mempool,
@@ -268,16 +267,19 @@ func createConsensusReactor(
 ) (*consensus.Reactor, *consensus.State, error) {
 	logger = logger.With("module", "consensus")
 
-	consensusState := consensus.NewState(ctx,
+	consensusState, err := consensus.NewState(ctx,
 		logger,
 		cfg.Consensus,
-		state.Copy(),
+		store,
 		blockExec,
 		blockStore,
 		mp,
 		evidencePool,
 		consensus.StateMetrics(csMetrics),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if privValidator != nil && cfg.Mode == config.ModeValidator {
 		consensusState.SetPrivValidator(ctx, privValidator)
