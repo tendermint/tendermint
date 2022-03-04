@@ -427,6 +427,9 @@ func (h *Handshaker) ReplayBlocks(
 			if err != nil {
 				return nil, err
 			}
+			if err := mockApp.Start(ctx); err != nil {
+				return nil, err
+			}
 
 			h.logger.Info("Replay last block using mock app")
 			state, err = h.replayBlock(ctx, state, storeBlockHeight, mockApp)

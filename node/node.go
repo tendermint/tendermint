@@ -100,7 +100,7 @@ func newDefaultNode(
 		return nil, err
 	}
 
-	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	appClient, _ := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 
 	return makeNode(
 		ctx,

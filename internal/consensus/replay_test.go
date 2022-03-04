@@ -804,7 +804,7 @@ func testHandshakeReplay(
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
-	clientCreator2 := abciclient.NewLocalCreator(kvstoreApp)
+	clientCreator2 := abciclient.NewLocalClient(logger, kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
@@ -831,7 +831,8 @@ func testHandshakeReplay(
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
 	proxyApp := proxy.New(clientCreator2, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
-
+	require.True(t, proxyApp.IsRunning())
+	require.NotNil(t, proxyApp)
 	t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
 	err = handshaker.Handshake(ctx, proxyApp)
@@ -958,9 +959,9 @@ func buildTMStateFromChain(
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
 	defer kvstoreApp.Close()
-	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
+	client := abciclient.NewLocalClient(logger, kvstoreApp)
 
-	proxyApp := proxy.New(clientCreator, logger, proxy.NopMetrics())
+	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
@@ -1031,8 +1032,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x03
 	{
 		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
-		clientCreator := abciclient.NewLocalCreator(app)
-		proxyApp := proxy.New(clientCreator, logger, proxy.NopMetrics())
+		client := abciclient.NewLocalClient(logger, app)
+		proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 		err := proxyApp.Start(ctx)
 		require.NoError(t, err)
 		t.Cleanup(func() { cancel(); proxyApp.Wait() })
@@ -1051,8 +1052,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- RANDOM HASH
 	{
 		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
-		clientCreator := abciclient.NewLocalCreator(app)
-		proxyApp := proxy.New(clientCreator, logger, proxy.NopMetrics())
+		client := abciclient.NewLocalClient(logger, app)
+		proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 		err := proxyApp.Start(ctx)
 		require.NoError(t, err)
 		t.Cleanup(func() { cancel(); proxyApp.Wait() })
@@ -1282,12 +1283,13 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewNopLogger()
 	votePower := 10 + int64(rand.Uint32())
 	val, _, err := factory.Validator(ctx, votePower)
 	require.NoError(t, err)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
-	clientCreator := abciclient.NewLocalCreator(app)
+	client := abciclient.NewLocalClient(logger, app)
 
 	cfg, err := ResetConfig(t.TempDir(), "handshake_test_")
 	require.NoError(t, err)
@@ -1306,9 +1308,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 
-	logger := log.TestingLogger()
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
-	proxyApp := proxy.New(clientCreator, logger, proxy.NopMetrics())
+	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
 	require.NoError(t, handshaker.Handshake(ctx, proxyApp), "error on abci handshake")

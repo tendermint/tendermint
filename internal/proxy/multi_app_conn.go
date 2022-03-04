@@ -11,32 +11,27 @@ import (
 )
 
 // New creates a proxy application interface.
-func New(clientCreator abciclient.Creator, logger log.Logger, metrics *Metrics) abciclient.Client {
-	multiAppConn := &proxyConn{
-		logger:        logger,
-		metrics:       metrics,
-		clientCreator: clientCreator,
+func New(client abciclient.Client, logger log.Logger, metrics *Metrics) abciclient.Client {
+	conn := &proxyClient{
+		logger:  logger,
+		metrics: metrics,
+		client:  client,
 	}
-	multiAppConn.BaseService = *service.NewBaseService(logger, "multiAppConn", multiAppConn)
-	return multiAppConn
+	conn.BaseService = *service.NewBaseService(logger, "proxyClient", conn)
+	return conn
 }
 
-// proxyConn implements provides the application connection.
-type proxyConn struct {
+// proxyClient implements provides the application connection.
+type proxyClient struct {
 	service.BaseService
-	abciclient.Client
-
 	logger log.Logger
 
+	client  abciclient.Client
 	metrics *Metrics
-
-	clientCreator abciclient.Creator
 }
 
-func (app *proxyConn) OnStop()                         { tryCallStop(app.Client) }
-func (app *proxyConn) IsRunning() bool                 { return app.Client.IsRunning() }
-func (app *proxyConn) Start(ctx context.Context) error { return app.BaseService.Start(ctx) }
-func (app *proxyConn) Wait()                           { app.BaseService.Wait() }
+func (app *proxyClient) OnStop()      { tryCallStop(app.client) }
+func (app *proxyClient) Error() error { return app.client.Error() }
 
 func tryCallStop(client abciclient.Client) {
 	switch c := client.(type) {
@@ -44,37 +39,28 @@ func tryCallStop(client abciclient.Client) {
 		return
 	case interface{ Stop() }:
 		c.Stop()
-	case *proxyClient:
-		tryCallStop(c.Client)
 	}
 }
 
-func (app *proxyConn) OnStart(ctx context.Context) error {
+func (app *proxyClient) OnStart(ctx context.Context) error {
 	var err error
 	defer func() {
 		if err != nil {
-			tryCallStop(app.Client)
+			tryCallStop(app.client)
 		}
 	}()
 
-	var client abciclient.Client
-	client, err = app.clientCreator(app.logger)
-	if err != nil {
-		return err
-	}
-
-	app.Client = newProxyClient(client, app.metrics)
 	// Kill Tendermint if the ABCI application crashes.
 	go func() {
-		if !app.Client.IsRunning() {
+		if !app.client.IsRunning() {
 			return
 		}
-		app.Client.Wait()
+		app.client.Wait()
 		if ctx.Err() != nil {
 			return
 		}
 
-		if err := app.Client.Error(); err != nil {
+		if err := app.client.Error(); err != nil {
 			app.logger.Error("client connection terminated. Did the application crash? Please restart tendermint",
 				"err", err)
 			if killErr := kill(); killErr != nil {
@@ -85,7 +71,7 @@ func (app *proxyConn) OnStart(ctx context.Context) error {
 
 	}()
 
-	return client.Start(ctx)
+	return app.client.Start(ctx)
 }
 
 func kill() error {

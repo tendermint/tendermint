@@ -67,8 +67,8 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 	}
 
 	blockStore := store.NewBlockStore(blockStoreDB)
-
-	proxyApp := proxy.New(abciclient.NewLocalCreator(app), logger.With("module", "proxy"), proxy.NopMetrics())
+	proxyLogger := logger.With("module", "proxy")
+	proxyApp := proxy.New(abciclient.NewLocalClient(logger, app), proxyLogger, proxy.NopMetrics())
 	if err := proxyApp.Start(ctx); err != nil {
 		t.Fatal(fmt.Errorf("failed to start proxy app connections: %w", err))
 	}
