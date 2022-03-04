@@ -133,8 +133,8 @@ More details on managing state across connections can be found in the section on
 ## Next-block execution vs. same-block execution
 [&uparrow; Back to Outline](#outline)
 
-With ABCI++ predecessor, ABCI, the only moment when the Application had access to a
-block was when it was decided. This led to a block execution model, called _next-block
+In the original ABCI protocol, the only moment when the Application had access to a
+block was after it was decided. This led to a block execution model, called _next-block
 execution_, where some fields hashed in a block header refer to the execution of the
 previous block, namely:
 
