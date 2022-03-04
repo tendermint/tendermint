@@ -166,33 +166,25 @@ VARIABLES
   evidence, \* the messages that were used by the correct processes to make transitions
   \* @type: ACTION;
   action,       \* we use this variable to see which action was taken
-  \* @type: PROCESS -> Set(PROPMESSAGE);
-  receivedTimelyProposal, \* used to keep track when a process receives a timely PROPOSAL message
   \* @type: <<ROUND,PROCESS>> -> TIME;
-  inspectedProposal \* used to keep track when a process tries to receive a message
+  proposalReceptionTime \* used to keep track when a process receives a message
   
 \* Action is excluded from the tuple, because it always changes
 bookkeepingVars == 
   <<msgsPropose, msgsPrevote, msgsPrecommit, 
-  evidence, (*action,*) receivedTimelyProposal, 
-  inspectedProposal>>
+  evidence, (*action,*) proposalReceptionTime>>
 
 \* Invariant support
 VARIABLES
-  \* @type: ROUND -> TIME;
+  \* @type: <<ROUND, PROCESS>> -> TIME;
   beginRound, \* the minimum of the local clocks at the time any process entered a new round
   \* @type: PROCESS -> TIME;
   endConsensus, \* the local time when a decision is made
   \* @type: ROUND -> TIME;
-  lastBeginRound, \* the maximum of the local clocks in each round
-  \* @type: ROUND -> TIME;
-  proposalTime, \* the real time when a proposer proposes in a round
-  \* @type: ROUND -> TIME;
-  proposalReceivedTime \* the real time when a correct process first receives a proposal message in a round
+  lastBeginRound \* the maximum of the local clocks in each round
 
 invariantVars == 
-  <<beginRound, endConsensus, lastBeginRound,
-  proposalTime, proposalReceivedTime>>
+  <<beginRound, endConsensus, lastBeginRound>>
 
 (* to see a type invariant, check TendermintAccInv3 *)  
 
@@ -294,15 +286,14 @@ Init ==
     /\ msgsPropose \in [Rounds -> SUBSET AllFaultyProposals]
     /\ msgsPrevote \in [Rounds -> SUBSET AllFaultyPrevotes]
     /\ msgsPrecommit \in [Rounds -> SUBSET AllFaultyPrecommits]
-    /\ receivedTimelyProposal = [p \in Corr |-> {}]
-    /\ inspectedProposal = [r \in Rounds, p \in Corr |-> NilTimestamp]
+    /\ proposalReceptionTime = [r \in Rounds, p \in Corr |-> NilTimestamp]
     /\ BenignRoundsInMessages(msgsPropose)
     /\ BenignRoundsInMessages(msgsPrevote)
     /\ BenignRoundsInMessages(msgsPrecommit)
     /\ evidence = {}
-    /\ action' = "Init"
+    /\ action = "Init"
     /\ beginRound = 
-      [r \in Rounds |-> 
+      [r \in Rounds, c \in Corr |-> 
         IF r = 0
         THEN Min({localClock[p] : p \in Corr})
         ELSE MaxTimestamp
@@ -314,8 +305,6 @@ Init ==
         THEN Max({localClock[p] : p \in Corr})
         ELSE NilTimestamp
       ]
-    /\ proposalTime = [r \in Rounds |-> NilTimestamp]
-    /\ proposalReceivedTime = [r \in Rounds |-> NilTimestamp]
 
 (************************ MESSAGE PASSING ********************************)
 \* @type: (PROCESS, ROUND, PROPOSAL, ROUND) => Bool;
@@ -391,7 +380,7 @@ StartRound(p, r) ==
    /\ round' = [round EXCEPT ![p] = r]
    /\ step' = [step EXCEPT ![p] = "PROPOSE"]
    \* We only need to update (last)beginRound[r] once a process enters round `r`
-   /\ beginRound' = [beginRound EXCEPT ![r] = Min2(@, localClock[p])]
+   /\ beginRound' = [beginRound EXCEPT ![r,p] = Min2(@, localClock[p])]
    /\ lastBeginRound' = [lastBeginRound EXCEPT ![r] = Max2(@, localClock[p])]
 
 \* lines 14-19, a proposal may be sent later
@@ -403,7 +392,6 @@ InsertProposal(p) ==
     \* if the proposer is sending a proposal, then there are no other proposals
     \* by the correct processes for the same round
   /\ \A m \in msgsPropose[r]: m.src /= p
-  \* /\ localClock[p] > 
   /\ \E v \in ValidValues: 
       LET proposal == 
         IF validValue[p] /= NilProposal 
@@ -411,14 +399,11 @@ InsertProposal(p) ==
         ELSE Proposal(v, localClock[p], r)
       IN               
       /\ BroadcastProposal(p, r, proposal, validRound[p])
-      /\ proposalTime' = [proposalTime EXCEPT ![r] = realTime]
   /\ UNCHANGED <<temporalVars, coreVars>>
   /\ UNCHANGED 
     <<(*msgsPropose,*) msgsPrevote, msgsPrecommit, 
-    evidence, receivedTimelyProposal, inspectedProposal>>
-  /\ UNCHANGED
-    <<beginRound, endConsensus, lastBeginRound,
-    (*proposalTime,*) proposalReceivedTime>>
+    evidence, proposalReceptionTime>>
+  /\ UNCHANGED invariantVars
   /\ action' = "InsertProposal"
   
 \* a new action used to filter messages that are not on time
@@ -439,30 +424,13 @@ ReceiveProposal(p) ==
           ] 
        IN
       /\ msg \in msgsPropose[round[p]] 
-      /\ inspectedProposal[r,p] = NilTimestamp
-      /\ msg \notin receivedTimelyProposal[p]
-      /\ inspectedProposal' = [inspectedProposal EXCEPT ![r,p] = localClock[p]]
-      /\ LET 
-          isTimely == IsTimely(localClock[p], t)
-         IN
-          \/ /\ isTimely
-             /\ receivedTimelyProposal' = [receivedTimelyProposal EXCEPT ![p] = @ \union {msg}]
-             /\ LET
-                  isNilTimestamp == proposalReceivedTime[r] = NilTimestamp
-                IN
-                  \/ /\ isNilTimestamp
-                     /\ proposalReceivedTime' = [proposalReceivedTime EXCEPT ![r] = realTime]
-                  \/ /\ ~isNilTimestamp
-                     /\ UNCHANGED proposalReceivedTime
-          \/ /\ ~isTimely
-             /\ UNCHANGED <<receivedTimelyProposal, proposalReceivedTime>>
+      /\ proposalReceptionTime[r,p] = NilTimestamp
+      /\ proposalReceptionTime' = [proposalReceptionTime EXCEPT ![r,p] = localClock[p]]
       /\ UNCHANGED <<temporalVars, coreVars>>
       /\ UNCHANGED
         <<msgsPropose, msgsPrevote, msgsPrecommit, 
-        evidence(*, receivedTimelyProposal, inspectedProposal*)>>
-      /\ UNCHANGED 
-        <<beginRound, endConsensus, lastBeginRound,
-        proposalTime(*, proposalReceivedTime*)>>
+        evidence(*, proposalReceptionTime*)>>
+      /\ UNCHANGED invariantVars
       /\ action' = "ReceiveProposal"
       
 \* lines 22-27
@@ -487,7 +455,9 @@ UponProposalInPropose(p) ==
           validRound |-> NilRound
         ] 
        IN
-      /\ msg \in receivedTimelyProposal[p] \* updated line 22
+      \* Timeliness is checked against the process time, as was
+      \* recorded in proposalReceptionTime, not as it is now.
+      /\ IsTimely( proposalReceptionTime[r, p], t) \* updated line 22
       /\ evidence' = {msg} \union evidence
     /\ LET mid == (* line 23 *)
          IF IsValid(prop) /\ (lockedRound[p] = NilRound \/ lockedValue[p] = v)
@@ -502,7 +472,7 @@ UponProposalInPropose(p) ==
       lockedRound, validValue, validRound>>
     /\ UNCHANGED 
       <<msgsPropose, (*msgsPrevote,*) msgsPrecommit, 
-      (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+      (*evidence,*) proposalReceptionTime>>
     /\ action' = "UponProposalInPropose"
 
 \* lines 28-33        
@@ -547,7 +517,7 @@ UponProposalInProposeAndPrevote(p) ==
       lockedRound, validValue, validRound>>
     /\ UNCHANGED 
       <<msgsPropose, (*msgsPrevote,*) msgsPrecommit, 
-      (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+      (*evidence,*) proposalReceptionTime>>
     /\ action' = "UponProposalInProposeAndPrevote"
                      
 \* lines 34-35 + lines 61-64 (onTimeoutPrevote)
@@ -568,7 +538,7 @@ UponQuorumOfPrevotesAny(p) ==
         lockedRound, validValue, validRound>>
       /\ UNCHANGED 
         <<msgsPropose, msgsPrevote, (*msgsPrecommit, *)
-        (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+        (*evidence,*) proposalReceptionTime>>
       /\ action' = "UponQuorumOfPrevotesAny"
                      
 \* lines 36-46
@@ -616,7 +586,7 @@ UponProposalInPrevoteOrCommitAndPrevote(p) ==
       lockedRound, validValue, validRound*)>>
     /\ UNCHANGED 
       <<msgsPropose, msgsPrevote, (*msgsPrecommit, *)
-      (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+      (*evidence,*) proposalReceptionTime>>
     /\ action' = "UponProposalInPrevoteOrCommitAndPrevote"
 
 \* lines 47-48 + 65-67 (onTimeoutPrecommit)
@@ -632,14 +602,13 @@ UponQuorumOfPrecommitsAny(p) ==
       /\ StartRound(p, round[p] + 1)
       /\ UNCHANGED temporalVars
       /\ UNCHANGED
-        <<(*beginRound,*) endConsensus, (*lastBeginRound,*)
-        proposalTime, proposalReceivedTime>>
+        <<(*beginRound,*) endConsensus(*, lastBeginRound*)>>
       /\ UNCHANGED
         <<(*round, step,*) decision, lockedValue, 
         lockedRound, validValue, validRound>>
       /\ UNCHANGED 
         <<msgsPropose, msgsPrevote, msgsPrecommit,
-        (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+        (*evidence,*) proposalReceptionTime>>
       /\ action' = "UponQuorumOfPrecommitsAny"
                      
 \* lines 49-54        
@@ -664,7 +633,7 @@ UponProposalInPrecommitNoDecision(p) ==
         ] 
        IN 
      /\ msg \in msgsPropose[r] \* line 49
-     /\ inspectedProposal[r,p] /= NilTimestamp \* Keep?
+     /\ proposalReceptionTime[r,p] /= NilTimestamp \* Keep?
      /\ LET PV == { m \in msgsPrecommit[r]: m.id = Id(prop) } IN
        /\ Cardinality(PV) >= THRESHOLD2 \* line 49
        /\ evidence' = PV \union {msg} \union evidence
@@ -679,10 +648,9 @@ UponProposalInPrecommitNoDecision(p) ==
          lockedRound, validValue, validRound>>
        /\ UNCHANGED 
          <<msgsPropose, msgsPrevote, msgsPrecommit,
-         (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+         (*evidence,*) proposalReceptionTime>>
        /\ UNCHANGED
-         <<beginRound, (*endConsensus,*) lastBeginRound,
-         proposalTime, proposalReceivedTime>>
+         <<beginRound, (*endConsensus,*) lastBeginRound>>
        /\ action' = "UponProposalInPrecommitNoDecision"
                                                           
 \* the actions below are not essential for safety, but added for completeness
@@ -700,7 +668,7 @@ OnTimeoutPropose(p) ==
     lockedRound, validValue, validRound>>
   /\ UNCHANGED 
     <<msgsPropose, (*msgsPrevote,*) msgsPrecommit,
-    evidence, receivedTimelyProposal, inspectedProposal>>
+    evidence, proposalReceptionTime>>
   /\ action' = "OnTimeoutPropose"
 
 \* lines 44-46
@@ -718,7 +686,7 @@ OnQuorumOfNilPrevotes(p) ==
       lockedRound, validValue, validRound>>
     /\ UNCHANGED 
       <<msgsPropose, msgsPrevote, (*msgsPrecommit,*)
-      (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+      (*evidence,*) proposalReceptionTime>>
     /\ action' = "OnQuorumOfNilPrevotes"
 
 \* lines 55-56
@@ -733,14 +701,13 @@ OnRoundCatchup(p) ==
         /\ StartRound(p, r)
         /\ UNCHANGED temporalVars
         /\ UNCHANGED
-          <<(*beginRound,*) endConsensus, (*lastBeginRound,*)
-          proposalTime, proposalReceivedTime>>
+          <<(*beginRound,*) endConsensus(*, lastBeginRound*)>>
         /\ UNCHANGED
           <<(*round, step,*) decision, lockedValue, 
           lockedRound, validValue, validRound>>
         /\ UNCHANGED 
           <<msgsPropose, msgsPrevote, msgsPrecommit,
-          (*evidence,*) receivedTimelyProposal, inspectedProposal>>
+          (*evidence,*) proposalReceptionTime>>
         /\ action' = "OnRoundCatchup"
 
 
@@ -810,6 +777,13 @@ AgreementOnValue ==
             /\ decision[p] = Decision(prop, r1)
             /\ decision[q] = Decision(prop, r2)
 
+DisagreementOnValue ==
+  \E p, q \in Corr:
+    \E p1 \in ValidProposals, p2 \in ValidProposals, r1 \in Rounds, r2 \in Rounds:
+    /\ p1 /= p2
+    /\ decision[p] = Decision(p1, r1)
+    /\ decision[q] = Decision(p2, r2) 
+
 \* [PBTS-CONSENSUS-TIME-VALID.0]
 ConsensusTimeValid ==
     \A p \in Corr: 
@@ -819,7 +793,7 @@ ConsensusTimeValid ==
         \* then 
         \* TODO: consider tighter bound where beginRound[pr] is replaced
         \* w/ MedianOfRound[pr]
-        => (/\ beginRound[pr] - Precision - Delay <= t 
+        => (/\ beginRound[pr,p] - Precision - Delay <= t 
             /\ t <= endConsensus[p] + Precision)
 
 \* [PBTS-CONSENSUS-SAFE-VALID-CORR-PROP.0]
@@ -831,53 +805,28 @@ ConsensusSafeValidCorrProp ==
         (/\ Proposer[pr] \in Corr
         /\ decision[p] = Decision(Proposal(v,t,pr), dr))
           \* then t is between the minimal and maximal initial local time
-          => /\ beginRound[pr] <= t 
+          => /\ beginRound[pr, p] <= t 
              /\ t <= lastBeginRound[pr]
 
 \* [PBTS-CONSENSUS-REALTIME-VALID-CORR.0]
-ConsensusRealTimeValidCorr ==
-  \A r \in Rounds :
-    \E p \in Corr, v \in ValidValues, t \in Timestamps, pr \in Rounds: 
-     (/\ decision[p] = Decision(Proposal(v,t,pr), r) 
-      /\ proposalTime[r] /= NilTimestamp)
-        => (/\ proposalTime[r] - Precision <= t
-            /\ t <= proposalTime[r] + Precision)
-
+\* ConsensusRealTimeValidCorr == TODO?
 \* [PBTS-CONSENSUS-REALTIME-VALID.0]
-ConsensusRealTimeValid ==
-    \A t \in Timestamps, r \in Rounds :
-       (\E p \in Corr, v \in ValidValues, pr \in Rounds : 
-        decision[p] = Decision(Proposal(v,t,pr), r)) 
-        => /\ proposalReceivedTime[r] - Precision < t
-           /\ t < proposalReceivedTime[r] + Precision + Delay
+\* ConsensusRealTimeValid == TODO?
 
 DecideAfterMin == TRUE
   \* if decide => time > min
 
 \* [PBTS-MSG-FAIR.0]
-BoundedDelay ==
-    \A r \in Rounds : 
-        (/\ proposalTime[r] /= NilTimestamp
-         /\ proposalTime[r] + Delay < realTime)
-            => \A p \in Corr: inspectedProposal[r,p] /= NilTimestamp
+\* BoundedDelay == TODO?
 
 \* [PBTS-CONSENSUS-TIME-LIVE.0]
-ConsensusTimeLive ==
-    \A r \in Rounds, p \in Corr : 
-       (/\ proposalTime[r] /= NilTimestamp
-        /\ proposalTime[r] + Delay < realTime 
-        /\ Proposer[r] \in Corr
-        /\ round[p] <= r)
-            => \E msg \in RoundProposals(r) : msg \in receivedTimelyProposal[p]
+\* ConsensusTimeLive == TODO?
 
 \* a conjunction of all invariants
 Inv ==
     /\ AgreementOnValue 
     /\ ConsensusTimeValid
     /\ ConsensusSafeValidCorrProp
-    \* /\ ConsensusRealTimeValid
-    \* /\ ConsensusRealTimeValidCorr
-    \* /\ BoundedDelay
 
 \* Liveness ==
 \*     ConsensusTimeLive    

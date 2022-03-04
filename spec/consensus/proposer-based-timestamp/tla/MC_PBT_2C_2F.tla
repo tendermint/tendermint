@@ -1,4 +1,4 @@
------------------------------ MODULE MC_PBT -------------------------------
+----------------------------- MODULE MC_PBT_2C_2F -------------------------------
 CONSTANT 
   \* @type: ROUND -> PROCESS;
   Proposer
@@ -38,24 +38,17 @@ VARIABLES
   evidence, \* the messages that were used by the correct processes to make transitions
   \* @type: ACTION;
   action,       \* we use this variable to see which action was taken
-  \* @type: PROCESS -> Set(PROPMESSAGE);
-  receivedTimelyProposal, \* used to keep track when a process receives a timely VALUE message
   \* @type: <<ROUND,PROCESS>> -> TIME;
-  inspectedProposal \* used to keep track when a process tries to receive a message
+  proposalReceptionTime \* used to keep track when a process receives a message
   
 \* Invariant support
 VARIABLES
-  \* @type: ROUND -> TIME;
+  \* @type: <<ROUND, PROCESS>> -> TIME;
   beginRound, \* the minimum of the local clocks at the time any process entered a new round
   \* @type: PROCESS -> TIME;
   endConsensus, \* the local time when a decision is made
   \* @type: ROUND -> TIME;
-  lastBeginRound, \* the maximum of the local clocks in each round
-  \* @type: ROUND -> TIME;
-  proposalTime, \* the real time when a proposer proposes in a round
-  \* @type: ROUND -> TIME;
-  proposalReceivedTime \* the real time when a correct process first receives a proposal message in a round
-
+  lastBeginRound \* the maximum of the local clocks in each round
 
 INSTANCE TendermintPBT_002_draft WITH
   Corr <- {"c1", "c2"},
@@ -64,8 +57,8 @@ INSTANCE TendermintPBT_002_draft WITH
   T <- 1,
   ValidValues <- { "v0", "v1" },
   InvalidValues <- {"v2"},
-  MaxRound <- 5,
-  MaxTimestamp <- 10,
+  MaxRound <- 3,
+  MaxTimestamp <- 7,
   MinTimestamp <- 2,
   Delay <- 2,        
   Precision <- 2
