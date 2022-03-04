@@ -194,7 +194,7 @@ that the block execution time upon `PrepareProposal` fits well in the propose
 timeout interval.
 
 Currently, the Application can override the value of _TimeoutPropose_ via the
-`config.toml` file. In the future, `ConsensusParams` may have an extra field
+`config.toml` file. In the future, `ConsensusParams` will have an extra field
 with the current _TimeoutPropose_ value so that the Application can adapt it at every height.
 
 ## Determinism
