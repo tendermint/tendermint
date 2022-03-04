@@ -79,7 +79,7 @@ parameters in `ResponseFinalizeBlock`, are included in the header of the next bl
 
 ### Mempool methods
 
-* [**CheckTx:**](./abci++_methods_002_draft.md#checktx) This method allows the Application to validate transactions against its current state, e.g., checking signatures and account balances. If a transaction passes the validation, then tendermint adds it to its local mempool, discarding it otherwise. Tendermint calls it when it receives a new transaction either coming from an external user or another node.
+* [**CheckTx:**](./abci++_methods_002_draft.md#checktx) This method allows the Application to validate transactions against its current state, e.g., checking signatures and account balances. If a transaction passes the validation, then tendermint adds it to its local mempool, discarding it otherwise. Tendermint calls it when it receives a new transaction either coming from an external user or another node. Furthermore, Tendermint can be configured to re-call `CheckTx` on any decided transaction (after `FinalizeBlock`).
 
 ### Info methods
 
@@ -106,9 +106,9 @@ the `LoadSnapshotChunk` method.
 
 As the new node receives "chunks" it will apply them sequentially to the local
 application with `ApplySnapshotChunk`. When all chunks have been applied, the
-Application's `AppHash` is retrieved via an `Info` query. The `AppHash` is then
-compared to the blockchain's `AppHash` which is verified via
-[light client verification](../light-client/verification/README.md).
+Application's `AppHash` is retrieved via an `Info` query. 
+To ensure that the sync proceeded correctly, Tendermint compares the local Application's `AppHash` to the `AppHash` stored on the blockchain (verified via
+[light client verification](../light-client/verification/README.md)).
 
 In summary:
 
