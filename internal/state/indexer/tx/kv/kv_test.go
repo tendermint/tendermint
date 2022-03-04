@@ -323,9 +323,9 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Index:  0,
 		Tx:     tx,
 		Result: abci.ExecTxResult{
-			Data:     []byte{0},
-			Code:     abci.CodeTypeOK,
-			Log:      "",
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
 			Events: events,
 		},
 	}
@@ -347,9 +347,9 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 			Index:  txIndex,
 			Tx:     tx,
 			Result: abci.ExecTxResult{
-				Data:     []byte{0},
-				Code:     abci.CodeTypeOK,
-				Log:      "",
+				Data:   []byte{0},
+				Code:   abci.CodeTypeOK,
+				Log:    "",
 				Events: []abci.Event{},
 			},
 		}

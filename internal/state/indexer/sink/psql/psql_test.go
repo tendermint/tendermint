@@ -266,9 +266,9 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Index:  0,
 		Tx:     types.Tx("HELLO WORLD"),
 		Result: abci.ExecTxResult{
-			Data:     []byte{0},
-			Code:     abci.CodeTypeOK,
-			Log:      "",
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
 			Events: events,
 		},
 	}
