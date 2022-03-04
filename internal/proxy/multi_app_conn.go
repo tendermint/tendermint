@@ -39,10 +39,9 @@ func (app *proxyConn) Start(ctx context.Context) error { return app.BaseService.
 func (app *proxyConn) Wait()                           { app.BaseService.Wait() }
 
 func tryCallStop(client abciclient.Client) {
-	if client == nil {
-		return
-	}
 	switch c := client.(type) {
+	case nil:
+		return
 	case interface{ Stop() }:
 		c.Stop()
 	case *proxyClient:
