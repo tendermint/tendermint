@@ -745,7 +745,9 @@ func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.Gene
 			return sm.State{}, err
 		}
 
-		stateStore.Save(state)
+		if err := stateStore.Save(state); err != nil {
+			return sm.State{}, err
+		}
 	}
 
 	return state, nil
