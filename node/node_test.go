@@ -756,6 +756,7 @@ func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 }
 
 func TestNodeAppVersionNotMatched(t *testing.T) {
+	// Construct the node params
 	cfg, err := config.ResetTestRoot(t.TempDir(), "node_node_test")
 	require.NoError(t, err)
 
@@ -764,7 +765,6 @@ func TestNodeAppVersionNotMatched(t *testing.T) {
 	ctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
-	// Construct the node params
 	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	require.NoError(t, err)
 
@@ -783,7 +783,7 @@ func TestNodeAppVersionNotMatched(t *testing.T) {
 		return genesisDoc, nil
 	}
 
-	// Create node
+	// Create node, expecting an error
 	_, err = makeNode(
 		ctx,
 		cfg,
