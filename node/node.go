@@ -143,11 +143,8 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	err = genDoc.ValidateAndComplete()
-	if err != nil {
-		return nil, combineCloseError(
-			fmt.Errorf("error in genesis doc: %w", err),
-			makeCloser(closers))
+	if err = genDoc.ValidateAndComplete(); err != nil {
+		return nil, combineCloseError(fmt.Errorf("error in genesis doc: %w", err), makeCloser(closers))
 	}
 
 	state, err := loadStateFromDBOrGenesisDocProvider(stateStore, genDoc)
@@ -241,10 +238,6 @@ func makeNode(
 		}
 	}
 
-	// Determine whether we should do block sync. This must happen after the handshake, since the
-	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := !onlyValidatorIsUs(state, pubKey)
-
 	logNodeStartupInfo(state, pubKey, logger, cfg.Mode)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
@@ -294,6 +287,10 @@ func makeNode(
 		blockStore,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
+
+	// Determine whether we should do block sync. This must happen after the handshake, since the
+	// app may modify the validator set, specifying ourself as the only validator.
+	blockSync := !onlyValidatorIsUs(state, pubKey)
 
 	csReactor, csState, err := createConsensusReactor(ctx,
 		cfg, stateStore, blockExec, blockStore, mp, evPool,
@@ -745,6 +742,8 @@ func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.Gene
 			return sm.State{}, err
 		}
 
+		// 3. save the gensis document to the state store so
+		// its fetchable by other callers.
 		if err := stateStore.Save(state); err != nil {
 			return sm.State{}, err
 		}
