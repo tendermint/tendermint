@@ -95,7 +95,7 @@ func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoo
 		appConnMem.Wait()
 	})
 
-	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
+	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, options...)
 }
 
 func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {

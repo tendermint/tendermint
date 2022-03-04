@@ -50,13 +50,6 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 	return b.pubsub.NumClientSubscriptions(clientID)
 }
 
-// Deprecated: Use SubscribeWithArgs instead.
-func (b *EventBus) Subscribe(ctx context.Context,
-	clientID string, query *tmquery.Query, capacities ...int) (Subscription, error) {
-
-	return b.pubsub.Subscribe(ctx, clientID, query, capacities...)
-}
-
 func (b *EventBus) SubscribeWithArgs(ctx context.Context, args tmpubsub.SubscribeArgs) (Subscription, error) {
 	return b.pubsub.SubscribeWithArgs(ctx, args)
 }

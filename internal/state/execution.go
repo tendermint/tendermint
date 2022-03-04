@@ -367,8 +367,8 @@ func (blockExec *BlockExecutor) Commit(
 		block.Height,
 		block.Txs,
 		txResults,
-		TxPreCheck(state),
-		TxPostCheck(state),
+		TxPreCheckForState(state),
+		TxPostCheckForState(state),
 	)
 
 	return res.Data, res.RetainHeight, err

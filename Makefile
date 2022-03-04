@@ -92,6 +92,12 @@ proto-gen:
 	@$(DOCKER_PROTO_BUILDER) buf generate --template=./buf.gen.yaml --config ./buf.yaml
 .PHONY: proto-gen
 
+# TODO: Should be removed when work on ABCI++ is complete.
+# For more information, see https://github.com/tendermint/tendermint/issues/8066
+abci-proto-gen:
+	./scripts/abci-gen.sh
+.PHONY: abci-proto-gen
+
 proto-lint:
 	@$(DOCKER_PROTO_BUILDER) buf lint --error-format=json --config ./buf.yaml
 .PHONY: proto-lint
@@ -222,9 +228,7 @@ build-docs:
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
-	done < versions ; \
-	mkdir -p ~/output/master ; \
-	cp -r .vuepress/dist/* ~/output/master/
+	done < versions ;
 .PHONY: build-docs
 
 ###############################################################################
@@ -331,3 +335,4 @@ split-test-packages:$(BUILDDIR)/packages.txt
 	split -d -n l/$(NUM_SPLIT) $< $<.
 test-group-%:split-test-packages
 	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=5m -race -coverprofile=$(BUILDDIR)/$*.profile.out
+

@@ -57,12 +57,6 @@ type consensusState interface {
 	GetRoundStateSimpleJSON() ([]byte, error)
 }
 
-type transport interface {
-	Listeners() []string
-	IsListening() bool
-	NodeInfo() types.NodeInfo
-}
-
 type peerManager interface {
 	Peers() []types.NodeID
 	Addresses(types.NodeID) []p2p.NodeAddress
@@ -84,8 +78,9 @@ type Environment struct {
 	ConsensusReactor *consensus.Reactor
 	BlockSyncReactor *blocksync.Reactor
 
-	// Legacy p2p stack
-	P2PTransport transport
+	IsListening bool
+	Listeners   []string
+	NodeInfo    types.NodeInfo
 
 	// interfaces for new p2p interfaces
 	PeerManager peerManager
@@ -224,6 +219,10 @@ func (env *Environment) latestUncommittedHeight() int64 {
 func (env *Environment) StartService(ctx context.Context, conf *config.Config) ([]net.Listener, error) {
 	if err := env.InitGenesisChunks(); err != nil {
 		return nil, err
+	}
+
+	env.Listeners = []string{
+		fmt.Sprintf("Listener(@%v)", conf.P2P.ExternalAddress),
 	}
 
 	listenAddrs := strings.SplitAndTrimEmpty(conf.RPC.ListenAddress, ",", " ")

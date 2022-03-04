@@ -292,7 +292,6 @@ func TestCreateProposalBlock(t *testing.T) {
 		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
-		state.LastBlockHeight,
 	)
 
 	// Make EvidencePool
@@ -392,7 +391,6 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
-		state.LastBlockHeight,
 	)
 
 	// fill the mempool with one txs just below the maximum size
@@ -457,7 +455,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		logger.With("module", "mempool"),
 		cfg.Mempool,
 		proxyApp.Mempool(),
-		state.LastBlockHeight,
 	)
 
 	// fill the mempool with one txs just below the maximum size
