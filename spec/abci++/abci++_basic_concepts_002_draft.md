@@ -116,7 +116,7 @@ In summary:
 
 * [**ListSnapshots:**](./abci++_methods_002_draft.md#listsnapshots) Used by nodes to discover available snapshots on peers.
 
-* [**LoadSnapshotChunk:**](./abci++_methods_002_draft.md#loadsnapshotchunk) Used by nodes to retrieve snapshot chunks from peers.
+* [**LoadSnapshotChunk:**](./abci++_methods_002_draft.md#loadsnapshotchunk) Used by Tendermint to retrieve snapshot chunks from the application to send to peers.
 
 * [**OfferSnapshot:**](./abci++_methods_002_draft.md#offersnapshot) When a node receives a snapshot from a peer, Tendermint uses this method to offer the snapshot to the Application.
 
