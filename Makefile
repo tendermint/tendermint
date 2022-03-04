@@ -92,7 +92,7 @@ proto-gen:
 	@$(DOCKER_PROTO_BUILDER) buf generate --template=./buf.gen.yaml --config ./buf.yaml
 .PHONY: proto-gen
 
-# Should be removed when work on ABCI++ is complete.
+# TODO: Should be removed when work on ABCI++ is complete.
 # For more information, see https://github.com/tendermint/tendermint/issues/8066
 abci-proto-gen:
 	./scripts/abci-gen.sh
