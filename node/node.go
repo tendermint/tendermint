@@ -396,6 +396,9 @@ func makeNode(
 			EvidencePool:   evPool,
 			ConsensusState: csState,
 
+			StateStore: stateStore,
+			BlockStore: blockStore,
+
 			ConsensusReactor: csReactor,
 			BlockSyncReactor: bcReactor,
 
