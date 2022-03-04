@@ -324,7 +324,7 @@ func TestClientMethodCalls(t *testing.T) {
 				k, v, tx := MakeTxKV()
 				bres, err := c.BroadcastTxCommit(ctx, tx)
 				require.NoError(t, err)
-				require.True(t, bres.DeliverTx.IsOK())
+				require.True(t, bres.TxResult.IsOK())
 				txh := bres.Height
 				apph := txh + 1 // this is where the tx will be applied to the state
 
@@ -443,7 +443,7 @@ func TestClientMethodCalls(t *testing.T) {
 				bres, err := c.BroadcastTxCommit(ctx, tx)
 				require.NoError(t, err, "%d: %+v", i, err)
 				require.True(t, bres.CheckTx.IsOK())
-				require.True(t, bres.DeliverTx.IsOK())
+				require.True(t, bres.TxResult.IsOK())
 
 				require.Equal(t, 0, pool.Size())
 			})

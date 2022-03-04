@@ -153,10 +153,10 @@ func TestReIndexEvent(t *testing.T) {
 		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(errors.New("")).Once().
 		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(nil)
 
-	dtx := abcitypes.ResponseDeliverTx{}
+	dtx := abcitypes.ExecTxResult{}
 	abciResp := &prototmstate.ABCIResponses{
 		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
-			Txs: []*abcitypes.ResponseDeliverTx{&dtx},
+			TxResults: []*abcitypes.ExecTxResult{&dtx},
 		},
 	}
 

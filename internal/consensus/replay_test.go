@@ -35,7 +35,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -652,61 +651,6 @@ func TestHandshakeReplayNone(t *testing.T) {
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, numBlocks, m, true)
 	}
-}
-
-// Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
-func TestMockProxyApp(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sim := setupSimulator(ctx, t) // setup config and simulator
-	cfg := sim.Config
-	assert.NotNil(t, cfg)
-
-	logger := log.TestingLogger()
-	var validTxs, invalidTxs = 0, 0
-	txCount := 0
-
-	assert.NotPanics(t, func() {
-		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
-		abciResWithEmptyDeliverTx.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.FinalizeBlock.Txs = append(abciResWithEmptyDeliverTx.FinalizeBlock.Txs, &abci.ResponseDeliverTx{})
-
-		// called when saveABCIResponses:
-		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
-		require.NoError(t, err)
-		loadedAbciRes := new(tmstate.ABCIResponses)
-
-		// this also happens sm.LoadABCIResponses
-		err = proto.Unmarshal(bytes, loadedAbciRes)
-		require.NoError(t, err)
-
-		mock, err := newMockProxyApp(ctx, logger, []byte("mock_hash"), loadedAbciRes)
-		require.NoError(t, err)
-
-		abciRes := new(tmstate.ABCIResponses)
-		abciRes.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-		abciRes.FinalizeBlock.Txs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.FinalizeBlock.Txs))
-
-		someTx := []byte("tx")
-		resp, err := mock.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
-		require.NoError(t, err)
-		// TODO: make use of res.Log
-		// TODO: make use of this info
-		// Blocks may include invalid txs.
-		for _, tx := range resp.Txs {
-			if tx.Code == abci.CodeTypeOK {
-				validTxs++
-			} else {
-				invalidTxs++
-			}
-			txCount++
-		}
-	})
-	require.Equal(t, 1, txCount)
-	require.Equal(t, 1, validTxs)
-	require.Zero(t, invalidTxs)
 }
 
 func tempWALWithData(t *testing.T, data []byte) string {

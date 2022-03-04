@@ -164,8 +164,8 @@ func makeNode(
 
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
-	// when the node stopped last time (i.e. the node stopped after it saved the block
-	// but before it indexed the txs, or, endblocker panicked)
+	// when the node stopped last time (i.e. the node stopped or crashed after it saved the block
+	// but before it indexed the txs)
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	if err := eventBus.Start(ctx); err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))

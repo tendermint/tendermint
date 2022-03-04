@@ -46,8 +46,7 @@ const (
 	dbName   = "postgres"
 	chainID  = "test-chainID"
 
-	viewBlockEvents = "block_events"
-	viewTxEvents    = "tx_events"
+	viewTxEvents = "tx_events"
 )
 
 func TestMain(m *testing.M) {
@@ -266,7 +265,7 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Height: 1,
 		Index:  0,
 		Tx:     types.Tx("HELLO WORLD"),
-		Result: abci.ResponseDeliverTx{
+		Result: abci.ExecTxResult{
 			Data:   []byte{0},
 			Code:   abci.CodeTypeOK,
 			Log:    "",
@@ -306,25 +305,6 @@ func verifyBlock(t *testing.T, height int64) {
 SELECT height FROM `+tableBlocks+` WHERE height = $1;
 `, height).Err(); err == sql.ErrNoRows {
 		t.Errorf("No block found for height=%d", height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %v", err)
-	}
-
-	// Verify the presence of begin_block and end_block events.
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeBeginBlock, height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %c", err)
-	}
-
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeEndBlock, height)
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}

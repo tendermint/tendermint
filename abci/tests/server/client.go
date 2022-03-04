@@ -51,7 +51,7 @@ func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error
 
 func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]byte, codeExp []uint32, dataExp []byte) error {
 	res, _ := client.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: txBytes})
-	for i, tx := range res.Txs {
+	for i, tx := range res.TxResults {
 		code, data, log := tx.Code, tx.Data, tx.Log
 		if code != codeExp[i] {
 			fmt.Println("Failed test: FinalizeBlock")

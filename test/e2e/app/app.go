@@ -147,7 +147,7 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 
 // FinalizeBlock implements ABCI.
 func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	var txs = make([]*abci.ResponseDeliverTx, len(req.Txs))
+	var txs = make([]*abci.ExecTxResult, len(req.Txs))
 
 	for i, tx := range req.Txs {
 		key, value, err := parseTx(tx)
@@ -156,16 +156,16 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 		}
 		app.state.Set(key, value)
 
-		txs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
+		txs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
 
-	valUpdates, err := app.validatorUpdates(uint64(req.Height))
+	valUpdates, err := app.validatorUpdates(uint64(req.Header.Height))
 	if err != nil {
 		panic(err)
 	}
 
 	return abci.ResponseFinalizeBlock{
-		Txs:              txs,
+		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
 		Events: []abci.Event{
 			{
@@ -177,7 +177,7 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 					},
 					{
 						Key:   "height",
-						Value: strconv.Itoa(int(req.Height)),
+						Value: strconv.Itoa(int(req.Header.Height)),
 					},
 				},
 			},

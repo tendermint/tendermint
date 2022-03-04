@@ -88,7 +88,7 @@ type SignClient interface {
 	) (*coretypes.ResultTxSearch, error)
 
 	// BlockSearch defines a method to search for a paginated set of blocks by
-	// BeginBlock and EndBlock event search criteria.
+	// FinalizeBlock event search criteria.
 	BlockSearch(
 		ctx context.Context,
 		query string,

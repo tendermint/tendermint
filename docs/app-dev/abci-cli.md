@@ -27,17 +27,17 @@ Usage:
   abci-cli [command]
 
 Available Commands:
-  batch       Run a batch of abci commands against an application
-  check_tx    Validate a tx
-  commit      Commit the application state and return the Merkle root hash
-  console     Start an interactive abci console for multiple commands
-  deliver_tx  Deliver a new tx to the application
-  kvstore     ABCI demo example
-  echo        Have the application echo a message
-  help        Help about any command
-  info        Get some info about the application
-  query       Query the application state
-  set_option  Set an options on the application
+  batch          Run a batch of abci commands against an application
+  check_tx       Validate a tx
+  commit         Commit the application state and return the Merkle root hash
+  console        Start an interactive abci console for multiple commands
+  finalize_block Send a set of transactions to the application
+  kvstore        ABCI demo example
+  echo           Have the application echo a message
+  help           Help about any command
+  info           Get some info about the application
+  query          Query the application state
+  set_option     Set an options on the application
 
 Flags:
       --abci string      socket or grpc (default "socket")
@@ -53,7 +53,7 @@ Use "abci-cli [command] --help" for more information about a command.
 The `abci-cli` tool lets us send ABCI messages to our application, to
 help build and debug them.
 
-The most important messages are `deliver_tx`, `check_tx`, and `commit`,
+The most important messages are `finalize_block`, `check_tx`, and `commit`,
 but there are others for convenience, configuration, and information
 purposes.
 
@@ -173,7 +173,7 @@ Try running these commands:
 -> code: OK
 -> data.hex: 0x0000000000000000
 
-> deliver_tx "abc"
+> finalize_block "abc"
 -> code: OK
 
 > info
@@ -192,7 +192,7 @@ Try running these commands:
 -> value: abc
 -> value.hex: 616263
 
-> deliver_tx "def=xyz"
+> finalize_block "def=xyz"
 -> code: OK
 
 > commit
@@ -207,8 +207,8 @@ Try running these commands:
 -> value.hex: 78797A
 ```
 
-Note that if we do `deliver_tx "abc"` it will store `(abc, abc)`, but if
-we do `deliver_tx "abc=efg"` it will store `(abc, efg)`.
+Note that if we do `finalize_block "abc"` it will store `(abc, abc)`, but if
+we do `finalize_block "abc=efg"` it will store `(abc, efg)`.
 
 Similarly, you could put the commands in a file and run
 `abci-cli --verbose batch < myfile`.

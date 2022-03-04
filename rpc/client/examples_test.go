@@ -49,7 +49,7 @@ func TestHTTPSimple(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if bres.CheckTx.IsErr() || bres.DeliverTx.IsErr() {
+	if bres.CheckTx.IsErr() || bres.TxResult.IsErr() {
 		log.Fatal("BroadcastTxCommit transaction failed")
 	}
 

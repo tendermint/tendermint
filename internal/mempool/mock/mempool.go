@@ -27,7 +27,7 @@ func (Mempool) Update(
 	_ context.Context,
 	_ int64,
 	_ types.Txs,
-	_ []*abci.ResponseDeliverTx,
+	_ []*abci.ExecTxResult,
 	_ mempool.PreCheckFunc,
 	_ mempool.PostCheckFunc,
 ) error {
