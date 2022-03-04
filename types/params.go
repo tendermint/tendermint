@@ -123,7 +123,7 @@ func DefaultValidatorParams() ValidatorParams {
 
 func DefaultVersionParams() VersionParams {
 	return VersionParams{
-		AppVersion: 0,
+		AppVersion: 1,
 	}
 }
 
