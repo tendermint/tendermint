@@ -29,7 +29,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	tx := types.Tx("foo")
 	result := abci.ExecTxResult{
 		Data: []byte("bar"),
-		TxEvents: []abci.Event{
+		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
 		},
 	}
@@ -84,7 +84,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 	resultFinalizeBlock := abci.ResponseFinalizeBlock{
-		BlockEvents: []abci.Event{
+		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{
 				{Key: "baz", Value: "1"},
 				{Key: "foz", Value: "2"},
@@ -136,7 +136,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	tx := types.Tx("foo")
 	result := abci.ExecTxResult{
 		Data: []byte("bar"),
-		TxEvents: []abci.Event{
+		Events: []abci.Event{
 			{
 				Type: "transfer",
 				Attributes: []abci.EventAttribute{
@@ -253,7 +253,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 
 	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
 	resultFinalizeBlock := abci.ResponseFinalizeBlock{
-		BlockEvents: []abci.Event{
+		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{
 				{Key: "baz", Value: "1"},
 				{Key: "foz", Value: "2"},

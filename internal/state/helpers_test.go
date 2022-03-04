@@ -312,7 +312,7 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 				AppVersion: 1,
 			},
 		},
-		BlockEvents: []abci.Event{},
+		Events: []abci.Event{},
 		TxResults:   resTxs,
 	}
 }

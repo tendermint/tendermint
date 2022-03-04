@@ -156,7 +156,7 @@ func (app *Application) handleTx(tx []byte) *types.ExecTxResult {
 		},
 	}
 
-	return &types.ExecTxResult{Code: code.CodeTypeOK, TxEvents: events}
+	return &types.ExecTxResult{Code: code.CodeTypeOK, Events: events}
 }
 
 func (app *Application) Close() error {

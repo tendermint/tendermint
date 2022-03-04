@@ -47,7 +47,7 @@ func BenchmarkTxSearch(b *testing.B) {
 				Data:     []byte{0},
 				Code:     abci.CodeTypeOK,
 				Log:      "",
-				TxEvents: events,
+				Events: events,
 			},
 		}
 

@@ -132,7 +132,7 @@ type EventDataNewBlock struct {
 func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
 
 // ABCIEvents implements the eventlog.ABCIEventer interface.
-func (e EventDataNewBlock) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.BlockEvents }
+func (e EventDataNewBlock) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
 
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
@@ -145,7 +145,7 @@ type EventDataNewBlockHeader struct {
 func (EventDataNewBlockHeader) TypeTag() string { return "tendermint/event/NewBlockHeader" }
 
 // ABCIEvents implements the eventlog.ABCIEventer interface.
-func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.BlockEvents }
+func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
 
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
@@ -170,7 +170,7 @@ func (e EventDataTx) ABCIEvents() []abci.Event {
 		eventWithAttr(TxHashKey, fmt.Sprintf("%X", Tx(e.Tx).Hash())),
 		eventWithAttr(TxHeightKey, fmt.Sprintf("%d", e.Height)),
 	}
-	return append(base, e.Result.TxEvents...)
+	return append(base, e.Result.Events...)
 }
 
 // NOTE: This goes into the replay WAL
