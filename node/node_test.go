@@ -754,3 +754,51 @@ func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 
 	return state
 }
+
+func TestNodeAppVersionNotMatched(t *testing.T) {
+	cfg, err := config.ResetTestRoot(t.TempDir(), "node_node_test")
+	require.NoError(t, err)
+
+	defer os.RemoveAll(cfg.RootDir)
+
+	ctx, bcancel := context.WithCancel(context.Background())
+	defer bcancel()
+
+	// Construct the node params
+	nodeKey, err := types.LoadOrGenNodeKey(cfg.NodeKeyFile())
+	require.NoError(t, err)
+
+	pval, err := makeDefaultPrivval(cfg)
+	require.NoError(t, err)
+
+	logger := log.NewNopLogger()
+
+	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+
+	genesisDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
+	genesisDoc.ConsensusParams.Version.AppVersion = 2
+
+	genesisDocProvider := func() (*types.GenesisDoc, error) {
+		return genesisDoc, nil
+	}
+
+	// Create node
+	_, err = makeNode(
+		ctx,
+		cfg,
+		pval,
+		nodeKey,
+		appClient,
+		genesisDocProvider,
+		config.DefaultDBProvider,
+		logger,
+	)
+	require.Error(t, err)
+
+	require.Equal(t,
+		fmt.Sprintf("error client app version (%d) is not matched with the genesis file (%d)",
+			kvstore.ProtocolVersion,
+			genesisDoc.ConsensusParams.Version.AppVersion),
+		err.Error())
+}

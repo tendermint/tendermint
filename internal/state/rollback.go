@@ -57,6 +57,8 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 		return -1, nil, err
 	}
 
+	fmt.Printf("previousParams version %d", previousParams.Version.AppVersion)
+
 	valChangeHeight := invalidState.LastHeightValidatorsChanged
 	// this can only happen if the validator set changed since the last block
 	if valChangeHeight > rollbackHeight {
@@ -97,6 +99,8 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 		LastResultsHash: latestBlock.Header.LastResultsHash,
 		AppHash:         latestBlock.Header.AppHash,
 	}
+
+	fmt.Printf("rollback state %w", rolledBackState)
 
 	// persist the new state. This overrides the invalid one. NOTE: this will also
 	// persist the validator set and consensus params over the existing structures,

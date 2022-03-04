@@ -164,6 +164,17 @@ func makeNode(
 		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
 	}
 
+	// Check app version is match with the genesis file.
+	appInfo, err := proxyApp.Query().Info(ctx, abci.RequestInfo{Version: ""})
+	if err != nil {
+		return nil, fmt.Errorf("error query app info: %w", err)
+	}
+	if appInfo.AppVersion != genDoc.ConsensusParams.Version.AppVersion {
+		return nil, fmt.Errorf("error client app version (%d) is not matched with the genesis file (%d)",
+			appInfo.AppVersion,
+			genDoc.ConsensusParams.Version.AppVersion)
+	}
+
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
 	// when the node stopped last time (i.e. the node stopped or crashed after it saved the block

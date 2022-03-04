@@ -1381,6 +1381,8 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, b
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
+	cs.logger.Debug("cs.state %w", cs.state)
+
 	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, votes)
 }
 
