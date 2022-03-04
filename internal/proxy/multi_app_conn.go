@@ -42,9 +42,11 @@ func tryCallStop(client abciclient.Client) {
 	if client == nil {
 		return
 	}
-
-	if sc, ok := client.(interface{ Stop() }); ok {
-		sc.Stop()
+	switch c := client.(type) {
+	case interface{ Stop() }:
+		c.Stop()
+	case *proxyClient:
+		tryCallStop(c.Client)
 	}
 }
 
