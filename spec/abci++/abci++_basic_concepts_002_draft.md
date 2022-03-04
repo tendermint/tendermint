@@ -138,7 +138,7 @@ block was after it was decided. This led to a block execution model, called _nex
 execution_, where some fields hashed in a block header refer to the execution of the
 previous block, namely:
 
-* the merkle root of the Application's state
+* the Merkle root of the Application's state
 * the transaction results
 * the consensus parameter updates
 * the validator updates
