@@ -120,7 +120,9 @@ type State struct {
 
 	// store blocks and commits
 	blockStore sm.BlockStore
-	stateStore sm.Store
+
+	stateStore            sm.Store
+	initialStatePopulated bool
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
@@ -222,9 +224,29 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return nil, err
+	}
+
+	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
+	cs.BaseService = *service.NewBaseService(logger, "State", cs)
+	for _, option := range options {
+		option(cs)
+	}
+
+	return cs, nil
+}
+
+func (cs *State) updateStateFromStore(ctx context.Context) error {
+	if cs.initialStatePopulated {
+		return nil
+	}
 	state, err := cs.stateStore.Load()
 	if err != nil {
-		return nil, fmt.Errorf("loading state: %w", err)
+		return fmt.Errorf("loading state: %w", err)
+	}
+	if state.IsEmpty() {
+		return nil
 	}
 
 	// We have no votes, so reconstruct LastCommit from SeenCommit.
@@ -234,13 +256,8 @@ func NewState(
 
 	cs.updateToState(ctx, state)
 
-	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
-	cs.BaseService = *service.NewBaseService(logger, "State", cs)
-	for _, option := range options {
-		option(cs)
-	}
-
-	return cs, nil
+	cs.initialStatePopulated = true
+	return nil
 }
 
 // SetEventBus sets event bus.
@@ -371,6 +388,10 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
 func (cs *State) OnStart(ctx context.Context) error {
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return err
+	}
+
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
