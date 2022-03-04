@@ -151,16 +151,15 @@ and potentially modifying its transaction list,
 fully executes the resulting prepared proposal as though it was the decided block.
 The results of the block execution are used as follows:
 
-* the Application keeps the events generated and provides them if `FinalizeBlock`
-  is finally called on this prepared proposal.
-* the merkle root resulting from executing the prepared proposal is provided in
+* The block execution may generate a set of events. The Application should store these events and return them back to Tendermint during the `FinalizeBlock` call if the block is finally decided.
+* The Merkle root resulting from executing the prepared proposal is provided in
   `ResponsePrepareProposal` and thus refers to the **current block**. Tendermint
   will use it in the prepared proposal's header.
 * likewise, the transaction results from executing the prepared proposal are
   provided in `ResponsePrepareProposal` and refer to the transactions in the
   **current block**. Tendermint will use them to calculate the results hash
   in the prepared proposal's header.
-* the consensus parameter updates and validator updates are also provided in
+* The consensus parameter updates and validator updates are also provided in
   `ResponsePrepareProposal` and reflect the result of the prepared proposal's
   execution. They come into force in height H+1 (as opposed to the H+2 rule
   in next-block execution model).
