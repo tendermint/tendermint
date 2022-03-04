@@ -143,7 +143,7 @@ previous block, namely:
 * the consensus parameter updates
 * the validator updates
 
-With ABCI++, an Application may decide to keep using the next-block execution model;
+With ABCI++, an Application may decide to keep using the next-block execution model, by doing all its processing in `FinalizeBlock`;
 however the new methods introduced, `PrepareProposal` and `ProcessProposal` allow
 for a new execution model, called _same-block execution_. An Application implementing
 this execution model, upon receiving a raw proposal via `RequestPrepareProposal`
