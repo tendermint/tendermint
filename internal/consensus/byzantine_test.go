@@ -82,7 +82,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				log.TestingLogger().With("module", "mempool"),
 				thisConfig.Mempool,
 				proxyAppConnMem,
-				0,
 			)
 			if thisConfig.Consensus.WaitForTxs() {
 				mempool.EnableTxsAvailable()
@@ -95,7 +94,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make State
 			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-			cs := NewState(ctx, logger, thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+			cs, err := NewState(ctx, logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool)
+			require.NoError(t, err)
 			// set private validator
 			pv := privVals[i]
 			cs.SetPrivValidator(ctx, pv)
@@ -105,14 +105,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 			cs.SetEventBus(eventBus)
 			evpool.SetEventBus(eventBus)
-
 			cs.SetTimeoutTicker(tickerFunc())
 
 			states[i] = cs
 		}()
 	}
 
-	rts := setup(ctx, t, nValidators, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nValidators, states, 512) // buffer must be large enough to not deadlock
 
 	var bzNodeID types.NodeID
 
@@ -238,8 +237,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 
 	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+		reactor.SwitchToConsensus(ctx, reactor.state.GetState(), false)
 	}
 
 	// Evidence should be submitted and committed at the third height but
@@ -248,20 +246,26 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	var wg sync.WaitGroup
 	i := 0
+	subctx, subcancel := context.WithCancel(ctx)
+	defer subcancel()
 	for _, sub := range rts.subs {
 		wg.Add(1)
 
 		go func(j int, s eventbus.Subscription) {
 			defer wg.Done()
 			for {
-				if ctx.Err() != nil {
+				if subctx.Err() != nil {
 					return
 				}
 
-				msg, err := s.Next(ctx)
-				assert.NoError(t, err)
+				msg, err := s.Next(subctx)
+				if subctx.Err() != nil {
+					return
+				}
+
 				if err != nil {
-					cancel()
+					t.Errorf("waiting for subscription: %v", err)
+					subcancel()
 					return
 				}
 
@@ -273,11 +277,17 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				}
 			}
 		}(i, sub)
-
 		i++
 	}
 
 	wg.Wait()
+
+	// don't run more assertions if we've encountered a timeout
+	select {
+	case <-subctx.Done():
+		t.Fatal("encountered timeout")
+	default:
+	}
 
 	pubkey, err := bzNodeState.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)

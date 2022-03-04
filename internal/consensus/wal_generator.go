@@ -83,7 +83,11 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
-	consensusState := NewState(ctx, logger, cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
+	consensusState, err := NewState(ctx, logger, cfg.Consensus, stateStore, blockExec, blockStore, mempool, evpool)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
 		consensusState.SetPrivValidator(ctx, privValidator)

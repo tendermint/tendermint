@@ -94,7 +94,6 @@ func NewTxMempool(
 	logger log.Logger,
 	cfg *config.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
-	height int64,
 	options ...TxMempoolOption,
 ) *TxMempool {
 
@@ -102,7 +101,7 @@ func NewTxMempool(
 		logger:        logger,
 		config:        cfg,
 		proxyAppConn:  proxyAppConn,
-		height:        height,
+		height:        -1,
 		cache:         NopTxCache{},
 		metrics:       NopMetrics(),
 		txStore:       NewTxStore(),
