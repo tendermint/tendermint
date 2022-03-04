@@ -344,7 +344,6 @@ func makeNode(
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
 		proxyApp,
-		proxyApp,
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		stateStore,

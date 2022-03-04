@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
-	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
 	smmocks "github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/internal/statesync/mocks"
 	"github.com/tendermint/tendermint/internal/store"
@@ -38,8 +37,7 @@ type reactorTestSuite struct {
 	reactor *Reactor
 	syncer  *syncer
 
-	conn          *proxymocks.AppConnSnapshot
-	connQuery     *proxymocks.AppConnQuery
+	conn          *clientmocks.Client
 	stateProvider *mocks.StateProvider
 
 	snapshotChannel   *p2p.Channel
@@ -178,7 +176,6 @@ func setup(
 		*cfg,
 		logger.With("component", "syncer"),
 		conn,
-		connQuery,
 		stateProvider,
 		rts.snapshotChannel,
 		rts.chunkChannel,
@@ -203,7 +200,7 @@ func TestReactor_Sync(t *testing.T) {
 	defer cancel()
 
 	const snapshotHeight = 7
-	rts := setup(ctx, t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 2)
 	chain := buildLightBlockChain(ctx, t, 1, 10, time.Now())
 	// app accepts any snapshot
 	rts.conn.On("OfferSnapshot", ctx, mock.AnythingOfType("types.RequestOfferSnapshot")).
@@ -214,7 +211,7 @@ func TestReactor_Sync(t *testing.T) {
 		Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 
 	// app query returns valid state app hash
-	rts.connQuery.On("Info", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
+	rts.conn.On("Info", mock.Anything, proxy.RequestInfo).Return(&abci.ResponseInfo{
 		AppVersion:       testAppVersion,
 		LastBlockHeight:  snapshotHeight,
 		LastBlockAppHash: chain[snapshotHeight+1].AppHash,
@@ -257,7 +254,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setup(ctx, t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 2)
 
 	rts.chunkInCh <- p2p.Envelope{
 		From:    types.NodeID("aa"),
@@ -308,14 +305,14 @@ func TestReactor_ChunkRequest(t *testing.T) {
 			defer cancel()
 
 			// mock ABCI connection to return local snapshots
-			conn := &proxymocks.AppConnSnapshot{}
+			conn := &clientmocks.Client{}
 			conn.On("LoadSnapshotChunk", mock.Anything, abci.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
 				Chunk:  tc.request.Index,
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
-			rts := setup(ctx, t, conn, nil, nil, 2)
+			rts := setup(ctx, t, conn, nil, 2)
 
 			rts.chunkInCh <- p2p.Envelope{
 				From:    types.NodeID("aa"),
@@ -335,7 +332,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setup(ctx, t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 2)
 
 	rts.snapshotInCh <- p2p.Envelope{
 		From:    types.NodeID("aa"),
@@ -395,12 +392,12 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 			defer cancel()
 
 			// mock ABCI connection to return local snapshots
-			conn := &proxymocks.AppConnSnapshot{}
+			conn := &clientmocks.Client{}
 			conn.On("ListSnapshots", mock.Anything, abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 
-			rts := setup(ctx, t, conn, nil, nil, 100)
+			rts := setup(ctx, t, conn, nil, 100)
 
 			rts.snapshotInCh <- p2p.Envelope{
 				From:    types.NodeID("aa"),
@@ -427,7 +424,7 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setup(ctx, t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 2)
 
 	var height int64 = 10
 	// generates a random header
@@ -484,7 +481,7 @@ func TestReactor_BlockProviders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setup(ctx, t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 2)
 	rts.peerUpdateCh <- p2p.PeerUpdate{
 		NodeID: types.NodeID("aa"),
 		Status: p2p.PeerStatusUp,
@@ -551,7 +548,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setup(ctx, t, nil, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 2)
 	// make syncer non nil else test won't think we are state syncing
 	rts.reactor.syncer = rts.syncer
 	peerA := types.NodeID(strings.Repeat("a", 2*types.NodeIDByteLength))
@@ -628,7 +625,7 @@ func TestReactor_Backfill(t *testing.T) {
 			defer cancel()
 
 			t.Cleanup(leaktest.CheckTimeout(t, 1*time.Minute))
-			rts := setup(ctx, t, nil, nil, nil, 21)
+			rts := setup(ctx, t, nil, nil, 21)
 
 			var (
 				startHeight int64 = 20
