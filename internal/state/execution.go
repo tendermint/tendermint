@@ -162,7 +162,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		Hash:                block.Header.Hash(),
 		Header:              *block.Header.ToProto(),
 		Txs:                 block.Data.Txs.ToSliceOfBytes(),
-		LastCommitInfo:      buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+		ProposedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 		ByzantineValidators: block.Evidence.ToABCI(),
 	}
 
@@ -220,7 +220,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			Hash:                block.Hash(),
 			Header:              *pbh,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LastCommitInfo:      buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 		},
 	)
@@ -374,11 +374,11 @@ func (blockExec *BlockExecutor) Commit(
 	return res.Data, res.RetainHeight, err
 }
 
-func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.LastCommitInfo {
+func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
 	if block.Height == initialHeight {
 		// there is no last commmit for the initial height.
 		// return an empty value.
-		return abci.LastCommitInfo{}
+		return abci.CommitInfo{}
 	}
 
 	lastValSet, err := store.LoadValidators(block.Height - 1)
@@ -409,7 +409,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 		}
 	}
 
-	return abci.LastCommitInfo{
+	return abci.CommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: votes,
 	}
@@ -594,7 +594,7 @@ func ExecCommitBlock(
 			Hash:                block.Hash(),
 			Header:              *pbh,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LastCommitInfo:      buildLastCommitInfo(block, store, initialHeight),
+			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 		},
 	)

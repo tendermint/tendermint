@@ -67,10 +67,10 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
-// TestFinalizeBlockLastCommitInfo ensures we correctly send the LastCommitInfo to the
-// application. The test ensures that the LastCommitInfo properly reflects
+// TestFinalizeBlockDecidedLastCommit ensures we correctly send the DecidedLastCommit to the
+// application. The test ensures that the DecidedLastCommit properly reflects
 // which validators signed the preceding block.
-func TestFinalizeBlockLastCommitInfo(t *testing.T) {
+func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -291,7 +291,7 @@ func TestProcessProposal(t *testing.T) {
 		Header:              *block1.Header.ToProto(),
 		Txs:                 block1.Txs.ToSliceOfBytes(),
 		ByzantineValidators: block1.Evidence.ToABCI(),
-		LastCommitInfo: abci.LastCommitInfo{
+		ProposedLastCommit: abci.CommitInfo{
 			Round: 0,
 			Votes: voteInfos,
 		},

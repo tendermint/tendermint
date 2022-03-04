@@ -293,7 +293,7 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 }
 
 func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	app.CommitVotes = req.LastCommitInfo.Votes
+	app.CommitVotes = req.DecidedLastCommit.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
 	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
