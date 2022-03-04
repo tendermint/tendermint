@@ -53,7 +53,7 @@ make changes to the raw proposal, such as modifying transactions, and returns
 the (potentially) modified proposal, called _prepared proposal_ in the
 `Response*` call. The logic modifying the raw proposal can be non-deterministic.
 
-* [**ProcessProposal:**](./abci++_methods_002_draft.md#processproposal) It allows a validator to perform application-dependent work in a proposed block. This enables features such as allowing validators to reject a block according to whether the state machine deems it valid, and changing the block execution pipeline. Tendermint calls it when it receives a proposal. The Application cannot
+* [**ProcessProposal:**](./abci++_methods_002_draft.md#processproposal) It allows a validator to perform application-dependent work in a proposed block. This enables features such as allowing validators to reject a block according to whether the state machine deems it valid, and changing the block execution pipeline. Tendermint calls it when it receives a proposal and it is not locked on a block. The Application cannot
 modify the proposal at this point but can reject it if it realizes it is invalid.
 If that is the case, Tendermint will prevote `nil` on the proposal, which has
 strong liveness implications for Tendermint. As a general rule, the Application
@@ -65,8 +65,6 @@ ignore the invalid part of the prepared proposal at block execution time.
 The data, called _vote extension_, will also be made available to the
 application in the next height, along with the vote it is extending, in the rounds
 where the local process is the proposer.
-The vote extension data is split into two parts, one signed by Tendermint as part
-of the vote data structure, and the other (optionally) signed by the Application.
 The Application may also choose not to include any vote extension.
 Tendermint calls it when is about to send a non-`nil` precommit message. 
 
@@ -207,7 +205,7 @@ successive `FinalizeBlock` calls. This is critical because the
 responses are included in the header of the next block, either via a Merkle root
 or directly, so all nodes must agree on exactly what they are.
 
-For this reason, it is recommended that applications not be exposed to any
+For this reason, it is recommended that application state is not exposed to any
 external user or process except via the ABCI connections to a consensus engine
 like Tendermint Core. The Application must only change its state based on input
 from block execution (`FinalizeBlock` calls), and not through
