@@ -155,9 +155,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
-	}
+	abciResponses := &tmstate.ABCIResponses{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
@@ -187,10 +185,9 @@ func makeHeaderPartsResponsesValPowerChange(
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)
 
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
-	}
+	abciResponses := &tmstate.ABCIResponses{}
 
+	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
@@ -296,15 +293,15 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 }
 
 func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	app.CommitVotes = req.LastCommitInfo.Votes
+	app.CommitVotes = req.DecidedLastCommit.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
-	resTxs := make([]*abci.ResponseDeliverTx, len(req.Txs))
+	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		if len(tx) > 0 {
-			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 		} else {
-			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK + 10} // error
+			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK + 10} // error
 		}
 	}
 
@@ -315,8 +312,8 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 				AppVersion: 1,
 			},
 		},
-		Events: []abci.Event{},
-		Txs:    resTxs,
+		Events:    []abci.Event{},
+		TxResults: resTxs,
 	}
 }
 

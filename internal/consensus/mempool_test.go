@@ -51,7 +51,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 	ensureNewEventOnChannel(t, newBlockCh) // first block gets committed
 	ensureNoNewEventOnChannel(t, newBlockCh)
-	deliverTxsRange(ctx, t, cs, 0, 1)
+	checkTxsRange(ctx, t, cs, 0, 1)
 	ensureNewEventOnChannel(t, newBlockCh) // commit txs
 	ensureNewEventOnChannel(t, newBlockCh) // commit updated app hash
 	ensureNoNewEventOnChannel(t, newBlockCh)
@@ -118,7 +118,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	round = 0
 
 	ensureNewRound(t, newRoundCh, height, round) // first round at next height
-	deliverTxsRange(ctx, t, cs, 0, 1)            // we deliver txs, but dont set a proposal so we get the next round
+	checkTxsRange(ctx, t, cs, 0, 1)              // we deliver txs, but don't set a proposal so we get the next round
 	ensureNewTimeout(t, timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
 
 	round++                                      // moving to the next round
@@ -126,7 +126,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	ensureNewEventOnChannel(t, newBlockCh)       // now we can commit the block
 }
 
-func deliverTxsRange(ctx context.Context, t *testing.T, cs *State, start, end int) {
+func checkTxsRange(ctx context.Context, t *testing.T, cs *State, start, end int) {
 	t.Helper()
 	// Deliver some txs.
 	for i := start; i < end; i++ {
@@ -159,7 +159,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	newBlockHeaderCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlockHeader)
 
 	const numTxs int64 = 3000
-	go deliverTxsRange(ctx, t, cs, 0, int(numTxs))
+	go checkTxsRange(ctx, t, cs, 0, int(numTxs))
 
 	startTestRound(ctx, cs, cs.Height, cs.Round)
 	for n := int64(0); n < numTxs; {
@@ -192,8 +192,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resDeliver := app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
-	assert.False(t, resDeliver.Txs[0].IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
+	resFinalize := app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
 
 	resCommit := app.Commit()
 	assert.True(t, len(resCommit.Data) > 0)
@@ -265,20 +265,20 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 }
 
 func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	respTxs := make([]*abci.ResponseDeliverTx, len(req.Txs))
+	respTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		txValue := txAsUint64(tx)
 		if txValue != uint64(app.txCount) {
-			respTxs[i] = &abci.ResponseDeliverTx{
+			respTxs[i] = &abci.ExecTxResult{
 				Code: code.CodeTypeBadNonce,
 				Log:  fmt.Sprintf("Invalid nonce. Expected %d, got %d", app.txCount, txValue),
 			}
 			continue
 		}
 		app.txCount++
-		respTxs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
+		respTxs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
-	return abci.ResponseFinalizeBlock{Txs: respTxs}
+	return abci.ResponseFinalizeBlock{TxResults: respTxs}
 }
 
 func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
