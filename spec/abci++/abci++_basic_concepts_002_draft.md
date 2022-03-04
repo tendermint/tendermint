@@ -4,7 +4,7 @@ title: Overview and basic concepts
 ---
 
 ## Outline
-- [ABCI vs. ABCI](#abci-vs-abci)
+- [ABCI++ vs. ABCI](#abci-vs-abci)
 - [Methods overview](#methods-overview)
   - [Consensus methods](#consensus-methods)
   - [Mempool methods](#mempool-methods)
@@ -29,7 +29,7 @@ ABCI++ overcomes these limitations by allowing the application to intervene at t
 ## Methods overview
 [&uparrow; Back to Outline](#outline)
 
-Methods can be classified into four categories: consensus, mempool, info, and state-sync. When Tendermint and the Application run in separate processes, Tendermint opens a different connection for each category to enhance parallelism.
+Methods can be classified into four categories: consensus, mempool, info, and state-sync.
 
 ### Consensus/block execution methods
 
@@ -48,10 +48,10 @@ for details on the possible call sequences of these methods.
 a proposal message, but no previous proposal has been locked at Tendermint level.
 Tendermint gathers outstanding transactions from the mempool, generates a block header, and uses
 them to create a block to propose. Then, it calls `RequestPrepareProposal`
-with the newly created proposal, called _raw block_. The Application can
+with the newly created proposal, called _raw proposal_. The Application can
 make changes to the raw proposal, such as modifying transactions, and returns
 the (potentially) modified proposal, called _prepared proposal_ in the
-`Response*` call. The logic modifying the raw block can be non-deterministic.
+`Response*` call. The logic modifying the raw proposal can be non-deterministic.
 
 * [**ProcessProposal:**](./abci++_methods_002_draft.md#processproposal) It allows a validator to perform application-dependent work in a proposed block. This enables features such as allowing validators to reject a block according to whether the state machine deems it valid, and changing the block execution pipeline. Tendermint calls it when it receives a proposal. The Application cannot
 modify the proposal at this point but can reject it if it realizes it is invalid.
@@ -81,13 +81,9 @@ parameters in `ResponseFinalizeBlock`, are included in the header of the next bl
 
 ### Mempool methods
 
-For validating new transactions before they are included in the mempool.
-
 * [**CheckTx:**](./abci++_methods_002_draft.md#checktx) This method allows the Application to validate transactions against its current state, e.g., checking signatures and account balances. If a transaction passes the validation, then tendermint adds it to its local mempool, discarding it otherwise. Tendermint calls it when it receives a new transaction either coming from an external user or another node.
 
 ### Info methods
-
-For initialization and queries from the user.
 
 * [**Info:**](./abci++_methods_002_draft.md#info) Used to sync Tendermint with the Application during a handshake that happens on startup.
 
@@ -101,9 +97,8 @@ state machine snapshots instead of replaying historical blocks. For more details
 
 New nodes will discover and request snapshots from other nodes in the P2P network.
 A Tendermint node that receives a request for snapshots from a peer will call
-`ListSnapshots` on its Application to retrieve any local state snapshots. After receiving
- snapshots from peers, the new node will offer each snapshot received from a peer
-to its local Application via the `OfferSnapshot` method.
+`ListSnapshots` on its Application. The Application returns the list of locally avaiable snapshots. 
+Note that the list does not contain the actual snapshot but metadata about it: height at which the snapshot was taken, application-specific verification data and more (see [snapshot data type](./abci++_methods_002_draft.md#snapshot) for more details). After receiving a list of available snapshots from a peer, the new node can offer any of the snapshots in the list to its local Application via the `OfferSnapshot` method. The Application can check at this point the validity of the snapshot metadata.
 
 Snapshots may be quite large and are thus broken into smaller "chunks" that can be
 assembled into the whole snapshot. Once the Application accepts a snapshot and
@@ -131,8 +126,6 @@ In summary:
 
 Additionally, there is a [**Flush**](./abci++_methods_002_draft.md#flush) method that is called on every connection,
 and an [**Echo**](./abci++_methods_002_draft.md#echo) method that is just for debugging.
-
->**TODO** Figure out what to do with this.
 
 More details on managing state across connections can be found in the section on
 [ABCI Applications](../abci/apps.md).
