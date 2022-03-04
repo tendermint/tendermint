@@ -14,7 +14,7 @@ import "tendermint/types/validator.proto";
 // This file supports building of the `tendermint.abci` proto package.
 // For more information, see https://github.com/tendermint/tendermint/issues/8066
 
-// BlockIdFlag indicates which BlcokID the signature is for
+// BlockIdFlag indicates which BlockID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
