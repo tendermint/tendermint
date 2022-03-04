@@ -100,7 +100,10 @@ func newDefaultNode(
 		return nil, err
 	}
 
-	appClient, _ := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	appClient, _, err := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	if err != nil {
+		return nil, err
+	}
 
 	return makeNode(
 		ctx,
@@ -120,7 +123,7 @@ func makeNode(
 	cfg *config.Config,
 	filePrivval *privval.FilePV,
 	nodeKey types.NodeKey,
-	clientCreator abciclient.Creator,
+	client abciclient.Client,
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
 	logger log.Logger,
@@ -155,7 +158,7 @@ func makeNode(
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp := proxy.New(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
+	proxyApp := proxy.New(client, logger.With("module", "proxy"), nodeMetrics.proxy)
 	if err := proxyApp.Start(ctx); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
 	}

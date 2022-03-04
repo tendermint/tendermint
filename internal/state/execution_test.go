@@ -39,8 +39,8 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
+	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -73,9 +73,10 @@ func TestBeginBlockValidators(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.TestingLogger()
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.New(cc, log.TestingLogger(), proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
@@ -145,8 +146,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.New(cc, log.TestingLogger(), proxy.NopMetrics())
+	logger := log.TestingLogger()
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -248,8 +250,8 @@ func TestProcessProposal(t *testing.T) {
 	defer cancel()
 
 	app := abcimocks.NewBaseMock()
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
+	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
@@ -451,8 +453,8 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
+	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
@@ -526,8 +528,8 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
+	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)

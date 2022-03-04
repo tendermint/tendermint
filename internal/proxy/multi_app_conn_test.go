@@ -36,13 +36,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	clientMock.On("Wait").Return(nil).Times(1)
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
-	creatorCallCount := 0
-	creator := func(logger log.Logger) (abciclient.Client, error) {
-		creatorCallCount++
-		return cl, nil
-	}
-
-	appConns := New(creator, log.TestingLogger(), NopMetrics())
+	appConns := New(cl, log.TestingLogger(), NopMetrics())
 
 	err := appConns.Start(ctx)
 	require.NoError(t, err)
@@ -54,7 +48,6 @@ func TestAppConns_Start_Stop(t *testing.T) {
 
 	clientMock.AssertExpectations(t)
 	assert.Equal(t, 1, cl.count)
-	assert.Equal(t, 1, creatorCallCount)
 }
 
 // Upon failure, we call tmos.Kill
@@ -80,11 +73,7 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Error").Return(errors.New("EOF"))
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
-	creator := func(log.Logger) (abciclient.Client, error) {
-		return cl, nil
-	}
-
-	appConns := New(creator, log.TestingLogger(), NopMetrics())
+	appConns := New(cl, log.TestingLogger(), NopMetrics())
 
 	err := appConns.Start(ctx)
 	require.NoError(t, err)

@@ -273,7 +273,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
@@ -371,7 +371,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
@@ -438,7 +438,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)

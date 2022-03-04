@@ -51,7 +51,10 @@ var SOCKET = "socket"
 func TestEcho(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
 	logger := log.TestingLogger()
-	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
+	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -62,12 +65,9 @@ func TestEcho(t *testing.T) {
 	t.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
-	cli, err := clientCreator(logger.With("module", "abci-client"))
-	require.NoError(t, err, "Error creating ABCI client:")
+	require.NoError(t, client.Start(ctx), "Error starting ABCI client")
 
-	require.NoError(t, cli.Start(ctx), "Error starting ABCI client")
-
-	proxy := newAppConnTest(cli)
+	proxy := newAppConnTest(client)
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
@@ -91,7 +91,10 @@ func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
 	logger := log.TestingLogger()
-	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
+	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -102,12 +105,9 @@ func BenchmarkEcho(b *testing.B) {
 	b.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
-	cli, err := clientCreator(logger.With("module", "abci-client"))
-	require.NoError(b, err, "Error creating ABCI client")
+	require.NoError(b, client.Start(ctx), "Error starting ABCI client")
 
-	require.NoError(b, cli.Start(ctx), "Error starting ABCI client")
-
-	proxy := newAppConnTest(cli)
+	proxy := newAppConnTest(client)
 	b.Log("Connected")
 	echoString := strings.Repeat(" ", 200)
 	b.StartTimer() // Start benchmarking tests
@@ -139,7 +139,10 @@ func TestInfo(t *testing.T) {
 
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
 	logger := log.TestingLogger()
-	clientCreator := abciclient.NewRemoteCreator(logger, sockPath, SOCKET, true)
+	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Start server
 	s := server.NewSocketServer(logger.With("module", "abci-server"), sockPath, kvstore.NewApplication())
@@ -147,12 +150,9 @@ func TestInfo(t *testing.T) {
 	t.Cleanup(func() { cancel(); s.Wait() })
 
 	// Start client
-	cli, err := clientCreator(logger.With("module", "abci-client"))
-	require.NoError(t, err, "Error creating ABCI client")
+	require.NoError(t, client.Start(ctx), "Error starting ABCI client")
 
-	require.NoError(t, cli.Start(ctx), "Error starting ABCI client")
-
-	proxy := newAppConnTest(cli)
+	proxy := newAppConnTest(client)
 	t.Log("Connected")
 
 	resInfo, err := proxy.Info(ctx, RequestInfo)

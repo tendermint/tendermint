@@ -78,24 +78,23 @@ func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoo
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 
-	app := &application{kvstore.NewApplication()}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
+
+	app := &application{kvstore.NewApplication()}
+	conn := abciclient.NewLocalClient(logger, app)
 
 	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	cfg.Mempool.CacheSize = cacheSize
-	appConnMem, err := cc(logger)
-	require.NoError(t, err)
-	require.NoError(t, appConnMem.Start(ctx))
+	require.NoError(t, conn.Start(ctx))
 
 	t.Cleanup(func() {
 		os.RemoveAll(cfg.RootDir)
 		cancel()
-		appConnMem.Wait()
+		conn.Wait()
 	})
 
-	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, options...)
+	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, conn, options...)
 }
 
 func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
