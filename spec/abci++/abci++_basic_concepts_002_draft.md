@@ -171,7 +171,7 @@ transaction list.
 
 In the long term, the execution model will be set in a new boolean parameter
 *same_block* in `ConsensusParams`.
-It should **not** be changed once the blockchain has started unless the Application
+It **must not** be changed once the blockchain has started unless the Application
 developers _really_ know what they are doing.
 However, modifying `ConsensusParams` structure cannot be done lightly if we are to
 preserve blockchain compatibility. Therefore we need an interim solution until
