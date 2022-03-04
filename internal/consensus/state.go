@@ -121,6 +121,9 @@ type State struct {
 	// store blocks and commits
 	blockStore sm.BlockStore
 
+	stateStore            sm.Store
+	initialStatePopulated bool
+
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
 
@@ -189,18 +192,19 @@ func NewState(
 	ctx context.Context,
 	logger log.Logger,
 	cfg *config.ConsensusConfig,
-	state sm.State,
+	store sm.Store,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
 	options ...StateOption,
-) *State {
+) (*State, error) {
 	cs := &State{
 		logger:           logger,
 		config:           cfg,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
+		stateStore:       store,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
@@ -220,6 +224,31 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return nil, err
+	}
+
+	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
+	cs.BaseService = *service.NewBaseService(logger, "State", cs)
+	for _, option := range options {
+		option(cs)
+	}
+
+	return cs, nil
+}
+
+func (cs *State) updateStateFromStore(ctx context.Context) error {
+	if cs.initialStatePopulated {
+		return nil
+	}
+	state, err := cs.stateStore.Load()
+	if err != nil {
+		return fmt.Errorf("loading state: %w", err)
+	}
+	if state.IsEmpty() {
+		return nil
+	}
+
 	// We have no votes, so reconstruct LastCommit from SeenCommit.
 	if state.LastBlockHeight > 0 {
 		cs.reconstructLastCommit(state)
@@ -227,14 +256,8 @@ func NewState(
 
 	cs.updateToState(ctx, state)
 
-	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
-
-	cs.BaseService = *service.NewBaseService(logger, "State", cs)
-	for _, option := range options {
-		option(cs)
-	}
-
-	return cs
+	cs.initialStatePopulated = true
+	return nil
 }
 
 // SetEventBus sets event bus.
@@ -365,6 +388,10 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
 func (cs *State) OnStart(ctx context.Context) error {
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return err
+	}
+
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
