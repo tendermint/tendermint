@@ -58,7 +58,6 @@ type nodeImpl struct {
 	router      *p2p.Router
 	nodeInfo    types.NodeInfo
 	nodeKey     types.NodeKey // our node privkey
-	isListening bool
 
 	// services
 	eventSinks       []indexer.EventSink
@@ -416,8 +415,6 @@ func makeNode(
 		node.rpcEnv.PubKey = pubKey
 	}
 
-	node.rpcEnv.P2PTransport = node
-
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
 	return node, nil
@@ -462,6 +459,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
+	n.rpcEnv.NodeInfo = n.nodeInfo
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
@@ -480,7 +478,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	if err := n.router.Start(ctx); err != nil {
 		return err
 	}
-	n.isListening = true
+	n.rpcEnv.IsListening = true
 
 	for _, reactor := range n.services {
 		if err := reactor.Start(ctx); err != nil {
@@ -575,7 +573,7 @@ func (n *nodeImpl) OnStop() {
 
 	n.stateSyncReactor.Wait()
 	n.router.Wait()
-	n.isListening = false
+	n.rpcEnv.IsListening = false
 
 	// finally stop the listeners / external services
 	for _, l := range n.rpcListeners {
@@ -663,21 +661,6 @@ func (n *nodeImpl) RPCEnvironment() *rpccore.Environment {
 }
 
 //------------------------------------------------------------------------------
-
-func (n *nodeImpl) Listeners() []string {
-	return []string{
-		fmt.Sprintf("Listener(@%v)", n.config.P2P.ExternalAddress),
-	}
-}
-
-func (n *nodeImpl) IsListening() bool {
-	return n.isListening
-}
-
-// NodeInfo returns the Node's Info from the Switch.
-func (n *nodeImpl) NodeInfo() types.NodeInfo {
-	return n.nodeInfo
-}
 
 // genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
