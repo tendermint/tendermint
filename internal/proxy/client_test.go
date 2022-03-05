@@ -205,17 +205,10 @@ func TestAppConns_Start_Stop(t *testing.T) {
 
 // Upon failure, we call tmos.Kill
 func TestAppConns_Failure(t *testing.T) {
-	ok := make(chan struct{})
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGTERM)
-	go func() {
-		for range c {
-			close(ok)
-			return
-		}
-	}()
+	signal.Notify(c, syscall.SIGTERM, syscall.SIGABRT)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	clientMock := &abcimocks.Client{}
@@ -233,9 +226,9 @@ func TestAppConns_Failure(t *testing.T) {
 	t.Cleanup(func() { cancel(); appConns.Wait() })
 
 	select {
-	case <-ok:
-		t.Log("SIGTERM successfully received")
-	case <-time.After(5 * time.Second):
+	case sig := <-c:
+		t.Logf("signal %q successfully received", sig)
+	case <-ctx.Done():
 		t.Fatal("expected process to receive SIGTERM signal")
 	}
 }
