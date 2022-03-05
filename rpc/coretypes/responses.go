@@ -65,12 +65,12 @@ type ResultCommit struct {
 
 // ABCI results from a block
 type ResultBlockResults struct {
-	Height                int64                     `json:"height,string"`
-	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
-	TotalGasUsed          int64                     `json:"total_gas_used,string"`
-	FinalizeBlockEvents   []abci.Event              `json:"finalize_block_events"`
-	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
-	ConsensusParamUpdates *tmproto.ConsensusParams  `json:"consensus_param_updates"`
+	Height                int64                    `json:"height,string"`
+	TxsResults            []*abci.ExecTxResult     `json:"txs_results"`
+	TotalGasUsed          int64                    `json:"total_gas_used,string"`
+	FinalizeBlockEvents   []abci.Event             `json:"finalize_block_events"`
+	ValidatorUpdates      []abci.ValidatorUpdate   `json:"validator_updates"`
+	ConsensusParamUpdates *tmproto.ConsensusParams `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with
@@ -241,10 +241,10 @@ type ResultBroadcastTx struct {
 
 // CheckTx and DeliverTx results
 type ResultBroadcastTxCommit struct {
-	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
-	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      bytes.HexBytes         `json:"hash"`
-	Height    int64                  `json:"height,string"`
+	CheckTx  abci.ResponseCheckTx `json:"check_tx"`
+	TxResult abci.ExecTxResult    `json:"tx_result"`
+	Hash     bytes.HexBytes       `json:"hash"`
+	Height   int64                `json:"height,string"`
 }
 
 // ResultCheckTx wraps abci.ResponseCheckTx.
@@ -254,12 +254,12 @@ type ResultCheckTx struct {
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     bytes.HexBytes         `json:"hash"`
-	Height   int64                  `json:"height,string"`
-	Index    uint32                 `json:"index"`
-	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Hash     bytes.HexBytes    `json:"hash"`
+	Height   int64             `json:"height,string"`
+	Index    uint32            `json:"index"`
+	TxResult abci.ExecTxResult `json:"tx_result"`
+	Tx       types.Tx          `json:"tx"`
+	Proof    types.TxProof     `json:"proof,omitempty"`
 }
 
 // Result of searching for txs

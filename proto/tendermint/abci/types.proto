@@ -342,7 +342,7 @@ message ResponseVerifyVoteExtension {
 }
 
 message ResponseFinalizeBlock {
-  repeated Event block_events = 1
+  repeated Event events = 1
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   repeated ExecTxResult            tx_results              = 2;
   repeated ValidatorUpdate         validator_updates       = 3;
@@ -389,7 +389,7 @@ message ExecTxResult {
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
-  repeated Event tx_events  = 7
+  repeated Event events  = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
 }

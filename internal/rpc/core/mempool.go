@@ -114,10 +114,10 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 			}
 
 			return &coretypes.ResultBroadcastTxCommit{
-				CheckTx:   *r,
-				DeliverTx: txres.TxResult,
-				Hash:      tx.Hash(),
-				Height:    txres.Height,
+				CheckTx:  *r,
+				TxResult: txres.TxResult,
+				Hash:     tx.Hash(),
+				Height:   txres.Height,
 			}, nil
 		}
 	}
