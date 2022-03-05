@@ -52,7 +52,6 @@ type noopCloser struct{}
 
 func (noopCloser) Close() error { return nil }
 
-
 // proxyClient provides the application connection.
 type proxyClient struct {
 	service.BaseService
@@ -77,7 +76,7 @@ func (app *proxyClient) OnStop()      { tryCallStop(app.client) }
 func (app *proxyClient) Error() error { return app.client.Error() }
 
 func tryCallStop(client abciclient.Client) {
-	if c, ok := client.(interface{ Stop() }) {
+	if c, ok := client.(interface{ Stop() }); ok {
 		c.Stop()
 	}
 }
@@ -121,7 +120,7 @@ func kill() error {
 		return err
 	}
 
-	return p.Signal(syscall.SIGTERM)
+	return p.Signal(syscall.SIGABRT)
 }
 
 func (app *proxyClient) InitChain(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
