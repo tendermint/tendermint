@@ -876,11 +876,11 @@ func applyBlock(
 	evpool sm.EvidencePool,
 	st sm.State,
 	blk *types.Block,
-	proxyApp abciclient.Client,
+	appClient abciclient.Client,
 	blockStore *mockBlockStore,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp, mempool, evpool, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mempool, evpool, blockStore)
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -893,7 +893,7 @@ func applyBlock(
 func buildAppStateFromChain(
 	ctx context.Context,
 	t *testing.T,
-	proxyApp abciclient.Client,
+	appClient abciclient.Client,
 	stateStore sm.Store,
 	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
@@ -905,11 +905,11 @@ func buildAppStateFromChain(
 ) {
 	t.Helper()
 	// start a new app without handshake, play nBlocks blocks
-	require.NoError(t, proxyApp.Start(ctx))
+	require.NoError(t, appClient.Start(ctx))
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := proxyApp.InitChain(ctx, abci.RequestInitChain{
+	_, err := appClient.InitChain(ctx, abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)
@@ -920,18 +920,18 @@ func buildAppStateFromChain(
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, appClient, blockStore)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, appClient, blockStore)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[nBlocks-1], proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[nBlocks-1], appClient, blockStore)
 		}
 	default:
 		require.Fail(t, "unknown mode %v", mode)

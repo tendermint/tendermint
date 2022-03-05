@@ -171,7 +171,7 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 func createMempoolReactor(
 	ctx context.Context,
 	cfg *config.Config,
-	proxyApp abciclient.Client,
+	appClient abciclient.Client,
 	store sm.Store,
 	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
@@ -183,7 +183,7 @@ func createMempoolReactor(
 	mp := mempool.NewTxMempool(
 		logger,
 		cfg.Mempool,
-		proxyApp,
+		appClient,
 		mempool.WithMetrics(memplMetrics),
 		mempool.WithPreCheck(sm.TxPreCheckFromStore(store)),
 		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
@@ -387,7 +387,7 @@ func createRouter(
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
 	cfg *config.Config,
-	proxyApp abciclient.Client,
+	appClient abciclient.Client,
 ) (*p2p.Router, error) {
 
 	p2pLogger := logger.With("module", "p2p")
@@ -418,7 +418,7 @@ func createRouter(
 		peerManager,
 		[]p2p.Transport{transport},
 		[]p2p.Endpoint{ep},
-		getRouterConfig(cfg, proxyApp),
+		getRouterConfig(cfg, appClient),
 	)
 }
 

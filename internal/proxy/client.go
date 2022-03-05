@@ -16,9 +16,9 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/app"
 )
 
-// ClientFactory returns a default ClientCreator, which will create a
-// local client if addr is one of: 'kvstore',
-// 'persistent_kvstore', 'e2e', or 'noop', otherwise - a remote client.
+// ClientFactory returns a client object, which will create a local
+// client if addr is one of: 'kvstore', 'persistent_kvstore', 'e2e',
+// or 'noop', otherwise - a remote client.
 //
 // The Closer is a noop except for persistent_kvstore applications,
 // which will clean up the store.

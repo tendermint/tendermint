@@ -326,7 +326,6 @@ func newConsensusStateForReplay(
 		return nil, err
 	}
 
-	// Create proxyAppConn connection (consensus, mempool, query)
 	client, _, err := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 	if err != nil {
 		return nil, err
