@@ -38,7 +38,7 @@ func ClientFactory(logger log.Logger, addr, transport, dbDir string) (abciclient
 	case "noop":
 		return abciclient.NewLocalClient(logger, types.NewBaseApplication()), noopCloser{}, nil
 	default:
-		mustConnect := false // loop retrying
+		const mustConnect = false // loop retrying
 		client, err := abciclient.NewClient(logger, addr, transport, mustConnect)
 		if err != nil {
 			return nil, noopCloser{}, err
@@ -52,9 +52,8 @@ type noopCloser struct{}
 
 func (noopCloser) Close() error { return nil }
 
-////////////////////////////////////////////////////////////////////////
 
-// proxyClient implements provides the application connection.
+// proxyClient provides the application connection.
 type proxyClient struct {
 	service.BaseService
 	logger log.Logger
@@ -78,10 +77,7 @@ func (app *proxyClient) OnStop()      { tryCallStop(app.client) }
 func (app *proxyClient) Error() error { return app.client.Error() }
 
 func tryCallStop(client abciclient.Client) {
-	switch c := client.(type) {
-	case nil:
-		return
-	case interface{ Stop() }:
+	if c, ok := client.(interface{ Stop() }) {
 		c.Stop()
 	}
 }
