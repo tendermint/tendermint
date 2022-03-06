@@ -38,9 +38,9 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -51,7 +51,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp.Consensus(),
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp,
 		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
@@ -74,11 +74,12 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.TestingLogger()
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, app)
+	appClient := proxy.New(cc, logger, proxy.NopMetrics())
 
-	err := proxyApp.Start(ctx)
+	err := appClient.Start(ctx)
 	require.NoError(t, err)
 
 	state, stateDB, privVals := makeState(t, 7, 1)
@@ -102,7 +103,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			evpool.On("Update", ctx, mock.Anything, mock.Anything).Return()
 			evpool.On("CheckEvidence", ctx, mock.Anything).Return(nil)
 
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mmock.Mempool{}, evpool, blockStore)
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mmock.Mempool{}, evpool, blockStore)
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
 			for idx, isAbsent := range tc.absentCommitSigs {
@@ -135,8 +136,9 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
-	proxyApp := proxy.NewAppConns(cc, log.TestingLogger(), proxy.NopMetrics())
+	logger := log.TestingLogger()
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -212,7 +214,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp,
 		mmock.Mempool{}, evpool, blockStore)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
@@ -238,9 +240,9 @@ func TestProcessProposal(t *testing.T) {
 	defer cancel()
 
 	app := abcimocks.NewBaseMock()
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -251,7 +253,7 @@ func TestProcessProposal(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
@@ -441,9 +443,9 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -454,7 +456,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
@@ -516,9 +518,9 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -528,7 +530,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		proxyApp.Consensus(),
+		proxyApp,
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,

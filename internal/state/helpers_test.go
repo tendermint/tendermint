@@ -11,16 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
-	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -31,12 +28,6 @@ import (
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
-}
-
-func newTestApp() proxy.AppConns {
-	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
-	return proxy.NewAppConns(cc, log.NewNopLogger(), proxy.NopMetrics())
 }
 
 func makeAndCommitGoodBlock(

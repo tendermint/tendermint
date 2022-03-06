@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
@@ -31,7 +31,7 @@ type TxMempool struct {
 	logger       log.Logger
 	metrics      *Metrics
 	config       *config.MempoolConfig
-	proxyAppConn proxy.AppConnMempool
+	proxyAppConn abciclient.Client
 
 	// txsAvailable fires once for each height when the mempool is not empty
 	txsAvailable         chan struct{}
@@ -93,7 +93,7 @@ type TxMempool struct {
 func NewTxMempool(
 	logger log.Logger,
 	cfg *config.MempoolConfig,
-	proxyAppConn proxy.AppConnMempool,
+	proxyAppConn abciclient.Client,
 	options ...TxMempoolOption,
 ) *TxMempool {
 
@@ -421,7 +421,6 @@ func (txmp *TxMempool) Update(
 	newPreFn PreCheckFunc,
 	newPostFn PostCheckFunc,
 ) error {
-
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
 

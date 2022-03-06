@@ -100,7 +100,10 @@ func newDefaultNode(
 		return nil, err
 	}
 
-	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	appClient, _, err := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	if err != nil {
+		return nil, err
+	}
 
 	return makeNode(
 		ctx,
@@ -120,7 +123,7 @@ func makeNode(
 	cfg *config.Config,
 	filePrivval *privval.FilePV,
 	nodeKey types.NodeKey,
-	clientCreator abciclient.Creator,
+	client abciclient.Client,
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
 	logger log.Logger,
@@ -155,7 +158,7 @@ func makeNode(
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
+	proxyApp := proxy.New(client, logger.With("module", "proxy"), nodeMetrics.proxy)
 	if err := proxyApp.Start(ctx); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
 	}
@@ -281,7 +284,7 @@ func makeNode(
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger.With("module", "state"),
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		evPool,
 		blockStore,
@@ -339,8 +342,7 @@ func makeNode(
 		genDoc.InitialHeight,
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
+		proxyApp,
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		stateStore,
@@ -390,13 +392,12 @@ func makeNode(
 		shutdownOps: makeCloser(closers),
 
 		rpcEnv: &rpccore.Environment{
-			ProxyAppQuery:   proxyApp.Query(),
-			ProxyAppMempool: proxyApp.Mempool(),
-
-			StateStore:     stateStore,
-			BlockStore:     blockStore,
+			ProxyApp:       proxyApp,
 			EvidencePool:   evPool,
 			ConsensusState: csState,
+
+			StateStore: stateStore,
+			BlockStore: blockStore,
 
 			ConsensusReactor: csReactor,
 			BlockSyncReactor: bcReactor,
@@ -752,14 +753,14 @@ func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.Gene
 	return state, nil
 }
 
-func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
+func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
 		QueueType: conf.P2P.QueueType,
 	}
 
-	if conf.FilterPeers && proxyApp != nil {
+	if conf.FilterPeers && appClient != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
-			res, err := proxyApp.Query().Query(ctx, abci.RequestQuery{
+			res, err := appClient.Query(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
 			if err != nil {
@@ -773,7 +774,7 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 		}
 
 		opts.FilterPeerByIP = func(ctx context.Context, ip net.IP, port uint16) error {
-			res, err := proxyApp.Query().Query(ctx, abci.RequestQuery{
+			res, err := appClient.Query(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/addr/%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))),
 			})
 			if err != nil {

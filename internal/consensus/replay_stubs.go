@@ -61,22 +61,11 @@ func newMockProxyApp(
 	logger log.Logger,
 	appHash []byte,
 	abciResponses *tmstate.ABCIResponses,
-) (proxy.AppConnConsensus, error) {
-
-	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
+) (abciclient.Client, error) {
+	return proxy.New(abciclient.NewLocalClient(logger, &mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
-	})
-	cli, err := clientCreator(logger)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = cli.Start(ctx); err != nil {
-		return nil, err
-	}
-
-	return proxy.NewAppConnConsensus(cli, proxy.NopMetrics()), nil
+	}), logger, proxy.NopMetrics()), nil
 }
 
 type mockProxyApp struct {

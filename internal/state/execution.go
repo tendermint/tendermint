@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -30,7 +30,7 @@ type BlockExecutor struct {
 	blockStore BlockStore
 
 	// execute the app against this
-	proxyApp proxy.AppConnConsensus
+	appClient abciclient.Client
 
 	// events
 	eventBus types.BlockEventPublisher
@@ -60,7 +60,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
-	proxyApp proxy.AppConnConsensus,
+	appClient abciclient.Client,
 	pool mempool.Mempool,
 	evpool EvidencePool,
 	blockStore BlockStore,
@@ -68,7 +68,7 @@ func NewBlockExecutor(
 ) *BlockExecutor {
 	res := &BlockExecutor{
 		store:      stateStore,
-		proxyApp:   proxyApp,
+		appClient:  appClient,
 		eventBus:   eventbus.NopEventBus{},
 		mempool:    pool,
 		evpool:     evpool,
@@ -119,7 +119,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	preparedProposal, err := blockExec.proxyApp.PrepareProposal(
+	preparedProposal, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		abci.RequestPrepareProposal{
 			BlockData:     txs.ToSliceOfBytes(),
@@ -166,7 +166,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		ByzantineValidators: block.Evidence.ToABCI(),
 	}
 
-	resp, err := blockExec.proxyApp.ProcessProposal(ctx, req)
+	resp, err := blockExec.appClient.ProcessProposal(ctx, req)
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
@@ -214,7 +214,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	startTime := time.Now().UnixNano()
 	pbh := block.Header.ToProto()
-	finalizeBlockResponse, err := blockExec.proxyApp.FinalizeBlock(
+	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
@@ -299,7 +299,7 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 		Vote: vote.ToProto(),
 	}
 
-	resp, err := blockExec.proxyApp.ExtendVote(ctx, req)
+	resp, err := blockExec.appClient.ExtendVote(ctx, req)
 	if err != nil {
 		return types.VoteExtension{}, err
 	}
@@ -311,7 +311,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 		Vote: vote.ToProto(),
 	}
 
-	resp, err := blockExec.proxyApp.VerifyVoteExtension(ctx, req)
+	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -347,7 +347,7 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.Commit(ctx)
+	res, err := blockExec.appClient.Commit(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during proxyAppConn.Commit", "err", err)
 		return nil, 0, err
@@ -580,7 +580,7 @@ func fireEvents(
 func ExecCommitBlock(
 	ctx context.Context,
 	be *BlockExecutor,
-	appConnConsensus proxy.AppConnConsensus,
+	appConnConsensus abciclient.Client,
 	block *types.Block,
 	logger log.Logger,
 	store Store,
