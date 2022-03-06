@@ -226,8 +226,8 @@ func TestReactor_Sync(t *testing.T) {
 	defer close(closeCh)
 	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh,
 		rts.blockInCh, closeCh, 0)
-	go graduallyAddPeers(t, rts.peerUpdateCh, closeCh, 1*time.Second)
-	go handleSnapshotRequests(t, rts.snapshotOutCh, rts.snapshotInCh, closeCh, []snapshot{
+	go graduallyAddPeers(ctx, t, rts.peerUpdateCh, closeCh, 1*time.Second)
+	go handleSnapshotRequests(ctx, t, rts.snapshotOutCh, rts.snapshotInCh, closeCh, []snapshot{
 		{
 			Height: uint64(snapshotHeight),
 			Format: 1,
@@ -235,7 +235,7 @@ func TestReactor_Sync(t *testing.T) {
 		},
 	})
 
-	go handleChunkRequests(t, rts.chunkOutCh, rts.chunkInCh, closeCh, []byte("abc"))
+	go handleChunkRequests(ctx, t, rts.chunkOutCh, rts.chunkInCh, closeCh, []byte("abc"))
 
 	go handleConsensusParamsRequest(ctx, t, rts.paramsOutCh, rts.paramsInCh, closeCh)
 
@@ -849,6 +849,7 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 // graduallyAddPeers delivers a new randomly-generated peer update on peerUpdateCh once
 // per interval, until closeCh is closed. Each peer update is assigned a random node ID.
 func graduallyAddPeers(
+	ctx context.Context,
 	t *testing.T,
 	peerUpdateCh chan p2p.PeerUpdate,
 	closeCh chan struct{},
@@ -857,6 +858,10 @@ func graduallyAddPeers(
 	ticker := time.NewTicker(interval)
 	for {
 		select {
+		case <-ctx.Done():
+			return
+		case <-closeCh:
+			return
 		case <-ticker.C:
 			peerUpdateCh <- p2p.PeerUpdate{
 				NodeID: factory.RandomNodeID(t),
@@ -868,13 +873,12 @@ func graduallyAddPeers(
 					ParamsChannel:     struct{}{},
 				},
 			}
-		case <-closeCh:
-			return
 		}
 	}
 }
 
 func handleSnapshotRequests(
+	ctx context.Context,
 	t *testing.T,
 	receivingCh chan p2p.Envelope,
 	sendingCh chan p2p.Envelope,
@@ -884,6 +888,10 @@ func handleSnapshotRequests(
 	t.Helper()
 	for {
 		select {
+		case <-ctx.Done():
+			return
+		case <-closeCh:
+			return
 		case envelope := <-receivingCh:
 			_, ok := envelope.Message.(*ssproto.SnapshotsRequest)
 			require.True(t, ok)
@@ -899,13 +907,12 @@ func handleSnapshotRequests(
 					},
 				}
 			}
-		case <-closeCh:
-			return
 		}
 	}
 }
 
 func handleChunkRequests(
+	ctx context.Context,
 	t *testing.T,
 	receivingCh chan p2p.Envelope,
 	sendingCh chan p2p.Envelope,
@@ -915,6 +922,10 @@ func handleChunkRequests(
 	t.Helper()
 	for {
 		select {
+		case <-ctx.Done():
+			return
+		case <-closeCh:
+			return
 		case envelope := <-receivingCh:
 			msg, ok := envelope.Message.(*ssproto.ChunkRequest)
 			require.True(t, ok)
@@ -929,8 +940,6 @@ func handleChunkRequests(
 				},
 			}
 
-		case <-closeCh:
-			return
 		}
 	}
 }
