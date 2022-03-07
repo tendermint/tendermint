@@ -252,7 +252,7 @@ func (evpool *Pool) State() sm.State {
 
 func (evpool *Pool) Start(state sm.State) error {
 	if evpool.isStarted {
-		return errors.New("pooli is already running")
+		return errors.New("pool is already running")
 	}
 
 	evpool.state = state

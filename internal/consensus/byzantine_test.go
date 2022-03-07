@@ -88,8 +88,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 
 			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
-			err = eventBus.Start(ctx)
-			require.NoError(t, err)
+			require.NoError(t, eventBus.Start(ctx))
 
 			// Make a full instance of the evidence pool
 			evidenceDB := dbm.NewMemDB()
