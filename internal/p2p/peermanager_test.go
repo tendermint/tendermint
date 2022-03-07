@@ -3,11 +3,13 @@ package p2p_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -314,13 +316,14 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	for i := 0; i <= 5; i++ {
+	for i := 0; i <= 6; i++ {
 		start := time.Now()
 		dial, err := peerManager.DialNext(ctx)
 		require.NoError(t, err)
 		require.Equal(t, a, dial)
 		elapsed := time.Since(start).Round(time.Millisecond)
 
+		fmt.Println(elapsed, options.MinRetryTime)
 		switch i {
 		case 0:
 			require.LessOrEqual(t, elapsed, options.MinRetryTime)
@@ -329,12 +332,11 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 		case 2:
 			require.GreaterOrEqual(t, elapsed, 2*options.MinRetryTime)
 		case 3:
+			require.GreaterOrEqual(t, elapsed, 3*options.MinRetryTime)
+		case 4, 5, 6:
 			require.GreaterOrEqual(t, elapsed, 4*options.MinRetryTime)
-		case 4, 5:
-			require.GreaterOrEqual(t, elapsed, options.MaxRetryTime)
-			require.LessOrEqual(t, elapsed, 8*options.MinRetryTime)
 		default:
-			require.Fail(t, "unexpected retry")
+			t.Fatal("unexpected retry")
 		}
 
 		require.NoError(t, peerManager.DialFailed(a))
@@ -1270,7 +1272,7 @@ func TestPeerManager_Ready(t *testing.T) {
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(a.NodeID))
 
 	// Marking a as ready should transition it to PeerStatusUp and send an update.
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 	require.Equal(t, p2p.PeerStatusUp, peerManager.Status(a.NodeID))
 	require.Equal(t, p2p.PeerUpdate{
 		NodeID: a.NodeID,
@@ -1282,9 +1284,29 @@ func TestPeerManager_Ready(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
-	peerManager.Ready(b.NodeID)
+	peerManager.Ready(b.NodeID, nil)
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
 	require.Empty(t, sub.Updates())
+}
+
+func TestPeerManager_Ready_Channels(t *testing.T) {
+	pm, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	sub := pm.Subscribe()
+
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
+	added, err := pm.Add(a)
+	require.NoError(t, err)
+	require.True(t, added)
+	require.NoError(t, pm.Accepted(a.NodeID))
+
+	pm.Ready(a.NodeID, p2p.ChannelIDSet{42: struct{}{}})
+	require.NotEmpty(t, sub.Updates())
+	update := <-sub.Updates()
+	assert.Equal(t, a.NodeID, update.NodeID)
+	require.True(t, update.Channels.Contains(42))
+	require.False(t, update.Channels.Contains(48))
 }
 
 // See TryEvictNext for most tests, this just tests blocking behavior.
@@ -1298,7 +1320,7 @@ func TestPeerManager_EvictNext(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 
 	// Since there are no peers to evict, EvictNext should block until timeout.
 	timeoutCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
@@ -1331,7 +1353,7 @@ func TestPeerManager_EvictNext_WakeOnError(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 
 	// Spawn a goroutine to error a peer after a delay.
 	go func() {
@@ -1363,7 +1385,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 
 	// Spawn a goroutine to upgrade to b with a delay.
 	go func() {
@@ -1401,7 +1423,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 
 	// Spawn a goroutine to upgrade b with a delay.
 	go func() {
@@ -1433,7 +1455,7 @@ func TestPeerManager_TryEvictNext(t *testing.T) {
 
 	// Connecting to a won't evict anything either.
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 
 	// But if a errors it should be evicted.
 	peerManager.Errored(a.NodeID, errors.New("foo"))
@@ -1478,7 +1500,7 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	_, err = peerManager.Add(a)
 	require.NoError(t, err)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 	require.Equal(t, p2p.PeerStatusUp, peerManager.Status(a.NodeID))
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{
@@ -1530,7 +1552,7 @@ func TestPeerManager_Errored(t *testing.T) {
 	require.Zero(t, evict)
 
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Zero(t, evict)
@@ -1561,7 +1583,7 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.NoError(t, peerManager.Accepted(a.NodeID))
 	require.Empty(t, sub.Updates())
 
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
 
@@ -1578,7 +1600,7 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.NoError(t, peerManager.Dialed(a))
 	require.Empty(t, sub.Updates())
 
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
 
@@ -1618,7 +1640,7 @@ func TestPeerManager_Subscribe_Close(t *testing.T) {
 	require.NoError(t, peerManager.Accepted(a.NodeID))
 	require.Empty(t, sub.Updates())
 
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 	require.NotEmpty(t, sub.Updates())
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
 
@@ -1648,7 +1670,7 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
-	peerManager.Ready(a.NodeID)
+	peerManager.Ready(a.NodeID, nil)
 
 	expectUp := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}
 	require.NotEmpty(t, s1)
