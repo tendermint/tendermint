@@ -228,12 +228,7 @@ func createEvidenceReactor(
 
 	logger = logger.With("module", "evidence")
 
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics)
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating evidence pool: %w", err)
-	}
-
-	evidencePool.SetEventBus(eventBus)
+	evidencePool := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics, eventBus)
 
 	evidenceReactor, err := evidence.NewReactor(
 		ctx,
