@@ -273,8 +273,8 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -291,8 +291,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	mp := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		cfg.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
+		proxyApp,
 	)
 
 	// Make EvidencePool
@@ -328,7 +327,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		evidencePool,
 		blockStore,
@@ -372,8 +371,8 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -391,8 +390,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	mp := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		cfg.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
+		proxyApp,
 	)
 
 	// fill the mempool with one txs just below the maximum size
@@ -404,7 +402,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
@@ -440,8 +438,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -456,8 +454,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	mp := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		cfg.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
+		proxyApp,
 	)
 
 	// fill the mempool with one txs just below the maximum size
@@ -476,7 +473,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,

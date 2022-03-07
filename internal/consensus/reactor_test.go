@@ -461,6 +461,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
+		require.NoError(t, stateStore.Save(state))
 		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
@@ -483,7 +484,6 @@ func TestReactorWithEvidence(t *testing.T) {
 			log.TestingLogger().With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
-			0,
 		)
 
 		if thisConfig.Consensus.WaitForTxs() {
@@ -506,8 +506,9 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
 
-		cs := NewState(ctx, logger.With("validator", i, "module", "consensus"),
-			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
+		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
+			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2)
+		require.NoError(t, err)
 		cs.SetPrivValidator(ctx, pv)
 
 		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))

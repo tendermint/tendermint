@@ -104,6 +104,12 @@ proto-lint: check-proto-deps
 	@buf lint
 .PHONY: proto-lint
 
+# TODO: Should be removed when work on ABCI++ is complete.
+# For more information, see https://github.com/tendermint/tendermint/issues/8066
+abci-proto-gen:
+	./scripts/abci-gen.sh
+.PHONY: abci-proto-gen
+
 proto-format: check-proto-format-deps
 	@echo "Formatting Protobuf files"
 	@find . -name '*.proto' -path "./proto/*" -exec clang-format -i {} \;

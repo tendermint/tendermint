@@ -72,7 +72,7 @@ func TestBlockchainInfo(t *testing.T) {
 func TestBlockResults(t *testing.T) {
 	results := &tmstate.ABCIResponses{
 		FinalizeBlock: &abci.ResponseFinalizeBlock{
-			Txs: []*abci.ResponseDeliverTx{
+			TxResults: []*abci.ExecTxResult{
 				{Code: 0, Data: []byte{0x01}, Log: "ok", GasUsed: 10},
 				{Code: 0, Data: []byte{0x02}, Log: "ok", GasUsed: 5},
 				{Code: 1, Log: "not ok", GasUsed: 0},
@@ -99,7 +99,7 @@ func TestBlockResults(t *testing.T) {
 		{101, true, nil},
 		{100, false, &coretypes.ResultBlockResults{
 			Height:                100,
-			TxsResults:            results.FinalizeBlock.Txs,
+			TxsResults:            results.FinalizeBlock.TxResults,
 			TotalGasUsed:          15,
 			FinalizeBlockEvents:   results.FinalizeBlock.Events,
 			ValidatorUpdates:      results.FinalizeBlock.ValidatorUpdates,
