@@ -284,7 +284,7 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
+	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs)}
 }
 
 func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
@@ -432,14 +432,24 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 
 // substPrepareTx subst all the preparetx in the blockdata
 // to null string(could be any arbitrary string).
-func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
+func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 	// TODO: this mechanism will change with the current spec of PrepareProposal
 	// We now have a special type for marking a tx as changed
+
+	trs := make([]*types.TxRecord, len(blockData))
 	for i, tx := range blockData {
 		if isPrepareTx(tx) {
-			blockData[i] = make([]byte, len(tx))
+			trs[i] = &types.TxRecord{
+				Tx:     make([]byte, len(tx)),
+				Action: types.TxRecord_ADDED,
+			}
+			continue
+		}
+		trs[i] = &types.TxRecord{
+			Tx:     tx,
+			Action: types.TxRecord_UNMODIFIED,
 		}
 	}
 
-	return blockData
+	return trs
 }
