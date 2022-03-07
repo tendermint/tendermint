@@ -38,8 +38,8 @@ func MakeResetStateCommand(conf *config.Config, logger log.Logger) *cobra.Comman
 	var keyType string
 
 	cmd := &cobra.Command{
-		Use:   "unsafe-reset-state",
-		Short: "(unsafe) Remove all the data and WAL",
+		Use:   "reset-state",
+		Short: "Remove all the data and WAL",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return resetState(conf.DBDir(), logger, keyType)
 		},
@@ -73,7 +73,7 @@ func MakeResetPrivateValidatorCommand(conf *config.Config, logger log.Logger) *c
 
 // resetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
-func resetAll(dbDir string, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
+func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
@@ -97,7 +97,7 @@ func resetState(dbDir string, logger log.Logger, keyType string) error {
 		if err := os.RemoveAll(blockdb); err == nil {
 			logger.Info("Removed all blockstore.db", "dir", blockdb)
 		} else {
-			logger.Error("error removing all blockstore.db", "dir", state, "err", err)
+			logger.Error("error removing all blockstore.db", "dir", blockdb, "err", err)
 		}
 	}
 
