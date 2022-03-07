@@ -37,15 +37,13 @@ func MakeResetAllCommand(conf *config.Config, logger log.Logger) *cobra.Command 
 func MakeResetStateCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	var keyType string
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "reset-state",
 		Short: "Remove all the data and WAL",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return resetState(conf.DBDir(), logger, keyType)
 		},
 	}
-
-	return cmd
 }
 
 func MakeResetPrivateValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Command {
