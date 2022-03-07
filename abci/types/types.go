@@ -202,3 +202,15 @@ func mustResultsToByteSlices(r []*ExecTxResult) [][]byte {
 	}
 	return s
 }
+
+// IncludedTxs returns all of the TxRecords that are marked for inclusion in the
+// proposed block.
+func (rpp *ResponsePrepareProposal) IncludedTxs() []*TxRecord {
+	trs := []*TxRecord{}
+	for _, tr := range rpp.TxRecords {
+		if tr.Action == TxRecord_ADDED || tr.Action == TxRecord_UNMODIFIED {
+			trs = append(trs, tr)
+		}
+	}
+	return trs
+}

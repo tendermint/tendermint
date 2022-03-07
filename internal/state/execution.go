@@ -144,7 +144,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		panic(fmt.Sprintf("application returned invalid ResponsePrepareProposal: %s", err))
 	}
 
-	return state.BlockFromResponsePrepareProposal(height, preparedProposal)
+	return state.MakeBlock(height, types.TxRecordsToTxs(preparedProposal.IncludedTxs()), commit, evidence, proposerAddr)
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(

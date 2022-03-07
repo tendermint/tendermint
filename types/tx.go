@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -100,6 +101,15 @@ func ToTxs(txs [][]byte) Txs {
 		txBzs[i] = txs[i]
 	}
 	return txBzs
+}
+
+// TxRecordsToTxs coverts from the abci Tx type to the a Txs type.
+func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
+	txs := make([]Tx, len(trs))
+	for i, tr := range trs {
+		txs[i] = Tx(tr.Tx)
+	}
+	return txs
 }
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
