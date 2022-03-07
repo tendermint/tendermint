@@ -99,10 +99,11 @@ func (blockExec *BlockExecutor) Store() Store {
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	ctx context.Context,
 	height int64,
-	state State, commit *types.Commit,
+	state State,
+	commit *types.Commit,
 	proposerAddr []byte,
 	votes []*types.Vote,
-) (*types.Block, *types.PartSet, error) {
+) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
@@ -113,7 +114,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
-	block, _, err := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	block, err := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	preparedProposal, err := blockExec.appClient.PrepareProposal(
@@ -124,7 +125,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit),
 			ByzantineValidators: block.Evidence.ToABCI(),
-			MaxTxBytes:          maxBytes,
+			MaxTxBytes:          maxDataBytes,
 		},
 	)
 

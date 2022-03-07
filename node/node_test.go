@@ -336,7 +336,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
@@ -415,7 +415,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
@@ -530,13 +530,15 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
-	block, partSet, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
 		state, commit,
 		proposerAddr,
 		nil,
 	)
+	require.NoError(t, err)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	// this ensures that the header is at max size

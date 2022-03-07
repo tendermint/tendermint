@@ -202,9 +202,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
 
-		block, blockParts, err := lazyNodeState.blockExec.CreateProposalBlock(
+		block, err := lazyNodeState.blockExec.CreateProposalBlock(
 			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr, votes,
 		)
+		require.NoError(t, err)
+		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,

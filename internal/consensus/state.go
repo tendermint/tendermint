@@ -1289,8 +1289,12 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
-		block, blockParts, err = cs.createProposalBlock(ctx)
+		block, err = cs.createProposalBlock(ctx)
 		if block == nil || err != nil {
+			return
+		}
+		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
+		if err != nil {
 			return
 		}
 	}
@@ -1349,9 +1353,9 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, blockParts *types.PartSet, err error) {
+func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, err error) {
 	if cs.privValidator == nil {
-		return nil, nil, errors.New("entered createProposalBlock with privValidator being nil")
+		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
 	var commit *types.Commit

@@ -43,7 +43,7 @@ func MakeBlocks(ctx context.Context, t *testing.T, n int, state *sm.State, privV
 }
 
 func MakeBlock(state sm.State, height int64, c *types.Commit) (*types.Block, error) {
-	block, _, err := state.MakeBlock(
+	block, err := state.MakeBlock(
 		height,
 		factory.MakeTenTxs(state.LastBlockHeight),
 		c,
@@ -82,7 +82,9 @@ func makeBlockAndPartSet(
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}
 
-	block, partSet, err := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	block, err := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	require.NoError(t, err)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	return block, partSet

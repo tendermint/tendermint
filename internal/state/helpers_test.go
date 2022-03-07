@@ -18,7 +18,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -63,12 +62,14 @@ func makeAndApplyGoodBlock(
 	evidence []types.Evidence,
 ) (sm.State, types.BlockID) {
 	t.Helper()
-	block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	block, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	require.NoError(t, err)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	require.NoError(t, blockExec.ValidateBlock(ctx, state, block))
 	blockID := types.BlockID{Hash: block.Hash(),
-		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
+		PartSetHeader: partSet.Header()}
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.NoError(t, err)
 
@@ -246,8 +247,7 @@ func makeRandomStateFromValidatorSet(
 }
 func makeRandomStateFromConsensusParams(
 	ctx context.Context,
-	t *testing.T,
-	consensusParams *types.ConsensusParams,
+	t *testing.T, consensusParams *types.ConsensusParams,
 	height,
 	lastHeightConsensusParamsChanged int64,
 ) sm.State {
