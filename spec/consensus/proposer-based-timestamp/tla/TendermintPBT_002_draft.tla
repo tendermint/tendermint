@@ -808,6 +808,35 @@ ConsensusSafeValidCorrProp ==
           => /\ beginRound[pr, p] <= t 
              /\ t <= lastBeginRound[pr]
 
+
+
+\* @type: (PROPOSAL, ROUND) => Set(PREMESSAGE);
+POLSet(prop, rnd) == 
+  { msg \in msgsPrevote[rnd]: msg.id = prop}
+\* @type: (Set(PREMESSAGE)) => Bool;
+IsValidPOL(s) == Cardinality(s) >= THRESHOLD2
+
+\* @type: (Set(PREMESSAGE)) => Bool;
+ContainsPrevoteFromCorrect(set) ==
+  \E p \in Corr, msg \in set: msg.src = p
+
+\* [PBS-DERIVED-POL.1]
+DerivedProofOfLocks == 
+  \A r \in Rounds, prop \in ValidProposals:
+    LET t == prop[2] IN
+    LET PS == POLSet(prop, r) IN
+    ( 
+      /\ IsValidPOL(PS)
+      /\ ContainsPrevoteFromCorrect(PS)
+    ) =>
+    \E rStar \in Rounds:
+      LET PSStar == POLSet(prop, rStar) IN 
+        /\ rStar <= r
+        /\ ContainsPrevoteFromCorrect(PSStar)
+        /\ \E p \in Corr: IsTimely( proposalReceptionTime[rStar, p], t)
+
+
+
 \* [PBTS-CONSENSUS-REALTIME-VALID-CORR.0]
 \* ConsensusRealTimeValidCorr == TODO?
 \* [PBTS-CONSENSUS-REALTIME-VALID.0]
@@ -827,6 +856,7 @@ Inv ==
     /\ AgreementOnValue 
     /\ ConsensusTimeValid
     /\ ConsensusSafeValidCorrProp
+    /\ DerivedProofOfLocks
 
 \* Liveness ==
 \*     ConsensusTimeLive    
