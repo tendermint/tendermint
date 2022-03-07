@@ -87,7 +87,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 		require.NoError(t, err)
 
 		rts.pools[nodeID] = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics(), eventBus)
-		bootstrapPool(t, rts.pools[nodeID], stateStores[idx])
+		startPool(t, rts.pools[nodeID], stateStores[idx])
 
 		require.NoError(t, err)
 

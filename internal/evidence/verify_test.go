@@ -489,7 +489,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	pool := evidence.NewPool(logger, dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics(), eventBus)
-	bootstrapPool(t, pool, stateStore)
+	startPool(t, pool, stateStore)
 
 	evList := types.EvidenceList{goodEv}
 	err = pool.CheckEvidence(ctx, evList)

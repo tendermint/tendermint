@@ -34,7 +34,7 @@ var (
 	defaultEvidenceMaxBytes int64 = 1000
 )
 
-func bootstrapPool(t *testing.T, pool *evidence.Pool, store sm.Store) {
+func startPool(t *testing.T, pool *evidence.Pool, store sm.Store) {
 	t.Helper()
 	state, err := store.Load()
 	if err != nil {
@@ -68,7 +68,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	pool := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
-	bootstrapPool(t, pool, stateStore)
+	startPool(t, pool, stateStore)
 
 	// evidence not seen yet:
 	evs, size := pool.PendingEvidence(defaultEvidenceMaxBytes)
@@ -136,7 +136,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	pool := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
-	bootstrapPool(t, pool, stateStore)
+	startPool(t, pool, stateStore)
 
 	testCases := []struct {
 		evHeight      int64
@@ -464,7 +464,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 
 	// create previous pool and populate it
 	pool := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
-	bootstrapPool(t, pool, stateStore)
+	startPool(t, pool, stateStore)
 
 	goodEvidence, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
@@ -507,7 +507,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	}, nil)
 
 	newPool := evidence.NewPool(logger, evidenceDB, newStateStore, blockStore, evidence.NopMetrics(), nil)
-	bootstrapPool(t, newPool, newStateStore)
+	startPool(t, newPool, newStateStore)
 	evList, _ := newPool.PendingEvidence(defaultEvidenceMaxBytes)
 	require.Equal(t, 1, len(evList))
 
@@ -617,7 +617,7 @@ func defaultTestPool(ctx context.Context, t *testing.T, height int64) (*evidence
 	require.NoError(t, eventBus.Start(ctx))
 
 	pool := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
-	bootstrapPool(t, pool, stateStore)
+	startPool(t, pool, stateStore)
 	return pool, val, eventBus
 }
 
