@@ -289,6 +289,7 @@ func makeNode(
 		mp,
 		evPool,
 		blockStore,
+		eventBus,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 

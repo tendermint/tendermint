@@ -45,14 +45,15 @@ func TestApplyBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := proxyApp.Start(ctx)
-	require.NoError(t, err)
+	require.NoError(t, proxyApp.Start(ctx))
+
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
 
 	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp,
-		mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore, eventBus)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
 	require.NoError(t, err)
@@ -103,7 +104,10 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			evpool.On("Update", ctx, mock.Anything, mock.Anything).Return()
 			evpool.On("CheckEvidence", ctx, mock.Anything).Return(nil)
 
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mmock.Mempool{}, evpool, blockStore)
+			eventBus := eventbus.NewDefault(logger)
+			require.NoError(t, eventBus.Start(ctx))
+
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mmock.Mempool{}, evpool, blockStore, eventBus)
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
 			for idx, isAbsent := range tc.absentCommitSigs {
@@ -212,10 +216,13 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp,
-		mmock.Mempool{}, evpool, blockStore)
+		mmock.Mempool{}, evpool, blockStore, eventBus)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
 	require.NoError(t, err)
@@ -250,6 +257,9 @@ func TestProcessProposal(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
@@ -257,6 +267,7 @@ func TestProcessProposal(t *testing.T) {
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 
 	block0, err := sf.MakeBlock(state, height-1, new(types.Commit))
@@ -453,6 +464,9 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
@@ -460,14 +474,8 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
-
-	eventBus := eventbus.NewDefault(logger)
-	err = eventBus.Start(ctx)
-	require.NoError(t, err)
-	defer eventBus.Stop()
-
-	blockExec.SetEventBus(eventBus)
 
 	updatesSub, err := eventBus.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "TestFinalizeBlockValidatorUpdates",
@@ -524,6 +532,9 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
@@ -534,6 +545,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))

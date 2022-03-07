@@ -14,6 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
@@ -121,6 +122,9 @@ func (rts *reactorTestSuite) addNode(
 	require.NoError(t, err)
 	require.NoError(t, stateStore.Save(state))
 
+	eventbus := eventbus.NewDefault(logger)
+	require.NoError(t, eventbus.Start(ctx))
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
@@ -128,6 +132,7 @@ func (rts *reactorTestSuite) addNode(
 		mock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventbus,
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

@@ -197,9 +197,11 @@ func NewState(
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
+	eventBus *eventbus.EventBus,
 	options ...StateOption,
 ) (*State, error) {
 	cs := &State{
+		eventBus:         eventBus,
 		logger:           logger,
 		config:           cfg,
 		blockExec:        blockExec,
@@ -260,11 +262,11 @@ func (cs *State) updateStateFromStore(ctx context.Context) error {
 	return nil
 }
 
-// SetEventBus sets event bus.
-func (cs *State) SetEventBus(b *eventbus.EventBus) {
-	cs.eventBus = b
-	cs.blockExec.SetEventBus(b)
-}
+// // SetEventBus sets event bus.
+// func (cs *State) SetEventBus(b *eventbus.EventBus) {
+//	cs.eventBus = b
+//	cs.blockExec.SetEventBus(b)
+// }
 
 // StateMetrics sets the metrics.
 func StateMetrics(metrics *Metrics) StateOption {

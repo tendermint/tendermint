@@ -270,6 +270,7 @@ func createConsensusReactor(
 		blockStore,
 		mp,
 		evidencePool,
+		eventBus,
 		consensus.StateMetrics(csMetrics),
 	)
 	if err != nil {
@@ -286,6 +287,7 @@ func createConsensusReactor(
 		consensusState,
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
+		eventBus,
 		waitSync,
 		csMetrics,
 	)
@@ -293,9 +295,6 @@ func createConsensusReactor(
 		return nil, nil, err
 	}
 
-	// Services which will be publishing and/or subscribing for messages (events)
-	// consensusReactor will set it on consensusState and blockExecutor.
-	reactor.SetEventBus(eventBus)
 	return reactor, consensusState, nil
 }
 
