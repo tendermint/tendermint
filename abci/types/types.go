@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/jsonpb"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	types "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -166,4 +167,38 @@ func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
 	return ResponseVerifyVoteExtension{
 		Result: result,
 	}
+}
+
+func MustHashResults(r []*ExecTxResult) []byte {
+	return merkle.HashFromByteSlices(mustResultsToByteSlices(r))
+}
+
+// ProveResult returns a merkle proof of one result from the set
+func MustProveResult(r []*ExecTxResult, i int) merkle.Proof {
+	_, proofs := merkle.ProofsFromByteSlices(mustResultsToByteSlices(r))
+	return *proofs[i]
+}
+
+// deterministicExecTxResult strips non-deterministic fields from
+// ResponseDeliverTx and returns another ResponseDeliverTx.
+func deterministicExecTxResult(response *ExecTxResult) *ExecTxResult {
+	return &ExecTxResult{
+		Code:      response.Code,
+		Data:      response.Data,
+		GasWanted: response.GasWanted,
+		GasUsed:   response.GasUsed,
+	}
+}
+
+func mustResultsToByteSlices(r []*ExecTxResult) [][]byte {
+	s := make([][]byte, len(r))
+	for i, e := range r {
+		d := deterministicExecTxResult(e)
+		b, err := d.Marshal()
+		if err != nil {
+			panic(err)
+		}
+		s[i] = b
+	}
+	return s
 }

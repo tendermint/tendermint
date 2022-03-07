@@ -247,7 +247,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = state.Update(blockID, &block.Header, ABCIResponsesResultsHash(abciResponses), finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
+	state, err = state.Update(blockID, &block.Header, abci.MustHashResults(finalizeBlockResponse.TxResults), finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}

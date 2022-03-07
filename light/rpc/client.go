@@ -458,11 +458,8 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 		return nil, err
 	}
 
-	// Build a Merkle tree of proto-encoded FinalizeBlock tx results and get a hash.
-	results := types.NewResults(res.TxsResults)
-
 	// Build a Merkle tree out of the slice.
-	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash()})
+	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, abci.MustHashResults(res.TxsResults)})
 
 	// Verify block results.
 	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {
