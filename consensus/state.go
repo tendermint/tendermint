@@ -819,7 +819,20 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		cs.mtx.Lock()
 		added, err = cs.addProposalBlockPart(msg, peerID)
+
+		// We unlock here to yield to any routines that need to read the the RoundState.
+		// Previously, this code held the lock from the point at which the final block
+		// part was recieved until the block executed against the application.
+		// This prevented the reactor form being able to retrieve the most updated
+		// version of the RoundState. The reactor needs the updated RoundState to
+		// gossip the now completed block.
+		//
+		// This code can be further improved by either always operating on a copy
+		// of RoundState and only locking when to swithc out State's copy of
+		// RoundState with the updated copy or by emitting RoundState events in
+		// more places for routines depending on it to listen for.
 		cs.mtx.Unlock()
+
 		cs.mtx.Lock()
 		if added && cs.ProposalBlockParts.IsComplete() {
 			cs.handleCompleteProposal(msg.Height)
