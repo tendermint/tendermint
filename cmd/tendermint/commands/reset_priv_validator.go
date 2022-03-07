@@ -32,7 +32,7 @@ func MakeResetAllCommand(conf *config.Config, logger log.Logger) *cobra.Command 
 	return cmd
 }
 
-// MakeResetAllCommand constructs a command that removes the database of
+// MakeResetStateCommand constructs a command that removes the database of
 // the specified Tendermint core instance.
 func MakeResetStateCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	var keyType string
