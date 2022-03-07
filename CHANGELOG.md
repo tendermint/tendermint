@@ -2,6 +2,18 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.16
+
+Special thanks to external contributors on this release: @yihuang
+
+### BUG FIXES
+
+- [consensus] [\#7617](https://github.com/tendermint/tendermint/issues/7617) calculate prevote message delay metric (backport #7551) (@williambanfield).
+- [consensus] [\#7631](https://github.com/tendermint/tendermint/issues/7631) check proposal non-nil in prevote message delay metric (backport #7625) (@williambanfield).
+- [statesync] [\#7885](https://github.com/tendermint/tendermint/issues/7885) statesync: assert app version matches (backport #7856) (@cmwaters).
+- [statesync] [\#7881](https://github.com/tendermint/tendermint/issues/7881) fix app hash in state rollback (backport #7837) (@cmwaters).
+- [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang).
+
 ## v0.34.15
 
 Special thanks to external contributors on this release: @thanethomson
