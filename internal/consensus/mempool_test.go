@@ -212,7 +212,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 			checkTxRespCh <- struct{}{}
 		}, mempool.TxInfo{})
 		if err != nil {
-			t.Errorf("error after CheckTx: %w", err)
+			t.Errorf("error after CheckTx: %v", err)
 			return
 		}
 

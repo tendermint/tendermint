@@ -126,7 +126,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 			nodePrvKey := ed25519.GenPrivKey()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
-				t.Errorf("failed to establish SecretConnection for node: %w", err)
+				t.Errorf("failed to establish SecretConnection for node: %v", err)
 				return nil, true, err
 			}
 			// In parallel, handle some reads and writes.
@@ -136,7 +136,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 					for _, nodeWrite := range nodeWrites {
 						n, err := nodeSecretConn.Write([]byte(nodeWrite))
 						if err != nil {
-							t.Errorf("failed to write to nodeSecretConn: %w", err)
+							t.Errorf("failed to write to nodeSecretConn: %v", err)
 							return nil, true, err
 						}
 						if n != len(nodeWrite) {
@@ -163,7 +163,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 							}
 							return nil, false, nil
 						} else if err != nil {
-							t.Errorf("failed to read from nodeSecretConn: %w", err)
+							t.Errorf("failed to read from nodeSecretConn: %v", err)
 							return nil, true, err
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
@@ -288,7 +288,7 @@ func writeLots(t *testing.T, wg *sync.WaitGroup, conn io.Writer, txt string, n i
 	for i := 0; i < n; i++ {
 		_, err := conn.Write([]byte(txt))
 		if err != nil {
-			t.Errorf("failed to write to fooSecConn: %w", err)
+			t.Errorf("failed to write to fooSecConn: %v", err)
 			return
 		}
 	}
@@ -343,7 +343,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 		func(_ int) (val interface{}, abort bool, err error) {
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
 			if err != nil {
-				tb.Errorf("failed to establish SecretConnection for foo: %w", err)
+				tb.Errorf("failed to establish SecretConnection for foo: %v", err)
 				return nil, true, err
 			}
 			remotePubBytes := fooSecConn.RemotePubKey()
@@ -358,7 +358,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 		func(_ int) (val interface{}, abort bool, err error) {
 			barSecConn, err = MakeSecretConnection(barConn, barPrvKey)
 			if barSecConn == nil {
-				tb.Errorf("failed to establish SecretConnection for bar: %w", err)
+				tb.Errorf("failed to establish SecretConnection for bar: %v", err)
 				return nil, true, err
 			}
 			remotePubBytes := barSecConn.RemotePubKey()
@@ -405,7 +405,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 			if err == io.EOF {
 				return
 			} else if err != nil {
-				b.Errorf("failed to read from barSecConn: %w", err)
+				b.Errorf("failed to read from barSecConn: %v", err)
 				return
 			}
 		}
@@ -416,7 +416,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 		idx := mrand.Intn(len(fooWriteBytes))
 		_, err := fooSecConn.Write(fooWriteBytes[idx])
 		if err != nil {
-			b.Errorf("failed to write to fooSecConn: %w", err)
+			b.Errorf("failed to write to fooSecConn: %v", err)
 			return
 		}
 	}
