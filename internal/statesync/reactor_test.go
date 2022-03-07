@@ -795,13 +795,11 @@ func handleConsensusParamsRequest(
 		case <-ctx.Done():
 			return
 		case envelope := <-receiving:
-			if ctx.Err() != nil {
+			msg, ok := envelope.Message.(*ssproto.ParamsRequest)
+			if !ok {
+				t.Errorf("message was %T which is not a params request", envelope.Message)
 				return
 			}
-
-			t.Log("received consensus params request")
-			msg, ok := envelope.Message.(*ssproto.ParamsRequest)
-			require.True(t, ok)
 			select {
 			case sending <- p2p.Envelope{
 				From: envelope.To,
@@ -811,6 +809,7 @@ func handleConsensusParamsRequest(
 				},
 			}:
 			case <-ctx.Done():
+				return
 			case <-closeCh:
 				return
 			}
