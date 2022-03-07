@@ -262,12 +262,6 @@ func (cs *State) updateStateFromStore(ctx context.Context) error {
 	return nil
 }
 
-// // SetEventBus sets event bus.
-// func (cs *State) SetEventBus(b *eventbus.EventBus) {
-//	cs.eventBus = b
-//	cs.blockExec.SetEventBus(b)
-// }
-
 // StateMetrics sets the metrics.
 func StateMetrics(metrics *Metrics) StateOption {
 	return func(cs *State) { cs.metrics = metrics }
