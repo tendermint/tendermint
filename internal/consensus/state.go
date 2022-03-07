@@ -1346,6 +1346,10 @@ func (cs *State) isProposalComplete() bool {
 
 }
 
+// TODO: createProposalBlock should not naked return
+// It has two cases that appear to be error cases, but nothing is returned during
+// these cases.
+
 // Create the next block to propose and return it. Returns nil block upon error.
 //
 // We really only need to return the parts, but the block is returned for
