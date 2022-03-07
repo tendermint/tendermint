@@ -310,7 +310,14 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 
 func (app *CounterApplication) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
+	trs := make([]*abci.TxRecord, len(req.Txs))
+	for i, tx := range req.Txs {
+		trs[i] = &abci.TxRecord{
+			Action: abci.TxRecord_UNMODIFIED,
+			Tx:     tx,
+		}
+	}
+	return abci.ResponsePrepareProposal{TxRecords: trs}
 }
 
 func (app *CounterApplication) ProcessProposal(
