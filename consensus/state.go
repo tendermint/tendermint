@@ -828,7 +828,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// gossip the now completed block.
 		//
 		// This code can be further improved by either always operating on a copy
-		// of RoundState and only locking when swithing out State's copy of
+		// of RoundState and only locking when switching out State's copy of
 		// RoundState with the updated copy or by emitting RoundState events in
 		// more places for routines depending on it to listen for.
 		cs.mtx.Unlock()
