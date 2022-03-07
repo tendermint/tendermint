@@ -731,11 +731,15 @@ func handleLightBlockRequests(
 				if requests%10 >= failureRate {
 					lb, err := chain[int64(msg.Height)].ToProto()
 					require.NoError(t, err)
-					sending <- p2p.Envelope{
+					select {
+					case sending <- p2p.Envelope{
 						From: envelope.To,
 						Message: &ssproto.LightBlockResponse{
 							LightBlock: lb,
 						},
+					}:
+					case <-ctx.Done():
+						return
 					}
 				} else {
 					switch errorCount % 3 {
@@ -744,18 +748,26 @@ func handleLightBlockRequests(
 						_, _, lb := mockLB(ctx, t, int64(msg.Height), factory.DefaultTestTime, factory.MakeBlockID(), vals, pv)
 						differntLB, err := lb.ToProto()
 						require.NoError(t, err)
-						sending <- p2p.Envelope{
+						select {
+						case sending <- p2p.Envelope{
 							From: envelope.To,
 							Message: &ssproto.LightBlockResponse{
 								LightBlock: differntLB,
 							},
+						}:
+						case <-ctx.Done():
+							return
 						}
 					case 1: // send nil block i.e. pretend we don't have it
-						sending <- p2p.Envelope{
+						select {
+						case sending <- p2p.Envelope{
 							From: envelope.To,
 							Message: &ssproto.LightBlockResponse{
 								LightBlock: nil,
 							},
+						}:
+						case <-ctx.Done():
+							return
 						}
 					case 2: // don't do anything
 					}
@@ -783,19 +795,23 @@ func handleConsensusParamsRequest(
 		case <-ctx.Done():
 			return
 		case envelope := <-receiving:
-			if ctx.Err() != nil {
+			msg, ok := envelope.Message.(*ssproto.ParamsRequest)
+			if !ok {
+				t.Errorf("message was %T which is not a params request", envelope.Message)
 				return
 			}
-
-			t.Log("received consensus params request")
-			msg, ok := envelope.Message.(*ssproto.ParamsRequest)
-			require.True(t, ok)
-			sending <- p2p.Envelope{
+			select {
+			case sending <- p2p.Envelope{
 				From: envelope.To,
 				Message: &ssproto.ParamsResponse{
 					Height:          msg.Height,
 					ConsensusParams: paramsProto,
 				},
+			}:
+			case <-ctx.Done():
+				return
+			case <-closeCh:
+				return
 			}
 
 		case <-closeCh:
