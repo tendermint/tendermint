@@ -70,7 +70,6 @@ func MakeResetPrivateValidatorCommand(conf *config.Config, logger log.Logger) *c
 // it's only suitable for testnets.
 
 // resetAll removes address book files plus all data, and resets the privValdiator data.
-// Exported so other CLI tools can use it.
 func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
@@ -81,8 +80,7 @@ func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger,
 	return resetFilePV(privValKeyFile, privValStateFile, logger, keyType)
 }
 
-// resetState removes address book files plus all data.
-// Exported so other CLI tools can use it.
+// resetState removes address book files plus all databases.
 func resetState(dbDir string, logger log.Logger, keyType string) error {
 	blockdb := filepath.Join(dbDir, "blockstore.db")
 	state := filepath.Join(dbDir, "state.db")
