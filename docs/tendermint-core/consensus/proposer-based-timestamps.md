@@ -1,4 +1,6 @@
---- order: 3 ---
+---
+order: 3
+---
 
 # PBTS
 
@@ -6,7 +8,7 @@
  algorithm added to Tendermint in the v0.36 release. It outlines the core
  functionality as well as the parameters and constraints of the this algorithm.
 
-## Algorithm Overview 
+## Algorithm Overview
 
 The PBTS algorithm defines a way for a Tendermint blockchain to create block
 timestamps that are within a reasonable bound of the clocks of the validators on
@@ -91,4 +93,3 @@ proposed by their peers to be valid either.
 
 * [The PBTS specification](https://github.com/tendermint/tendermint/blob/master/spec/consensus/proposer-based-timestamp/README.md)
  contains all of the details of the algorithm.
-
