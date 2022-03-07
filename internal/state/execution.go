@@ -113,15 +113,21 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+	block, _, err := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
+	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	preparedProposal, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		abci.RequestPrepareProposal{
-			BlockData:     txs.ToSliceOfBytes(),
-			BlockDataSize: maxDataBytes,
-			Votes:         types.VotesToProto(votes),
+			Hash:                block.Hash(),
+			Header:              *block.Header.ToProto(),
+			Txs:                 block.Txs.ToSliceOfBytes(),
+			LocalLastCommit:     extendedCommitInfo(localLastCommit),
+			ByzantineValidators: block.Evidence.ToABCI(),
+			MaxTxBytes:          maxBytes,
 		},
 	)
+
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
 		// enter the mempool. Hence, at this point, we can't have any non-processable
@@ -133,19 +139,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
-	newTxs := preparedProposal.GetBlockData()
-	var txSize int
-	for _, tx := range newTxs {
-		txSize += len(tx)
-
-		if maxDataBytes < int64(txSize) {
-			panic("block data exceeds max amount of allowed bytes")
-		}
+	if err := state.ValidateResponsePrepareProposal(preparedProposal); err != nil {
+		panic(fmt.Sprintf("application returned invalid ResponsePrepareProposal: %s", err))
 	}
 
-	modifiedTxs := types.ToTxs(preparedProposal.GetBlockData())
-
-	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
+	return state.BlockFromResponsePrepareProposal(height, preparedProposal)
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
@@ -407,6 +405,24 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	return abci.CommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: votes,
+	}
+}
+
+func extendedCommitInfo(c abci.CommitInfo) abci.ExtendedCommitInfo {
+	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
+	for i := range vs {
+		vs[i] = abci.ExtendedVoteInfo{
+			Validator:       c.Votes[i].Validator,
+			SignedLastBlock: c.Votes[i].SignedLastBlock,
+			/*
+				TODO: Include extended vote information once vote extension vote is complete.
+				VoteExtension:   []byte{},
+			*/
+		}
+	}
+	return abci.ExtendedCommitInfo{
+		Round: c.Round,
+		Votes: vs,
 	}
 }
 
