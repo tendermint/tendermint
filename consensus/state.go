@@ -305,6 +305,15 @@ func (cs *State) OnStart() error {
 		}
 	}
 
+	// we need the timeoutRoutine for replay so
+	// we don't block on the tick chan.
+	// NOTE: we will get a build up of garbage go routines
+	// firing on the tockChan until the receiveRoutine is started
+	// to deal with them (by that point, at most one will be valid)
+	if err := cs.timeoutTicker.Start(); err != nil {
+		return err
+	}
+
 	// We may have lost some votes if the process crashed reload from consensus
 	// log to catchup.
 	if cs.doWALCatchup {
@@ -358,15 +367,6 @@ func (cs *State) OnStart() error {
 	}
 
 	if err := cs.evsw.Start(); err != nil {
-		return err
-	}
-
-	// we need the timeoutRoutine for replay so
-	// we don't block on the tick chan.
-	// NOTE: we will get a build up of garbage go routines
-	// firing on the tockChan until the receiveRoutine is started
-	// to deal with them (by that point, at most one will be valid)
-	if err := cs.timeoutTicker.Start(); err != nil {
 		return err
 	}
 
