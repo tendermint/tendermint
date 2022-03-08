@@ -220,7 +220,6 @@ func NewHandshaker(
 	eventBus *eventbus.EventBus,
 	genDoc *types.GenesisDoc,
 ) *Handshaker {
-
 	return &Handshaker{
 		stateStore:   stateStore,
 		initialState: state,
@@ -452,7 +451,8 @@ func (h *Handshaker) replayBlocks(
 	appClient abciclient.Client,
 	appBlockHeight,
 	storeBlockHeight int64,
-	mutateState bool) ([]byte, error) {
+	mutateState bool,
+) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
 	//

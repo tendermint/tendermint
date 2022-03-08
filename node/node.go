@@ -68,6 +68,7 @@ type nodeImpl struct {
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
 
 	services      []service.Service
+	pexService    service.Service
 	rpcListeners  []net.Listener // rpc servers
 	shutdownOps   closer
 	rpcEnv        *rpccore.Environment
@@ -228,7 +229,7 @@ func makeNode(
 			logger.With("module", "handshaker"),
 			stateStore, state, blockStore, eventBus, genDoc,
 		).Handshake(ctx, proxyApp); err != nil {
-			return nil, combineCloseError(err, makeCloser(closers))
+			return nil, combineCloseError(fmt.Errorf("handshake: %w", err), makeCloser(closers))
 		}
 
 		// Reload the state. It will have the Version.Consensus.App set by the
@@ -236,9 +237,7 @@ func makeNode(
 		// what happened during block replay).
 		state, err = stateStore.Load()
 		if err != nil {
-			return nil, combineCloseError(
-				fmt.Errorf("cannot load state: %w", err),
-				makeCloser(closers))
+			return nil, combineCloseError(fmt.Errorf("reload state: %w", err), makeCloser(closers))
 		}
 	}
 
@@ -248,7 +247,7 @@ func makeNode(
 	// TODO: Use a persistent peer database.
 	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+		return nil, combineCloseError(fmt.Errorf("nodeinfo construction: %w", err), makeCloser(closers))
 	}
 
 	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
@@ -271,7 +270,7 @@ func makeNode(
 		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+		return nil, combineCloseError(fmt.Errorf("mempool construction: %w", err), makeCloser(closers))
 	}
 
 	evReactor, evPool, edbCloser, err := createEvidenceReactor(ctx,
@@ -279,7 +278,7 @@ func makeNode(
 	)
 	closers = append(closers, edbCloser)
 	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+		return nil, combineCloseError(fmt.Errorf("evidence construction: %w", err), makeCloser(closers))
 	}
 
 	// make block executor for consensus and blockchain reactors to execute blocks
@@ -304,7 +303,7 @@ func makeNode(
 		peerManager, router, logger,
 	)
 	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+		return nil, combineCloseError(fmt.Errorf("consensus construction: %w", err), makeCloser(closers))
 	}
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
@@ -355,14 +354,14 @@ func makeNode(
 		eventBus,
 	)
 	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
+		return nil, combineCloseError(fmt.Errorf("statesync construction: %w", err), makeCloser(closers))
 	}
 
 	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
 		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 		if err != nil {
-			return nil, combineCloseError(err, makeCloser(closers))
+			return nil, combineCloseError(fmt.Errorf("pex construction: %w", err), makeCloser(closers))
 		}
 	}
 	node := &nodeImpl{
@@ -379,13 +378,19 @@ func makeNode(
 		eventSinks: eventSinks,
 
 		services: []service.Service{
+			// the order of these services control
+			// initialization order. reorder with care.
 			eventBus,
-			evReactor,
-			mpReactor,
-			csReactor,
-			bcReactor,
 			pexReactor,
+			bcReactor,
+			csState,
+			csReactor,
+			mpReactor,
+			evReactor,
 		},
+		// seperate so we can start
+		// before statesync
+		pexService: pexReactor,
 
 		stateStore:       stateStore,
 		blockStore:       blockStore,
@@ -466,12 +471,8 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
-	state, err := n.stateStore.Load()
-	if err != nil {
-		return err
-	}
-	if err := n.evPool.Start(state); err != nil {
-		return err
+	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
+		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
 	}
 
 	n.rpcEnv.NodeInfo = n.nodeInfo
@@ -485,23 +486,19 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
-		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
-	}
-
 	// Start the transport.
 	if err := n.router.Start(ctx); err != nil {
 		return err
 	}
 	n.rpcEnv.IsListening = true
 
-	for _, reactor := range n.services {
-		if err := reactor.Start(ctx); err != nil {
-			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
-		}
-	}
-
 	if err := n.stateSyncReactor.Start(ctx); err != nil {
+		return err
+	}
+	if err := n.rpcEnv.EventBus.Start(ctx); err != nil {
+		return err
+	}
+	if err := n.pexService.Start(ctx); err != nil {
 		return err
 	}
 
@@ -550,6 +547,11 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			return err
 		}
 
+		if err := bcR.Start(ctx); err != nil {
+			n.logger.Error("failed to start  block reactor", "err", err)
+			return err
+		}
+
 		// TODO: Some form of orchestrator is needed here between the state
 		// advancing reactors to be able to control which one of the three
 		// is running
@@ -568,6 +570,23 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			n.logger.Error("failed to emit the block sync starting event", "err", err)
 			return err
 		}
+	}
+
+	for _, reactor := range n.services {
+		if reactor.IsRunning() {
+			continue
+		}
+		if err := reactor.Start(ctx); err != nil {
+			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
+		}
+	}
+
+	state, err := n.stateStore.Load()
+	if err != nil {
+		return fmt.Errorf("loading state during service start: %w", err)
+	}
+	if err := n.evPool.Start(state); err != nil {
+		return err
 	}
 
 	return nil
