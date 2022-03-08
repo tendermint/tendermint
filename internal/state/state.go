@@ -284,7 +284,27 @@ func (state State) BlockFromResponsePrepareProposal(height int64, rpp *abci.Resp
 }
 
 func (state State) ValidateResponsePrepareProposal(rpp *abci.ResponsePrepareProposal) error {
+	rpp := abci.ResponsePrepareProposal{
+		ModifiedTx: false,
+		TxRecords:  []*abci.TxRecord{},
+
+		// TODO: What is this field for?
+		// Need to check that the size of appsigned does not grow I guess, says spec
+		AppSignedUpdates: [][]byte{},
+	}
 	// TODO: Implement logic to validate block.
+
+	// Checks:
+	// * Size does not exceed max size bytes
+	// * Check that there are no duplicate Tx in the list
+	// * Check that there are no new or modified transactions marked as 'removed' or 'unmodified'
+	// * Check that there are no unmodified transactions marked as txadded
+	// * no tx marked as Tx unknown
+	//
+	// Spec says to just forgo this validators turn to propose if failure
+	// Another option is to panic. I think fail to propose is fine, but we should
+	// make it clear that this occurs to operators.
+
 	return nil
 }
 

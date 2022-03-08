@@ -125,7 +125,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit),
 			ByzantineValidators: block.Evidence.ToABCI(),
-			MaxTxBytes:          maxDataBytes,
+			// TODO:(wbanfield) ensure that this maxBytes is the correct value to pass through.
+			MaxTxBytes: maxDataBytes,
 		},
 	)
 
