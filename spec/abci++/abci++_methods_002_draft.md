@@ -444,38 +444,42 @@ and _ConsensusHash_ refer to the **last committed block** (data was provided by 
     |-------------------|-------|-----------------------------------------------|--------------|
     | vote_extension    | bytes | Optional information signed by by Tendermint. | 1            |
 
-* **Usage**:
-    * `ResponseExtendVote.vote_extension` is optional information that, if present, will be signed by Tendermint and
-      attached to the Precommit message.
-    * `RequestExtendVote.hash` corresponds to the hash of a proposed block that was made available to the application
-      in a previous call to `ProcessProposal` or `PrepareProposal` for the current height.
-    * `ResponseExtendVote.vote_extension` will only be attached to a non-`nil` Precommit message. If Tendermint is to
-      precommit `nil`, it will not call `RequestExtendVote`.
-    * The Application logic that creates the extension can be non-deterministic.
+**When does Tendermint call `RequestExtendVote`?**
 
-#### When does Tendermint call it?
-
-When a validator _p_ is in Tendermint consensus state _prevote_ of round _r_, height _h_, in which _q_ is the proposer; and _p_ has received
+When a validator _p_ is in Tendermint consensus state _prevote_ of round _r_, height _h_, in which _q_ is the proposer; and _p_ has received:
 
 * the Proposal message _v_ for round _r_, height _h_, along with all the block parts, from _q_,
 * `Prevote` messages from _2f + 1_ validators' voting power for round _r_, height _h_, prevoting for the same block _id(v)_,
 
-then _p_'s Tendermint locks _v_  and sends a Precommit message in the following way
+then _p_'s Tendermint first locks _v_: sets _lockedValue_ and _validValue_ to _v_, and sets _lockedRound_ and _validRound_ to _r_. Following, _p_'s Tendermint calls `RequestExtendVote`.
 
-1. _p_'s Tendermint sets _lockedValue_ and _validValue_ to _v_, and sets _lockedRound_ and _validRound_ to _r_
-2. _p_'s Tendermint calls `RequestExtendVote` with _id(v)_ (`RequestExtendVote.hash`). The call is synchronous.
-3. The Application optionally returns an array of bytes, `ResponseExtendVote.extension`, which is not interpreted by Tendermint.
-4. _p_'s Tendermint includes `ResponseExtendVote.extension` in a field of type [CanonicalVoteExtension](#canonicalvoteextension),
+* `RequestExtendVote.hash` corresponds to the hash of a proposed block that was made available to the application in a previous call to `ProcessProposal` or `PrepareProposal` for the current height.
+
+* The call is synchronous.
+
+In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (either _2f+1_ `prevote nil` messages received, or _timeoutPrevote_ triggered), _p_'s Tendermint does **not** call `RequestExtendVote` and will not include
+a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil` message.
+
+**How the Application handles `RequestExtendVote`**
+
+* `ResponseExtendVote.vote_extension` is optional information.
+
+* The Application logic that creates the extension can be non-deterministic.
+
+**How Tendermint handles `ResponseExtendVote`**
+
+* The Application optionally returns an array of bytes, `ResponseExtendVote.extension`, which is not interpreted by Tendermint.
+
+* _p_'s Tendermint includes `ResponseExtendVote.extension` in a field of type [CanonicalVoteExtension](#canonicalvoteextension),
    it then populates the other fields in [CanonicalVoteExtension](#canonicalvoteextension), and signs the populated
    data structure.
-5. _p_'s Tendermint constructs and signs the [CanonicalVote](../core/data_structures.md#canonicalvote) structure.
-6. _p_'s Tendermint constructs the Precommit message (i.e. [Vote](../core/data_structures.md#vote) structure)
-   using [CanonicalVoteExtension](#canonicalvoteextension) and [CanonicalVote](../core/data_structures.md#canonicalvote).
-7. _p_'s Tendermint broadcasts the Precommit message.
 
-In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (either _2f+1_ `prevote nil` messages received,
-or _timeoutPrevote_ triggered), _p_'s Tendermint does **not** call `RequestExtendVote` and will not include
-a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil` message.
+* _p_'s Tendermint constructs and signs the [CanonicalVote](../core/data_structures.md#canonicalvote) structure.
+
+* _p_'s Tendermint constructs the Precommit message (i.e. [Vote](../core/data_structures.md#vote) structure)
+   using [CanonicalVoteExtension](#canonicalvoteextension) and [CanonicalVote](../core/data_structures.md#canonicalvote).
+
+* _p_'s Tendermint broadcasts the Precommit message.
 
 ### VerifyVoteExtension
 
