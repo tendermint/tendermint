@@ -233,6 +233,17 @@ func (rpp *ResponsePrepareProposal) RemovedTxs() []*TxRecord {
 	return trs
 }
 
+// AddedTxs returns all of the TxRecords that are marked as added to the proposal.
+func (rpp *ResponsePrepareProposal) AddedTxs() []*TxRecord {
+	trs := []*TxRecord{}
+	for _, tr := range rpp.TxRecords {
+		if tr.Action == TxRecord_ADDED {
+			trs = append(trs, tr)
+		}
+	}
+	return trs
+}
+
 // Validate checks that the fields of the ResponsePrepareProposal are properly
 // constructed. Validate returns an error if any of the validation checks fail.
 func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) error {

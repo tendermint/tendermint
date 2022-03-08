@@ -657,6 +657,170 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestPrepareProposalRemoveTxs tests that any transactions marked as REMOVED
+// are not included in the block produced by CreateProposalBlock. The test also
+// ensures that any transactions removed are also removed from the mempool.
+func TestPrepareProposalRemoveTxs(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	state, stateDB, privVals := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	txs := factory.MakeTenTxs(height)
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+
+	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs[0].Action = abci.TxRecord_REMOVED
+	trs[1].Action = abci.TxRecord_REMOVED
+	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
+
+	app := abcimocks.NewBaseMock()
+	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+		ModifiedTx: true,
+		TxRecords:  trs,
+	}, nil)
+
+	cc := abciclient.NewLocalCreator(app)
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		mp,
+		evpool,
+		nil,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
+	require.NoError(t, err)
+	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
+
+	require.Equal(t, -1, block.Data.Txs.Index(types.Tx(trs[0].Tx)))
+	require.Equal(t, -1, block.Data.Txs.Index(types.Tx(trs[1].Tx)))
+
+	mp.AssertCalled(t, "RemoveTxByKey", types.Tx(trs[0].Tx).Key())
+	mp.AssertCalled(t, "RemoveTxByKey", types.Tx(trs[1].Tx).Key())
+	mp.AssertExpectations(t)
+}
+
+// TestPrepareProposalAddedTxsIncluded tests that any transactions marked as ADDED
+// in the prepare proposal response are included in the block. The test also
+// ensures that any transactions added are also checked into the mempool.
+func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	state, stateDB, privVals := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	txs := factory.MakeTenTxs(height)
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
+	mp.On("CheckTx", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
+
+	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs[0].Action = abci.TxRecord_ADDED
+	trs[1].Action = abci.TxRecord_ADDED
+
+	app := abcimocks.NewBaseMock()
+	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+		ModifiedTx: true,
+		TxRecords:  trs,
+	}, nil)
+
+	cc := abciclient.NewLocalCreator(app)
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		mp,
+		evpool,
+		nil,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
+	require.NoError(t, err)
+
+	require.Equal(t, txs[0], block.Data.Txs[0])
+	require.Equal(t, txs[1], block.Data.Txs[1])
+
+	mp.AssertExpectations(t)
+	mp.AssertCalled(t, "CheckTx", mock.Anything, types.Tx(trs[0].Tx), mock.Anything, mock.Anything)
+	mp.AssertCalled(t, "CheckTx", mock.Anything, types.Tx(trs[1].Tx), mock.Anything, mock.Anything)
+}
+
+// TestPrepareProposalReorderTxs tests that CreateBlock produces a block with transactions
+// in the order matching the order they are returned from PrepareProposal.
+func TestPrepareProposalReorderTxs(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	state, stateDB, privVals := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	txs := factory.MakeTenTxs(height)
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+
+	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
+
+	app := abcimocks.NewBaseMock()
+	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+		ModifiedTx: true,
+		TxRecords:  trs,
+	}, nil)
+
+	cc := abciclient.NewLocalCreator(app)
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		mp,
+		evpool,
+		nil,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
+	require.NoError(t, err)
+	for i, tx := range block.Data.Txs {
+		require.Equal(t, types.Tx(trs[i].Tx), tx)
+	}
+
+	mp.AssertExpectations(t)
+}
+
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
 		h   = make([]byte, tmhash.Size)
