@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	abci "github.com/tendermint/tendermint/abci/types"
 
 	tmtime "github.com/tendermint/tendermint/libs/time"
 
@@ -276,11 +275,6 @@ func (state State) MakeBlock(
 	)
 
 	return block, nil
-}
-
-func (state State) BlockFromResponsePrepareProposal(height int64, rpp *abci.ResponsePrepareProposal) (*types.Block, error) {
-	// TODO: Implement logic create new block.
-	return &types.Block{}, nil
 }
 
 //------------------------------------------------------------------------
