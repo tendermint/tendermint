@@ -17,29 +17,19 @@ import (
 var ResetAllCmd = &cobra.Command{
 	Use:   "unsafe-reset-all",
 	Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
-	RunE:  resetAll,
+	RunE:  resetAllCmd,
 }
 
-<<<<<<< HEAD
 var keepAddrBook bool
-=======
-// MakeResetStateCommand constructs a command that removes the database of
-// the specified Tendermint core instance.
-func MakeResetStateCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var keyType string
 
-	return &cobra.Command{
-		Use:   "reset-state",
-		Short: "Remove all the data and WAL",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return resetState(conf.DBDir(), logger, keyType)
-		},
-	}
+// ResetStateCmd removes the database of the specified Tendermint core instance.
+var ResetStateCmd = &cobra.Command{
+	Use:   "reset-state",
+	Short: "Remove all the data and WAL",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return resetState(config.DBDir(), logger, keyType)
+	},
 }
-
-func MakeResetPrivateValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var keyType string
->>>>>>> 7c03e7dbf (cmd: make reset more safe (#8081))
 
 func init() {
 	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
@@ -56,30 +46,24 @@ var ResetPrivValidatorCmd = &cobra.Command{
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetAll(cmd *cobra.Command, args []string) error {
-	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
+func resetAllCmd(cmd *cobra.Command, args []string) error {
+	return resetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
 		config.PrivValidator.StateFile(), logger)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) error {
-	return resetFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile(), logger)
+	return resetFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile(), logger, keyType)
 }
 
-<<<<<<< HEAD
-// ResetAll removes address book files plus all data, and resets the privValdiator data.
-// Exported so other CLI tools can use it.
-func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
+// resetAllCmd removes address book files plus all data, and resets the privValidator data.
+func resetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if keepAddrBook {
 		logger.Info("The address book remains intact")
 	} else {
 		removeAddrBook(addrBookFile, logger)
 	}
-=======
-// resetAll removes address book files plus all data, and resets the privValdiator data.
-func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
->>>>>>> 7c03e7dbf (cmd: make reset more safe (#8081))
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
@@ -148,14 +132,10 @@ func resetState(dbDir string, logger log.Logger, keyType string) error {
 	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
 		logger.Error("unable to recreate dbDir", "err", err)
 	}
-<<<<<<< HEAD
-	return resetFilePV(privValKeyFile, privValStateFile, logger)
-=======
 	return nil
->>>>>>> 7c03e7dbf (cmd: make reset more safe (#8081))
 }
 
-func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) error {
+func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if _, err := os.Stat(privValKeyFile); err == nil {
 		pv, err := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
 		if err != nil {

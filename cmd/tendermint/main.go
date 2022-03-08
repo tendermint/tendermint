@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-<<<<<<< HEAD
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.GenValidatorCmd,
@@ -24,6 +23,7 @@ func main() {
 		cmd.ReplayConsoleCmd,
 		cmd.ResetAllCmd,
 		cmd.ResetPrivValidatorCmd,
+		cmd.ResetStateCmd,
 		cmd.ShowValidatorCmd,
 		cmd.TestnetFilesCmd,
 		cmd.ShowNodeIDCmd,
@@ -34,42 +34,6 @@ func main() {
 		cmd.MakeKeyMigrateCommand(),
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
-=======
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	conf, err := commands.ParseConfig(config.DefaultConfig())
-	if err != nil {
-		panic(err)
-	}
-
-	logger, err := log.NewDefaultLogger(conf.LogFormat, conf.LogLevel)
-	if err != nil {
-		panic(err)
-	}
-
-	rcmd := commands.RootCommand(conf, logger)
-	rcmd.AddCommand(
-		commands.MakeGenValidatorCommand(),
-		commands.MakeReindexEventCommand(conf, logger),
-		commands.MakeInitFilesCommand(conf, logger),
-		commands.MakeLightCommand(conf, logger),
-		commands.MakeReplayCommand(conf, logger),
-		commands.MakeReplayConsoleCommand(conf, logger),
-		commands.MakeResetAllCommand(conf, logger),
-		commands.MakeResetStateCommand(conf, logger),
-		commands.MakeResetPrivateValidatorCommand(conf, logger),
-		commands.MakeShowValidatorCommand(conf, logger),
-		commands.MakeTestnetFilesCommand(conf, logger),
-		commands.MakeShowNodeIDCommand(conf),
-		commands.GenNodeKeyCmd,
-		commands.VersionCmd,
-		commands.MakeInspectCommand(conf, logger),
-		commands.MakeRollbackStateCommand(conf),
-		commands.MakeKeyMigrateCommand(conf, logger),
-		debug.GetDebugCommand(logger),
-		commands.NewCompletionCmd(rcmd, true),
->>>>>>> 7c03e7dbf (cmd: make reset more safe (#8081))
 	)
 
 	// NOTE:
