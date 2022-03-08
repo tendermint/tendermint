@@ -165,7 +165,7 @@ func makeNode(
 	}
 
 	// Check app version is matched with the genesis file.
-	appInfo, err := proxyApp.Query().Info(ctx, abci.RequestInfo{Version: ""})
+	appInfo, err := proxyApp.Info(ctx, abci.RequestInfo{Version: ""})
 	if err != nil {
 		return nil, fmt.Errorf("error query app info: %w", err)
 	}

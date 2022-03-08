@@ -773,7 +773,8 @@ func TestNodeAppVersionNotMatched(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	appClient, _, err := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	require.NoError(t, err)
 
 	genesisDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
