@@ -155,7 +155,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	}
 	for _, rtx := range rpp.AddedTxs() {
 		if err := blockExec.mempool.CheckTx(ctx, rtx.Tx, nil, mempool.TxInfo{}); err != nil {
-			blockExec.logger.Debug("error removing transaction from the mempool", "error", err)
+			blockExec.logger.Error("error adding tx to the mempool", "error", err)
 		}
 	}
 	return state.MakeBlock(height, types.TxRecordsToTxs(rpp.IncludedTxs()), commit, evidence, proposerAddr)
