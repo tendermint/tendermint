@@ -819,6 +819,64 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	}
 
 	mp.AssertExpectations(t)
+
+}
+
+// TestPrepareProposalReorderTxs tests that CreateBlock produces a block with transactions
+// in the order matching the order they are returned from PrepareProposal.
+func TestPrepareProposalModifiedTxFalse(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	state, stateDB, privVals := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	txs := factory.MakeTenTxs(height)
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+
+	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
+	trs = trs[1:]
+	trs[0].Action = abci.TxRecord_REMOVED
+	trs[1] = &abci.TxRecord{
+		Tx:     []byte("new"),
+		Action: abci.TxRecord_ADDED,
+	}
+
+	app := abcimocks.NewBaseMock()
+	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+		ModifiedTx: false,
+		TxRecords:  trs,
+	}, nil)
+
+	cc := abciclient.NewLocalCreator(app)
+	logger := log.TestingLogger()
+	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		mp,
+		evpool,
+		nil,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
+	require.NoError(t, err)
+	for i, tx := range block.Data.Txs {
+		require.Equal(t, txs[i], tx)
+	}
+
+	mp.AssertExpectations(t)
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {

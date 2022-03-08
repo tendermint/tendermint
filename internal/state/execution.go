@@ -139,9 +139,15 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
+
 	if err := rpp.Validate(maxDataBytes, txs.ToSliceOfBytes()); err != nil {
 		return nil, err
 	}
+
+	if !rpp.ModifiedTx {
+		return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	}
+
 	for _, rtx := range rpp.RemovedTxs() {
 		if err := blockExec.mempool.RemoveTxByKey(types.Tx(rtx.Tx).Key()); err != nil {
 			blockExec.logger.Debug("error removing transaction from the mempool", "error", err)
