@@ -44,6 +44,7 @@ func TestHashAndProveResults(t *testing.T) {
 func TestValidateResponsePrepareProposal(t *testing.T) {
 	t.Run("should error on total transaction size exceeding max data size", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
+			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
 				{
 					Action: abci.TxRecord_ADDED,
@@ -60,6 +61,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 	})
 	t.Run("should error on duplicate transactions", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
+			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
 				{
 					Action: abci.TxRecord_ADDED,
@@ -84,6 +86,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 	})
 	t.Run("should error on new transactions marked UNMODIFIED", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
+			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
 				{
 					Action: abci.TxRecord_UNMODIFIED,
@@ -97,6 +100,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 	})
 	t.Run("should error on new transactions marked REMOVED", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
+			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
 				{
 					Action: abci.TxRecord_REMOVED,
@@ -110,6 +114,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 	})
 	t.Run("should error on unmodified transaction marked as ADDED", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
+			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
 				{
 					Action: abci.TxRecord_ADDED,
@@ -122,6 +127,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 	})
 	t.Run("should error if any transaction marked as UNKNOWN", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
+			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
 				{
 					Action: abci.TxRecord_UNKNOWN,
