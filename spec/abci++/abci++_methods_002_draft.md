@@ -547,79 +547,73 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
     | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 6            |
 
-* **Usage**:
-    * Contains a newly decided block.
-    * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
-      `EndBlock`, `Commit` in the previous version of ABCI.
-    * The header exactly matches the Tendermint header of the proposed block.
-    * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.byzantine_validators`
-      to determine rewards and punishments for the validators.
-    * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.txs`,
-      before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
-      previously executed via `PrepareProposal` or `ProcessProposal`.
-    * `ResponseFinalizeBlock.tx_results[i].Code == 0` only if the _i_-th transaction is fully valid.
-    * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash`,
-      `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`, and
-      `ResponseFinalizeBlock.consensus_param_updates` as a result of executing the block.
-        * The values for `ResponseFinalizeBlock.validator_updates`, or
-          `ResponseFinalizeBlock.consensus_param_updates` may be empty. In this case, Tendermint will keep
-          the current values.
-        * `ResponseFinalizeBlock.validator_updates`, triggered by block `H`, affect validation
-          for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
-              - Height `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
-              - Height `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
-              - Height `H+3`: `decided_last_commit` now includes the altered validator set.
-        * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-          params for block `H+1`. For more information on the consensus parameters,
-          see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
-    * In same-block execution mode, Tendermint will log an error and ignore values for
-      `ResponseFinalizeBlock.app_hash`, `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`,
-      and `ResponsePrepareProposal.consensus_param_updates`, as those must have been provided by `PrepareProposal`.
-    * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
-    * `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state.
-    * `ResponseFinalizeBlock.app_hash` is included
-        * [in next-block execution mode] as the `Header.AppHash` in the next block.
-        * [in same-block execution mode] as the `Header.AppHash` in the current block. In this case,
-          `PrepareProposal` is required to fully execute the block and set the App hash before
-          returning the proposed block to Tendermint.
-        * `ResponseFinalizeBlock.app_hash` may also be empty or hard-coded, but MUST be
-          **deterministic** - it must not be a function of anything that did not come from the parameters
-          of `RequestFinalizeBlock` and the previous committed state.
-    * Later calls to `Query` can return proofs about the application state anchored
-      in this Merkle root hash.
-    * Use `ResponseFinalizeBlock.retain_height` with caution! If all nodes in the network remove historical
-      blocks then this data is permanently lost, and no new nodes will be able to join the network and
-      bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of
-      non-persisted heights, light client verification, and so on.
-    * Just as `ProcessProposal`, the implementation of `FinalizeBlock` MUST be deterministic, since it is
-      making the Application's state evolve in the context of state machine replication.
-    * Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
-      already passed on to the Application via `RequestPrepareProposal` or `RequestProcessProposal`.
-      If the Application is in same-block execution mode, it applies the right candidate state here
-      (rather than executing the whole block). In this case the Application disregards all parameters in
-      `RequestFinalizeBlock` except `RequestFinalizeBlock.hash`.
-
-#### When does Tendermint call it?
+**When does Tendermint call `RequestFinalizeBlock`?**
 
 When a validator _p_ is in Tendermint consensus height _h_, and _p_ receives
 
-* the Proposal message with block _v_ for a round _r_, along with all its block parts, from _q_,
-  which is the proposer of round _r_, height _h_,
-* `Precommit` messages from _2f + 1_ validators' voting power for round _r_, height _h_,
-  precommitting the same block _id(v)_,
+* the Proposal message with block _v_ for a round _r_, along with all its block parts, from _q_, which is the proposer of round _r_, height _h_,
+* `Precommit` messages from _2f + 1_ validators' voting power for round _r_, height _h_, precommitting the same block _id(v)_,
 
 then _p_'s Tendermint decides block _v_ and finalizes consensus for height _h_ in the following way
 
-1. _p_'s Tendermint persists _v_ as decision for height _h_.
-2. _p_'s Tendermint locks the mempool -- no calls to checkTx on new transactions.
-3. _p_'s Tendermint calls `RequestFinalizeBlock` with _id(v)_. The call is synchronous.
-4. _p_'s Application processes block _v_, received in a previous call to `RequestProcessProposal`.
-5. _p_'s Application commits and persists the state resulting from processing the block.
-6. _p_'s Application calculates and returns the _AppHash_, along with an array of arrays of bytes representing the output of each of the transactions
-7. _p_'s Tendermint hashes the array of transaction outputs and stores it in _ResultHash_
-8. _p_'s Tendermint persists _AppHash_ and _ResultHash_
-9. _p_'s Tendermint unlocks the mempool -- newly received transactions can now be checked.
-10. _p_'s starts consensus for a new height _h+1_, round 0
+* _p_'s Tendermint persists _v_ as decision for height _h_.
+* _p_'s Tendermint locks the mempool -- no calls to checkTx on new transactions.
+* _p_'s Tendermint calls `RequestFinalizeBlock` with _id(v)_. The call is synchronous.
+
+**How the Application handles `RequestFinalizeBlock`**
+
+* Contains a newly decided block.
+
+* The header exactly matches the Tendermint header of the proposed block.
+
+* Just as `ProcessProposal`, the implementation of `FinalizeBlock` MUST be deterministic, since it is
+making the Application's state evolve in the context of state machine replication.
+
+* This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`], `EndBlock`, `Commit` in the previous version of ABCI.
+
+* The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.txs`, before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block previously executed via `PrepareProposal` or `ProcessProposal`.
+
+* The Application calculates and returns the _AppHash_, along with an array of arrays of bytes representing the output of each of the transactions.
+
+* The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.byzantine_validators`to determine rewards and punishments for the validators.
+
+* `ResponseFinalizeBlock.tx_results[i].Code == 0` only if the _i_-th transaction is fully valid.
+
+* In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash` `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`, and `ResponseFinalizeBlock.consensus_param_updates` as a result of executing the block.
+  * The values for `ResponseFinalizeBlock.validator_updates`, or `ResponseFinalizeBlock.consensus_param_updates` may be empty. In this case, Tendermint will keep the current values.
+  * `ResponseFinalizeBlock.validator_updates`, triggered by block `H`, affect validation for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
+    - Height `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
+    - Height `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
+    - Height `H+3`: `decided_last_commit` now includes the altered validator set.
+  * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus params for block `H+1`. For more information on the consensus parameters, see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+
+* In same-block execution mode, Tendermint will log an error and ignore values for `ResponseFinalizeBlock.app_hash`, `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`, as those must have been provided by `PrepareProposal`.
+
+* `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state. `ResponseFinalizeBlock.app_hash` is included
+  * [in next-block execution mode] as the `Header.AppHash` in the next block.
+  * [in same-block execution mode] as the `Header.AppHash` in the current block. In this case, `PrepareProposal` is required to fully execute the block and set the App hash before returning the proposed block to Tendermint.
+
+* `ResponseFinalizeBlock.app_hash` may also be empty or hard-coded, but MUST be **deterministic** - it must not be a function of anything that did not come from the parameters
+of `RequestFinalizeBlock` and the previous committed state.
+
+* Use `ResponseFinalizeBlock.retain_height` with caution! If all nodes in the network remove historical
+blocks then this data is permanently lost, and no new nodes will be able to join the network and bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of non-persisted heights, light client verification, and so on.
+
+* Application is expected to persist the state resulting from processing the block at the end of this call, before calling `ResponseFinalizeBlock`.
+
+* Later calls to `Query` can return proofs about the application state anchored in this Merkle root hash.
+
+* Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were already passed on to the Application via `RequestPrepareProposal` or `RequestProcessProposal`. If the Application is in same-block execution mode, it applies the right candidate state here (rather than executing the whole block). In this case the Application disregards all parameters in `RequestFinalizeBlock` except `RequestFinalizeBlock.hash`.
+
+**How Tendermint handles `ResponseFinalizeBlock`**
+
+* Tendermint hashes the array of transaction outputs and stores it in _ResultHash_
+
+* Tendermint persists _AppHash_ and _ResultHash_
+
+* Tendermint unlocks the mempool -- newly received transactions can now be checked.
+
+* The validator starts consensus for a new height _h+1_, round 0
 
 ## Data Types existing in ABCI
 
