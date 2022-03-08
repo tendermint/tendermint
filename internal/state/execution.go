@@ -64,12 +64,13 @@ func NewBlockExecutor(
 	pool mempool.Mempool,
 	evpool EvidencePool,
 	blockStore BlockStore,
+	eventBus *eventbus.EventBus,
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
 	res := &BlockExecutor{
+		eventBus:   eventBus,
 		store:      stateStore,
 		appClient:  appClient,
-		eventBus:   eventbus.NopEventBus{},
 		mempool:    pool,
 		evpool:     evpool,
 		logger:     logger,
@@ -87,12 +88,6 @@ func NewBlockExecutor(
 
 func (blockExec *BlockExecutor) Store() Store {
 	return blockExec.store
-}
-
-// SetEventBus - sets the event bus for publishing block related events.
-// If not called, it defaults to types.NopEventBus.
-func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
-	blockExec.eventBus = eventBus
 }
 
 // CreateProposalBlock calls state.MakeBlock with evidence from the evpool

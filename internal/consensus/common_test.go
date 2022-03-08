@@ -482,7 +482,10 @@ func newStateWithConfigAndBlockStore(
 	stateStore := sm.NewStore(stateDB)
 	require.NoError(t, stateStore.Save(state))
 
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore)
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
+	require.NoError(t, eventBus.Start(ctx))
+
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus)
 	cs, err := NewState(ctx,
 		logger.With("module", "consensus"),
 		thisConfig.Consensus,
@@ -491,6 +494,7 @@ func newStateWithConfigAndBlockStore(
 		blockStore,
 		mempool,
 		evpool,
+		eventBus,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -498,10 +502,6 @@ func newStateWithConfigAndBlockStore(
 
 	cs.SetPrivValidator(ctx, pv)
 
-	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	require.NoError(t, eventBus.Start(ctx))
-
-	cs.SetEventBus(eventBus)
 	return cs
 }
 

@@ -748,6 +748,9 @@ func testHandshakeReplay(
 		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	clientCreator2 := abciclient.NewLocalClient(logger, kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
@@ -757,7 +760,7 @@ func testHandshakeReplay(
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(ctx, t, proxyApp, stateStore, sim.Mempool, sim.Evpool, genesisState, chain, nBlocks, mode, store)
+		buildAppStateFromChain(ctx, t, proxyApp, stateStore, sim.Mempool, sim.Evpool, genesisState, chain, eventBus, nBlocks, mode, store)
 	}
 
 	// Prune block store if requested
@@ -772,7 +775,7 @@ func testHandshakeReplay(
 	// now start the app using the handshake - it should sync
 	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
-	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
+	handshaker := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
 	proxyApp := proxy.New(clientCreator2, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 	require.True(t, proxyApp.IsRunning())
@@ -822,9 +825,10 @@ func applyBlock(
 	blk *types.Block,
 	appClient abciclient.Client,
 	blockStore *mockBlockStore,
+	eventBus *eventbus.EventBus,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mempool, evpool, blockStore)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mempool, evpool, blockStore, eventBus)
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -843,6 +847,7 @@ func buildAppStateFromChain(
 	evpool sm.EvidencePool,
 	state sm.State,
 	chain []*types.Block,
+	eventBus *eventbus.EventBus,
 	nBlocks int,
 	mode uint,
 	blockStore *mockBlockStore,
@@ -864,18 +869,18 @@ func buildAppStateFromChain(
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, appClient, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, appClient, blockStore, eventBus)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, appClient, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, appClient, blockStore, eventBus)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[nBlocks-1], appClient, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[nBlocks-1], appClient, blockStore, eventBus)
 		}
 	default:
 		require.Fail(t, "unknown mode %v", mode)
@@ -917,23 +922,26 @@ func buildTMStateFromChain(
 
 	require.NoError(t, stateStore.Save(state))
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	switch mode {
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore, eventBus)
 		}
 
 	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore)
+			state = applyBlock(ctx, t, stateStore, mempool, evpool, state, block, proxyApp, blockStore, eventBus)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[len(chain)-1], proxyApp, blockStore)
+		applyBlock(ctx, t, stateStore, mempool, evpool, state, chain[len(chain)-1], proxyApp, blockStore, eventBus)
 	default:
 		require.Fail(t, "unknown mode %v", mode)
 	}
@@ -970,6 +978,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 	logger := log.TestingLogger()
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	// 2. Tendermint must panic if app returns wrong hash for the first block
 	//		- RANDOM HASH
 	//		- 0x02
@@ -983,7 +994,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
+			h := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
 			if err = h.Handshake(ctx, proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1003,7 +1014,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
+			h := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
 			if err = h.Handshake(ctx, proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1235,6 +1246,9 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	client := abciclient.NewLocalClient(logger, app)
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	cfg, err := ResetConfig(t.TempDir(), "handshake_test_")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
@@ -1252,7 +1266,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 
-	handshaker := NewHandshaker(logger, stateStore, state, store, eventbus.NopEventBus{}, genDoc)
+	handshaker := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
 	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
