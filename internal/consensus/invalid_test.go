@@ -35,13 +35,13 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
+		require.NoError(t, states[i].Start(ctx))
 	}
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+	for id, reactor := range rts.reactors {
+		reactor.SwitchToConsensus(ctx, rts.states[id].state, false)
 	}
 
 	// this val sends a random precommit at each height
