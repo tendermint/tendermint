@@ -103,8 +103,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	state.LastBlockHeight++
 
 	// Build mock responses.
-	block, err := statefactory.MakeBlock(state, 2, new(types.Commit))
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ExecTxResult, 2)
@@ -444,8 +443,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
-	block, err := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -560,8 +558,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// we only have one validator:
 	assert.Equal(t, val1PubKey.Address(), state.Validators.Proposer.Address)
 
-	block, err := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -746,8 +743,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(fb.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block, err := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -777,8 +773,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 	fb := &abci.ResponseFinalizeBlock{
 		ValidatorUpdates: []abci.ValidatorUpdate{firstAddedVal},
 	}
-	block, err := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -796,8 +791,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(fb.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block, err := statefactory.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := statefactory.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
 
 		bps, err = block.MakePartSet(testPartSize)
 		require.NoError(t, err)
@@ -833,8 +827,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		fb := &abci.ResponseFinalizeBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{addedVal},
 		}
-		block, err := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
 
@@ -852,7 +845,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		ValidatorUpdates: []abci.ValidatorUpdate{removeGenesisVal},
 	}
 
-	block, err = statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+	block = statefactory.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)
 
 	bps, err = block.MakePartSet(testPartSize)
@@ -877,8 +870,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		}
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(fb.ValidatorUpdates)
 		require.NoError(t, err)
-		block, err = statefactory.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block = statefactory.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
 
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
@@ -906,8 +898,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(fb.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block, err := statefactory.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := statefactory.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
 
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
@@ -1006,8 +997,7 @@ func TestStateMakeBlock(t *testing.T) {
 
 	proposerAddress := state.Validators.GetProposer().Address
 	stateVersion := state.Version.Consensus
-	block, err := statefactory.MakeBlock(state, 2, new(types.Commit))
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
 	// test we set some fields
 	assert.Equal(t, stateVersion, block.Version)

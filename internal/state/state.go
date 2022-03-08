@@ -260,7 +260,7 @@ func (state State) MakeBlock(
 	commit *types.Commit,
 	evidence []types.Evidence,
 	proposerAddress []byte,
-) (*types.Block, error) {
+) *types.Block {
 
 	// Build base block with block data.
 	block := types.MakeBlock(height, txs, commit, evidence)
@@ -274,7 +274,7 @@ func (state State) MakeBlock(
 		proposerAddress,
 	)
 
-	return block, nil
+	return block
 }
 
 //------------------------------------------------------------------------

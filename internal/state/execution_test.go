@@ -66,8 +66,7 @@ func TestApplyBlock(t *testing.T) {
 		mock.Anything).Return(nil)
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mp, sm.EmptyEvidencePool{}, blockStore, eventBus)
 
-	block, err := sf.MakeBlock(state, 1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -139,8 +138,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			}
 
 			// block for height 2
-			block, err := sf.MakeBlock(state, 2, lastCommit)
-			require.NoError(t, err)
+			block := sf.MakeBlock(state, 2, lastCommit)
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -257,8 +255,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp,
 		mp, evpool, blockStore, eventBus)
 
-	block, err := sf.MakeBlock(state, 1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	block.Evidence = ev
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	bps, err := block.MakePartSet(testPartSize)
@@ -303,8 +300,7 @@ func TestProcessProposal(t *testing.T) {
 		eventBus,
 	)
 
-	block0, err := sf.MakeBlock(state, height-1, new(types.Commit))
-	require.NoError(t, err)
+	block0 := sf.MakeBlock(state, height-1, new(types.Commit))
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
@@ -328,8 +324,7 @@ func TestProcessProposal(t *testing.T) {
 	}
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
-	block1, err := sf.MakeBlock(state, height, lastCommit)
-	require.NoError(t, err)
+	block1 := sf.MakeBlock(state, height, lastCommit)
 	block1.Txs = txs
 
 	expectedRpp := abci.RequestProcessProposal{
@@ -528,8 +523,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	block, err := sf.MakeBlock(state, 1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -593,8 +587,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		eventBus,
 	)
 
-	block, err := sf.MakeBlock(state, 1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}

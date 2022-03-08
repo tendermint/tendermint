@@ -113,7 +113,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
-	block, err := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.appClient.PrepareProposal(
@@ -157,7 +157,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			blockExec.logger.Error("error adding tx to the mempool", "error", err)
 		}
 	}
-	return state.MakeBlock(height, types.TxRecordsToTxs(rpp.IncludedTxs()), commit, evidence, proposerAddr)
+	return state.MakeBlock(height, types.TxRecordsToTxs(rpp.IncludedTxs()), commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
