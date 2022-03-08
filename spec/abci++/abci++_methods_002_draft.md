@@ -462,7 +462,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
 **How the Application handles `RequestExtendVote`**
 
-* `ResponseExtendVote.vote_extension` is optional information.
+* `ResponseExtendVote.vote_extension` is optional information that, if present, will be signed by Tendermint and attached to the Precommit message.
 
 * The Application logic that creates the extension can be non-deterministic.
 
@@ -500,29 +500,27 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
     |--------|------|-------------------------------------------------------|--------------|
     | accept | bool | If false, Application is rejecting the vote extension | 1            |
 
-* **Usage**:
-    * If `ResponseVerifyVoteExtension.accept` is _false_, Tendermint will reject the whole received vote.
-      See the [Requirements](abci++_app_requirements_002_draft.md) section to understand the potential
-      liveness implications of this.
-    * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
-      `ResponseVerifyVoteExtension.accept` MUST **exclusively** depend on the parameters passed in
-      the call to `RequestVerifyVoteExtension`, and the last committed Application state
-      (see [Requirements](abci++_app_requirements_002_draft.md) section).
-    * Moreover, application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_,
-      unless they _really_ know what the potential liveness implications of returning _false_ are.
-
-#### When does Tendermint call it?
+**When does Tendermint call `RequestVerifyVoteExtension`?**
 
 When a validator _p_ is in Tendermint consensus round _r_, height _h_, state _prevote_ (**TODO** discuss: I think I must remove the state
-from this condition, but not sure), and _p_ receives a Precommit message for round _r_, height _h_ from _q_:
+from this condition, but not sure), and _p_ receives a Precommit message for round _r_, height _h_ from _q_.
 
-1. _p_'s Tendermint calls `RequestVerifyVoteExtension`.
-2. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.accept`.
-3. If the Application returns
-   * _accept_, _p_'s Tendermint will keep the received vote, together with its corresponding
-     vote extension in its internal data structures. It will be used to populate the [ExtendedCommitInfo](#extendedcommitinfo)
+**How the Application handles `RequestVerifyVoteExtension`**
+
+* The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.accept`.
+
+* The implementation of `VerifyVoteExtension` MUST be deterministic.
+
+* Moreover, the value of `ResponseVerifyVoteExtension.accept` MUST **exclusively** depend on the parameters passed in the call to `RequestVerifyVoteExtension`, and the last committed Application state (see [Requirements](abci++_app_requirements_002_draft.md) section).
+
+* Application implementors SHOULD always set `ResponseVerifyVoteExtension.accept` to _true_, unless they _really_ know what the potential liveness implications of returning _false_ are.
+
+**How Tendermint handles `ResponseVerifyVoteExtension`**
+
+* If `ResponseVerifyVoteExtension.accept` is _true_, then _p_'s Tendermint will keep the received vote, together with its corresponding vote extension in its internal data structures. It will be used to populate the [ExtendedCommitInfo](#extendedcommitinfo)
      structure in calls to `RequestPrepareProposal`, in rounds of height _h + 1_ where _p_ is the proposer.
-   * _reject_, _p_'s Tendermint will deem the Precommit message invalid and discard it.
+   
+* If `ResponseVerifyVoteExtension.accept` is _false_, then _p_'s Tendermint will deem the Precommit message invalid and discard it. See the [Requirements](abci++_app_requirements_002_draft.md) section to understand the potential liveness implications of this.
 
 ### FinalizeBlock
 
