@@ -822,8 +822,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 }
 
-// TestPrepareProposalReorderTxs tests that CreateBlock produces a block with transactions
-// in the order matching the order they are returned from PrepareProposal.
+// TestPrepareProposalModifiedTxFalse tests that CreateBlock correctly ignores
+// the ResponsePrepareProposal TxRecords if ResponsePrepareProposal does not
+// set ModifiedTx to true.
 func TestPrepareProposalModifiedTxFalse(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
