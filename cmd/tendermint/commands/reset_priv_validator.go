@@ -17,7 +17,7 @@ var ResetAllCmd = &cobra.Command{
 	Use:     "unsafe-reset-all",
 	Aliases: []string{"unsafe_reset_all"},
 	Short:   "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
-	Run:     resetAllCmd,
+	RunE:    resetAllCmd,
 	PreRun:  deprecateSnakeCase,
 }
 
@@ -28,7 +28,7 @@ var ResetStateCmd = &cobra.Command{
 	Use:   "reset-state",
 	Short: "Remove all the data and WAL",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return resetState(conf.DBDir(), logger)
+		return resetState(config.DBDir(), logger)
 	},
 	PreRun: deprecateSnakeCase,
 }
@@ -48,8 +48,8 @@ var ResetPrivValidatorCmd = &cobra.Command{
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetAllCmd(cmd *cobra.Command, args []string) {
-	ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
+func resetAllCmd(cmd *cobra.Command, args []string) error {
+	return resetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
 		config.PrivValidatorStateFile(), logger)
 }
 
@@ -60,7 +60,7 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 }
 
 // resetAll removes address book files plus all data, and resets the privValdiator data.
-func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger) error {
+func resetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if keepAddrBook {
 		logger.Info("The address book remains intact")
 	} else {
@@ -72,7 +72,8 @@ func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger)
 		logger.Error("Error removing all blockchain history", "dir", dbDir, "err", err)
 	}
 
-	return resetFilePV(privValKeyFile, privValStateFile, logger)
+	resetFilePV(privValKeyFile, privValStateFile, logger)
+	return nil
 }
 
 // resetState removes address book files plus all databases.
