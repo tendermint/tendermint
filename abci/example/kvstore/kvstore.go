@@ -24,7 +24,7 @@ var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
 
-	ProtocolVersion uint64 = 0x1
+	ProtocolVersion uint64 = 0x0
 )
 
 type State struct {

@@ -612,9 +612,7 @@ var testGenesisFmt = `{
 				"ed25519"
 			]
 		},
-		"version": {
-			"app_version": "1"
-		}
+		"version": {}
 	},
   "validators": [
     {

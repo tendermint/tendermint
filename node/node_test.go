@@ -798,7 +798,7 @@ func TestNodeAppVersionNotMatched(t *testing.T) {
 	require.Error(t, err)
 
 	require.Equal(t,
-		fmt.Sprintf("error client app version (%d) is not matched with the genesis file (%d)",
+		fmt.Sprintf("error=\"client app version (%d) is not matched with the genesis file (%d)\" closerError=\"\"",
 			kvstore.ProtocolVersion,
 			genesisDoc.ConsensusParams.Version.AppVersion),
 		err.Error())
