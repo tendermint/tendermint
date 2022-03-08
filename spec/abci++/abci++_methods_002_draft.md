@@ -306,97 +306,64 @@ title: Methods
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
     | app_signed_updates      | repeated bytes                                   | Optional changes to the *app_signed* part of vote extensions.                               | 7            |
 
-* **Usage**:
-    * The first five parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
-      and `RequestFinalizeBlock`.
-    * The header contains the height, timestamp, and more - it exactly matches the
-      Tendermint block header.
-    * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
-        * In this case, the Application should set `ResponsePrepareProposal.modified_tx` to true.
-        * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
-            * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
-            * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as "REMOVE". In this case, Tendermint will remove `tx` from the mempool.
-            * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as "ADD". In this case, Tendermint will add it to the mempool.
-        * The Application should be aware that removing and adding transactions may compromise _traceability_.
-          > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
-        * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
-    * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
-    * If the Application modifies the *app_signed* part of vote extensions via `ResponsePrepareProposal.app_signed_updates`,
-      the new total size of those extensions cannot exceed their initial size.
-    * The Application may choose to not modify the *app_signed* part of vote extensions by leaving parameter
-      `ResponsePrepareProposal.app_signed_updates` empty.
-    * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
-      `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
-        * The values for `ResponsePrepareProposal.validator_updates`, or
-          `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
-          the current values.
-        * `ResponsePrepareProposal.validator_updates`, triggered by block `H`, affect validation
-          for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
-            * `H`: `NextValidatorsHash` includes the new `validator_updates` value.
-            * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
-            * `H+2`: `local_last_commit` now includes the altered validator set.
-        * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-          params for block `H+1` even if the change is agreed in block `H`.
-          For more information on the consensus parameters,
-          see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
-        * It is the responsibility of the Application to set the right value for _TimeoutPropose_ so that
-          the (synchronous) execution of the block does not cause other processes to prevote `nil` because
-          their propose timeout goes off.
-    * In next-block execution mode, Tendermint will ignore parameters `ResponsePrepareProposal.tx_results`,
-      `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
-    * As a result of executing the prepared proposal, the Application may produce header events or transaction events.
-      The Application must keep those events until a block is decided and then pass them on to Tendermint via
-      `ResponseFinalizeBlock`.
-    * Likewise, in next-block execution mode, the Application must keep all responses to executing transactions
-      until it can call `ResponseFinalizeBlock`.
-    * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
-      In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
-        * There is a duplicate transaction in the list.
-        * A new or modified transaction is marked as "TXUNMODIFIED" or "TXREMOVED".
-        * An unmodified transaction is marked as "TXADDED".
-        * A transaction is marked as "TXUNKNOWN".
-    * If Tendermint's sanity checks on the parameters of `ResponsePrepareProposal` fails, then it will drop the proposal
-      and proceed to the next round (thus simulating a network loss/delay of the proposal).
-        * **TODO**: [From discussion with William] Another possibility here is to panic. What do folks think we should do here?
-    * The implementation of `PrepareProposal` can be non-deterministic.
 
-#### When does Tendermint call it?
+**When does Tendermint call `RequestPrepareProposal`**
 
-When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer,
-and _p_'s _validValue_ is `nil`:
+When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer, and _p_'s _validValue_ is `nil`. Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as proposal and will not call `RequestPrepareProposal`.
 
-1. _p_'s Tendermint collects outstanding transactions from the mempool
-    * The transactions will be collected in order of priority
-    * Let $C$ the list of currently collected transactions
-    * The collection stops when any of the following conditions are met
-        * the mempool is empty
-        * the total size of transactions $\in C$ is greater than or equal to `consensusParams.block.max_bytes`
-        * the sum of `GasWanted` field of transactions $\in C$ is greater than or equal to
-          `consensusParams.block.max_gas`
-    * _p_'s Tendermint creates a block header.
-2. _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block.
+* The first five parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal` and `RequestFinalizeBlock`.
+* The header contains the height, timestamp, and more - it exactly matches the Tendermint block header.
+* _p_'s Tendermint collects outstanding transactions from the mempool
+  * The transactions will be collected in order of priority
+  * Let $C$ the list of currently collected transactions
+  * The collection stops when any of the following conditions are met
+    * the mempool is empty
+    * the total size of transactions $\in C$ is greater than or equal to `consensusParams.block.max_bytes`
+    * the sum of `GasWanted` field of transactions $\in C$ is greater than or equal to `consensusParams.block.max_gas`
+  * _p_'s Tendermint creates a block header.
+* _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block.
    The call is synchronous: Tendermint's execution will block until the Application returns from the call.
-3. The Application checks the block (header, transactions, commit info, evidences). Besides,
-    * in same-block execution mode, the Application can (and should) provide `ResponsePrepareProposal.app_hash`,
-      `ResponsePrepareProposal.validator_updates`, or
-      `ResponsePrepareProposal.consensus_param_updates`.
-    * in "next-block execution" mode, _p_'s Tendermint will ignore the values for `ResponsePrepareProposal.app_hash`,
-      `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
-    * in both modes, the Application can manipulate transactions
-        * leave transactions untouched - `TxAction = UNMODIFIED`
-        * add new transactions (not previously in the mempool) - `TxAction = ADDED`
-        * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
-        * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
-          Application removes the transaction from the list
-        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`. As explained above, this compromises client traceability, unless it is implemented at the Application level.
-        * reorder transactions - the Application reorders transactions in the list
-4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
-   and includes the modified block in the return parameters (see the rules in section _Usage_).
-   The Application returns from the call.
-5. _p_'s Tendermint uses the (possibly) modified block as _p_'s proposal in round _r_, height _h_.
 
-Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as proposal and will not call `RequestPrepareProposal`.
+**How the Application handles `RequestPrepareProposal`**
+
+* The Application first checks the block (header, transactions, commit info, evidences).
+* `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
+  * In this case, the Applications should set `ResponsePrepareProposal.modified_tx` to true.
+  * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
+    * If the Application wants to leave `tx` untouched, then it has to include it in `tx_records` and _mark_ it as "TXUNMODIFIED".
+    * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
+    * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as "TXREMOVED". In this case, Tendermint will remove `tx` from the mempool.
+    * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as "TXADDED". In this case, Tendermint will add it to the mempool.
+    * **TODO** shall we add transformation, i.e., remove a transaction `t1` and add second transaction `t2`, as one bullet here? Maybe we should to connect it better to the next paragraph.
+  * The Application should be aware that removing and adding transactions may compromise _traceability_.
+    > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
+  * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
+* If the Application does not modified the premilimnary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
+* If the Application modifies the *app_signed* part of vote extensions via `ResponsePrepareProposal.app_signed_updates`, the new total size of those extensions cannot exceed their initial size. 
+* The Application may choose to not modify the *app_signed* part of vote extensions by leaving parameter `ResponsePrepareProposal.app_signed_updates` empty.
+* In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
+  * The values for `ResponsePrepareProposal.validator_updates`, or `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep the current values.
+  * `ResponsePrepareProposal.validator_updates`, triggered by block `H`, affect validation for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
+    * `H`: `NextValidatorsHash` includes the new `validator_updates` value.
+    * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
+    * `H+2`: `local_last_commit` now includes the altered validator set.
+  * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus params for block `H+1` even if the change is agreed in block `H`. For more information on the consensus parameters, see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
+  * It is the responsibility of the Application to set the right value for _TimeoutPropose_ so that the (synchronous) execution of the block does not cause other processes to prevote `nil` because their propose timeout goes off.
+* In next-block execution mode, Tendermint will ignore parameters `ResponsePrepareProposal.tx_results`,`ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
+* As a result of executing the prepared proposal, the Application may produce header events or transaction events. The Application must keep those events until a block is decided and then pass them on to Tendermint via `ResponseFinalizeBlock`.
+* Likewise, in next-block execution mode, the Application must keep all responses to executing transactions until it can call `ResponseFinalizeBlock`.
+* The implementation of `PrepareProposal` can be non-deterministic.
+
+
+**How Tendermint handles `ResponsePrepareProposal`**
+
+* Tendermint first checks the returned parameters for validity if the Application modified them. In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
+  * There is a duplicate transaction in the list.
+  * A new or modified transaction is marked as "TXUNMODIFIED" or "TXREMOVED".
+  * An unmodified transaction is marked as "TXADDED".
+  * A transaction is marked as "TXUNKNOWN".
+* If Tendermint's sanity checks on the parameters of `ResponsePrepareProposal` fail, then it will drop the proposal and proceed to the next round (thus simulating a network loss/delay of the proposal). **TODO**: [From discussion with William] Another possibility here is to panic. What do folks think we should do here?
+* If Tendermint's sanity checks on the parameters of `ResponsePrepareProposal` pass, p_'s Tendermint uses the (possibly) modified block as _p_'s proposal in round _r_, height _h_.
 
 ### ProcessProposal
 
