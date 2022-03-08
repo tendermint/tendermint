@@ -56,7 +56,7 @@ func (a ABCIApp) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes
 		return &res, nil
 	}
 	fb := a.App.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{tx}})
-	res.DeliverTx = *fb.Txs[0]
+	res.TxResult = *fb.TxResults[0]
 	res.Height = -1 // TODO
 	return &res, nil
 }

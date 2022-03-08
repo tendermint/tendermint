@@ -305,7 +305,7 @@ returned directly to the client that initiated the query.
 
 Method `CheckTx` includes an `Events` field in its `Response*`.
 Method `FinalizeBlock` includes an `Events` field at the top level in its
-`Response*`, and one `tx_events` field per transaction included in the block.
+`Response*`, and one `events` field per transaction included in the block.
 Applications may respond to these ABCI++ methods with a set of events.
 Events allow applications to associate metadata about ABCI++ method execution with the
 transactions and blocks this metadata relates to.

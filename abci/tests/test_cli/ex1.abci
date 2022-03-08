@@ -1,10 +1,10 @@
 echo hello
 info
 commit
-deliver_tx "abc"
+finalize_block "abc"
 info
 commit
 query "abc"
-deliver_tx "def=xyz"
+finalize_block "def=xyz" "ghi=123"
 commit
 query "def"

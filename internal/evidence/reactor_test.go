@@ -82,13 +82,14 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 			}
 			return nil
 		})
-		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
-
-		require.NoError(t, err)
 		eventBus := eventbus.NewDefault(logger)
 		err = eventBus.Start(ctx)
 		require.NoError(t, err)
-		rts.pools[nodeID].SetEventBus(eventBus)
+
+		rts.pools[nodeID] = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics(), eventBus)
+		startPool(t, rts.pools[nodeID], stateStores[idx])
+
+		require.NoError(t, err)
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)

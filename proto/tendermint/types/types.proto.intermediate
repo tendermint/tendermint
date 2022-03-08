@@ -1,15 +1,20 @@
 syntax = "proto3";
 package tendermint.types;
 
-option go_package = "github.com/tendermint/tendermint/types";
-
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "tendermint/crypto/proof.proto";
 import "tendermint/version/types.proto";
 import "tendermint/types/validator.proto";
 
-// BlockIdFlag indicates which BlcokID the signature is for
+// This file is a temporary workaround to enable development during the ABCI++
+// project. This file should be deleted and any references to it removed when 
+// the ongoing work on ABCI++ is completed.
+//
+// This file supports building of the `tendermint.abci` proto package.
+// For more information, see https://github.com/tendermint/tendermint/issues/8066
+
+// BlockIdFlag indicates which BlockID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
@@ -113,6 +118,19 @@ message Vote {
   bytes validator_address = 6;
   int32 validator_index   = 7;
   bytes signature         = 8;
+  VoteExtension vote_extension    = 9;
+}
+
+// VoteExtension is app-defined additional information to the validator votes.
+message VoteExtension {
+  bytes app_data_to_sign             = 1;
+  bytes app_data_self_authenticating = 2;
+}
+
+// VoteExtensionToSign is a subset of VoteExtension that is signed by the validators private key.
+// VoteExtensionToSign is extracted from an existing VoteExtension.
+message VoteExtensionToSign {
+  bytes app_data_to_sign = 1;
 }
 
 // Commit contains the evidence that a block was committed by a set of
@@ -132,6 +150,7 @@ message CommitSig {
   google.protobuf.Timestamp timestamp         = 3
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 4;
+  VoteExtensionToSign vote_extension = 5;
 }
 
 message Proposal {

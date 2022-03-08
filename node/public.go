@@ -35,7 +35,7 @@ func New(
 	ctx context.Context,
 	conf *config.Config,
 	logger log.Logger,
-	cf abciclient.Creator,
+	cf abciclient.Client,
 	gen *types.GenesisDoc,
 ) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())

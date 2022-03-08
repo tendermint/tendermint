@@ -136,7 +136,7 @@ func startNode(ctx context.Context, cfg *Config) error {
 		ctx,
 		tmcfg,
 		nodeLogger,
-		abciclient.NewLocalCreator(app),
+		abciclient.NewLocalClient(nodeLogger, app),
 		nil,
 	)
 	if err != nil {

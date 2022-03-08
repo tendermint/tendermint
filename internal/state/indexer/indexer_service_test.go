@@ -80,7 +80,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Height: 1,
 		Index:  uint32(0),
 		Tx:     types.Tx("foo"),
-		Result: abci.ResponseDeliverTx{Code: 0},
+		Result: abci.ExecTxResult{Code: 0},
 	}
 	err = eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: *txResult1})
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Height: 1,
 		Index:  uint32(1),
 		Tx:     types.Tx("bar"),
-		Result: abci.ResponseDeliverTx{Code: 0},
+		Result: abci.ExecTxResult{Code: 0},
 	}
 	err = eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: *txResult2})
 	require.NoError(t, err)

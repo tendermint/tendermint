@@ -31,7 +31,7 @@ func TestTxFilter(t *testing.T) {
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
 
-		f := sm.TxPreCheck(state)
+		f := sm.TxPreCheckForState(state)
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {

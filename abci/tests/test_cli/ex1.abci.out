@@ -12,7 +12,7 @@
 -> code: OK
 -> data.hex: 0x0000000000000000
 
-> deliver_tx "abc"
+> finalize_block "abc"
 -> code: OK
 
 > info 
@@ -33,12 +33,14 @@
 -> value: abc
 -> value.hex: 616263
 
-> deliver_tx "def=xyz"
+> finalize_block "def=xyz" "ghi=123"
+-> code: OK
+> finalize_block "def=xyz" "ghi=123"
 -> code: OK
 
 > commit 
 -> code: OK
--> data.hex: 0x0400000000000000
+-> data.hex: 0x0600000000000000
 
 > query "def"
 -> code: OK
