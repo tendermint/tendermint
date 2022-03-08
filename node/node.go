@@ -388,8 +388,7 @@ func makeNode(
 			mpReactor,
 			evReactor,
 		},
-		// seperate so we can start
-		// before statesync
+		// pex is separate so we can start before statesync
 		pexService: pexReactor,
 
 		stateStore:       stateStore,
