@@ -311,9 +311,9 @@ title: Methods
       and `RequestFinalizeBlock`.
     * The header contains the height, timestamp, and more - it exactly matches the
       Tendermint block header.
-    * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw block_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
+    * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
         * In this case, the Application should set `ResponsePrepareProposal.modified_tx` to true.
-        * The Application _can_ reorder, remove or add transactions to the raw block. Let `tx` be a transaction in `txs`:
+        * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
             * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
             * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as "REMOVE". In this case, Tendermint will remove `tx` from the mempool.
             * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as "ADD". In this case, Tendermint will add it to the mempool.
