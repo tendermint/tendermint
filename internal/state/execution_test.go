@@ -653,7 +653,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 }
 

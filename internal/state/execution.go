@@ -102,7 +102,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	state State,
 	commit *types.Commit,
 	proposerAddr []byte,
-	votes []*types.Vote,
 ) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
