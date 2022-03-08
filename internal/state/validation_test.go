@@ -14,6 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	memmock "github.com/tendermint/tendermint/internal/mempool/mock"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -36,6 +37,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	state, stateDB, privVals := makeState(t, 3, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
@@ -46,6 +50,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -125,6 +130,9 @@ func TestValidateBlockCommit(t *testing.T) {
 	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	state, stateDB, privVals := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
@@ -135,6 +143,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -263,6 +272,9 @@ func TestValidateBlockEvidence(t *testing.T) {
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
 		[]abci.Evidence{})
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	state.ConsensusParams.Evidence.MaxBytes = 1000
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -271,6 +283,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		memmock.Mempool{},
 		evpool,
 		blockStore,
+		eventBus,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
