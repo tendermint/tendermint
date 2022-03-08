@@ -1,6 +1,7 @@
 package types_test
 
 import (
+	fmt "fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,4 +39,97 @@ func TestHashAndProveResults(t *testing.T) {
 		valid := proof.Verify(root, bz)
 		assert.NoError(t, valid, "%d", i)
 	}
+}
+
+func TestValidateResponsePrepareProposal(t *testing.T) {
+	t.Run("should error on total transaction size exceeding max data size", func(t *testing.T) {
+		rpp := &abci.ResponsePrepareProposal{
+			TxRecords: []*abci.TxRecord{
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{6, 7, 8, 9, 10},
+				},
+			},
+		}
+		err := rpp.Validate(9, [][]byte{})
+		require.Error(t, err)
+	})
+	t.Run("should error on duplicate transactions", func(t *testing.T) {
+		rpp := &abci.ResponsePrepareProposal{
+			TxRecords: []*abci.TxRecord{
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{100},
+				},
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{200},
+				},
+			},
+		}
+		err := rpp.Validate(100, [][]byte{})
+		require.Error(t, err)
+	})
+	t.Run("should error on new transactions marked UNMODIFIED", func(t *testing.T) {
+		rpp := &abci.ResponsePrepareProposal{
+			TxRecords: []*abci.TxRecord{
+				{
+					Action: abci.TxRecord_UNMODIFIED,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+			},
+		}
+		err := rpp.Validate(100, [][]byte{})
+		fmt.Println(err)
+		require.Error(t, err)
+	})
+	t.Run("should error on new transactions marked REMOVED", func(t *testing.T) {
+		rpp := &abci.ResponsePrepareProposal{
+			TxRecords: []*abci.TxRecord{
+				{
+					Action: abci.TxRecord_REMOVED,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+			},
+		}
+		err := rpp.Validate(100, [][]byte{})
+		fmt.Println(err)
+		require.Error(t, err)
+	})
+	t.Run("should error on unmodified transaction marked as ADDED", func(t *testing.T) {
+		rpp := &abci.ResponsePrepareProposal{
+			TxRecords: []*abci.TxRecord{
+				{
+					Action: abci.TxRecord_ADDED,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+			},
+		}
+		err := rpp.Validate(100, [][]byte{{1, 2, 3, 4, 5}})
+		require.Error(t, err)
+	})
+	t.Run("should error if any transaction marked as UNKNOWN", func(t *testing.T) {
+		rpp := &abci.ResponsePrepareProposal{
+			TxRecords: []*abci.TxRecord{
+				{
+					Action: abci.TxRecord_UNKNOWN,
+					Tx:     []byte{1, 2, 3, 4, 5},
+				},
+			},
+		}
+		err := rpp.Validate(100, [][]byte{})
+		require.Error(t, err)
+	})
 }

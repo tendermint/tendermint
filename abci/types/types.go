@@ -3,6 +3,8 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/jsonpb"
 
@@ -203,14 +205,57 @@ func mustResultsToByteSlices(r []*ExecTxResult) [][]byte {
 	return s
 }
 
+func (tr *TxRecord) IsIncluded() bool {
+	return tr.Action == TxRecord_ADDED || tr.Action == TxRecord_UNMODIFIED
+}
+
 // IncludedTxs returns all of the TxRecords that are marked for inclusion in the
 // proposed block.
 func (rpp *ResponsePrepareProposal) IncludedTxs() []*TxRecord {
 	trs := []*TxRecord{}
 	for _, tr := range rpp.TxRecords {
-		if tr.Action == TxRecord_ADDED || tr.Action == TxRecord_UNMODIFIED {
+		if tr.IsIncluded() {
 			trs = append(trs, tr)
 		}
 	}
 	return trs
+}
+
+// Validate checks that the fields of the ResponsePrepareProposal are properly
+// constructed. Validate returns an error if any of the validation checks fail.
+func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) error {
+	// TODO: this feels like a large amount allocated data. We move all the Txs into strings
+	// in the map. The map will be as large as the original byte slice.
+	// Is there a key we can use?
+	otxsSet := make(map[string]struct{}, len(otxs))
+	for _, tx := range otxs {
+		otxsSet[string(tx)] = struct{}{}
+	}
+	ntx := map[string]struct{}{}
+	var size int64
+	for _, tr := range rpp.TxRecords {
+		if tr.IsIncluded() {
+			size += int64(len(tr.Tx))
+			if _, ok := ntx[string(tr.Tx)]; ok {
+				return errors.New("duplicate included transaction")
+			}
+			ntx[string(tr.Tx)] = struct{}{}
+		}
+		if _, ok := otxsSet[string(tr.Tx)]; ok {
+			if tr.Action == TxRecord_ADDED {
+				return fmt.Errorf("unmodified transaction incorrectly marked as %s", tr.Action.String())
+			}
+		} else {
+			if tr.Action == TxRecord_REMOVED || tr.Action == TxRecord_UNMODIFIED {
+				return fmt.Errorf("new transaction incorrectly marked as %s", tr.Action.String())
+			}
+		}
+		if tr.Action == TxRecord_UNKNOWN {
+			return fmt.Errorf("transaction incorrectly marked as %s", tr.Action.String())
+		}
+	}
+	if size > maxSizeBytes {
+		return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
+	}
+	return nil
 }

@@ -117,7 +117,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	block, err := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
-	preparedProposal, err := blockExec.appClient.PrepareProposal(
+	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		abci.RequestPrepareProposal{
 			Hash:                block.Hash(),
@@ -141,11 +141,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
-	if err := state.ValidateResponsePrepareProposal(preparedProposal); err != nil {
-		panic(fmt.Sprintf("application returned invalid ResponsePrepareProposal: %s", err))
+	if err := rpp.Validate(maxDataBytes, txs.ToSliceOfBytes()); err != nil {
+		return nil, err
 	}
 
-	return state.MakeBlock(height, types.TxRecordsToTxs(preparedProposal.IncludedTxs()), commit, evidence, proposerAddr)
+	return state.MakeBlock(height, types.TxRecordsToTxs(rpp.IncludedTxs()), commit, evidence, proposerAddr)
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
