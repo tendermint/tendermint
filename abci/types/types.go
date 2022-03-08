@@ -221,6 +221,18 @@ func (rpp *ResponsePrepareProposal) IncludedTxs() []*TxRecord {
 	return trs
 }
 
+// RemovedTxs returns all of the TxRecords that are marked for removal from the
+// mempool.
+func (rpp *ResponsePrepareProposal) RemovedTxs() []*TxRecord {
+	trs := []*TxRecord{}
+	for _, tr := range rpp.TxRecords {
+		if tr.Action == TxRecord_REMOVED {
+			trs = append(trs, tr)
+		}
+	}
+	return trs
+}
+
 // Validate checks that the fields of the ResponsePrepareProposal are properly
 // constructed. Validate returns an error if any of the validation checks fail.
 func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) error {
