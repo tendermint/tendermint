@@ -138,6 +138,7 @@ func NewReactor(
 	cs *State,
 	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
+	eventBus *eventbus.EventBus,
 	waitSync bool,
 	metrics *Metrics,
 ) (*Reactor, error) {
@@ -166,6 +167,7 @@ func NewReactor(
 		state:         cs,
 		waitSync:      waitSync,
 		peers:         make(map[types.NodeID]*PeerState),
+		eventBus:      eventBus,
 		Metrics:       metrics,
 		stateCh:       stateCh,
 		dataCh:        dataCh,
@@ -224,12 +226,6 @@ func (r *Reactor) OnStop() {
 	if !r.WaitSync() {
 		r.state.Wait()
 	}
-}
-
-// SetEventBus sets the reactor's event bus.
-func (r *Reactor) SetEventBus(b *eventbus.EventBus) {
-	r.eventBus = b
-	r.state.SetEventBus(b)
 }
 
 // WaitSync returns whether the consensus reactor is waiting for state/block sync.

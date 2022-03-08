@@ -62,7 +62,8 @@ type nodeImpl struct {
 	// services
 	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
-	blockStore       *store.BlockStore  // store the blockchain to disk
+	blockStore       *store.BlockStore // store the blockchain to disk
+	evPool           *evidence.Pool
 	stateSync        bool               // whether the node should state sync on startup
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
 
@@ -288,6 +289,7 @@ func makeNode(
 		mp,
 		evPool,
 		blockStore,
+		eventBus,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
@@ -388,6 +390,7 @@ func makeNode(
 		blockStore:       blockStore,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
+		evPool:           evPool,
 
 		shutdownOps: makeCloser(closers),
 
@@ -460,6 +463,14 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			return ctx.Err()
 		case <-timer.C:
 		}
+	}
+
+	state, err := n.stateStore.Load()
+	if err != nil {
+		return err
+	}
+	if err := n.evPool.Start(state); err != nil {
+		return err
 	}
 
 	n.rpcEnv.NodeInfo = n.nodeInfo

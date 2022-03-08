@@ -205,7 +205,7 @@ type Handshaker struct {
 	stateStore   sm.Store
 	initialState sm.State
 	store        sm.BlockStore
-	eventBus     types.BlockEventPublisher
+	eventBus     *eventbus.EventBus
 	genDoc       *types.GenesisDoc
 	logger       log.Logger
 
@@ -217,7 +217,7 @@ func NewHandshaker(
 	stateStore sm.Store,
 	state sm.State,
 	store sm.BlockStore,
-	eventBus types.BlockEventPublisher,
+	eventBus *eventbus.EventBus,
 	genDoc *types.GenesisDoc,
 ) *Handshaker {
 
@@ -484,9 +484,7 @@ func (h *Handshaker) replayBlocks(
 		if i == finalBlock && !mutateState {
 			// We emit events for the index services at the final block due to the sync issue when
 			// the node shutdown during the block committing status.
-			blockExec := sm.NewBlockExecutor(
-				h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
-			blockExec.SetEventBus(h.eventBus)
+			blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus)
 			appHash, err = sm.ExecCommitBlock(ctx,
 				blockExec, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
@@ -528,8 +526,7 @@ func (h *Handshaker) replayBlock(
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
-	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
-	blockExec.SetEventBus(h.eventBus)
+	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus)
 
 	var err error
 	state, err = blockExec.ApplyBlock(ctx, state, meta.BlockID, block)

@@ -25,8 +25,7 @@ This allows Tendermint to run with applications written in many programming lang
 
 This specification is split as follows:
 
-- [Basic concepts and definitions](./abci++_basic_concepts_002_draft.md) - definitions and descriptions
-  of concepts that are needed to understand other parts of this sepcification.
+- [Overview and basic concepts](./abci++_basic_concepts_002_draft.md) - interface's overview and concepts needed to understand other parts of this specification.
 - [Methods](./abci++_methods_002_draft.md) - complete details on all ABCI++ methods
   and message types.
 - [Requirements for the Application](./abci++_app_requirements_002_draft.md) - formal requirements

@@ -194,28 +194,3 @@ func (b *EventBus) PublishEventValidatorSetUpdates(ctx context.Context, data typ
 func (b *EventBus) PublishEventEvidenceValidated(ctx context.Context, evidence types.EventDataEvidenceValidated) error {
 	return b.Publish(ctx, types.EventEvidenceValidatedValue, evidence)
 }
-
-//-----------------------------------------------------------------------------
-
-// NopEventBus implements a types.BlockEventPublisher that discards all events.
-type NopEventBus struct{}
-
-func (NopEventBus) PublishEventNewBlock(context.Context, types.EventDataNewBlock) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventNewBlockHeader(context.Context, types.EventDataNewBlockHeader) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventNewEvidence(context.Context, types.EventDataNewEvidence) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventTx(context.Context, types.EventDataTx) error {
-	return nil
-}
-
-func (NopEventBus) PublishEventValidatorSetUpdates(context.Context, types.EventDataValidatorSetUpdates) error {
-	return nil
-}
