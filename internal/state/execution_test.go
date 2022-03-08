@@ -788,6 +788,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
 	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs = trs[2:]
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 
 	app := abcimocks.NewBaseMock()
