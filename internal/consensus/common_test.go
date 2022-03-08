@@ -465,15 +465,14 @@ func newStateWithConfigAndBlockStore(
 	t.Helper()
 
 	// one for mempool, one for consensus
-	proxyAppConnMem := abciclient.NewLocalClient(logger, app)
-	proxyAppConnCon := abciclient.NewLocalClient(logger, app)
+	appConn := abciclient.NewLocalClient(logger, app)
 
 	// Make Mempool
 
 	mempool := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		thisConfig.Mempool,
-		proxyAppConnMem,
+		appConn,
 	)
 
 	if thisConfig.Consensus.WaitForTxs() {
@@ -490,7 +489,7 @@ func newStateWithConfigAndBlockStore(
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	require.NoError(t, eventBus.Start(ctx))
 
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, appConn, mempool, evpool, blockStore, eventBus)
 	cs, err := NewState(ctx,
 		logger.With("module", "consensus"),
 		thisConfig.Consensus,
