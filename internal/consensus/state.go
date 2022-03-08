@@ -226,10 +226,6 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
-	if err := cs.updateStateFromStore(ctx); err != nil {
-		return nil, err
-	}
-
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {

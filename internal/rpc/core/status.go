@@ -77,12 +77,15 @@ func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, er
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			MaxPeerBlockHeight:  env.BlockSyncReactor.GetMaxPeerBlockHeight(),
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
-			TotalSyncedTime:     env.BlockSyncReactor.GetTotalSyncedTime(),
-			RemainingTime:       env.BlockSyncReactor.GetRemainingSyncTime(),
 		},
 		ValidatorInfo: validatorInfo,
+	}
+
+	if env.BlockSyncReactor != nil && env.BlockSyncReactor.IsRunning() {
+		result.SyncInfo.MaxPeerBlockHeight = env.BlockSyncReactor.GetMaxPeerBlockHeight()
+		result.SyncInfo.TotalSyncedTime = env.BlockSyncReactor.GetTotalSyncedTime()
+		result.SyncInfo.RemainingTime = env.BlockSyncReactor.GetRemainingSyncTime()
 	}
 
 	if env.StateSyncMetricer != nil {

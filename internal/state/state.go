@@ -211,7 +211,7 @@ func FromProto(pb *tmstate.State) (*State, error) {
 
 	bi, err := types.BlockIDFromProto(&pb.LastBlockID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("block id: %w", err)
 	}
 	state.LastBlockID = *bi
 	state.LastBlockHeight = pb.LastBlockHeight
@@ -219,20 +219,20 @@ func FromProto(pb *tmstate.State) (*State, error) {
 
 	vals, err := types.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validators: %w", err)
 	}
 	state.Validators = vals
 
 	nVals, err := types.ValidatorSetFromProto(pb.NextValidators)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("next validators: %w", err)
 	}
 	state.NextValidators = nVals
 
 	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
 		lVals, err := types.ValidatorSetFromProto(pb.LastValidators)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("previous validators: %w", err)
 		}
 		state.LastValidators = lVals
 	} else {
