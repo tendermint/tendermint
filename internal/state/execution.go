@@ -144,7 +144,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	}
 
 	if !rpp.ModifiedTx {
-		return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+		return block, nil
 	}
 
 	for _, rtx := range rpp.RemovedTxs() {
