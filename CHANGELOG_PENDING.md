@@ -10,6 +10,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
+   - [cli] \#8081 make the reset command safe to use (@marbar3778).
+
 - Apps
 
 - P2P Protocol
