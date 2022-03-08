@@ -328,7 +328,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 
 * The Application first checks the block (header, transactions, commit info, evidences).
 * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
-  * In this case, the Applications should set `ResponsePrepareProposal.modified_tx` to true.
+  * In this case, the Application should set `ResponsePrepareProposal.modified_tx` to true.
   * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
     * If the Application wants to leave `tx` untouched, then it has to include it in `tx_records` and _mark_ it as "TXUNMODIFIED".
     * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
@@ -338,7 +338,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
   * The Application should be aware that removing and adding transactions may compromise _traceability_.
     > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
   * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
-* If the Application does not modified the premilimnary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
+* If the Application does not modified the prelimnary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
 * If the Application modifies the *app_signed* part of vote extensions via `ResponsePrepareProposal.app_signed_updates`, the new total size of those extensions cannot exceed their initial size. 
 * The Application may choose to not modify the *app_signed* part of vote extensions by leaving parameter `ResponsePrepareProposal.app_signed_updates` empty.
 * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
@@ -389,60 +389,43 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
 
-* **Usage**:
-    * Contains a full proposed block.
-        * The parameters and types of `RequestProcessProposal` are the same as `RequestPrepareProposal`
-          and `RequestFinalizeBlock`.
-        * The Application may fully execute the block as though it was handling `RequestFinalizeBlock`.
-          However, any resulting state changes must be kept as _canditade state_,
-          and the Application should be ready to backtrack/discard it in case the decided block is different.
-    * The header exactly matches the Tendermint header of the proposed block.
-        * In next-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
-           and _ConsensusHash_ refer to the **last committed block** (data was provided by the last call to
-          `ResponseFinalizeBlock`).
-        * In same-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
-          and _ConsensusHash_ refer to the **same** block being passed in the `Request*` call to this
-          method (data was provided by the call to `ResponsePrepareProposal` at the current height that
-          resulted in the block being passed in the `Request*` call to this method)
-    * If `ResponseProcessProposal.accept` is _false_, Tendermint assumes the proposal received
-      is not valid.
-    * In same-block execution mode, the Application is required to fully execute the block and provide values
-      for parameters `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_results`,
-      `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`,
-      so that Tendermint can then verify the hashes in the block's header are correct.
-      If the hashes mismatch, Tendermint will reject the block even if `ResponseProcessProposal.accept`
-      was set to _true_.
-    * In next-block execution mode, the Application should *not* provide values for parameters
-      `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_results`,
-      `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`.
-    * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
-      `ResponseProcessProposal.accept` MUST **exclusively** depend on the parameters passed in
-      the call to `RequestProcessProposal`, and the last committed Application state
-      (see [Requirements](abci++_app_requirements_002_draft.md) section).
-    * Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_,
-      unless they _really_ know what the potential liveness implications of returning _false_ are.
+**When does Tendermint call it?**
+
+Let _p_ be a validator that enters consensus round _r_, height _h_, in which _q_ is the proposer (possibly _p_ = _q_). Assume that _p_ receives a Proposal message and all the block parts for round _r_, height _h_ from _q_. If _p_ is not locked on a block,  then Tendermint calls `RequestProcessProposal` with the full proposed block. 
+
+* The call is synchronous.
+
+* The parameters and types of `RequestProcessProposal` are the same as `RequestPrepareProposal` and `RequestFinalizeBlock`.
+
+**How the Application handles `RequestProcessProposal`**
+
+* The Application checks/processes the proposed block, which is read-only, and returns true (_accept_) or false (_reject_) in `ResponseProcessProposal.accept`.
+
+* The Application, depending on its needs, may call `ResponseProcessProposal`
+  * either after it has completely processed the block (the simpler case),
+  * or immediately (after doing some basic checks), and process the block asynchronously. In this case the Application will not be able to reject the block, or force prevote/precommit `nil` afterwards.
+
+* The Application may fully execute the block as though it was handling `RequestFinalizeBlock`. However, any resulting state changes must be kept as _canditade state_, and the Application should be ready to backtrack/discard it in case the decided block is different.
+
+* The header exactly matches the Tendermint header of the proposed block.
+  * In next-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
+and _ConsensusHash_ refer to the **last committed block** (data was provided by the last call to `ResponseFinalizeBlock`).
+  * In same-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_, and _ConsensusHash_ refer to the **same** block being passed in the `Request*` call to this method (data was provided by the call to `ResponsePrepareProposal` at the current height that resulted in the block being passed in the `Request*` call to this method).
+
+* In same-block execution mode, the Application is required to fully execute the block and provide values for parameters `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_results`,`ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`, so that Tendermint can then verify the hashes in the block's header are correct. If the hashes mismatch, Tendermint will reject the block even if `ResponseProcessProposal.accept` was set to _true_.
+
+* In next-block execution mode, the Application should *not* provide values for parameters `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_results` `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`.
+
+* The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of `ResponseProcessProposal.accept` MUST **exclusively** depend on the parameters passed in the call to `RequestProcessProposal`, and the last committed Application state(see [Requirements](abci++_app_requirements_002_draft.md) section).
+
+* Moreover, application implementors SHOULD always set `ResponseProcessProposal.accept` to _true_, unless they _really_ know what the potential liveness implications of returning _false_ are.
 
 >**TODO**: should `ResponseProcessProposal.accept` be of type `Result` rather than `bool`? (so we are able to extend the possible values in the future?)
 
-#### When does Tendermint call it?
+**How Tendermint handles `ResponseProcessProposal`**
 
-When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _q_ is the proposer (possibly _p_ = _q_):
-
-1. _p_ sets up timer `ProposeTimeout`.
-2. If _p_ is the proposer, _p_ executes steps 1-6 in [PrepareProposal](#prepareproposal).
-3. Upon reception of Proposal message (which contains the header) for round _r_, height _h_ from _q_, _p_'s Tendermint verifies the block header.
-4. Upon reception of Proposal message, along with all the block parts, for round _r_, height _h_ from _q_, _p_'s Tendermint follows its algorithm
-   to check whether it should prevote for the block just received, or `nil`
-5. If Tendermint should prevote for the block just received
-    1. Tendermint calls `RequestProcessProposal` with the block. The call is synchronous.
-    2. The Application checks/processes the proposed block, which is read-only, and returns true (_accept_) or false (_reject_) in `ResponseProcessProposal.accept`.
-       * The Application, depending on its needs, may call `ResponseProcessProposal`
-         * either after it has completely processed the block (the simpler case),
-         * or immediately (after doing some basic checks), and process the block asynchronously. In this case the Application will
-           not be able to reject the block, or force prevote/precommit `nil` afterwards.
-    3. If the returned value is
-         * _accept_, Tendermint prevotes on this proposal for round _r_, height _h_.
-         * _reject_, Tendermint prevotes `nil`.
+* If `ResponseProcessProposal.accept` is _true_, then Tendermint prevotes on this proposal for round _r_, height _h_.
+* If `ResponseProcessProposal.accept` is _false_, then Tendermint assumes the proposal received is not valid and prevotes `nil`.
 
 ### ExtendVote
 
