@@ -433,9 +433,6 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 // substPrepareTx subst all the preparetx in the blockdata
 // to null string(could be any arbitrary string).
 func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
-	// TODO: this mechanism will change with the current spec of PrepareProposal
-	// We now have a special type for marking a tx as changed
-
 	trs := make([]*types.TxRecord, len(blockData))
 	for i, tx := range blockData {
 		if isPrepareTx(tx) {

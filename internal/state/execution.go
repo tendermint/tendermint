@@ -429,7 +429,7 @@ func extendedCommitInfo(c abci.CommitInfo) abci.ExtendedCommitInfo {
 			Validator:       c.Votes[i].Validator,
 			SignedLastBlock: c.Votes[i].SignedLastBlock,
 			/*
-				TODO: Include extended vote information once vote extension vote is complete.
+				TODO: Include vote extensions information when implementing vote extension is complete.
 				VoteExtension:   []byte{},
 			*/
 		}

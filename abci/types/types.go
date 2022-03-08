@@ -251,6 +251,9 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 	if !rpp.ModifiedTx {
 		// This method currently only checks the validity of the TxRecords field.
 		// If ModifiedTx is false, then we can ignore the validity of the TxRecords field.
+		//
+		// TODO: When implementing VoteExensions, AppSignedUpdates may be modified by the application
+		// and this method should be updated to validate the AppSignedUpdates.
 		return nil
 	}
 
