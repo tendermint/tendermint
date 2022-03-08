@@ -128,7 +128,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			MaxTxBytes: maxDataBytes,
 		},
 	)
-
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
 		// enter the mempool. Hence, at this point, we can't have any non-processable
@@ -145,6 +144,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	}
 	for _, rtx := range rpp.RemovedTxs() {
 		if err := blockExec.mempool.RemoveTxByKey(types.Tx(rtx.Tx).Key()); err != nil {
+			blockExec.logger.Debug("error removing transaction from the mempool", "error", err)
+		}
+	}
+	for _, rtx := range rpp.AddedTxs() {
+		if err := blockExec.mempool.CheckTx(ctx, rtx.Tx, nil, mempool.TxInfo{}); err != nil {
 			blockExec.logger.Debug("error removing transaction from the mempool", "error", err)
 		}
 	}
