@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	mmock "github.com/tendermint/tendermint/internal/mempool/mock"
+	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -53,7 +53,18 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore, eventBus)
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mp, sm.EmptyEvidencePool{}, blockStore, eventBus)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
 	require.NoError(t, err)
@@ -103,11 +114,22 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, 0)
 			evpool.On("Update", ctx, mock.Anything, mock.Anything).Return()
 			evpool.On("CheckEvidence", ctx, mock.Anything).Return(nil)
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
 
 			eventBus := eventbus.NewDefault(logger)
 			require.NoError(t, eventBus.Start(ctx))
 
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mmock.Mempool{}, evpool, blockStore, eventBus)
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mp, evpool, blockStore, eventBus)
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
 			for idx, isAbsent := range tc.absentCommitSigs {
@@ -215,6 +237,17 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return(ev, int64(100))
 	evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
 
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
@@ -222,7 +255,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp,
-		mmock.Mempool{}, evpool, blockStore, eventBus)
+		mp, evpool, blockStore, eventBus)
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit))
 	require.NoError(t, err)
@@ -264,7 +297,7 @@ func TestProcessProposal(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp,
-		mmock.Mempool{},
+		new(mpmocks.Mempool),
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -463,6 +496,18 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	state, stateDB, _ := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
 
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
@@ -471,7 +516,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp,
-		mmock.Mempool{},
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -542,7 +587,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		stateStore,
 		log.TestingLogger(),
 		proxyApp,
-		mmock.Mempool{},
+		new(mpmocks.Mempool),
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -571,23 +616,40 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := abcimocks.NewBaseMock()
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	app := abcimocks.NewBaseMock()
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
 	state, stateDB, privVals := makeState(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
-		mmock.Mempool{},
+		proxyApp,
+		mp,
 		sm.EmptyEvidencePool{},
 		nil,
+		eventBus,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)

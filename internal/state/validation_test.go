@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	memmock "github.com/tendermint/tendermint/internal/mempool/mock"
+	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/mocks"
@@ -42,12 +42,24 @@ func TestValidateBlockHeader(t *testing.T) {
 
 	state, stateDB, privVals := makeState(t, 3, 1)
 	stateStore := sm.NewStore(stateDB)
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
 		proxyApp,
-		memmock.Mempool{},
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -135,12 +147,24 @@ func TestValidateBlockCommit(t *testing.T) {
 
 	state, stateDB, privVals := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
 		proxyApp,
-		memmock.Mempool{},
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -274,13 +298,24 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
 
 	state.ConsensusParams.Evidence.MaxBytes = 1000
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
 		proxyApp,
-		memmock.Mempool{},
+		mp,
 		evpool,
 		blockStore,
 		eventBus,

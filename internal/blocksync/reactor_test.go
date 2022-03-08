@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	"github.com/tendermint/tendermint/internal/mempool/mock"
+	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -121,6 +122,17 @@ func (rts *reactorTestSuite) addNode(
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 	require.NoError(t, stateStore.Save(state))
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
 
 	eventbus := eventbus.NewDefault(logger)
 	require.NoError(t, eventbus.Start(ctx))
@@ -129,7 +141,7 @@ func (rts *reactorTestSuite) addNode(
 		stateStore,
 		log.TestingLogger(),
 		rts.app[nodeID],
-		mock.Mempool{},
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventbus,
