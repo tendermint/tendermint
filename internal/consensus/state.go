@@ -931,9 +931,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
 	var (
 		added bool
 		err   error
@@ -2079,7 +2076,11 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
 		cs.metrics.MarkBlockGossipStarted()
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+			cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
+		}()
 	}
 
 	cs.logger.Info("received proposal", "proposal", proposal)
