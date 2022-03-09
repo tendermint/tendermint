@@ -356,7 +356,7 @@ func makeNode(
 		return nil, combineCloseError(fmt.Errorf("statesync construction: %w", err), makeCloser(closers))
 	}
 
-	var pexReactor service.Service
+	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
 		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 		if err != nil {
