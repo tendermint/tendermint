@@ -58,7 +58,7 @@ func (nk NodeKey) PubKey() crypto.PubKey {
 
 // SaveAs persists the NodeKey to filePath.
 func (nk NodeKey) SaveAs(filePath string) error {
-	jsonBytes, err := json.Marshal(nk)
+	jsonBytes, err := json.MarshalIndent(nk, "", " ")
 	if err != nil {
 		return err
 	}
