@@ -224,7 +224,7 @@ func (rpp *ResponsePrepareProposal) IncludedTxs() []*TxRecord {
 // RemovedTxs returns all of the TxRecords that are marked for removal from the
 // mempool.
 func (rpp *ResponsePrepareProposal) RemovedTxs() []*TxRecord {
-	trs := []*TxRecord{}
+	var trs []*TxRecord
 	for _, tr := range rpp.TxRecords {
 		if tr.Action == TxRecord_REMOVED {
 			trs = append(trs, tr)
@@ -235,7 +235,7 @@ func (rpp *ResponsePrepareProposal) RemovedTxs() []*TxRecord {
 
 // AddedTxs returns all of the TxRecords that are marked as added to the proposal.
 func (rpp *ResponsePrepareProposal) AddedTxs() []*TxRecord {
-	trs := []*TxRecord{}
+	var trs []*TxRecord
 	for _, tr := range rpp.TxRecords {
 		if tr.Action == TxRecord_ADDED {
 			trs = append(trs, tr)
