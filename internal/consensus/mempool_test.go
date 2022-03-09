@@ -138,7 +138,7 @@ func checkTxsRange(ctx context.Context, t *testing.T, cs *State, start, end int)
 }
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	config := configSetup(t)
@@ -148,28 +148,27 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 		Power:      10})
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	require.NoError(t, stateStore.Save(state))
 
 	cs := newStateWithConfigAndBlockStore(
 		ctx,
 		t,
 		logger, config, state, privVals[0], NewCounterApplication(), blockStore)
-	require.NoError(t, cs.Start(ctx))
 
+	err := stateStore.Save(state)
+	require.NoError(t, err)
 	newBlockHeaderCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlockHeader)
 
 	const numTxs int64 = 3000
-
 	go checkTxsRange(ctx, t, cs, 0, int(numTxs))
-	startTestRound(ctx, cs, cs.Height, cs.Round)
 
+	startTestRound(ctx, cs, cs.Height, cs.Round)
 	for n := int64(0); n < numTxs; {
 		select {
 		case msg := <-newBlockHeaderCh:
 			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
 			n += headerEvent.NumTxs
-		case <-ctx.Done():
-			t.Fatalf("Timed out waiting to commit blocks with transactions [%d of %d]", n, numTxs)
+		case <-time.After(30 * time.Second):
+			t.Fatal("Timed out waiting 30s to commit blocks with transactions")
 		}
 	}
 }

@@ -509,7 +509,6 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
 		require.NoError(t, err)
-		require.NoError(t, cs.Start(ctx))
 		cs.SetPrivValidator(ctx, pv)
 
 		cs.SetTimeoutTicker(tickerFunc())
@@ -519,8 +518,9 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
-	for id, reactor := range rts.reactors {
-		reactor.SwitchToConsensus(ctx, rts.states[id].state, false)
+	for _, reactor := range rts.reactors {
+		state := reactor.state.GetState()
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	var wg sync.WaitGroup

@@ -227,6 +227,7 @@ func sortVValidatorStubsByPower(ctx context.Context, t *testing.T, vss []*valida
 
 func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
 	cs.enterNewRound(ctx, height, round)
+	cs.startRoutines(ctx, 0)
 }
 
 // Create proposal block from cs1 but sign it with vs.
@@ -464,14 +465,15 @@ func newStateWithConfigAndBlockStore(
 	t.Helper()
 
 	// one for mempool, one for consensus
-	appConn := abciclient.NewLocalClient(logger, app)
+	proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 	// Make Mempool
 
 	mempool := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		thisConfig.Mempool,
-		appConn,
+		proxyAppConnMem,
 	)
 
 	if thisConfig.Consensus.WaitForTxs() {
@@ -488,7 +490,7 @@ func newStateWithConfigAndBlockStore(
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	require.NoError(t, eventBus.Start(ctx))
 
-	blockExec := sm.NewBlockExecutor(stateStore, logger, appConn, mempool, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus)
 	cs, err := NewState(ctx,
 		logger.With("module", "consensus"),
 		thisConfig.Consensus,

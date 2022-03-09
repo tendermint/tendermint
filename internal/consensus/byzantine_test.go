@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"sync"
 	"testing"
@@ -62,6 +63,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 			require.NoError(t, err)
 
+			defer os.RemoveAll(thisConfig.RootDir)
+
 			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 			app := kvstore.NewApplication()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
@@ -95,14 +98,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus)
 			cs, err := NewState(ctx, logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
 			require.NoError(t, err)
-
 			// set private validator
 			pv := privVals[i]
 			cs.SetPrivValidator(ctx, pv)
 
 			cs.SetTimeoutTicker(tickerFunc())
-
-			require.NoError(t, cs.Start(ctx))
 
 			states[i] = cs
 		}()
@@ -232,8 +232,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 	}
 
-	for id, reactor := range rts.reactors {
-		reactor.SwitchToConsensus(ctx, rts.states[id].state, false)
+	for _, reactor := range rts.reactors {
+		reactor.SwitchToConsensus(ctx, reactor.state.GetState(), false)
 	}
 
 	// Evidence should be submitted and committed at the third height but
