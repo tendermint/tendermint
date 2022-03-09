@@ -91,9 +91,11 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 			t.Fatal("test condition did not fire")
 		}
 	case <-ctx.Done():
-		if _, ok := <-signal; !ok {
+		select {
+		case <-signal:
+			// pass
+		default:
 			t.Fatal("test condition did not fire after timeout")
-			return
 		}
 	case <-signal:
 		// test passed
