@@ -170,8 +170,8 @@ func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
 	}
 }
 
-// deterministicExecTxResult strips non-deterministic fields from
-// ResponseDeliverTx and returns another ResponseDeliverTx.
+// deterministicExecTxResult constructs a copy of response that omits
+// non-deterministic fields. The input response is not modified.
 func deterministicExecTxResult(response *ExecTxResult) *ExecTxResult {
 	return &ExecTxResult{
 		Code:      response.Code,
