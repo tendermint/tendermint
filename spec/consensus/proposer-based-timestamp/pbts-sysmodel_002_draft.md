@@ -1,5 +1,12 @@
 # PBTS: System Model and Properties
 
+## Outline
+
+ - [System model](#system-model)
+   - [Synchronized clocks](#synchronized-clocks)
+   - [Message delays](#message-delays)
+ - [Problem Statement](#problem-statement)
+
 ## System Model
 
 #### **[PBTS-CLOCK-NEWTON.0]**
@@ -29,47 +36,36 @@ and drifts of local clocks from real time.
 #### **[PBTS-CLOCK-PRECISION.0]**
 
 There exists a system parameter `PRECISION`, such that
-for any two processes `p` and `q`, with local clocks `C_p` and `C_q`,
-that read their local clocks at the same real-time `t`,  we have:
+for any two processes `p` and `q`, with local clocks `C_p` and `C_q`:
 
-- If `p` and `q` are equipped with synchronized clocks, then `|C_p(t) - C_q(t)| <= PRECISION`
+- If `p` and `q` are equipped with synchronized clocks,
+ then for any real-time `t` we have `|C_p(t) - C_q(t)| <= PRECISION`.
 
 `PRECISION` thus bounds the difference on the times simultaneously read by processes
 from their local clocks, so that their clocks can be considered synchronized.
 
 #### Accuracy
 
-The [first draft][sysmodel_v1] of this specification included a second clock-related parameter, `ACCURACY`,
-that relates the values read by processes from their synchronized clocks with real time:
+A second relevant clock parameter is accuracy, which binds the values read by
+processes from their clocks to real time.
 
-- If `p` is a process is equipped with a synchronized clock, then at real time
-  `t` it reads from its clock time `C_p(t)` with `|C_p(t) - t| <= ACCURACY`
 
-The adoption of `ACCURACY` as the upper bound on the difference between clock
-readings and real time, however, renders the `PRECISION` parameter redundant.
-In fact, if we assume that clocks readings are at most `ACCURACY` from real
-time, we would therefore be assuming that they cannot be more than `2 * ACCURACY`
-apart from each other, thus establishing a worst-case upper bound for `PRECISION`.
+##### **[PBTS-CLOCK-ACCURACY.0]**
 
-The approach we take is to assume that processes clocks are periodically
-synchronized with an external source of time, thus improving their accuracy.
-This allows us to adopt a relaxed version of the above `ACCURACY` definition:
-
-##### **[PBTS-CLOCK-FAIR.0]**
+For the sake of completeness, we define a parameter `ACCURACY` such that:
 
 - At real time `t` there is at least one correct process `p` which clock marks
-  `C_p(t)` with `|C_p(t) - t| <= ACCURACY`
+  `C_p(t)` with `|C_p(t) - t| <= ACCURACY`.
 
-Then, through [PBTS-CLOCK-PRECISION.0] we can extend this relation of clock times
-with real time to every correct process:
+As a consequence, applying the definition of `PRECISION`, we have:
 
 - At real time `t` the synchronized clock of any correct process `p` marks
-  `C_p(t)` with `|C_p(t) - t| <= ACCURACY + PRECISION`
+  `C_p(t)` with `|C_p(t) - t| <= ACCURACY + PRECISION`.
 
-But, for the sake of simplicity, we can assume that `PRECISION >> ACCURACY`,
-and therefore the `PRECISION` parameter embodies the `ACCURACY` obtained
-through the periodic synchronization of local clocks with an external and
-trusted source of the time.
+The reason for not adopting `ACCURACY` as a system parameter is the assumption
+that `PRECISION >> ACCURACY`.
+This allows us to consider, for practical purposes, that the `PRECISION` system
+parameter embodies the `ACCURACY` model parameter.
 
 ### Message Delays
 
@@ -85,7 +81,7 @@ defining a lower bound, a *minimum time* that a correct process assigns to propo
 While *minimum delay* for delivering a proposal to a destination allows defining
 an upper bound, the *maximum time* assigned to a proposal.
 
-#### **[PBTS-MSG-D.0]**
+#### **[PBTS-MSG-DELAY.0]**
 
 There exists a system parameter `MSGDELAY` for end-to-end delays of proposal messages,
 such for any two correct processes `p` and `q`:
@@ -111,34 +107,34 @@ A proposer proposes a consensus value `v` that includes a proposal time `v.time`
 
 #### **[PBTS-INV-AGREEMENT.0]**
 
-> [Agreement] No two correct processes decide on different values `v`.
-> (This implies that no two correct processes decide on different proposal
-> times `v.time`.)
+- [Agreement] No two correct processes decide on different values `v`.  This
+  implies that no two correct processes decide on different proposal times
+  `v.time`.
 
 #### **[PBTS-INV-VALID.0]**
 
-> [Validity] If a correct process decides on value `v`, then `v` satisfies a
-> predefined `valid` predicate.
+- [Validity] If a correct process decides on value `v`, then `v` satisfies a
+  predefined `valid` predicate.
 
 The `valid` predicate, in particular, verifies if proposal times are
-[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity).
+[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity),
+which requires considering values from different instances of consensus.
 
-This requires considering values proposed in different instances of consensus.
+##### **[PBTS-VALID-MONOTONICITY.0]**
+
 Let `decisions` be the array of values decided in instances of consensus,
 indexed by their height:
-
-#### **[PBTS-VALID-MONOTONICITY.0]**
 
 - If `valid(v)`, where `v` is a value proposed at height `h` of consensus,
  then for all heights `h' < h : v.time > decisions[h'].time`.
 
 #### **[PBTS-INV-TIMELY.0]**
 
-> [Time-Validity] If a correct process decides on value `v`, then `v.time`
-> satisfies a predefined `timely` predicate.
+- [Time-Validity] If a correct process decides on value `v`, then `v.time`
+  satisfies a predefined `timely` predicate.
 
-Both [Validity] and [Time-Validity] must be observed even if up to `2f`
-validators are faulty.
+> Both [Validity] and [Time-Validity] must be observed even if up to `2f`
+> validators are faulty.
 
 ### Timely proposals
 
