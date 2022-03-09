@@ -505,7 +505,9 @@ func newStateWithConfigAndBlockStore(
 		t.Fatal(err)
 	}
 	cs.SetPrivValidator(ctx, pv)
-	cs.Start(ctx)
+	if err := cs.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	return cs
 }
@@ -826,7 +828,7 @@ func makeConsensusState(
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].Start(ctx)
+		require.NoError(t, css[i].Start(ctx))
 	}
 
 	return css, func() {
@@ -898,7 +900,7 @@ func randConsensusNetWithPeers(
 
 		css[i] = newStateWithConfig(ctx, t, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].Start(ctx)
+		require.NoError(t, css[i].Start(ctx))
 	}
 	return css, genDoc, peer0Config, func() {
 		for _, dir := range configRootDirs {

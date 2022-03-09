@@ -515,7 +515,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs.SetPrivValidator(ctx, pv)
 
 		cs.SetTimeoutTicker(tickerFunc())
-		cs.Start(ctx)
+		require.NoError(t, cs.Start(ctx))
 
 		states[i] = cs
 	}
