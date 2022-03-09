@@ -198,7 +198,7 @@ func TxResultsToByteSlices(r []*ExecTxResult) ([][]byte, error) {
 	return s, nil
 }
 
-func (tr *TxRecord) IsIncluded() bool {
+func (tr *TxRecord) isIncluded() bool {
 	return tr.Action == TxRecord_ADDED || tr.Action == TxRecord_UNMODIFIED
 }
 
@@ -207,7 +207,7 @@ func (tr *TxRecord) IsIncluded() bool {
 func (rpp *ResponsePrepareProposal) IncludedTxs() []*TxRecord {
 	trs := []*TxRecord{}
 	for _, tr := range rpp.TxRecords {
-		if tr.IsIncluded() {
+		if tr.isIncluded() {
 			trs = append(trs, tr)
 		}
 	}
@@ -259,7 +259,7 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 	ntx := map[string]struct{}{}
 	var size int64
 	for _, tr := range rpp.TxRecords {
-		if tr.IsIncluded() {
+		if tr.isIncluded() {
 			size += int64(len(tr.Tx))
 			if _, ok := ntx[string(tr.Tx)]; ok {
 				return errors.New("duplicate included transaction")
