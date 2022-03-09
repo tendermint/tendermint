@@ -4,13 +4,15 @@
 
 #### **[PBTS-CLOCK-NEWTON.0]**
 
-There is a reference Newtonian real-time `t` (UTC).
+There is a reference Newtonian real-time `t`.
 
 No process has direct access to this reference time, used only for specification purposes.
+The reference real-time is assumed to be aligned with the Coordinated Universal Time (UTC).
 
 ### Synchronized clocks
 
-Processes are assumed to be equipped with synchronized clocks.
+Processes are assumed to be equipped with synchronized clocks,
+aligned with the Coordinated Universal Time (UTC). 
 
 This requires processes to periodically synchronize their local clocks with an
 external and trusted source of the time (e.g. NTP servers).
@@ -58,7 +60,7 @@ This allows us to adopt a relaxed version of the above `ACCURACY` definition:
 - At real time `t` there is at least one correct process `p` which clock marks
   `C_p(t)` with `|C_p(t) - t| <= ACCURACY`
 
-Then, through [PBTS-CLOCK-PRECISION] we can extend this relation of clock times
+Then, through [PBTS-CLOCK-PRECISION.0] we can extend this relation of clock times
 with real time to every correct process, which will have a clock with accuracy
 bound by `ACCURACY + PRECISION`.
 But, for the sake of simpler specification we can assume that the `PRECISION`,
