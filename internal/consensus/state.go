@@ -226,10 +226,6 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
-	if err := cs.updateStateFromStore(ctx); err != nil {
-		return nil, err
-	}
-
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {
@@ -354,12 +350,19 @@ func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator)
 	}
 }
 
+func (cs *State) getTimeoutTicker() <-chan timeoutInfo {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cs.timeoutTicker.Chan()
+}
+
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for
 // testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
 	cs.timeoutTicker = timeoutTicker
-	cs.mtx.Unlock()
 }
 
 // LoadCommit loads the commit for a given height.
@@ -479,6 +482,7 @@ func (cs *State) OnStart(ctx context.Context) error {
 //
 // this is only used in tests.
 func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
+	return
 	err := cs.timeoutTicker.Start(ctx)
 	if err != nil {
 		cs.logger.Error("failed to start timeout ticker", "err", err)
@@ -659,6 +663,9 @@ func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
 			cs.metrics.MarkStep(cs.Step)
 		}
 	}
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
 	cs.Round = round
 	cs.Step = step
 }
@@ -863,7 +870,11 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		// close wal now that we're done writing to it
 		cs.wal.Stop()
 		cs.wal.Wait()
-		close(cs.done)
+		select {
+		case <-cs.done:
+		default:
+			close(cs.done)
+		}
 	}
 
 	defer func() {
@@ -915,7 +926,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			// handles proposals, block parts, votes
 			cs.handleMsg(ctx, mi)
 
-		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
+		case ti := <-cs.getTimeoutTicker(): // tockChan:
 			if err := cs.wal.Write(ti); err != nil {
 				cs.logger.Error("failed writing to WAL", "err", err)
 			}
@@ -935,9 +946,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
 	var (
 		added bool
 		err   error
@@ -963,12 +971,6 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		}
 
 		if err != nil && msg.Round != cs.Round {
-			cs.logger.Debug(
-				"received block part from wrong round",
-				"height", cs.Height,
-				"cs_round", cs.Round,
-				"block_round", msg.Round,
-			)
 			err = nil
 		}
 
@@ -1329,6 +1331,9 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 // Returns true if the proposal block is complete &&
 // (if POLRound was proposed, we have +2/3 prevotes from there).
 func (cs *State) isProposalComplete() bool {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
 	if cs.Proposal == nil || cs.ProposalBlock == nil {
 		return false
 	}
@@ -2040,40 +2045,51 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time) error {
 	// Already have one
 	// TODO: possibly catch double proposals
-	if cs.Proposal != nil || proposal == nil {
+
+	var p *tmproto.Proposal
+	if err := func() error {
+		cs.mtx.RLock()
+		defer cs.mtx.RUnlock()
+		if cs.Proposal != nil || proposal == nil {
+			return nil
+		}
+
+		// Does not apply
+		if proposal.Height != cs.Height || proposal.Round != cs.Round {
+			return nil
+		}
+
+		// Verify POLRound, which must be -1 or in range [0, proposal.Round).
+		if proposal.POLRound < -1 || (proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
+			return ErrInvalidProposalPOLRound
+		}
+
+		p = proposal.ToProto()
+		// Verify signature
+		if !cs.Validators.GetProposer().PubKey.VerifySignature(types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature) {
+			return ErrInvalidProposalSignature
+		}
 		return nil
-	}
-
-	// Does not apply
-	if proposal.Height != cs.Height || proposal.Round != cs.Round {
-		return nil
-	}
-
-	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
-	if proposal.POLRound < -1 ||
-		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
-		return ErrInvalidProposalPOLRound
-	}
-
-	p := proposal.ToProto()
-	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifySignature(
-		types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature,
-	) {
-		return ErrInvalidProposalSignature
+	}(); err != nil {
+		return err
 	}
 
 	proposal.Signature = p.Signature
-	cs.Proposal = proposal
-	cs.ProposalReceiveTime = recvTime
-	cs.calculateProposalTimestampDifferenceMetric()
-	// We don't update cs.ProposalBlockParts if it is already set.
-	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
-	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
-	if cs.ProposalBlockParts == nil {
-		cs.metrics.MarkBlockGossipStarted()
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
-	}
+	func() {
+		cs.mtx.Lock()
+		defer cs.mtx.Unlock()
+
+		cs.Proposal = proposal
+		cs.ProposalReceiveTime = recvTime
+		cs.calculateProposalTimestampDifferenceMetric()
+		// We don't update cs.ProposalBlockParts if it is already set.
+		// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
+		// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
+		if cs.ProposalBlockParts == nil {
+			cs.metrics.MarkBlockGossipStarted()
+			cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
+		}
+	}()
 
 	cs.logger.Info("received proposal", "proposal", proposal)
 	return nil
@@ -2088,6 +2104,8 @@ func (cs *State) addProposalBlockPart(
 	peerID types.NodeID,
 ) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
 
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {

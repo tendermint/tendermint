@@ -115,6 +115,9 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		Validators: validators,
 	})
 	cs := newState(ctx, t, log.TestingLogger(), state, privVals[0], kvstore.NewApplication())
+	if err := cs.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
 	vss := make([]*validatorStub, validators)
 	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -153,7 +156,7 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(ctx context.Context, t
 	timeout := time.Until(previousBlockTime.Add(ensureTimeout))
 	ensureProposalWithTimeout(t, p.ensureProposalCh, p.currentHeight, p.currentRound, nil, timeout)
 
-	rs := p.observedState.GetRoundState()
+	rs := p.observedState.RoundState
 	bid := types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}
 	ensurePrevote(t, p.ensureVoteCh, p.currentHeight, p.currentRound)
 	signAddVotes(ctx, t, p.observedState, tmproto.PrevoteType, p.chainID, bid, p.otherValidators...)

@@ -200,6 +200,9 @@ func (txmp *TxMempool) EnableTxsAvailable() {
 // TxsAvailable returns a channel which fires once for every height, and only
 // when transactions are available in the mempool. It is thread-safe.
 func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
+	txmp.mtx.Lock()
+	defer txmp.mtx.Unlock()
+
 	return txmp.txsAvailable
 }
 

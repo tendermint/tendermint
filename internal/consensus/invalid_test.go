@@ -32,16 +32,10 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 		newMockTickerFunc(true))
 	t.Cleanup(cleanup)
 
-	for i := 0; i < 4; i++ {
-		ticker := NewTimeoutTicker(states[i].logger)
-		states[i].SetTimeoutTicker(ticker)
-	}
-
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 
 	// this val sends a random precommit at each height
@@ -53,13 +47,11 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	signal := make(chan struct{})
 	// Update the doPrevote function to just send a valid precommit for a random
 	// block and otherwise disable the priv validator.
-	byzState.mtx.Lock()
 	privVal := byzState.privValidator
 	byzState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		defer close(signal)
 		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, privVal)
 	}
-	byzState.mtx.Unlock()
 
 	// wait for a bunch of blocks
 	//
@@ -87,14 +79,9 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 
 	select {
 	case <-wait:
-		if _, ok := <-signal; !ok {
-			t.Fatal("test condition did not fire")
-		}
+		t.Fatal("test condition did not fire")
 	case <-ctx.Done():
-		if _, ok := <-signal; !ok {
-			t.Fatal("test condition did not fire after timeout")
-			return
-		}
+		t.Fatal("test condition did not fire after timeout")
 	case <-signal:
 		// test passed
 	}
