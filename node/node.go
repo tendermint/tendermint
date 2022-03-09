@@ -469,8 +469,8 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
-		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
+	if p := n.config.Instrumentation; p.Prometheus && p.PrometheusListenAddr != "" {
+		n.prometheusSrv = n.startPrometheusServer(ctx, p.PrometheusListenAddr)
 	}
 
 	n.rpcEnv.NodeInfo = n.nodeInfo

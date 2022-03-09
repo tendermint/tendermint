@@ -2069,12 +2069,10 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	}
 
 	proposal.Signature = p.Signature
-	func() {
-		cs.mtx.Lock()
-		defer cs.mtx.RUnlock()
-		cs.Proposal = proposal
-		cs.ProposalReceiveTime = recvTime
-	}()
+	cs.mtx.Lock()
+	cs.Proposal = proposal
+	cs.ProposalReceiveTime = recvTime
+	cs.mtx.Unlock()
 	cs.calculateProposalTimestampDifferenceMetric()
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
