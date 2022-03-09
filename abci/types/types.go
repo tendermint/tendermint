@@ -261,6 +261,9 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 	for _, tr := range rpp.TxRecords {
 		if tr.isIncluded() {
 			size += int64(len(tr.Tx))
+			if size > maxSizeBytes {
+				return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
+			}
 			if _, ok := ntx[string(tr.Tx)]; ok {
 				return errors.New("duplicate included transaction")
 			}
@@ -278,9 +281,6 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 		if tr.Action == TxRecord_UNKNOWN {
 			return fmt.Errorf("transaction incorrectly marked as %s", tr.Action.String())
 		}
-	}
-	if size > maxSizeBytes {
-		return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
 	}
 	return nil
 }
