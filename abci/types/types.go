@@ -240,7 +240,6 @@ func (rpp *ResponsePrepareProposal) AddedTxs() []*TxRecord {
 // Validate checks that the fields of the ResponsePrepareProposal are properly
 // constructed. Validate returns an error if any of the validation checks fail.
 func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) error {
-
 	if !rpp.ModifiedTx {
 		// This method currently only checks the validity of the TxRecords field.
 		// If ModifiedTx is false, then we can ignore the validity of the TxRecords field.
