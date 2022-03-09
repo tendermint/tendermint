@@ -2097,7 +2097,11 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
 		cs.metrics.MarkBlockGossipStarted()
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+			cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
+		}()
 	}
 
 	cs.logger.Info("received proposal", "proposal", proposal)

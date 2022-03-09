@@ -227,7 +227,6 @@ func sortVValidatorStubsByPower(ctx context.Context, t *testing.T, vss []*valida
 
 func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
 	cs.enterNewRound(ctx, height, round)
-	cs.startRoutines(ctx, 0)
 }
 
 // Create proposal block from cs1 but sign it with vs.
