@@ -406,7 +406,7 @@ InsertProposal(p) ==
   /\ UNCHANGED invariantVars
   /\ action' = "InsertProposal"
   
-\* a new action used to filter messages that are not on time
+\* a new action used to register the proposal and note the reception time.
 \* [PBTS-RECEPTION-STEP.0]
 \* @type: (PROCESS) => Bool;
 ReceiveProposal(p) ==
@@ -455,12 +455,17 @@ UponProposalInPropose(p) ==
           validRound |-> NilRound
         ] 
        IN
-      \* Timeliness is checked against the process time, as was
-      \* recorded in proposalReceptionTime, not as it is now.
-      /\ IsTimely( proposalReceptionTime[r, p], t) \* updated line 22
       /\ evidence' = {msg} \union evidence
     /\ LET mid == (* line 23 *)
-         IF IsValid(prop) /\ (lockedRound[p] = NilRound \/ lockedValue[p] = v)
+         IF 
+          \* Timeliness is checked against the process time, as was
+          \* recorded in proposalReceptionTime, not as it is now.
+          \* In the implementation, if the proposal is not timely, then we prevote
+          \* nil. In the natural-language specification, nothing happens. 
+          \* This specification maintains consistency with the implementation.
+          /\ IsTimely( proposalReceptionTime[r, p], t) \* updated line 22
+          /\ IsValid(prop) 
+          /\ (lockedRound[p] = NilRound \/ lockedValue[p] = v)
          THEN Id(prop)
          ELSE NilProposal
        IN
