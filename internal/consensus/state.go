@@ -482,7 +482,6 @@ func (cs *State) OnStart(ctx context.Context) error {
 //
 // this is only used in tests.
 func (cs *State) startRoutines(ctx context.Context, maxSteps int) {
-	return
 	err := cs.timeoutTicker.Start(ctx)
 	if err != nil {
 		cs.logger.Error("failed to start timeout ticker", "err", err)
