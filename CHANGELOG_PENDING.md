@@ -19,6 +19,7 @@ Special thanks to external contributors on this release:
   - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
   - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
   - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
+  - [cli] \#8081 make the reset command safe to use. (@marbar3778)
 
 - Apps
 
