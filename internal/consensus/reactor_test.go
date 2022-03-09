@@ -364,8 +364,7 @@ func TestReactorBasic(t *testing.T) {
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 
 	var wg sync.WaitGroup
@@ -384,7 +383,11 @@ func TestReactorBasic(t *testing.T) {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				errCh <- err
+				select {
+				case errCh <- err:
+				case <-ctx.Done():
+					return
+				}
 				cancel() // terminate other workers
 				return
 			}
@@ -512,6 +515,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs.SetPrivValidator(ctx, pv)
 
 		cs.SetTimeoutTicker(tickerFunc())
+		cs.Start(ctx)
 
 		states[i] = cs
 	}
