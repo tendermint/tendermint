@@ -459,7 +459,11 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	}
 
 	// Build a Merkle tree out of the slice.
-	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, abci.MustHashResults(res.TxsResults)})
+	rs, err := abci.TxResultsToByteSlices(res.TxsResults)
+	if err != nil {
+		return nil, err
+	}
+	rH := merkle.HashFromByteSlices(append([][]byte{bbeBytes}, rs...))
 
 	// Verify block results.
 	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {

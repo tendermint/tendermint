@@ -62,24 +62,6 @@ func (txs Txs) IndexByHash(hash []byte) int {
 	return -1
 }
 
-// Proof returns a simple merkle proof for this node.
-// Panics if i < 0 or i >= len(txs)
-// TODO: optimize this!
-func (txs Txs) Proof(i int) TxProof {
-	l := len(txs)
-	bzs := make([][]byte, l)
-	for i := 0; i < l; i++ {
-		bzs[i] = txs[i].Hash()
-	}
-	root, proofs := merkle.ProofsFromByteSlices(bzs)
-
-	return TxProof{
-		RootHash: root,
-		Data:     txs[i],
-		Proof:    *proofs[i],
-	}
-}
-
 // ToSliceOfBytes converts a Txs to slice of byte slices.
 //
 // NOTE: This method should become obsolete once Txs is switched to [][]byte.

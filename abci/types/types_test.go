@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
 )
 
 func TestHashAndProveResults(t *testing.T) {
@@ -28,15 +29,17 @@ func TestHashAndProveResults(t *testing.T) {
 	require.Equal(t, bz0, bz1)
 
 	// Make sure that we can get a root hash from results and verify proofs.
-	root := abci.MustHashResults(trs)
+	rs, err := abci.TxResultsToByteSlices(trs)
+	require.NoError(t, err)
+	root := merkle.HashFromByteSlices(rs)
 	assert.NotEmpty(t, root)
 
+	_, proofs := merkle.ProofsFromByteSlices(rs)
 	for i, tr := range trs {
 		bz, err := tr.Marshal()
 		require.NoError(t, err)
 
-		proof := abci.MustProveResult(trs, i)
-		valid := proof.Verify(root, bz)
+		valid := proofs[i].Verify(root, bz)
 		assert.NoError(t, valid, "%d", i)
 	}
 }

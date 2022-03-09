@@ -8,6 +8,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
@@ -261,7 +262,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = state.Update(blockID, &block.Header, abci.MustHashResults(finalizeBlockResponse.TxResults), finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
+	rs, err := abci.TxResultsToByteSlices(finalizeBlockResponse.TxResults)
+	if err != nil {
+		return state, fmt.Errorf("marshaling TxResults: %w", err)
+	}
+	h := merkle.HashFromByteSlices(rs)
+	state, err = state.Update(blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
