@@ -99,23 +99,40 @@ In this section we define the properties of Tendermint consensus
 
 #### **[PBTS-PROPOSE.0]**
 
-A proposer proposes a consensus value `v` with an associated proposal time `v.time`.
+A proposer proposes a consensus value `v` that includes a proposal time `v.time`.
+
+> We then restrict the allowed decisions along the following lines:
 
 #### **[PBTS-INV-AGREEMENT.0]**
 
-[Agreement] No two correct processes decide on different values `v`. (This implies that no two correct processes decide on different proposal times `v.time`.)
+> [Agreement] No two correct processes decide on different values `v`.
+> (This implies that no two correct processes decide on different proposal
+> times `v.time`.)
 
 #### **[PBTS-INV-VALID.0]**
 
-[Validity] If a correct process decides on value `v`,
-then `v` satisfies a predefined `valid` predicate.
+> [Validity] If a correct process decides on value `v`, then `v` satisfies a
+> predefined `valid` predicate.
+
+The `valid` predicate, in particular, verifies if proposal times are
+[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity).
+
+This requires considering values proposed in different instances of consensus.
+Let `decisions` be the array of values decided in instances of consensus,
+indexed by their height:
+
+#### **[PBTS-VALID-MONOTONICITY.0]**
+
+- If `valid(v)`, where `v` is a value proposed at height `h` of consensus,
+ then for all heights `h' < h : v.time > decisions[h'].time`.
 
 #### **[PBTS-INV-TIMELY.0]**
 
-[Time-Validity] If a correct process decides on value `v`,
-then the associated proposal time `v.time` satisfies a predefined `timely` predicate.
+> [Time-Validity] If a correct process decides on value `v`, then `v.time`
+> satisfies a predefined `timely` predicate.
 
-> Both [Validity] and [Time-Validity] must be observed even if up to `2f` validators are faulty.
+Both [Validity] and [Time-Validity] must be observed even if up to `2f`
+validators are faulty.
 
 ### Timely proposals
 
