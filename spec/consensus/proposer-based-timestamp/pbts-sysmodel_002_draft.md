@@ -107,26 +107,23 @@ A proposer proposes a consensus value `v` that includes a proposal time `v.time`
 
 #### **[PBTS-INV-AGREEMENT.0]**
 
-- [Agreement] No two correct processes decide on different values `v`.  This
-  implies that no two correct processes decide on different proposal times
-  `v.time`.
+- [Agreement] No two correct processes decide on different values `v`.
+
+This implies that no two correct processes decide on different proposal times
+`v.time`.
 
 #### **[PBTS-INV-VALID.0]**
 
 - [Validity] If a correct process decides on value `v`, then `v` satisfies a
   predefined `valid` predicate.
 
-The `valid` predicate, in particular, verifies if proposal times are
-[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity),
-which requires considering values from different instances of consensus.
+With respect to PBTS, the `valid` predicate requires proposal times to be
+[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity):
 
-##### **[PBTS-VALID-MONOTONICITY.0]**
+##### **[PBTS-INV-MONOTONICITY.0]**
 
-Let `decisions` be the array of values decided in instances of consensus,
-indexed by their height:
-
-- If `valid(v)`, where `v` is a value proposed at height `h` of consensus,
- then for all heights `h' < h : v.time > decisions[h'].time`.
+- If a correct process decides on value `v = decision[h]` at height `h` of
+  consensus, then for every height `h' < h : decision[h'].time < v.time`.
 
 #### **[PBTS-INV-TIMELY.0]**
 
