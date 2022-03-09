@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -41,24 +42,54 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error {
 
 	// Start initial nodes (StartAt: 0)
 	logger.Info("Starting initial network nodes...")
+	wg := &sync.WaitGroup{}
+	errs := make(chan error, 2)
 	for len(nodeQueue) > 0 && nodeQueue[0].StartAt == 0 {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
-		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
-			return err
-		}
+		wg.Add(1)
+		time.Sleep(250 * time.Millisecond)
+		go func(node *e2e.Node) {
+			defer wg.Done()
+			if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
+				select {
+				case errs <- err:
+				case <-ctx.Done():
+				}
+				return
+			}
 
-		if err := func() error {
-			ctx, cancel := context.WithTimeout(ctx, time.Minute)
-			defer cancel()
+			if err := func() error {
+				ctx, cancel := context.WithTimeout(ctx, time.Minute)
+				defer cancel()
 
-			_, err := waitForNode(ctx, logger, node, 0)
+				_, err := waitForNode(ctx, logger, node, 0)
+				return err
+			}(); err != nil {
+				select {
+				case errs <- err:
+				case <-ctx.Done():
+				}
+				return
+			}
+			node.HasStarted = true
+			logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
+		}(node)
+	}
+	signal := make(chan struct{})
+	go func() { defer close(signal); wg.Wait() }()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("aborting during node start")
+	case err := <-errs:
+		return err
+	case <-signal:
+		select {
+		case err := <-errs:
 			return err
-		}(); err != nil {
-			return err
+		default:
 		}
-		node.HasStarted = true
-		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
 	}
 
 	networkHeight := testnet.InitialHeight
