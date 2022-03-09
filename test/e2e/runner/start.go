@@ -48,7 +48,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
 		wg.Add(1)
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond) // this is to avoid breaking docker.
 		go func(node *e2e.Node) {
 			defer wg.Done()
 			if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
