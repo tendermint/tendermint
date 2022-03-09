@@ -226,6 +226,10 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return nil, err
+	}
+
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {
@@ -289,9 +293,9 @@ func (cs *State) GetRoundState() *cstypes.RoundState {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 
-	// NOTE: this is probably be dodgy, as RoundState isn't thread
-	// safe as it contains a number of pointers which make the
-	// resulting object shared anyway
+	// NOTE: this might be dodgy, as RoundState itself isn't thread
+	// safe as it contains a number of pointers and is explicitly
+	// not thread safe.
 	rs := cs.RoundState // copy
 	return &rs
 }
@@ -354,9 +358,8 @@ func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator)
 // testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
 	cs.timeoutTicker = timeoutTicker
-
+	cs.mtx.Unlock()
 }
 
 // LoadCommit loads the commit for a given height.
@@ -932,6 +935,9 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
 	var (
 		added bool
 		err   error
@@ -1101,6 +1107,7 @@ func (cs *State) handleTxsAvailable(ctx context.Context) {
 // NOTE: cs.StartTime was already set for height.
 func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 	// TODO: remove panics in this function and return an error
+
 	logger := cs.logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
@@ -1322,8 +1329,6 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 // Returns true if the proposal block is complete &&
 // (if POLRound was proposed, we have +2/3 prevotes from there).
 func (cs *State) isProposalComplete() bool {
-	cs.mtx.RLock()
-	defer cs.mtx.RUnlock()
 	if cs.Proposal == nil || cs.ProposalBlock == nil {
 		return false
 	}
@@ -2035,27 +2040,19 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time) error {
 	// Already have one
 	// TODO: possibly catch double proposals
-	if shouldReturn, err := func() (bool, error) {
-		cs.mtx.RLock()
-		defer cs.mtx.RUnlock()
+	if cs.Proposal != nil || proposal == nil {
+		return nil
+	}
 
-		if cs.Proposal != nil || proposal == nil {
-			return true, nil
-		}
+	// Does not apply
+	if proposal.Height != cs.Height || proposal.Round != cs.Round {
+		return nil
+	}
 
-		// Does not apply
-		if proposal.Height != cs.Height || proposal.Round != cs.Round {
-			return true, nil
-		}
-
-		// Verify POLRound, which must be -1 or in range [0, proposal.Round).
-		if proposal.POLRound < -1 ||
-			(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
-			return true, ErrInvalidProposalPOLRound
-		}
-		return false, nil
-	}(); shouldReturn {
-		return err
+	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
+	if proposal.POLRound < -1 ||
+		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
+		return ErrInvalidProposalPOLRound
 	}
 
 	p := proposal.ToProto()
@@ -2067,21 +2064,15 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 	}
 
 	proposal.Signature = p.Signature
-	cs.mtx.Lock()
 	cs.Proposal = proposal
 	cs.ProposalReceiveTime = recvTime
-	cs.mtx.Unlock()
 	cs.calculateProposalTimestampDifferenceMetric()
 	// We don't update cs.ProposalBlockParts if it is already set.
 	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
 	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
 	if cs.ProposalBlockParts == nil {
 		cs.metrics.MarkBlockGossipStarted()
-		func() {
-			cs.mtx.Lock()
-			defer cs.mtx.Unlock()
-			cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
-		}()
+		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
 
 	cs.logger.Info("received proposal", "proposal", proposal)
