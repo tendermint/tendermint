@@ -61,11 +61,15 @@ This allows us to adopt a relaxed version of the above `ACCURACY` definition:
   `C_p(t)` with `|C_p(t) - t| <= ACCURACY`
 
 Then, through [PBTS-CLOCK-PRECISION.0] we can extend this relation of clock times
-with real time to every correct process, which will have a clock with accuracy
-bound by `ACCURACY + PRECISION`.
-But, for the sake of simpler specification we can assume that the `PRECISION`,
-which is a worst-case parameter that applies to all correct processes,
-includes the best `ACCURACY` achieved by any of them.
+with real time to every correct process:
+
+- At real time `t` the synchronized clock of any correct process `p` marks
+  `C_p(t)` with `|C_p(t) - t| <= ACCURACY + PRECISION`
+
+But, for the sake of simplicity, we can assume that `PRECISION >> ACCURACY`,
+and therefore the `PRECISION` parameter embodies the `ACCURACY` obtained
+through the periodic synchronization of local clocks with an external and
+trusted source of the time.
 
 ### Message Delays
 
