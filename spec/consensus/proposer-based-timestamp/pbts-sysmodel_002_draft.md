@@ -30,7 +30,7 @@ There exists a system parameter `PRECISION`, such that
 for any two processes `p` and `q`, with local clocks `C_p` and `C_q`,
 that read their local clocks at the same real-time `t`,  we have:
 
-- If `p` and `q` are equipped with synchronized clocks, then `|C_p(t) - C_q(t)| < PRECISION`
+- If `p` and `q` are equipped with synchronized clocks, then `|C_p(t) - C_q(t)| <= PRECISION`
 
 `PRECISION` thus bounds the difference on the times simultaneously read by processes
 from their local clocks, so that their clocks can be considered synchronized.
@@ -41,7 +41,7 @@ The [first draft][sysmodel_v1] of this specification included a second clock-rel
 that relates the values read by processes from their synchronized clocks with real time:
 
 - If `p` is a process is equipped with a synchronized clock, then at real time
-  `t` it reads from its clock time `C_p(t)` with `|C_p(t) - t| < ACCURACY`
+  `t` it reads from its clock time `C_p(t)` with `|C_p(t) - t| <= ACCURACY`
 
 The adoption of `ACCURACY` as the upper bound on the difference between clock
 readings and real time, however, renders the `PRECISION` parameter redundant.
@@ -56,7 +56,7 @@ This allows us to adopt a relaxed version of the above `ACCURACY` definition:
 ##### **[PBTS-CLOCK-FAIR.0]**
 
 - At real time `t` there is at least one correct process `p` which clock marks
-  `C_p(t)` with `|C_p(t) - t| < ACCURACY`
+  `C_p(t)` with `|C_p(t) - t| <= ACCURACY`
 
 Then, through [PBTS-CLOCK-PRECISION] we can extend this relation of clock times
 with real time to every correct process, which will have a clock with accuracy
@@ -81,15 +81,14 @@ an upper bound, the *maximum time* assigned to a proposal.
 
 #### **[PBTS-MSG-D.0]**
 
-There exists a system parameter `MSGDELAY` for end-to-end delays of messages carrying proposals,
-such for any two correct processes `p` and `q`, and any real time `t`:
+There exists a system parameter `MSGDELAY` for end-to-end delays of proposal messages,
+such for any two correct processes `p` and `q`:
 
-- If `p` sends a message `m` carrying a proposal at time `ts`,
-then if `q` receives the message and learns the proposal,
-`q` does that at time `t` such that `ts <= t <= ts + MSGDELAY`.
+- If `p` sends a message `m` carrying a proposal at real time `t`, then if `q`
+  receives `m`, it does that at time `t'` such that `t <= t' <= t' + MSGDELAY`.
 
 While we don't want to impose particular restrictions regarding the format of `m`,
-we need to assume that their size is upper bounded.
+we need to assume that their *size is upper bounded*.
 In practice, using messages with a fixed-size to carry proposals allows
 for a more accurate estimation of `MSGDELAY`, and therefore is advised.
 
