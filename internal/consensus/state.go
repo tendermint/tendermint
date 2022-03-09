@@ -286,9 +286,9 @@ func (cs *State) GetRoundState() *cstypes.RoundState {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 
-	// NOTE: this might be dodgy, as RoundState itself isn't thread
-	// safe as it contains a number of pointers and is explicitly
-	// not thread safe.
+	// NOTE: this is probably be dodgy, as RoundState isn't thread
+	// safe as it contains a number of pointers which make the
+	// resulting object shared anyway
 	rs := cs.RoundState // copy
 	return &rs
 }
@@ -351,8 +351,9 @@ func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator)
 // testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
 	cs.timeoutTicker = timeoutTicker
-	cs.mtx.Unlock()
+
 }
 
 // LoadCommit loads the commit for a given height.

@@ -865,10 +865,15 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 			return
 		}
 
-		rs := r.getRoundState()
-		prs := ps.GetRoundState()
 		// TODO create more reliable coppies of these
 		// structures so the following go routines don't race
+		rs := r.state.GetRoundState()
+		prs := ps.GetRoundState()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 
 		wg := &sync.WaitGroup{}
 
@@ -1027,7 +1032,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 				// Send our state to the peer. If we're block-syncing, broadcast a
 				// RoundStepMessage later upon SwitchToConsensus().
 				if !r.WaitSync() {
-					go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID) }()
+					_ = r.sendNewRoundStepMessage(ctx, ps.peerID)
 				}
 
 			}()
