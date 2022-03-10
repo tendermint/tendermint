@@ -313,28 +313,6 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return 0, fmt.Errorf("height must be equal to or less than the latest height %d", bs.Height())
 	}
 
-	// when removing the block meta, use the hash to remove the hash key at the same time
-	removeBlockHash := func(key, value []byte, batch dbm.Batch) error {
-		// unmarshal block meta
-		var pbbm = new(tmproto.BlockMeta)
-		err := proto.Unmarshal(value, pbbm)
-		if err != nil {
-			return fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err)
-		}
-
-		blockMeta, err := types.BlockMetaFromProto(pbbm)
-		if err != nil {
-			return fmt.Errorf("error from proto blockMeta: %w", err)
-		}
-
-		// delete the hash key corresponding to the block meta's hash
-		if err := batch.Delete(blockHashKey(blockMeta.BlockID.Hash)); err != nil {
-			return fmt.Errorf("failed to delete hash key: %X: %w", blockHashKey(blockMeta.BlockID.Hash), err)
-		}
-
-		return nil
-	}
-
 	// remove block meta first as this is used to indicate whether the block exists.
 	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
 	pruned, err := bs.pruneRange(blockMetaKey(0), blockMetaKey(height), removeBlockHash)
@@ -351,6 +329,28 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	}
 
 	return pruned, nil
+}
+
+// when removing the block meta, use the hash to remove the hash key at the same time
+func removeBlockHash(key, value []byte, batch dbm.Batch) error {
+	// unmarshal block meta
+	var pbbm = new(tmproto.BlockMeta)
+	err := proto.Unmarshal(value, pbbm)
+	if err != nil {
+		return fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err)
+	}
+
+	blockMeta, err := types.BlockMetaFromProto(pbbm)
+	if err != nil {
+		return fmt.Errorf("error from proto blockMeta: %w", err)
+	}
+
+	// delete the hash key corresponding to the block meta's hash
+	if err := batch.Delete(blockHashKey(blockMeta.BlockID.Hash)); err != nil {
+		return fmt.Errorf("failed to delete hash key: %X: %w", blockHashKey(blockMeta.BlockID.Hash), err)
+	}
+
+	return nil
 }
 
 // pruneRange is a generic function for deleting a range of values based on the lowest
@@ -574,6 +574,33 @@ func (bs *BlockStore) SaveSignedHeader(sh *types.SignedHeader, blockID types.Blo
 
 func (bs *BlockStore) Close() error {
 	return bs.db.Close()
+}
+
+// Rollback rollbacks the latest block from BlockStore.
+func (bs *BlockStore) Rollback() error {
+	height := bs.Height()
+	if height <= 0 {
+		return fmt.Errorf("can't rollback height %v", height)
+	}
+
+	pruned, err := bs.pruneRange(blockMetaKey(height), blockMetaKey(height+1), removeBlockHash)
+	if err != nil {
+		return err
+	}
+
+	if pruned != 1 {
+		return fmt.Errorf("the number of rollbacked blocks don't match %v", pruned)
+	}
+
+	if _, err := bs.pruneRange(blockPartKey(height, 0), blockPartKey(height+1, 0), nil); err != nil {
+		return err
+	}
+
+	if _, err := bs.pruneRange(blockCommitKey(height), blockCommitKey(height+1), nil); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //---------------------------------- KEY ENCODING -----------------------------------------

@@ -1218,6 +1218,10 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 	return pruned, nil
 }
 
+func (bs *mockBlockStore) Rollback() error {
+	return nil
+}
+
 //---------------------------------------
 // Test handshake/init chain
 

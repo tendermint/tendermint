@@ -220,3 +220,8 @@ func NewBlockStore(t testing.TB) *BlockStore {
 
 	return mock
 }
+
+func (_m *BlockStore) Rollback() error {
+	_m.Called()
+	return nil
+}

@@ -23,9 +23,12 @@ func Rollback(bs BlockStore, ss Store) (int64, []byte, error) {
 
 	// NOTE: persistence of state and blocks don't happen atomically. Therefore it is possible that
 	// when the user stopped the node the state wasn't updated but the blockstore was. In this situation
-	// we don't need to rollback any state and can just return early
+	// we need to rollback the block store too.
 	if height == invalidState.LastBlockHeight+1 {
-		return invalidState.LastBlockHeight, invalidState.AppHash, nil
+		if err := bs.Rollback(); err != nil {
+			return -1, nil, err
+		}
+		height--
 	}
 
 	// If the state store isn't one below nor equal to the blockstore height than this violates the
