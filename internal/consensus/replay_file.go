@@ -150,7 +150,9 @@ func (pb *playback) replayReset(ctx context.Context, count int, newStepSub event
 	if err != nil {
 		return err
 	}
-	newCS.updateStateFromStore(ctx)
+	if err := newCS.updateStateFromStore(ctx); err != nil {
+		return err
+	}
 	newCS.startForReplay()
 
 	if err := pb.fp.Close(); err != nil {
