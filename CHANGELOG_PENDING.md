@@ -73,6 +73,7 @@ Special thanks to external contributors on this release:
 - [rpc] \#7612 paginate mempool /unconfirmed_txs rpc endpoint (@spacech1mp)
 - [light] [\#7536](https://github.com/tendermint/tendermint/pull/7536) rpc /status call returns info about the light client (@jmalicevic)
 - [types] \#7765 Replace EvidenceData with EvidenceList to avoid unnecessary nesting of evidence fields within a block. (@jmalicevic)
+- [cli] [\#8101](https://github.com/tendermint/tendermint/pull/8101) rollback command rollback block store if it has one more block than block state.
 
 ### BUG FIXES
 

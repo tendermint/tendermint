@@ -208,3 +208,8 @@ func (_m *BlockStore) Size() int64 {
 
 	return r0
 }
+
+func (_m *BlockStore) Rollback() error {
+	_m.Called()
+	return nil
+}
