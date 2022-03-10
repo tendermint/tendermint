@@ -525,7 +525,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs.SetPrivValidator(ctx, pv)
 
 		cs.SetTimeoutTicker(tickerFunc())
-		cs.updateStateFromStore(ctx)
+		if err := cs.updateStateFromStore(ctx); err != nil {
+			t.Fatal(err)
+		}
 
 		states[i] = cs
 	}
@@ -533,7 +535,6 @@ func TestReactorWithEvidence(t *testing.T) {
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		reactor.state.updateStateFromStore(ctx)
 		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 

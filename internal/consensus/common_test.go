@@ -499,7 +499,9 @@ func newStateWithConfigAndBlockStore(
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs.updateStateFromStore(ctx)
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		t.Fatal(err)
+	}
 	cs.SetPrivValidator(ctx, pv)
 
 	return cs
@@ -549,7 +551,10 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	vss := make([]*validatorStub, validators)
 
 	cs := newState(ctx, t, args.logger, state, privVals[0], app)
-	cs.updateStateFromStore(ctx)
+
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -819,7 +824,11 @@ func makeConsensusState(
 
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
-		css[i].updateStateFromStore(ctx)
+
+		if err := css[i].updateStateFromStore(ctx); err != nil {
+			t.Fatal(err)
+		}
+
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 

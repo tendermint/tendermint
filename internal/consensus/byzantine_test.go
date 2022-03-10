@@ -97,7 +97,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 			// set private validator
 			pv := privVals[i]
-			cs.updateStateFromStore(ctx)
+			if err := cs.updateStateFromStore(ctx); err != nil {
+				t.Fatal(err)
+			}
 			cs.SetPrivValidator(ctx, pv)
 			cs.SetTimeoutTicker(tickerFunc())
 
