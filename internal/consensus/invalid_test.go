@@ -48,11 +48,12 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// Update the doPrevote function to just send a valid precommit for a random
 	// block and otherwise disable the priv validator.
 	privVal := byzState.privValidator
+	byzState.mtx.Lock()
 	byzState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		defer close(signal)
 		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, privVal)
 	}
-
+	byzState.mtx.Unlock()
 	// wait for a bunch of blocks
 	//
 	// TODO: Make this tighter by ensuring the halt happens by block 2.
@@ -79,9 +80,9 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 
 	select {
 	case <-wait:
-		t.Fatal("test condition did not fire")
+		t.Error("test condition did not fire")
 	case <-ctx.Done():
-		t.Fatal("test condition did not fire after timeout")
+		t.Error("test condition did not fire after timeout")
 	case <-signal:
 		// test passed
 	}

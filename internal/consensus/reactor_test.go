@@ -525,8 +525,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 
 	var wg sync.WaitGroup
