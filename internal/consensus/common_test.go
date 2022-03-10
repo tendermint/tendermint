@@ -291,7 +291,7 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 }
 
 func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
-	votes := cs.LastCommit
+	votes := cs.GetRoundState().LastCommit
 	pv, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	address := pv.Address()
