@@ -87,6 +87,7 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 	if err != nil {
 		t.Fatal(err)
 	}
+	consensusState.updateStateFromStore(ctx)
 
 	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
 		consensusState.SetPrivValidator(ctx, privValidator)

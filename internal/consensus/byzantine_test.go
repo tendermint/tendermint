@@ -97,10 +97,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			require.NoError(t, err)
 			// set private validator
 			pv := privVals[i]
+			cs.updateStateFromStore(ctx)
 			cs.SetPrivValidator(ctx, pv)
-
 			cs.SetTimeoutTicker(tickerFunc())
-			require.NoError(t, cs.Start(ctx))
 
 			states[i] = cs
 		}()
@@ -257,7 +256,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				if subctx.Err() != nil {
 					return
 				}
-
 				if err != nil {
 					t.Errorf("waiting for subscription: %v", err)
 					subcancel()
@@ -274,14 +272,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}(i, sub)
 		i++
 	}
-
-	wg.Wait()
+	sig := make(chan struct{})
+	go func() { defer close(sig); wg.Wait() }()
 
 	// don't run more assertions if we've encountered a timeout
 	select {
+	case <-sig:
 	case <-subctx.Done():
 		t.Fatal("encountered timeout")
-	default:
 	}
 
 	pubkey, err := bzNodeState.privValidator.GetPubKey(ctx)
