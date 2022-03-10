@@ -22,4 +22,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- []() Add public API `BlockStore.Rollback`.
+
 ### BUG FIXES

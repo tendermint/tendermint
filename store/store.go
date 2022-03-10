@@ -285,22 +285,8 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		if meta == nil { // assume already deleted
 			continue
 		}
-		if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
+		if err := bs.deleteBlock(batch, meta); err != nil {
 			return 0, err
-		}
-		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(calcBlockCommitKey(h)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(calcSeenCommitKey(h)); err != nil {
-			return 0, err
-		}
-		for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
-			if err := batch.Delete(calcBlockPartKey(h, p)); err != nil {
-				return 0, err
-			}
 		}
 		pruned++
 
@@ -320,6 +306,28 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return 0, err
 	}
 	return pruned, nil
+}
+
+func (bs *BlockStore) deleteBlock(batch dbm.Batch, meta *types.BlockMeta) error {
+	h := meta.Header.Height
+	if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
+		return err
+	}
+	if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
+		return err
+	}
+	if err := batch.Delete(calcBlockCommitKey(h)); err != nil {
+		return err
+	}
+	if err := batch.Delete(calcSeenCommitKey(h)); err != nil {
+		return err
+	}
+	for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
+		if err := batch.Delete(calcBlockPartKey(h, p)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
@@ -426,6 +434,33 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 
 func (bs *BlockStore) Close() error {
 	return bs.db.Close()
+}
+
+// Rollback rollbacks the latest block from BlockStore.
+func (bs *BlockStore) Rollback() error {
+	if bs.height <= 0 {
+		return fmt.Errorf("can't rollback height %v", bs.height)
+	}
+
+	meta := bs.LoadBlockMeta(bs.height)
+	if meta == nil {
+		return fmt.Errorf("block not found: %v", bs.height)
+	}
+
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+	if err := bs.deleteBlock(batch, meta); err != nil {
+		return fmt.Errorf("failed to delete block %v: %w", bs.height, err)
+	}
+
+	bs.height--
+	bs.saveState()
+
+	if err := batch.WriteSync(); err != nil {
+		return fmt.Errorf("failed to delete block %v: %w", bs.height, err)
+	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
