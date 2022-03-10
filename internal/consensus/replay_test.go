@@ -87,6 +87,7 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 	newBlockSub, err := cs.eventBus.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: testSubscriber,
 		Query:    types.EventQueryNewBlock,
+		Limit:    1024,
 	})
 	require.NoError(t, err)
 	ctxto, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -179,7 +180,6 @@ LOOP:
 
 		// clean up WAL file from the previous iteration
 		walFile := cs.config.WalFile()
-		os.Remove(walFile)
 
 		// set crashing WAL
 		csWal, err := cs.OpenWAL(ctx, walFile)

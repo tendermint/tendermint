@@ -118,14 +118,14 @@ func setup(
 		blocksSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
 			Query:    types.EventQueryNewBlock,
-			Limit:    size,
+			Limit:    4096,
 		})
 		require.NoError(t, err)
 
 		fsSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
 			Query:    types.EventQueryBlockSyncStatus,
-			Limit:    size,
+			Limit:    1024,
 		})
 		require.NoError(t, err)
 
@@ -393,17 +393,25 @@ func TestReactorBasic(t *testing.T) {
 			}
 		}(sub)
 	}
+	sig := make(chan struct{})
+	go func() { defer close(sig); wg.Wait() }()
 
-	wg.Wait()
-	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		t.Fatal("encountered timeout")
-	}
 	select {
+	case <-sig:
+		select {
+		case <-ctx.Done():
+			t.Fatal("encountered timeout")
+		case err := <-errCh:
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	case <-ctx.Done():
+		t.Fatal("encountered timeout")
 	case err := <-errCh:
 		if err != nil {
 			t.Fatal(err)
 		}
-	default:
 	}
 
 	errCh = make(chan error, len(rts.blocksyncSubs))
@@ -515,7 +523,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		cs.SetPrivValidator(ctx, pv)
 
 		cs.SetTimeoutTicker(tickerFunc())
-		require.NoError(t, cs.Start(ctx))
+		cs.updateStateFromStore(ctx)
 
 		states[i] = cs
 	}
@@ -523,6 +531,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
+		reactor.state.updateStateFromStore(ctx)
 		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 

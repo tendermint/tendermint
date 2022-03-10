@@ -39,7 +39,7 @@ const (
 	testSubscriber = "test-client"
 
 	// genesis, chain_id, priv_val
-	ensureTimeout = time.Millisecond * 200
+	ensureTimeout = 500 * time.Millisecond
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular
@@ -393,7 +393,7 @@ func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr
 	votesSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: testSubscriber,
 		Query:    types.EventQueryVote,
-		Limit:    10})
+		Limit:    1024})
 	if err != nil {
 		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
 	}
@@ -504,10 +504,8 @@ func newStateWithConfigAndBlockStore(
 	if err != nil {
 		t.Fatal(err)
 	}
+	cs.updateStateFromStore(ctx)
 	cs.SetPrivValidator(ctx, pv)
-	if err := cs.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
 
 	return cs
 }
@@ -562,6 +560,8 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
+
+	cs.updateStateFromStore(ctx)
 
 	return cs, vss
 }
@@ -827,8 +827,8 @@ func makeConsensusState(
 
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
+		css[i].updateStateFromStore(ctx)
 		css[i].SetTimeoutTicker(tickerFunc())
-		require.NoError(t, css[i].Start(ctx))
 	}
 
 	return css, func() {

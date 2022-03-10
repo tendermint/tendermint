@@ -178,6 +178,7 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 	defer cancel()
 
 	cs, _ := makeState(ctx, t, makeStateArgs{config: config, validators: 1})
+	cs.updateStateFromStore(ctx)
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event
@@ -706,6 +707,8 @@ func TestStateLock_POLUpdateLock(t *testing.T) {
 
 	// Generate a new proposal block.
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
+	cs2.updateStateFromStore(ctx)
+
 	require.NoError(t, err)
 	propR1, propBlockR1 := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round)
 	propBlockR1Parts, err := propBlockR1.MakePartSet(partSize)
@@ -998,6 +1001,7 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 	incrementRound(vs2, vs3, vs4)
 	round++
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
+	cs2.updateStateFromStore(ctx)
 	propR1, propBlockR1 := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round)
 	propBlockR1Parts, err := propBlockR1.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
@@ -1105,6 +1109,7 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 	round++
 	incrementRound(vs2, vs3, vs4)
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
+	cs2.updateStateFromStore(ctx)
 	prop, propBlock := decideProposal(ctx, t, cs2, vs2, vs2.Height, vs2.Round)
 	propBlockParts, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
@@ -2721,6 +2726,7 @@ func subscribe(
 	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: testSubscriber,
 		Query:    q,
+		Limit:    1024,
 	})
 	require.NoErrorf(t, err, "Failed to subscribe %q to %v: %v", testSubscriber, q, err)
 	ch := make(chan tmpubsub.Message)
