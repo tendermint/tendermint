@@ -1041,10 +1041,6 @@ func (cs *State) handleTimeout(
 		return
 	}
 
-	// the timeout will now cause a state transition
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
-
 	switch ti.Step {
 	case cstypes.RoundStepNewHeight:
 		// NewRound event fired from enterNewRound.
@@ -1706,9 +1702,13 @@ func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) 
 			panic(fmt.Sprintf("precommit step: +2/3 prevoted for an invalid block %v; relocking", err))
 		}
 
-		cs.LockedRound = round
-		cs.LockedBlock = cs.ProposalBlock
-		cs.LockedBlockParts = cs.ProposalBlockParts
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+			cs.LockedRound = round
+			cs.LockedBlock = cs.ProposalBlock
+			cs.LockedBlockParts = cs.ProposalBlockParts
+		}()
 
 		if err := cs.eventBus.PublishEventLock(ctx, cs.RoundStateEvent()); err != nil {
 			logger.Error("precommit step: failed publishing event lock", "err", err)
@@ -1799,8 +1799,13 @@ func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int3
 	// otherwise they'll be cleared in updateToState.
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
 		logger.Debug("commit is for a locked block; set ProposalBlock=LockedBlock", "block_hash", blockID.Hash)
-		cs.ProposalBlock = cs.LockedBlock
-		cs.ProposalBlockParts = cs.LockedBlockParts
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.ProposalBlock = cs.LockedBlock
+			cs.ProposalBlockParts = cs.LockedBlockParts
+		}()
 	}
 
 	// If we don't have the block being committed, set up to get it.
@@ -2120,8 +2125,6 @@ func (cs *State) addProposalBlockPart(
 	peerID types.NodeID,
 ) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
 
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
@@ -2178,7 +2181,12 @@ func (cs *State) addProposalBlockPart(
 			return added, err
 		}
 
-		cs.ProposalBlock = block
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.ProposalBlock = block
+		}()
 
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
@@ -2358,9 +2366,14 @@ func (cs *State) addVote(
 			if cs.ValidRound < vote.Round && vote.Round == cs.Round {
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.logger.Debug("updating valid block because of POL", "valid_round", cs.ValidRound, "pol_round", vote.Round)
-					cs.ValidRound = vote.Round
-					cs.ValidBlock = cs.ProposalBlock
-					cs.ValidBlockParts = cs.ProposalBlockParts
+					func() {
+						cs.mtx.Lock()
+						defer cs.mtx.Unlock()
+
+						cs.ValidRound = vote.Round
+						cs.ValidBlock = cs.ProposalBlock
+						cs.ValidBlockParts = cs.ProposalBlockParts
+					}()
 				} else {
 					cs.logger.Debug(
 						"valid block we do not know about; set ProposalBlock=nil",
