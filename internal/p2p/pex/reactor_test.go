@@ -189,7 +189,7 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 	peerErr := <-r.pexErrCh
 	require.Error(t, peerErr.Err)
 	require.Empty(t, r.pexOutCh)
-	require.Contains(t, peerErr.Err.Error(), "Peer sent too many addresses")
+	require.Contains(t, peerErr.Err.Error(), "peer sent too many addresses")
 	require.Equal(t, peer.NodeID, peerErr.NodeID)
 }
 

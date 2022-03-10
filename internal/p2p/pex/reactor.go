@@ -259,7 +259,7 @@ func (r *Reactor) handlePexMessage(ctx context.Context, envelope *p2p.Envelope) 
 
 		// Verify that the response does not exceed the safety limit.
 		if len(msg.Addresses) > maxAddresses {
-			return 0, fmt.Errorf("Peer sent too many addresses (%d > maxiumum %d)",
+			return 0, fmt.Errorf("peer sent too many addresses (%d > maxiumum %d)",
 				len(msg.Addresses), maxAddresses)
 		}
 
