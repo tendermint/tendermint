@@ -38,8 +38,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &coretypes.ResultBroadcastTxCommit{
-				CheckTx:   abci.ResponseCheckTx{Data: bytes.HexBytes("stand")},
-				DeliverTx: abci.ResponseDeliverTx{Data: bytes.HexBytes("deliver")},
+				CheckTx:  abci.ResponseCheckTx{Data: bytes.HexBytes("stand")},
+				TxResult: abci.ExecTxResult{Data: bytes.HexBytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},
@@ -76,7 +76,7 @@ func TestABCIMock(t *testing.T) {
 	require.NoError(t, err, "%+v", err)
 	assert.EqualValues(t, 0, bres.CheckTx.Code)
 	assert.EqualValues(t, "stand", bres.CheckTx.Data)
-	assert.EqualValues(t, "deliver", bres.DeliverTx.Data)
+	assert.EqualValues(t, "deliver", bres.TxResult.Data)
 }
 
 func TestABCIRecorder(t *testing.T) {
@@ -179,8 +179,8 @@ func TestABCIApp(t *testing.T) {
 	res, err := m.BroadcastTxCommit(ctx, types.Tx(tx))
 	require.NoError(t, err)
 	assert.True(t, res.CheckTx.IsOK())
-	require.NotNil(t, res.DeliverTx)
-	assert.True(t, res.DeliverTx.IsOK())
+	require.NotNil(t, res.TxResult)
+	assert.True(t, res.TxResult.IsOK())
 
 	// commit
 	// TODO: This may not be necessary in the future

@@ -110,12 +110,11 @@ func setup(
 			state,
 			chCreator(nodeID),
 			node.MakePeerUpdates(ctx, t),
+			state.eventBus,
 			true,
 			NopMetrics(),
 		)
 		require.NoError(t, err)
-
-		reactor.SetEventBus(state.eventBus)
 
 		blocksSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
@@ -461,6 +460,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
+		require.NoError(t, stateStore.Save(state))
 		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
@@ -483,7 +483,6 @@ func TestReactorWithEvidence(t *testing.T) {
 			log.TestingLogger().With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
-			0,
 		)
 
 		if thisConfig.Consensus.WaitForTxs() {
@@ -504,15 +503,15 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		evpool2 := sm.EmptyEvidencePool{}
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-
-		cs := NewState(ctx, logger.With("validator", i, "module", "consensus"),
-			thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
-		cs.SetPrivValidator(ctx, pv)
-
 		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))
-		cs.SetEventBus(eventBus)
+
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus)
+
+		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
+			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
+		require.NoError(t, err)
+		cs.SetPrivValidator(ctx, pv)
 
 		cs.SetTimeoutTicker(tickerFunc())
 

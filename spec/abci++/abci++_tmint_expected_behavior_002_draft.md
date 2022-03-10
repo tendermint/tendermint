@@ -10,7 +10,8 @@ title: Tendermint's expected behavior
 This section describes what the Application can expect from Tendermint.
 
 The Tendermint consensus algorithm is designed to protect safety under any network conditions, as long as
-less than 1/3 of validators' voting power is byzantine. Most of the time, though, the network will behave synchronously and there will be no byzantine process. In these frequent, benign conditions:
+less than 1/3 of validators' voting power is byzantine. Most of the time, though, the network will behave
+synchronously and there will be no byzantine process. In these frequent, benign conditions:
 
 * Tendermint will decide in round 0;
 * `PrepareProposal` will be called exactly once at the proposer process of round 0, height _h_;

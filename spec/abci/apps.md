@@ -346,6 +346,19 @@ a block minus it's overhead ( ~ `MaxBytes`).
 
 Must have `MaxNum > 0`.
 
+### SynchronyParams.Precision
+
+`SynchronyParams.Precision` is a parameter of the Proposer-Based Timestamps algorithm.
+that configures the acceptable upper-bound of clock drift among
+all of the nodes on a Tendermint network. Any two nodes on a Tendermint network
+are expected to have clocks that differ by at most `Precision`.
+
+### SynchronyParams.MessageDelay
+
+`SynchronyParams.MessageDelay` is a parameter of the Proposer-Based Timestamps 
+algorithm that configures the acceptable upper-bound for transmitting a `Proposal`
+message from the proposer to all of the validators on the network.
+
 ### Updates
 
 The application may set the ConsensusParams during InitChain, and update them during
