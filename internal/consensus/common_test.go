@@ -549,14 +549,13 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	vss := make([]*validatorStub, validators)
 
 	cs := newState(ctx, t, args.logger, state, privVals[0], app)
+	cs.updateStateFromStore(ctx)
 
 	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
-
-	cs.updateStateFromStore(ctx)
 
 	return cs, vss
 }
