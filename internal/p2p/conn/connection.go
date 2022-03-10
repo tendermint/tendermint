@@ -413,7 +413,7 @@ func (c *MConnection) sendSomePacketMsgs(ctx context.Context) bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(c._maxPacketMsgSize, atomic.LoadInt64(&c.config.SendRate), true)
+	c.sendMonitor.Limit(c._maxPacketMsgSize, c.config.SendRate, true)
 
 	// Now send some PacketMsgs.
 	for i := 0; i < numBatchPacketMsgs; i++ {
@@ -481,7 +481,7 @@ FOR_LOOP:
 		}
 
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(c._maxPacketMsgSize, atomic.LoadInt64(&c.config.RecvRate), true)
+		c.recvMonitor.Limit(c._maxPacketMsgSize, c.config.RecvRate, true)
 
 		// Peek into bufConnReader for debugging
 		/*
