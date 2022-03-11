@@ -1770,7 +1770,12 @@ func (cs *State) enterPrecommitWait(ctx context.Context, height int64, round int
 
 	defer func() {
 		// Done enterPrecommitWait:
-		cs.TriggeredTimeoutPrecommit = true
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.TriggeredTimeoutPrecommit = true
+		}()
 		cs.newStep(ctx)
 	}()
 
