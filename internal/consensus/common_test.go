@@ -271,7 +271,7 @@ func signAddVotes(
 }
 
 func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
-	prevotes := cs.Votes.Prevotes(round)
+	prevotes := cs.GetRoundState().Votes.Prevotes(round)
 	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	address := pubKey.Address()
