@@ -141,7 +141,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		panic(err)
 	}
 
-	if err := rpp.Validate(maxDataBytes, txs.ToSliceOfBytes()); err != nil {
+	if err := rpp.Validate(maxDataBytes, block.Txs.ToSliceOfBytes()); err != nil {
 		return nil, err
 	}
 
