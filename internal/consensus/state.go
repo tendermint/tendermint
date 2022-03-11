@@ -1290,7 +1290,11 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
 		block, err = cs.createProposalBlock(ctx)
-		if block == nil || err != nil {
+		if err != nil {
+			cs.logger.Error("unable to create proposal block", "error", err)
+			return
+		}
+		if block == nil {
 			return
 		}
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
