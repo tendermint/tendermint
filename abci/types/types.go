@@ -275,7 +275,7 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 			}
 		} else {
 			if tr.Action == TxRecord_REMOVED || tr.Action == TxRecord_UNMODIFIED {
-				return fmt.Errorf("new transaction incorrectly marked as %s", tr.Action.String())
+				return fmt.Errorf("unmodified transaction incorrectly marked as %s", tr.Action.String())
 			}
 		}
 		if tr.Action == TxRecord_UNKNOWN {
