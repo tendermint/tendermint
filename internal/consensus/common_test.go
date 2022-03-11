@@ -71,7 +71,6 @@ func configSetup(t *testing.T) *config.Config {
 
 	walDir := filepath.Dir(cfg.Consensus.WalFile())
 	ensureDir(t, walDir, 0700)
-	t.Cleanup(func() { os.RemoveAll(walDir) })
 
 	return cfg
 }
