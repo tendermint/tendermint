@@ -6,6 +6,8 @@
    - [Synchronized clocks](#synchronized-clocks)
    - [Message delays](#message-delays)
  - [Problem Statement](#problem-statement)
+   - [Safety Invariants](#safety-invariants)
+   - [Temporal Safety](#temporal-safety)
 
 ## System Model
 
@@ -48,7 +50,6 @@ from their local clocks, so that their clocks can be considered synchronized.
 
 A second relevant clock parameter is accuracy, which binds the values read by
 processes from their clocks to real time.
-
 
 ##### **[PBTS-CLOCK-ACCURACY.0]**
 
@@ -97,13 +98,15 @@ for a more accurate estimation of `MSGDELAY`, and therefore is advised.
 ## Problem Statement
 
 In this section we define the properties of Tendermint consensus
-(cf. the [arXiv paper][arXiv]) in this new system model.
+(cf. the [arXiv paper][arXiv]) in this system model.
 
 #### **[PBTS-PROPOSE.0]**
 
 A proposer proposes a consensus value `v` that includes a proposal time `v.time`.
 
-> We then restrict the allowed decisions along the following lines:
+### Safety Invariants
+
+We then restrict the allowed decisions along the following lines:
 
 #### **[PBTS-INV-AGREEMENT.0]**
 
@@ -118,12 +121,19 @@ This implies that no two correct processes decide on different proposal times
   predefined `valid` predicate.
 
 With respect to PBTS, the `valid` predicate requires proposal times to be
-[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity):
+[monotonic](./pbts-algorithm_002_draft.md#time-monotonicity) over heights of
+consensus:
 
 ##### **[PBTS-INV-MONOTONICITY.0]**
 
-- If a correct process decides on value `v = decision[h]` at height `h` of
-  consensus, then for every height `h' < h : decision[h'].time < v.time`.
+- If a correct process decides on value `v` at the height `h` of consensus,
+  thus setting `decision[h] = v`, then `v.time > decision[h'].time` for all
+  previous heights `h' < h`.
+
+The monotonicity of proposal times, and external validity in general,
+implicitly assumes that heights of consensus are executed in order.
+
+### Temporal Safety
 
 #### **[PBTS-INV-TIMELY.0]**
 
