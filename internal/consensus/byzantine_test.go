@@ -41,7 +41,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	config := configSetup(t)
 
-	nValidators := 4
+	nValidators := 2
 	prevoteHeight := int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
@@ -281,7 +281,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	select {
 	case <-sig:
 	case <-subctx.Done():
-		t.Fatal("encountered timeout")
+		t.Fatalf("encountered error: %v", subctx.Err())
 	}
 
 	pubkey, err := bzNodeState.privValidator.GetPubKey(ctx)
