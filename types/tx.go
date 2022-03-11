@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -62,6 +63,12 @@ func (txs Txs) IndexByHash(hash []byte) int {
 	return -1
 }
 
+func (txs Txs) Len() int      { return len(txs) }
+func (txs Txs) Swap(i, j int) { txs[i], txs[j] = txs[j], txs[i] }
+func (txs Txs) Less(i, j int) bool {
+	return bytes.Compare(txs[i], txs[j]) == -1
+}
+
 // ToSliceOfBytes converts a Txs to slice of byte slices.
 //
 // NOTE: This method should become obsolete once Txs is switched to [][]byte.
@@ -92,6 +99,139 @@ func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
 		txs[i] = Tx(tr.Tx)
 	}
 	return txs
+}
+
+// TxRecordSet contains indexes into an underlying set of transactions.
+// These indexes are useful for validating and working with a list of TxRecords
+// from the PrepareProposal response.
+type TxRecordSet struct {
+	txs Txs
+
+	added      Txs
+	unmodified Txs
+	included   Txs
+	removed    Txs
+	unknown    Txs
+}
+
+func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
+	txrSet := TxRecordSet{}
+	txrSet.txs = make([]Tx, len(trs))
+	for i, tr := range trs {
+		txrSet.txs[i] = Tx(tr.Tx)
+		switch tr.GetAction() {
+		case abci.TxRecord_UNKNOWN:
+			txrSet.unknown = append(txrSet.unknown, txrSet.txs[i])
+		case abci.TxRecord_UNMODIFIED:
+			txrSet.unmodified = append(txrSet.unmodified, txrSet.txs[i])
+			txrSet.included = append(txrSet.included, txrSet.txs[i])
+		case abci.TxRecord_ADDED:
+			txrSet.added = append(txrSet.added, txrSet.txs[i])
+			txrSet.included = append(txrSet.included, txrSet.txs[i])
+		case abci.TxRecord_REMOVED:
+			txrSet.removed = append(txrSet.removed, txrSet.txs[i])
+		}
+	}
+	return txrSet
+}
+
+// GetAddedTxs returns the transactions marked for inclusion in a block.
+func (t TxRecordSet) GetIncludedTxs() []Tx {
+	return t.included
+}
+
+// GetAddedTxs returns the transactions added by the application.
+func (t TxRecordSet) GetAddedTxs() []Tx {
+	return t.added
+}
+
+// GetRemovedTxs returns the transactions marked for removal by the application.
+func (t TxRecordSet) GetRemovedTxs() []Tx {
+	return t.removed
+}
+
+// Validate checks that the record set was correctly constructed from the original
+// list of transactions.
+func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
+	if len(t.unknown) > 0 {
+		return fmt.Errorf("transaction incorrectly marked as unknown, transaction hash: %x", t.unknown[0].Hash())
+	}
+
+	var size int64
+	cp := make([]Tx, len(t.txs))
+	copy(cp, t.txs)
+	sort.Sort(Txs(cp))
+
+	for i := 0; i < len(cp); i++ {
+		size += int64(len(cp[i]))
+		if size > maxSizeBytes {
+			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
+		}
+		if i < len(cp)-1 && bytes.Equal(cp[i], cp[i+1]) {
+			return fmt.Errorf("TxRecords contains duplicate transaction, transaction hash: %x", cp[i].Hash())
+		}
+	}
+
+	addedCopy := make([]Tx, len(t.added))
+	copy(addedCopy, t.added)
+	removedCopy := make([]Tx, len(t.removed))
+	copy(removedCopy, t.removed)
+	unmodifiedCopy := make([]Tx, len(t.unmodified))
+	copy(unmodifiedCopy, t.unmodified)
+
+	sort.Sort(otxs)
+	sort.Sort(Txs(addedCopy))
+	sort.Sort(Txs(removedCopy))
+	sort.Sort(Txs(unmodifiedCopy))
+	unmodifiedIdx, addedIdx, removedIdx := 0, 0, 0
+	for i := 0; i < len(otxs); i++ {
+		if addedIdx == len(addedCopy) &&
+			removedIdx == len(removedCopy) &&
+			unmodifiedIdx == len(unmodifiedCopy) {
+			break
+		}
+
+	LOOP:
+		for addedIdx < len(addedCopy) {
+			switch bytes.Compare(addedCopy[addedIdx], otxs[i]) {
+			case 0:
+				return fmt.Errorf("existing transaction incorrectly marked as added, transaction hash: %x", otxs[i].Hash())
+			case -1:
+				addedIdx++
+			case 1:
+				break LOOP
+			}
+		}
+		if removedIdx < len(removedCopy) {
+			switch bytes.Compare(removedCopy[removedIdx], otxs[i]) {
+			case 0:
+				removedIdx++
+			case -1:
+				return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[i].Hash())
+			}
+		}
+		if unmodifiedIdx < len(unmodifiedCopy) {
+			switch bytes.Compare(unmodifiedCopy[unmodifiedIdx], otxs[i]) {
+			case 0:
+				unmodifiedIdx++
+			case -1:
+				return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", removedCopy[i].Hash())
+			}
+		}
+	}
+
+	if unmodifiedIdx != len(unmodifiedCopy) {
+		return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", unmodifiedCopy[unmodifiedIdx].Hash())
+	}
+	if removedIdx != len(removedCopy) {
+		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[removedIdx].Hash())
+	}
+
+	return nil
+}
+
+func (t TxRecordSet) GetTxs() []Tx {
+	return t.txs
 }
 
 // TxsToTxRecords converts from a list of Txs to a list of TxRecords. All of the
