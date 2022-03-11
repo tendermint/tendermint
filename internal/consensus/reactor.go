@@ -360,6 +360,13 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 			if err := r.broadcastNewRoundStepMessage(ctx, data.(*cstypes.RoundState)); err != nil {
 				return err
 			}
+
+			onStopCh := func() chan *cstypes.RoundState {
+				r.state.mtx.Lock()
+				defer r.state.mtx.Unlock()
+				return r.state.onStopCh
+			}()
+
 			select {
 			case onStopCh <- data.(*cstypes.RoundState):
 				return nil
