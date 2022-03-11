@@ -14,6 +14,11 @@ var (
 	errAlreadyStopped = errors.New("already stopped")
 )
 
+var (
+	_ Service = (*BaseService)(nil)
+	_ Service = (*NopService)(nil)
+)
+
 // Service defines a service that can be started, stopped, and reset.
 type Service interface {
 	// Start is called to start the service, which should run until
@@ -84,6 +89,12 @@ type BaseService struct {
 	// The "subclass" of BaseService
 	impl Implementation
 }
+
+type NopService struct{}
+
+func (NopService) Start(_ context.Context) error { return nil }
+func (NopService) IsRunning() bool               { return true }
+func (NopService) Wait()                         {}
 
 // NewBaseService creates a new BaseService.
 func NewBaseService(logger log.Logger, name string, impl Implementation) *BaseService {

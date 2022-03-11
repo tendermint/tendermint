@@ -168,7 +168,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	for _, peer := range pool.peers {
 		// check if peer timed out
 		if !peer.didTimeout && peer.numPending > 0 {
-			curRate := peer.recvMonitor.Status().CurRate
+			curRate := peer.recvMonitor.CurrentTransferRate()
 			// curRate can be 0 on start
 			if curRate != 0 && curRate < minRecvRate {
 				err := errors.New("peer is not sending us data fast enough")
