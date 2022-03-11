@@ -1406,7 +1406,11 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, b
 		return
 	}
 
-	proposerAddr := cs.privValidatorPubKey.Address()
+	proposerAddr := func() []byte {
+		cs.mtx.RLock()
+		defer cs.mtx.RUnlock()
+		return cs.privValidatorPubKey.Address()
+	}()
 
 	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, votes)
 }
@@ -2613,7 +2617,12 @@ func (cs *State) updatePrivValidatorPubKey(rctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	cs.privValidatorPubKey = pubKey
+	func() {
+		cs.mtx.Lock()
+		defer cs.mtx.Unlock()
+
+		cs.privValidatorPubKey = pubKey
+	}()
 	return nil
 }
 
