@@ -275,3 +275,15 @@ func (m *Monitor) waitNextSample(now time.Duration) time.Duration {
 	}
 	return now
 }
+
+// CurrentTransferRate returns the current transfer rate
+func (m *Monitor) CurrentTransferRate() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.sLast > m.start && m.active {
+		return round(m.rEMA)
+	}
+
+	return 0
+}
