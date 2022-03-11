@@ -141,25 +141,31 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		panic(err)
 	}
 
-	if err := rpp.Validate(maxDataBytes, block.Txs.ToSliceOfBytes()); err != nil {
-		return nil, err
-	}
-
 	if !rpp.ModifiedTx {
 		return block, nil
 	}
+	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
-	for _, rtx := range rpp.RemovedTxs() {
-		if err := blockExec.mempool.RemoveTxByKey(types.Tx(rtx.Tx).Key()); err != nil {
-			blockExec.logger.Debug("error removing transaction from the mempool", "error", err)
+	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
+		return nil, err
+	}
+
+	for _, rtx := range txrSet.GetRemovedTxs() {
+		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
+			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
 		}
 	}
-	for _, rtx := range rpp.AddedTxs() {
-		if err := blockExec.mempool.CheckTx(ctx, rtx.Tx, nil, mempool.TxInfo{}); err != nil {
-			blockExec.logger.Error("error adding tx to the mempool", "error", err)
+	for _, atx := range txrSet.GetAddedTxs() {
+		if err := blockExec.mempool.CheckTx(ctx, *atx, nil, mempool.TxInfo{}); err != nil {
+			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
 		}
 	}
-	return state.MakeBlock(height, types.TxRecordsToTxs(rpp.IncludedTxs()), commit, evidence, proposerAddr), nil
+	itxs := append(txrSet.GetAddedTxs(), txrSet.GetUnmodifiedTxs()...)
+	txs = make([]types.Tx, len(itxs))
+	for i, tx := range itxs {
+		txs[i] = *tx
+	}
+	return state.MakeBlock(height, txs, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(

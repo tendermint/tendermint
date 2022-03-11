@@ -13,6 +13,14 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
+type TxRecordSet struct {
+	txs           []Tx
+	unknownIdx    []*Tx
+	unmodifiedIdx []*Tx
+	addedIdx      []*Tx
+	removedIdx    []*Tx
+}
+
 // Tx is an arbitrary byte array.
 // NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
 // Might we want types here ?
@@ -75,6 +83,14 @@ func (txs Txs) ToSliceOfBytes() [][]byte {
 	return txBzs
 }
 
+func (txs Txs) ToSet() map[string]struct{} {
+	m := make(map[string]struct{}, len(txs))
+	for _, tx := range txs {
+		m[string(tx.Hash())] = struct{}{}
+	}
+	return m
+}
+
 // ToTxs converts a raw slice of byte slices into a Txs type.
 // TODO This function is to disappear when TxRecord is introduced
 func ToTxs(txs [][]byte) Txs {
@@ -92,6 +108,88 @@ func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
 		txs[i] = Tx(tr.Tx)
 	}
 	return txs
+}
+
+func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
+	txrSet := TxRecordSet{}
+	txrSet.txs = make([]Tx, len(trs))
+	for i, tr := range trs {
+		txrSet.txs[i] = Tx(tr.Tx)
+		if tr.Action == abci.TxRecord_UNKNOWN {
+			txrSet.unknownIdx = append(txrSet.unknownIdx, &txrSet.txs[i])
+		}
+		if tr.Action == abci.TxRecord_UNMODIFIED {
+			txrSet.unmodifiedIdx = append(txrSet.unmodifiedIdx, &txrSet.txs[i])
+		}
+		if tr.Action == abci.TxRecord_ADDED {
+			txrSet.addedIdx = append(txrSet.addedIdx, &txrSet.txs[i])
+		}
+		if tr.Action == abci.TxRecord_REMOVED {
+			txrSet.removedIdx = append(txrSet.removedIdx, &txrSet.txs[i])
+		}
+	}
+	return txrSet
+}
+
+func (t TxRecordSet) GetUnmodifiedTxs() []*Tx {
+	return t.unmodifiedIdx
+}
+
+func (t TxRecordSet) GetAddedTxs() []*Tx {
+	return t.addedIdx
+}
+
+func (t TxRecordSet) GetRemovedTxs() []*Tx {
+	return t.removedIdx
+}
+
+func (t TxRecordSet) GetUnknownTxs() []*Tx {
+	return t.unknownIdx
+}
+
+func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
+	otxSet := otxs.ToSet()
+	ntxSet := map[string]struct{}{}
+	var size int64
+	for _, tx := range t.GetAddedTxs() {
+		size += int64(len(*tx))
+		if size > maxSizeBytes {
+			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
+		}
+		hash := tx.Hash()
+		if _, ok := otxSet[string(hash)]; ok {
+			return fmt.Errorf("unmodified transaction incorrectly marked as %s, transaction hash: %x", abci.TxRecord_ADDED, hash)
+		}
+		if _, ok := ntxSet[string(hash)]; ok {
+			return fmt.Errorf("TxRecords contains duplicate transaction, transaction hash: %x", hash)
+		}
+		ntxSet[string(hash)] = struct{}{}
+	}
+	for _, tx := range t.GetUnmodifiedTxs() {
+		size += int64(len(*tx))
+		if size > maxSizeBytes {
+			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
+		}
+		hash := tx.Hash()
+		if _, ok := otxSet[string(hash)]; !ok {
+			return fmt.Errorf("new transaction incorrectly marked as %s, transaction hash: %x", abci.TxRecord_UNMODIFIED, hash)
+		}
+	}
+	for _, tx := range t.GetRemovedTxs() {
+		hash := tx.Hash()
+		if _, ok := otxSet[string(hash)]; !ok {
+			return fmt.Errorf("new transaction incorrectly marked as %s, transaction hash: %x", abci.TxRecord_REMOVED, hash)
+		}
+	}
+	if len(t.GetUnknownTxs()) > 0 {
+		utx := t.GetUnknownTxs()[0]
+		return fmt.Errorf("transaction incorrectly marked as %s, transaction hash: %x", utx, utx.Hash())
+	}
+	return nil
+}
+
+func (t TxRecordSet) GetTxs() []Tx {
+	return t.txs
 }
 
 // TxsToTxRecords converts from a list of Txs to a list of TxRecords. All of the
