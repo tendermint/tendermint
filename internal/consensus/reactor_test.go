@@ -277,15 +277,22 @@ func waitForAndValidateBlockWithTx(
 	var wg sync.WaitGroup
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			fn(j)
-		}(i)
+		go func(j int) { defer wg.Done(); fn(j) }(i)
 	}
+	sig := make(chan struct{})
+	go func() { defer close(sig); wg.Wait() }()
 
-	wg.Wait()
-	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		t.Fatal("encountered timeout")
+	select {
+	case <-sig:
+		return
+	case <-ctx.Done():
+		err := ctx.Err()
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			t.Fatal("encountered timeout")
+		case errors.Is(err, context.Canceled):
+			t.Fatal("operation aborted")
+		}
 	}
 }
 
