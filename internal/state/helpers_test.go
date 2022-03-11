@@ -243,7 +243,8 @@ func makeRandomStateFromValidatorSet(
 }
 func makeRandomStateFromConsensusParams(
 	ctx context.Context,
-	t *testing.T, consensusParams *types.ConsensusParams,
+	t *testing.T,
+	consensusParams *types.ConsensusParams,
 	height,
 	lastHeightConsensusParamsChanged int64,
 ) sm.State {
