@@ -1382,6 +1382,27 @@ func (cs *State) isProposalComplete() bool {
 
 }
 
+func (cs *State) isInitialHeight() bool {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	return cs.Height == cs.state.InitialHeight
+}
+
+func (cs *State) lastCommitHasTwoThirdsMajority() bool {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	return cs.LastCommit.HasTwoThirdsMajority()
+}
+
+func (cs *State) privValidatorPubKeyIsNil() bool {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	return cs.privValidatorPubKey == nil
+}
+
 // Create the next block to propose and return it. Returns nil block upon error.
 //
 // We really only need to return the parts, but the block is returned for
@@ -1397,12 +1418,12 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, b
 	var commit *types.Commit
 	var votes []*types.Vote
 	switch {
-	case cs.Height == cs.state.InitialHeight:
+	case cs.isInitialHeight():
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
 		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
 
-	case cs.LastCommit.HasTwoThirdsMajority():
+	case cs.lastCommitHasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
 		votes = cs.LastCommit.GetVotes()
@@ -1412,7 +1433,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, b
 		return
 	}
 
-	if cs.privValidatorPubKey == nil {
+	if cs.privValidatorPubKeyIsNil() {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
 		cs.logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
