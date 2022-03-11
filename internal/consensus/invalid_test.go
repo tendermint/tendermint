@@ -26,7 +26,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 
 	config := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		config, n, "consensus_reactor_test",
 		newMockTickerFunc(true))

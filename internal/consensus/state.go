@@ -514,13 +514,6 @@ func (cs *State) OnStop() {
 		}
 	}
 
-	func() {
-		cs.mtx.Lock()
-		defer cs.mtx.Unlock()
-
-		close(cs.onStopCh)
-	}()
-
 	if cs.evsw.IsRunning() {
 		cs.evsw.Stop()
 	}
@@ -655,6 +648,8 @@ func (cs *State) SetProposalAndBlock(
 
 func (cs *State) updateHeight(height int64) {
 	cs.metrics.Height.Set(float64(height))
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
 	cs.Height = height
 }
 
@@ -776,7 +771,13 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 
 	switch {
 	case state.LastBlockHeight == 0: // Very first commit should be empty.
-		cs.LastCommit = (*types.VoteSet)(nil)
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.LastCommit = (*types.VoteSet)(nil)
+		}()
+
 	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic(fmt.Sprintf(
@@ -785,7 +786,12 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 			))
 		}
 
-		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+		}()
 
 	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
@@ -1790,8 +1796,13 @@ func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int3
 		// Done enterCommit:
 		// keep cs.Round the same, commitRound points to the right Precommits set.
 		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
-		cs.CommitRound = commitRound
-		cs.CommitTime = tmtime.Now()
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.CommitRound = commitRound
+			cs.CommitTime = tmtime.Now()
+		}()
 		cs.newStep(ctx)
 
 		// Maybe finalize immediately.
@@ -2215,9 +2226,15 @@ func (cs *State) addProposalBlockPart(
 					"valid_block_hash", cs.ProposalBlock.Hash(),
 				)
 
-				cs.ValidRound = cs.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
+				func() {
+					cs.mtx.Lock()
+					defer cs.mtx.Unlock()
+
+					cs.ValidRound = cs.Round
+					cs.ValidBlock = cs.ProposalBlock
+					cs.ValidBlockParts = cs.ProposalBlockParts
+
+				}()
 			}
 			// TODO: In case there is +2/3 majority in Prevotes set for some
 			// block and cs.ProposalBlock contains different block, either
@@ -2392,12 +2409,22 @@ func (cs *State) addVote(
 					)
 
 					// we're getting the wrong block
-					cs.ProposalBlock = nil
+					func() {
+						cs.mtx.Lock()
+						defer cs.mtx.Unlock()
+
+						cs.ProposalBlock = nil
+					}()
 				}
 
 				if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 					cs.metrics.MarkBlockGossipStarted()
-					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+					func() {
+						cs.mtx.Lock()
+						defer cs.mtx.Unlock()
+
+						cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+					}()
 				}
 
 				cs.evsw.FireEvent(ctx, types.EventValidBlockValue, &cs.RoundState)

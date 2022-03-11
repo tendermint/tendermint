@@ -356,7 +356,7 @@ func TestReactorBasic(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true))
@@ -369,7 +369,8 @@ func TestReactorBasic(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	errCh := make(chan error, len(rts.subs))
+	bErrCh := make(chan error, len(rts.subs))
+	bsErrCh := make(chan error, len(rts.blocksyncSubs))
 
 	for _, sub := range rts.subs {
 		wg.Add(1)
@@ -383,14 +384,16 @@ func TestReactorBasic(t *testing.T) {
 				return
 			case errors.Is(err, context.Canceled):
 				return
-			case err != nil:
+			default:
 				select {
-				case errCh <- err:
+				case bErrCh <- err:
+					if err != nil {
+						cancel() // terminate other workers
+					}
+					return
 				case <-ctx.Done():
 					return
 				}
-				cancel() // terminate other workers
-				return
 			}
 		}(sub)
 	}
@@ -402,20 +405,19 @@ func TestReactorBasic(t *testing.T) {
 		select {
 		case <-ctx.Done():
 			t.Fatal("encountered timeout")
-		case err := <-errCh:
+		case err := <-bErrCh:
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 	case <-ctx.Done():
 		t.Fatal("encountered timeout")
-	case err := <-errCh:
+	case err := <-bErrCh:
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	errCh = make(chan error, len(rts.blocksyncSubs))
 	for _, sub := range rts.blocksyncSubs {
 		wg.Add(1)
 
@@ -429,7 +431,7 @@ func TestReactorBasic(t *testing.T) {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				errCh <- err
+				bsErrCh <- err
 				cancel() // terminate other workers
 				return
 			}
@@ -443,7 +445,7 @@ func TestReactorBasic(t *testing.T) {
 	}
 
 	select {
-	case err := <-errCh:
+	case err := <-bsErrCh:
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -457,7 +459,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 
@@ -578,7 +580,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
@@ -602,7 +604,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	// send a tx
 	require.NoError(
 		t,
-		assertMempool(t, states[3].txNotifier).CheckTx(
+		assertMempool(t, states[1].txNotifier).CheckTx(
 			ctx,
 			[]byte{1, 2, 3},
 			nil,
@@ -645,7 +647,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true))
@@ -723,7 +725,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
@@ -798,11 +800,12 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
+	newVotingPower := states[0].GetRoundState().LastValidators.TotalVotingPower()
 	require.NotEqualf(
-		t, previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		t, previousTotalVotingPower, newVotingPower,
 		"expected voting power to change (before: %d, after: %d)",
 		previousTotalVotingPower,
-		states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		newVotingPower,
 	)
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
@@ -836,13 +839,13 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	cfg := configSetup(t)
 
-	nPeers := 7
-	nVals := 4
+	nPeers := 2
+	nVals := 2
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
 		t,
@@ -855,7 +858,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	)
 	t.Cleanup(cleanup)
 
-	rts := setup(ctx, t, nPeers, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, nPeers, states, 512) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
@@ -911,7 +914,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		t.Fatal("subscription encountered unexpected error")
 	}
 
-	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(ctx)
+	newValidatorPubKey1, err := states[nVals-1].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	valPubKey1ABCI, err := encoding.PubKeyToProto(newValidatorPubKey1)
@@ -944,14 +947,14 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// it includes the commit for block 4, which should have the updated validator set
 	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
-	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(ctx)
+	updateValidatorPubKey1, err := states[nVals-1].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
 
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	previousTotalVotingPower := states[nVals].GetRoundState().LastValidators.TotalVotingPower()
+	previousTotalVotingPower := states[nVals-1].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
 	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
@@ -959,12 +962,12 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
 	require.NotEqualf(
-		t, states[nVals].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
+		t, states[nVals-1].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
 		"expected voting power to change (before: %d, after: %d)",
-		previousTotalVotingPower, states[nVals].GetRoundState().LastValidators.TotalVotingPower(),
+		previousTotalVotingPower, states[nVals-1].GetRoundState().LastValidators.TotalVotingPower(),
 	)
 
-	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(ctx)
+	newValidatorPubKey2, err := states[nVals-2].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
@@ -972,7 +975,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
-	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(ctx)
+	newValidatorPubKey3, err := states[nVals-2].privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 
 	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
