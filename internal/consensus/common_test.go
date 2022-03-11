@@ -815,7 +815,6 @@ func makeConsensusState(
 
 		walDir := filepath.Dir(thisConfig.Consensus.WalFile())
 		ensureDir(t, walDir, 0700)
-		configRootDirs = append(configRootDirs, walDir)
 
 		app := kvstore.NewApplication()
 		closeFuncs = append(closeFuncs, app.Close)
