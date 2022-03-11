@@ -430,8 +430,9 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 	return &types.ExecTxResult{}
 }
 
-// substPrepareTx subst all the preparetx in the blockdata
-// to null string(could be any arbitrary string).
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with . It marks all of the substituted transactions as 'REMOVED' so that
+// Tendermint will remove them from its mempool.
 func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 	trs := make([]*types.TxRecord, len(blockData))
 	for i, tx := range blockData {
@@ -441,7 +442,7 @@ func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 				Action: types.TxRecord_REMOVED,
 			})
 			trs[i] = &types.TxRecord{
-				Tx:     make([]byte, len(tx)),
+				Tx:     tx[:0],
 				Action: types.TxRecord_ADDED,
 			}
 			continue
