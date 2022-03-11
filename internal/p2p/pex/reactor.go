@@ -191,7 +191,7 @@ func (r *Reactor) processPexCh(ctx context.Context) {
 				return // channel closed
 			}
 
-			// A request from another peers, or a response to one of our requests.
+			// A request from another peer, or a response to one of our requests.
 			dur, err := r.handleMessage(ctx, r.pexCh.ID, envelope)
 			if err != nil {
 				r.logger.Error("failed to process message",
