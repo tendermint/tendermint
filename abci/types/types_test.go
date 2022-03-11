@@ -44,6 +44,34 @@ func TestHashAndProveResults(t *testing.T) {
 	}
 }
 
+func TestHashDeterministicFieldsOnly(t *testing.T) {
+	tr1 := abci.ExecTxResult{
+		Code:      1,
+		Data:      []byte("transaction"),
+		Log:       "nondeterministic data: abc",
+		Info:      "nondeterministic data: abc",
+		GasWanted: 1000,
+		GasUsed:   1000,
+		Events:    []abci.Event{},
+		Codespace: "nondeterministic.data.abc",
+	}
+	tr2 := abci.ExecTxResult{
+		Code:      1,
+		Data:      []byte("transaction"),
+		Log:       "nondeterministic data: def",
+		Info:      "nondeterministic data: def",
+		GasWanted: 1000,
+		GasUsed:   1000,
+		Events:    []abci.Event{},
+		Codespace: "nondeterministic.data.def",
+	}
+	r1, err := abci.TxResultsToByteSlices([]*abci.ExecTxResult{&tr1})
+	require.NoError(t, err)
+	r2, err := abci.TxResultsToByteSlices([]*abci.ExecTxResult{&tr2})
+	require.NoError(t, err)
+	require.Equal(t, merkle.HashFromByteSlices(r1), merkle.HashFromByteSlices(r2))
+}
+
 func TestValidateResponsePrepareProposal(t *testing.T) {
 	t.Run("should error on total transaction size exceeding max data size", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
