@@ -2251,8 +2251,7 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(blockID.PartSetHeader))
 	partSet, err = propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
-	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, partSet, "some peer")
-	require.NoError(t, err)
+	require.NoError(t, cs1.SetProposalAndBlock(ctx, prop, propBlock, partSet, "some peer"))
 
 	ensureNewProposal(t, proposalCh, height, round)
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -2718,7 +2717,7 @@ func subscribe(
 		Limit:    65536,
 	})
 	require.NoErrorf(t, err, "Failed to subscribe %q to %v: %v", testSubscriber, q, err)
-	ch := make(chan tmpubsub.Message)
+	ch := make(chan tmpubsub.Message, 8)
 	go func() {
 		for {
 			next, err := sub.Next(ctx)
