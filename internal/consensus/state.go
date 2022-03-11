@@ -317,28 +317,41 @@ func (cs *State) GetValidators() (int64, []*types.Validator) {
 // SetPrivValidator sets the private validator account for signing votes. It
 // immediately requests pubkey and caches it.
 func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	func() {
+		cs.mtx.Lock()
+		defer cs.mtx.Unlock()
 
-	cs.privValidator = priv
+		cs.privValidator = priv
+	}()
 
 	if priv != nil {
-		switch t := priv.(type) {
-		case *privval.RetrySignerClient:
-			cs.privValidatorType = types.RetrySignerClient
-		case *privval.FilePV:
-			cs.privValidatorType = types.FileSignerClient
-		case *privval.SignerClient:
-			cs.privValidatorType = types.SignerSocketClient
-		case *tmgrpc.SignerClient:
-			cs.privValidatorType = types.SignerGRPCClient
-		case types.MockPV:
-			cs.privValidatorType = types.MockSignerClient
-		case *types.ErroringMockPV:
-			cs.privValidatorType = types.ErrorMockSignerClient
-		default:
-			cs.logger.Error("unsupported priv validator type", "err",
-				fmt.Errorf("error privValidatorType %s", t))
+		ptype, err := func() (types.PrivValidatorType, error) {
+			switch t := priv.(type) {
+			case *privval.RetrySignerClient:
+				return types.RetrySignerClient, nil
+			case *privval.FilePV:
+				return types.FileSignerClient, nil
+			case *privval.SignerClient:
+				return types.SignerSocketClient, nil
+			case *tmgrpc.SignerClient:
+				return types.SignerGRPCClient, nil
+			case types.MockPV:
+				return types.MockSignerClient, nil
+			case *types.ErroringMockPV:
+				return types.ErrorMockSignerClient, nil
+			default:
+				return 0, fmt.Errorf("error privValidatorType %s", t)
+			}
+		}()
+		if err != nil {
+			cs.logger.Error("unsupported priv validator type", "err", err)
+		} else {
+			func() {
+				cs.mtx.Lock()
+				defer cs.mtx.Unlock()
+
+				cs.privValidatorType = ptype
+			}()
 		}
 	}
 
