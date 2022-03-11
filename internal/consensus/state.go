@@ -1102,10 +1102,7 @@ func (cs *State) handleTxsAvailable(ctx context.Context) {
 	if func() bool {
 		cs.mtx.RLock()
 		defer cs.mtx.RUnlock()
-		if cs.Round != 0 {
-			return true
-		}
-		return false
+		return cs.Round != 0
 	}() {
 		return
 	}
