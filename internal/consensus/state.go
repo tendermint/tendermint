@@ -886,7 +886,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			// swallowing the panic in receiveRoutine, making that appear to
 			// work. Filtering this specific error is slightly risky, but should
 			// affect only unit tests. In any case, not re-panicking here only
-			// preserves the pre-existing behaviour for this one error type.
+			// preserves the pre-existing behavior for this one error type.
 			if err, ok := r.(error); ok && errors.Is(err, autofile.ErrAutoFileClosed) {
 				return
 			}
