@@ -420,7 +420,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxRe
 const PreparePrefix = "prepare"
 
 func isPrepareTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), PreparePrefix)
+	return bytes.HasPrefix(tx, []byte(PreparePrefix))
 }
 
 // execPrepareTx is noop. tx data is considered as placeholder
@@ -431,7 +431,8 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 }
 
 // substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
-// proposal for transactions with . It marks all of the substituted transactions as 'REMOVED' so that
+// proposal for transactions with the prefix strips.
+// It marks all of the original transactions as 'REMOVED' so that
 // Tendermint will remove them from its mempool.
 func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 	trs := make([]*types.TxRecord, len(blockData))
@@ -442,7 +443,7 @@ func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 				Action: types.TxRecord_REMOVED,
 			})
 			trs[i] = &types.TxRecord{
-				Tx:     tx[:0],
+				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
 				Action: types.TxRecord_ADDED,
 			}
 			continue
