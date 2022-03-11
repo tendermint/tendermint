@@ -869,15 +869,15 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 	defer func() {
 		if r := recover(); r != nil {
 			cs.logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
-			// stop gracefully
-			//
-			// NOTE: We most probably shouldn't be running any further when there is
-			// some unexpected panic. Some unknown error happened, and so we don't
-			// know if that will result in the validator signing an invalid thing. It
-			// might be worthwhile to explore a mechanism for manual resuming via
-			// some console or secure RPC system, but for now, halting the chain upon
-			// unexpected consensus bugs sounds like the better option.
+
+			// Make a best-effort attempt to close the WAL, but otherwise do not
+			// attempt to gracefully terminate. Once consensus has irrecoverably
+			// failed, any additional progress we permit the node to make may
+			// complicate diagnosing and recovering from the failure.
 			onExit(cs)
+
+			// Re-panic to ensure the node terminates.
+			panic(r)
 		}
 	}()
 
