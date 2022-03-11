@@ -567,23 +567,27 @@ func (cs *State) AddVote(ctx context.Context, vote *types.Vote, peerID types.Nod
 	// TODO: wait for event?!
 }
 
-// SetProposal inputs a proposal.
-func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peerID types.NodeID) error {
+func (cs *State) getMessageChannel(peerID types.NodeID) chan msgInfo {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	if peerID == "" {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()}:
-			return nil
-		}
-	} else {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID, tmtime.Now()}:
-			return nil
-		}
+		return cs.internalMsgQueue
+	}
+
+	return cs.peerMsgQueue
+}
+
+// SetProposal inputs a proposal.
+func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peerID types.NodeID) error {
+	ch := cs.getMessageChannel(peerID)
+	msg := msgInfo{&ProposalMessage{proposal}, peerID, tmtime.Now()}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case ch <- msg:
+		return nil
 	}
 
 	// TODO: wait for event?!
@@ -591,20 +595,14 @@ func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peer
 
 // AddProposalBlockPart inputs a part of the proposal block.
 func (cs *State) AddProposalBlockPart(ctx context.Context, height int64, round int32, part *types.Part, peerID types.NodeID) error {
-	if peerID == "" {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, "", tmtime.Now()}:
-			return nil
-		}
-	} else {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID, tmtime.Now()}:
-			return nil
-		}
+	ch := cs.getMessageChannel(peerID)
+	msg := msgInfo{&BlockPartMessage{height, round, part}, peerID, tmtime.Now()}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case ch <- msg:
+		return nil
 	}
 
 	// TODO: wait for event?!
