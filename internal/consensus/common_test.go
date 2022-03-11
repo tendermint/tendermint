@@ -898,7 +898,9 @@ func randConsensusNetWithPeers(
 
 		css[i] = newStateWithConfig(ctx, t, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].updateStateFromStore(ctx)
+		if err := css[i].updateStateFromStore(ctx); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return css, genDoc, peer0Config, func() {
 		for _, dir := range configRootDirs {
