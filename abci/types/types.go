@@ -266,20 +266,20 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 			}
 		}
 		if _, ok := ntx[string(tr.Tx)]; ok {
-			return errors.New("TxRecords contains duplicate transaction")
+			return errors.New("TxRecords contains duplicate transaction, transaction hash: %x")
 		}
 		ntx[string(tr.Tx)] = struct{}{}
 		if _, ok := otxsSet[string(tr.Tx)]; ok {
 			if tr.Action == TxRecord_ADDED {
-				return fmt.Errorf("unmodified transaction incorrectly marked as %s", tr.Action.String())
+				return fmt.Errorf("unmodified transaction incorrectly marked as %s, transaction hash: %x", tr.Action.String())
 			}
 		} else {
 			if tr.Action == TxRecord_REMOVED || tr.Action == TxRecord_UNMODIFIED {
-				return fmt.Errorf("unmodified transaction incorrectly marked as %s", tr.Action.String())
+				return fmt.Errorf("unmodified transaction incorrectly marked as %s, transaction hash: %x", tr.Action.String())
 			}
 		}
 		if tr.Action == TxRecord_UNKNOWN {
-			return fmt.Errorf("transaction incorrectly marked as %s", tr.Action.String())
+			return fmt.Errorf("transaction incorrectly marked as %s, transaction hash: %x", tr.Action.String())
 		}
 	}
 	return nil
