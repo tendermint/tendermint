@@ -514,6 +514,8 @@ func (cs *State) OnStop() {
 		}
 	}
 
+	close(cs.getOnStopCh())
+
 	if cs.timeoutTicker.IsRunning() {
 		cs.timeoutTicker.Stop()
 	}
@@ -636,6 +638,8 @@ func (cs *State) SetProposalAndBlock(
 
 func (cs *State) updateHeight(height int64) {
 	cs.metrics.Height.Set(float64(height))
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
 	cs.Height = height
 }
 
@@ -757,7 +761,13 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 
 	switch {
 	case state.LastBlockHeight == 0: // Very first commit should be empty.
-		cs.LastCommit = (*types.VoteSet)(nil)
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.LastCommit = (*types.VoteSet)(nil)
+		}()
+
 	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
 			panic(fmt.Sprintf(
@@ -766,7 +776,12 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 			))
 		}
 
-		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+		}()
 
 	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
@@ -1802,8 +1817,13 @@ func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int3
 		// Done enterCommit:
 		// keep cs.Round the same, commitRound points to the right Precommits set.
 		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
-		cs.CommitRound = commitRound
-		cs.CommitTime = tmtime.Now()
+		func() {
+			cs.mtx.Lock()
+			defer cs.mtx.Unlock()
+
+			cs.CommitRound = commitRound
+			cs.CommitTime = tmtime.Now()
+		}()
 		cs.newStep(ctx)
 
 		// Maybe finalize immediately.
@@ -2215,6 +2235,47 @@ func (cs *State) addProposalBlockPart(
 		if err := cs.eventBus.PublishEventCompleteProposal(ctx, cs.CompleteProposalEvent()); err != nil {
 			cs.logger.Error("failed publishing event complete proposal", "err", err)
 		}
+
+		// Update Valid* if we can.
+		prevotes := cs.Votes.Prevotes(cs.Round)
+		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+		if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
+			if cs.ProposalBlock.HashesTo(blockID.Hash) {
+				cs.logger.Debug(
+					"updating valid block to new proposal block",
+					"valid_round", cs.Round,
+					"valid_block_hash", cs.ProposalBlock.Hash(),
+				)
+
+				func() {
+					cs.mtx.Lock()
+					defer cs.mtx.Unlock()
+
+					cs.ValidRound = cs.Round
+					cs.ValidBlock = cs.ProposalBlock
+					cs.ValidBlockParts = cs.ProposalBlockParts
+
+				}()
+			}
+			// TODO: In case there is +2/3 majority in Prevotes set for some
+			// block and cs.ProposalBlock contains different block, either
+			// proposer is faulty or voting power of faulty processes is more
+			// than 1/3. We should trigger in the future accountability
+			// procedure at this point.
+		}
+
+		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
+			// Move onto the next step
+			cs.enterPrevote(ctx, height, cs.Round)
+			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+				cs.enterPrecommit(ctx, height, cs.Round)
+			}
+		} else if cs.Step == cstypes.RoundStepCommit {
+			// If we're waiting on the proposal block...
+			cs.tryFinalizeCommit(ctx, height)
+		}
+
+		return added, nil
 	}
 
 	return added, nil
@@ -2403,12 +2464,22 @@ func (cs *State) addVote(
 					)
 
 					// we're getting the wrong block
-					cs.ProposalBlock = nil
+					func() {
+						cs.mtx.Lock()
+						defer cs.mtx.Unlock()
+
+						cs.ProposalBlock = nil
+					}()
 				}
 
 				if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 					cs.metrics.MarkBlockGossipStarted()
-					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+					func() {
+						cs.mtx.Lock()
+						defer cs.mtx.Unlock()
+
+						cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+					}()
 				}
 
 				cs.evsw.FireEvent(ctx, types.EventValidBlockValue, &cs.RoundState)
