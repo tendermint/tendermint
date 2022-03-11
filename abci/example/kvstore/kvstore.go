@@ -436,6 +436,10 @@ func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 	trs := make([]*types.TxRecord, len(blockData))
 	for i, tx := range blockData {
 		if isPrepareTx(tx) {
+			trs = append(trs, &types.TxRecord{
+				Tx:     tx,
+				Action: types.TxRecord_REMOVED,
+			})
 			trs[i] = &types.TxRecord{
 				Tx:     make([]byte, len(tx)),
 				Action: types.TxRecord_ADDED,
