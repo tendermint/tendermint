@@ -85,7 +85,7 @@ func ToTxs(txs [][]byte) Txs {
 	return txBzs
 }
 
-// TxRecordsToTxs coverts from the abci Tx type to the a Txs type.
+// TxRecordsToTxs converts from the abci Tx type to the the Txs type.
 func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
 	txs := make([]Tx, len(trs))
 	for i, tr := range trs {
