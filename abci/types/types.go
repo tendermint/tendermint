@@ -264,11 +264,11 @@ func (rpp *ResponsePrepareProposal) Validate(maxSizeBytes int64, otxs [][]byte) 
 			if size > maxSizeBytes {
 				return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
 			}
-			if _, ok := ntx[string(tr.Tx)]; ok {
-				return errors.New("duplicate included transaction")
-			}
-			ntx[string(tr.Tx)] = struct{}{}
 		}
+		if _, ok := ntx[string(tr.Tx)]; ok {
+			return errors.New("TxRecords contains duplicate transaction")
+		}
+		ntx[string(tr.Tx)] = struct{}{}
 		if _, ok := otxsSet[string(tr.Tx)]; ok {
 			if tr.Action == TxRecord_ADDED {
 				return fmt.Errorf("unmodified transaction incorrectly marked as %s", tr.Action.String())
