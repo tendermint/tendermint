@@ -103,6 +103,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	state State,
 	commit *types.Commit,
 	proposerAddr []byte,
+	votes []*types.Vote,
 ) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -123,7 +124,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			Hash:                block.Hash(),
 			Header:              *block.Header.ToProto(),
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     extendedCommitInfo(localLastCommit),
+			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			MaxTxBytes:          maxDataBytes,
 		},
@@ -428,14 +429,14 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-func extendedCommitInfo(c abci.CommitInfo) abci.ExtendedCommitInfo {
+func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
 		vs[i] = abci.ExtendedVoteInfo{
 			Validator:       c.Votes[i].Validator,
 			SignedLastBlock: c.Votes[i].SignedLastBlock,
 			/*
-				TODO: Include vote extensions information when implementing vote extension is complete.
+				TODO: Include vote extensions information when implementing vote extensions.
 				VoteExtension:   []byte{},
 			*/
 		}

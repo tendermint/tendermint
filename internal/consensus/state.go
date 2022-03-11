@@ -1391,7 +1391,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, e
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr)
+	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
 }
 
 // Enter: `timeoutPropose` after entering Propose.
