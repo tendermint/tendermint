@@ -2736,7 +2736,7 @@ func subscribe(
 	sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: testSubscriber,
 		Query:    q,
-		Limit:    1024,
+		Limit:    65536,
 	})
 	require.NoErrorf(t, err, "Failed to subscribe %q to %v: %v", testSubscriber, q, err)
 	ch := make(chan tmpubsub.Message)
