@@ -62,7 +62,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 		err := rpp.Validate(9, [][]byte{})
 		require.Error(t, err)
 	})
-	t.Run("should error on duplicate transactions", func(t *testing.T) {
+	t.Run("should error on duplicate transactions with the same action", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
 			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
@@ -87,7 +87,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 		err := rpp.Validate(100, [][]byte{})
 		require.Error(t, err)
 	})
-	t.Run("should error on duplicate transactions", func(t *testing.T) {
+	t.Run("should error on duplicate transactions with mixed actions", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
 			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
@@ -140,7 +140,7 @@ func TestValidateResponsePrepareProposal(t *testing.T) {
 		fmt.Println(err)
 		require.Error(t, err)
 	})
-	t.Run("should error on unmodified transaction marked as ADDED", func(t *testing.T) {
+	t.Run("should error on existing transaction marked as ADDED", func(t *testing.T) {
 		rpp := &abci.ResponsePrepareProposal{
 			ModifiedTx: true,
 			TxRecords: []*abci.TxRecord{
