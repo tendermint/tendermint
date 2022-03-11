@@ -300,14 +300,10 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	trs := make([]*abci.TxRecord, len(req.Txs))
-	for i, tx := range req.Txs {
-		trs[i] = &abci.TxRecord{
-			Tx:     tx,
-			Action: abci.TxRecord_UNMODIFIED,
-		}
-	}
-	return abci.ResponsePrepareProposal{TxRecords: trs}
+	// None of the transactions are modified by the application, return a ResponsePrepareProposal
+	// with ModifiedTx set to false. false is the zero-value in go, so an empty ResponsePrepareProposal
+	// will set the field appropriately.
+	return abci.ResponsePrepareProposal{}
 }
 
 // ProcessProposal implements part of the Application interface.
