@@ -743,15 +743,14 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	t.Cleanup(cleanup)
 
-	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 512) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 
 	// map of active validators
-	activeVals := make(map[string]struct{})
+	activeVals := make(map[string]struct{}, n)
 	for i := 0; i < n; i++ {
 		pubKey, err := states[i].privValidator.GetPubKey(ctx)
 		require.NoError(t, err)
@@ -815,7 +814,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		newVotingPower,
 	)
 
-	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 10)
 	previousTotalVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states, updateValidatorTx)
@@ -868,8 +867,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	rts := setup(ctx, t, nPeers, states, 512) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
+		reactor.SwitchToConsensus(ctx, reactor.state.state, false)
 	}
 
 	// map of active validators
