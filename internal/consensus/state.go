@@ -20,6 +20,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/jsontypes"
+	"github.com/tendermint/tendermint/internal/libs/autofile"
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
@@ -877,6 +878,18 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			onExit(cs)
 
 			// Re-panic to ensure the node terminates.
+			//
+			// TODO(creachadair): In ordinary operation, the WAL autofile should
+			// never be closed. This only happens during shutdown and production
+			// nodes usually halt by panicking. Many existing tests, however,
+			// assume a clean shutdown is possible. Prior to #8111, we were
+			// swallowing the panic in receiveRoutine, making that appear to
+			// work. Filtering this specific error is slightly risky, but should
+			// affect only unit tests. In any case, not re-panicking here only
+			// preserves the pre-existing behaviour for this one error type.
+			if err, ok := r.(error); ok && errors.Is(err, autofile.ErrAutoFileClosed) {
+				return
+			}
 			panic(r)
 		}
 	}()
@@ -906,8 +919,8 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		case mi := <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
-				panic(fmt.Sprintf(
-					"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
+				panic(fmt.Errorf(
+					"failed to write %v msg to consensus WAL due to %w; check your file system and restart the node",
 					mi, err,
 				))
 			}
@@ -1900,8 +1913,8 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 	// restart).
 	endMsg := EndHeightMessage{height}
 	if err := cs.wal.WriteSync(endMsg); err != nil { // NOTE: fsync
-		panic(fmt.Sprintf(
-			"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
+		panic(fmt.Errorf(
+			"failed to write %v msg to consensus WAL due to %w; check your file system and restart the node",
 			endMsg, err,
 		))
 	}
