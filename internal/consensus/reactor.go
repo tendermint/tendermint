@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -1395,6 +1396,10 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context) {
 		envelope := iter.Envelope()
 
 		if err := r.handleMessage(ctx, r.voteSetBitsCh.ID, envelope); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
 			r.logger.Error("failed to process message", "ch_id", r.voteSetBitsCh.ID, "envelope", envelope, "err", err)
 			if serr := r.voteSetBitsCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
