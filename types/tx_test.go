@@ -44,7 +44,7 @@ func TestTxIndexByHash(t *testing.T) {
 	}
 }
 
-func TestValidateResponsePrepareProposal(t *testing.T) {
+func TestValidateTxRecordSet(t *testing.T) {
 	t.Run("should error on total transaction size exceeding max data size", func(t *testing.T) {
 		trs := []*abci.TxRecord{
 			{
