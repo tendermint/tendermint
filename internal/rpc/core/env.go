@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/cors"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/blocksync"
@@ -19,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/internal/eventlog"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/proxy"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -57,12 +57,6 @@ type consensusState interface {
 	GetRoundStateSimpleJSON() ([]byte, error)
 }
 
-type transport interface {
-	Listeners() []string
-	IsListening() bool
-	NodeInfo() types.NodeInfo
-}
-
 type peerManager interface {
 	Peers() []types.NodeID
 	Addresses(types.NodeID) []p2p.NodeAddress
@@ -73,8 +67,7 @@ type peerManager interface {
 // to be setup once during startup.
 type Environment struct {
 	// external, thread safe interfaces
-	ProxyAppQuery   proxy.AppConnQuery
-	ProxyAppMempool proxy.AppConnMempool
+	ProxyApp abciclient.Client
 
 	// interfaces defined in types and above
 	StateStore       sm.Store
@@ -84,8 +77,9 @@ type Environment struct {
 	ConsensusReactor *consensus.Reactor
 	BlockSyncReactor *blocksync.Reactor
 
-	// Legacy p2p stack
-	P2PTransport transport
+	IsListening bool
+	Listeners   []string
+	NodeInfo    types.NodeInfo
 
 	// interfaces for new p2p interfaces
 	PeerManager peerManager
@@ -224,6 +218,10 @@ func (env *Environment) latestUncommittedHeight() int64 {
 func (env *Environment) StartService(ctx context.Context, conf *config.Config) ([]net.Listener, error) {
 	if err := env.InitGenesisChunks(); err != nil {
 		return nil, err
+	}
+
+	env.Listeners = []string{
+		fmt.Sprintf("Listener(@%v)", conf.P2P.ExternalAddress),
 	}
 
 	listenAddrs := strings.SplitAndTrimEmpty(conf.RPC.ListenAddress, ",", " ")

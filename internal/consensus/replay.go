@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -204,7 +205,7 @@ type Handshaker struct {
 	stateStore   sm.Store
 	initialState sm.State
 	store        sm.BlockStore
-	eventBus     types.BlockEventPublisher
+	eventBus     *eventbus.EventBus
 	genDoc       *types.GenesisDoc
 	logger       log.Logger
 
@@ -216,7 +217,7 @@ func NewHandshaker(
 	stateStore sm.Store,
 	state sm.State,
 	store sm.BlockStore,
-	eventBus types.BlockEventPublisher,
+	eventBus *eventbus.EventBus,
 	genDoc *types.GenesisDoc,
 ) *Handshaker {
 
@@ -237,10 +238,10 @@ func (h *Handshaker) NBlocks() int {
 }
 
 // TODO: retry the handshake/replay if it fails ?
-func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) error {
+func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().Info(ctx, proxy.RequestInfo)
+	res, err := appClient.Info(ctx, proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("error calling Info: %w", err)
 	}
@@ -264,7 +265,7 @@ func (h *Handshaker) Handshake(ctx context.Context, proxyApp proxy.AppConns) err
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, blockHeight, proxyApp)
+	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, blockHeight, appClient)
 	if err != nil {
 		return fmt.Errorf("error on replay: %w", err)
 	}
@@ -285,7 +286,7 @@ func (h *Handshaker) ReplayBlocks(
 	state sm.State,
 	appHash []byte,
 	appBlockHeight int64,
-	proxyApp proxy.AppConns,
+	appClient abciclient.Client,
 ) ([]byte, error) {
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
@@ -316,7 +317,7 @@ func (h *Handshaker) ReplayBlocks(
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
-		res, err := proxyApp.Consensus().InitChain(ctx, req)
+		res, err := appClient.InitChain(ctx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -390,7 +391,7 @@ func (h *Handshaker) ReplayBlocks(
 		// Either the app is asking for replay, or we're all synced up.
 		if appBlockHeight < storeBlockHeight {
 			// the app is behind, so replay blocks, but no need to go through WAL (state is already synced to store)
-			return h.replayBlocks(ctx, state, proxyApp, appBlockHeight, storeBlockHeight, false)
+			return h.replayBlocks(ctx, state, appClient, appBlockHeight, storeBlockHeight, false)
 
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
@@ -405,7 +406,7 @@ func (h *Handshaker) ReplayBlocks(
 		case appBlockHeight < stateBlockHeight:
 			// the app is further behind than it should be, so replay blocks
 			// but leave the last block to go through the WAL
-			return h.replayBlocks(ctx, state, proxyApp, appBlockHeight, storeBlockHeight, true)
+			return h.replayBlocks(ctx, state, appClient, appBlockHeight, storeBlockHeight, true)
 
 		case appBlockHeight == stateBlockHeight:
 			// We haven't run Commit (both the state and app are one block behind),
@@ -413,7 +414,7 @@ func (h *Handshaker) ReplayBlocks(
 			// NOTE: We could instead use the cs.WAL on cs.Start,
 			// but we'd have to allow the WAL to replay a block that wrote it's #ENDHEIGHT
 			h.logger.Info("Replay last block using real app")
-			state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp.Consensus())
+			state, err = h.replayBlock(ctx, state, storeBlockHeight, appClient)
 			return state.AppHash, err
 
 		case appBlockHeight == storeBlockHeight:
@@ -424,6 +425,9 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			mockApp, err := newMockProxyApp(ctx, h.logger, appHash, abciResponses)
 			if err != nil {
+				return nil, err
+			}
+			if err := mockApp.Start(ctx); err != nil {
 				return nil, err
 			}
 
@@ -445,7 +449,7 @@ func (h *Handshaker) ReplayBlocks(
 func (h *Handshaker) replayBlocks(
 	ctx context.Context,
 	state sm.State,
-	proxyApp proxy.AppConns,
+	appClient abciclient.Client,
 	appBlockHeight,
 	storeBlockHeight int64,
 	mutateState bool) ([]byte, error) {
@@ -480,17 +484,15 @@ func (h *Handshaker) replayBlocks(
 		if i == finalBlock && !mutateState {
 			// We emit events for the index services at the final block due to the sync issue when
 			// the node shutdown during the block committing status.
-			blockExec := sm.NewBlockExecutor(
-				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
-			blockExec.SetEventBus(h.eventBus)
+			blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus)
 			appHash, err = sm.ExecCommitBlock(ctx,
-				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
+				blockExec, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			appHash, err = sm.ExecCommitBlock(ctx,
-				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
+				nil, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}
@@ -501,7 +503,7 @@ func (h *Handshaker) replayBlocks(
 
 	if mutateState {
 		// sync the final block
-		state, err = h.replayBlock(ctx, state, storeBlockHeight, proxyApp.Consensus())
+		state, err = h.replayBlock(ctx, state, storeBlockHeight, appClient)
 		if err != nil {
 			return nil, err
 		}
@@ -517,15 +519,14 @@ func (h *Handshaker) replayBlock(
 	ctx context.Context,
 	state sm.State,
 	height int64,
-	proxyApp proxy.AppConnConsensus,
+	appClient abciclient.Client,
 ) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
-	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, emptyMempool{}, sm.EmptyEvidencePool{}, h.store)
-	blockExec.SetEventBus(h.eventBus)
+	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus)
 
 	var err error
 	state, err = blockExec.ApplyBlock(ctx, state, meta.BlockID, block)

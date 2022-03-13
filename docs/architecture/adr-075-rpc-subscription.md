@@ -2,6 +2,7 @@
 
 ## Changelog
 
+- 01-Mar-2022: Update long-polling interface (@creachadair).
 - 10-Feb-2022: Updates to reflect implementation.
 - 26-Jan-2022: Marked accepted.
 - 22-Jan-2022: Updated and expanded (@creachadair).
@@ -347,8 +348,8 @@ limit.
 
 The `wait_time` parameter is used to effect polling. If `before` is empty and
 no items are available, the server will wait for up to `wait_time` for matching
-items to arrive at the head of the log. If `wait_time` is zero, the server will
-return whatever eligible items are available immediately.
+items to arrive at the head of the log. If `wait_time` is zero or negative, the
+server will wait for a default (positive) interval.
 
 If `before` non-empty, `wait_time` is ignored: new results are only added to
 the head of the log, so there is no need to wait.  This allows the client to

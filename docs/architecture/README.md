@@ -87,12 +87,15 @@ Note the context/background should be written in the present tense.
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 - [ADR-081: Protocol Buffers Management](./adr-081-protobuf-mgmt.md)
 
+### Deprecated
+
+None
+
 ### Rejected
 
 - [ADR-023: ABCI-Propose-tx](./adr-023-ABCI-propose-tx.md)
 - [ADR-029: Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
 - [ADR-058: Event-Hashing](./adr-058-event-hashing.md)
-
 
 ### Proposed
 

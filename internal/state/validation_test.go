@@ -10,10 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	memmock "github.com/tendermint/tendermint/internal/mempool/mock"
+	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
@@ -30,20 +33,24 @@ const validationTestsStopHeight int64 = 10
 func TestValidateBlockHeader(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	proxyApp := newTestApp()
+	logger := log.TestingLogger()
+	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
+
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
 
 	state, stateDB, privVals := makeState(t, 3, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
-		proxyApp.Consensus(),
+		logger,
+		proxyApp,
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -119,19 +126,24 @@ func TestValidateBlockCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	proxyApp := newTestApp()
+	logger := log.TestingLogger()
+	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
+
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
 
 	state, stateDB, privVals := makeState(t, 1, 1)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
-		proxyApp.Consensus(),
+		logger,
+		proxyApp,
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -245,7 +257,8 @@ func TestValidateBlockEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	proxyApp := newTestApp()
+	logger := log.TestingLogger()
+	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
 	state, stateDB, privVals := makeState(t, 4, 1)
@@ -259,14 +272,18 @@ func TestValidateBlockEvidence(t *testing.T) {
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
 		[]abci.Evidence{})
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	state.ConsensusParams.Evidence.MaxBytes = 1000
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		proxyApp.Consensus(),
+		proxyApp,
 		memmock.Mempool{},
 		evpool,
 		blockStore,
+		eventBus,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
