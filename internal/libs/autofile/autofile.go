@@ -41,9 +41,9 @@ const (
 	autoFilePerms       = os.FileMode(0600)
 )
 
-// errAutoFileClosed is reported when operations attempt to use an autofile
+// ErrAutoFileClosed is reported when operations attempt to use an autofile
 // after it has been closed.
-var errAutoFileClosed = errors.New("autofile is closed")
+var ErrAutoFileClosed = errors.New("autofile is closed")
 
 // AutoFile automatically closes and re-opens file for writing. The file is
 // automatically setup to close itself every 1s and upon receiving SIGHUP.
@@ -155,7 +155,7 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
 	if af.closed {
-		return 0, fmt.Errorf("write: %w", errAutoFileClosed)
+		return 0, fmt.Errorf("write: %w", ErrAutoFileClosed)
 	}
 
 	if af.file == nil {
@@ -174,7 +174,7 @@ func (af *AutoFile) Write(b []byte) (n int, err error) {
 func (af *AutoFile) Sync() error {
 	return af.withLock(func() error {
 		if af.closed {
-			return fmt.Errorf("sync: %w", errAutoFileClosed)
+			return fmt.Errorf("sync: %w", ErrAutoFileClosed)
 		} else if af.file == nil {
 			return nil // nothing to sync
 		}
@@ -207,7 +207,7 @@ func (af *AutoFile) Size() (int64, error) {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
 	if af.closed {
-		return 0, fmt.Errorf("size: %w", errAutoFileClosed)
+		return 0, fmt.Errorf("size: %w", ErrAutoFileClosed)
 	}
 
 	if af.file == nil {

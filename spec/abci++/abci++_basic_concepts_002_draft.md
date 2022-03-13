@@ -214,7 +214,7 @@ transactions and compute the same results.
 
 Some Applications may choose to execute the blocks that are about to be proposed
 (via `PrepareProposal`), or those that the Application is asked to validate
-(via `Processproposal`). However, the state changes caused by processing those
+(via `ProcessProposal`). However, the state changes caused by processing those
 proposed blocks must never replace the previous state until `FinalizeBlock` confirms
 the block decided.
 

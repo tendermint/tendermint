@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"sync"
 	"testing"
 	"time"
@@ -486,7 +485,6 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		defer os.RemoveAll(thisConfig.RootDir)
 
-		ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := kvstore.NewApplication()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -598,7 +596,6 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 			c.Consensus.CreateEmptyBlocks = false
 		},
 	)
-
 	t.Cleanup(cleanup)
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
