@@ -8,6 +8,8 @@
 
 Accepted
 
+[Tracking issue](https://github.com/tendermint/tendermint/issues/8121)
+
 ## Context
 
 At present, we manage the [Protocol Buffers] schema files ("protos") that define
@@ -97,7 +99,8 @@ members. Maintainability is a core concern here.
 One of the primary considerations regarding the usage of Buf is whether, for
 example, access to its registry will eventually become a
 paid-for/subscription-based service and whether this is valuable enough for us
-and the ecosystem to pay for such a service.
+and the ecosystem to pay for such a service. At this time, it appears as though
+Buf will never charge for hosting open source projects' protos.
 
 Another consideration was Buf's sustainability as a project - what happens when
 their resources run out? Will there be a strong and broad enough open source
@@ -127,15 +130,11 @@ the team and for anyone who wants to be able to contribute to Tendermint.
 
 ## Decision
 
-We will adopt a hybrid approach for now that involves generating Go code using
-`protoc` locally (i.e. developers must manually generate Go code and commit them
-in their pull request submissions), but Buf for linting, breakage checking and
-its registry (mainly in CI, with optional usage locally).
-
-Failing CI when checking for breaking changes in `.proto` files will only happen
-when performing minor/patch releases.
-
-Local tooling will be favored over Docker-based tooling.
+1. We will adopt Buf for now for proto generation, linting, breakage checking
+   and its registry (mainly in CI, with optional usage locally).
+2. Failing CI when checking for breaking changes in `.proto` files will only
+   happen when performing minor/patch releases.
+3. Local tooling will be favored over Docker-based tooling.
 
 ## Detailed Design
 
@@ -166,16 +165,15 @@ We currently aim to:
 ### Positive
 
 - We will still offer Go stub generation, proto linting and breakage checking.
-- Breakage checking will only happen on minor/patch releases to increase
+- Breakage checking will only happen on minor/patch releases to increase the
   signal-to-noise ratio in CI.
 - Versioned protos will be made available via Buf's registry upon every release.
 
 ### Negative
 
-- No single, simple tool to manage Protocol Buffers-related files.
-- Tendermint developers/contributors will need to install the relevant Protocol
-  Buffers-related tooling (Buf, protoc, gogoprotobuf, clang-format) locally in
-  order to build, lint, format and check `.proto` files for breaking changes.
+- Developers/contributors will need to install the relevant Protocol
+  Buffers-related tooling (Buf, gogoprotobuf, clang-format) locally in order to
+  build, lint, format and check `.proto` files for breaking changes.
 
 ### Neutral
 
