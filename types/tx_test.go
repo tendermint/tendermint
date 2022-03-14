@@ -132,11 +132,19 @@ func TestValidateTxRecordSet(t *testing.T) {
 		trs := []*abci.TxRecord{
 			{
 				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{5, 4, 3, 2, 1}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{6}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
 				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
 			},
 		}
 		txrSet := NewTxRecordSet(trs)
-		err := txrSet.Validate(100, []Tx{{1, 2, 3, 4, 5}})
+		err := txrSet.Validate(100, []Tx{{0}, {1, 2, 3, 4, 5}})
 		require.Error(t, err)
 	})
 	t.Run("should error if any transaction marked as UNKNOWN", func(t *testing.T) {
