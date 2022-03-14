@@ -1293,8 +1293,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		if err != nil {
 			cs.logger.Error("unable to create proposal block", "error", err)
 			return
-		}
-		if block == nil {
+		} else if block == nil {
 			return
 		}
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
@@ -1351,10 +1350,6 @@ func (cs *State) isProposalComplete() bool {
 
 }
 
-// TODO: createProposalBlock should not naked return
-// It has two cases that appear to be error cases, but nothing is returned during
-// these cases.
-
 // Create the next block to propose and return it. Returns nil block upon error.
 //
 // We really only need to return the parts, but the block is returned for
@@ -1362,7 +1357,7 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, err error) {
+func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) {
 	if cs.privValidator == nil {
 		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
@@ -1380,14 +1375,14 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, e
 
 	default: // This shouldn't happen.
 		cs.logger.Error("propose step; cannot propose anything without commit for the previous block")
-		return
+		return nil, nil
 	}
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
 		cs.logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
-		return
+		return nil, nil
 	}
 
 	proposerAddr := cs.privValidatorPubKey.Address()
