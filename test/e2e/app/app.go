@@ -300,10 +300,8 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	// None of the transactions are modified by the application, return a ResponsePrepareProposal
-	// with ModifiedTx set to false. false is the zero-value in go, so an empty ResponsePrepareProposal
-	// will set the field appropriately.
-	return abci.ResponsePrepareProposal{}
+	// None of the transactions are modified by this application.
+	return abci.ResponsePrepareProposal{ModifiedTx: false}
 }
 
 // ProcessProposal implements part of the Application interface.

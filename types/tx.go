@@ -123,9 +123,13 @@ type TxRecordSet struct {
 	unknown    Txs
 }
 
+// NewTxRecordSet constructs a new set from the given transaction records.
+// The contents of the input transactions are shared by the set, and must not
+// be modified during the lifetime of the set.
 func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
-	txrSet := TxRecordSet{}
-	txrSet.all = make([]Tx, len(trs))
+	txrSet := TxRecordSet{
+		all: make([]Tx, len(trs)),
+	}
 	for i, tr := range trs {
 
 		txrSet.all[i] = Tx(tr.Tx)
@@ -169,7 +173,7 @@ func (t TxRecordSet) RemovedTxs() []Tx {
 // list of transactions.
 func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	if len(t.unknown) > 0 {
-		return fmt.Errorf("transaction incorrectly marked as unknown, transaction hash: %x", t.unknown[0].Hash())
+		return fmt.Errorf("%d transactions marked unknown (first unknown hash: %x)", len(t.unknown), t.unknown[0].Hash())
 	}
 
 	// The following validation logic performs a set of sorts on the data in the TxRecordSet indexes.
@@ -183,23 +187,23 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	// Asymptotically, this yields a total runtime of O(N*log(N) + N + 2*M*log(M) + 2*M),
 	// in the input size of the original list and the input size of the new list respectively.
 
-	// make a copy of the all index so that the original order of the all index
-	// can be preserved.
-	// does not copy the underlying data.
+	// Sort a copy of the complete transaction slice so we can check for
+	// duplication. The copy is so we do not change the original ordering.
+	// Only the slices are copied, the transaction contents are shared.
 	allCopy := make([]Tx, len(t.all))
 	copy(allCopy, t.all)
 	sort.Sort(Txs(allCopy))
 
 	var size int64
-	for i := 0; i < len(allCopy); i++ {
-		size += int64(len(allCopy[i]))
+	for i, cur := range allCopy {
+		size += int64(len(cur))
 		if size > maxSizeBytes {
 			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
 		}
 
 		// allCopy is sorted, so any duplicated data will be adjacent.
-		if i < len(allCopy)-1 && bytes.Equal(allCopy[i], allCopy[i+1]) {
-			return fmt.Errorf("TxRecords contains duplicate transaction, transaction hash: %x", allCopy[i].Hash())
+		if i+1 < len(allCopy) && bytes.Equal(cur, allCopy[i+1]) {
+			return fmt.Errorf("found duplicate transaction with hash: %x", cur.Hash())
 		}
 	}
 
