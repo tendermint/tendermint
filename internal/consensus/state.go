@@ -1299,6 +1299,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		}
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
 		if err != nil {
+			cs.logger.Error("unable to create proposal block part set", "error", err)
 			return
 		}
 	}
