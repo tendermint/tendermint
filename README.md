@@ -127,6 +127,7 @@ We keep a public up-to-date version of our roadmap [here](./docs/roadmap/roadmap
 - [Terra](https://www.terra.money/)
 - [Celestia](https://celestia.org/)
 - [Anoma](https://anoma.network/)
+- [Vocdoni](https://docs.vocdoni.io/)
 
 ### Research
 
