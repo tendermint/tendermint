@@ -24,8 +24,8 @@ discussed in [\#7975] and in weekly calls as to whether we should upgrade to
 managing the Cosmos SDK was primarily interested in having our protos versioned
 and easily accessible from the [Buf] registry.
 
-The three main customers for the `.proto` files and their needs, as currently
-understood, are as follows.
+The three main sets of stakeholders for the `.proto` files and their needs, as
+currently understood, are as follows.
 
 1. Tendermint needs Go code generated from `.proto` files.
 2. Consumers of Tendermint's `.proto` files, specifically projects that want to
