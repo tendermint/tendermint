@@ -30,8 +30,10 @@ import (
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created.
-// If the node fails to produce given numBlocks, it returns an error.
-func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr io.Writer, numBlocks int) (err error) {
+// If the node fails to produce given numBlocks, it fails the test.
+func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr io.Writer, numBlocks int) {
+	t.Helper()
+
 	cfg := getConfig(t)
 
 	app := kvstore.NewPersistentKVStoreApplication(logger, filepath.Join(cfg.DBDir(), "wal_generator"))
@@ -46,41 +48,46 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 	privValidatorStateFile := cfg.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	if err != nil {
-		return err
+		t.Fatal(err)
 	}
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
-		return fmt.Errorf("failed to read genesis file: %w", err)
+		t.Fatal(fmt.Errorf("failed to read genesis file: %w", err))
 	}
 	blockStoreDB := dbm.NewMemDB()
 	stateDB := blockStoreDB
 	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
-		return fmt.Errorf("failed to make genesis state: %w", err)
+		t.Fatal(fmt.Errorf("failed to make genesis state: %w", err))
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
 	if err = stateStore.Save(state); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	blockStore := store.NewBlockStore(blockStoreDB)
-
-	proxyApp := proxy.NewAppConns(abciclient.NewLocalCreator(app), logger.With("module", "proxy"), proxy.NopMetrics())
+	proxyLogger := logger.With("module", "proxy")
+	proxyApp := proxy.New(abciclient.NewLocalClient(logger, app), proxyLogger, proxy.NopMetrics())
 	if err := proxyApp.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start proxy app connections: %w", err)
+		t.Fatal(fmt.Errorf("failed to start proxy app connections: %w", err))
 	}
+	t.Cleanup(proxyApp.Wait)
 
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	if err := eventBus.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start event bus: %w", err)
+		t.Fatal(fmt.Errorf("failed to start event bus: %w", err))
 	}
+	t.Cleanup(func() { eventBus.Stop(); eventBus.Wait() })
 
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
-	consensusState := NewState(ctx, logger, cfg.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
-	consensusState.SetEventBus(eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp, mempool, evpool, blockStore, eventBus)
+	consensusState, err := NewState(ctx, logger, cfg.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
 		consensusState.SetPrivValidator(ctx, privValidator)
 	}
@@ -91,22 +98,24 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 	wal := newByteBufferWAL(logger, NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
 	// see wal.go#103
 	if err := wal.Write(EndHeightMessage{0}); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	consensusState.wal = wal
 
 	if err := consensusState.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start consensus state: %w", err)
+		t.Fatal(fmt.Errorf("failed to start consensus state: %w", err))
 	}
+	t.Cleanup(consensusState.Wait)
+
+	defer consensusState.Stop()
+	timer := time.NewTimer(time.Minute)
+	defer timer.Stop()
 
 	select {
 	case <-numBlocksWritten:
-		consensusState.Stop()
-		return nil
-	case <-time.After(1 * time.Minute):
-		consensusState.Stop()
-		return fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
+	case <-timer.C:
+		t.Fatal(fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks))
 	}
 }
 
@@ -115,9 +124,7 @@ func WALWithNBlocks(ctx context.Context, t *testing.T, logger log.Logger, numBlo
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 
-	if err := WALGenerateNBlocks(ctx, t, logger, wr, numBlocks); err != nil {
-		return []byte{}, err
-	}
+	WALGenerateNBlocks(ctx, t, logger, wr, numBlocks)
 
 	wr.Flush()
 	return b.Bytes(), nil

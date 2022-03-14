@@ -290,14 +290,9 @@ title: Methods
     | hash                    | bytes                                       | The block header's hash of the block to propose. Present for convenience (can be derived from the block header). | 1            |
     | header                  | [Header](../core/data_structures.md#header) | The header of the block to propose.                                                                              | 2            |
     | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 3            |
-    | last_commit_info        | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, the validator list, and which ones signed the last block.       | 4            |
+    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 4            |
     | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 5            |
     | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 6            |
-
->**TODO**: Add the changes needed in LastCommitInfo for vote extensions
-
->**TODO**: DISCUSS: We need to make clear whether a proposer is also running the logic of a non-proposer node (in particular "ProcessProposal")
-From the App's perspective, they'll probably skip ProcessProposal
 
 * **Response**:
 
@@ -312,17 +307,20 @@ From the App's perspective, they'll probably skip ProcessProposal
     | app_signed_updates      | repeated bytes                                   | Optional changes to the *app_signed* part of vote extensions.                               | 7            |
 
 * **Usage**:
-    * Contains a preliminary block to be proposed, called _raw block_, which the Application can modify.
     * The first five parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
       and `RequestFinalizeBlock`.
     * The header contains the height, timestamp, and more - it exactly matches the
       Tendermint block header.
-    * The Application can modify the transactions received in `RequestPrepareProposal` before sending
-      them in `ResponsePrepareProposal`. In that case, `ResponsePrepareProposal.modified_tx` is set to true.
-    * If `ResponsePrepareProposal.modified_tx` is false, then Tendermint will ignore the contents of
-      `ResponsePrepareProposal.tx_records`.
-    * If the Application modifies the transactions, the modified transactions MUST NOT exceed the configured maximum size,
-      contained in `RequestPrepareProposal.max_tx_bytes`.
+    * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
+        * In this case, the Application should set `ResponsePrepareProposal.modified_tx` to true.
+        * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
+            * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
+            * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as "REMOVE". In this case, Tendermint will remove `tx` from the mempool.
+            * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as "ADD". In this case, Tendermint will add it to the mempool.
+        * The Application should be aware that removing and adding transactions may compromise _traceability_.
+          > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
+        * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
+    * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
     * If the Application modifies the *app_signed* part of vote extensions via `ResponsePrepareProposal.app_signed_updates`,
       the new total size of those extensions cannot exceed their initial size.
     * The Application may choose to not modify the *app_signed* part of vote extensions by leaving parameter
@@ -337,7 +335,7 @@ From the App's perspective, they'll probably skip ProcessProposal
           for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
             * `H`: `NextValidatorsHash` includes the new `validator_updates` value.
             * `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
-            * `H+2`: `last_commit_info` is changed to include the altered validator set.
+            * `H+2`: `local_last_commit` now includes the altered validator set.
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
           params for block `H+1` even if the change is agreed in block `H`.
           For more information on the consensus parameters,
@@ -352,21 +350,9 @@ From the App's perspective, they'll probably skip ProcessProposal
       `ResponseFinalizeBlock`.
     * Likewise, in next-block execution mode, the Application must keep all responses to executing transactions
       until it can call `ResponseFinalizeBlock`.
-    * The Application can change the transaction list via `ResponsePrepareProposal.tx_records`.
-      See [TxRecord](#txrecord) for further information on how to use it. Some notes:
-        * To remove a transaction from the proposed block the Application _marks_ the transaction as
-          "REMOVE". It does not remove it from the list. The transaction will also be removed from the mempool.
-        * Removing a transaction from the list means it is too early to propose that transaction,
-          so it will be excluded from the proposal but will stay in the mempool for later proposals.
-          The Application should be extra-careful, as abusing this feature may cause transactions to
-          stay forever in the mempool.
-        * The `new_hashes` field, besides helping with mempool maintenance, helps Tendermint handle
-          queries such as "what happened with this Tx?", by answering "it was modified into these ones".
-        * The Application _can_ reorder the transactions in the list.
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
         * There is a duplicate transaction in the list.
-        * The `new_hashes` field contains a dangling reference to a non-existing transaction.
         * A new or modified transaction is marked as "TXUNMODIFIED" or "TXREMOVED".
         * An unmodified transaction is marked as "TXADDED".
         * A transaction is marked as "TXUNKNOWN".
@@ -403,7 +389,7 @@ and _p_'s _validValue_ is `nil`:
         * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
-        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`
+        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`. As explained above, this compromises client traceability, unless it is implemented at the Application level.
         * reorder transactions - the Application reorders transactions in the list
 4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
    and includes the modified block in the return parameters (see the rules in section _Usage_).
@@ -423,7 +409,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     | hash                 | bytes                                       | The block header's hash of the proposed block. Present for convenience (can be derived from the block header). | 1            |
     | header               | [Header](../core/data_structures.md#header) | The proposed block's header.                                                                                   | 2            |
     | txs                  | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                      | 3            |
-    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round , the validator list, and which ones signed the last block.    | 4            |
+    | proposed_last_commit | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the information in the proposed block.                               | 4            |
     | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                         | 5            |
 
 * **Response**:
@@ -504,18 +490,17 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 
 * **Response**:
 
-    | Name              | Type  | Description                                                         | Field Number |
-    |-------------------|-------|---------------------------------------------------------------------|--------------|
-    | app_signed        | bytes | Optional information signed by the Application (not by Tendermint). | 1            |
-    | tendermint_signed | bytes | Optional information signed by Tendermint.                          | 2            |
+    | Name              | Type  | Description                                   | Field Number |
+    |-------------------|-------|-----------------------------------------------|--------------|
+    | vote_extension    | bytes | Optional information signed by by Tendermint. | 1            |
 
 * **Usage**:
-    * Both `ResponseExtendVote.app_signed` and `ResponseExtendVote.tendermint_signed` are optional information that will
-      be attached to the Precommit message.
+    * `ResponseExtendVote.vote_extension` is optional information that, if present, will be signed by Tendermint and
+      attached to the Precommit message.
     * `RequestExtendVote.hash` corresponds to the hash of a proposed block that was made available to the application
       in a previous call to `ProcessProposal` or `PrepareProposal` for the current height.
-    * `ResponseExtendVote.app_signed` and `ResponseExtendVote.tendermint_signed` will always be attached to a non-`nil`
-      Precommit message. If Tendermint is to precommit `nil`, it will not call `RequestExtendVote`.
+    * `ResponseExtendVote.vote_extension` will only be attached to a non-`nil` Precommit message. If Tendermint is to
+      precommit `nil`, it will not call `RequestExtendVote`.
     * The Application logic that creates the extension can be non-deterministic.
 
 #### When does Tendermint call it?
@@ -529,11 +514,18 @@ then _p_'s Tendermint locks _v_  and sends a Precommit message in the following 
 
 1. _p_'s Tendermint sets _lockedValue_ and _validValue_ to _v_, and sets _lockedRound_ and _validRound_ to _r_
 2. _p_'s Tendermint calls `RequestExtendVote` with _id(v)_ (`RequestExtendVote.hash`). The call is synchronous.
-3. The Application returns an array of bytes, `ResponseExtendVote.extension`, which is not interpreted by Tendermint.
-4. _p_'s Tendermint includes `ResponseExtendVote.extension` as a new field in the Precommit message.
-5. _p_'s Tendermint signs and broadcasts the Precommit message.
+3. The Application optionally returns an array of bytes, `ResponseExtendVote.extension`, which is not interpreted by Tendermint.
+4. _p_'s Tendermint includes `ResponseExtendVote.extension` in a field of type [CanonicalVoteExtension](#canonicalvoteextension),
+   it then populates the other fields in [CanonicalVoteExtension](#canonicalvoteextension), and signs the populated
+   data structure.
+5. _p_'s Tendermint constructs and signs the [CanonicalVote](../core/data_structures.md#canonicalvote) structure.
+6. _p_'s Tendermint constructs the Precommit message (i.e. [Vote](../core/data_structures.md#vote) structure)
+   using [CanonicalVoteExtension](#canonicalvoteextension) and [CanonicalVote](../core/data_structures.md#canonicalvote).
+7. _p_'s Tendermint broadcasts the Precommit message.
 
-In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (either _2f+1_ `prevote nil` messages received, or _timeoutPrevote_ triggered), _p_'s Tendermint does **not** call `RequestExtendVote` and will include an empty byte array as vote extension in the `precommit nil` message.
+In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (either _2f+1_ `prevote nil` messages received,
+or _timeoutPrevote_ triggered), _p_'s Tendermint does **not** call `RequestExtendVote` and will not include
+a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil` message.
 
 ### VerifyVoteExtension
 
@@ -543,11 +535,10 @@ In the cases when _p_'s Tendermint is to broadcast `precommit nil` messages (eit
 
     | Name              | Type  | Description                                                                              | Field Number |
     |-------------------|-------|------------------------------------------------------------------------------------------|--------------|
-    | app_signed        | bytes | Optional information signed by the Application (not by Tendermint).                      | 1            |
-    | tendermint_signed | bytes | Optional information signed by Tendermint.                                               | 2            |
-    | hash              | bytes | The header hash of the propsed block that the vote extension refers to.                  | 3            |
-    | validator_address | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension | 4            |
-    | height            | int64 | Height of the block  (for sanity check).                                                 | 5            |
+    | hash              | bytes | The header hash of the propsed block that the vote extension refers to.                  | 1            |
+    | validator_address | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension | 2            |
+    | height            | int64 | Height of the block  (for sanity check).                                                 | 3            |
+    | vote_extension    | bytes | Optional information signed by Tendermint.                                               | 4            |
 
 * **Response**:
 
@@ -575,11 +566,8 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 2. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.accept`.
 3. If the Application returns
    * _accept_, _p_'s Tendermint will keep the received vote, together with its corresponding
-     vote extension in its internal data structures. It will be used to:
-       * calculate field _LastCommitHash_ in the header of the block proposed for height _h + 1_
-         (in the rounds where _p_ will be proposer).
-       * populate _LastCommitInfo_ in calls to `RequestPrepareProposal`, `RequestProcessProposal`,
-         and `RequestFinalizeBlock` in height _h + 1_.
+     vote extension in its internal data structures. It will be used to populate the [ExtendedCommitInfo](#extendedcommitinfo)
+     structure in calls to `RequestPrepareProposal`, in rounds of height _h + 1_ where _p_ is the proposer.
    * _reject_, _p_'s Tendermint will deem the Precommit message invalid and discard it.
 
 ### FinalizeBlock
@@ -588,19 +576,19 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 * **Request**:
 
-    | Name                 | Type                                        | Description                                                                                                       | Field Number |
-    |----------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header).                          | 1            |
-    | header               | [Header](../core/data_structures.md#header) | The block header.                                                                                                 | 2            |
-    | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                                              | 3            |
-    | last_commit_info     | [LastCommitInfo](#lastcommitinfo)           | Info about the last commit, including the round, and the list of validators and which ones signed the last block. | 4            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                            | 5            |
+    | Name                 | Type                                        | Description                                                                              | Field Number |
+    |----------------------|---------------------------------------------|------------------------------------------------------------------------------------------|--------------|
+    | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 1            |
+    | header               | [Header](../core/data_structures.md#header) | The block header.                                                                        | 2            |
+    | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 3            |
+    | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 4            |
+    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                   | 5            |
 
 * **Response**:
 
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
-    | block_events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
     | tx_results              | repeated [ExecTxResult](#txresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
@@ -612,7 +600,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
       `EndBlock`, `Commit` in the previous version of ABCI.
     * The header exactly matches the Tendermint header of the proposed block.
-    * The Application can use `RequestFinalizeBlock.last_commit_info` and `RequestFinalizeBlock.byzantine_validators`
+    * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.byzantine_validators`
       to determine rewards and punishments for the validators.
     * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.txs`,
       before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
@@ -628,7 +616,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
           for blocks `H+1`, `H+2`, and `H+3`. Heights following a validator update are affected in the following way:
               - Height `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
               - Height `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
-              - Height `H+3`: `last_commit_info` is changed to include the altered validator set.
+              - Height `H+3`: `decided_last_commit` now includes the altered validator set.
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
           params for block `H+1`. For more information on the consensus parameters,
           see the [application spec entry on consensus parameters](../abci/apps.md#consensus-parameters).
@@ -737,25 +725,16 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | DUPLICATE_VOTE      | 1            |
     | LIGHT_CLIENT_ATTACK | 2            |
 
-### LastCommitInfo
-
-* **Fields**:
-
-    | Name  | Type                           | Description                                                                                                           | Field Number |
-    |-------|--------------------------------|-----------------------------------------------------------------------------------------------------------------------|--------------|
-    | round | int32                          | Commit round. Reflects the total amount of rounds it took to come to consensus for the current block.                 | 1            |
-    | votes | repeated [VoteInfo](#voteinfo) | List of validators addresses in the last validator set with their voting power and whether or not they signed a vote. | 2            |
-
 ### ConsensusParams
 
 * **Fields**:
 
     | Name      | Type                                                          | Description                                                                  | Field Number |
     |-----------|---------------------------------------------------------------|------------------------------------------------------------------------------|--------------|
-    | block     | [BlockParams](../core/data_structures.md#blockparams)                                   | Parameters limiting the size of a block and time between consecutive blocks. | 1            |
+    | block     | [BlockParams](../core/data_structures.md#blockparams)         | Parameters limiting the size of a block and time between consecutive blocks. | 1            |
     | evidence  | [EvidenceParams](../core/data_structures.md#evidenceparams)   | Parameters limiting the validity of evidence of byzantine behaviour.         | 2            |
     | validator | [ValidatorParams](../core/data_structures.md#validatorparams) | Parameters limiting the types of public keys validators can use.             | 3            |
-    | version   | [VersionsParams](../core/data_structures.md#versionparams)       | The ABCI application version.                                                | 4            |
+    | version   | [VersionsParams](../core/data_structures.md#versionparams)    | The ABCI application version.                                                | 4            |
 
 ### ProofOps
 
@@ -799,18 +778,47 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
 * **Fields**:
 
-    | Name                        | Type                    | Description                                                   | Field Number |
-    |-----------------------------|-------------------------|---------------------------------------------------------------|--------------|
-    | validator                   | [Validator](#validator) | A validator                                                   | 1            |
-    | signed_last_block           | bool                    | Indicates whether or not the validator signed the last block  | 2            |
-    | tendermint_signed_extension | bytes                   | Indicates whether or not the validator signed the last block  | 3            |
-    | app_signed_extension        | bytes                   | Indicates whether or not the validator signed the last block  | 3            |
+    | Name                        | Type                    | Description                                                    | Field Number |
+    |-----------------------------|-------------------------|----------------------------------------------------------------|--------------|
+    | validator                   | [Validator](#validator) | The validator that sent the vote.                              | 1            |
+    | signed_last_block           | bool                    | Indicates whether or not the validator signed the last block.  | 2            |
 
 * **Usage**:
-    * Indicates whether a validator signed the last block, allowing for rewards
-    based on validator availability
-    * `tendermint_signed_extension` conveys the part of the validator's vote extension that was signed by Tendermint.
-    * `app_signed_extension` conveys the optional *app_signed* part of the validator's vote extension.
+    * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
+    * This information is typically extracted from a proposed or decided block.
+
+### ExtendedVoteInfo
+
+* **Fields**:
+
+    | Name              | Type                    | Description                                                                  | Field Number |
+    |-------------------|-------------------------|------------------------------------------------------------------------------|--------------|
+    | validator         | [Validator](#validator) | The validator that sent the vote.                                            | 1            |
+    | signed_last_block | bool                    | Indicates whether or not the validator signed the last block.                | 2            |
+    | vote_extension    | bytes                   | Non-deterministic extension provided by the sending validator's Application. | 3            |
+
+* **Usage**:
+    * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
+    * This information is extracted from Tendermint's data structures in the local process.
+    * `vote_extension` contains the sending validator's vote extension, which is signed by Tendermint. It can be empty
+
+### CommitInfo
+
+* **Fields**:
+
+    | Name  | Type                           | Description                                                                                  | Field Number |
+    |-------|--------------------------------|----------------------------------------------------------------------------------------------|--------------|
+    | round | int32                          | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
+    | votes | repeated [VoteInfo](#voteinfo) | List of validators' addresses in the last validator set with their voting information.       | 2            |
+
+### ExtendedCommitInfo
+
+* **Fields**:
+
+    | Name  | Type                                           | Description                                                                                                       | Field Number |
+    |-------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
+    | round | int32                                          | Commit round. Reflects the round at which the block proposer decided in the previous height.                      | 1            |
+    | votes | repeated [ExtendedVoteInfo](#extendedvoteinfo) | List of validators' addresses in the last validator set with their voting information, including vote extensions. | 2            |
 
 ### ExecTxResult
 
@@ -824,7 +832,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | info       | string                                                      | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                                                       | Amount of gas requested for transaction.                              | 5            |
     | gas_used   | int64                                                       | Amount of gas consumed by transaction.                                | 6            |
-    | tx_events  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
+    | events  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 ### TxAction
@@ -832,20 +840,18 @@ Most of the data structures used in ABCI are shared [common data structures](../
 ```protobuf
   enum TxAction {
     TXUNKNOWN    = 0;  // Unknown action
-    TXUNMODIFIED = 1;  // The Application did not modify this transaction. Ignore new_hashes field
-    TXADDED      = 2;  // The Application added this transaction. Ignore new_hashes field
+    TXUNMODIFIED = 1;  // The Application did not modify this transaction.
+    TXADDED      = 2;  // The Application added this transaction.
     TXREMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
-                       // Use new_hashes field if the transaction was modified
   }
 ```
 
 * **Usage**:
     * If `Action` is TXUNKNOWN, a problem happened in the Application. Tendermint will ignore this transaction. **TODO** should we panic?
-    * If `Action` is TXUNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool. Field `new_hashes` is ignored.
-    * If `Action` is TXADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped. Field `new_hashes` is ignored.
+    * If `Action` is TXUNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
+    * If `Action` is TXADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped.
     * If `Action` is TXREMOVED, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
-      similar to `CheckTx` returning _false_. Tendermint can use field `new_hashes` to help clients trace transactions that have been modified into other transactions.
-
+      similar to `CheckTx` returning _false_.
 ### TxRecord
 
 * **Fields**:
@@ -854,25 +860,23 @@ Most of the data structures used in ABCI are shared [common data structures](../
     |------------|-----------------------|------------------------------------------------------------------|--------------|
     | action     | [TxAction](#txaction) | What should Tendermint do with this transaction?                 | 1            |
     | tx         | bytes                 | Transaction contents                                             | 2            |
-    | new_hashes | repeated bytes        | List of hashes of successor transactions                         | 3            |
+
+### CanonicalVoteExtension
+
+>**TODO**: This protobuf message definition is not part of the ABCI++ interface, but rather belongs to the
+> Precommit message which is broadcast via P2P. So it is to be moved to the relevant section of the spec.
+
+* **Fields**:
+
+    | Name      | Type   | Description                                                                                | Field Number |
+    |-----------|--------|--------------------------------------------------------------------------------------------|--------------|
+    | extension | bytes  | Vote extension provided by the Application.                                                | 1            |
+    | height    | int64  | Height in which the extension was provided.                                                | 2            |
+    | round     | int32  | Round in which the extension was provided.                                                 | 3            |
+    | chain_id  | string | ID of the blockchain running consensus.                                                    | 4            |
+    | address   | bytes  | [Address](../core/data_structures.md#address) of the validator that provided the extension | 5            |
 
 * **Usage**:
-    * The hashes contained in `new_hashes` MUST follow the same algorithm used by Tendermint for hashing transactions
-      that are in the mempool.
-    * As `new_hashes` is a list, `TxRecord` allows to trace many-to-many modifications. Some examples:
-        * Transaction $t1$ modified into $t2$ is represented with these records
-            * $t2$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$]
-        * Transaction $t1$ modified into $t2$ and $t3$ is represented with these `TxRecord` records
-            * $t2$ "ADDED"
-            * $t3$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t2)$, $id(t3)$]
-        * Transactions $t1$ and $t2$ aggregated into $t3$ is represented with these `TxRecord` records
-            * $t3$ "ADDED"
-            * $t1$ "REMOVED"; `new_hashes` contains [$id(t3)$]
-            * $t2$ "REMOVED"; `new_hashes` contains [$id(t3)$]
-        * Transactions $t1$ and $t2$ combined into $t3$ and $t4$ is represented with these `TxRecord` records
-            * $t3$ "ADDED"
-            * $t4$ "ADDED"
-            * $t1$ "REMOVED" and `new_hashes` containing [$id(t3)$, $id(t4)$]
-            * $t2$ "REMOVED" and `new_hashes` containing [$id(t3)$, $id(t4)$]
+    * Tendermint is to sign the whole data structure and attach it to a Precommit message
+    * Upon reception, Tendermint validates the sender's signature and sanity-checks the values of `height`, `round`, and `chain_id`.
+      Then it sends `extension` to the Application via `RequestVerifyVoteExtension` for verification.

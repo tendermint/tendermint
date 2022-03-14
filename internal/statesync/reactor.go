@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -135,8 +135,7 @@ type Reactor struct {
 	stateStore    sm.Store
 	blockStore    *store.BlockStore
 
-	conn        proxy.AppConnSnapshot
-	connQuery   proxy.AppConnQuery
+	conn        abciclient.Client
 	tempDir     string
 	snapshotCh  *p2p.Channel
 	chunkCh     *p2p.Channel
@@ -173,8 +172,7 @@ func NewReactor(
 	initialHeight int64,
 	cfg config.StateSyncConfig,
 	logger log.Logger,
-	conn proxy.AppConnSnapshot,
-	connQuery proxy.AppConnQuery,
+	conn abciclient.Client,
 	channelCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
 	stateStore sm.Store,
@@ -209,7 +207,6 @@ func NewReactor(
 		initialHeight: initialHeight,
 		cfg:           cfg,
 		conn:          conn,
-		connQuery:     connQuery,
 		snapshotCh:    snapshotCh,
 		chunkCh:       chunkCh,
 		blockCh:       blockCh,
@@ -287,7 +284,6 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.cfg,
 		r.logger,
 		r.conn,
-		r.connQuery,
 		r.stateProvider,
 		r.snapshotCh,
 		r.chunkCh,
@@ -862,7 +858,17 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-		r.peers.Append(peerUpdate.NodeID)
+		if peerUpdate.Channels.Contains(SnapshotChannel) &&
+			peerUpdate.Channels.Contains(ChunkChannel) &&
+			peerUpdate.Channels.Contains(LightBlockChannel) &&
+			peerUpdate.Channels.Contains(ParamsChannel) {
+
+			r.peers.Append(peerUpdate.NodeID)
+
+		} else {
+			r.logger.Error("could not use peer for statesync", "peer", peerUpdate.NodeID)
+		}
+
 	case p2p.PeerStatusDown:
 		r.peers.Remove(peerUpdate.NodeID)
 	}
@@ -875,6 +881,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
+
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
 		r.providers[peerUpdate.NodeID] = newProvider
 		err := r.syncer.AddPeer(ctx, peerUpdate.NodeID)
