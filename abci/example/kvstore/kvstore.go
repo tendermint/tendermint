@@ -436,9 +436,10 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 // Tendermint will remove them from its mempool.
 func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 	trs := make([]*types.TxRecord, len(blockData))
+	var removed []*types.TxRecord
 	for i, tx := range blockData {
 		if isPrepareTx(tx) {
-			trs = append(trs, &types.TxRecord{
+			removed = append(removed, &types.TxRecord{
 				Tx:     tx,
 				Action: types.TxRecord_REMOVED,
 			})
@@ -454,5 +455,5 @@ func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
 		}
 	}
 
-	return trs
+	return append(trs, removed...)
 }
