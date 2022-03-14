@@ -156,16 +156,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		}
 	}
 	for _, atx := range txrSet.GetAddedTxs() {
-		if err := blockExec.mempool.CheckTx(ctx, *atx, nil, mempool.TxInfo{}); err != nil {
+		if err := blockExec.mempool.CheckTx(ctx, atx, nil, mempool.TxInfo{}); err != nil {
 			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
 		}
 	}
-	itxs := append(txrSet.GetAddedTxs(), txrSet.GetUnmodifiedTxs()...)
-	txs = make([]types.Tx, len(itxs))
-	for i, tx := range itxs {
-		txs[i] = *tx
-	}
-	return state.MakeBlock(height, txs, commit, evidence, proposerAddr), nil
+	ftxs := append(txrSet.GetAddedTxs(), txrSet.GetUnmodifiedTxs()...)
+	return state.MakeBlock(height, ftxs, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
