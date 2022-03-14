@@ -12,8 +12,10 @@ import (
 
 func TestHashAndProveResults(t *testing.T) {
 	trs := []*abci.ExecTxResult{
+		// Note, these tests rely on the first two entries being in this order.
 		{Code: 0, Data: nil},
 		{Code: 0, Data: []byte{}},
+
 		{Code: 0, Data: []byte("one")},
 		{Code: 14, Data: nil},
 		{Code: 14, Data: []byte("foo")},
