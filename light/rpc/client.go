@@ -459,7 +459,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	}
 
 	// Build a Merkle tree out of the slice.
-	rs, err := abci.TxResultsToByteSlices(res.TxsResults)
+	rs, err := abci.MarshalTxResults(res.TxsResults)
 	if err != nil {
 		return nil, err
 	}

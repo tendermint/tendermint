@@ -28,7 +28,7 @@ func TestHashAndProveResults(t *testing.T) {
 	require.Equal(t, bz0, bz1)
 
 	// Make sure that we can get a root hash from results and verify proofs.
-	rs, err := abci.TxResultsToByteSlices(trs)
+	rs, err := abci.MarshalTxResults(trs)
 	require.NoError(t, err)
 	root := merkle.HashFromByteSlices(rs)
 	assert.NotEmpty(t, root)
@@ -64,9 +64,9 @@ func TestHashDeterministicFieldsOnly(t *testing.T) {
 		Events:    []abci.Event{},
 		Codespace: "nondeterministic.data.def",
 	}
-	r1, err := abci.TxResultsToByteSlices([]*abci.ExecTxResult{&tr1})
+	r1, err := abci.MarshalTxResults([]*abci.ExecTxResult{&tr1})
 	require.NoError(t, err)
-	r2, err := abci.TxResultsToByteSlices([]*abci.ExecTxResult{&tr2})
+	r2, err := abci.MarshalTxResults([]*abci.ExecTxResult{&tr2})
 	require.NoError(t, err)
 	require.Equal(t, merkle.HashFromByteSlices(r1), merkle.HashFromByteSlices(r2))
 }

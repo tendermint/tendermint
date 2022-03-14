@@ -179,11 +179,11 @@ func deterministicExecTxResult(response *ExecTxResult) *ExecTxResult {
 	}
 }
 
-// TxResultsToByteSlices encodes the the TxResults as a list of byte
+// MarshalTxResults encodes the the TxResults as a list of byte
 // slices. It strips off the non-deterministic pieces of the TxResults
 // so that the resulting data can be used for hash comparisons and used
 // in Merkle proofs.
-func TxResultsToByteSlices(r []*ExecTxResult) ([][]byte, error) {
+func MarshalTxResults(r []*ExecTxResult) ([][]byte, error) {
 	s := make([][]byte, len(r))
 	for i, e := range r {
 		d := deterministicExecTxResult(e)

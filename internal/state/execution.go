@@ -265,7 +265,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	rs, err := abci.TxResultsToByteSlices(finalizeBlockResponse.TxResults)
+	rs, err := abci.MarshalTxResults(finalizeBlockResponse.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("marshaling TxResults: %w", err)
 	}
