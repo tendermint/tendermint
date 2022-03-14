@@ -580,7 +580,7 @@ func (bs *BlockStore) Close() error {
 func (bs *BlockStore) Rollback() error {
 	height := bs.Height()
 	if height <= 0 {
-		return fmt.Errorf("can't rollback height %v", height)
+		return fmt.Errorf("can't rollback height %d", height)
 	}
 
 	pruned, err := bs.pruneRange(blockMetaKey(height), blockMetaKey(height+1), removeBlockHash)
@@ -589,7 +589,7 @@ func (bs *BlockStore) Rollback() error {
 	}
 
 	if pruned != 1 {
-		return fmt.Errorf("the number of rollbacked blocks don't match %v", pruned)
+		return fmt.Errorf("the number of rollbacked blocks don't match %d", pruned)
 	}
 
 	if _, err := bs.pruneRange(blockPartKey(height, 0), blockPartKey(height+1, 0), nil); err != nil {
