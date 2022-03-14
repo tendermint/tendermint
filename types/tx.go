@@ -148,20 +148,20 @@ func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 	return txrSet
 }
 
-// GetAddedTxs returns the transactions marked for inclusion in a block. This
+// AddedTxs returns the transactions marked for inclusion in a block. This
 // list maintains the order that the transactions were included in the list of
 // TxRecords that were used to construct the TxRecordSet.
-func (t TxRecordSet) GetIncludedTxs() []Tx {
+func (t TxRecordSet) IncludedTxs() []Tx {
 	return t.included
 }
 
-// GetAddedTxs returns the transactions added by the application.
-func (t TxRecordSet) GetAddedTxs() []Tx {
+// AddedTxs returns the transactions added by the application.
+func (t TxRecordSet) AddedTxs() []Tx {
 	return t.added
 }
 
-// GetRemovedTxs returns the transactions marked for removal by the application.
-func (t TxRecordSet) GetRemovedTxs() []Tx {
+// RemovedTxs returns the transactions marked for removal by the application.
+func (t TxRecordSet) RemovedTxs() []Tx {
 	return t.removed
 }
 

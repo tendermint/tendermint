@@ -150,17 +150,17 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		return nil, err
 	}
 
-	for _, rtx := range txrSet.GetRemovedTxs() {
+	for _, rtx := range txrSet.RemovedTxs() {
 		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
 			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
 		}
 	}
-	for _, atx := range txrSet.GetAddedTxs() {
+	for _, atx := range txrSet.AddedTxs() {
 		if err := blockExec.mempool.CheckTx(ctx, atx, nil, mempool.TxInfo{}); err != nil {
 			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
 		}
 	}
-	itxs := txrSet.GetIncludedTxs()
+	itxs := txrSet.IncludedTxs()
 	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
 }
 
