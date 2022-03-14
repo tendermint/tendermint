@@ -128,8 +128,6 @@ func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 	txrSet.all = make([]Tx, len(trs))
 	for i, tr := range trs {
 
-		// A single allocation is performed per transaction from the list of TxRecords
-		// on the line below.
 		txrSet.all[i] = Tx(tr.Tx)
 
 		// The following set of assignments do not allocate new []byte, they create
