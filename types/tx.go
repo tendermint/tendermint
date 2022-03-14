@@ -182,10 +182,13 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	// and once by sorting the set of the added, removed, and unmodified transactions indexes,
 	// which, when combined, comprise the complete list of transactions.
 	//
-	// The original list is iterated once and the modified list and set of indexes are
-	// also iterated once each.
-	// Asymptotically, this yields a total runtime of O(N*log(N) + N + 2*M*log(M) + 2*M),
+	// The original list is iterated once and the modified list is iterated multiple times,
+	// one time alongside each of the 3 indexes for a total of 4 iterations of the modified list.
+	// Asymptotically, this yields a total runtime of O(N*log(N) + N + 2*M*log(M) + 4*M),
 	// in the input size of the original list and the input size of the new list respectively.
+	// A 2 * M performance gain is possible but iterating all of the indexes simultaneously
+	// alongside the original list, but the multiple iterations were preferred to be more
+	// readable and maintainable.
 
 	// Sort a copy of the complete transaction slice so we can check for
 	// duplication. The copy is so we do not change the original ordering.
@@ -227,73 +230,81 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	copy(otxsCopy, otxs)
 	sort.Sort(Txs(otxsCopy))
 
-	unmodifiedIdx, addedIdx, removedIdx := 0, 0, 0
-	for i := 0; i < len(otxsCopy); i++ {
-		if addedIdx == len(addedCopy) &&
-			removedIdx == len(removedCopy) &&
-			unmodifiedIdx == len(unmodifiedCopy) {
-			// we've reached the end of all of the sorted indexes without
-			// detecting any issues.
-			break
-		}
+	if ix, ok := containsAllTxs(otxsCopy, unmodifiedCopy); !ok {
+		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", unmodifiedCopy[ix].Hash())
+	}
 
+	if ix, ok := containsAllTxs(otxsCopy, removedCopy); !ok {
+		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[ix].Hash())
+	}
+	if ix, ok := containsNoneTxs(otxsCopy, addedCopy); !ok {
+		return fmt.Errorf("existing transaction incorrectly marked as added, transaction hash: %x", addedCopy[ix].Hash())
+	}
+	return nil
+}
+
+// containsNoneTxs checks that list a contains none of the transactions in list
+// b. If a match is found, the index in b of the matching transaction is returned.
+// Both lists must be sorted.
+func containsNoneTxs(a, b []Tx) (int, bool) {
+	aix, bix := 0, 0
+	for ; aix < len(a); aix++ {
 	LOOP:
-		// iterate over the sorted addedIndex until we reach a value that sorts
-		// higher than the value we are examining in the original list.
-		for addedIdx < len(addedCopy) {
-			switch bytes.Compare(addedCopy[addedIdx], otxsCopy[i]) {
+		for bix < len(b) {
+			switch bytes.Compare(b[bix], a[aix]) {
 			case 0:
-				return fmt.Errorf("existing transaction incorrectly marked as added, transaction hash: %x", otxsCopy[i].Hash())
+				return bix, false
 			case -1:
-				addedIdx++
+				bix++
+				// we've reached the end of b, and the last value in b was
+				// smaller than the value under the iterator of a.
+				// a's values never get smaller, so we know there are no more matches
+				// in the list. We can terminate the iteration here.
+				if bix == len(b) {
+					return -1, true
+				}
 			case 1:
 				break LOOP
 			}
 		}
+	}
+	return -1, true
+}
 
-		// The following iterator checks work in the same way on the removed iterator
-		// and the unmodified iterator. They check that all the values in the respective sorted
-		// index are present in the original list.
-		//
-		// For the removed check, we compare the value under the removed iterator to the value
-		// under the iterator for the total sorted list. If they match, we advance the
-		// removed iterator one position. If they don't match, then the value under
-		// the remove iterator should be greater.
-		// If it is not, then there is a value in the the removed list that was not present in the
-		// original list.
-		//
-		// The same logic applies for the unmodified check.
-
-		if removedIdx < len(removedCopy) {
-			switch bytes.Compare(removedCopy[removedIdx], otxsCopy[i]) {
-			case 0:
-				removedIdx++
-			case -1:
-				return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[i].Hash())
-			}
+// containsAllTxs checks that super contains all of the transactions in the sub
+// list. If not all values in sub are present in super, the index in sub of the
+// first Tx absent from super is returned.
+func containsAllTxs(super, sub []Tx) (int, bool) {
+	// The following iteration assumes sorted lists.
+	// The checks ensure that all the values in the sorted sub list are present in the sorted super list.
+	//
+	// We compare the value under the sub iterator to the value
+	// under the super iterator. If they match, we advance the
+	// sub iterator one position. If they don't match, then the value under
+	// the sub iterator should be greater.
+	// If it is not, then there is a value in the the sub list that is not present in the
+	// super list.
+	subIx := 0
+	for _, cur := range super {
+		if subIx == len(sub) {
+			return -1, true
 		}
-		if unmodifiedIdx < len(unmodifiedCopy) {
-			switch bytes.Compare(unmodifiedCopy[unmodifiedIdx], otxsCopy[i]) {
-			case 0:
-				unmodifiedIdx++
-			case -1:
-				return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", removedCopy[i].Hash())
-			}
+		switch bytes.Compare(sub[subIx], cur) {
+		case 0:
+			subIx++
+		case -1:
+			return subIx, false
 		}
 	}
 
-	// Check that the loop visited all values of the removed and unmodified transactions.
+	// Check that the loop visited all values of the transactions from sub.
 	// If it did not, then there are values present in these indexes that were not
-	// present in the original list of transactions.
+	// present in the super list of transactions.
 
-	if removedIdx != len(removedCopy) {
-		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[removedIdx].Hash())
+	if subIx != len(sub) {
+		return subIx, false
 	}
-	if unmodifiedIdx != len(unmodifiedCopy) {
-		return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", unmodifiedCopy[unmodifiedIdx].Hash())
-	}
-
-	return nil
+	return -1, true
 }
 
 // TxsToTxRecords converts from a list of Txs to a list of TxRecords. All of the
