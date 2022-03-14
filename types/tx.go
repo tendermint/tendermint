@@ -94,15 +94,6 @@ func ToTxs(txs [][]byte) Txs {
 	return txBzs
 }
 
-// TxRecordsToTxs converts from the abci Tx type to the the Txs type.
-func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
-	txs := make([]Tx, len(trs))
-	for i, tr := range trs {
-		txs[i] = Tx(tr.Tx)
-	}
-	return txs
-}
-
 // TxRecordSet contains indexes into an underlying set of transactions.
 // These indexes are useful for validating and working with a list of TxRecords
 // from the PrepareProposal response.
