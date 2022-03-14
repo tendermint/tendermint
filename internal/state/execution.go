@@ -160,8 +160,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
 		}
 	}
-	ftxs := append(txrSet.GetAddedTxs(), txrSet.GetUnmodifiedTxs()...)
-	return state.MakeBlock(height, ftxs, commit, evidence, proposerAddr), nil
+	itxs := txrSet.GetIncludedTxs()
+	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(

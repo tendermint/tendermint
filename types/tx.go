@@ -14,14 +14,6 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-type TxRecordSet struct {
-	txs        Txs
-	added      Txs
-	unmodified Txs
-	removed    Txs
-	unknown    Txs
-}
-
 // Tx is an arbitrary byte array.
 // NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
 // Might we want types here ?
@@ -109,6 +101,19 @@ func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
 	return txs
 }
 
+// TxRecordSet contains indexes into an underlying set of transactions.
+// These indexes are useful for validating and working with a list of TxRecords
+// from the PrepareProposal response.
+type TxRecordSet struct {
+	txs Txs
+
+	added      Txs
+	unmodified Txs
+	included   Txs
+	removed    Txs
+	unknown    Txs
+}
+
 func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 	txrSet := TxRecordSet{}
 	txrSet.txs = make([]Tx, len(trs))
@@ -119,8 +124,10 @@ func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 			txrSet.unknown = append(txrSet.unknown, txrSet.txs[i])
 		case abci.TxRecord_UNMODIFIED:
 			txrSet.unmodified = append(txrSet.unmodified, txrSet.txs[i])
+			txrSet.included = append(txrSet.included, txrSet.txs[i])
 		case abci.TxRecord_ADDED:
 			txrSet.added = append(txrSet.added, txrSet.txs[i])
+			txrSet.included = append(txrSet.included, txrSet.txs[i])
 		case abci.TxRecord_REMOVED:
 			txrSet.removed = append(txrSet.removed, txrSet.txs[i])
 		}
@@ -128,19 +135,23 @@ func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 	return txrSet
 }
 
+// GetAddedTxs returns the transactions marked for inclusion in a block.
+func (t TxRecordSet) GetIncludedTxs() []Tx {
+	return t.included
+}
+
+// GetAddedTxs returns the transactions added by the application.
 func (t TxRecordSet) GetAddedTxs() []Tx {
 	return t.added
 }
+
+// GetRemovedTxs returns the transactions marked for removal by the application.
 func (t TxRecordSet) GetRemovedTxs() []Tx {
 	return t.removed
 }
-func (t TxRecordSet) GetUnknownTxs() []Tx {
-	return t.unknown
-}
-func (t TxRecordSet) GetUnmodifiedTxs() []Tx {
-	return t.unmodified
-}
 
+// Validate checks that the record set was correctly constructed from the original
+// list of transactions.
 func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	if len(t.unknown) > 0 {
 		return fmt.Errorf("transaction incorrectly marked as unknown, transaction hash: %x", t.unknown[0].Hash())
@@ -151,7 +162,6 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	copy(cp, t.txs)
 	sort.Sort(Txs(cp))
 
-	// duplicate validation
 	for i := 0; i < len(cp); i++ {
 		size += int64(len(cp[i]))
 		if size > maxSizeBytes {
