@@ -63,6 +63,8 @@ func (txs Txs) IndexByHash(hash []byte) int {
 	return -1
 }
 
+// Txs is a slice of transactions. Sorting a Txs value orders the transactions
+// lexicographically.
 func (txs Txs) Len() int      { return len(txs) }
 func (txs Txs) Swap(i, j int) { txs[i], txs[j] = txs[j], txs[i] }
 func (txs Txs) Less(i, j int) bool {
