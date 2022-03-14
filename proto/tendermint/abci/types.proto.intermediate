@@ -446,7 +446,6 @@ message VoteInfo {
   reserved 4;  // Placeholder for app_signed_extension in v0.37
 }
 
-// ExtendedVoteInfo
 message ExtendedVoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
