@@ -220,11 +220,12 @@ func createEvidenceReactor(
 	logger log.Logger,
 	metrics *evidence.Metrics,
 	eventBus *eventbus.EventBus,
-) (*evidence.Reactor, *evidence.Pool, error) {
+) (*evidence.Reactor, *evidence.Pool, closer, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize evidence db: %w", err)
+		return nil, nil, func() error { return nil }, fmt.Errorf("unable to initialize evidence db: %w", err)
 	}
+	dbCloser := evidenceDB.Close
 
 	logger = logger.With("module", "evidence")
 
@@ -238,10 +239,10 @@ func createEvidenceReactor(
 		evidencePool,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating evidence reactor: %w", err)
+		return nil, nil, dbCloser, fmt.Errorf("creating evidence reactor: %w", err)
 	}
 
-	return evidenceReactor, evidencePool, nil
+	return evidenceReactor, evidencePool, dbCloser, nil
 }
 
 func createConsensusReactor(

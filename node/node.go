@@ -274,9 +274,10 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	evReactor, evPool, err := createEvidenceReactor(ctx,
+	evReactor, evPool, edbCloser, err := createEvidenceReactor(ctx,
 		cfg, dbProvider, stateStore, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
 	)
+	closers = append(closers, edbCloser)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
