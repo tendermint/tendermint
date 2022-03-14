@@ -104,38 +104,62 @@ func TxRecordsToTxs(trs []*abci.TxRecord) Txs {
 // TxRecordSet contains indexes into an underlying set of transactions.
 // These indexes are useful for validating and working with a list of TxRecords
 // from the PrepareProposal response.
+//
+// Only one copy of the original data is referenced by all of the indexes but a
+// transaction may appear in multiple indexes.
 type TxRecordSet struct {
-	txs Txs
+	// all holds the complete list of all transactions from the original list of
+	// TxRecords.
+	all Txs
 
+	// included is an index of the transactions that will be included in the block
+	// and is constructed from the list of both added and unmodified transactions.
+	// included maintains the original order that the transactions were present
+	// in the list of TxRecords.
+	included Txs
+
+	// added, unmodified, removed, and unknown are indexes for each of the actions
+	// that may be supplied with a transaction.
+	//
+	// Because each transaction only has one action, it can be referenced by
+	// at most 3 indexes in this data structure: the action-specific index, the
+	// included index, and the all index.
 	added      Txs
 	unmodified Txs
-	included   Txs
 	removed    Txs
 	unknown    Txs
 }
 
 func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 	txrSet := TxRecordSet{}
-	txrSet.txs = make([]Tx, len(trs))
+	txrSet.all = make([]Tx, len(trs))
 	for i, tr := range trs {
-		txrSet.txs[i] = Tx(tr.Tx)
+
+		// A single allocation is performed per transaction from the list of TxRecords
+		// on the line below.
+		txrSet.all[i] = Tx(tr.Tx)
+
+		// The following set of assignments do not allocate new []byte, they create
+		// pointers to the already allocated slice.
 		switch tr.GetAction() {
 		case abci.TxRecord_UNKNOWN:
-			txrSet.unknown = append(txrSet.unknown, txrSet.txs[i])
+			txrSet.unknown = append(txrSet.unknown, txrSet.all[i])
 		case abci.TxRecord_UNMODIFIED:
-			txrSet.unmodified = append(txrSet.unmodified, txrSet.txs[i])
-			txrSet.included = append(txrSet.included, txrSet.txs[i])
+			txrSet.unmodified = append(txrSet.unmodified, txrSet.all[i])
+			txrSet.included = append(txrSet.included, txrSet.all[i])
 		case abci.TxRecord_ADDED:
-			txrSet.added = append(txrSet.added, txrSet.txs[i])
-			txrSet.included = append(txrSet.included, txrSet.txs[i])
+			txrSet.added = append(txrSet.added, txrSet.all[i])
+			txrSet.included = append(txrSet.included, txrSet.all[i])
 		case abci.TxRecord_REMOVED:
-			txrSet.removed = append(txrSet.removed, txrSet.txs[i])
+			txrSet.removed = append(txrSet.removed, txrSet.all[i])
 		}
 	}
 	return txrSet
 }
 
-// GetAddedTxs returns the transactions marked for inclusion in a block.
+// GetAddedTxs returns the transactions marked for inclusion in a block. This
+// list maintains the order that the transactions were included in the list of
+// TxRecords that were used to construct the TxRecordSet.
 func (t TxRecordSet) GetIncludedTxs() []Tx {
 	return t.included
 }
@@ -157,21 +181,39 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 		return fmt.Errorf("transaction incorrectly marked as unknown, transaction hash: %x", t.unknown[0].Hash())
 	}
 
-	var size int64
-	cp := make([]Tx, len(t.txs))
-	copy(cp, t.txs)
-	sort.Sort(Txs(cp))
+	// The following validation logic performs a set of sorts on the data in the TxRecordSet indexes.
+	// It sorts the original transaction list, otxs, once.
+	// It sorts the new transaction list twice: once when sorting 'all', the total list,
+	// and once by sorting the set of the added, removed, and unmodified transactions indexes,
+	// which, when combined, comprise the complete list of transactions.
+	//
+	// The original list is iterated once and the modified list and set of indexes are
+	// also iterated once each.
+	// Asymptotically, this yields a total runtime of O(N*log(N) + N + 2*M*log(M) + 2*M),
+	// in the input size of the original list and the input size of the new list respectively.
 
-	for i := 0; i < len(cp); i++ {
-		size += int64(len(cp[i]))
+	// make a copy of the all index so that the original order of the all index
+	// can be preserved.
+	// does not copy the underlying data.
+	allCopy := make([]Tx, len(t.all))
+	copy(allCopy, t.all)
+	sort.Sort(Txs(allCopy))
+
+	var size int64
+	for i := 0; i < len(allCopy); i++ {
+		size += int64(len(allCopy[i]))
 		if size > maxSizeBytes {
 			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
 		}
-		if i < len(cp)-1 && bytes.Equal(cp[i], cp[i+1]) {
-			return fmt.Errorf("TxRecords contains duplicate transaction, transaction hash: %x", cp[i].Hash())
+
+		// allCopy is sorted, so any duplicated data will be adjacent.
+		if i < len(allCopy)-1 && bytes.Equal(allCopy[i], allCopy[i+1]) {
+			return fmt.Errorf("TxRecords contains duplicate transaction, transaction hash: %x", allCopy[i].Hash())
 		}
 	}
 
+	// create copies of each of the action-specific indexes so that order of the original
+	// indexes can be preserved.
 	addedCopy := make([]Tx, len(t.added))
 	copy(addedCopy, t.added)
 	removedCopy := make([]Tx, len(t.removed))
@@ -188,10 +230,14 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 		if addedIdx == len(addedCopy) &&
 			removedIdx == len(removedCopy) &&
 			unmodifiedIdx == len(unmodifiedCopy) {
+			// we've reached the end of all of the sorted indexes without
+			// detecting any issues.
 			break
 		}
 
 	LOOP:
+		// iterate over the sorted addedIndex until we reach a value that sorts
+		// higher than the value we are examining in the original list.
 		for addedIdx < len(addedCopy) {
 			switch bytes.Compare(addedCopy[addedIdx], otxs[i]) {
 			case 0:
@@ -202,6 +248,20 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 				break LOOP
 			}
 		}
+
+		// The following iterator checks work in the same way on the removed iterator
+		// and the unmodified iterator. They check that all the values in the respective sorted
+		// index are present in the original list.
+		//
+		// For the removed check, we compare the value under the removed iterator to the value
+		// under the iterator for the total sorted list. If they match, we advance the
+		// removed iterator one position. If they don't match, then the value under
+		// the remove iterator should be greater.
+		// If it is not, then there is a value in the the removed list that was not present in the
+		// original list.
+		//
+		// The same logic applies for the unmodified check.
+
 		if removedIdx < len(removedCopy) {
 			switch bytes.Compare(removedCopy[removedIdx], otxs[i]) {
 			case 0:
@@ -220,18 +280,18 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 		}
 	}
 
-	if unmodifiedIdx != len(unmodifiedCopy) {
-		return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", unmodifiedCopy[unmodifiedIdx].Hash())
-	}
+	// Check that the loop visited all values of the removed and unmodified transactions.
+	// If it did not, then there are values present in these indexes that were not
+	// present in the original list of transactions.
+
 	if removedIdx != len(removedCopy) {
 		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[removedIdx].Hash())
 	}
+	if unmodifiedIdx != len(unmodifiedCopy) {
+		return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", unmodifiedCopy[unmodifiedIdx].Hash())
+	}
 
 	return nil
-}
-
-func (t TxRecordSet) GetTxs() []Tx {
-	return t.txs
 }
 
 // TxsToTxRecords converts from a list of Txs to a list of TxRecords. All of the
