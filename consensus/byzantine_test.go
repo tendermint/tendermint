@@ -187,7 +187,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 
 		var commit *types.Commit
-		var votes []*types.Vote
 		switch {
 		case lazyProposer.Height == lazyProposer.state.InitialHeight:
 			// We're creating a proposal for the first block.
@@ -196,7 +195,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyProposer.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
 			commit = lazyProposer.LastCommit.MakeCommit()
-			votes = lazyProposer.LastCommit.GetVotes()
 		default: // This shouldn't happen.
 			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
@@ -213,9 +211,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 		proposerAddr := lazyProposer.privValidatorPubKey.Address()
 
-		block, blockParts, err := lazyProposer.blockExec.CreateProposalBlock(
-			lazyProposer.Height, lazyProposer.state, commit, proposerAddr, votes,
-		)
+		block, err := lazyProposer.blockExec.CreateProposalBlock(
+			lazyProposer.Height, lazyProposer.state, commit, proposerAddr, nil)
+		require.NoError(t, err)
+		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
@@ -464,7 +463,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	// Avoid sending on internalMsgQueue and running consensus state.
 
 	// Create a new proposal block from state/txs from the mempool.
-	block1, blockParts1, err := cs.createProposalBlock()
+	block1, err := cs.createProposalBlock()
+	require.NoError(t, err)
+	blockParts1, err := block1.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
 	proposal1 := types.NewProposal(height, round, polRound, propBlockID)
@@ -479,7 +480,9 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	deliverTxsRange(cs, 0, 1)
 
 	// Create a new proposal block from state/txs from the mempool.
-	block2, blockParts2, err := cs.createProposalBlock()
+	block2, err := cs.createProposalBlock()
+	require.NoError(t, err)
+	blockParts2, err := block2.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, round, polRound, propBlockID)

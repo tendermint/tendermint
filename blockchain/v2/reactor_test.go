@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -19,7 +20,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/mempool/mock"
+	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
@@ -152,6 +153,18 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 	if p.mockA {
 		appl = &mockBlockApplier{}
 	} else {
+		mp := &mpmocks.Mempool{}
+		mp.On("Lock").Return()
+		mp.On("Unlock").Return()
+		mp.On("FlushAppConn", mock.Anything).Return(nil)
+		mp.On("Update",
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything).Return(nil)
+
 		app := &testApp{}
 		cc := proxy.NewLocalClientCreator(app)
 		proxyApp := proxy.NewAppConns(cc)
@@ -161,7 +174,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		}
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
-		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mp, sm.EmptyEvidencePool{})
 		if err = stateStore.Save(state); err != nil {
 			panic(err)
 		}
@@ -497,10 +510,22 @@ func newReactorStore(
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db)
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+		mp, sm.EmptyEvidencePool{})
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -526,8 +551,7 @@ func newReactorStore(
 				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
-		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit)
-		require.NoError(t, err)
+		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
 
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)

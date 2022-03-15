@@ -1132,8 +1132,16 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
-		block, blockParts, err = cs.createProposalBlock()
-		if block == nil || err != nil {
+		block, err = cs.createProposalBlock()
+		if err != nil {
+			cs.logger.Error("unable to create proposal block", "error", err)
+			return
+		} else if block == nil {
+			return
+		}
+		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
+		if err != nil {
+			cs.logger.Error("unable to create proposal block part set", "error", err)
 			return
 		}
 	}
@@ -1188,13 +1196,12 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet, err error) {
+func (cs *State) createProposalBlock() (*types.Block, error) {
 	if cs.privValidator == nil {
-		return nil, nil, errors.New("entered createProposalBlock with privValidator being nil")
+		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
 	var commit *types.Commit
-	var votes []*types.Vote
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
@@ -1204,23 +1211,22 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
-		votes = cs.LastCommit.GetVotes()
 
 	default: // This shouldn't happen.
 		cs.Logger.Error("propose step; cannot propose anything without commit for the previous block")
-		return
+		return nil, nil
 	}
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
 		cs.Logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
-		return
+		return nil, nil
 	}
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, votes)
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
 }
 
 // Enter: `timeoutPropose` after entering Propose.

@@ -102,8 +102,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	state.LastBlockHeight++
 
 	// Build mock responses.
-	block, err := sf.MakeBlock(state, 2, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, 2, new(types.Commit))
 
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, 2)
@@ -115,7 +114,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
 
-	err = stateStore.SaveABCIResponses(block.Height, abciResponses)
+	err := stateStore.SaveABCIResponses(block.Height, abciResponses)
 	require.NoError(t, err)
 	loadedABCIResponses, err := stateStore.LoadABCIResponses(block.Height)
 	assert.Nil(err)
@@ -276,7 +275,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		require.NoError(t, err)
 		state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates)
 		require.NoError(t, err)
-		err := stateStore.Save(state)
+		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
 
@@ -445,8 +444,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -562,8 +560,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// we only have one validator:
 	assert.Equal(t, val1PubKey.Address(), state.Validators.Proposer.Address)
 
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -752,8 +749,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block, err := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -784,8 +780,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{firstAddedVal}},
 	}
-	block, err := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -804,8 +799,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block, err := sf.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := sf.MakeBlock(lastState, lastState.LastBlockHeight+1, new(types.Commit))
 
 		bps, err = block.MakePartSet(testPartSize)
 		require.NoError(t, err)
@@ -842,8 +836,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 			BeginBlock: &abci.ResponseBeginBlock{},
 			EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{addedVal}},
 		}
-		block, err := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
 
@@ -862,7 +855,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{removeGenesisVal}},
 	}
 
-	block, err = sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
+	block = sf.MakeBlock(oldState, oldState.LastBlockHeight+1, new(types.Commit))
 	require.NoError(t, err)
 
 	bps, err = block.MakePartSet(testPartSize)
@@ -888,8 +881,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		}
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
-		block, err = sf.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block = sf.MakeBlock(curState, curState.LastBlockHeight+1, new(types.Commit))
 
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
@@ -918,8 +910,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
 
-		block, err := sf.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
-		require.NoError(t, err)
+		block := sf.MakeBlock(updatedState, updatedState.LastBlockHeight+1, new(types.Commit))
 
 		bps, err := block.MakePartSet(testPartSize)
 		require.NoError(t, err)
@@ -1018,8 +1009,7 @@ func TestStateMakeBlock(t *testing.T) {
 
 	proposerAddress := state.Validators.GetProposer().Address
 	stateVersion := state.Version.Consensus
-	block, err := sf.MakeBlock(state, 2, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, 2, new(types.Commit))
 
 	// test we set some fields
 	assert.Equal(t, stateVersion, block.Version)
@@ -1066,8 +1056,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		require.NoError(t, err)
 		state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates)
 
-		require.Nil(t, err)
-		err := stateStore.Save(state)
+		require.NoError(t, err)
+		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
 

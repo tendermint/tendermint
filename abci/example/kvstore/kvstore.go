@@ -174,5 +174,5 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 func (app *Application) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
 	return types.ResponsePrepareProposal{
-		BlockData: req.BlockData}
+		TxRecords: req.Txs}
 }
