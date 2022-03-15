@@ -60,17 +60,6 @@ func NewDefaultLogger(format, level string) (Logger, error) {
 	}, nil
 }
 
-// MustNewDefaultLogger delegates a call NewDefaultLogger where it panics on
-// error.
-func MustNewDefaultLogger(format, level string) Logger {
-	logger, err := NewDefaultLogger(format, level)
-	if err != nil {
-		panic(err)
-	}
-
-	return logger
-}
-
 func (l defaultLogger) Info(msg string, keyVals ...interface{}) {
 	l.Logger.Info().Fields(getLogFields(keyVals...)).Msg(msg)
 }

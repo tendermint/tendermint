@@ -2,7 +2,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	stdlog "log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,21 +19,35 @@ const (
 	randomSeed int64 = 4827085738
 )
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-
 func main() {
-	NewCLI().Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cli, err := NewCLI()
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	cli.Run(ctx)
 }
 
 // CLI is the Cobra-based command-line interface.
 type CLI struct {
-	root *cobra.Command
-	opts Options
+	root   *cobra.Command
+	opts   Options
+	logger log.Logger
 }
 
 // NewCLI sets up the CLI.
-func NewCLI() *CLI {
-	cli := &CLI{}
+func NewCLI() (*CLI, error) {
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	cli := &CLI{
+		logger: logger,
+	}
 	cli.root = &cobra.Command{
 		Use:           "generator",
 		Short:         "End-to-end testnet generator",
@@ -51,7 +67,7 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().IntVarP(&cli.opts.MaxNetworkSize, "max-size", "", 0,
 		"Maxmum network size (nodes), 0 is unlimited")
 
-	return cli
+	return cli, nil
 }
 
 // generate generates manifests in a directory.
@@ -90,9 +106,9 @@ func (cli *CLI) generate() error {
 }
 
 // Run runs the CLI.
-func (cli *CLI) Run() {
-	if err := cli.root.Execute(); err != nil {
-		logger.Error(err.Error())
+func (cli *CLI) Run(ctx context.Context) {
+	if err := cli.root.ExecuteContext(ctx); err != nil {
+		cli.logger.Error(err.Error())
 		os.Exit(1)
 	}
 }

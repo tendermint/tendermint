@@ -34,8 +34,6 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
-
 // main is the binary entrypoint.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -51,7 +49,6 @@ func main() {
 	}
 
 	if err := run(ctx, configFile); err != nil {
-		logger.Error(err.Error())
 		os.Exit(1)
 	}
 }
@@ -63,9 +60,20 @@ func run(ctx context.Context, configFile string) error {
 		return err
 	}
 
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		// have print here because we can't log (yet), use the logger
+		// everywhere else.
+		fmt.Fprintln(os.Stderr, "ERROR:", err)
+		return err
+	}
+
 	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
-		if err = startSigner(ctx, cfg); err != nil {
+		if err = startSigner(ctx, logger, cfg); err != nil {
+			logger.Error("starting signer",
+				"server", cfg.PrivValServer,
+				"err", err)
 			return err
 		}
 		if cfg.Protocol == "builtin" {
@@ -76,11 +84,11 @@ func run(ctx context.Context, configFile string) error {
 	// Start app server.
 	switch cfg.Protocol {
 	case "socket", "grpc":
-		err = startApp(ctx, cfg)
+		err = startApp(ctx, logger, cfg)
 	case "builtin":
 		switch cfg.Mode {
 		case string(e2e.ModeLight):
-			err = startLightNode(ctx, cfg)
+			err = startLightNode(ctx, logger, cfg)
 		case string(e2e.ModeSeed):
 			err = startSeedNode(ctx)
 		default:
@@ -90,6 +98,10 @@ func run(ctx context.Context, configFile string) error {
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
 	}
 	if err != nil {
+		logger.Error("starting node",
+			"protocol", cfg.Protocol,
+			"mode", cfg.Mode,
+			"err", err)
 		return err
 	}
 
@@ -100,7 +112,7 @@ func run(ctx context.Context, configFile string) error {
 }
 
 // startApp starts the application server, listening for connections from Tendermint.
-func startApp(ctx context.Context, cfg *Config) error {
+func startApp(ctx context.Context, logger log.Logger, cfg *Config) error {
 	app, err := app.NewApplication(cfg.App())
 	if err != nil {
 		return err
@@ -160,7 +172,7 @@ func startSeedNode(ctx context.Context) error {
 	return n.Start(ctx)
 }
 
-func startLightNode(ctx context.Context, cfg *Config) error {
+func startLightNode(ctx context.Context, logger log.Logger, cfg *Config) error {
 	tmcfg, nodeLogger, err := setupNode()
 	if err != nil {
 		return err
@@ -218,7 +230,7 @@ func startLightNode(ctx context.Context, cfg *Config) error {
 }
 
 // startSigner starts a signer server connecting to the given endpoint.
-func startSigner(ctx context.Context, cfg *Config) error {
+func startSigner(ctx context.Context, logger log.Logger, cfg *Config) error {
 	filePV, err := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
 	if err != nil {
 		return err
