@@ -243,8 +243,9 @@ func sortedCopy(txs Txs) Txs {
 // Both lists must be sorted.
 func containsAnyTxs(a, b []Tx) (int, bool) {
 	aix, bix := 0, 0
+
+nextA:
 	for ; aix < len(a); aix++ {
-	LOOP:
 		for bix < len(b) {
 			switch bytes.Compare(b[bix], a[aix]) {
 			case 0:
@@ -259,7 +260,7 @@ func containsAnyTxs(a, b []Tx) (int, bool) {
 					return -1, false
 				}
 			case 1:
-				break LOOP
+				continue nextA
 			}
 		}
 	}

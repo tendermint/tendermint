@@ -158,4 +158,42 @@ func TestValidateTxRecordSet(t *testing.T) {
 		err := txrSet.Validate(100, []Tx{})
 		require.Error(t, err)
 	})
+	t.Run("TxRecordSet preserves order", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{100}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{99}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{55}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{12}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{66}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{9}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{17}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.NoError(t, err)
+		for i, tx := range txrSet.IncludedTxs() {
+			require.Equal(t, Tx(trs[i].Tx), tx)
+		}
+	})
 }
