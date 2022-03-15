@@ -69,6 +69,9 @@ func configSetup(t *testing.T) *config.Config {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
 
+	walDir := filepath.Dir(cfg.Consensus.WalFile())
+	ensureDir(t, walDir, 0700)
+
 	return cfg
 }
 
@@ -787,6 +790,7 @@ func makeConsensusState(
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 	t.Helper()
+	tempDir := t.TempDir()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
@@ -801,7 +805,7 @@ func makeConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(tempDir, fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -810,7 +814,8 @@ func makeConsensusState(
 			opt(thisConfig)
 		}
 
-		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		walDir := filepath.Dir(thisConfig.Consensus.WalFile())
+		ensureDir(t, walDir, 0700)
 
 		app := kvstore.NewApplication()
 		closeFuncs = append(closeFuncs, app.Close)
