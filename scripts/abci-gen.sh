@@ -5,7 +5,7 @@
 # on ABCI++.
 # This file should be removed when work on ABCI++ is complete.
 # For more information, see https://github.com/tendermint/tendermint/issues/8066.
-set -euo pipefail
+set -euxo pipefail
 
 cp ./proto/tendermint/abci/types.proto.intermediate ./proto/tendermint/abci/types.proto
 cp ./proto/tendermint/types/types.proto.intermediate ./proto/tendermint/types/types.proto
@@ -18,7 +18,7 @@ sh ./scripts/protopackage.sh ./proto/tendermint/abci/types.proto $MODNAME "abci/
 
 make proto-gen
 
-mv ./proto/tendermint/abci/types.pb.go ./abci/types
+#mv ./proto/tendermint/abci/types.pb.go ./abci/types
 
 echo "proto files have been compiled"
 

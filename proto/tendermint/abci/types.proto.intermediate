@@ -334,7 +334,6 @@ message ResponsePrepareProposal {
   repeated ExecTxResult            tx_results              = 4;
   repeated ValidatorUpdate         validator_updates       = 5;
   tendermint.types.ConsensusParams consensus_param_updates = 6;
-  repeated bytes                   app_signed_updates      = 7;
 }
 
 message ResponseProcessProposal {

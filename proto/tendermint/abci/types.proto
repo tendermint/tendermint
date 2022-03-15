@@ -3,8 +3,6 @@ package tendermint.abci;
 
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
-// For more information on gogo.proto, see:
-// https://github.com/gogo/protobuf/blob/master/extensions.md
 import "tendermint/crypto/proof.proto";
 import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
@@ -12,34 +10,39 @@ import "tendermint/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
 
-// This file is copied from http://github.com/tendermint/abci
-// NOTE: When using custom types, mind the warnings.
-// https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
+// This file is a temporary workaround to enable development during the ABCI++
+// project. This file should be deleted and any references to it removed when
+// the ongoing work on ABCI++ is completed.
+//
+// For the duration of ABCI++, this file should be able to build the `abci/types/types.pb.go`
+// file. Any changes that update that file must come as a result of a change in
+// this .proto file.
+// For more information, see https://github.com/tendermint/tendermint/issues/8066
 
 //----------------------------------------
 // Request types
 
 message Request {
   oneof value {
-    RequestEcho               echo                   = 1;
-    RequestFlush              flush                  = 2;
-    RequestInfo               info                   = 3;
-    RequestInitChain          init_chain             = 4;
-    RequestQuery              query                  = 5;
-    RequestBeginBlock         begin_block            = 6 [deprecated = true];
-    RequestCheckTx            check_tx               = 7;
-    RequestDeliverTx          deliver_tx             = 8 [deprecated = true];
-    RequestEndBlock           end_block              = 9 [deprecated = true];
-    RequestCommit             commit                 = 10;
-    RequestListSnapshots      list_snapshots         = 11;
-    RequestOfferSnapshot      offer_snapshot         = 12;
-    RequestLoadSnapshotChunk  load_snapshot_chunk    = 13;
-    RequestApplySnapshotChunk apply_snapshot_chunk   = 14;
-    RequestPrepareProposal    prepare_proposal       = 15;
-    RequestProcessProposal    process_proposal       = 16;
+    RequestEcho                echo                  = 1;
+    RequestFlush               flush                 = 2;
+    RequestInfo                info                  = 3;
+    RequestInitChain           init_chain            = 4;
+    RequestQuery               query                 = 5;
+    RequestBeginBlock          begin_block           = 6 [deprecated = true];
+    RequestCheckTx             check_tx              = 7;
+    RequestDeliverTx           deliver_tx            = 8 [deprecated = true];
+    RequestEndBlock            end_block             = 9 [deprecated = true];
+    RequestCommit              commit                = 10;
+    RequestListSnapshots       list_snapshots        = 11;
+    RequestOfferSnapshot       offer_snapshot        = 12;
+    RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
+    RequestApplySnapshotChunk  apply_snapshot_chunk  = 14;
+    RequestPrepareProposal     prepare_proposal      = 15;
+    RequestProcessProposal     process_proposal      = 16;
     RequestExtendVote          extend_vote           = 17;
     RequestVerifyVoteExtension verify_vote_extension = 18;
-    RequestFinalizeBlock      finalize_block         = 19;
+    RequestFinalizeBlock       finalize_block        = 19;
   }
 }
 
@@ -122,6 +125,16 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+// Extends a vote with application-side injection
+message RequestExtendVote {
+  types.Vote vote = 1;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  types.Vote vote = 1;
+}
+
 message RequestPrepareProposal {
   bytes                   hash   = 1;
   tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
@@ -142,20 +155,6 @@ message RequestProcessProposal {
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
 }
 
-// Extends a vote with application-side injection
-message RequestExtendVote {
-  bytes hash   = 1;
-  int64 height = 2;
-}
-
-// Verify the vote extension
-message RequestVerifyVoteExtension {
-  bytes hash              = 1;
-  bytes validator_address = 2;
-  int64 height            = 3;
-  bytes vote_extension    = 4;
-}
-
 message RequestFinalizeBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
@@ -169,26 +168,26 @@ message RequestFinalizeBlock {
 
 message Response {
   oneof value {
-    ResponseException          exception              = 1;
-    ResponseEcho               echo                   = 2;
-    ResponseFlush              flush                  = 3;
-    ResponseInfo               info                   = 4;
-    ResponseInitChain          init_chain             = 5;
-    ResponseQuery              query                  = 6;
-    ResponseBeginBlock         begin_block            = 7 [deprecated = true];
-    ResponseCheckTx            check_tx               = 8;
-    ResponseDeliverTx          deliver_tx             = 9 [deprecated = true];
-    ResponseEndBlock           end_block              = 10 [deprecated = true];
-    ResponseCommit             commit                 = 11;
-    ResponseListSnapshots      list_snapshots         = 12;
-    ResponseOfferSnapshot      offer_snapshot         = 13;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk    = 14;
-    ResponseApplySnapshotChunk apply_snapshot_chunk   = 15;
-    ResponsePrepareProposal    prepare_proposal       = 16;
-    ResponseProcessProposal    process_proposal       = 17;
+    ResponseException           exception             = 1;
+    ResponseEcho                echo                  = 2;
+    ResponseFlush               flush                 = 3;
+    ResponseInfo                info                  = 4;
+    ResponseInitChain           init_chain            = 5;
+    ResponseQuery               query                 = 6;
+    ResponseBeginBlock          begin_block           = 7 [deprecated = true];
+    ResponseCheckTx             check_tx              = 8;
+    ResponseDeliverTx           deliver_tx            = 9 [deprecated = true];
+    ResponseEndBlock            end_block             = 10 [deprecated = true];
+    ResponseCommit              commit                = 11;
+    ResponseListSnapshots       list_snapshots        = 12;
+    ResponseOfferSnapshot       offer_snapshot        = 13;
+    ResponseLoadSnapshotChunk   load_snapshot_chunk   = 14;
+    ResponseApplySnapshotChunk  apply_snapshot_chunk  = 15;
+    ResponsePrepareProposal     prepare_proposal      = 16;
+    ResponseProcessProposal     process_proposal      = 17;
     ResponseExtendVote          extend_vote           = 18;
     ResponseVerifyVoteExtension verify_vote_extension = 19;
-    ResponseFinalizeBlock      finalize_block         = 20;
+    ResponseFinalizeBlock       finalize_block        = 20;
   }
 }
 
@@ -315,6 +314,21 @@ message ResponseApplySnapshotChunk {
   }
 }
 
+message ResponseExtendVote {
+  tendermint.types.VoteExtension vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  Result result = 1;
+
+  enum Result {
+    UNKNOWN = 0;  // Unknown result, reject vote extension
+    ACCEPT  = 1;  // Vote extension verified, include the vote
+    SLASH   = 2;  // Vote extension verification aborted, continue but slash validator
+    REJECT  = 3;  // Vote extension invalidated
+  }
+}
+
 message ResponsePrepareProposal {
   bool                             modified_tx             = 1;
   repeated TxRecord                tx_records              = 2;
@@ -322,7 +336,6 @@ message ResponsePrepareProposal {
   repeated ExecTxResult            tx_results              = 4;
   repeated ValidatorUpdate         validator_updates       = 5;
   tendermint.types.ConsensusParams consensus_param_updates = 6;
-  repeated bytes                   app_signed_updates      = 7;
 }
 
 message ResponseProcessProposal {
@@ -333,19 +346,11 @@ message ResponseProcessProposal {
   tendermint.types.ConsensusParams consensus_param_updates = 5;
 }
 
-message ResponseExtendVote {
-  bytes vote_extension = 1;
-}
-
-message ResponseVerifyVoteExtension {
-  bool accept = 1;
-}
-
 message ResponseFinalizeBlock {
   repeated Event events = 1
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   repeated ExecTxResult            tx_results              = 2;
-  repeated ValidatorUpdate         validator_updates       = 3;
+  repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
   bytes                            app_hash                = 5;
   int64                            retain_height           = 6;
@@ -389,7 +394,7 @@ message ExecTxResult {
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
-  repeated Event events  = 7
+  repeated Event events     = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
 }
@@ -398,15 +403,15 @@ message ExecTxResult {
 //
 // One usage is indexing transaction results.
 message TxResult {
-  int64             height = 1;
-  uint32            index  = 2;
-  bytes             tx     = 3;
-  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+  int64        height = 1;
+  uint32       index  = 2;
+  bytes        tx     = 3;
+  ExecTxResult result = 4 [(gogoproto.nullable) = false];
 }
 
 message TxRecord {
-  TxAction       action     = 1;
-  bytes          tx         = 2;
+  TxAction action = 1;
+  bytes    tx     = 2;
 
   // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
   enum TxAction {
@@ -437,23 +442,14 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
+  reserved 3;  // Placeholder for tendermint_signed_extension in v0.37
+  reserved 4;  // Placeholder for app_signed_extension in v0.37
 }
 
-// ExtendedVoteInfo
 message ExtendedVoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
   bytes     vote_extension    = 3;
-}
-
-// CanonicalVoteExtension
-// TODO: move this to core Tendermint data structures
-message CanonicalVoteExtension {
-  bytes  extension = 1;
-  int64  height    = 2;
-  int32  round     = 3;
-  string chain_id  = 4;
-  bytes  address   = 5;
 }
 
 enum EvidenceType {
