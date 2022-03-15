@@ -84,16 +84,6 @@ func (txs Txs) ToSliceOfBytes() [][]byte {
 	return txBzs
 }
 
-// ToTxs converts a raw slice of byte slices into a Txs type.
-// TODO This function is to disappear when TxRecord is introduced
-func ToTxs(txs [][]byte) Txs {
-	txBzs := make(Txs, len(txs))
-	for i := 0; i < len(txs); i++ {
-		txBzs[i] = txs[i]
-	}
-	return txBzs
-}
-
 // TxRecordSet contains indexes into an underlying set of transactions.
 // These indexes are useful for validating and working with a list of TxRecords
 // from the PrepareProposal response.
