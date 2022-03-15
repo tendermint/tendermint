@@ -152,7 +152,7 @@ func NewTxRecordSet(trs []*abci.TxRecord) TxRecordSet {
 	return txrSet
 }
 
-// AddedTxs returns the transactions marked for inclusion in a block. This
+// IncludedTxs returns the transactions marked for inclusion in a block. This
 // list maintains the order that the transactions were included in the list of
 // TxRecords that were used to construct the TxRecordSet.
 func (t TxRecordSet) IncludedTxs() []Tx {
