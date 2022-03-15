@@ -87,13 +87,13 @@ an upper bound, the *maximum time* assigned to a proposal.
 There exists a system parameter `MSGDELAY` for end-to-end delays of proposal messages,
 such for any two correct processes `p` and `q`:
 
-- If `p` sends a message `m` carrying a proposal at real time `t`, then if `q`
-  receives `m`, it does that at time `t'` such that `t <= t' <= t' + MSGDELAY`.
+- If `p` sends a proposal message `m` at real time `t` and `q` receives `m` at
+  real time `t'`, then `t <= t' <= t' + MSGDELAY`.
 
-While we don't want to impose particular restrictions regarding the format of `m`,
-we need to assume that their *size is upper bounded*.
-In practice, using messages with a fixed-size to carry proposals allows
-for a more accurate estimation of `MSGDELAY`, and therefore is advised.
+Notice that, as a system parameter, `MSGDELAY` should be observed for any
+proposal message broadcast by correct processes: it is a *worst-case* parameter.
+As message delays depends on the message size, the above requirement implicty
+indicates that the size of proposal messages is either fixed or upper bounded.
 
 ## Problem Statement
 
