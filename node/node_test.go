@@ -442,7 +442,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
