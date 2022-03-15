@@ -193,9 +193,7 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	// Sort a copy of the complete transaction slice so we can check for
 	// duplication. The copy is so we do not change the original ordering.
 	// Only the slices are copied, the transaction contents are shared.
-	allCopy := make([]Tx, len(t.all))
-	copy(allCopy, t.all)
-	sort.Sort(Txs(allCopy))
+	allCopy := sortedCopy(t.all)
 
 	var size int64
 	for i, cur := range allCopy {
@@ -212,23 +210,13 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 
 	// create copies of each of the action-specific indexes so that order of the original
 	// indexes can be preserved.
-	addedCopy := make([]Tx, len(t.added))
-	copy(addedCopy, t.added)
-	sort.Sort(Txs(addedCopy))
-
-	removedCopy := make([]Tx, len(t.removed))
-	copy(removedCopy, t.removed)
-	sort.Sort(Txs(removedCopy))
-
-	unmodifiedCopy := make([]Tx, len(t.unmodified))
-	copy(unmodifiedCopy, t.unmodified)
-	sort.Sort(Txs(unmodifiedCopy))
+	addedCopy := sortedCopy(t.added)
+	removedCopy := sortedCopy(t.removed)
+	unmodifiedCopy := sortedCopy(t.unmodified)
 
 	// make a defensive copy of otxs so that the order of
 	// the caller's data is not altered.
-	otxsCopy := make([]Tx, len(otxs))
-	copy(otxsCopy, otxs)
-	sort.Sort(Txs(otxsCopy))
+	otxsCopy := sortedCopy(otxs)
 
 	if ix, ok := containsAllTxs(otxsCopy, unmodifiedCopy); !ok {
 		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", unmodifiedCopy[ix].Hash())
@@ -237,23 +225,30 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	if ix, ok := containsAllTxs(otxsCopy, removedCopy); !ok {
 		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", removedCopy[ix].Hash())
 	}
-	if ix, ok := containsNoneTxs(otxsCopy, addedCopy); !ok {
+	if ix, ok := containsAnyTxs(otxsCopy, addedCopy); ok {
 		return fmt.Errorf("existing transaction incorrectly marked as added, transaction hash: %x", addedCopy[ix].Hash())
 	}
 	return nil
 }
 
-// containsNoneTxs checks that list a contains none of the transactions in list
+func sortedCopy(txs Txs) Txs {
+	cp := make(Txs, len(txs))
+	copy(cp, txs)
+	sort.Sort(cp)
+	return cp
+}
+
+// containsAnyTxs checks that list a contains one of the transactions in list
 // b. If a match is found, the index in b of the matching transaction is returned.
 // Both lists must be sorted.
-func containsNoneTxs(a, b []Tx) (int, bool) {
+func containsAnyTxs(a, b []Tx) (int, bool) {
 	aix, bix := 0, 0
 	for ; aix < len(a); aix++ {
 	LOOP:
 		for bix < len(b) {
 			switch bytes.Compare(b[bix], a[aix]) {
 			case 0:
-				return bix, false
+				return bix, true
 			case -1:
 				bix++
 				// we've reached the end of b, and the last value in b was
@@ -261,14 +256,14 @@ func containsNoneTxs(a, b []Tx) (int, bool) {
 				// a's values never get smaller, so we know there are no more matches
 				// in the list. We can terminate the iteration here.
 				if bix == len(b) {
-					return -1, true
+					return -1, false
 				}
 			case 1:
 				break LOOP
 			}
 		}
 	}
-	return -1, true
+	return -1, false
 }
 
 // containsAllTxs checks that super contains all of the transactions in the sub
