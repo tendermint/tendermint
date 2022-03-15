@@ -55,13 +55,18 @@ func TestStateCopy(t *testing.T) {
 
 	stateCopy := state.Copy()
 
-	assert.True(t, state.Equals(stateCopy),
+	seq, err := state.Equals(stateCopy)
+	require.NoError(t, err)
+	assert.True(t, seq,
 		"expected state and its copy to be identical.\ngot: %v\nexpected: %v",
 		stateCopy, state)
 
 	stateCopy.LastBlockHeight++
 	stateCopy.LastValidators = state.Validators
-	assert.False(t, state.Equals(stateCopy), "expected states to be different. got same %v", state)
+
+	seq, err = state.Equals(stateCopy)
+	require.NoError(t, err)
+	assert.False(t, seq, "expected states to be different. got same %v", state)
 }
 
 // TestMakeGenesisStateNilValidators tests state's consistency when genesis file's validators field is nil.
@@ -90,7 +95,9 @@ func TestStateSaveLoad(t *testing.T) {
 
 	loadedState, err := stateStore.Load()
 	require.NoError(t, err)
-	assert.True(t, state.Equals(loadedState),
+	seq, err := state.Equals(loadedState)
+	require.NoError(t, err)
+	assert.True(t, seq,
 		"expected state and its copy to be identical.\ngot: %v\nexpected: %v",
 		loadedState, state)
 }
