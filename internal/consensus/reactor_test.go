@@ -833,11 +833,12 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
+	powerNow := states[0].GetRoundState().LastValidators.TotalVotingPower()
 	require.NotEqualf(
-		t, previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		t, previousTotalVotingPower, powerNow,
 		"expected voting power to change (before: %d, after: %d)",
 		previousTotalVotingPower,
-		states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		powerNow,
 	)
 }
 
