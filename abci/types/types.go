@@ -167,3 +167,31 @@ func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
 		Result: result,
 	}
 }
+
+// deterministicExecTxResult constructs a copy of response that omits
+// non-deterministic fields. The input response is not modified.
+func deterministicExecTxResult(response *ExecTxResult) *ExecTxResult {
+	return &ExecTxResult{
+		Code:      response.Code,
+		Data:      response.Data,
+		GasWanted: response.GasWanted,
+		GasUsed:   response.GasUsed,
+	}
+}
+
+// MarshalTxResults encodes the the TxResults as a list of byte
+// slices. It strips off the non-deterministic pieces of the TxResults
+// so that the resulting data can be used for hash comparisons and used
+// in Merkle proofs.
+func MarshalTxResults(r []*ExecTxResult) ([][]byte, error) {
+	s := make([][]byte, len(r))
+	for i, e := range r {
+		d := deterministicExecTxResult(e)
+		b, err := d.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		s[i] = b
+	}
+	return s, nil
+}

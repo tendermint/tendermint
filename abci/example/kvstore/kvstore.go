@@ -284,7 +284,7 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
+	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs)}
 }
 
 func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
@@ -420,7 +420,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxRe
 const PreparePrefix = "prepare"
 
 func isPrepareTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), PreparePrefix)
+	return bytes.HasPrefix(tx, []byte(PreparePrefix))
 }
 
 // execPrepareTx is noop. tx data is considered as placeholder
@@ -430,16 +430,30 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 	return &types.ExecTxResult{}
 }
 
-// substPrepareTx subst all the preparetx in the blockdata
-// to null string(could be any arbitrary string).
-func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
-	// TODO: this mechanism will change with the current spec of PrepareProposal
-	// We now have a special type for marking a tx as changed
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with the prefix strips.
+// It marks all of the original transactions as 'REMOVED' so that
+// Tendermint will remove them from its mempool.
+func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
+	trs := make([]*types.TxRecord, len(blockData))
+	var removed []*types.TxRecord
 	for i, tx := range blockData {
 		if isPrepareTx(tx) {
-			blockData[i] = make([]byte, len(tx))
+			removed = append(removed, &types.TxRecord{
+				Tx:     tx,
+				Action: types.TxRecord_REMOVED,
+			})
+			trs[i] = &types.TxRecord{
+				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
+				Action: types.TxRecord_ADDED,
+			}
+			continue
+		}
+		trs[i] = &types.TxRecord{
+			Tx:     tx,
+			Action: types.TxRecord_UNMODIFIED,
 		}
 	}
 
-	return blockData
+	return append(trs, removed...)
 }

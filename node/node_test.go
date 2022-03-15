@@ -336,7 +336,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
@@ -415,7 +415,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
@@ -497,10 +497,16 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		},
 	}
 
+	// save the updated validator set for use by the block executor.
+	state.LastBlockHeight = math.MaxInt64 - 3
+	state.LastHeightValidatorsChanged = math.MaxInt64 - 1
+	state.NextValidators = state.Validators.Copy()
+	require.NoError(t, stateStore.Save(state))
+
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	// change state in order to produce the largest accepted header
 	state.LastBlockID = blockID
-	state.LastBlockHeight = math.MaxInt64 - 1
+	state.LastBlockHeight = math.MaxInt64 - 2
 	state.LastBlockTime = timestamp
 	state.LastResultsHash = tmhash.Sum([]byte("last_results_hash"))
 	state.AppHash = tmhash.Sum([]byte("app_hash"))
@@ -530,13 +536,15 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
-	block, partSet, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
 		state, commit,
 		proposerAddr,
 		nil,
 	)
+	require.NoError(t, err)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	// this ensures that the header is at max size
