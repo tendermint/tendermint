@@ -76,7 +76,7 @@ func TestRollbackIntegration(t *testing.T) {
 				require.NoError(t, err)
 
 				if status.SyncInfo.LatestBlockHeight > height+2 {
-					t.Fatalf("chain is expect to halt, because validator is not expected to sign the new blocks %d", status.SyncInfo.LatestBlockHeight)
+					t.Fatalf("chain is expect to halt, because the validator won't recreate the old blocks %d", status.SyncInfo.LatestBlockHeight)
 					return
 				}
 			}
