@@ -575,7 +575,7 @@ func fireEvents(
 func ExecCommitBlock(
 	ctx context.Context,
 	be *BlockExecutor,
-	appConnConsensus abciclient.Client,
+	appConn abciclient.Client,
 	block *types.Block,
 	logger log.Logger,
 	store Store,
@@ -583,7 +583,7 @@ func ExecCommitBlock(
 	s State,
 ) ([]byte, error) {
 	pbh := block.Header.ToProto()
-	finalizeBlockResponse, err := appConnConsensus.FinalizeBlock(
+	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
@@ -623,7 +623,7 @@ func ExecCommitBlock(
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.Commit(ctx)
+	res, err := appConn.Commit(ctx)
 	if err != nil {
 		logger.Error("client error during proxyAppConn.Commit", "err", res)
 		return nil, err
