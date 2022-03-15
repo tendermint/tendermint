@@ -46,8 +46,8 @@ func TestRollbackIntegration(t *testing.T) {
 		height, _, err = commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height)
 	})
-	t.Run("Rollback agian", func(t *testing.T) {
-		// should be able to rollback agian.
+	t.Run("Rollback again", func(t *testing.T) {
+		// should be able to rollback again.
 		require.NoError(t, app.Rollback())
 		height2, _, err := commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height2)
