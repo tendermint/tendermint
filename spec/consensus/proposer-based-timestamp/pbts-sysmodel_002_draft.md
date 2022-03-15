@@ -134,7 +134,7 @@ implicitly assumes that heights of consensus are executed in order.
 #### **[PBTS-INV-TIMELY.0]**
 
 - [Time-Validity] If a correct process decides on value `v`, then the proposal
-  time `v.time` was considered `timely` by `f+1` correct processes.
+  time `v.time` was considered `timely` by at least `f+1` correct processes.
 
 PBTS introduces a `timely` predicate that restricts the allowed decisions based
 on the proposal time `v.time` associated with a proposed value `v`.
@@ -158,7 +158,7 @@ associated proposal time `v.time` can be proposed in multiple rounds, the
 > Considering the algorithm in the [arXiv paper][arXiv], a new proposal is
 > produced by a proposer `p` when its `validValue_p` is unset.
 > The produced proposal thus have `v.round = round_p` and it is broadcast in a
-> Proposal message of round `v.round` with the `validRound` field set to `-1`.
+> Proposal message of with the `validRound` field set to `-1`.
 
 The `timely` predicate is evaluated when a process receives a proposal.
 More precisely, let `p` be a correct process:
@@ -177,31 +177,36 @@ The proposal `(v, v.time, v.round)` is considered `timely` by a correct process
 1. `receiveTime_p[v.round] >= v.time - PRECISION`, and
 1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`.
 
+A correct process at round `v.round` of consensus only sends a `PREVOTE` for
+`v` if the associated proposal time `v.time` is considered `timely`.
+
 ### Timely Proof-of-Locks
 
-We denote by `POL(v,r)` a *Proof-of-Lock* of value `v` at the round `r` of consensus.
-`POL(v,r)` consists of a set of `PREVOTE` messages of round `r` for the value `v`
-from processes whose cumulative voting power is at least `2f + 1`.
+A *Proof-of-Lock* is a set of `PREVOTE` messages of round of consensus for the
+same value from processes whose cumulative voting power is at least `2f + 1`.
+We denote as `POL(v,r)` a proof-of-lock of value `v` at round `r`.
 
-#### **[PBTS-TIMELY-POL.1]**
+For PBTS, we are particularly interested in the `POL(v,v.round)` produced in
+the round `v.round` at which a value `v` was first proposed.
+We call it a *timely* proof-of-lock for `v` because it can only be observed
+if processes with cumulative voting power `f+1` considered it `timely`.
+More precisely:
+
+#### **[PBTS-TIMELY-POL.0]**
 
 If
 
-- there is a valid `POL(v,r*)` for height `h`, and
-- `r*` is the lowest-numbered round `r` of height `h` for which there is a valid `POL(v,r)`, and
+- there is a valid `POL(v,r*)` with `r* = v.round`, and
 - `POL(v,r*)` contains a `PREVOTE` message from at least one correct process,
 
-Then, where `p` is a such correct process:
+Then, let `p` is a such correct process:
 
-- `p` received a `PROPOSE` message of round `r*` and height `h`, and
-- the `PROPOSE` message contained a proposal for value `v` with proposal time `v.time`, and
-- a correct process `p` considered the proposal `timely`.
+- `p` received a `PROPOSE` message of round `r* = v.round`, and
+- the `PROPOSE` message contained a proposal `(v, v.time, v.round)`, and
+- `p` considered the proposal `timely`.
 
-The round `r*` above defined will be, in most cases,
-the round in which `v` was originally proposed, and when `v.time` was assigned,
-using a `PROPOSE` message with `POLRound = -1`.
-In any case, at least one correct process must consider the proposal `timely` at round `r*`
-to enable a valid `POL(v,r*)` to be observed.
+The presence of a `PREVOTE` from a correct process `p` in a timely proof-of-lock is
+guaranteed provided that the voting power of Byzantine processes is bound by `2f `.
 
 ### Derived Proof-of-Locks
 
