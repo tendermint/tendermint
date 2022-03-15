@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	stdlog "log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ func main() {
 
 	cli, err := NewCLI()
 	if err != nil {
-		panic(err)
+		stdlog.Fatal(err)
 	}
 
 	cli.Run(ctx)
