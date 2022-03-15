@@ -180,14 +180,14 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	// It sorts the original transaction list, otxs, once.
 	// It sorts the new transaction list twice: once when sorting 'all', the total list,
 	// and once by sorting the set of the added, removed, and unmodified transactions indexes,
-	// which, when combined, comprise the complete list of transactions.
+	// which, when combined, comprise the complete list of modified transactions.
 	//
 	// The original list is iterated once and the modified list is iterated multiple times,
 	// one time alongside each of the 3 indexes for a total of 4 iterations of the modified list.
 	// Asymptotically, this yields a total runtime of O(N*log(N) + N + 2*M*log(M) + 4*M),
 	// in the input size of the original list and the input size of the new list respectively.
-	// A 2 * M performance gain is possible but iterating all of the indexes simultaneously
-	// alongside the original list, but the multiple iterations were preferred to be more
+	// A 2 * M performance gain is possible by iterating all of the indexes simultaneously
+	// alongside the full list, but the multiple iterations were preferred to be more
 	// readable and maintainable.
 
 	// Sort a copy of the complete transaction slice so we can check for
