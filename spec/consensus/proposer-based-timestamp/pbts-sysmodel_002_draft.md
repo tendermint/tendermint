@@ -92,7 +92,7 @@ such for any two correct processes `p` and `q`:
 
 Notice that, as a system parameter, `MSGDELAY` should be observed for any
 proposal message broadcast by correct processes: it is a *worst-case* parameter.
-As message delays depends on the message size, the above requirement implicty
+As message delays depends on the message size, the above requirement implicitly
 indicates that the size of proposal messages is either fixed or upper bounded.
 
 ## Problem Statement
@@ -143,30 +143,31 @@ The property is based in the `timely` predicate defined in the following:
 #### **[PBTS-INV-TIMELY.0]**
 
 - [Time-Validity] If a correct process decides on value `v`, then the proposal
-  message proposing `v` was considered `timely` by at least `f+1` processes.
+  of `v` was considered `timely` by at least `f+1` processes.
 
 The `timely` predicate is evaluated when a process receives a proposal in a
 round of consensus.
+
 A proposal is a tuple `(v, v.time, v.round)`, where `v` is the proposed value,
 `v.time` the proposal time, and `v.round` is the round at which `v` was first
-proposed (and `v.time` was assigned).
+proposed---so `v.time` and `v.round` were assigned.
 While the same proposal can be proposed multiple time, in different rounds of
-consensus, we are interested on the first time it was proposed:
+consensus, the `timely` predicate is verfied in the first time it was proposed:
 
-##### **[PBTS-RECEPTION-STEP.0]**
+#### **[PBTS-PROPOSAL-RECEPTION.0]**
 
 Let `p` be a correct process which is at round `r` of consensus:
 
 - `receiveTime_p[r]` is the time `p` reads from its local clock when it
   receives the proposal `(v, v.time, v.round)` with `v.round = r`.
 
-##### **[PBTS-TIMELY.0]**
+#### **[PBTS-TIMELY.0]**
 
 The proposal `(v, v.time, v.round)` for `v` is considered `timely` by a correct
 process `p` if:
 
 1. `receiveTime_p[v.round] >= v.time - PRECISION` and
-1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`
+1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`.
 
 ### Timely Proof-of-Locks
 
