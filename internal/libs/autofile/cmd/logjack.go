@@ -75,9 +75,8 @@ func main() {
 		if err != nil {
 			if err == io.EOF {
 				return
-			} else {
-				stdlog.Fatalln("logjack errored:", err.Error())
 			}
+			stdlog.Fatalln("logjack errored:", err.Error())
 		}
 		_, err = group.Write(buf[:n])
 		if err != nil {
