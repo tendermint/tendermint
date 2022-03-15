@@ -819,10 +819,11 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
+	newVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
 	require.NotEqualf(
-		t, states[0].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
+		t, previousTotalVotingPower, newVotingPower,
 		"expected voting power to change (before: %d, after: %d)",
-		previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		previousTotalVotingPower, newVotingPower,
 	)
 
 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
@@ -833,12 +834,11 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 	waitForAndValidateBlock(ctx, t, n, activeVals, blocksSubs, states)
 
-	powerNow := states[0].GetRoundState().LastValidators.TotalVotingPower()
+	newVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
 	require.NotEqualf(
-		t, previousTotalVotingPower, powerNow,
+		t, previousTotalVotingPower, newVotingPower,
 		"expected voting power to change (before: %d, after: %d)",
-		previousTotalVotingPower,
-		powerNow,
+		previousTotalVotingPower, newVotingPower,
 	)
 }
 
