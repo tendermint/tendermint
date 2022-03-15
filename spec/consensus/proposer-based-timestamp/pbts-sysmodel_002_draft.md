@@ -6,8 +6,7 @@
    - [Synchronized clocks](#synchronized-clocks)
    - [Message delays](#message-delays)
  - [Problem Statement](#problem-statement)
-   - [Safety Invariants](#safety-invariants)
-   - [Timely Proposals](#timely-proposals)
+ - [Timely Proposals](#timely-proposals)
 
 ## System Model
 
@@ -100,14 +99,12 @@ indicates that the size of proposal messages is either fixed or upper bounded.
 In this section we define the properties of Tendermint consensus
 (cf. the [arXiv paper][arXiv]) in this system model.
 
-#### **[PBTS-PROPOSE.0]**
+### **[PBTS-PROPOSE.0]**
 
 A proposer proposes a consensus value `v` that includes a proposal time
 `v.time`.
 
-### Safety Invariants
-
-We then restrict the allowed decisions along the following lines:
+> We then restrict the allowed decisions along the following lines:
 
 #### **[PBTS-INV-AGREEMENT.0]**
 
@@ -134,39 +131,50 @@ consensus:
 The monotonicity of proposal times, and external validity in general,
 implicitly assumes that heights of consensus are executed in order.
 
-### Timely proposals
-
-PBTS introduces a synchronous property that restrict the allowed decisions
-based on the proposal time `v.time` associated with a proposed value `v`.
-The property is based in the `timely` predicate defined in the following:
-
 #### **[PBTS-INV-TIMELY.0]**
 
 - [Time-Validity] If a correct process decides on value `v`, then the proposal
-  of `v` was considered `timely` by at least `f+1` processes.
+  time `v.time` was considered `timely` by `f+1` correct processes.
 
-The `timely` predicate is evaluated when a process receives a proposal in a
-round of consensus.
+PBTS introduces a `timely` predicate that restricts the allowed decisions based
+on the proposal time `v.time` associated with a proposed value `v`.
+As as synchronous predicate, the time at which it is evaluated impacts on
+whether a process accepts of reject a value based on its proposal time.
+For this reason, the Time-Validity property refers to the previous evaluation
+of the `timely` predicate, as detailed in the following.
 
-A proposal is a tuple `(v, v.time, v.round)`, where `v` is the proposed value,
-`v.time` the proposal time, and `v.round` is the round at which `v` was first
-proposed---so `v.time` and `v.round` were assigned.
-While the same proposal can be proposed multiple time, in different rounds of
-consensus, the `timely` predicate is verfied in the first time it was proposed:
+## Timely proposals
+
+For PBTS, a `proposal` is a tuple `(v, v.time, v.round)`, where:
+
+- `v` is the proposed value;
+- `v.time` is the associated proposal time;
+- `v.round` is the round at which `v` was first proposed.
+
+We introduce this definition of proposal because, while a value `v` and its
+associated proposal time `v.time` can be proposed in multiple rounds, the
+`timely` predicate is only evaluated at round `v.round`.
+
+> Considering the algorithm in the [arXiv paper][arXiv], a new proposal is
+> produced by a proposer `p` when its `validValue_p` is unset.
+> The produced proposal thus have `v.round = round_p` and it is broadcast in a
+> Proposal message of round `v.round` with the `validRound` field set to `-1`.
+
+The `timely` predicate is evaluated when a process receives a proposal.
+More precisely, let `p` be a correct process:
 
 #### **[PBTS-PROPOSAL-RECEPTION.0]**
 
-Let `p` be a correct process which is at round `r` of consensus:
-
 - `receiveTime_p[r]` is the time `p` reads from its local clock when it
-  receives the proposal `(v, v.time, v.round)` with `v.round = r`.
+  receives the proposal `(v, v.time, v.round)`.
 
 #### **[PBTS-TIMELY.0]**
 
-The proposal `(v, v.time, v.round)` for `v` is considered `timely` by a correct
-process `p` if:
+The proposal `(v, v.time, v.round)` is considered `timely` by a correct process
+`p` if:
 
-1. `receiveTime_p[v.round] >= v.time - PRECISION` and
+1. `receiveTime_p[v.round]` is set, and
+1. `receiveTime_p[v.round] >= v.time - PRECISION`, and
 1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`.
 
 ### Timely Proof-of-Locks
