@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tendermint/tendermint/crypto/merkle"
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -40,12 +39,7 @@ func (env *Environment) Tx(ctx context.Context, hash bytes.HexBytes, prove bool)
 			var proof types.TxProof
 			if prove {
 				block := env.BlockStore.LoadBlock(r.Height)
-				root, proofs := merkle.ProofsFromByteSlices(block.Data.Txs.ToSliceOfBytes())
-				proof = types.TxProof{
-					RootHash: root,
-					Proof:    *proofs[int(r.Index)],
-					Data:     block.Data.Txs[int(r.Index)],
-				}
+				proof = block.Data.Txs.Proof(int(r.Index))
 			}
 
 			return &coretypes.ResultTx{
@@ -130,12 +124,7 @@ func (env *Environment) TxSearch(
 				var proof types.TxProof
 				if prove {
 					block := env.BlockStore.LoadBlock(r.Height)
-					root, proofs := merkle.ProofsFromByteSlices(block.Data.Txs.ToSliceOfBytes())
-					proof = types.TxProof{
-						RootHash: root,
-						Proof:    *proofs[int(r.Index)],
-						Data:     block.Data.Txs[int(r.Index)],
-					}
+					proof = block.Data.Txs.Proof(int(r.Index))
 				}
 
 				apiResults = append(apiResults, &coretypes.ResultTx{
