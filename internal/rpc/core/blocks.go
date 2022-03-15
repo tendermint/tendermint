@@ -23,9 +23,7 @@ import (
 // order (highest first).
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/blockchain
-func (env *Environment) BlockchainInfo(
-	ctx context.Context,
-	minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
+func (env *Environment) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 
 	const limit int64 = 20
 

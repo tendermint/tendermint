@@ -170,7 +170,12 @@ func (store dbStore) save(state State, key []byte) error {
 		return err
 	}
 
-	if err := batch.Set(key, state.Bytes()); err != nil {
+	stateBz, err := state.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(key, stateBz); err != nil {
 		return err
 	}
 
@@ -206,7 +211,12 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	if err := batch.Set(stateKey, state.Bytes()); err != nil {
+	stateBz, err := state.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(stateKey, stateBz); err != nil {
 		return err
 	}
 

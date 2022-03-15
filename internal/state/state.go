@@ -129,23 +129,30 @@ func (state State) Copy() State {
 }
 
 // Equals returns true if the States are identical.
-func (state State) Equals(state2 State) bool {
-	sbz, s2bz := state.Bytes(), state2.Bytes()
-	return bytes.Equal(sbz, s2bz)
+func (state State) Equals(state2 State) (bool, error) {
+	sbz, err := state.Bytes()
+	if err != nil {
+		return false, err
+	}
+	s2bz, err := state2.Bytes()
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(sbz, s2bz), nil
 }
 
-// Bytes serializes the State using protobuf.
-// It panics if either casting to protobuf or serialization fails.
-func (state State) Bytes() []byte {
+// Bytes serializes the State using protobuf, propagating marshaling
+// errors
+func (state State) Bytes() ([]byte, error) {
 	sm, err := state.ToProto()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	bz, err := proto.Marshal(sm)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return bz
+	return bz, nil
 }
 
 // IsEmpty returns true if the State is equal to the empty State.
