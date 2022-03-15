@@ -62,9 +62,9 @@ func run(ctx context.Context, configFile string) error {
 
 	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	if err != nil {
-		// have print here because we can log, logger
+		// have print here because we can't log (yet), use the logger
 		// everywhere else.
-		fmt.Println("ERROR:", err)
+		fmt.Fprintln(os.Stderr, "ERROR:", err)
 		return err
 	}
 
