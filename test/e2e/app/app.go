@@ -305,7 +305,8 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
+	// None of the transactions are modified by this application.
+	return abci.ResponsePrepareProposal{ModifiedTx: false}
 }
 
 // ProcessProposal implements part of the Application interface.

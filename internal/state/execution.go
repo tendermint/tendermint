@@ -8,6 +8,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
@@ -99,10 +100,11 @@ func (blockExec *BlockExecutor) Store() Store {
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	ctx context.Context,
 	height int64,
-	state State, commit *types.Commit,
+	state State,
+	commit *types.Commit,
 	proposerAddr []byte,
 	votes []*types.Vote,
-) (*types.Block, *types.PartSet, error) {
+) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
@@ -113,13 +115,18 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
-	preparedProposal, err := blockExec.appClient.PrepareProposal(
+	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
+	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		abci.RequestPrepareProposal{
-			BlockData:     txs.ToSliceOfBytes(),
-			BlockDataSize: maxDataBytes,
-			Votes:         types.VotesToProto(votes),
+			Hash:                block.Hash(),
+			Header:              *block.Header.ToProto(),
+			Txs:                 block.Txs.ToSliceOfBytes(),
+			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
+			ByzantineValidators: block.Evidence.ToABCI(),
+			MaxTxBytes:          maxDataBytes,
 		},
 	)
 	if err != nil {
@@ -133,19 +140,28 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
-	newTxs := preparedProposal.GetBlockData()
-	var txSize int
-	for _, tx := range newTxs {
-		txSize += len(tx)
 
-		if maxDataBytes < int64(txSize) {
-			panic("block data exceeds max amount of allowed bytes")
-		}
+	if !rpp.ModifiedTx {
+		return block, nil
+	}
+	txrSet := types.NewTxRecordSet(rpp.TxRecords)
+
+	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
+		return nil, err
 	}
 
-	modifiedTxs := types.ToTxs(preparedProposal.GetBlockData())
-
-	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
+	for _, rtx := range txrSet.RemovedTxs() {
+		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
+			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
+		}
+	}
+	for _, atx := range txrSet.AddedTxs() {
+		if err := blockExec.mempool.CheckTx(ctx, atx, nil, mempool.TxInfo{}); err != nil {
+			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
+		}
+	}
+	itxs := txrSet.IncludedTxs()
+	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
@@ -249,7 +265,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = state.Update(blockID, &block.Header, ABCIResponsesResultsHash(abciResponses), finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
+	rs, err := abci.MarshalTxResults(finalizeBlockResponse.TxResults)
+	if err != nil {
+		return state, fmt.Errorf("marshaling TxResults: %w", err)
+	}
+	h := merkle.HashFromByteSlices(rs)
+	state, err = state.Update(blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -407,6 +428,24 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	return abci.CommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: votes,
+	}
+}
+
+func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
+	for i := range vs {
+		vs[i] = abci.ExtendedVoteInfo{
+			Validator:       c.Votes[i].Validator,
+			SignedLastBlock: c.Votes[i].SignedLastBlock,
+			/*
+				TODO: Include vote extensions information when implementing vote extensions.
+				VoteExtension:   []byte{},
+			*/
+		}
+	}
+	return abci.ExtendedCommitInfo{
+		Round: c.Round,
+		Votes: vs,
 	}
 }
 

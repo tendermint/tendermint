@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -298,26 +297,4 @@ func TestPruneStates(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestABCIResponsesResultsHash(t *testing.T) {
-	responses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{
-			TxResults: []*abci.ExecTxResult{
-				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
-			},
-		},
-	}
-
-	root := sm.ABCIResponsesResultsHash(responses)
-
-	// root should be Merkle tree root of FinalizeBlock tx responses
-	results := types.NewResults(responses.FinalizeBlock.TxResults)
-	assert.Equal(t, root, results.Hash())
-
-	// test we can prove first tx in FinalizeBlock
-	proof := results.ProveResult(0)
-	bz, err := results[0].Marshal()
-	require.NoError(t, err)
-	assert.NoError(t, proof.Verify(root, bz))
 }
