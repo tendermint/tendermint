@@ -72,10 +72,6 @@ func (txs Txs) Less(i, j int) bool {
 }
 
 // ToSliceOfBytes converts a Txs to slice of byte slices.
-//
-// NOTE: This method should become obsolete once Txs is switched to [][]byte.
-// ref: #2603
-// TODO This function is to disappear when TxRecord is introduced
 func (txs Txs) ToSliceOfBytes() [][]byte {
 	txBzs := make([][]byte, len(txs))
 	for i := 0; i < len(txs); i++ {
