@@ -293,19 +293,6 @@ func containsAllTxs(super, sub []Tx) (int, bool) {
 	return -1, true
 }
 
-// TxsToTxRecords converts from a list of Txs to a list of TxRecords. All of the
-// resulting TxRecords are returned with the status TxRecord_UNMODIFIED.
-func TxsToTxRecords(txs []Tx) []*abci.TxRecord {
-	trs := make([]*abci.TxRecord, len(txs))
-	for i, tx := range txs {
-		trs[i] = &abci.TxRecord{
-			Action: abci.TxRecord_UNMODIFIED,
-			Tx:     tx,
-		}
-	}
-	return trs
-}
-
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
 	RootHash tmbytes.HexBytes `json:"root_hash"`

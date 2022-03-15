@@ -672,7 +672,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
-	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs := txsToTxRecords(types.Txs(txs))
 	trs[0].Action = abci.TxRecord_REMOVED
 	trs[1].Action = abci.TxRecord_REMOVED
 	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
@@ -734,7 +734,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
 	mp.On("CheckTx", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
-	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs := txsToTxRecords(types.Txs(txs))
 	trs[0].Action = abci.TxRecord_ADDED
 	trs[1].Action = abci.TxRecord_ADDED
 
@@ -792,7 +792,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
-	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs := txsToTxRecords(types.Txs(txs))
 	trs = trs[2:]
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 
@@ -850,7 +850,7 @@ func TestPrepareProposalModifiedTxFalse(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
-	trs := types.TxsToTxRecords(types.Txs(txs))
+	trs := txsToTxRecords(types.Txs(txs))
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 	trs = trs[1:]
 	trs[0].Action = abci.TxRecord_REMOVED
@@ -904,4 +904,15 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 			Hash:  psH,
 		},
 	}
+}
+
+func txsToTxRecords(txs []types.Tx) []*abci.TxRecord {
+	trs := make([]*abci.TxRecord, len(txs))
+	for i, tx := range txs {
+		trs[i] = &abci.TxRecord{
+			Action: abci.TxRecord_UNMODIFIED,
+			Tx:     tx,
+		}
+	}
+	return trs
 }
