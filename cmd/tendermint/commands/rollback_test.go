@@ -70,12 +70,13 @@ func TestRollbackIntegration(t *testing.T) {
 		for {
 			select {
 			case <-ctx.Done():
-				t.Fatalf("failed to make progress after 20 seconds. Min height: %d", height)
+				return
 			case <-ticker.C:
 				status, err := client.Status(ctx)
 				require.NoError(t, err)
 
 				if status.SyncInfo.LatestBlockHeight > height+2 {
+					t.Fatalf("chain is expect to halt, because validator is not expected to sign the new blocks %d", status.SyncInfo.LatestBlockHeight)
 					return
 				}
 			}
