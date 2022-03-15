@@ -242,7 +242,9 @@ func decideProposal(
 	t.Helper()
 
 	cs1.mtx.Lock()
-	block, blockParts, err := cs1.createProposalBlock(ctx)
+	block, err := cs1.createProposalBlock(ctx)
+	require.NoError(t, err)
+	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	cs1.mtx.Lock()
 	validRound := cs1.ValidRound
