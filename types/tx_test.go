@@ -303,5 +303,4 @@ func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 
 func randInt(low, high int) int {
 	return rand.Intn(high-low) + low
-	return low + off
 }

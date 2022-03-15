@@ -186,7 +186,7 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	// and each value index is checked against the sorted original list for containment.
 	// Asymptotically, this yields a total runtime of O(N*log(N) + 2*M*log(M) + M*log(N)).
 	// in the input size of the original list, N, and the input size of the new list, M, respectively.
-	// Performance gains are likely possible, but this was prefered for readability and maintainability.
+	// Performance gains are likely possible, but this was preferred for readability and maintainability.
 
 	// Sort a copy of the complete transaction slice so we can check for
 	// duplication. The copy is so we do not change the original ordering.
