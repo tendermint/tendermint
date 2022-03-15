@@ -90,8 +90,13 @@ func NewApplication(cfg *Config) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Application{
-		logger:    log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo),
+		logger:    logger,
 		state:     state,
 		snapshots: snapshots,
 		cfg:       cfg,
