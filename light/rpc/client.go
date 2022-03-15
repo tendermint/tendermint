@@ -463,12 +463,12 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	if err != nil {
 		return nil, err
 	}
-	rH := merkle.HashFromByteSlices(append([][]byte{bbeBytes}, rs...))
+	mh := merkle.HashFromByteSlices(append([][]byte{bbeBytes}, rs...))
 
 	// Verify block results.
-	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {
+	if !bytes.Equal(mh, trustedBlock.LastResultsHash) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
-			rH, trustedBlock.LastResultsHash)
+			mh, trustedBlock.LastResultsHash)
 	}
 
 	return res, nil
