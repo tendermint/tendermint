@@ -15,9 +15,9 @@ var getMp func() mempool.Mempool
 
 func init() {
 	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalCreator(app)
-	appConnMem, _ := cc(log.NewNopLogger())
-	err := appConnMem.Start(context.TODO())
+	logger := log.NewNopLogger()
+	conn := abciclient.NewLocalClient(logger, app)
+	err := conn.Start(context.TODO())
 	if err != nil {
 		panic(err)
 	}
@@ -27,13 +27,7 @@ func init() {
 
 	getMp = func() mempool.Mempool {
 		if mp == nil {
-			mp = mempool.NewTxMempool(
-				log.NewNopLogger(),
-				cfg,
-				appConnMem,
-				0,
-			)
-
+			mp = mempool.NewTxMempool(logger, cfg, conn)
 		}
 		return mp
 	}

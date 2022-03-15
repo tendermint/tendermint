@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fortytw2/leaktest"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -14,7 +15,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/consensus"
-	"github.com/tendermint/tendermint/internal/mempool/mock"
+	"github.com/tendermint/tendermint/internal/eventbus"
+	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/p2ptest"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -33,7 +35,7 @@ type reactorTestSuite struct {
 	nodes   []types.NodeID
 
 	reactors map[types.NodeID]*Reactor
-	app      map[types.NodeID]proxy.AppConns
+	app      map[types.NodeID]abciclient.Client
 
 	blockSyncChannels map[types.NodeID]*p2p.Channel
 	peerChans         map[types.NodeID]chan p2p.PeerUpdate
@@ -64,7 +66,7 @@ func setup(
 		network:           p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		nodes:             make([]types.NodeID, 0, numNodes),
 		reactors:          make(map[types.NodeID]*Reactor, numNodes),
-		app:               make(map[types.NodeID]proxy.AppConns, numNodes),
+		app:               make(map[types.NodeID]abciclient.Client, numNodes),
 		blockSyncChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
 		peerChans:         make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
 		peerUpdates:       make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
@@ -109,7 +111,7 @@ func (rts *reactorTestSuite) addNode(
 	logger := log.TestingLogger()
 
 	rts.nodes = append(rts.nodes, nodeID)
-	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}), logger, proxy.NopMetrics())
+	rts.app[nodeID] = proxy.New(abciclient.NewLocalClient(logger, &abci.BaseApplication{}), logger, proxy.NopMetrics())
 	require.NoError(t, rts.app[nodeID].Start(ctx))
 
 	blockDB := dbm.NewMemDB()
@@ -120,14 +122,29 @@ func (rts *reactorTestSuite) addNode(
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 	require.NoError(t, stateStore.Save(state))
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
+	eventbus := eventbus.NewDefault(logger)
+	require.NoError(t, eventbus.Start(ctx))
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
-		rts.app[nodeID].Consensus(),
-		mock.Mempool{},
+		rts.app[nodeID],
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventbus,
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
@@ -154,8 +171,7 @@ func (rts *reactorTestSuite) addNode(
 			)
 		}
 
-		thisBlock, err := sf.MakeBlock(state, blockHeight, lastCommit)
-		require.NoError(t, err)
+		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
@@ -176,7 +192,7 @@ func (rts *reactorTestSuite) addNode(
 	rts.reactors[nodeID], err = NewReactor(
 		ctx,
 		rts.logger.With("nodeID", nodeID),
-		state.Copy(),
+		stateStore,
 		blockExec,
 		blockStore,
 		nil,

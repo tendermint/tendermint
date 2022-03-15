@@ -344,10 +344,6 @@ func (c *WSClient) writeRoutine(ctx context.Context) {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
-		// err != nil {
-		// ignore error; it will trigger in tests
-		// likely because it's closing an already closed connection
-		// }
 		c.wg.Done()
 	}()
 
@@ -430,14 +426,7 @@ func (c *WSClient) readRoutine(ctx context.Context) {
 		// ID. According to the spec, they should be notifications (requests
 		// without IDs).
 		// https://github.com/tendermint/tendermint/issues/2949
-		// c.mtx.Lock()
-		// if _, ok := c.sentIDs[response.ID.(types.JSONRPCIntID)]; !ok {
-		// 	c.Logger.Error("unsolicited response ID", "id", response.ID, "expected", c.sentIDs)
-		// 	c.mtx.Unlock()
-		// 	continue
-		// }
-		// delete(c.sentIDs, response.ID.(types.JSONRPCIntID))
-		// c.mtx.Unlock()
+		//
 		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
 		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
 		// both readRoutine and writeRoutine

@@ -36,19 +36,16 @@ func (env *Environment) Tx(ctx context.Context, hash bytes.HexBytes, prove bool)
 				return nil, fmt.Errorf("tx (%X) not found, err: %w", hash, err)
 			}
 
-			height := r.Height
-			index := r.Index
-
 			var proof types.TxProof
 			if prove {
-				block := env.BlockStore.LoadBlock(height)
-				proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
+				block := env.BlockStore.LoadBlock(r.Height)
+				proof = block.Data.Txs.Proof(int(r.Index))
 			}
 
 			return &coretypes.ResultTx{
 				Hash:     hash,
-				Height:   height,
-				Index:    index,
+				Height:   r.Height,
+				Index:    r.Index,
 				TxResult: r.Result,
 				Tx:       r.Tx,
 				Proof:    proof,
@@ -127,7 +124,7 @@ func (env *Environment) TxSearch(
 				var proof types.TxProof
 				if prove {
 					block := env.BlockStore.LoadBlock(r.Height)
-					proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
+					proof = block.Data.Txs.Proof(int(r.Index))
 				}
 
 				apiResults = append(apiResults, &coretypes.ResultTx{

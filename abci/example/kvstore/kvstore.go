@@ -117,7 +117,7 @@ func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func (app *Application) handleTx(tx []byte) *types.ResponseDeliverTx {
+func (app *Application) handleTx(tx []byte) *types.ExecTxResult {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey!power"
 	if isValidatorTx(tx) {
@@ -156,7 +156,7 @@ func (app *Application) handleTx(tx []byte) *types.ResponseDeliverTx {
 		},
 	}
 
-	return &types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: events}
+	return &types.ExecTxResult{Code: code.CodeTypeOK, Events: events}
 }
 
 func (app *Application) Close() error {
@@ -190,12 +190,12 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 		}
 	}
 
-	respTxs := make([]*types.ResponseDeliverTx, len(req.Txs))
+	respTxs := make([]*types.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		respTxs[i] = app.handleTx(tx)
 	}
 
-	return types.ResponseFinalizeBlock{Txs: respTxs, ValidatorUpdates: app.ValUpdates}
+	return types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}
 }
 
 func (*Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
@@ -284,7 +284,7 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
+	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs)}
 }
 
 func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
@@ -338,13 +338,13 @@ func isValidatorTx(tx []byte) bool {
 
 // format is "val:pubkey!power"
 // pubkey is a base64-encoded 32-byte ed25519 key
-func (app *Application) execValidatorTx(tx []byte) *types.ResponseDeliverTx {
+func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
 	//  get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "!")
 	if len(pubKeyAndPower) != 2 {
-		return &types.ResponseDeliverTx{
+		return &types.ExecTxResult{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
 	}
@@ -353,7 +353,7 @@ func (app *Application) execValidatorTx(tx []byte) *types.ResponseDeliverTx {
 	// decode the pubkey
 	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
 	if err != nil {
-		return &types.ResponseDeliverTx{
+		return &types.ExecTxResult{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
 	}
@@ -361,7 +361,7 @@ func (app *Application) execValidatorTx(tx []byte) *types.ResponseDeliverTx {
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)
 	if err != nil {
-		return &types.ResponseDeliverTx{
+		return &types.ExecTxResult{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
 	}
@@ -371,7 +371,7 @@ func (app *Application) execValidatorTx(tx []byte) *types.ResponseDeliverTx {
 }
 
 // add, update, or remove a validator
-func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ResponseDeliverTx {
+func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxResult {
 	pubkey, err := encoding.PubKeyFromProto(v.PubKey)
 	if err != nil {
 		panic(fmt.Errorf("can't decode public key: %w", err))
@@ -386,7 +386,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.Response
 		}
 		if !hasKey {
 			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
-			return &types.ResponseDeliverTx{
+			return &types.ExecTxResult{
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
 		}
@@ -398,7 +398,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.Response
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
 		if err := types.WriteMessage(&v, value); err != nil {
-			return &types.ResponseDeliverTx{
+			return &types.ExecTxResult{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("error encoding validator: %v", err)}
 		}
@@ -411,7 +411,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.Response
 	// we only update the changes array if we successfully updated the tree
 	app.ValUpdates = append(app.ValUpdates, v)
 
-	return &types.ResponseDeliverTx{Code: code.CodeTypeOK}
+	return &types.ExecTxResult{Code: code.CodeTypeOK}
 }
 
 // -----------------------------
@@ -420,26 +420,40 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.Response
 const PreparePrefix = "prepare"
 
 func isPrepareTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), PreparePrefix)
+	return bytes.HasPrefix(tx, []byte(PreparePrefix))
 }
 
 // execPrepareTx is noop. tx data is considered as placeholder
 // and is substitute at the PrepareProposal.
-func (app *Application) execPrepareTx(tx []byte) *types.ResponseDeliverTx {
+func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 	// noop
-	return &types.ResponseDeliverTx{}
+	return &types.ExecTxResult{}
 }
 
-// substPrepareTx subst all the preparetx in the blockdata
-// to null string(could be any arbitrary string).
-func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
-	// TODO: this mechanism will change with the current spec of PrepareProposal
-	// We now have a special type for marking a tx as changed
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with the prefix strips.
+// It marks all of the original transactions as 'REMOVED' so that
+// Tendermint will remove them from its mempool.
+func (app *Application) substPrepareTx(blockData [][]byte) []*types.TxRecord {
+	trs := make([]*types.TxRecord, len(blockData))
+	var removed []*types.TxRecord
 	for i, tx := range blockData {
 		if isPrepareTx(tx) {
-			blockData[i] = make([]byte, len(tx))
+			removed = append(removed, &types.TxRecord{
+				Tx:     tx,
+				Action: types.TxRecord_REMOVED,
+			})
+			trs[i] = &types.TxRecord{
+				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
+				Action: types.TxRecord_ADDED,
+			}
+			continue
+		}
+		trs[i] = &types.TxRecord{
+			Tx:     tx,
+			Action: types.TxRecord_UNMODIFIED,
 		}
 	}
 
-	return blockData
+	return append(trs, removed...)
 }

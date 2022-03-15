@@ -90,8 +90,13 @@ func NewApplication(cfg *Config) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Application{
-		logger:    log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo),
+		logger:    logger,
 		state:     state,
 		snapshots: snapshots,
 		cfg:       cfg,
@@ -155,7 +160,7 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 
 // FinalizeBlock implements ABCI.
 func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	var txs = make([]*abci.ResponseDeliverTx, len(req.Txs))
+	var txs = make([]*abci.ExecTxResult, len(req.Txs))
 
 	app.mu.Lock()
 	defer app.mu.Unlock()
@@ -167,16 +172,16 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 		}
 		app.state.Set(key, value)
 
-		txs[i] = &abci.ResponseDeliverTx{Code: code.CodeTypeOK}
+		txs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
 
-	valUpdates, err := app.validatorUpdates(uint64(req.Height))
+	valUpdates, err := app.validatorUpdates(uint64(req.Header.Height))
 	if err != nil {
 		panic(err)
 	}
 
 	return abci.ResponseFinalizeBlock{
-		Txs:              txs,
+		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
 		Events: []abci.Event{
 			{
@@ -188,7 +193,7 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 					},
 					{
 						Key:   "height",
-						Value: strconv.Itoa(int(req.Height)),
+						Value: strconv.Itoa(int(req.Header.Height)),
 					},
 				},
 			},
@@ -300,7 +305,8 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
+	// None of the transactions are modified by this application.
+	return abci.ResponsePrepareProposal{ModifiedTx: false}
 }
 
 // ProcessProposal implements part of the Application interface.

@@ -84,8 +84,8 @@ func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Ap
 	// Send bulk request
 	res, err := client.FinalizeBlock(ctx, rfb)
 	require.NoError(t, err)
-	require.Equal(t, numDeliverTxs, len(res.Txs), "Number of txs doesn't match")
-	for _, tx := range res.Txs {
+	require.Equal(t, numDeliverTxs, len(res.TxResults), "Number of txs doesn't match")
+	for _, tx := range res.TxResults {
 		require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
 	}
 
@@ -138,8 +138,8 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 	// Send request
 	response, err := client.FinalizeBlock(ctx, &rfb)
 	require.NoError(t, err, "Error in GRPC FinalizeBlock")
-	require.Equal(t, numDeliverTxs, len(response.Txs), "Number of txs returned via GRPC doesn't match")
-	for _, tx := range response.Txs {
+	require.Equal(t, numDeliverTxs, len(response.TxResults), "Number of txs returned via GRPC doesn't match")
+	for _, tx := range response.TxResults {
 		require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
 	}
 }

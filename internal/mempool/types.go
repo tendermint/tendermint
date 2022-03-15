@@ -23,6 +23,8 @@ const (
 	MaxActiveIDs = math.MaxUint16
 )
 
+//go:generate ../../scripts/mockery_generate.sh Mempool
+
 // Mempool defines the mempool interface.
 //
 // Updates to the mempool need to be synchronized with committing a block so
@@ -66,7 +68,7 @@ type Mempool interface {
 		ctx context.Context,
 		blockHeight int64,
 		blockTxs types.Txs,
-		deliverTxResponses []*abci.ResponseDeliverTx,
+		txResults []*abci.ExecTxResult,
 		newPreFn PreCheckFunc,
 		newPostFn PostCheckFunc,
 	) error

@@ -273,8 +273,8 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -291,15 +291,13 @@ func TestCreateProposalBlock(t *testing.T) {
 	mp := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		cfg.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
+		proxyApp,
 	)
 
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics())
-	require.NoError(t, err)
+	evidencePool := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics(), nil)
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
@@ -325,17 +323,20 @@ func TestCreateProposalBlock(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		evidencePool,
 		blockStore,
+		eventBus,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
@@ -372,8 +373,8 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -391,8 +392,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	mp := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		cfg.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
+		proxyApp,
 	)
 
 	// fill the mempool with one txs just below the maximum size
@@ -401,17 +401,21 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
@@ -440,8 +444,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc, logger, proxy.NopMetrics())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
@@ -456,8 +460,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	mp := mempool.NewTxMempool(
 		logger.With("module", "mempool"),
 		cfg.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
+		proxyApp,
 	)
 
 	// fill the mempool with one txs just below the maximum size
@@ -473,13 +476,17 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
+		eventBus,
 	)
 
 	blockID := types.BlockID{
@@ -490,10 +497,16 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		},
 	}
 
+	// save the updated validator set for use by the block executor.
+	state.LastBlockHeight = math.MaxInt64 - 3
+	state.LastHeightValidatorsChanged = math.MaxInt64 - 1
+	state.NextValidators = state.Validators.Copy()
+	require.NoError(t, stateStore.Save(state))
+
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	// change state in order to produce the largest accepted header
 	state.LastBlockID = blockID
-	state.LastBlockHeight = math.MaxInt64 - 1
+	state.LastBlockHeight = math.MaxInt64 - 2
 	state.LastBlockTime = timestamp
 	state.LastResultsHash = tmhash.Sum([]byte("last_results_hash"))
 	state.AppHash = tmhash.Sum([]byte("app_hash"))
@@ -523,13 +536,15 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
-	block, partSet, err := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
 		state, commit,
 		proposerAddr,
 		nil,
 	)
+	require.NoError(t, err)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	// this ensures that the header is at max size

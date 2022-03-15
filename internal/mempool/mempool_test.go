@@ -78,24 +78,24 @@ func setup(ctx context.Context, t testing.TB, cacheSize int, options ...TxMempoo
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 
-	app := &application{kvstore.NewApplication()}
-	cc := abciclient.NewLocalCreator(app)
 	logger := log.TestingLogger()
+
+	conn := abciclient.NewLocalClient(logger, &application{
+		kvstore.NewApplication(),
+	})
 
 	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	cfg.Mempool.CacheSize = cacheSize
-	appConnMem, err := cc(logger)
-	require.NoError(t, err)
-	require.NoError(t, appConnMem.Start(ctx))
+	require.NoError(t, conn.Start(ctx))
 
 	t.Cleanup(func() {
 		os.RemoveAll(cfg.RootDir)
 		cancel()
-		appConnMem.Wait()
+		conn.Wait()
 	})
 
-	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, appConnMem, 0, options...)
+	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, conn, options...)
 }
 
 func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
@@ -172,9 +172,9 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 		rawTxs[i] = tx.tx
 	}
 
-	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
+	responses := make([]*abci.ExecTxResult, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	// commit half the transactions and ensure we fire an event
@@ -204,9 +204,9 @@ func TestTxMempool_Size(t *testing.T) {
 		rawTxs[i] = tx.tx
 	}
 
-	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
+	responses := make([]*abci.ExecTxResult, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -231,9 +231,9 @@ func TestTxMempool_Flush(t *testing.T) {
 		rawTxs[i] = tx.tx
 	}
 
-	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
+	responses := make([]*abci.ExecTxResult, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -446,7 +446,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 		for range ticker.C {
 			reapedTxs := txmp.ReapMaxTxs(200)
 			if len(reapedTxs) > 0 {
-				responses := make([]*abci.ResponseDeliverTx, len(reapedTxs))
+				responses := make([]*abci.ExecTxResult, len(reapedTxs))
 				for i := 0; i < len(responses); i++ {
 					var code uint32
 
@@ -456,7 +456,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 						code = abci.CodeTypeOK
 					}
 
-					responses[i] = &abci.ResponseDeliverTx{Code: code}
+					responses[i] = &abci.ExecTxResult{Code: code}
 				}
 
 				txmp.Lock()
@@ -494,9 +494,9 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 
 	// reap 5 txs at the next height -- no txs should expire
 	reapedTxs := txmp.ReapMaxTxs(5)
-	responses := make([]*abci.ResponseDeliverTx, len(reapedTxs))
+	responses := make([]*abci.ExecTxResult, len(reapedTxs))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -520,9 +520,9 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	// removed. However, we do know that that at most 95 txs can be expired and
 	// removed.
 	reapedTxs = txmp.ReapMaxTxs(5)
-	responses = make([]*abci.ResponseDeliverTx, len(reapedTxs))
+	responses = make([]*abci.ExecTxResult, len(reapedTxs))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()

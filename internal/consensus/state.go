@@ -20,6 +20,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/jsontypes"
+	"github.com/tendermint/tendermint/internal/libs/autofile"
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
@@ -121,6 +122,9 @@ type State struct {
 	// store blocks and commits
 	blockStore sm.BlockStore
 
+	stateStore            sm.Store
+	initialStatePopulated bool
+
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
 
@@ -189,18 +193,21 @@ func NewState(
 	ctx context.Context,
 	logger log.Logger,
 	cfg *config.ConsensusConfig,
-	state sm.State,
+	store sm.Store,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
+	eventBus *eventbus.EventBus,
 	options ...StateOption,
-) *State {
+) (*State, error) {
 	cs := &State{
+		eventBus:         eventBus,
 		logger:           logger,
 		config:           cfg,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
+		stateStore:       store,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
@@ -220,6 +227,31 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return nil, err
+	}
+
+	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
+	cs.BaseService = *service.NewBaseService(logger, "State", cs)
+	for _, option := range options {
+		option(cs)
+	}
+
+	return cs, nil
+}
+
+func (cs *State) updateStateFromStore(ctx context.Context) error {
+	if cs.initialStatePopulated {
+		return nil
+	}
+	state, err := cs.stateStore.Load()
+	if err != nil {
+		return fmt.Errorf("loading state: %w", err)
+	}
+	if state.IsEmpty() {
+		return nil
+	}
+
 	// We have no votes, so reconstruct LastCommit from SeenCommit.
 	if state.LastBlockHeight > 0 {
 		cs.reconstructLastCommit(state)
@@ -227,20 +259,8 @@ func NewState(
 
 	cs.updateToState(ctx, state)
 
-	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
-
-	cs.BaseService = *service.NewBaseService(logger, "State", cs)
-	for _, option := range options {
-		option(cs)
-	}
-
-	return cs
-}
-
-// SetEventBus sets event bus.
-func (cs *State) SetEventBus(b *eventbus.EventBus) {
-	cs.eventBus = b
-	cs.blockExec.SetEventBus(b)
+	cs.initialStatePopulated = true
+	return nil
 }
 
 // StateMetrics sets the metrics.
@@ -365,6 +385,10 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
 func (cs *State) OnStart(ctx context.Context) error {
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return err
+	}
+
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
@@ -846,15 +870,27 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 	defer func() {
 		if r := recover(); r != nil {
 			cs.logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
-			// stop gracefully
-			//
-			// NOTE: We most probably shouldn't be running any further when there is
-			// some unexpected panic. Some unknown error happened, and so we don't
-			// know if that will result in the validator signing an invalid thing. It
-			// might be worthwhile to explore a mechanism for manual resuming via
-			// some console or secure RPC system, but for now, halting the chain upon
-			// unexpected consensus bugs sounds like the better option.
+
+			// Make a best-effort attempt to close the WAL, but otherwise do not
+			// attempt to gracefully terminate. Once consensus has irrecoverably
+			// failed, any additional progress we permit the node to make may
+			// complicate diagnosing and recovering from the failure.
 			onExit(cs)
+
+			// Re-panic to ensure the node terminates.
+			//
+			// TODO(creachadair): In ordinary operation, the WAL autofile should
+			// never be closed. This only happens during shutdown and production
+			// nodes usually halt by panicking. Many existing tests, however,
+			// assume a clean shutdown is possible. Prior to #8111, we were
+			// swallowing the panic in receiveRoutine, making that appear to
+			// work. Filtering this specific error is slightly risky, but should
+			// affect only unit tests. In any case, not re-panicking here only
+			// preserves the pre-existing behavior for this one error type.
+			if err, ok := r.(error); ok && errors.Is(err, autofile.ErrAutoFileClosed) {
+				return
+			}
+			panic(r)
 		}
 	}()
 
@@ -867,14 +903,11 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			}
 		}
 
-		rs := cs.RoundState
-		var mi msgInfo
-
 		select {
 		case <-cs.txNotifier.TxsAvailable():
 			cs.handleTxsAvailable(ctx)
 
-		case mi = <-cs.peerMsgQueue:
+		case mi := <-cs.peerMsgQueue:
 			if err := cs.wal.Write(mi); err != nil {
 				cs.logger.Error("failed writing to WAL", "err", err)
 			}
@@ -883,11 +916,11 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(ctx, mi)
 
-		case mi = <-cs.internalMsgQueue:
+		case mi := <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
-				panic(fmt.Sprintf(
-					"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
+				panic(fmt.Errorf(
+					"failed to write %v msg to consensus WAL due to %w; check your file system and restart the node",
 					mi, err,
 				))
 			}
@@ -902,7 +935,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 			// if the timeout is relevant to the rs
 			// go to the next step
-			cs.handleTimeout(ctx, ti, rs)
+			cs.handleTimeout(ctx, ti, cs.RoundState)
 
 		case <-ctx.Done():
 			onExit(cs)
@@ -964,13 +997,11 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 			}
 		}
 
-		// if err == ErrAddingVote {
 		// TODO: punish peer
 		// We probably don't want to stop the peer here. The vote does not
 		// necessarily comes from a malicious peer but can be just broadcasted by
 		// a typical peer.
 		// https://github.com/tendermint/tendermint/issues/1281
-		// }
 
 		// NOTE: the vote is broadcast to peers by the reactor listening
 		// for vote events
@@ -1269,8 +1300,16 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
-		block, blockParts, err = cs.createProposalBlock(ctx)
-		if block == nil || err != nil {
+		block, err = cs.createProposalBlock(ctx)
+		if err != nil {
+			cs.logger.Error("unable to create proposal block", "error", err)
+			return
+		} else if block == nil {
+			return
+		}
+		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
+		if err != nil {
+			cs.logger.Error("unable to create proposal block part set", "error", err)
 			return
 		}
 	}
@@ -1329,13 +1368,12 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, blockParts *types.PartSet, err error) {
+func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) {
 	if cs.privValidator == nil {
-		return nil, nil, errors.New("entered createProposalBlock with privValidator being nil")
+		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
 	var commit *types.Commit
-	var votes []*types.Vote
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
@@ -1345,23 +1383,22 @@ func (cs *State) createProposalBlock(ctx context.Context) (block *types.Block, b
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
-		votes = cs.LastCommit.GetVotes()
 
 	default: // This shouldn't happen.
 		cs.logger.Error("propose step; cannot propose anything without commit for the previous block")
-		return
+		return nil, nil
 	}
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
 		cs.logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
-		return
+		return nil, nil
 	}
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, votes)
+	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1880,8 +1917,8 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 	// restart).
 	endMsg := EndHeightMessage{height}
 	if err := cs.wal.WriteSync(endMsg); err != nil { // NOTE: fsync
-		panic(fmt.Sprintf(
-			"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
+		panic(fmt.Errorf(
+			"failed to write %v msg to consensus WAL due to %w; check your file system and restart the node",
 			endMsg, err,
 		))
 	}

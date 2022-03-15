@@ -493,7 +493,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 
 	// Ensure that Commit is good.
 	if err := commit.ValidateBasic(); err != nil {
-		t.Errorf("error in Commit.ValidateBasic(): %w", err)
+		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
 }
 

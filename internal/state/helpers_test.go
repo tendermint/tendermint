@@ -11,17 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
-	"github.com/tendermint/tendermint/libs/log"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -31,12 +27,6 @@ import (
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
-}
-
-func newTestApp() proxy.AppConns {
-	app := &testApp{}
-	cc := abciclient.NewLocalCreator(app)
-	return proxy.NewAppConns(cc, log.NewNopLogger(), proxy.NopMetrics())
 }
 
 func makeAndCommitGoodBlock(
@@ -72,12 +62,13 @@ func makeAndApplyGoodBlock(
 	evidence []types.Evidence,
 ) (sm.State, types.BlockID) {
 	t.Helper()
-	block, _, err := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	block := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	require.NoError(t, blockExec.ValidateBlock(ctx, state, block))
 	blockID := types.BlockID{Hash: block.Hash(),
-		PartSetHeader: types.PartSetHeader{Total: 3, Hash: tmrand.Bytes(32)}}
+		PartSetHeader: partSet.Header()}
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.NoError(t, err)
 
@@ -153,11 +144,8 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
-	}
+	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	abciResponses := &tmstate.ABCIResponses{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
@@ -184,13 +172,11 @@ func makeHeaderPartsResponsesValPowerChange(
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorUpdates: nil},
-	}
+	abciResponses := &tmstate.ABCIResponses{}
 
+	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
@@ -214,8 +200,7 @@ func makeHeaderPartsResponsesParams(
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	require.NoError(t, err)
+	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		FinalizeBlock: &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams},
@@ -296,15 +281,15 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 }
 
 func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
-	app.CommitVotes = req.LastCommitInfo.Votes
+	app.CommitVotes = req.DecidedLastCommit.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
-	resTxs := make([]*abci.ResponseDeliverTx, len(req.Txs))
+	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		if len(tx) > 0 {
-			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 		} else {
-			resTxs[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK + 10} // error
+			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK + 10} // error
 		}
 	}
 
@@ -315,8 +300,8 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 				AppVersion: 1,
 			},
 		},
-		Events: []abci.Event{},
-		Txs:    resTxs,
+		Events:    []abci.Event{},
+		TxResults: resTxs,
 	}
 }
 

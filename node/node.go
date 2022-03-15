@@ -58,12 +58,12 @@ type nodeImpl struct {
 	router      *p2p.Router
 	nodeInfo    types.NodeInfo
 	nodeKey     types.NodeKey // our node privkey
-	isListening bool
 
 	// services
 	eventSinks       []indexer.EventSink
 	stateStore       sm.Store
-	blockStore       *store.BlockStore  // store the blockchain to disk
+	blockStore       *store.BlockStore // store the blockchain to disk
+	evPool           *evidence.Pool
 	stateSync        bool               // whether the node should state sync on startup
 	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
 
@@ -101,7 +101,10 @@ func newDefaultNode(
 		return nil, err
 	}
 
-	appClient, _ := proxy.DefaultClientCreator(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	appClient, _, err := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
+	if err != nil {
+		return nil, err
+	}
 
 	return makeNode(
 		ctx,
@@ -121,7 +124,7 @@ func makeNode(
 	cfg *config.Config,
 	filePrivval *privval.FilePV,
 	nodeKey types.NodeKey,
-	clientCreator abciclient.Creator,
+	client abciclient.Client,
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
 	logger log.Logger,
@@ -144,11 +147,8 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	err = genDoc.ValidateAndComplete()
-	if err != nil {
-		return nil, combineCloseError(
-			fmt.Errorf("error in genesis doc: %w", err),
-			makeCloser(closers))
+	if err = genDoc.ValidateAndComplete(); err != nil {
+		return nil, combineCloseError(fmt.Errorf("error in genesis doc: %w", err), makeCloser(closers))
 	}
 
 	state, err := loadStateFromDBOrGenesisDocProvider(stateStore, genDoc)
@@ -159,15 +159,15 @@ func makeNode(
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
-	proxyApp := proxy.NewAppConns(clientCreator, logger.With("module", "proxy"), nodeMetrics.proxy)
+	proxyApp := proxy.New(client, logger.With("module", "proxy"), nodeMetrics.proxy)
 	if err := proxyApp.Start(ctx); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
 	}
 
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
-	// when the node stopped last time (i.e. the node stopped after it saved the block
-	// but before it indexed the txs, or, endblocker panicked)
+	// when the node stopped last time (i.e. the node stopped or crashed after it saved the block
+	// but before it indexed the txs)
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	if err := eventBus.Start(ctx); err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -242,10 +242,6 @@ func makeNode(
 		}
 	}
 
-	// Determine whether we should do block sync. This must happen after the handshake, since the
-	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := !onlyValidatorIsUs(state, pubKey)
-
 	logNodeStartupInfo(state, pubKey, logger, cfg.Mode)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
@@ -272,15 +268,16 @@ func makeNode(
 	}
 
 	mpReactor, mp, err := createMempoolReactor(ctx,
-		cfg, proxyApp, state, nodeMetrics.mempool, peerManager, router, logger,
+		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	evReactor, evPool, err := createEvidenceReactor(ctx,
-		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
+	evReactor, evPool, edbCloser, err := createEvidenceReactor(ctx,
+		cfg, dbProvider, stateStore, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
 	)
+	closers = append(closers, edbCloser)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -289,15 +286,20 @@ func makeNode(
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger.With("module", "state"),
-		proxyApp.Consensus(),
+		proxyApp,
 		mp,
 		evPool,
 		blockStore,
+		eventBus,
 		sm.BlockExecutorWithMetrics(nodeMetrics.state),
 	)
 
+	// Determine whether we should do block sync. This must happen after the handshake, since the
+	// app may modify the validator set, specifying ourself as the only validator.
+	blockSync := !onlyValidatorIsUs(state, pubKey)
+
 	csReactor, csState, err := createConsensusReactor(ctx,
-		cfg, state, blockExec, blockStore, mp, evPool,
+		cfg, stateStore, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, logger,
 	)
@@ -309,7 +311,7 @@ func makeNode(
 	// doing a state sync first.
 	bcReactor, err := blocksync.NewReactor(ctx,
 		logger.With("module", "blockchain"),
-		state.Copy(),
+		stateStore,
 		blockExec,
 		blockStore,
 		csReactor,
@@ -343,8 +345,7 @@ func makeNode(
 		genDoc.InitialHeight,
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
+		proxyApp,
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
 		stateStore,
@@ -357,7 +358,7 @@ func makeNode(
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	var pexReactor service.Service
+	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
 		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
 		if err != nil {
@@ -390,17 +391,17 @@ func makeNode(
 		blockStore:       blockStore,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
+		evPool:           evPool,
 
 		shutdownOps: makeCloser(closers),
 
 		rpcEnv: &rpccore.Environment{
-			ProxyAppQuery:   proxyApp.Query(),
-			ProxyAppMempool: proxyApp.Mempool(),
-
-			StateStore:     stateStore,
-			BlockStore:     blockStore,
+			ProxyApp:       proxyApp,
 			EvidencePool:   evPool,
 			ConsensusState: csState,
+
+			StateStore: stateStore,
+			BlockStore: blockStore,
 
 			ConsensusReactor: csReactor,
 			BlockSyncReactor: bcReactor,
@@ -420,8 +421,6 @@ func makeNode(
 	if cfg.Mode == config.ModeValidator {
 		node.rpcEnv.PubKey = pubKey
 	}
-
-	node.rpcEnv.P2PTransport = node
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -467,6 +466,15 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
+	state, err := n.stateStore.Load()
+	if err != nil {
+		return err
+	}
+	if err := n.evPool.Start(state); err != nil {
+		return err
+	}
+
+	n.rpcEnv.NodeInfo = n.nodeInfo
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
@@ -485,7 +493,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	if err := n.router.Start(ctx); err != nil {
 		return err
 	}
-	n.isListening = true
+	n.rpcEnv.IsListening = true
 
 	for _, reactor := range n.services {
 		if err := reactor.Start(ctx); err != nil {
@@ -580,7 +588,7 @@ func (n *nodeImpl) OnStop() {
 
 	n.stateSyncReactor.Wait()
 	n.router.Wait()
-	n.isListening = false
+	n.rpcEnv.IsListening = false
 
 	// finally stop the listeners / external services
 	for _, l := range n.rpcListeners {
@@ -669,21 +677,6 @@ func (n *nodeImpl) RPCEnvironment() *rpccore.Environment {
 
 //------------------------------------------------------------------------------
 
-func (n *nodeImpl) Listeners() []string {
-	return []string{
-		fmt.Sprintf("Listener(@%v)", n.config.P2P.ExternalAddress),
-	}
-}
-
-func (n *nodeImpl) IsListening() bool {
-	return n.isListening
-}
-
-// NodeInfo returns the Node's Info from the Switch.
-func (n *nodeImpl) NodeInfo() types.NodeInfo {
-	return n.nodeInfo
-}
-
 // genesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
 // filesystem, for instance from a distributed key-value store cluster.
@@ -747,10 +740,7 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 // loadStateFromDBOrGenesisDocProvider attempts to load the state from the
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
-func loadStateFromDBOrGenesisDocProvider(
-	stateStore sm.Store,
-	genDoc *types.GenesisDoc,
-) (sm.State, error) {
+func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.GenesisDoc) (sm.State, error) {
 
 	// 1. Attempt to load state form the database
 	state, err := stateStore.Load()
@@ -764,19 +754,25 @@ func loadStateFromDBOrGenesisDocProvider(
 		if err != nil {
 			return sm.State{}, err
 		}
+
+		// 3. save the gensis document to the state store so
+		// its fetchable by other callers.
+		if err := stateStore.Save(state); err != nil {
+			return sm.State{}, err
+		}
 	}
 
 	return state, nil
 }
 
-func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
+func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
 		QueueType: conf.P2P.QueueType,
 	}
 
-	if conf.FilterPeers && proxyApp != nil {
+	if conf.FilterPeers && appClient != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
-			res, err := proxyApp.Query().Query(ctx, abci.RequestQuery{
+			res, err := appClient.Query(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
 			if err != nil {
@@ -790,7 +786,7 @@ func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOpt
 		}
 
 		opts.FilterPeerByIP = func(ctx context.Context, ip net.IP, port uint16) error {
-			res, err := proxyApp.Query().Query(ctx, abci.RequestQuery{
+			res, err := appClient.Query(ctx, abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/addr/%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))),
 			})
 			if err != nil {

@@ -69,6 +69,9 @@ func configSetup(t *testing.T) *config.Config {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
 
+	walDir := filepath.Dir(cfg.Consensus.WalFile())
+	ensureDir(t, walDir, 0700)
+
 	return cfg
 }
 
@@ -239,7 +242,9 @@ func decideProposal(
 	t.Helper()
 
 	cs1.mtx.Lock()
-	block, blockParts, err := cs1.createProposalBlock(ctx)
+	block, err := cs1.createProposalBlock(ctx)
+	require.NoError(t, err)
+	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
@@ -370,7 +375,11 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte)
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
 		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-			ch <- msg
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case ch <- msg:
+			}
 		}
 		return nil
 	}, types.EventQueryVote); err != nil {
@@ -401,7 +410,10 @@ func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr
 			vote := msg.Data().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-				ch <- msg
+				select {
+				case <-ctx.Done():
+				case ch <- msg:
+				}
 			}
 		}
 	}()
@@ -462,7 +474,6 @@ func newStateWithConfigAndBlockStore(
 		logger.With("module", "mempool"),
 		thisConfig.Mempool,
 		proxyAppConnMem,
-		0,
 	)
 
 	if thisConfig.Consensus.WaitForTxs() {
@@ -476,22 +487,26 @@ func newStateWithConfigAndBlockStore(
 	stateStore := sm.NewStore(stateDB)
 	require.NoError(t, stateStore.Save(state))
 
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore)
-	cs := NewState(ctx,
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
+	require.NoError(t, eventBus.Start(ctx))
+
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus)
+	cs, err := NewState(ctx,
 		logger.With("module", "consensus"),
 		thisConfig.Consensus,
-		state,
+		stateStore,
 		blockExec,
 		blockStore,
 		mempool,
 		evpool,
+		eventBus,
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cs.SetPrivValidator(ctx, pv)
 
-	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	require.NoError(t, eventBus.Start(ctx))
-
-	cs.SetEventBus(eventBus)
 	return cs
 }
 
@@ -775,6 +790,7 @@ func makeConsensusState(
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 	t.Helper()
+	tempDir := t.TempDir()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
@@ -789,7 +805,7 @@ func makeConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(tempDir, fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -798,7 +814,8 @@ func makeConsensusState(
 			opt(thisConfig)
 		}
 
-		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		walDir := filepath.Dir(thisConfig.Consensus.WalFile())
+		ensureDir(t, walDir, 0700)
 
 		app := kvstore.NewApplication()
 		closeFuncs = append(closeFuncs, app.Close)
