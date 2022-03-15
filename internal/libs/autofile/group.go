@@ -318,7 +318,8 @@ func (g *Group) checkTotalSizeLimit(ctx context.Context) {
 	}
 }
 
-// rotateFile causes group to close the current head and assign it some index.
+// rotateFile causes group to close the current head and assign it
+// some index. Panics if it encounters an error.
 func (g *Group) rotateFile(ctx context.Context) {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()

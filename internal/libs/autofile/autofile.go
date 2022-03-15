@@ -19,7 +19,7 @@ import (
 // Create/Append to ./autofile_test
 af, err := OpenAutoFile("autofile_test")
 if err != nil {
-	panic(err)
+        log.Fatal(err)
 }
 
 // Stream of writes.
@@ -32,7 +32,7 @@ for i := 0; i < 60; i++ {
 // Close the AutoFile
 err = af.Close()
 if err != nil {
-	panic(err)
+	log.Fatal(err)
 }
 */
 
