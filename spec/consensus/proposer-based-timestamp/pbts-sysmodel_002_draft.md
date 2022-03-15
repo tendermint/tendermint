@@ -134,14 +134,14 @@ implicitly assumes that heights of consensus are executed in order.
 #### **[PBTS-INV-TIMELY.0]**
 
 - [Time-Validity] If a correct process decides on value `v`, then the proposal
-  time `v.time` was considered `timely` by at least `f+1` correct processes.
+  time `v.time` was considered `timely` by at least one correct process.
 
 PBTS introduces a `timely` predicate that restricts the allowed decisions based
 on the proposal time `v.time` associated with a proposed value `v`.
 As as synchronous predicate, the time at which it is evaluated impacts on
 whether a process accepts of reject a value based on its proposal time.
 For this reason, the Time-Validity property refers to the previous evaluation
-of the `timely` predicate, as detailed in the following.
+of the `timely` predicate, detailed in the following.
 
 ## Timely proposals
 
@@ -151,22 +151,24 @@ For PBTS, a `proposal` is a tuple `(v, v.time, v.round)`, where:
 - `v.time` is the associated proposal time;
 - `v.round` is the round at which `v` was first proposed.
 
-We introduce this definition of proposal because, while a value `v` and its
-associated proposal time `v.time` can be proposed in multiple rounds, the
-`timely` predicate is only evaluated at round `v.round`.
+We introduce this definition of proposal because  a value `v` and its
+associated proposal time `v.time` can be proposed in multiple rounds, but the
+evaluation of the `timely` predicate is only relevant at round `v.round`.
 
 > Considering the algorithm in the [arXiv paper][arXiv], a new proposal is
 > produced by a proposer `p` when its `validValue_p` is unset.
 > The produced proposal thus have `v.round = round_p` and it is broadcast in a
 > Proposal message of with the `validRound` field set to `-1`.
 
+#### **[PBTS-PROPOSAL-RECEPTION.0]**
+
 The `timely` predicate is evaluated when a process receives a proposal.
 More precisely, let `p` be a correct process:
 
-#### **[PBTS-PROPOSAL-RECEPTION.0]**
-
 - `receiveTime_p[r]` is the time `p` reads from its local clock when it
-  receives the proposal `(v, v.time, v.round)`.
+  receives the proposal of round `r`.
+
+Note that process must be in round `r` to receive a proposal of round `r`.
 
 #### **[PBTS-TIMELY.0]**
 
@@ -177,8 +179,8 @@ The proposal `(v, v.time, v.round)` is considered `timely` by a correct process
 1. `receiveTime_p[v.round] >= v.time - PRECISION`, and
 1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`.
 
-A correct process at round `v.round` of consensus only sends a `PREVOTE` for
-`v` if the associated proposal time `v.time` is considered `timely`.
+A correct process at round `v.round` only sends a `PREVOTE` for `v` if the
+associated proposal time `v.time` is considered `timely`.
 
 ### Timely Proof-of-Locks
 
@@ -189,58 +191,53 @@ We denote as `POL(v,r)` a proof-of-lock of value `v` at round `r`.
 For PBTS, we are particularly interested in the `POL(v,v.round)` produced in
 the round `v.round` at which a value `v` was first proposed.
 We call it a *timely* proof-of-lock for `v` because it can only be observed
-if processes with cumulative voting power `f+1` considered it `timely`.
-More precisely:
+if at least one correct process considered it `timely`:
 
 #### **[PBTS-TIMELY-POL.0]**
 
 If
 
-- there is a valid `POL(v,r*)` with `r* = v.round`, and
-- `POL(v,r*)` contains a `PREVOTE` message from at least one correct process,
+- there is a valid `POL(v,r)` with `r = v.round`, and
+- `POL(v,v.round)` contains a `PREVOTE` message from at least one correct process,
 
 Then, let `p` is a such correct process:
 
-- `p` received a `PROPOSE` message of round `r* = v.round`, and
+- `p` received a `PROPOSE` message of round `v.round`, and
 - the `PROPOSE` message contained a proposal `(v, v.time, v.round)`, and
-- `p` considered the proposal `timely`.
+- `p` considered the proposal time `v.time` `timely`.
 
-The presence of a `PREVOTE` from a correct process `p` in a timely proof-of-lock is
-guaranteed provided that the voting power of Byzantine processes is bound by `2f `.
+The existence of a such correct process `p` is guaranteed provided that the
+voting power of Byzantine processes is bounded by `2f`.
 
 ### Derived Proof-of-Locks
 
-#### **[PBTS-DERIVED-POL.1]**
+The existence of `POL(v,r)` is a requirement for the decision of `v` at round
+`r` of consensus.
+
+At the same time, the Time-Validity property established that if `v` is decided
+then a timely proof-of-lock `POL(v,v.round)` must have been produced.
+
+So, we need to demonstrate here that any valid `POL(v,r)` is either a timely
+proof-of-lock or it is derived from a timely proof-of-lock:
+
+#### **[PBTS-DERIVED-POL.0]**
 
 If
 
-- there is a valid `POL(v,r)` for height `h`, and
+- there is a valid `POL(v,r)`, and
 - `POL(v,r)` contains a `PREVOTE` message from at least one correct process,
 
 Then
 
-- there is a valid `POL(v,r*)` for height `h`, with `r* <= r`, and
-- `POL(v,r*)` contains a `PREVOTE` message from at least one correct process, and
-- a correct process considered the proposal for `v` `timely` at round `r*`.
+- there is a valid `POL(v,v.round)` with `v.round <= r`,
+- so a correct process considered the proposal for `v` `timely` at round `v.round`.
 
-The above relation derives from a recursion on the round number `r`.
-It is trivially observed when `r = r*`, the base of the recursion,
-when a timely `POL(v,r*)` is obtained.
-We need to ensure that, once a timely `POL(v,r*)` is obtained,
-it is possible to obtain a valid `POL(v,r)` with `r > r*`,
-without the need of satisfying the `timely` predicate (again) in round `r`.
-In fact, since rounds are started in order, it is not likely that
-a proposal time `v.time`, assigned at round `r*`,
-will still be considered `timely` when the round `r > r*` is in progress.
+The above relation is trivially observed when `r = v.round`, as `POL(v,r)` must
+be a timely proof-of-lock.
+(Notice that, by the definition of `v.round`, we cannot have `r < v.round`).
 
-In other words, the algorithm should ensure that once a `POL(v,r*)` attests
-that the proposal for `v` is `timely`,
-further valid `POL(v,r)` with `r > r*` can be obtained,
-even though processes do not consider the proposal for `v` `timely` any longer.
-
-> This can be achieved if the proposer of round `r' > r*` proposes `v` in a `PROPOSE` message
-with `POLRound = r*`, and at least one correct processes is aware of a `POL(v,r*)`.
-> From this point, if a valid `POL(v,r')` is achieved, it can replace the adopted `POL(v,r*)`.
+For `r > v.round` we need to demonstrate that if there is a valid `POL(v,r)`,
+then a timely `POL(v,v.round)` was previously obtained.
 
 ### SAFETY
 
