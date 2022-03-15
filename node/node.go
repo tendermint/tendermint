@@ -571,6 +571,14 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
+	state, err := n.stateStore.Load()
+	if err != nil {
+		return fmt.Errorf("loading state during service start: %w", err)
+	}
+	if err := n.evPool.Start(state); err != nil {
+		return err
+	}
+
 	for _, reactor := range n.services {
 		if reactor.IsRunning() {
 			continue
@@ -578,14 +586,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		if err := reactor.Start(ctx); err != nil {
 			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
 		}
-	}
-
-	state, err := n.stateStore.Load()
-	if err != nil {
-		return fmt.Errorf("loading state during service start: %w", err)
-	}
-	if err := n.evPool.Start(state); err != nil {
-		return err
 	}
 
 	return nil
