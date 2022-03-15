@@ -442,7 +442,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	logger := log.NewNopLogger()
+	logger := log.NewTestingLogger(t)
 
 	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -497,10 +497,16 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		},
 	}
 
+	// save the updated validator set for use by the block executor.
+	state.LastBlockHeight = math.MaxInt64 - 3
+	state.LastHeightValidatorsChanged = math.MaxInt64 - 1
+	state.NextValidators = state.Validators.Copy()
+	require.NoError(t, stateStore.Save(state))
+
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	// change state in order to produce the largest accepted header
 	state.LastBlockID = blockID
-	state.LastBlockHeight = math.MaxInt64 - 1
+	state.LastBlockHeight = math.MaxInt64 - 2
 	state.LastBlockTime = timestamp
 	state.LastResultsHash = tmhash.Sum([]byte("last_results_hash"))
 	state.AppHash = tmhash.Sum([]byte("app_hash"))
