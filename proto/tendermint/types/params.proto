@@ -77,10 +77,12 @@ message HashedParams {
 message SynchronyParams {
   // message_delay bounds how long a proposal message may take to reach all validators on a newtork
   // and still be considered valid.
-  google.protobuf.Duration message_delay = 1 [(gogoproto.stdduration) = true];
+  google.protobuf.Duration message_delay = 1
+      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   // precision bounds how skewed a proposer's clock may be from any validator
   // on the network while still producing valid proposals.
-  google.protobuf.Duration precision = 2 [(gogoproto.stdduration) = true];
+  google.protobuf.Duration precision = 2
+      [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
 }
 
 // TimeoutParams configure the timeouts for the steps of the Tendermint consensus algorithm.
