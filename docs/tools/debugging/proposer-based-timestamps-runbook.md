@@ -13,7 +13,7 @@ depending on the configuration of the validator's local clock.
 
 This document provides a set of actionable steps for application developers and
 node operators to diagnose and fix issues related to clock synchronization and
-configuration of the Proposer-Based Timestamps [SynchronyParams](https://github.com/tendermint/tendermint/blob/841204c9a020cbc255fa117eca2ed6541b3786a7/spec/core/data_structures.md#L450).
+configuration of the Proposer-Based Timestamps [SynchronyParams](https://github.com/tendermint/tendermint/blob/master/spec/core/data_structures.md#synchronyparams).
 
 Use this runbook if you observe that validators are frequently voting `nil` for a block that the rest
 of the network votes for or if validators are frequently producing block proposals
@@ -21,7 +21,7 @@ that are not voted for by the rest of the network.
 
 ## Requirements
 
-To use this runbook, you must be running a node that has the [prometheus metrics endpoint enabled](https://github.com/tendermint/tendermint/blob/841204c9a020cbc255fa117eca2ed6541b3786a7/docs/nodes/metrics.md#L5)
+To use this runbook, you must be running a node that has the [prometheus metrics endpoint enabled](https://github.com/tendermint/tendermint/blob/master/docs/nodes/metrics.md)
 and the Tendermint RPC endpoint enabled and accessible.
 
 It is strongly recommended to also run a Prometheus metrics collector to gather and
@@ -213,4 +213,4 @@ documentation]().
 
 If the application does not implement a way to update the consensus parameters
 programatically, then the application itself must be updated to do so. More information on updating
-the consensus parameters via ABCI can be found in the [FinalizeBlock documentation](https://github.com/tendermint/tendermint/blob/841204c9a020cbc255fa117eca2ed6541b3786a7/spec/abci++/abci++_methods_002_draft.md#L576).
+the consensus parameters via ABCI can be found in the [FinalizeBlock documentation](https://github.com/tendermint/tendermint/blob/master/spec/abci++/abci++_methods_002_draft.md#finalizeblock).
