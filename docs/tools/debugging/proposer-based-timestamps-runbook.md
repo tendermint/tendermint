@@ -21,7 +21,7 @@ that are not voted for by the rest of the network.
 
 ## Requirements
 
-To use this runbook, you must be running a node that has the [prometheus metrics endpoint enabled](https://github.com/tendermint/tendermint/blob/master/docs/nodes/metrics.md)
+To use this runbook, you must be running a node that has the [Prometheus metrics endpoint enabled](https://github.com/tendermint/tendermint/blob/master/docs/nodes/metrics.md)
 and the Tendermint RPC endpoint enabled and accessible.
 
 It is strongly recommended to also run a Prometheus metrics collector to gather and
@@ -79,7 +79,7 @@ to make sure your local clock is properly synchronized to NTP.
 
 ### Checking Clock Sync
 
-`NTP` configuration and tooling is very specific to the operating system and distribution
+NTP configuration and tooling is very specific to the operating system and distribution
 that your validator node is running. This guide assumes you have `timedatectl` installed with
 [chrony](https://chrony.tuxfamily.org/), a popular tool for interacting with time
 synchronization on Linux distributions. If you are using an operating system or
