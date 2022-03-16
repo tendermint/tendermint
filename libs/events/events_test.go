@@ -231,65 +231,6 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	}
 }
 
-// TestAddAndRemoveListener sets up an EventSwitch, subscribes a listener to
-// two events, fires a thousand integers for the first event, then unsubscribes
-// the listener and fires a thousand integers for the second event.
-
-func TestAddListener(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	logger := log.NewTestingLogger(t)
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
-
-	doneSum1 := make(chan uint64)
-	doneSum2 := make(chan uint64)
-	doneSending1 := make(chan uint64)
-	doneSending2 := make(chan uint64)
-	numbers1 := make(chan uint64, 4)
-	numbers2 := make(chan uint64, 4)
-	// subscribe two listener to three events
-	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(ctx context.Context, data EventData) error {
-			select {
-			case numbers1 <- data.(uint64):
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}))
-	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(ctx context.Context, data EventData) error {
-			select {
-			case numbers2 <- data.(uint64):
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}))
-	// collect received events for event1
-	go sumReceivedNumbers(numbers1, doneSum1)
-	// collect received events for event2
-	go sumReceivedNumbers(numbers2, doneSum2)
-	// go fire events
-	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
-	checkSumEvent1 := <-doneSending1
-	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
-	checkSumEvent2 := <-doneSending2
-	close(numbers1)
-	close(numbers2)
-	eventSum1 := <-doneSum1
-	eventSum2 := <-doneSum2
-	if checkSumEvent1 != eventSum1 ||
-		// correct value asserted by preceding tests, suffices to be non-zero
-		checkSumEvent2 == uint64(0) ||
-		eventSum2 != uint64(0) {
-		t.Errorf("not all messages sent were received or unsubscription did not register.\n")
-	}
-}
-
 // TestManagerLiistenersAsync sets up an EventSwitch, subscribes two
 // listeners to three events, and fires a thousand integers for each event.
 // These two listeners serve as the baseline validation while other listeners
