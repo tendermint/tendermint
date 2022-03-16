@@ -304,7 +304,6 @@ title: Methods
     | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
-    | app_signed_updates      | repeated bytes                                   | Optional changes to the *app_signed* part of vote extensions.                               | 7            |
 
 * **Usage**:
     * The first five parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
@@ -321,10 +320,6 @@ title: Methods
           > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
         * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
     * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx` to false. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
-    * If the Application modifies the *app_signed* part of vote extensions via `ResponsePrepareProposal.app_signed_updates`,
-      the new total size of those extensions cannot exceed their initial size.
-    * The Application may choose to not modify the *app_signed* part of vote extensions by leaving parameter
-      `ResponsePrepareProposal.app_signed_updates` empty.
     * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.

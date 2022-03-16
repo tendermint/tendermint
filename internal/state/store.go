@@ -170,7 +170,12 @@ func (store dbStore) save(state State, key []byte) error {
 		return err
 	}
 
-	if err := batch.Set(key, state.Bytes()); err != nil {
+	stateBz, err := state.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(key, stateBz); err != nil {
 		return err
 	}
 
@@ -206,7 +211,12 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	if err := batch.Set(stateKey, state.Bytes()); err != nil {
+	stateBz, err := state.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(stateKey, stateBz); err != nil {
 		return err
 	}
 
@@ -395,14 +405,6 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 }
 
 //------------------------------------------------------------------------
-
-// ABCIResponsesResultsHash returns the root hash of a Merkle tree of
-// ResponseDeliverTx responses (see ABCIResults.Hash)
-//
-// See merkle.SimpleHashFromByteSlices
-func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
-	return types.NewResults(ar.FinalizeBlock.TxResults).Hash()
-}
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
 // database. If not found, ErrNoABCIResponsesForHeight is returned.
