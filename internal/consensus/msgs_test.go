@@ -357,11 +357,6 @@ func TestConsMsgsVectors(t *testing.T) {
 	}
 	pbProposal := proposal.ToProto()
 
-	ext := types.VoteExtension{
-		AppDataToSign:             []byte("signed"),
-		AppDataSelfAuthenticating: []byte("auth"),
-	}
-
 	v := &types.Vote{
 		ValidatorAddress: []byte("add_more_exclamation"),
 		ValidatorIndex:   1,
@@ -370,7 +365,7 @@ func TestConsMsgsVectors(t *testing.T) {
 		Timestamp:        date,
 		Type:             tmproto.PrecommitType,
 		BlockID:          bi,
-		VoteExtension:    ext,
+		Extension:        []byte("signed"),
 	}
 	vpb := v.ToProto()
 

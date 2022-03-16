@@ -2466,7 +2466,7 @@ func (cs *State) signVote(
 		if err != nil {
 			return nil, err
 		}
-		vote.VoteExtension = ext
+		vote.Extension = ext
 	case tmproto.PrevoteType:
 		timeout = cs.config.TimeoutPrevote
 	default:

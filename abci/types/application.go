@@ -66,7 +66,7 @@ func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
 
 func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
 	return ResponseVerifyVoteExtension{
-		Result: ResponseVerifyVoteExtension_ACCEPT,
+		Accept: true,
 	}
 }
 

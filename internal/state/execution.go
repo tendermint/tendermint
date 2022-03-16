@@ -310,21 +310,25 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) (types.VoteExtension, error) {
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]byte, error) {
 	req := abci.RequestExtendVote{
-		Vote: vote.ToProto(),
+		Hash:   vote.BlockID.Hash,
+		Height: vote.Height,
 	}
 
 	resp, err := blockExec.appClient.ExtendVote(ctx, req)
 	if err != nil {
-		return types.VoteExtension{}, err
+		return nil, err
 	}
-	return types.VoteExtensionFromProto(resp.VoteExtension), nil
+	return resp.VoteExtension, nil
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
 	req := abci.RequestVerifyVoteExtension{
-		Vote: vote.ToProto(),
+		Hash:             []byte{},
+		ValidatorAddress: []byte{},
+		Height:           0,
+		VoteExtension:    []byte{},
 	}
 
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, req)
@@ -332,7 +336,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 		return err
 	}
 
-	if resp.IsErr() {
+	if !resp.Accept {
 		return types.ErrVoteInvalidExtension
 	}
 

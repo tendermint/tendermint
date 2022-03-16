@@ -1990,7 +1990,7 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			m := abcimocks.NewBaseMock()
 			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Accept: true})
 			m.On("VerifyVoteExtension", mock.Anything).Return(abcitypes.ResponseVerifyVoteExtension{
-				Result: abcitypes.ResponseVerifyVoteExtension_ACCEPT,
+				Accept: true,
 			})
 			m.On("FinalizeBlock", mock.Anything).Return(abcitypes.ResponseFinalizeBlock{}).Maybe()
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})

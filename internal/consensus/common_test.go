@@ -120,14 +120,16 @@ func (vs *validatorStub) signVote(
 	}
 
 	vote := &types.Vote{
-		ValidatorIndex:   vs.Index,
-		ValidatorAddress: pubKey.Address(),
-		Height:           vs.Height,
-		Round:            vs.Round,
-		Timestamp:        vs.clock.Now(),
-		Type:             voteType,
-		BlockID:          blockID,
-		VoteExtension:    types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(pubKey.Address())),
+		Type:               voteType,
+		Height:             vs.Height,
+		Round:              vs.Round,
+		BlockID:            blockID,
+		Timestamp:          vs.clock.Now(),
+		ValidatorAddress:   pubKey.Address(),
+		ValidatorIndex:     vs.Index,
+		Signature:          []byte{},
+		Extension:          []byte{},
+		ExtensionSignature: []byte{},
 	}
 	v := vote.ToProto()
 	if err := vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
@@ -157,10 +159,6 @@ func signVote(
 
 	v, err := vs.signVote(ctx, voteType, chainID, blockID)
 	require.NoError(t, err, "failed to sign vote")
-
-	// TODO: remove hardcoded vote extension.
-	// currently set for abci/examples/kvstore/persistent_kvstore.go
-	v.VoteExtension = types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(v.ValidatorAddress))
 
 	vs.lastVote = v
 

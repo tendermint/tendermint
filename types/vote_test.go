@@ -130,10 +130,18 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// containing vote extension
 		5: {
-			"test_chain_id", &Vote{Height: 1, Round: 1, VoteExtension: VoteExtension{
-				AppDataToSign:             []byte("signed"),
-				AppDataSelfAuthenticating: []byte("auth"),
-			}},
+			"test_chain_id", &Vote{
+				Type:               0,
+				Height:             1,
+				Round:              1,
+				BlockID:            BlockID{},
+				Timestamp:          time.Time{},
+				ValidatorAddress:   []byte{},
+				ValidatorIndex:     0,
+				Signature:          []byte{},
+				Extension:          []byte("signed"),
+				ExtensionSignature: []byte{},
+			},
 			[]byte{
 				0x38,                                   // length
 				0x11,                                   // (field_number << 3) | wire_type
