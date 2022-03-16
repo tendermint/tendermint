@@ -42,7 +42,8 @@ const (
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
+	PeerScorePersistent       PeerScore = math.MaxUint8 // persistent peers
+	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -1295,7 +1296,7 @@ func (p *peerInfo) Score() PeerScore {
 	}
 
 	if score >= math.MaxUint8 {
-		return PeerScore(math.MaxUint8)
+		return MaxPeerScoreNotPersistent
 	}
 
 	return PeerScore(score)
