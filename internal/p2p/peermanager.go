@@ -891,7 +891,10 @@ func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	case PeerStatusBad:
 		m.store.peers[pu.NodeID].MutableScore--
 	case PeerStatusGood:
-		m.store.peers[pu.NodeID].MutableScore++
+		// The persistent peer rank won't be affected by the score update.
+		if m.store.peers[pu.NodeID].MutableScore < int64(MaxPeerScoreNotPersistent) {
+			m.store.peers[pu.NodeID].MutableScore++
+		}
 	}
 }
 
