@@ -44,7 +44,6 @@ waiting on NextWait() (since it's just a read operation).
 type CElement struct {
 	mtx        sync.RWMutex
 	prev       *CElement
-	prevWaitCh chan struct{}
 	next       *CElement
 	nextWaitCh chan struct{}
 	removed    bool
@@ -151,14 +150,7 @@ func (e *CElement) setPrev(newPrev *CElement) {
 	e.mtx.Lock()
 	defer e.mtx.Unlock()
 
-	oldPrev := e.prev
 	e.prev = newPrev
-	if oldPrev != nil && newPrev == nil {
-		e.prevWaitCh = make(chan struct{})
-	}
-	if oldPrev == nil && newPrev != nil {
-		close(e.prevWaitCh)
-	}
 }
 
 func (e *CElement) setRemoved() {
@@ -167,10 +159,7 @@ func (e *CElement) setRemoved() {
 
 	e.removed = true
 
-	// This wakes up anyone waiting in either direction.
-	if e.prev == nil {
-		close(e.prevWaitCh)
-	}
+	// This wakes up anyone waiting.
 	if e.next == nil {
 		close(e.nextWaitCh)
 	}
@@ -261,7 +250,6 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	// Construct a new element
 	e := &CElement{
 		prev:       nil,
-		prevWaitCh: make(chan struct{}),
 		next:       nil,
 		nextWaitCh: make(chan struct{}),
 		removed:    false,
