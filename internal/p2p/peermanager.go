@@ -1298,6 +1298,7 @@ func (p *peerInfo) Score() PeerScore {
 		return 0
 	}
 
+	// sanity check, the MutableScore already has a cap.
 	if score >= math.MaxUint8 {
 		return MaxPeerScoreNotPersistent
 	}
