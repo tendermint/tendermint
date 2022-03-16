@@ -54,7 +54,7 @@ tendermint_consensus_proposal_timestamp_difference_count{is_timely="true"}
 ```
 
 This query will graph the ratio of proposals the node considered timely to those it
-considered not timely. If the ratio is increasing, it means that your node is consistently
+considered untimely. If the ratio is increasing, it means that your node is consistently
 seeing more proposals that are far from its local clock. If this is the case, you should
 check to make sure your local clock is properly synchronized to NTP.
 
@@ -84,23 +84,24 @@ documentation for your operating system to check the status and re-synchronize t
 
 #### Check if NTP is Enabled
 
-```
-$ timedatectl
+```shell
+# timedatectl
 ```
 
 From the output, ensure that `NTP service` is `active`. If `NTP service` is `inactive`, run:
 
+```shell
+# timedatectl set-ntp true
 ```
-$ timedatectl set-ntp true
-```
+
 Re-run the `timedatectl` command and verify that the change has taken effect.
 
 #### Check if Your NTP Daemon is Synchronized
 
 Check the status of your local `chrony` NTP daemon using by running the following:
 
-```
-$ chronyc tracking
+```shell
+# chronyc tracking
 ```
 
 If the `chrony` daemon is running, you will see output that indicates its current status.
@@ -176,7 +177,7 @@ To determine the currently configured `SynchronyParams` for your network, issue 
 request to your node's RPC endpoint. For a node running locally with the RPC server
 exposed on port `26657`, run the following command:
 
-```
+```shell
 # curl localhost:26657/consensus_params
 ```
 
