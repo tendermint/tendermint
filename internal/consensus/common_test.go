@@ -238,7 +238,7 @@ func decideProposal(
 	vs *validatorStub,
 	height int64,
 	round int32,
-) (proposal *types.Proposal, block *types.Block) {
+) (*types.Proposal, *types.Block) {
 	t.Helper()
 
 	cs1.mtx.Lock()
@@ -255,13 +255,13 @@ func decideProposal(
 
 	// Make proposal
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal = types.NewProposal(height, round, polRound, propBlockID, block.Header.Time)
+	proposal := types.NewProposal(height, round, polRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 	require.NoError(t, vs.SignProposal(ctx, chainID, p))
 
 	proposal.Signature = p.Signature
 
-	return
+	return proposal, block
 }
 
 func addVotes(to *State, votes ...*types.Vote) {
