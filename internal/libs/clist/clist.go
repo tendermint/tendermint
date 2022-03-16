@@ -72,15 +72,6 @@ func (e *CElement) NextWait() *CElement {
 	}
 }
 
-// prevWaitChan can be used to wait until Prev becomes not nil. Once it does,
-// channel will be closed.
-func (e *CElement) prevWaitChan() <-chan struct{} {
-	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.prevWaitCh
-}
-
 // NextWaitChan can be used to wait until Next becomes not nil. Once it does,
 // channel will be closed.
 func (e *CElement) NextWaitChan() <-chan struct{} {

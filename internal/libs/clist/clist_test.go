@@ -320,7 +320,7 @@ FOR_LOOP:
 FOR_LOOP2:
 	for {
 		select {
-		case <-prev.prevWaitChan():
+		case <-prev.prevWaitCh:
 			prev = prev.Prev()
 			seen++
 			if prev == nil {
