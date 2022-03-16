@@ -15,6 +15,10 @@ This document provides a set of actionable steps for application developers and
 node operators to diagnose and fix issues related to clock synchronization and
 configuration of the Proposer-Based Timestamps [SynchronyParams](https://github.com/tendermint/tendermint/blob/841204c9a020cbc255fa117eca2ed6541b3786a7/spec/core/data_structures.md#L450).
 
+Use this runbook if you observe that validators are frequently voting `nil` for a block that the rest
+of the network votes for or if validators are frequently producing block proposals
+that are not voted for by the rest of the network.
+
 ## Requirements
 
 To use this runbook, you must be running a node that has the [prometheus metrics endpoint enabled](https://github.com/tendermint/tendermint/blob/841204c9a020cbc255fa117eca2ed6541b3786a7/docs/nodes/metrics.md#L5)
@@ -25,9 +29,9 @@ analyze metrics from the Tendermint node.
 
 ## Debugging a Single Node
 
-Use this runbook if you observe that your validator is frequently voting `nil` for a block that the rest
-of the network votes for or if your validator node is frequently producing block proposals
-that are not voted for by the rest of the network.
+If you observe that a single validator is frequently failing to produce blocks or
+voting nil for proposals that other validators vote for and suspect it may be
+related to clock synchronization, use the following steps to debug and correct the issue.
 
 ### Check Timely Metric
 
