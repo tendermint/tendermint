@@ -193,7 +193,6 @@ func (e *CElement) setRemoved() {
 // Panics if length grows beyond the max.
 type CList struct {
 	mtx    sync.RWMutex
-	wg     *sync.WaitGroup
 	waitCh chan struct{}
 	head   *CElement // first element
 	tail   *CElement // last element

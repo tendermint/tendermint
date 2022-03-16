@@ -218,7 +218,7 @@ func TestScanRightDeleteRandom(t *testing.T) {
 				default:
 				}
 				if el == nil {
-					el = l.FrontWait()
+					el = l.frontWait()
 					restartCounter++
 				}
 				el = el.Next()
