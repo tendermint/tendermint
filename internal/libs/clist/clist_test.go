@@ -218,7 +218,7 @@ func TestScanRightDeleteRandom(t *testing.T) {
 				default:
 				}
 				if el == nil {
-					el = l.FrontWait()
+					el = l.frontWait()
 					restartCounter++
 				}
 				el = el.Next()
@@ -314,30 +314,6 @@ FOR_LOOP:
 		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
 	}
 
-	// 4) test iterating backwards (PrevWaitChan and Prev)
-	prev := next
-	seen = 0
-FOR_LOOP2:
-	for {
-		select {
-		case <-prev.PrevWaitChan():
-			prev = prev.Prev()
-			seen++
-			if prev == nil {
-				t.Fatal("expected PrevWaitChan to block forever on nil when reached first elem")
-			}
-			if pushed == seen {
-				break FOR_LOOP2
-			}
-
-		case <-time.After(250 * time.Millisecond):
-			break FOR_LOOP2
-		}
-	}
-
-	if pushed != seen {
-		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
-	}
 }
 
 func TestRemoved(t *testing.T) {
