@@ -39,10 +39,11 @@ The histogram exposes multiple metrics on the Prometheus `/metrics` endpoint cal
 * `tendermint_consensus_proposal_timestamp_difference_sum`.
 * `tendermint_consensus_proposal_timestamp_difference_count`.
 
-Each metric is also label with the key `is_timely`, which can have a value of
+Each metric is also labeled with the key `is_timely`, which can have a value of
 `true` or `false`.
 
 #### From the Prometheus Collector UI
+
 If you are running a Prometheus collector, navigate to the query web interface and select the 'Graph' tab.
 
 Issue a query for the following:
@@ -60,7 +61,7 @@ check to make sure your local clock is properly synchronized to NTP.
 #### From the `/metrics` url
 
 If you are not running a Prometheus collector, navigate to the `/metrics` endpoint
-exposed on the Prometheus metrics port.
+exposed on the Prometheus metrics port with `curl` or a browser.
 
 Search for the `tendermint_consensus_proposal_timestamp_difference_count` metrics.
 This metric is labeled with `is_timely`. Investigate the value of
@@ -74,8 +75,8 @@ to make sure your local clock is properly synchronized to NTP.
 
 ### Checking Clock Sync
 
-`NTP` configuration and tooling is very dependent on the operating system and distribution
-that your validator node is running on. This guide assumes you have `timedatectl` installed with
+`NTP` configuration and tooling is very specific to the operating system and distribution
+that your validator node is running. This guide assumes you have `timedatectl` installed with
 [chrony](https://chrony.tuxfamily.org/), a popular tool for interacting with time
 synchronization on Linux distributions. If you are using an operating system or
 distribution with a different time synchronization mechanism, please consult the
@@ -96,7 +97,7 @@ Re-run the `timedatectl` command and verify that the change has taken effect.
 
 #### Check if Your NTP Daemon is Synchronized
 
-Check the status of your local `chrony` `ntp` daemon using by running the following:
+Check the status of your local `chrony` NTP daemon using by running the following:
 
 ```
 $ chronyc tracking
@@ -135,6 +136,7 @@ between the proposal timestamp and the timestamp of the latest prevote in a roun
 where 100% of the validators voted.
 
 #### From the Prometheus Collector UI
+
 If you are running a Prometheus collector, navigate to the query web interface and select the 'Graph' tab.
 
 Issue a query for the following:
@@ -142,15 +144,16 @@ Issue a query for the following:
 ```
 sum(tendermint_consensus_quorum_prevote_delay) by (proposer_address)
 ```
+
 This query will graph the difference in seconds for each proposer on the network.
 
 If the value is much larger for some proposers, then the issue is likely related to the clock
 synchronization of their nodes. Contact those proposers and ensure that their nodes
-are properly connected to NTP using the steps for [debugging a single node](#debugging-a-single-node).
+are properly connected to NTP using the steps for [Debugging a Single Node](#debugging-a-single-node).
 
 If the value is relatively similar for all proposers you should next compare this
 value to the `SynchronyParams` values for the network. Continue to the [Checking
-Sychrony](checking-synchrony) steps.
+Sychrony](#checking-synchrony) steps.
 
 #### From the `/metrics` url
 
@@ -161,11 +164,11 @@ Search for the `tendermint_consensus_quorum_prevote_delay` metric. There will be
 entry of this metric for each `proposer_address`. If the value of this metric is
 much larger for some proposers, then the issue is likely related to synchronization of their
 nodes with NTP. Contact those proposers and ensure that their nodes are properly connected
-to NTP using the steps for [debugging a single node](#debugging-a-single-node).
+to NTP using the steps for [Debugging a Single Node](#debugging-a-single-node).
 
 If the values are relatively similar for all proposers you should next compare,
 you'll need to compare this value to the `SynchronyParams` for the network. Continue
-to the [Checking Sychrony](checking-synchrony) steps.
+to the [Checking Sychrony](#checking-synchrony) steps.
 
 ### Checking Synchrony
 
@@ -186,11 +189,12 @@ The json output will contain a field named `synchrony`, with the following struc
 }
 ```
 
-The `precision` and `message_delay` values returned are listed in nanoseconds.
+The `precision` and `message_delay` values returned are listed in nanoseconds:
+In the examples above, the precision is 500ms and the message delay is 3s.
 Remember, `tendermint_consensus_quorum_prevote_delay` is listed in seconds.
 If the `tendermint_consensus_quorum_prevote_delay` value approaches the sum of `precision` and `message_delay`,
 then the value selected for these parameters is too small. Your application will
-need to be modified update the `SynchronyParams` to have larger values.
+need to be modified to update the `SynchronyParams` to have larger values.
 
 ### Updating SynchronyParams
 
@@ -203,5 +207,5 @@ programatically using a governance proposal. For more information, see the [Cosm
 documentation]().
 
 If the application does not implement a way to update the consensus parameters
-programatically, then it must be updated to do so. More information on updating
+programatically, then the application itself must be updated to do so. More information on updating
 the consensus parameters via ABCI can be found in the [FinalizeBlock documentation](https://github.com/tendermint/tendermint/blob/841204c9a020cbc255fa117eca2ed6541b3786a7/spec/abci++/abci++_methods_002_draft.md#L576).
