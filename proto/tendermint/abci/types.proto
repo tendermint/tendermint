@@ -451,16 +451,6 @@ message ExtendedVoteInfo {
   bytes vote_extension = 3;
 }
 
-// CanonicalVoteExtension
-// TODO: move this to core Tendermint data structures
-message CanonicalVoteExtension {
-  bytes  extension = 1;
-  int64  height    = 2;
-  int32  round     = 3;
-  string chain_id  = 4;
-  bytes  address   = 5;
-}
-
 enum EvidenceType {
   UNKNOWN             = 0;
   DUPLICATE_VOTE      = 1;

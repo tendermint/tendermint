@@ -35,3 +35,12 @@ message CanonicalVote {
   google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
 }
+
+// CanonicalVoteExtension
+message CanonicalVoteExtension {
+  bytes  extension = 1;
+  int64  height    = 2;
+  int32  round     = 3;
+  string chain_id  = 4;
+  bytes  address   = 5;
+}
