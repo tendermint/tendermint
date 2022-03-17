@@ -171,9 +171,6 @@ type State struct {
 	doPrevote      func(ctx context.Context, height int64, round int32)
 	setProposal    func(proposal *types.Proposal, t time.Time) error
 
-	// closed when we finish shutting down
-	done chan struct{}
-
 	// synchronous pubsub between consensus state and reactor.
 	// state only emits EventNewRoundStep, EventValidBlock, and EventVote
 	evsw tmevents.EventSwitch
@@ -213,7 +210,6 @@ func NewState(
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(logger),
 		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
-		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
 		evpool:           evpool,
@@ -522,14 +518,6 @@ func (cs *State) OnStop() {
 		cs.timeoutTicker.Stop()
 	}
 	// WAL is stopped in receiveRoutine.
-}
-
-// Wait waits for the the main routine to return.
-// NOTE: be sure to Stop() the event switch and drain
-// any event channels or this may deadlock
-func (cs *State) Wait() {
-	cs.evsw.Wait()
-	<-cs.done
 }
 
 // OpenWAL opens a file to log all consensus messages and timeouts for
@@ -864,7 +852,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		// close wal now that we're done writing to it
 		cs.wal.Stop()
 		cs.wal.Wait()
-		close(cs.done)
 	}
 
 	defer func() {
