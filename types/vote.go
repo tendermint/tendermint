@@ -118,7 +118,8 @@ func (vote *Vote) Copy() *Vote {
 // 6. type string
 // 7. first 6 bytes of block hash
 // 8. first 6 bytes of signature
-// 9. timestamp
+// 9. first 6 bytes of vote extension
+// 10. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
@@ -134,7 +135,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X @ %s}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
@@ -143,6 +144,7 @@ func (vote *Vote) String() string {
 		typeString,
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.Signature),
+		tmbytes.Fingerprint(vote.Extension),
 		CanonicalTime(vote.Timestamp),
 	)
 }

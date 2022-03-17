@@ -143,7 +143,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				ExtensionSignature: []byte{},
 			},
 			[]byte{
-				0x38,                                   // length
+				0x2e,                                   // length
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
@@ -155,12 +155,6 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				0x32,
 				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64, // chainID
 				// (field_number << 3) | wire_type
-				0x3a,
-				0x8,                                // length
-				0xa,                                // (field_number << 3) | wire_type
-				0x6,                                // length
-				0x73, 0x69, 0x67, 0x6e, 0x65, 0x64, // AppDataSigned
-				// SelfAuthenticating data is excluded on signing
 			}, // chainID
 		},
 	}
