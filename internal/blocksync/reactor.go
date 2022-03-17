@@ -445,8 +445,6 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-r.pool.exitedCh:
-			return
 		case <-switchToConsensusTicker.C:
 			var (
 				height, numPending, lenRequesters = r.pool.GetStatus()
