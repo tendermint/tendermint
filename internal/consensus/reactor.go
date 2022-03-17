@@ -472,10 +472,10 @@ func (r *Reactor) updateRoundStateRoutine() {
 	}
 }
 
-func (conR *Reactor) getRoundState() *cstypes.RoundState {
-	conR.mtx.RLock()
-	defer conR.mtx.RUnlock()
-	return conR.rs
+func (r *Reactor) getRoundState() *cstypes.RoundState {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+	return r.rs
 }
 
 func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) {
