@@ -315,5 +315,5 @@ func (app *CounterApplication) PrepareProposal(
 
 func (app *CounterApplication) ProcessProposal(
 	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
-	return abci.ResponseProcessProposal{Accept: true}
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }

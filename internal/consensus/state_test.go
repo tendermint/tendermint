@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abci "github.com/tendermint/tendermint/abci/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -1940,7 +1941,11 @@ func TestProcessProposalAccept(t *testing.T) {
 			defer cancel()
 
 			m := abcimocks.NewBaseMock()
-			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Accept: testCase.accept})
+			status := abci.ResponseProcessProposal_REJECT
+			if testCase.accept {
+				status = abci.ResponseProcessProposal_ACCEPT
+			}
+			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Status: status})
 			cs1, _ := makeState(ctx, t, makeStateArgs{config: config, application: m})
 			height, round := cs1.Height, cs1.Round
 
@@ -1988,9 +1993,9 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			defer cancel()
 
 			m := abcimocks.NewBaseMock()
-			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Accept: true})
+			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 			m.On("VerifyVoteExtension", mock.Anything).Return(abcitypes.ResponseVerifyVoteExtension{
-				Result: abcitypes.ResponseVerifyVoteExtension_ACCEPT,
+				Status: abcitypes.ResponseVerifyVoteExtension_ACCEPT,
 			})
 			m.On("FinalizeBlock", mock.Anything).Return(abcitypes.ResponseFinalizeBlock{}).Maybe()
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
