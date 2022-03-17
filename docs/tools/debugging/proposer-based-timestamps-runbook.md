@@ -209,7 +209,7 @@ be passed to the application during the `FinalizeBlock` ABCI method call.
 
 If the application was built using the CosmosSDK, then these parameters can be updated
 programatically using a governance proposal. For more information, see the [CosmosSDK
-documentation]().
+documentation](https://hub.cosmos.network/main/governance/submitting.html#sending-the-transaction-that-submits-your-governance-proposal).
 
 If the application does not implement a way to update the consensus parameters
 programatically, then the application itself must be updated to do so. More information on updating
