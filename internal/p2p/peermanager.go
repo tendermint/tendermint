@@ -891,10 +891,7 @@ func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	case PeerStatusBad:
 		m.store.peers[pu.NodeID].MutableScore--
 	case PeerStatusGood:
-		// The persistent peer rank won't be affected by the score update.
-		if m.store.peers[pu.NodeID].MutableScore < int64(MaxPeerScoreNotPersistent) {
-			m.store.peers[pu.NodeID].MutableScore++
-		}
+		m.store.peers[pu.NodeID].MutableScore++
 	}
 }
 
@@ -1287,6 +1284,9 @@ func (p *peerInfo) Score() PeerScore {
 	}
 
 	score := p.MutableScore
+	if score > int64(MaxPeerScoreNotPersistent) {
+		score = int64(MaxPeerScoreNotPersistent)
+	}
 
 	for _, addr := range p.AddressInfo {
 		// DialFailures is reset when dials succeed, so this
@@ -1296,11 +1296,6 @@ func (p *peerInfo) Score() PeerScore {
 
 	if score <= 0 {
 		return 0
-	}
-
-	// sanity check, the MutableScore already has a cap.
-	if score >= math.MaxUint8 {
-		return MaxPeerScoreNotPersistent
 	}
 
 	return PeerScore(score)
