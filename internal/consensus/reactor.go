@@ -419,7 +419,7 @@ func (r *Reactor) updateRoundStateRoutine() {
 		if !r.IsRunning() {
 			return
 		}
-		rs := r.getRoundState()
+		rs := r.state.GetRoundState()
 		r.mtx.Lock()
 		r.rs = rs
 		r.mtx.Unlock()
