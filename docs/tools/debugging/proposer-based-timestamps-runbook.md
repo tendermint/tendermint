@@ -89,13 +89,13 @@ documentation for your operating system to check the status and re-synchronize t
 #### Check if NTP is Enabled
 
 ```shell
-# timedatectl
+$ timedatectl
 ```
 
 From the output, ensure that `NTP service` is `active`. If `NTP service` is `inactive`, run:
 
 ```shell
-# timedatectl set-ntp true
+$ timedatectl set-ntp true
 ```
 
 Re-run the `timedatectl` command and verify that the change has taken effect.
@@ -105,7 +105,7 @@ Re-run the `timedatectl` command and verify that the change has taken effect.
 Check the status of your local `chrony` NTP daemon using by running the following:
 
 ```shell
-# chronyc tracking
+$ chronyc tracking
 ```
 
 If the `chrony` daemon is running, you will see output that indicates its current status.
@@ -182,7 +182,7 @@ request to your node's RPC endpoint. For a node running locally with the RPC ser
 exposed on port `26657`, run the following command:
 
 ```shell
-# curl localhost:26657/consensus_params
+$ curl localhost:26657/consensus_params
 ```
 
 The json output will contain a field named `synchrony`, with the following structure:
