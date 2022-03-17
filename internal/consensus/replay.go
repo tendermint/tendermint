@@ -244,14 +244,14 @@ func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client)
 		return fmt.Errorf("error calling Info: %w", err)
 	}
 
-	blockHeight := res.LastBlockHeight
-	if blockHeight < 0 {
-		return fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
+	appBlockHeight := res.LastBlockHeight
+	if appBlockHeight < 0 {
+		return fmt.Errorf("got a negative last block height (%d) from the app", appBlockHeight)
 	}
 	appHash := res.LastBlockAppHash
 
 	h.logger.Info("ABCI Handshake App Info",
-		"height", blockHeight,
+		"height", appBlockHeight,
 		"hash", appHash,
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
@@ -263,13 +263,13 @@ func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client)
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, blockHeight, appClient)
+	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, appBlockHeight, appClient)
 	if err != nil {
 		return fmt.Errorf("error on replay: %w", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
-		"appHeight", blockHeight, "appHash", appHash)
+		"appHeight", appBlockHeight, "appHash", appHash)
 
 	// TODO: (on restart) replay mempool
 
