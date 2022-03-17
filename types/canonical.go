@@ -52,7 +52,8 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 }
 
 // CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
-// not contain ValidatorIndex and ValidatorAddress fields.
+// not contain ValidatorIndex and ValidatorAddress fields, or any fields
+// relating to vote extensions.
 func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
 	return tmproto.CanonicalVote{
 		Type:      vote.Type,
