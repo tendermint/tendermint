@@ -75,19 +75,13 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 func setup(ctx context.Context, t testing.TB, app abciclient.Client, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-
 	logger := log.TestingLogger()
 
 	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)
 	cfg.Mempool.CacheSize = cacheSize
 
-	t.Cleanup(func() {
-		os.RemoveAll(cfg.RootDir)
-		cancel()
-	})
+	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
 
 	return NewTxMempool(logger.With("test", t.Name()), cfg.Mempool, app, options...)
 }
@@ -131,7 +125,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +188,7 @@ func TestTxMempool_Size(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +221,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +255,7 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +314,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +372,7 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +397,7 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +421,7 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +452,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -531,7 +525,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+	client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 	if err := client.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +603,7 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			client := abciclient.NewLocalClient(log.NewNopLogger(), kvstore.NewApplication())
+			client := abciclient.NewLocalClient(log.NewNopLogger(), &application{Application: kvstore.NewApplication()})
 			if err := client.Start(ctx); err != nil {
 				t.Fatal(err)
 			}
