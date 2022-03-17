@@ -92,12 +92,12 @@ type Metrics struct {
 	// be above 2/3 of the total voting power of the network defines the endpoint
 	// the endpoint of the interval. Subtract the proposal timestamp from this endpoint
 	// to obtain the quorum delay.
-	QuorumPrevoteMessageDelay metrics.Gauge
+	QuorumPrevoteDelay metrics.Gauge
 
-	// FullPrevoteMessageDelay is the interval in seconds between the proposal
+	// FullPrevoteDelay is the interval in seconds between the proposal
 	// timestamp and the timestamp of the latest prevote in a round where 100%
 	// of the voting power on the network issued prevotes.
-	FullPrevoteMessageDelay metrics.Gauge
+	FullPrevoteDelay metrics.Gauge
 
 	// ProposalTimestampDifference is the difference between the timestamp in
 	// the proposal message and the local time of the validator at the time
@@ -257,17 +257,17 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help:      "Time spent per step.",
 			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
 		}, append(labels, "step")).With(labelsAndValues...),
-		QuorumPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		QuorumPrevoteDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "quorum_prevote_message_delay",
+			Name:      "quorum_prevote_delay",
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved a quorum in the prevote step.",
 		}, append(labels, "proposer_address")).With(labelsAndValues...),
-		FullPrevoteMessageDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		FullPrevoteDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "full_prevote_message_delay",
+			Name:      "full_prevote_delay",
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
 		}, append(labels, "proposer_address")).With(labelsAndValues...),
@@ -314,8 +314,8 @@ func NopMetrics() *Metrics {
 		BlockParts:                  discard.NewCounter(),
 		BlockGossipReceiveLatency:   discard.NewHistogram(),
 		BlockGossipPartsReceived:    discard.NewCounter(),
-		QuorumPrevoteMessageDelay:   discard.NewGauge(),
-		FullPrevoteMessageDelay:     discard.NewGauge(),
+		QuorumPrevoteDelay:          discard.NewGauge(),
+		FullPrevoteDelay:            discard.NewGauge(),
 		ProposalTimestampDifference: discard.NewHistogram(),
 	}
 }
