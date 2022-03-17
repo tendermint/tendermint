@@ -18,8 +18,6 @@ sh ./scripts/protopackage.sh ./proto/tendermint/abci/types.proto $MODNAME "abci/
 
 make proto-gen
 
-mv ./proto/tendermint/abci/types.pb.go ./abci/types
-
 echo "proto files have been compiled"
 
 echo "checking out copied files"
