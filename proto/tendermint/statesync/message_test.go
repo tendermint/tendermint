@@ -3,6 +3,7 @@ package statesync_test
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
@@ -204,8 +205,8 @@ func TestStateSyncVectors(t *testing.T) {
 						AppVersion: 11,
 					},
 					Synchrony: &tmproto.SynchronyParams{
-						MessageDelay: 550,
-						Precision:    90,
+						MessageDelay: durationPtr(550),
+						Precision:    durationPtr(90),
 					},
 				},
 			},
@@ -223,4 +224,8 @@ func TestStateSyncVectors(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
+}
+
+func durationPtr(t time.Duration) *time.Duration {
+	return &t
 }

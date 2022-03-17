@@ -171,9 +171,6 @@ type State struct {
 	doPrevote      func(ctx context.Context, height int64, round int32)
 	setProposal    func(proposal *types.Proposal, t time.Time) error
 
-	// closed when we finish shutting down
-	done chan struct{}
-
 	// synchronous pubsub between consensus state and reactor.
 	// state only emits EventNewRoundStep, EventValidBlock, and EventVote
 	evsw tmevents.EventSwitch
@@ -213,7 +210,6 @@ func NewState(
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(logger),
 		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
-		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
 		evpool:           evpool,
@@ -848,7 +844,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		// close wal now that we're done writing to it
 		cs.wal.Stop()
 		cs.wal.Wait()
-		close(cs.done)
 	}
 
 	defer func() {
@@ -2576,12 +2571,12 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
 		votingPowerSeen += val.VotingPower
 		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
-			cs.metrics.QuorumPrevoteMessageDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			cs.metrics.QuorumPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 			break
 		}
 	}
 	if ps.HasAll() {
-		cs.metrics.FullPrevoteMessageDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+		cs.metrics.FullPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 	}
 }
 
