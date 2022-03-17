@@ -2169,12 +2169,12 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal, recvTime time.Time
 		if !cs.Validators.GetProposer().PubKey.VerifySignature(types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature) {
 			return ErrInvalidProposalSignature
 		}
+		proposal.Signature = p.Signature
 		return nil
 	}(); err != nil {
 		return err
 	}
 
-	proposal.Signature = p.Signature
 	func() {
 		cs.mtx.Lock()
 		defer cs.mtx.Unlock()
