@@ -729,7 +729,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 2
+	const n = 4
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
