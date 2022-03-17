@@ -140,8 +140,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
+	if rpp.UnknownModifiedTx() {
+		panic(fmt.Sprintf("PrepareProposal responded with ModifiedTxStatus %s", rpp.ModifiedTxStatus.String()))
+	}
 
-	if !rpp.ModifiedTx {
+	if !rpp.TxModified() {
 		return block, nil
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
@@ -181,8 +184,11 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
+	if resp.IsStatusUnknown() {
+		panic(fmt.Sprintf("ProcessProposal responded with status %s", resp.Status.String()))
+	}
 
-	return resp.Accept, nil
+	return resp.IsAccepted(), nil
 }
 
 // ValidateBlock validates the given block against the given state.

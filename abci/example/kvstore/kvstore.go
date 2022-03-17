@@ -290,10 +290,10 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
-			return types.ResponseProcessProposal{Accept: false}
+			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
 		}
 	}
-	return types.ResponseProcessProposal{Accept: true}
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
 }
 
 //---------------------------------------------

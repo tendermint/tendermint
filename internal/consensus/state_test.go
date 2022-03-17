@@ -1988,7 +1988,7 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			defer cancel()
 
 			m := abcimocks.NewBaseMock()
-			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Accept: true})
+			m.On("ProcessProposal", mock.Anything).Return(abcitypes.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 			m.On("VerifyVoteExtension", mock.Anything).Return(abcitypes.ResponseVerifyVoteExtension{
 				Result: abcitypes.ResponseVerifyVoteExtension_ACCEPT,
 			})

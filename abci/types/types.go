@@ -53,6 +53,22 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
+func (r ResponsePrepareProposal) UnknownModifiedTx() bool {
+	return r.ModifiedTxStatus == ResponsePrepareProposal_UNKNOWN
+}
+
+func (r ResponsePrepareProposal) TxModified() bool {
+	return r.ModifiedTxStatus == ResponsePrepareProposal_MODIFIED
+}
+
+func (r ResponseProcessProposal) IsAccepted() bool {
+	return r.Status == ResponseProcessProposal_ACCEPT
+}
+
+func (r ResponseProcessProposal) IsStatusUnknown() bool {
+	return r.Status == ResponseProcessProposal_ACCEPT
+}
+
 // IsUnknown returns true if Code is Unknown
 func (r ResponseVerifyVoteExtension) IsUnknown() bool {
 	return r.Result == ResponseVerifyVoteExtension_UNKNOWN
