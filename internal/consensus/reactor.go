@@ -219,8 +219,6 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
-	r.unsubscribeFromBroadcastEvents()
-
 	r.state.Stop()
 
 	if !r.WaitSync() {
@@ -392,10 +390,6 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 	if err != nil {
 		r.logger.Error("failed to add listener for events", "err", err)
 	}
-}
-
-func (r *Reactor) unsubscribeFromBroadcastEvents() {
-	r.state.evsw.RemoveListener(listenerIDConsensus)
 }
 
 func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
