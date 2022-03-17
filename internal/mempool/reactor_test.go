@@ -13,6 +13,7 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -39,7 +40,7 @@ type reactorTestSuite struct {
 	nodes []types.NodeID
 }
 
-func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
+func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNodes int, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
 	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
@@ -63,7 +64,11 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
 
-		mempool := setup(ctx, t, 0)
+		client := abciclient.NewLocalClient(logger, rts.kvstores[nodeID])
+		require.NoError(t, client.Start(ctx))
+		t.Cleanup(client.Wait)
+
+		mempool := setup(ctx, t, client, 0)
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
@@ -151,7 +156,9 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	defer cancel()
 
 	const numNodes = 2
-	rts := setupReactors(ctx, t, numNodes, 0)
+
+	logger := log.NewNopLogger()
+	rts := setupReactors(ctx, t, logger, numNodes, 0)
 
 	observePanic := func(r interface{}) {
 		t.Fatal("panic detected in reactor")
@@ -194,7 +201,9 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, numNodes, uint(numTxs))
+	logger := log.NewNopLogger()
+
+	rts := setupReactors(ctx, t, logger, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
@@ -218,7 +227,8 @@ func TestReactorConcurrency(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, numNodes, 0)
+	logger := log.NewNopLogger()
+	rts := setupReactors(ctx, t, logger, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -276,7 +286,8 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, numNodes, uint(numTxs))
+	logger := log.NewNopLogger()
+	rts := setupReactors(ctx, t, logger, numNodes, uint(numTxs))
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -300,7 +311,9 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, numNodes, 0)
+	logger := log.NewNopLogger()
+
+	rts := setupReactors(ctx, t, logger, numNodes, 0)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -336,7 +349,8 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, 1, MaxActiveIDs+1)
+	logger := log.NewNopLogger()
+	rts := setupReactors(ctx, t, logger, 1, MaxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -388,7 +402,9 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rts := setupReactors(ctx, t, 2, 2)
+	logger := log.NewNopLogger()
+
+	rts := setupReactors(ctx, t, logger, 2, 2)
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
