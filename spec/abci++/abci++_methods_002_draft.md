@@ -422,7 +422,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
         * The parameters and types of `RequestProcessProposal` are the same as `RequestPrepareProposal`
           and `RequestFinalizeBlock`.
         * The Application may fully execute the block as though it was handling `RequestFinalizeBlock`.
-          However, any resulting state changes must be kept as _canditade state_,
+          However, any resulting state changes must be kept as _candidate state_,
           and the Application should be ready to backtrack/discard it in case the decided block is different.
     * The header exactly matches the Tendermint header of the proposed block.
         * In next-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
