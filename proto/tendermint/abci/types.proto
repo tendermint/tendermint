@@ -21,25 +21,25 @@ import "gogoproto/gogo.proto";
 
 message Request {
   oneof value {
-    RequestEcho               echo                   = 1;
-    RequestFlush              flush                  = 2;
-    RequestInfo               info                   = 3;
-    RequestInitChain          init_chain             = 4;
-    RequestQuery              query                  = 5;
-    RequestBeginBlock         begin_block            = 6 [deprecated = true];
-    RequestCheckTx            check_tx               = 7;
-    RequestDeliverTx          deliver_tx             = 8 [deprecated = true];
-    RequestEndBlock           end_block              = 9 [deprecated = true];
-    RequestCommit             commit                 = 10;
-    RequestListSnapshots      list_snapshots         = 11;
-    RequestOfferSnapshot      offer_snapshot         = 12;
-    RequestLoadSnapshotChunk  load_snapshot_chunk    = 13;
-    RequestApplySnapshotChunk apply_snapshot_chunk   = 14;
-    RequestPrepareProposal    prepare_proposal       = 15;
-    RequestProcessProposal    process_proposal       = 16;
+    RequestEcho                echo                  = 1;
+    RequestFlush               flush                 = 2;
+    RequestInfo                info                  = 3;
+    RequestInitChain           init_chain            = 4;
+    RequestQuery               query                 = 5;
+    RequestBeginBlock          begin_block           = 6 [deprecated = true];
+    RequestCheckTx             check_tx              = 7;
+    RequestDeliverTx           deliver_tx            = 8 [deprecated = true];
+    RequestEndBlock            end_block             = 9 [deprecated = true];
+    RequestCommit              commit                = 10;
+    RequestListSnapshots       list_snapshots        = 11;
+    RequestOfferSnapshot       offer_snapshot        = 12;
+    RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
+    RequestApplySnapshotChunk  apply_snapshot_chunk  = 14;
+    RequestPrepareProposal     prepare_proposal      = 15;
+    RequestProcessProposal     process_proposal      = 16;
     RequestExtendVote          extend_vote           = 17;
     RequestVerifyVoteExtension verify_vote_extension = 18;
-    RequestFinalizeBlock      finalize_block         = 19;
+    RequestFinalizeBlock       finalize_block        = 19;
   }
 }
 
@@ -169,26 +169,26 @@ message RequestFinalizeBlock {
 
 message Response {
   oneof value {
-    ResponseException          exception              = 1;
-    ResponseEcho               echo                   = 2;
-    ResponseFlush              flush                  = 3;
-    ResponseInfo               info                   = 4;
-    ResponseInitChain          init_chain             = 5;
-    ResponseQuery              query                  = 6;
-    ResponseBeginBlock         begin_block            = 7 [deprecated = true];
-    ResponseCheckTx            check_tx               = 8;
-    ResponseDeliverTx          deliver_tx             = 9 [deprecated = true];
-    ResponseEndBlock           end_block              = 10 [deprecated = true];
-    ResponseCommit             commit                 = 11;
-    ResponseListSnapshots      list_snapshots         = 12;
-    ResponseOfferSnapshot      offer_snapshot         = 13;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk    = 14;
-    ResponseApplySnapshotChunk apply_snapshot_chunk   = 15;
-    ResponsePrepareProposal    prepare_proposal       = 16;
-    ResponseProcessProposal    process_proposal       = 17;
+    ResponseException           exception             = 1;
+    ResponseEcho                echo                  = 2;
+    ResponseFlush               flush                 = 3;
+    ResponseInfo                info                  = 4;
+    ResponseInitChain           init_chain            = 5;
+    ResponseQuery               query                 = 6;
+    ResponseBeginBlock          begin_block           = 7 [deprecated = true];
+    ResponseCheckTx             check_tx              = 8;
+    ResponseDeliverTx           deliver_tx            = 9 [deprecated = true];
+    ResponseEndBlock            end_block             = 10 [deprecated = true];
+    ResponseCommit              commit                = 11;
+    ResponseListSnapshots       list_snapshots        = 12;
+    ResponseOfferSnapshot       offer_snapshot        = 13;
+    ResponseLoadSnapshotChunk   load_snapshot_chunk   = 14;
+    ResponseApplySnapshotChunk  apply_snapshot_chunk  = 15;
+    ResponsePrepareProposal     prepare_proposal      = 16;
+    ResponseProcessProposal     process_proposal      = 17;
     ResponseExtendVote          extend_vote           = 18;
     ResponseVerifyVoteExtension verify_vote_extension = 19;
-    ResponseFinalizeBlock      finalize_block         = 20;
+    ResponseFinalizeBlock       finalize_block        = 20;
   }
 }
 
@@ -316,20 +316,32 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  bool                             modified_tx             = 1;
+  TxModifiedStatus                 modified_tx_status      = 1;
   repeated TxRecord                tx_records              = 2;
   bytes                            app_hash                = 3;
   repeated ExecTxResult            tx_results              = 4;
   repeated ValidatorUpdate         validator_updates       = 5;
   tendermint.types.ConsensusParams consensus_param_updates = 6;
+
+  enum ModifiedTxStatus {
+    UNKNOWN    = 0;
+    UNMODIFIED = 1;
+    MODIFIED   = 2;
+  }
 }
 
 message ResponseProcessProposal {
-  bool                             accept                  = 1;
+  Status                           status                  = 1;
   bytes                            app_hash                = 2;
   repeated ExecTxResult            tx_results              = 3;
   repeated ValidatorUpdate         validator_updates       = 4;
   tendermint.types.ConsensusParams consensus_param_updates = 5;
+
+  enum Status {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
 }
 
 message ResponseExtendVote {
@@ -337,7 +349,13 @@ message ResponseExtendVote {
 }
 
 message ResponseVerifyVoteExtension {
-  bool accept = 1;
+  VerifyStatus status = 1;
+
+  enum VerifyStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
 }
 
 message ResponseFinalizeBlock {
@@ -388,7 +406,7 @@ message ExecTxResult {
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
   int64          gas_used   = 6;
-  repeated Event events  = 7
+  repeated Event events     = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
 }
@@ -404,8 +422,8 @@ message TxResult {
 }
 
 message TxRecord {
-  TxAction       action     = 1;
-  bytes          tx         = 2;
+  TxAction action = 1;
+  bytes    tx     = 2;
 
   // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
   enum TxAction {
