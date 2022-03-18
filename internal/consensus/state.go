@@ -452,10 +452,6 @@ func (cs *State) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if err := cs.evsw.Start(ctx); err != nil {
-		return err
-	}
-
 	// Double Signing Risk Reduction
 	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
@@ -509,10 +505,6 @@ func (cs *State) OnStop() {
 	}
 
 	close(cs.onStopCh)
-
-	if cs.evsw.IsRunning() {
-		cs.evsw.Stop()
-	}
 
 	if cs.timeoutTicker.IsRunning() {
 		cs.timeoutTicker.Stop()
