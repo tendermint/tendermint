@@ -66,7 +66,7 @@ func (r ResponseProcessProposal) IsAccepted() bool {
 }
 
 func (r ResponseProcessProposal) IsStatusUnknown() bool {
-	return r.Status == ResponseProcessProposal_ACCEPT
+	return r.Status == ResponseProcessProposal_UNKNOWN
 }
 
 // IsUnknown returns true if Code is Unknown
