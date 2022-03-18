@@ -885,8 +885,11 @@ func randConsensusNetWithPeers(
 
 		app := appFunc(logger, filepath.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
-			// simulate handshake, receive app version. If don't do this, replay test will fail
+		switch app.(type) {
+		// simulate handshake, receive app version. If don't do this, replay test will fail
+		case *kvstore.PersistentKVStoreApplication:
+			state.Version.Consensus.App = kvstore.ProtocolVersion
+		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
 		app.InitChain(abci.RequestInitChain{Validators: vals})
