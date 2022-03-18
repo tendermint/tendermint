@@ -2,7 +2,7 @@
 FROM golang:1.17-alpine as builder
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add make
+    apk --no-cache add make git
 COPY / /tendermint
 WORKDIR /tendermint
 RUN make build-linux
@@ -53,4 +53,3 @@ CMD ["start"]
 
 # Expose the data directory as a volume since there's mutable state in there
 VOLUME [ "$TMHOME" ]
-
