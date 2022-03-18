@@ -777,7 +777,7 @@ func ensureMessageBeforeTimeout(t *testing.T, ch <-chan tmpubsub.Message, to tim
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func consensusLogger() log.Logger {
-	return log.TestingLogger().With("module", "consensus")
+	return log.NewNopLogger().With("module", "consensus")
 }
 
 func makeConsensusState(

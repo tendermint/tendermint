@@ -26,7 +26,7 @@ const walTestFlushInterval = 100 * time.Millisecond
 func TestWALTruncate(t *testing.T) {
 	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -108,7 +108,7 @@ func TestWALWrite(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wal, err := NewWAL(ctx, log.TestingLogger(), walFile)
+	wal, err := NewWAL(ctx, log.NewNopLogger(), walFile)
 	require.NoError(t, err)
 	err = wal.Start(ctx)
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	walFile := filepath.Join(walDir, "wal")
 	defer os.RemoveAll(walFile)
 
-	wal, err := NewWAL(ctx, log.TestingLogger(), walFile, autofile.GroupCheckDuration(250*time.Millisecond))
+	wal, err := NewWAL(ctx, log.NewNopLogger(), walFile, autofile.GroupCheckDuration(250*time.Millisecond))
 	require.NoError(t, err)
 
 	wal.SetFlushInterval(walTestFlushInterval)

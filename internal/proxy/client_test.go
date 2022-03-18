@@ -58,7 +58,7 @@ var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +98,7 @@ func TestEcho(t *testing.T) {
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
 	if err != nil {
 		b.Fatal(err)
@@ -146,7 +146,7 @@ func TestInfo(t *testing.T) {
 	defer cancel()
 
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +189,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 	clientMock.On("Wait").Return(nil).Times(1)
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
-	appConns := New(cl, log.TestingLogger(), NopMetrics())
+	appConns := New(cl, log.NewNopLogger(), NopMetrics())
 
 	err := appConns.Start(ctx)
 	require.NoError(t, err)
@@ -219,7 +219,7 @@ func TestAppConns_Failure(t *testing.T) {
 	clientMock.On("Error").Return(errors.New("EOF"))
 	cl := &noopStoppableClientImpl{Client: clientMock}
 
-	appConns := New(cl, log.TestingLogger(), NopMetrics())
+	appConns := New(cl, log.NewNopLogger(), NopMetrics())
 
 	err := appConns.Start(ctx)
 	require.NoError(t, err)

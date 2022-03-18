@@ -303,7 +303,7 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 		return pexCh, nil
 	}
 
-	reactor, err := pex.NewReactor(ctx, log.TestingLogger(), peerManager, chCreator, peerUpdates)
+	reactor, err := pex.NewReactor(ctx, log.NewNopLogger(), peerManager, chCreator, peerUpdates)
 	require.NoError(t, err)
 
 	require.NoError(t, reactor.Start(ctx))
@@ -365,7 +365,7 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 	realNodes := opts.TotalNodes - opts.MockNodes
 
 	rts := &reactorTestSuite{
-		logger:      log.TestingLogger().With("testCase", t.Name()),
+		logger:      log.NewNopLogger().With("testCase", t.Name()),
 		network:     p2ptest.MakeNetwork(ctx, t, networkOpts),
 		reactors:    make(map[types.NodeID]*pex.Reactor, realNodes),
 		pexChannels: make(map[types.NodeID]*p2p.Channel, opts.TotalNodes),
