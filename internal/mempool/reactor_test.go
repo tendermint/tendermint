@@ -139,14 +139,14 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...ty
 		}
 
 		wg.Add(1)
-		go func(pool *TxMempool) {
+		go func(name types.NodeID, pool *TxMempool) {
 			defer wg.Done()
 			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
 				time.Minute,
 				250*time.Millisecond,
-				"ntx=%d, size=%d", len(txs), pool.Size(),
+				"node=%q, ntx=%d, size=%d", name, len(txs), pool.Size(),
 			)
-		}(pool)
+		}(name, pool)
 	}
 	wg.Wait()
 }
@@ -196,8 +196,8 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 }
 
 func TestReactorBroadcastTxs(t *testing.T) {
-	numTxs := 1000
-	numNodes := 10
+	numTxs := 512
+	numNodes := 4
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
