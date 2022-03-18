@@ -337,7 +337,7 @@ message ResponseProcessProposal {
   repeated ValidatorUpdate         validator_updates       = 4;
   tendermint.types.ConsensusParams consensus_param_updates = 5;
 
-  enum Status {
+  enum ProposalStatus {
     UNKNOWN = 0;
     ACCEPT  = 1;
     REJECT  = 2;
