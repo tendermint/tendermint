@@ -342,7 +342,7 @@ message ResponsePrepareProposal {
 }
 
 message ResponseProcessProposal {
-  ProposalStatus                           status                  = 1;
+  ProposalStatus                   status                  = 1;
   bytes                            app_hash                = 2;
   repeated ExecTxResult            tx_results              = 3;
   repeated ValidatorUpdate         validator_updates       = 4;
