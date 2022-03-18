@@ -1306,7 +1306,7 @@ func TestReplayUpdateAppVerion(t *testing.T) {
 	testGenesusAppVer := kvstore.ProtocolVersion + 1
 	state.Version.Consensus.App = testGenesusAppVer
 	state.ConsensusParams.Version.AppVersion = testGenesusAppVer
-	stateStore.Save(state)
+	require.NoError(t, stateStore.Save(state))
 
 	// the genDoc has the default genesis app version which it's fine because it's be used in the app InitChain request.
 	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
