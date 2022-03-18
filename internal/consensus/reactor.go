@@ -119,6 +119,7 @@ type Reactor struct {
 	mtx         sync.RWMutex
 	peers       map[types.NodeID]*PeerState
 	waitSync    bool
+	rs          *cstypes.RoundState
 	readySignal chan struct{} // closed when the node is ready to start consensus
 
 	stateCh       *p2p.Channel
@@ -166,6 +167,7 @@ func NewReactor(
 		logger:        logger,
 		state:         cs,
 		waitSync:      waitSync,
+		rs:            cs.GetRoundState(),
 		peers:         make(map[types.NodeID]*PeerState),
 		eventBus:      eventBus,
 		Metrics:       metrics,
@@ -199,6 +201,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.peerStatsRoutine(ctx)
 
 	r.subscribeToBroadcastEvents()
+	go r.updateRoundStateRoutine()
 
 	if !r.WaitSync() {
 		if err := r.state.Start(ctx); err != nil {
@@ -407,8 +410,28 @@ func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
 func (r *Reactor) sendNewRoundStepMessage(ctx context.Context, peerID types.NodeID) error {
 	return r.stateCh.Send(ctx, p2p.Envelope{
 		To:      peerID,
-		Message: makeRoundStepMessage(r.state.GetRoundState()),
+		Message: makeRoundStepMessage(r.getRoundState()),
 	})
+}
+
+func (r *Reactor) updateRoundStateRoutine() {
+	t := time.NewTicker(100 * time.Microsecond)
+	defer t.Stop()
+	for range t.C {
+		if !r.IsRunning() {
+			return
+		}
+		rs := r.state.GetRoundState()
+		r.mtx.Lock()
+		r.rs = rs
+		r.mtx.Unlock()
+	}
+}
+
+func (r *Reactor) getRoundState() *cstypes.RoundState {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+	return r.rs
 }
 
 func (r *Reactor) gossipDataForCatchup(ctx context.Context, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) {
@@ -493,7 +516,7 @@ OUTER_LOOP:
 		default:
 		}
 
-		rs := r.state.GetRoundState()
+		rs := r.getRoundState()
 		prs := ps.GetRoundState()
 
 		// Send proposal Block parts?
@@ -751,7 +774,7 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState) {
 		default:
 		}
 
-		rs := r.state.GetRoundState()
+		rs := r.getRoundState()
 		prs := ps.GetRoundState()
 
 		switch logThrottle {
@@ -842,7 +865,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState) {
 			return
 		}
 
-		rs := r.state.GetRoundState()
+		rs := r.getRoundState()
 		prs := ps.GetRoundState()
 		// TODO create more reliable coppies of these
 		// structures so the following go routines don't race
