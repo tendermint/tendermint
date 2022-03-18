@@ -30,7 +30,7 @@ func TestClientIntegration_Update(t *testing.T) {
 	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -90,7 +90,7 @@ func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
 	conf, err := rpctest.CreateConfig(t, t.Name())
 	require.NoError(t, err)
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	// Start a test application
 	app := kvstore.NewApplication()
@@ -201,7 +201,7 @@ func TestClientStatusRPC(t *testing.T) {
 		primary,
 		witnesses,
 		dbs.New(db),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewNopLogger()),
 	)
 	require.NoError(t, err)
 

@@ -55,7 +55,7 @@ import (
 
 func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
 	privValidator := loadPrivValidator(t, consensusReplayConfig)
@@ -682,7 +682,7 @@ func testHandshakeReplay(
 
 	cfg := sim.Config
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	if testValidatorsChange {
 		testConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		require.NoError(t, err)
@@ -819,7 +819,7 @@ func applyBlock(
 	eventBus *eventbus.EventBus,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mempool, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mempool, evpool, blockStore, eventBus)
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -964,7 +964,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 	store.chain = blocks
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))

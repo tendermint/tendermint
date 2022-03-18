@@ -75,7 +75,7 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 func setup(ctx context.Context, t testing.TB, app abciclient.Client, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	cfg, err := config.ResetTestRoot(t.TempDir(), strings.ReplaceAll(t.Name(), "/", "|"))
 	require.NoError(t, err)

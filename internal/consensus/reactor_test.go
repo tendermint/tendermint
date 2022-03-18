@@ -478,7 +478,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 		mempool := mempool.NewTxMempool(
-			log.TestingLogger().With("module", "mempool"),
+			log.NewNopLogger().With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
 		)
@@ -501,10 +501,10 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		evpool2 := sm.EmptyEvidencePool{}
 
-		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+		eventBus := eventbus.NewDefault(log.NewNopLogger().With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus)
+		blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus)
 
 		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
