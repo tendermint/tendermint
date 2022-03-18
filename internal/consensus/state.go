@@ -511,8 +511,6 @@ func (cs *State) OnStop() {
 		}
 	}
 
-	close(cs.onStopCh)
-
 	if cs.timeoutTicker.IsRunning() {
 		cs.timeoutTicker.Stop()
 	}
