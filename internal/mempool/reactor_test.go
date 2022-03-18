@@ -130,7 +130,6 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...ty
 	// ensure that the transactions get fully broadcast to the
 	// rest of the network
 	wg := &sync.WaitGroup{}
-	var count int
 	for name, pool := range rts.mempools {
 		if !p2ptest.NodeInSlice(name, ids) {
 			continue
@@ -148,7 +147,6 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...ty
 				"node=%q, ntx=%d, size=%d", name, len(txs), pool.Size(),
 			)
 		}(name, pool)
-		count++
 	}
 	wg.Wait()
 }
