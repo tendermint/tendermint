@@ -21,8 +21,6 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
 
 	messages := make(chan EventData)
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
@@ -50,8 +48,6 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
 
 	doneSum := make(chan uint64)
 	doneSending := make(chan uint64)
@@ -88,8 +84,6 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
 
 	doneSum := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -151,9 +145,6 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 
 	logger := log.NewTestingLogger(t)
 	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-
-	t.Cleanup(evsw.Wait)
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
@@ -247,8 +238,6 @@ func TestManageListenersAsync(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)

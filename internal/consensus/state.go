@@ -452,10 +452,6 @@ func (cs *State) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if err := cs.evsw.Start(ctx); err != nil {
-		return err
-	}
-
 	// Double Signing Risk Reduction
 	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
@@ -497,22 +493,25 @@ func (cs *State) loadWalFile(ctx context.Context) error {
 	return nil
 }
 
+func (cs *State) getOnStopCh() chan *cstypes.RoundState {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	return cs.onStopCh
+}
+
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
 	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
-		case <-cs.onStopCh:
+		case <-cs.getOnStopCh():
 		case <-time.After(cs.config.TimeoutCommit):
 			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.config.TimeoutCommit)
 		}
 	}
 
 	close(cs.onStopCh)
-
-	if cs.evsw.IsRunning() {
-		cs.evsw.Stop()
-	}
 
 	if cs.timeoutTicker.IsRunning() {
 		cs.timeoutTicker.Stop()
