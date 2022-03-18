@@ -425,9 +425,13 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	votes := make([]abci.VoteInfo, block.LastCommit.Size())
 	for i, val := range lastValSet.Validators {
 		commitSig := block.LastCommit.Signatures[i]
+		status := abci.SignedStatus_DID_NOT_SIGN
+		if !commitSig.Absent() {
+			status = abci.SignedStatus_SIGNED
+		}
 		votes[i] = abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: !commitSig.Absent(),
+			SignedLastBlock: status,
 		}
 	}
 

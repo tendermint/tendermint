@@ -148,7 +148,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			// -> app receives a list of validators with a bool indicating if they signed
 			for i, v := range app.CommitVotes {
 				_, absent := tc.absentCommitSigs[i]
-				assert.Equal(t, !absent, v.SignedLastBlock)
+				assert.Equal(t, !absent, v.Signed())
 			}
 		})
 	}
@@ -314,7 +314,7 @@ func TestProcessProposal(t *testing.T) {
 		addr := pk.Address()
 		voteInfos = append(voteInfos,
 			abci.VoteInfo{
-				SignedLastBlock: true,
+				SignedLastBlock: abci.SignedStatus_SIGNED,
 				Validator: abci.Validator{
 					Address: addr,
 					Power:   1000,

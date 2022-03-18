@@ -769,10 +769,10 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
 * **Fields**:
 
-    | Name                        | Type                    | Description                                                    | Field Number |
-    |-----------------------------|-------------------------|----------------------------------------------------------------|--------------|
-    | validator                   | [Validator](#validator) | The validator that sent the vote.                              | 1            |
-    | signed_last_block           | bool                    | Indicates whether or not the validator signed the last block.  | 2            |
+    | Name                  | Type                          | Description                                                    | Field Number |
+    |-----------------------|-------------------------------|----------------------------------------------------------------|--------------|
+    | validator             | [Validator](#validator)       | The validator that sent the vote.                              | 1            |
+    | signed_last_block     | [SignedStatus](#SignedStatus) | Indicates whether or not the validator signed the last block.  | 2            |
 
 * **Usage**:
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
@@ -782,11 +782,11 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
 * **Fields**:
 
-    | Name              | Type                    | Description                                                                  | Field Number |
-    |-------------------|-------------------------|------------------------------------------------------------------------------|--------------|
-    | validator         | [Validator](#validator) | The validator that sent the vote.                                            | 1            |
-    | signed_last_block | bool                    | Indicates whether or not the validator signed the last block.                | 2            |
-    | vote_extension    | bytes                   | Non-deterministic extension provided by the sending validator's Application. | 3            |
+    | Name              | Type                          | Description                                                                  | Field Number |
+    |-------------------|-------------------------------|------------------------------------------------------------------------------|--------------|
+    | validator         | [Validator](#validator)       | The validator that sent the vote.                                            | 1            |
+    | signed_last_block | [SignedStatus](#SignedStatus) | Indicates whether or not the validator signed the last block.                | 2            |
+    | vote_extension    | bytes                         | Non-deterministic extension provided by the sending validator's Application. | 3            |
 
 * **Usage**:
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
@@ -900,6 +900,21 @@ enum VerifyStatus {
     * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
     * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
 
+### SignedStatus
+
+```proto
+enum SignedStatus {
+  UNKNOWN_SIGN_STATUS = 0;  // Unknown status.
+  SIGNED              = 1;  // Validator signed the last block.
+  DID_NOT_SIGN        = 2;  // Validator did not sign the last block.
+}
+```
+
+* **Usage**:
+	* Used within the [VoteInfo](#VoteInfo) and [ExtendedVoteInfo](#ExtendedVoteInfo).
+    * If `SignedLastBlock` is `SIGNED`, the associated validator signed the last block.
+    * If `SignedLastBlock` is `DID_NOT_SIGN`, the associated validator did not sign the last block.
+    * If `SignedLastBlock` should never be set to `UNKNOWN_SIGNED_STATUS`.
 
 ### CanonicalVoteExtension
 

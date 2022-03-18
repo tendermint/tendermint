@@ -84,6 +84,26 @@ func (r ResponseVerifyVoteExtension) IsErr() bool {
 	return r.Status != ResponseVerifyVoteExtension_ACCEPT
 }
 
+// Signed returns true if the validator this vote corresponds to signed the last block.
+func (v VoteInfo) Signed() bool {
+	return v.SignedLastBlock == SignedStatus_SIGNED
+}
+
+// Unknown returns true if sign status for this VoteInfo is unknown.
+func (v VoteInfo) UnknownSignStatus() bool {
+	return v.SignedLastBlock == SignedStatus_UNKNOWN_SIGN_STATUS
+}
+
+// Signed returns true if the validator this vote corresponds to signed the last block.
+func (v ExtendedVoteInfo) Signed() bool {
+	return v.SignedLastBlock == SignedStatus_SIGNED
+}
+
+// Unknown returns true if sign status for this ExtendedVoteInfo is unknown.
+func (v ExtendedVoteInfo) UnknownSignStatus() bool {
+	return v.SignedLastBlock == SignedStatus_UNKNOWN_SIGN_STATUS
+}
+
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 
