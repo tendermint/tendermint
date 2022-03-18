@@ -650,6 +650,64 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestPrepareProposalPanicOnInvalid tests that the block creation logic panics
+// if the ResponsePrepareProposal returned from the application is invalid.
+func TestPrepareProposalPanicOnInvalid(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.TestingLogger()
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	state, stateDB, privVals := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
+
+	app := abcimocks.NewBaseMock()
+
+	// create an invalid ResponsePrepareProposal
+	rpp := abci.ResponsePrepareProposal{
+		ModifiedTx: true,
+		TxRecords: []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     []byte("new tx"),
+			},
+		},
+	}
+	app.On("PrepareProposal", mock.Anything).Return(rpp, nil)
+
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp,
+		mp,
+		evpool,
+		nil,
+		eventBus,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	require.Panics(t,
+		func() {
+			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil) //nolint:errcheck
+		})
+
+	mp.AssertExpectations(t)
+}
+
 // TestPrepareProposalRemoveTxs tests that any transactions marked as REMOVED
 // are not included in the block produced by CreateProposalBlock. The test also
 // ensures that any transactions removed are also removed from the mempool.
