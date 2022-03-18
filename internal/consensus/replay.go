@@ -260,6 +260,7 @@ func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client)
 	// Only set the version if there is no existing state.
 	if h.initialState.LastBlockHeight == 0 {
 		h.initialState.Version.Consensus.App = res.AppVersion
+		h.initialState.ConsensusParams.Version.AppVersion = res.AppVersion
 	}
 
 	// Replay blocks up to the latest in the blockstore.
