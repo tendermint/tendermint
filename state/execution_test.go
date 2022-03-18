@@ -496,7 +496,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 func TestEmptyPrepareProposal(t *testing.T) {
 	const height = 2
 
-	app := &testApp{}
+	app := abcimocks.NewBaseMock()
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
@@ -530,6 +530,58 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 	_, err = blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
+}
+
+// TestPrepareProposalPanicOnInvalid tests that the block creation logic panics
+// if the ResponsePrepareProposal returned from the application is invalid.
+func TestPrepareProposalPanicOnInvalid(t *testing.T) {
+	const height = 2
+
+	state, stateDB, privVals := makeState(1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
+
+	// create an invalid ResponsePrepareProposal
+	rpp := abci.ResponsePrepareProposal{
+		ModifiedTx: true,
+		TxRecords: []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     []byte("new tx"),
+			},
+		},
+	}
+
+	app := abcimocks.NewBaseMock()
+	app.On("PrepareProposal", mock.Anything).Return(rpp, nil)
+
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.NoError(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.TestingLogger(),
+		proxyApp.Consensus(),
+		mp,
+		evpool,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
+	require.NoError(t, err)
+	require.Panics(t,
+		func() {
+			blockExec.CreateProposalBlock(height, state, commit, pa, nil) //nolint:errcheck
+		})
+
+	mp.AssertExpectations(t)
 }
 
 // TestPrepareProposalRemoveTxs tests that any transactions marked as REMOVED
