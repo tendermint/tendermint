@@ -43,7 +43,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
-	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
@@ -70,7 +70,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
-	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 
@@ -95,7 +95,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
-	cs := newStateWithConfig(ctx, t, log.TestingLogger(), config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
@@ -142,7 +142,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	defer cancel()
 
 	config := configSetup(t)
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
 		Validators: 1,
 		Power:      10})
@@ -184,7 +184,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	cs := newStateWithConfigAndBlockStore(ctx, t, log.TestingLogger(), config, state, privVals[0], app, blockStore)
+	cs := newStateWithConfigAndBlockStore(ctx, t, log.NewNopLogger(), config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 

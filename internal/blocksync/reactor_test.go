@@ -62,7 +62,7 @@ func setup(
 		"must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
-		logger:            log.TestingLogger().With("module", "block_sync", "testCase", t.Name()),
+		logger:            log.NewNopLogger().With("module", "block_sync", "testCase", t.Name()),
 		network:           p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		nodes:             make([]types.NodeID, 0, numNodes),
 		reactors:          make(map[types.NodeID]*Reactor, numNodes),
@@ -108,7 +108,7 @@ func (rts *reactorTestSuite) addNode(
 ) {
 	t.Helper()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	rts.nodes = append(rts.nodes, nodeID)
 	rts.app[nodeID] = proxy.New(abciclient.NewLocalClient(logger, &abci.BaseApplication{}), logger, proxy.NopMetrics())
@@ -139,7 +139,7 @@ func (rts *reactorTestSuite) addNode(
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
+		log.NewNopLogger(),
 		rts.app[nodeID],
 		mp,
 		sm.EmptyEvidencePool{},

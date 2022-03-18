@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -56,7 +55,7 @@ import (
 
 func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
 	privValidator := loadPrivValidator(t, consensusReplayConfig)
@@ -338,13 +337,13 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		nPeers,
 		"replay_test",
 		newMockTickerFunc(true),
-		newPersistentKVStore)
+		newEpehemeralKVStore)
 	sim.Config = cfg
+	defer func() { t.Cleanup(cleanup) }()
 
 	var err error
 	sim.GenesisState, err = sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
-	sim.CleanupFunc = cleanup
 
 	partSize := types.BlockPartSizeBytes
 
@@ -584,9 +583,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
 		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 	}
-	if sim.CleanupFunc != nil {
-		t.Cleanup(sim.CleanupFunc)
-	}
 
 	return sim
 }
@@ -686,7 +682,7 @@ func testHandshakeReplay(
 
 	cfg := sim.Config
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	if testValidatorsChange {
 		testConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		require.NoError(t, err)
@@ -743,19 +739,14 @@ func testHandshakeReplay(
 	)
 	latestAppHash := state.AppHash
 
-	// make a new client creator
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
-		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
-	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
-
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
-	clientCreator2 := abciclient.NewLocalClient(logger, kvstoreApp)
+	client := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
-		proxyApp := proxy.New(clientCreator2, logger, proxy.NopMetrics())
+		proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 		stateDB1 := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
@@ -776,7 +767,7 @@ func testHandshakeReplay(
 	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 	handshaker := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
-	proxyApp := proxy.New(clientCreator2, logger, proxy.NopMetrics())
+	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 	require.True(t, proxyApp.IsRunning())
 	require.NotNil(t, proxyApp)
@@ -828,7 +819,7 @@ func applyBlock(
 	eventBus *eventbus.EventBus,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mempool, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mempool, evpool, blockStore, eventBus)
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -905,10 +896,7 @@ func buildTMStateFromChain(
 	t.Helper()
 
 	// run the whole chain against this client to build up the tendermint state
-	kvstoreApp := kvstore.NewPersistentKVStoreApplication(logger,
-		filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
-	defer kvstoreApp.Close()
-	client := abciclient.NewLocalClient(logger, kvstoreApp)
+	client := abciclient.NewLocalClient(logger, kvstore.NewApplication())
 
 	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
@@ -976,7 +964,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 
 	store.chain = blocks
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))

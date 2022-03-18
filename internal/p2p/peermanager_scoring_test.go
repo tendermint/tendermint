@@ -80,4 +80,20 @@ func TestPeerScoring(t *testing.T) {
 			time.Millisecond,
 			"startAt=%d score=%d", start, peerManager.Scores()[id])
 	})
+	t.Run("TestNonPersistantPeerUpperBound", func(t *testing.T) {
+		start := int64(peerManager.Scores()[id] + 1)
+
+		for i := start; i <= int64(PeerScorePersistent); i++ {
+			peerManager.processPeerEvent(ctx, PeerUpdate{
+				NodeID: id,
+				Status: PeerStatusGood,
+			})
+
+			if i == int64(PeerScorePersistent) {
+				require.EqualValues(t, MaxPeerScoreNotPersistent, peerManager.Scores()[id])
+			} else {
+				require.EqualValues(t, i, peerManager.Scores()[id])
+			}
+		}
+	})
 }

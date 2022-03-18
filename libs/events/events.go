@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/service"
 )
 
 // ErrListenerWasRemoved is returned by AddEvent if the listener was removed.
@@ -45,16 +44,11 @@ type Fireable interface {
 // They can be removed by calling either RemoveListenerForEvent or
 // RemoveListener (for all events).
 type EventSwitch interface {
-	service.Service
 	Fireable
-	Stop()
-
 	AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error
 }
 
 type eventSwitch struct {
-	service.BaseService
-
 	mtx        sync.RWMutex
 	eventCells map[string]*eventCell
 	listeners  map[string]*eventListener
@@ -65,12 +59,8 @@ func NewEventSwitch(logger log.Logger) EventSwitch {
 		eventCells: make(map[string]*eventCell),
 		listeners:  make(map[string]*eventListener),
 	}
-	evsw.BaseService = *service.NewBaseService(logger, "EventSwitch", evsw)
 	return evsw
 }
-
-func (evsw *eventSwitch) OnStart(ctx context.Context) error { return nil }
-func (evsw *eventSwitch) OnStop()                           {}
 
 func (evsw *eventSwitch) AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error {
 	// Get/Create eventCell and listener.

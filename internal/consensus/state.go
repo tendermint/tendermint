@@ -452,10 +452,6 @@ func (cs *State) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if err := cs.evsw.Start(ctx); err != nil {
-		return err
-	}
-
 	// Double Signing Risk Reduction
 	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
@@ -497,21 +493,22 @@ func (cs *State) loadWalFile(ctx context.Context) error {
 	return nil
 }
 
+func (cs *State) getOnStopCh() chan *cstypes.RoundState {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	return cs.onStopCh
+}
+
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
 	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
-		case <-cs.onStopCh:
+		case <-cs.getOnStopCh():
 		case <-time.After(cs.config.TimeoutCommit):
 			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.config.TimeoutCommit)
 		}
-	}
-
-	close(cs.onStopCh)
-
-	if cs.evsw.IsRunning() {
-		cs.evsw.Stop()
 	}
 
 	if cs.timeoutTicker.IsRunning() {
@@ -937,7 +934,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-
 	var (
 		added bool
 		err   error
@@ -954,6 +950,24 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(ctx, msg, peerID)
+
+		// We unlock here to yield to any routines that need to read the the RoundState.
+		// Previously, this code held the lock from the point at which the final block
+		// part was received until the block executed against the application.
+		// This prevented the reactor from being able to retrieve the most updated
+		// version of the RoundState. The reactor needs the updated RoundState to
+		// gossip the now completed block.
+		//
+		// This code can be further improved by either always operating on a copy
+		// of RoundState and only locking when switching out State's copy of
+		// RoundState with the updated copy or by emitting RoundState events in
+		// more places for routines depending on it to listen for.
+		cs.mtx.Unlock()
+
+		cs.mtx.Lock()
+		if added && cs.ProposalBlockParts.IsComplete() {
+			cs.handleCompleteProposal(ctx, msg.Height)
+		}
 		if added {
 			select {
 			case cs.statsMsgQueue <- mi:
@@ -2156,44 +2170,43 @@ func (cs *State) addProposalBlockPart(
 		if err := cs.eventBus.PublishEventCompleteProposal(ctx, cs.CompleteProposalEvent()); err != nil {
 			cs.logger.Error("failed publishing event complete proposal", "err", err)
 		}
-
-		// Update Valid* if we can.
-		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
-				cs.logger.Debug(
-					"updating valid block to new proposal block",
-					"valid_round", cs.Round,
-					"valid_block_hash", cs.ProposalBlock.Hash(),
-				)
-
-				cs.ValidRound = cs.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
-			}
-			// TODO: In case there is +2/3 majority in Prevotes set for some
-			// block and cs.ProposalBlock contains different block, either
-			// proposer is faulty or voting power of faulty processes is more
-			// than 1/3. We should trigger in the future accountability
-			// procedure at this point.
-		}
-
-		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
-			// Move onto the next step
-			cs.enterPrevote(ctx, height, cs.Round)
-			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
-				cs.enterPrecommit(ctx, height, cs.Round)
-			}
-		} else if cs.Step == cstypes.RoundStepCommit {
-			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(ctx, height)
-		}
-
-		return added, nil
 	}
 
 	return added, nil
+}
+func (cs *State) handleCompleteProposal(ctx context.Context, height int64) {
+	// Update Valid* if we can.
+	prevotes := cs.Votes.Prevotes(cs.Round)
+	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+	if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
+		if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			cs.logger.Debug(
+				"updating valid block to new proposal block",
+				"valid_round", cs.Round,
+				"valid_block_hash", cs.ProposalBlock.Hash(),
+			)
+
+			cs.ValidRound = cs.Round
+			cs.ValidBlock = cs.ProposalBlock
+			cs.ValidBlockParts = cs.ProposalBlockParts
+		}
+		// TODO: In case there is +2/3 majority in Prevotes set for some
+		// block and cs.ProposalBlock contains different block, either
+		// proposer is faulty or voting power of faulty processes is more
+		// than 1/3. We should trigger in the future accountability
+		// procedure at this point.
+	}
+
+	if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
+		// Move onto the next step
+		cs.enterPrevote(ctx, height, cs.Round)
+		if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+			cs.enterPrecommit(ctx, height, cs.Round)
+		}
+	} else if cs.Step == cstypes.RoundStepCommit {
+		// If we're waiting on the proposal block...
+		cs.tryFinalizeCommit(ctx, height)
+	}
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator

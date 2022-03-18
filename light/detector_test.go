@@ -21,7 +21,7 @@ import (
 )
 
 func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	// primary performs a lunatic attack
 	var (
@@ -144,7 +144,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			ctx, cancel := context.WithCancel(bctx)
 			defer cancel()
 
-			logger := log.NewTestingLogger(t)
+			logger := log.NewNopLogger()
 
 			// primary performs an equivocation attack
 			var (
@@ -248,7 +248,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID, latestHeight, valSize, 2, bTime)
 	for _, unusedHeader := range []int64{3, 5, 6, 8} {
@@ -411,7 +411,7 @@ func TestClientDivergentTraces1(t *testing.T) {
 	mockWitness := mockNodeFromHeadersAndVals(headers, vals)
 	mockWitness.On("ID").Return("mockWitness")
 
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	_, err = light.NewClient(
 		ctx,
@@ -437,7 +437,7 @@ func TestClientDivergentTraces1(t *testing.T) {
 func TestClientDivergentTraces2(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	headers, vals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
 	mockPrimaryNode := mockNodeFromHeadersAndVals(headers, vals)
@@ -482,7 +482,7 @@ func TestClientDivergentTraces2(t *testing.T) {
 // => creation should succeed, but the verification should fail
 //nolint: dupl
 func TestClientDivergentTraces3(t *testing.T) {
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	//
 	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
@@ -527,7 +527,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 // It should be ignored
 //nolint: dupl
 func TestClientDivergentTraces4(t *testing.T) {
-	logger := log.NewTestingLogger(t)
+	logger := log.NewNopLogger()
 
 	//
 	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
