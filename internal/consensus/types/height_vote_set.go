@@ -199,7 +199,7 @@ func (hvs *HeightVoteSet) SetPeerMaj23(
 	if voteSet == nil {
 		return nil // something we don't know about yet
 	}
-	return voteSet.SetPeerMaj23(types.P2PID(peerID), blockID)
+	return voteSet.SetPeerMaj23(string(peerID), blockID)
 }
 
 //---------------------------------------------------------
