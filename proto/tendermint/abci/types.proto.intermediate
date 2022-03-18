@@ -328,7 +328,7 @@ message ResponseVerifyVoteExtension {
 }
 
 message ResponsePrepareProposal {
-  ModifiedTxStatus                 modified_tx_status             = 1;
+  ModifiedTxStatus                 modified_tx_status      = 1;
   repeated TxRecord                tx_records              = 2;
   bytes                            app_hash                = 3;
   repeated ExecTxResult            tx_results              = 4;
@@ -336,9 +336,9 @@ message ResponsePrepareProposal {
   tendermint.types.ConsensusParams consensus_param_updates = 6;
 
   enum ModifiedTxStatus {
-	  UNKNOWN = 0;
-	  UNMODIFIED = 1;
-	  MODIFIED = 2;
+    UNKNOWN    = 0;
+    UNMODIFIED = 1;
+    MODIFIED   = 2;
   }
 }
 
