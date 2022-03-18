@@ -864,7 +864,6 @@ func (cs *State) receiveRoutine(maxSteps int) {
 func (cs *State) handleMsg(mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-
 	var (
 		added bool
 		err   error
@@ -881,6 +880,24 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(msg, peerID)
+
+		// We unlock here to yield to any routines that need to read the the RoundState.
+		// Previously, this code held the lock from the point at which the final block
+		// part was received until the block executed against the application.
+		// This prevented the reactor from being able to retrieve the most updated
+		// version of the RoundState. The reactor needs the updated RoundState to
+		// gossip the now completed block.
+		//
+		// This code can be further improved by either always operating on a copy
+		// of RoundState and only locking when switching out State's copy of
+		// RoundState with the updated copy or by emitting RoundState events in
+		// more places for routines depending on it to listen for.
+		cs.mtx.Unlock()
+
+		cs.mtx.Lock()
+		if added && cs.ProposalBlockParts.IsComplete() {
+			cs.handleCompleteProposal(msg.Height)
+		}
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -1941,44 +1958,43 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
 			cs.Logger.Error("failed publishing event complete proposal", "err", err)
 		}
+	}
+	return added, nil
+}
 
-		// Update Valid* if we can.
-		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
-				cs.Logger.Debug(
-					"updating valid block to new proposal block",
-					"valid_round", cs.Round,
-					"valid_block_hash", cs.ProposalBlock.Hash(),
-				)
+func (cs *State) handleCompleteProposal(blockHeight int64) {
+	// Update Valid* if we can.
+	prevotes := cs.Votes.Prevotes(cs.Round)
+	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+	if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+		if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			cs.Logger.Debug(
+				"updating valid block to new proposal block",
+				"valid_round", cs.Round,
+				"valid_block_hash", cs.ProposalBlock.Hash(),
+			)
 
-				cs.ValidRound = cs.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
-			}
-			// TODO: In case there is +2/3 majority in Prevotes set for some
-			// block and cs.ProposalBlock contains different block, either
-			// proposer is faulty or voting power of faulty processes is more
-			// than 1/3. We should trigger in the future accountability
-			// procedure at this point.
+			cs.ValidRound = cs.Round
+			cs.ValidBlock = cs.ProposalBlock
+			cs.ValidBlockParts = cs.ProposalBlockParts
 		}
-
-		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
-			// Move onto the next step
-			cs.enterPrevote(height, cs.Round)
-			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
-				cs.enterPrecommit(height, cs.Round)
-			}
-		} else if cs.Step == cstypes.RoundStepCommit {
-			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(height)
-		}
-
-		return added, nil
+		// TODO: In case there is +2/3 majority in Prevotes set for some
+		// block and cs.ProposalBlock contains different block, either
+		// proposer is faulty or voting power of faulty processes is more
+		// than 1/3. We should trigger in the future accountability
+		// procedure at this point.
 	}
 
-	return added, nil
+	if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
+		// Move onto the next step
+		cs.enterPrevote(blockHeight, cs.Round)
+		if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+			cs.enterPrecommit(blockHeight, cs.Round)
+		}
+	} else if cs.Step == cstypes.RoundStepCommit {
+		// If we're waiting on the proposal block...
+		cs.tryFinalizeCommit(blockHeight)
+	}
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
