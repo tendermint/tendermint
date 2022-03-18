@@ -316,7 +316,7 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  TxModifiedStatus                 modified_tx_status      = 1;
+  ModifiedTxStatus                 modified_tx_status      = 1;
   repeated TxRecord                tx_records              = 2;
   bytes                            app_hash                = 3;
   repeated ExecTxResult            tx_results              = 4;
