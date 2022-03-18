@@ -317,13 +317,12 @@ message ResponseExtendVote {
 }
 
 message ResponseVerifyVoteExtension {
-  Result result = 1;
+  VerifyStatus status = 1;
 
-  enum Result {
-    UNKNOWN = 0;  // Unknown result, reject vote extension
-    ACCEPT  = 1;  // Vote extension verified, include the vote
-    SLASH   = 2;  // Vote extension verification aborted, continue but slash validator
-    REJECT  = 3;  // Vote extension invalidated
+  enum VerifyStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
   }
 }
 
@@ -343,13 +342,13 @@ message ResponsePrepareProposal {
 }
 
 message ResponseProcessProposal {
-  Status                           status                  = 1;
+  ProposalStatus                           status                  = 1;
   bytes                            app_hash                = 2;
   repeated ExecTxResult            tx_results              = 3;
   repeated ValidatorUpdate         validator_updates       = 4;
   tendermint.types.ConsensusParams consensus_param_updates = 5;
 
-  enum Status {
+  enum ProposalStatus {
     UNKNOWN = 0;
     ACCEPT  = 1;
     REJECT  = 2;

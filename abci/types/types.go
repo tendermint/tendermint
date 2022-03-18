@@ -71,17 +71,17 @@ func (r ResponseProcessProposal) IsStatusUnknown() bool {
 
 // IsUnknown returns true if Code is Unknown
 func (r ResponseVerifyVoteExtension) IsUnknown() bool {
-	return r.Result == ResponseVerifyVoteExtension_UNKNOWN
+	return r.Status == ResponseVerifyVoteExtension_UNKNOWN
 }
 
 // IsOK returns true if Code is OK
 func (r ResponseVerifyVoteExtension) IsOK() bool {
-	return r.Result == ResponseVerifyVoteExtension_ACCEPT
+	return r.Status == ResponseVerifyVoteExtension_ACCEPT
 }
 
 // IsErr returns true if Code is something other than OK.
 func (r ResponseVerifyVoteExtension) IsErr() bool {
-	return r.Result != ResponseVerifyVoteExtension_ACCEPT
+	return r.Status != ResponseVerifyVoteExtension_ACCEPT
 }
 
 //---------------------------------------------------------------------------
@@ -175,12 +175,12 @@ func RespondExtendVote(appDataToSign, appDataSelfAuthenticating []byte) Response
 }
 
 func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
-	result := ResponseVerifyVoteExtension_REJECT
+	status := ResponseVerifyVoteExtension_REJECT
 	if ok {
-		result = ResponseVerifyVoteExtension_ACCEPT
+		status = ResponseVerifyVoteExtension_ACCEPT
 	}
 	return ResponseVerifyVoteExtension{
-		Result: result,
+		Status: status,
 	}
 }
 
