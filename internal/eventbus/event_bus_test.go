@@ -22,7 +22,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -75,7 +75,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 func TestEventBusPublishEventNewBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -247,7 +247,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -297,7 +297,7 @@ func TestEventBusPublishEventEvidenceValidated(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -339,7 +339,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -381,7 +381,7 @@ func TestEventBusPublish(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger())
+	eventBus := eventbus.NewDefault(log.NewNopLogger())
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
@@ -467,7 +467,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	eventBus := eventbus.NewDefault(log.TestingLogger()) // set buffer capacity to 0 so we are not testing cache
+	eventBus := eventbus.NewDefault(log.NewNopLogger()) // set buffer capacity to 0 so we are not testing cache
 	err := eventBus.Start(ctx)
 	if err != nil {
 		b.Error(err)

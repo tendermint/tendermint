@@ -98,7 +98,7 @@ func TestVerify_LunaticAttackAgainstState(t *testing.T) {
 	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trusted.Header})
 	blockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
 	blockStore.On("LoadBlockCommit", height).Return(trusted.Commit)
-	pool := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics(), nil)
+	pool := evidence.NewPool(log.NewNopLogger(), dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics(), nil)
 
 	evList := types.EvidenceList{ev}
 	// check that the evidence pool correctly verifies the evidence
