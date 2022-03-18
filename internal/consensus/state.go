@@ -497,7 +497,7 @@ func (cs *State) getOnStopCh() chan *cstypes.RoundState {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 
-	return r.state.onStopCh
+	return cs.onStopCh
 }
 
 // OnStop implements service.Service.
