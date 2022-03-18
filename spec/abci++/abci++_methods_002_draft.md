@@ -314,8 +314,8 @@ title: Methods
         * In this case, the Application should set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED`.
         * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
             * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
-            * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as "REMOVE". In this case, Tendermint will remove `tx` from the mempool.
-            * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as "ADD". In this case, Tendermint will add it to the mempool.
+            * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as `REMOVE`. In this case, Tendermint will remove `tx` from the mempool.
+            * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as `ADD`. In this case, Tendermint will add it to the mempool.
         * The Application should be aware that removing and adding transactions may compromise _traceability_.
           > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
         * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
@@ -348,9 +348,9 @@ title: Methods
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
         * There is a duplicate transaction in the list.
-        * A new or modified transaction is marked as "UNMODIFIED" or "REMOVED".
-        * An unmodified transaction is marked as "ADDED".
-        * A transaction is marked as "UNKNOWN".
+        * A new or modified transaction is marked as `UNMODIFIED` or `REMOVED`.
+        * An unmodified transaction is marked as `ADDED`.
+        * A transaction is marked as `UNKNOWN`.
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the application is faulty and crash.
     * The implementation of `PrepareProposal` can be non-deterministic.
 
@@ -838,10 +838,10 @@ enum TxAction {
 ```
 
 * **Usage**:
-    * If `Action` is UNKNOWN, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Action` is UNMODIFIED, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
-    * If `Action` is ADDED, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped.
-    * If `Action` is REMOVED, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
+    * If `Action` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+    * If `Action` is `UNMODIFIED`, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
+    * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped.
+    * If `Action` is `REMOVED`, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
       similar to `CheckTx` returning _false_.
 ### TxRecord
 
@@ -864,9 +864,9 @@ enum ProposalStatus {
 
 * **Usage**:
 	* Used within the [ProcessProposal](#ProcessProposal) response.
-    * If `Status` is UNKNOWN, a problem happened in the Application. Tendermint assume the application is faulty and crash.
-    * If `Status` is ACCEPT, Tendermint accepts the proposal and will issue a Prevote message for it.
-    * If `Status` is REJECT, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
+    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint assume the application is faulty and crash.
+    * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
+    * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
 
 ### TxModifiedStatus
 
@@ -880,9 +880,9 @@ enum ModifiedTxStatus {
 
 * **Usage**:
 	* Used within the [PrepareProposal](#PrepareProposal) response.
-    * If `TxModifiedStatus` is UNKNOWN, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `TxModifiedStatus` is UNMODIFIED, Tendermint will ignore the contents of the `PrepareProposal` response and use gossip the transactions originally passed to the application during `PrepareProposal`.
-    * If `TxModifiedStatus` is MODIFIED, Tendermint will update the block proposal using the contents of the `PrepareProposal` response returned by the application.
+    * If `TxModifiedStatus` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+    * If `TxModifiedStatus` is `UNMODIFIED`, Tendermint will ignore the contents of the `PrepareProposal` response and use gossip the transactions originally passed to the application during `PrepareProposal`.
+    * If `TxModifiedStatus` is `MODIFIED`, Tendermint will update the block proposal using the contents of the `PrepareProposal` response returned by the application.
 
 ### VerifyStatus
 
@@ -896,9 +896,9 @@ enum VerifyStatus {
 
 * **Usage**:
 	* Used within the [VerifyVoteExtension](#VerifyVoteExtension) response.
-    * If `Status` is UNKNOWN, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Status` is ACCEPT, Tendermint will accept the vote as valid.
-    * If `Status` is REJECT, Tendermint will reject the vote as invalid.
+    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+    * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
+    * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
 
 
 ### CanonicalVoteExtension
