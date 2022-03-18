@@ -973,10 +973,6 @@ func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
 }
 
-func newPersistentKVStore(logger log.Logger, dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
-}
-
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 	if v1 == nil || v2 == nil {
 		return false
