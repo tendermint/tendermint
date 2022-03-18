@@ -351,8 +351,6 @@ func (r *Reactor) broadcastHasVoteMessage(ctx context.Context, vote *types.Vote)
 // internal pubsub defined in the consensus state to broadcast them to peers
 // upon receiving.
 func (r *Reactor) subscribeToBroadcastEvents() {
-	onStopCh := r.state.getOnStopCh()
-
 	err := r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventNewRoundStepValue,
