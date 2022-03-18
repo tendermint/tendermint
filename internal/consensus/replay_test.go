@@ -1280,3 +1280,48 @@ func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitC
 		Validators: ica.vals,
 	}
 }
+
+func TestReplayUpdateAppVerion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.NewNopLogger()
+
+	app := kvstore.NewApplication()
+	client := abciclient.NewLocalClient(logger, app)
+
+	cfg, err := ResetConfig(t.TempDir(), "replay_test_")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
+
+	privVal, err := privval.LoadFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
+	require.NoError(t, err)
+	pubKey, err := privVal.GetPubKey(ctx)
+	require.NoError(t, err)
+
+	stateDB, state, store := stateAndStore(t, cfg, pubKey, 0x0)
+	stateStore := sm.NewStore(stateDB)
+
+	// we modify the app version to the initial state for simulating the appversion update in the genesis file.
+	testGenesusAppVer := kvstore.ProtocolVersion + 1
+	state.Version.Consensus.App = testGenesusAppVer
+	state.ConsensusParams.Version.AppVersion = testGenesusAppVer
+	stateStore.Save(state)
+
+	// the genDoc has the default genesis app version which it's fine because it's be used in the app InitChain request.
+	genDoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
+	require.NoError(t, err)
+
+	handshaker := NewHandshaker(logger, stateStore, state, store, nil, genDoc)
+	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
+	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
+
+	require.NoError(t, handshaker.Handshake(ctx, proxyApp), "error on abci handshake")
+
+	// reload the state, check the app version was updated.
+	state, err = stateStore.Load()
+	require.NoError(t, err)
+
+	require.Equal(t, kvstore.ProtocolVersion, state.Version.Consensus.App)
+	require.Equal(t, kvstore.ProtocolVersion, state.ConsensusParams.Version.AppVersion)
+}
