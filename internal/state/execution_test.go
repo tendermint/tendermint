@@ -38,7 +38,7 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 
@@ -85,7 +85,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	app := &testApp{}
 	cc := abciclient.NewLocalClient(logger, app)
 	appClient := proxy.New(cc, logger, proxy.NopMetrics())
@@ -128,7 +128,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			eventBus := eventbus.NewDefault(logger)
 			require.NoError(t, eventBus.Start(ctx))
 
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), appClient, mp, evpool, blockStore, eventBus)
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mp, evpool, blockStore, eventBus)
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
 			for idx, isAbsent := range tc.absentCommitSigs {
@@ -160,7 +160,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -252,7 +252,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp,
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp,
 		mp, evpool, blockStore, eventBus)
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
@@ -277,7 +277,7 @@ func TestProcessProposal(t *testing.T) {
 	defer cancel()
 
 	app := abcimocks.NewBaseMock()
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -482,7 +482,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -565,7 +565,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer cancel()
 
 	app := &testApp{}
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -579,7 +579,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
+		log.NewNopLogger(),
 		proxyApp,
 		new(mpmocks.Mempool),
 		sm.EmptyEvidencePool{},
@@ -609,7 +609,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
@@ -650,6 +650,64 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestPrepareProposalPanicOnInvalid tests that the block creation logic panics
+// if the ResponsePrepareProposal returned from the application is invalid.
+func TestPrepareProposalPanicOnInvalid(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.NewNopLogger()
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	state, stateDB, privVals := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
+
+	app := abcimocks.NewBaseMock()
+
+	// create an invalid ResponsePrepareProposal
+	rpp := abci.ResponsePrepareProposal{
+		ModifiedTx: true,
+		TxRecords: []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     []byte("new tx"),
+			},
+		},
+	}
+	app.On("PrepareProposal", mock.Anything).Return(rpp, nil)
+
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp,
+		mp,
+		evpool,
+		nil,
+		eventBus,
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	require.Panics(t,
+		func() {
+			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil) //nolint:errcheck
+		})
+
+	mp.AssertExpectations(t)
+}
+
 // TestPrepareProposalRemoveTxs tests that any transactions marked as REMOVED
 // are not included in the block produced by CreateProposalBlock. The test also
 // ensures that any transactions removed are also removed from the mempool.
@@ -658,7 +716,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
@@ -719,7 +777,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
@@ -778,7 +836,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
@@ -836,7 +894,7 @@ func TestPrepareProposalModifiedTxFalse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
