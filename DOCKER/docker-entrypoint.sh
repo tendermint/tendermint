@@ -1,9 +1,16 @@
 #!/bin/bash
 set -e
 
+IS_INIT_CMD=
+
 if [ ! -d "$TMHOME/config" ]; then
-	echo "Running tendermint init to create (default) configuration for docker run."
-	tendermint init validator
+	if [ "$1" == "init" ]; then
+		tendermint "$@"
+		IS_INIT_CMD=1
+	else
+		echo "Running tendermint init to create (default) configuration for docker run."
+		tendermint init validator
+	fi
 
 	sed -i \
 		-e "s/^proxy-app\s*=.*/proxy-app = \"$PROXY_APP\"/" \
@@ -18,6 +25,10 @@ if [ ! -d "$TMHOME/config" ]; then
 	jq ".chain_id = \"$CHAIN_ID\" | .consensus_params.block.time_iota_ms = \"500\"" \
 		"$TMHOME/config/genesis.json" > "$TMHOME/config/genesis.json.new"
 	mv "$TMHOME/config/genesis.json.new" "$TMHOME/config/genesis.json"
+
+	if [ ! -z IS_INIT_CMD ]; then
+		exit
+	fi
 fi
 
 exec tendermint "$@"
