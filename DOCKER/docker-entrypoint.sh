@@ -26,7 +26,7 @@ if [ ! -d "$TMHOME/config" ]; then
 		"$TMHOME/config/genesis.json" > "$TMHOME/config/genesis.json.new"
 	mv "$TMHOME/config/genesis.json.new" "$TMHOME/config/genesis.json"
 
-	if [ ! -z IS_INIT_CMD ]; then
+	if [ -n "$IS_INIT_CMD" ]; then
 		exit
 	fi
 fi
