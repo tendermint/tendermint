@@ -441,10 +441,7 @@ func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCom
 		vs[i] = abci.ExtendedVoteInfo{
 			Validator:       c.Votes[i].Validator,
 			SignedLastBlock: c.Votes[i].SignedLastBlock,
-			/*
-				TODO: Include vote extensions information when implementing vote extensions.
-				VoteExtension:   []byte{},
-			*/
+			VoteExtension:   votes[i].Extension,
 		}
 	}
 	return abci.ExtendedCommitInfo{
