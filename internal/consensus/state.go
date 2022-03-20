@@ -1375,6 +1375,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	}
 
 	var commit *types.Commit
+	var votes []*types.Vote
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
@@ -1384,6 +1385,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
+		votes = cs.LastCommit.GetVotes()
 
 	default: // This shouldn't happen.
 		cs.logger.Error("propose step; cannot propose anything without commit for the previous block")
@@ -1399,7 +1401,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, votes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -2480,6 +2482,7 @@ func (cs *State) signVote(
 
 	err := cs.privValidator.SignVote(ctxto, cs.state.ChainID, v)
 	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
 	vote.Timestamp = v.Timestamp
 
 	return vote, err

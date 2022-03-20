@@ -157,6 +157,9 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
+	if vote.Extension != nil && !pubKey.VerifySignature(vote.Extension, vote.ExtensionSignature) {
+		return ErrVoteInvalidSignature
+	}
 	return nil
 }
 
@@ -203,7 +206,9 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
-	// XXX: add length verification for vote extension?
+	if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
+		return errors.New("vote extension signature is missing")
+	}
 
 	return nil
 }
@@ -216,14 +221,16 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 
 	return &tmproto.Vote{
-		Type:             vote.Type,
-		Height:           vote.Height,
-		Round:            vote.Round,
-		BlockID:          vote.BlockID.ToProto(),
-		Timestamp:        vote.Timestamp,
-		ValidatorAddress: vote.ValidatorAddress,
-		ValidatorIndex:   vote.ValidatorIndex,
-		Signature:        vote.Signature,
+		Type:               vote.Type,
+		Height:             vote.Height,
+		Round:              vote.Round,
+		BlockID:            vote.BlockID.ToProto(),
+		Timestamp:          vote.Timestamp,
+		ValidatorAddress:   vote.ValidatorAddress,
+		ValidatorIndex:     vote.ValidatorIndex,
+		Signature:          vote.Signature,
+		Extension:          vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
 	}
 }
 
@@ -264,6 +271,8 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	vote.ValidatorAddress = pv.ValidatorAddress
 	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
+	vote.Extension = pv.Extension
+	vote.ExtensionSignature = pv.ExtensionSignature
 
 	return vote, vote.ValidateBasic()
 }

@@ -531,8 +531,11 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		BlockID: blockID,
 	}
 
+	votes := make([]*types.Vote, types.MaxVotesCount)
+
 	// add maximum amount of signatures to a single commit
 	for i := 0; i < types.MaxVotesCount; i++ {
+		votes[i] = &types.Vote{}
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
@@ -541,7 +544,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		math.MaxInt64,
 		state, commit,
 		proposerAddr,
-		nil,
+		votes,
 	)
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)

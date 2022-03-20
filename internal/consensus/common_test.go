@@ -120,19 +120,17 @@ func (vs *validatorStub) signVote(
 	}
 
 	vote := &types.Vote{
-		Type:               voteType,
-		Height:             vs.Height,
-		Round:              vs.Round,
-		BlockID:            blockID,
-		Timestamp:          vs.clock.Now(),
-		ValidatorAddress:   pubKey.Address(),
-		ValidatorIndex:     vs.Index,
-		Signature:          []byte{},
-		Extension:          []byte{},
-		ExtensionSignature: []byte{},
+		Type:             voteType,
+		Height:           vs.Height,
+		Round:            vs.Round,
+		BlockID:          blockID,
+		Timestamp:        vs.clock.Now(),
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   vs.Index,
+		Extension:        []byte("extension"),
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
+	if err = vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -140,10 +138,12 @@ func (vs *validatorStub) signVote(
 	if signDataIsEqual(vs.lastVote, v) {
 		v.Signature = vs.lastVote.Signature
 		v.Timestamp = vs.lastVote.Timestamp
+		v.ExtensionSignature = vs.lastVote.ExtensionSignature
 	}
 
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote, err
 }
@@ -984,5 +984,6 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 		v1.Height == v2.GetHeight() &&
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorAddress.Bytes(), v2.GetValidatorAddress()) &&
-		v1.ValidatorIndex == v2.GetValidatorIndex()
+		v1.ValidatorIndex == v2.GetValidatorIndex() &&
+		bytes.Equal(v1.Extension, v2.Extension)
 }

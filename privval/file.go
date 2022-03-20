@@ -398,10 +398,19 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	if err != nil {
 		return err
 	}
-	if err := pv.saveSigned(height, round, step, signBytes, sig); err != nil {
+	if err = pv.saveSigned(height, round, step, signBytes, sig); err != nil {
 		return err
 	}
 	vote.Signature = sig
+
+	// Sign the vote extension, if any
+	if vote.Extension != nil {
+		vote.ExtensionSignature, err = pv.Key.PrivKey.Sign(vote.Extension)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
