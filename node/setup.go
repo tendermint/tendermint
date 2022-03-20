@@ -44,12 +44,16 @@ func initDBs(cfg *config.Config, dbProvider config.DBProvider) (blockStore *stor
 	var blockStoreDB dbm.DB
 	blockStoreDB, err = dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
-		return
+		return nil, nil, fmt.Errorf("unable to initialize blockstore: %w", err)
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&config.DBContext{ID: "state", Config: cfg})
-	return
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to initialize statestore: %w", err)
+	}
+
+	return blockStore, stateDB, nil
 }
 
 // nolint:lll
@@ -252,7 +256,7 @@ func createEvidenceReactor(
 ) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&config.DBContext{ID: "evidence", Config: cfg})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("unable to initialize evidence db: %w", err)
 	}
 
 	logger = logger.With("module", "evidence")
@@ -419,6 +423,11 @@ func createPeerManager(
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, error) {
 
+	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse ExternalAddress %q: %w", cfg.P2P.ExternalAddress, err)
+	}
+
 	var maxConns uint16
 
 	switch {
@@ -448,13 +457,14 @@ func createPeerManager(
 	}
 
 	options := p2p.PeerManagerOptions{
+		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    4,
 		MaxPeers:               1000,
-		MinRetryTime:           100 * time.Millisecond,
-		MaxRetryTime:           8 * time.Hour,
+		MinRetryTime:           250 * time.Millisecond,
+		MaxRetryTime:           30 * time.Minute,
 		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        3 * time.Second,
+		RetryTimeJitter:        5 * time.Second,
 		PrivatePeers:           privatePeerIDs,
 	}
 
@@ -479,7 +489,7 @@ func createPeerManager(
 
 	peerDB, err := dbProvider(&config.DBContext{ID: "peerstore", Config: cfg})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to initialize peer store: %w", err)
 	}
 
 	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
@@ -636,7 +646,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, cfg *config.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    tmstrings.SplitAndTrimEmpty(cfg.P2P.Seeds, ",", " "),
+		Seeds:    tmstrings.SplitAndTrimEmpty(cfg.P2P.Seeds, ",", " "), //nolint: staticcheck
 		SeedMode: cfg.Mode == config.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.

@@ -158,7 +158,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		KeyType:          keyType.Choose(r).(string),
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        opt["queueType"].(string),
-		TxSize:           int64(txSize.Choose(r).(int)),
+		TxSize:           txSize.Choose(r).(int),
 	}
 
 	p2pMode := opt["p2p"].(P2PMode)

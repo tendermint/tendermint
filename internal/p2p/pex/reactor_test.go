@@ -1,3 +1,7 @@
+// Temporarily disabled pending ttps://github.com/tendermint/tendermint/issues/7626.
+//go:build issue7626
+//+build issue7626
+
 package pex_test
 
 import (
@@ -87,7 +91,7 @@ func TestReactorSendsRequestsTooOften(t *testing.T) {
 	peerErr := <-r.pexErrCh
 	require.Error(t, peerErr.Err)
 	require.Empty(t, r.pexOutCh)
-	require.Contains(t, peerErr.Err.Error(), "peer sent a request too close after a prior one")
+	require.Contains(t, peerErr.Err.Error(), "sent PEX request too soon")
 	require.Equal(t, badNode, peerErr.NodeID)
 }
 

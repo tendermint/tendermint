@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: ["00", "01", "02", "03"]
+        part: ["00", "01", "02", "03", "04", "05"]
     steps:
       - uses: actions/setup-go@v2
         with:
@@ -30,7 +30,7 @@ jobs:
             Makefile
       - name: Run Go Tests
         run: |
-          make test-group-${{ matrix.part }} NUM_SPLIT=4
+          make test-group-${{ matrix.part }} NUM_SPLIT=6
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:

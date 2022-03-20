@@ -2,6 +2,62 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.2
+
+February 28, 2022
+
+Special thanks to external contributors on this release: @ashcherbakov, @yihuang, @waelsy123
+
+### IMPROVEMENTS
+
+- [consensus] [\#7875](https://github.com/tendermint/tendermint/pull/7875) additional timing metrics. (@williambanfield)
+
+### BUG FIXES
+
+- [abci] [\#7990](https://github.com/tendermint/tendermint/pull/7990) revert buffer limit change. (@williambanfield)
+- [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
+- [cli] [\#7869](https://github.com/tendermint/tendermint/pull/7869) Update unsafe-reset-all command to match release v35. (waelsy123)
+- [light] [\#7640](https://github.com/tendermint/tendermint/pull/7640) Light Client: fix absence proof verification (@ashcherbakov)
+- [light] [\#7641](https://github.com/tendermint/tendermint/pull/7641) Light Client: fix querying against the latest height (@ashcherbakov)
+- [mempool] [\#7718](https://github.com/tendermint/tendermint/pull/7718) return duplicate tx errors more consistently. (@tychoish)
+- [rpc] [\#7744](https://github.com/tendermint/tendermint/pull/7744) fix layout of endpoint list. (@creachadair)
+- [statesync] [\#7886](https://github.com/tendermint/tendermint/pull/7886) assert app version matches. (@cmwaters)
+
+## v0.35.1
+
+January 26, 2022
+
+Special thanks to external contributors on this release: @altergui, @odeke-em,
+@thanethomson
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+  - [config] [\#7276](https://github.com/tendermint/tendermint/pull/7276) rpc: Add experimental config params to allow for subscription buffer size control (@thanethomson).
+
+- P2P Protocol
+
+  - [p2p] [\#7265](https://github.com/tendermint/tendermint/pull/7265) Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
+  - [p2p] [\#7594](https://github.com/tendermint/tendermint/pull/7594) always advertise self, to enable mutual address discovery. (@altergui)
+
+### FEATURES
+
+- [rpc] [\#7270](https://github.com/tendermint/tendermint/pull/7270) Add `header` and `header_by_hash` RPC Client queries. (@fedekunze) (@cmwaters)
+
+### IMPROVEMENTS
+
+- [internal/protoio] [\#7325](https://github.com/tendermint/tendermint/pull/7325) Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
+- [\#7338](https://github.com/tendermint/tendermint/pull/7338) pubsub: Performance improvements for the event query API (backport of #7319) (@creachadair)
+- [\#7252](https://github.com/tendermint/tendermint/pull/7252) Add basic metrics to the indexer package. (@creachadair)
+- [\#7338](https://github.com/tendermint/tendermint/pull/7338) Performance improvements for the event query API. (@creachadair)
+
+### BUG FIXES
+
+- [\#7310](https://github.com/tendermint/tendermint/issues/7310) pubsub: Report a non-nil error when shutting down (fixes #7306).
+- [\#7355](https://github.com/tendermint/tendermint/pull/7355) Fix incorrect tests using the PSQL sink. (@creachadair)
+- [\#7683](https://github.com/tendermint/tendermint/pull/7683) rpc: check error code for broadcast_tx_commit. (@tychoish)
+
 ## v0.35.0
 
 November 4, 2021

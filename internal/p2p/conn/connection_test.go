@@ -1,7 +1,9 @@
 package conn
 
 import (
+	"context"
 	"encoding/hex"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -35,8 +37,8 @@ func createMConnectionWithCallbacks(
 	onError func(r interface{}),
 ) *MConnection {
 	cfg := DefaultMConnConfig()
-	cfg.PingInterval = 90 * time.Millisecond
-	cfg.PongTimeout = 45 * time.Millisecond
+	cfg.PingInterval = 250 * time.Millisecond
+	cfg.PongTimeout = 500 * time.Millisecond
 	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
@@ -159,41 +161,43 @@ func TestMConnectionStatus(t *testing.T) {
 	assert.Zero(t, status.Channels[0].SendQueueSize)
 }
 
-func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
+func TestMConnectionWillEventuallyTimeout(t *testing.T) {
 	server, client := net.Pipe()
 	t.Cleanup(closeAll(t, client, server))
 
-	receivedCh := make(chan []byte)
-	errorsCh := make(chan interface{})
-	onReceive := func(chID byte, msgBytes []byte) {
-		receivedCh <- msgBytes
-	}
-	onError := func(r interface{}) {
-		errorsCh <- r
-	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mconn := createMConnectionWithCallbacks(client, nil, nil)
 	err := mconn.Start()
-	require.Nil(t, err)
-	t.Cleanup(stopAll(t, mconn))
+	require.NoError(t, err)
+	require.True(t, mconn.IsRunning())
 
-	serverGotPing := make(chan struct{})
 	go func() {
-		// read ping
-		var pkt tmp2p.Packet
-		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
-	}()
-	<-serverGotPing
+		// read the send buffer so that the send receive
+		// doesn't get blocked.
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
 
-	pongTimerExpired := mconn.config.PongTimeout + 200*time.Millisecond
+		for {
+			select {
+			case <-ticker.C:
+				_, _ = io.ReadAll(server)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// wait for the send routine to die because it doesn't
 	select {
-	case msgBytes := <-receivedCh:
-		t.Fatalf("Expected error, but got %v", msgBytes)
-	case err := <-errorsCh:
-		assert.NotNil(t, err)
-	case <-time.After(pongTimerExpired):
-		t.Fatalf("Expected to receive error after %v", pongTimerExpired)
+	case <-mconn.doneSendRoutine:
+		require.True(t, time.Since(mconn.getLastMessageAt()) > mconn.config.PongTimeout,
+			"the connection state reflects that we've passed the pong timeout")
+		// since we hit the timeout, things should be shutdown
+		require.False(t, mconn.IsRunning())
+	case <-time.After(2 * mconn.config.PongTimeout):
+		t.Fatal("connection did not hit timeout", mconn.config.PongTimeout)
 	}
 }
 
@@ -226,19 +230,14 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
 	require.NoError(t, err)
 
-	serverGotPing := make(chan struct{})
-	go func() {
-		// read ping (one byte)
-		var packet tmp2p.Packet
-		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
+	// read ping (one byte)
+	var packet tmp2p.Packet
+	_, err = protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
+	require.NoError(t, err)
 
-		// respond with pong
-		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
-		require.NoError(t, err)
-	}()
-	<-serverGotPing
+	// respond with pong
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
 	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
 	select {
@@ -299,52 +298,54 @@ func TestMConnectionPingPongs(t *testing.T) {
 	// check that we are not leaking any go-routines
 	t.Cleanup(leaktest.CheckTimeout(t, 10*time.Second))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	server, client := net.Pipe()
 	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
 	onReceive := func(chID byte, msgBytes []byte) {
-		receivedCh <- msgBytes
+		select {
+		case <-ctx.Done():
+		case receivedCh <- msgBytes:
+		}
 	}
 	onError := func(r interface{}) {
-		errorsCh <- r
+		select {
+		case errorsCh <- r:
+		case <-ctx.Done():
+		}
 	}
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
 	t.Cleanup(stopAll(t, mconn))
 
-	serverGotPing := make(chan struct{})
-	go func() {
-		protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
-		protoWriter := protoio.NewDelimitedWriter(server)
-		var pkt tmp2p.PacketPing
+	protoReader := protoio.NewDelimitedReader(server, maxPingPongPacketSize)
+	protoWriter := protoio.NewDelimitedWriter(server)
+	var pkt tmp2p.PacketPing
 
-		// read ping
-		_, err = protoReader.ReadMsg(&pkt)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
+	// read ping
+	_, err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
 
-		// respond with pong
-		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
-		require.NoError(t, err)
+	// respond with pong
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
-		time.Sleep(mconn.config.PingInterval)
+	time.Sleep(mconn.config.PingInterval)
 
-		// read ping
-		_, err = protoReader.ReadMsg(&pkt)
-		require.NoError(t, err)
-		serverGotPing <- struct{}{}
+	// read ping
+	_, err = protoReader.ReadMsg(&pkt)
+	require.NoError(t, err)
 
-		// respond with pong
-		_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
-		require.NoError(t, err)
-	}()
-	<-serverGotPing
-	<-serverGotPing
+	// respond with pong
+	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
+	require.NoError(t, err)
 
-	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
+	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 4
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected no data, but got %v", msgBytes)

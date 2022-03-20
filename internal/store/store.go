@@ -572,6 +572,10 @@ func (bs *BlockStore) SaveSignedHeader(sh *types.SignedHeader, blockID types.Blo
 	return batch.Close()
 }
 
+func (bs *BlockStore) Close() error {
+	return bs.db.Close()
+}
+
 //---------------------------------- KEY ENCODING -----------------------------------------
 
 // key prefixes
