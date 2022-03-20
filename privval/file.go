@@ -404,7 +404,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	vote.Signature = sig
 
 	// Sign the vote extension, if any
-	if vote.Extension != nil {
+	if len(vote.Extension) > 0 {
 		vote.ExtensionSignature, err = pv.Key.PrivKey.Sign(vote.Extension)
 		if err != nil {
 			return err
