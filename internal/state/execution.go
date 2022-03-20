@@ -324,7 +324,12 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
-	req := abci.RequestVerifyVoteExtension{}
+	req := abci.RequestVerifyVoteExtension{
+		Hash:             vote.BlockID.Hash,
+		ValidatorAddress: vote.ValidatorAddress,
+		Height:           vote.Height,
+		VoteExtension:    vote.Extension,
+	}
 
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, req)
 	if err != nil {
