@@ -95,7 +95,7 @@ func (pv MockPV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vot
 		return err
 	}
 	vote.Signature = sig
-	if vote.Extension != nil {
+	if len(vote.Extension) > 0 {
 		vote.ExtensionSignature, err = pv.PrivKey.Sign(vote.Extension)
 		if err != nil {
 			return err
