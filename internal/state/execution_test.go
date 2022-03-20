@@ -699,10 +699,10 @@ func TestPrepareProposalPanicOnInvalid(t *testing.T) {
 		eventBus,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 	require.Panics(t,
 		func() {
-			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil) //nolint:errcheck
+			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes) //nolint:errcheck
 		})
 
 	mp.AssertExpectations(t)
