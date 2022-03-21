@@ -1030,33 +1030,6 @@ func (cfg *ConsensusConfig) WaitForTxs() bool {
 	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
 }
 
-// Propose returns the amount of time to wait for a proposal
-func (cfg *ConsensusConfig) Propose(round int32) time.Duration {
-	return time.Duration(
-		cfg.TimeoutPropose.Nanoseconds()+cfg.TimeoutProposeDelta.Nanoseconds()*int64(round),
-	) * time.Nanosecond
-}
-
-// Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (cfg *ConsensusConfig) Prevote(round int32) time.Duration {
-	return time.Duration(
-		cfg.TimeoutPrevote.Nanoseconds()+cfg.TimeoutPrevoteDelta.Nanoseconds()*int64(round),
-	) * time.Nanosecond
-}
-
-// Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (cfg *ConsensusConfig) Precommit(round int32) time.Duration {
-	return time.Duration(
-		cfg.TimeoutPrecommit.Nanoseconds()+cfg.TimeoutPrecommitDelta.Nanoseconds()*int64(round),
-	) * time.Nanosecond
-}
-
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
-// for a single block (ie. a commit).
-func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
-	return t.Add(cfg.TimeoutCommit)
-}
-
 // WalFile returns the full path to the write-ahead log file
 func (cfg *ConsensusConfig) WalFile() string {
 	if cfg.walFile != "" {

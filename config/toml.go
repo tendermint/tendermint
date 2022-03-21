@@ -603,12 +603,12 @@ var testGenesisFmt = `{
 			"precision": "10000000"
 		},
 		"timeout": {
-			"propose": "30000000000",
-			"propose_delta": "50000000",
-			"vote": "30000000000",
-			"vote_delta": "50000000",
-			"commit": "10000000000",
-			"bypass_commit_timeout": false
+			"propose": "30000000",
+			"propose_delta": "50000",
+			"vote": "30000000",
+			"vote_delta": "50000",
+			"commit": "10000000",
+			"bypass_timeout_commit": true
 		},
 		"evidence": {
 			"max_age_num_blocks": "100000",
