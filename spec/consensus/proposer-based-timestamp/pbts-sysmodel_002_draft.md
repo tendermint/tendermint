@@ -138,10 +138,10 @@ implicitly assumes that heights of consensus are executed in order.
 
 PBTS introduces a `timely` predicate that restricts the allowed decisions based
 on the proposal time `v.time` associated with a proposed value `v`.
-As as synchronous predicate, the time at which it is evaluated impacts on
+As a synchronous predicate, the time at which it is evaluated impacts on
 whether a process accepts of reject a value based on its proposal time.
 For this reason, the Time-Validity property refers to the previous evaluation
-of the `timely` predicate, detailed in the following.
+of the `timely` predicate, detailed in the following section.
 
 ## Timely proposals
 
