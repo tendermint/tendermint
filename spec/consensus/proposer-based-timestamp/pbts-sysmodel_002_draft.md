@@ -139,7 +139,7 @@ implicitly assumes that heights of consensus are executed in order.
 PBTS introduces a `timely` predicate that restricts the allowed decisions based
 on the proposal time `v.time` associated with a proposed value `v`.
 As a synchronous predicate, the time at which it is evaluated impacts on
-whether a process accepts of reject a value based on its proposal time.
+whether a process accepts or reject a proposal time.
 For this reason, the Time-Validity property refers to the previous evaluation
 of the `timely` predicate, detailed in the following section.
 
@@ -151,14 +151,18 @@ For PBTS, a `proposal` is a tuple `(v, v.time, v.round)`, where:
 - `v.time` is the associated proposal time;
 - `v.round` is the round at which `v` was first proposed.
 
-We introduce this definition of proposal because  a value `v` and its
-associated proposal time `v.time` can be proposed in multiple rounds, but the
-evaluation of the `timely` predicate is only relevant at round `v.round`.
-
 > Considering the algorithm in the [arXiv paper][arXiv], a new proposal is
-> produced by a proposer `p` when its `validValue_p` is unset.
-> The produced proposal thus have `v.round = round_p` and it is broadcast in a
-> Proposal message of with the `validRound` field set to `-1`.
+> produced by the `getValue()` method, invoked by the proposer `p` of round
+> `round_p` when its `validValue_p` is unset.
+>
+> The first round at which a value `v` is proposed is then the round `round_p`
+> at which the proposer `p` broadcast a `PROPOSAL` message for `v`  with
+> `validRound_p == -1`.
+
+We include the proposal round `v.round` in the proposal defintion becase a
+value `v` and its associated proposal time `v.time` can be proposed in multiple
+rounds, but the evaluation of the `timely` predicate is only relevant at round
+`v.round`.
 
 #### **[PBTS-PROPOSAL-RECEPTION.0]**
 
@@ -166,9 +170,7 @@ The `timely` predicate is evaluated when a process receives a proposal.
 More precisely, let `p` be a correct process:
 
 - `receiveTime_p[r]` is the time `p` reads from its local clock when it
-  receives the proposal of round `r`.
-
-Note that process must be in round `r` to receive a proposal of round `r`.
+  `p` is at round `r` and receives the proposal of round `r`.
 
 #### **[PBTS-TIMELY.0]**
 
@@ -178,6 +180,10 @@ The proposal `(v, v.time, v.round)` is considered `timely` by a correct process
 1. `receiveTime_p[v.round]` is set, and
 1. `receiveTime_p[v.round] >= v.time - PRECISION`, and
 1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`.
+
+> Considering the algorithm in the [arXiv paper][arXiv], the `timely` predicate
+> is evaluated by a process `p` when it receives a `PROPOSAL` message of its
+> current round `round_p` with `validRound == -1`.
 
 A correct process at round `v.round` only sends a `PREVOTE` for `v` if the
 associated proposal time `v.time` is considered `timely`.
