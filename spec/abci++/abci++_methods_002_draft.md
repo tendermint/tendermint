@@ -378,7 +378,7 @@ and _p_'s _validValue_ is `nil`:
       `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * in both modes, the Application can manipulate transactions
         * leave transactions untouched - `TxAction = UNMODIFIED`
-        * add new transactions (not previously in the mempool) - `TxAction = ADDED`
+        * add new transactions directly to the proposal - `TxAction = ADDED`
         * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
           Application removes the transaction from the list
@@ -840,7 +840,7 @@ enum TxAction {
 * **Usage**:
     * If `Action` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
     * If `Action` is `UNMODIFIED`, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
-    * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal. The transaction is also added to the mempool and gossipped.
+    * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal.
     * If `Action` is `REMOVED`, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
       similar to `CheckTx` returning _false_.
 ### TxRecord
