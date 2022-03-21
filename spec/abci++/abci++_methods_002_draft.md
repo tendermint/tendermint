@@ -864,7 +864,7 @@ enum ProposalStatus {
 
 * **Usage**:
 	* Used within the [ProcessProposal](#ProcessProposal) response.
-    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint assume the application is faulty and crash.
+    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
     * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
     * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
 
@@ -881,7 +881,7 @@ enum ModifiedTxStatus {
 * **Usage**:
 	* Used within the [PrepareProposal](#PrepareProposal) response.
     * If `TxModifiedStatus` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `TxModifiedStatus` is `UNMODIFIED`, Tendermint will ignore the contents of the `PrepareProposal` response and use gossip the transactions originally passed to the application during `PrepareProposal`.
+    * If `TxModifiedStatus` is `UNMODIFIED`, Tendermint will ignore the contents of the `PrepareProposal` response and use the transactions originally passed to the application during `PrepareProposal`.
     * If `TxModifiedStatus` is `MODIFIED`, Tendermint will update the block proposal using the contents of the `PrepareProposal` response returned by the application.
 
 ### VerifyStatus
