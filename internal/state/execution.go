@@ -140,11 +140,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
-	if rpp.UnknownModifiedTx() {
+	if rpp.IsTxStatusUnknown() {
 		panic(fmt.Sprintf("PrepareProposal responded with ModifiedTxStatus %s", rpp.ModifiedTxStatus.String()))
 	}
 
-	if !rpp.TxModified() {
+	if !rpp.IsTxStatusModified() {
 		return block, nil
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
