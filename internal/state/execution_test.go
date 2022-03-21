@@ -677,7 +677,7 @@ func TestPrepareProposalPanicOnInvalid(t *testing.T) {
 
 	// create an invalid ResponsePrepareProposal
 	rpp := abci.ResponsePrepareProposal{
-		ModifiedTx: true,
+		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
 		TxRecords: []*abci.TxRecord{
 			{
 				Action: abci.TxRecord_REMOVED,
