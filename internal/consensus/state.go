@@ -875,9 +875,9 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 				return
 			}
 
-			// don't re-panic if we're already trying to
-			// shut down
-			if ctx.Err() != nil {
+			// don't re-panic if the panic is just an
+			// error and we're already trying to shut down
+			if _, ok := r.(error); ok && ctx.Err() != nil {
 				return
 			}
 			panic(r)
@@ -909,9 +909,9 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		case mi := <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
-				panic(fmt.Errorf(
-					"failed to write %v msg to consensus WAL due to %w; check your file system and restart the node",
-					mi, err,
+				panic(fmt.Sprintf(
+					"failed to write %v msg to consensus WAL due to %q; check your file system and restart the node",
+					mi, err.Error(),
 				))
 			}
 
