@@ -7,6 +7,10 @@
    - [Message delays](#message-delays)
  - [Problem Statement](#problem-statement)
  - [Timely Proposals](#timely-proposals)
+    - [Timely Proof-of-Locks](#timely-proof-of-locks)
+    - [Derived Proof-of-Locks](#derived-proof-of-locks)
+ - [Safety](#safety)
+ - [Liveness](#liveness)
 
 ## System Model
 
@@ -243,27 +247,29 @@ round at which `v` was proposed.
 
 For `r > v.round` we need to demonstrate that if there is a valid `POL(v,r)`,
 then a timely `POL(v,v.round)` was previously obtained.
-We observe that a condition for observing a `POL(v,r)` is the proposer of round
-`r` having broadcast a `PROPOSAL` message for `v`.
+We observe that a condition for observing a `POL(v,r)` is that the proposer of
+round `r` has broadcast a `PROPOSAL` message for `v`.
 As `r > v.round`, we can affirm that `v` was not produced in round `r`.
-So `v` was, by the protocol operation, the highest *valid value* known by the
-proposer when it started the round.
-A value `v` becomes a valid value when there is `POL(v,vr)` with `vr < r'`.
-Even though the proposer `p` can be incorrect, the fact of a `POL(v,r)` was
-produced ensures that at least one correct process also observed a `POL(v,vr)`.
+Instead, by the protocol operation, `v` was a *valid value* for the proposer of
+round `r`, which means that if the proposer has observed a `POL(v,vr)` with `vr
+< r`.
+The above operation considers a *correct* proposer, but since a `POL(v,r)` was
+produced (by hypothesis) we can affirm that at least one correct process (also)
+observed a `POL(v,vr)`.
 
 > Considering the algorithm in the [arXiv paper][arXiv], `v` was proposed by
 > the proposer `p` of round `round_p` because its `validValue_p` variable was
 > set to `v`.
-> The broadcast `PROPOSAL` message, in this case, has its `vr > -1`, which can
-> only be accepted by processes that observed a `POL(v, vr)`.
+> The `PROPOSAL` message broadcast by the proposer, in this case, had `vr > -1`,
+> and it could only be accepted by processes that also observed a `POL(v,vr)`.
 
-So, if there is a `POL(v,r)` with `r > v.round`, then there is a valid
+Thus, if there is a `POL(v,r)` with `r > v.round`, then there is a valid
 `POL(v,vr)` with `v.round <= vr < r`.
-From this point, the reasoning becomes recursive: either `vr = v.round` and
-`POL(v,vr)` is a timely proof-of-lock, or there is another `POL(v,vr')` with
-`vr' < vr`, recursively leading to the first scenario (as `vr` necessarily
-decreases at each recursive iteration).
+If `vr = v.round` then `POL(vr,v)` is a timely proof-of-lock and we are done.
+Otherwise, there is another valid `POL(v,vr')` with `v.round <= vr' < vr`,
+and the same reasoning can be applied until we get `vr' = v.round` and observe
+a timely proof-of-lock (which is guaranteed, as `vr` necessarily decreases at
+each recursive iteration).
 
 ### SAFETY
 
