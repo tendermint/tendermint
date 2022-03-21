@@ -25,8 +25,7 @@ func NewBaseMock() BaseMock {
 
 // Info/Query Connection
 // Return application info
-func (m BaseMock) Info(input types.RequestInfo) types.ResponseInfo {
-	var ret types.ResponseInfo
+func (m BaseMock) Info(input types.RequestInfo) (ret types.ResponseInfo) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.Info(input)
@@ -36,8 +35,7 @@ func (m BaseMock) Info(input types.RequestInfo) types.ResponseInfo {
 	return ret
 }
 
-func (m BaseMock) Query(input types.RequestQuery) types.ResponseQuery {
-	var ret types.ResponseQuery
+func (m BaseMock) Query(input types.RequestQuery) (ret types.ResponseQuery) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.Query(input)
@@ -49,8 +47,7 @@ func (m BaseMock) Query(input types.RequestQuery) types.ResponseQuery {
 
 // Mempool Connection
 // Validate a tx for the mempool
-func (m BaseMock) CheckTx(input types.RequestCheckTx) types.ResponseCheckTx {
-	var ret types.ResponseCheckTx
+func (m BaseMock) CheckTx(input types.RequestCheckTx) (ret types.ResponseCheckTx) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.CheckTx(input)
@@ -62,8 +59,7 @@ func (m BaseMock) CheckTx(input types.RequestCheckTx) types.ResponseCheckTx {
 
 // Consensus Connection
 // Initialize blockchain w validators/other info from TendermintCore
-func (m BaseMock) InitChain(input types.RequestInitChain) types.ResponseInitChain {
-	var ret types.ResponseInitChain
+func (m BaseMock) InitChain(input types.RequestInitChain) (ret types.ResponseInitChain) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.InitChain(input)
@@ -73,8 +69,7 @@ func (m BaseMock) InitChain(input types.RequestInitChain) types.ResponseInitChai
 	return ret
 }
 
-func (m BaseMock) PrepareProposal(input types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	var ret types.ResponsePrepareProposal
+func (m BaseMock) PrepareProposal(input types.RequestPrepareProposal) (ret types.ResponsePrepareProposal) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.PrepareProposal(input)
@@ -84,8 +79,7 @@ func (m BaseMock) PrepareProposal(input types.RequestPrepareProposal) types.Resp
 	return ret
 }
 
-func (m BaseMock) ProcessProposal(input types.RequestProcessProposal) types.ResponseProcessProposal {
-	var ret types.ResponseProcessProposal
+func (m BaseMock) ProcessProposal(input types.RequestProcessProposal) (ret types.ResponseProcessProposal) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.ProcessProposal(input)
@@ -96,8 +90,7 @@ func (m BaseMock) ProcessProposal(input types.RequestProcessProposal) types.Resp
 }
 
 // Commit the state and return the application Merkle root hash
-func (m BaseMock) Commit() types.ResponseCommit {
-	var ret types.ResponseCommit
+func (m BaseMock) Commit() (ret types.ResponseCommit) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.Commit()
@@ -108,8 +101,7 @@ func (m BaseMock) Commit() types.ResponseCommit {
 }
 
 // Create application specific vote extension
-func (m BaseMock) ExtendVote(input types.RequestExtendVote) types.ResponseExtendVote {
-	var ret types.ResponseExtendVote
+func (m BaseMock) ExtendVote(input types.RequestExtendVote) (ret types.ResponseExtendVote) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.ExtendVote(input)
@@ -120,8 +112,7 @@ func (m BaseMock) ExtendVote(input types.RequestExtendVote) types.ResponseExtend
 }
 
 // Verify application's vote extension data
-func (m BaseMock) VerifyVoteExtension(input types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
-	var ret types.ResponseVerifyVoteExtension
+func (m BaseMock) VerifyVoteExtension(input types.RequestVerifyVoteExtension) (ret types.ResponseVerifyVoteExtension) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.VerifyVoteExtension(input)
@@ -133,8 +124,7 @@ func (m BaseMock) VerifyVoteExtension(input types.RequestVerifyVoteExtension) ty
 
 // State Sync Connection
 // List available snapshots
-func (m BaseMock) ListSnapshots(input types.RequestListSnapshots) types.ResponseListSnapshots {
-	var ret types.ResponseListSnapshots
+func (m BaseMock) ListSnapshots(input types.RequestListSnapshots) (ret types.ResponseListSnapshots) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.ListSnapshots(input)
@@ -144,8 +134,7 @@ func (m BaseMock) ListSnapshots(input types.RequestListSnapshots) types.Response
 	return ret
 }
 
-func (m BaseMock) OfferSnapshot(input types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
-	var ret types.ResponseOfferSnapshot
+func (m BaseMock) OfferSnapshot(input types.RequestOfferSnapshot) (ret types.ResponseOfferSnapshot) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.OfferSnapshot(input)
@@ -155,8 +144,7 @@ func (m BaseMock) OfferSnapshot(input types.RequestOfferSnapshot) types.Response
 	return ret
 }
 
-func (m BaseMock) LoadSnapshotChunk(input types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
-	var ret types.ResponseLoadSnapshotChunk
+func (m BaseMock) LoadSnapshotChunk(input types.RequestLoadSnapshotChunk) (ret types.ResponseLoadSnapshotChunk) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.LoadSnapshotChunk(input)
@@ -166,8 +154,7 @@ func (m BaseMock) LoadSnapshotChunk(input types.RequestLoadSnapshotChunk) types.
 	return ret
 }
 
-func (m BaseMock) ApplySnapshotChunk(input types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
-	var ret types.ResponseApplySnapshotChunk
+func (m BaseMock) ApplySnapshotChunk(input types.RequestApplySnapshotChunk) (ret types.ResponseApplySnapshotChunk) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.ApplySnapshotChunk(input)
@@ -177,8 +164,7 @@ func (m BaseMock) ApplySnapshotChunk(input types.RequestApplySnapshotChunk) type
 	return ret
 }
 
-func (m BaseMock) FinalizeBlock(input types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
-	var ret types.ResponseFinalizeBlock
+func (m BaseMock) FinalizeBlock(input types.RequestFinalizeBlock) (ret types.ResponseFinalizeBlock) {
 	defer func() {
 		if r := recover(); r != nil {
 			ret = m.base.FinalizeBlock(input)

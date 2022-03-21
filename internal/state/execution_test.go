@@ -338,7 +338,7 @@ func TestProcessProposal(t *testing.T) {
 		},
 	}
 
-	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Accept: true})
+	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 	acceptBlock, err := blockExec.ProcessProposal(ctx, block1, state)
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
@@ -615,6 +615,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	app := abcimocks.NewBaseMock()
+	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
+	}, nil)
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -674,7 +677,7 @@ func TestPrepareProposalPanicOnInvalid(t *testing.T) {
 
 	// create an invalid ResponsePrepareProposal
 	rpp := abci.ResponsePrepareProposal{
-		ModifiedTx: true,
+		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
 		TxRecords: []*abci.TxRecord{
 			{
 				Action: abci.TxRecord_REMOVED,
@@ -737,8 +740,8 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTx: true,
-		TxRecords:  trs,
+		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
+		TxRecords:        trs,
 	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
@@ -798,8 +801,8 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTx: true,
-		TxRecords:  trs,
+		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
+		TxRecords:        trs,
 	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
@@ -856,8 +859,8 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTx: true,
-		TxRecords:  trs,
+		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
+		TxRecords:        trs,
 	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
@@ -886,10 +889,10 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 }
 
-// TestPrepareProposalModifiedTxFalse tests that CreateBlock correctly ignores
+// TestPrepareProposalModifiedTxStatusFalse tests that CreateBlock correctly ignores
 // the ResponsePrepareProposal TxRecords if ResponsePrepareProposal does not
-// set ModifiedTx to true.
-func TestPrepareProposalModifiedTxFalse(t *testing.T) {
+// set ModifiedTxStatus to true.
+func TestPrepareProposalModifiedTxStatusFalse(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -919,8 +922,8 @@ func TestPrepareProposalModifiedTxFalse(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTx: false,
-		TxRecords:  trs,
+		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
+		TxRecords:        trs,
 	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
