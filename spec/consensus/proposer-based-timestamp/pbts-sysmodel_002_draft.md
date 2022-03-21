@@ -159,7 +159,6 @@ rounds, but the evaluation of the `timely` predicate is only relevant at round
 > Considering the algorithm in the [arXiv paper][arXiv], a new proposal is
 > produced by the `getValue()` method, invoked by the proposer `p` of round
 > `round_p` when starting its proposing round with a nil `validValue_p`.
->
 > The first round at which a value `v` is proposed is then the round at which
 > the proposal for `v` was produced, and broadcast in a `PROPOSAL` message with
 > `vr = -1`.
@@ -256,13 +255,12 @@ produced ensures that at least one correct process also observed a `POL(v,vr)`.
 > Considering the algorithm in the [arXiv paper][arXiv], `v` was proposed by
 > the proposer `p` of round `round_p` because its `validValue_p` variable was
 > set to `v`.
->
 > The broadcast `PROPOSAL` message, in this case, has its `vr > -1`, which can
 > only be accepted by processes that observed a `POL(v, vr)`.
 
 So, if there is a `POL(v,r)` with `r > v.round`, then there is a valid
 `POL(v,vr)` with `v.round <= vr < r`.
-From this point, the reasoning becomes recursive: either `vr == v.round` and
+From this point, the reasoning becomes recursive: either `vr = v.round` and
 `POL(v,vr)` is a timely proof-of-lock, or there is another `POL(v,vr')` with
 `vr' < vr`, recursively leading to the first scenario (as `vr` necessarily
 decreases at each recursive iteration).
