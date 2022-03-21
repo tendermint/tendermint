@@ -131,12 +131,8 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		// containing vote extension
 		5: {
 			"test_chain_id", &Vote{
-				Type:           0,
 				Height:         1,
 				Round:          1,
-				BlockID:        BlockID{},
-				Timestamp:      time.Time{},
-				ValidatorIndex: 0,
 				Extension:      []byte("signed"),
 			},
 			[]byte{
