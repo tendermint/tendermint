@@ -910,8 +910,8 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
 				panic(fmt.Errorf(
-					"failed to write %v msg to consensus WAL due to %q; check your file system and restart the node",
-					mi, err.Error(),
+					"failed to write %v msg to consensus WAL due to %w; check your file system and restart the node",
+					mi, err,
 				))
 			}
 
