@@ -208,9 +208,9 @@ If
 
 Then, let `p` is a such correct process:
 
-- `p` received a `PROPOSE` message of round `v.round`, and
-- the `PROPOSE` message contained a proposal `(v, v.time, v.round)`, and
-- `p` considered the proposal time `v.time` `timely`.
+- `p` received a `PROPOSAL` message of round `v.round`, and
+- the `PROPOSAL` message contained a proposal `(v, v.time, v.round)`, and
+- `p` was in round `v.round` and evaluated the proposal time `v.time` as `timely`.
 
 The existence of a such correct process `p` is guaranteed provided that the
 voting power of Byzantine processes is bounded by `2f`.
@@ -220,7 +220,7 @@ voting power of Byzantine processes is bounded by `2f`.
 The existence of `POL(v,r)` is a requirement for the decision of `v` at round
 `r` of consensus.
 
-At the same time, the Time-Validity property established that if `v` is decided
+At the same time, the Time-Validity property establishes that if `v` is decided
 then a timely proof-of-lock `POL(v,v.round)` must have been produced.
 
 So, we need to demonstrate here that any valid `POL(v,r)` is either a timely
@@ -235,15 +235,35 @@ If
 
 Then
 
-- there is a valid `POL(v,v.round)` with `v.round <= r`,
-- so a correct process considered the proposal for `v` `timely` at round `v.round`.
+- there is a valid `POL(v,v.round)` with `v.round <= r` which is a timely proof-of-lock.
 
 The above relation is trivially observed when `r = v.round`, as `POL(v,r)` must
 be a timely proof-of-lock.
-(Notice that, by the definition of `v.round`, we cannot have `r < v.round`).
+Notice that we cannot have `r < v.round`, as `v.round` is defined as the first
+round at which `v` was proposed.
 
 For `r > v.round` we need to demonstrate that if there is a valid `POL(v,r)`,
 then a timely `POL(v,v.round)` was previously obtained.
+We observe that a condition for observing a `POL(v,r)` is the proposer of round
+`r` having broadcast a `PROPOSAL` message for `v`.
+As `r > v.round`, we can affirm that `v` was not produced in round `r`.
+So `v` was, by the protocol operation, the highest *valid value* known by the
+proposer when it started the round.
+A value `v` becomes a valid value when there is `POL(v,r')` with `r' < r'`.
+Even though the proposer `p` can be incorrect, the fact of a `POL(v,r)` was
+produced ensures that at least one correct process also observed a `POL(v,r')`.
+
+> Considering the algorithm in the [arXiv paper][arXiv], `v` was proposed by
+> the proposer `p` of round `r == round_p` because it has `validValue_p == v`.
+> The `PROPOSAL` message of round `r` proposing `v`, in this case, has its
+> `validRound` field set to `r' == validRound_p >= v.round`.
+
+So, if there is a `POL(v,r)` with `r > v.round`, then there is a valid
+`POL(v,r')` with `v.round <= r' < r'.
+From this point, the reasoning becomes recursive: either `r' == v.round` and
+`POL(v,r')` is a timely proof-of-lock, or there is another `POL(v,r'')` with
+`r'' < r'`, recursively leading to the first scenario (as `r` necessarily
+decreases at each recursive iteration).
 
 ### SAFETY
 
