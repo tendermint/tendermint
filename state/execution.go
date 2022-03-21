@@ -132,7 +132,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// Either way, we cannot recover in a meaningful way, unless we skip proposing
 		// this block, repair what caused the error and try again. Hence, we return an
 		// error for now (the production code calling this function is expected to panic).
-		return nil, err
+		panic(err)
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
