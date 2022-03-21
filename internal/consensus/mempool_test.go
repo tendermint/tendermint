@@ -310,10 +310,12 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 
 func (app *CounterApplication) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{}
+	return abci.ResponsePrepareProposal{
+		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
+	}
 }
 
 func (app *CounterApplication) ProcessProposal(
 	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
-	return abci.ResponseProcessProposal{Accept: true}
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }
