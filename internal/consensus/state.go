@@ -874,6 +874,12 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			if err, ok := r.(error); ok && errors.Is(err, autofile.ErrAutoFileClosed) {
 				return
 			}
+
+			// don't re-panic if we're already trying to
+			// shut down
+			if ctx.Err() != nil {
+				return
+			}
 			panic(r)
 		}
 	}()
