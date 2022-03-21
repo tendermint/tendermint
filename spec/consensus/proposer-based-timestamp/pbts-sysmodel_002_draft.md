@@ -162,7 +162,7 @@ rounds, but the evaluation of the `timely` predicate is only relevant at round
 >
 > The first round at which a value `v` is proposed is then the round at which
 > the proposal for `v` was produced, and broadcast in a `PROPOSAL` message with
-> `validRound_p == -1`.
+> `vr = -1`.
 
 #### **[PBTS-PROPOSAL-RECEPTION.0]**
 
@@ -186,7 +186,7 @@ associated proposal time `v.time` is considered `timely`.
 
 > Considering the algorithm in the [arXiv paper][arXiv], the `timely` predicate
 > is evaluated by a process `p` when it receives a valid `PROPOSAL` message
-> from the proposed of the current round `round_p` with `validRound == -1`.
+> from the proposer of the current round `round_p` with `vr = -1`.
 
 ### Timely Proof-of-Locks
 
@@ -249,20 +249,22 @@ We observe that a condition for observing a `POL(v,r)` is the proposer of round
 As `r > v.round`, we can affirm that `v` was not produced in round `r`.
 So `v` was, by the protocol operation, the highest *valid value* known by the
 proposer when it started the round.
-A value `v` becomes a valid value when there is `POL(v,r')` with `r' < r'`.
+A value `v` becomes a valid value when there is `POL(v,vr)` with `vr < r'`.
 Even though the proposer `p` can be incorrect, the fact of a `POL(v,r)` was
-produced ensures that at least one correct process also observed a `POL(v,r')`.
+produced ensures that at least one correct process also observed a `POL(v,vr)`.
 
 > Considering the algorithm in the [arXiv paper][arXiv], `v` was proposed by
-> the proposer `p` of round `r == round_p` because it has `validValue_p == v`.
-> The `PROPOSAL` message of round `r` proposing `v`, in this case, has its
-> `validRound` field set to `r' == validRound_p >= v.round`.
+> the proposer `p` of round `round_p` because its `validValue_p` variable was
+> set to `v`.
+>
+> The broadcast `PROPOSAL` message, in this case, has its `vr > -1`, which can
+> only be accepted by processes that observed a `POL(v, vr)`.
 
 So, if there is a `POL(v,r)` with `r > v.round`, then there is a valid
-`POL(v,r')` with `v.round <= r' < r'.
-From this point, the reasoning becomes recursive: either `r' == v.round` and
-`POL(v,r')` is a timely proof-of-lock, or there is another `POL(v,r'')` with
-`r'' < r'`, recursively leading to the first scenario (as `r` necessarily
+`POL(v,vr)` with `v.round <= vr < r`.
+From this point, the reasoning becomes recursive: either `vr == v.round` and
+`POL(v,vr)` is a timely proof-of-lock, or there is another `POL(v,vr')` with
+`vr' < vr`, recursively leading to the first scenario (as `vr` necessarily
 decreases at each recursive iteration).
 
 ### SAFETY
