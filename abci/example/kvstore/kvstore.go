@@ -284,7 +284,10 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs)}
+	return types.ResponsePrepareProposal{
+		ModifiedTxStatus: types.ResponsePrepareProposal_MODIFIED,
+		TxRecords:        app.substPrepareTx(req.Txs),
+	}
 }
 
 func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
