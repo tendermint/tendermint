@@ -909,7 +909,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		case mi := <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
-				panic(fmt.Sprintf(
+				panic(fmt.Errorf(
 					"failed to write %v msg to consensus WAL due to %q; check your file system and restart the node",
 					mi, err.Error(),
 				))
