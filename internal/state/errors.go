@@ -93,7 +93,7 @@ func (e ErrNoValSetForHeight) Error() string {
 	if e.Err == nil {
 		return fmt.Sprintf("could not find validator set for height #%d", e.Height)
 	}
-	return fmt.Sprintf("could not find validator set for height #%d: %w", e.Height)
+	return fmt.Sprintf("could not find validator set for height #%d: %s", e.Height, e.Err.Error())
 }
 
 func (e ErrNoValSetForHeight) Unwrap() error { return e.Err }
