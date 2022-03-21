@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -312,8 +311,6 @@ func TestStateOversizedBlock(t *testing.T) {
 	// start the machine
 	startTestRound(ctx, cs1, height, round)
 
-	t.Log("Block Sizes", "Limit", cs1.state.ConsensusParams.Block.MaxBytes, "Current", totalBytes)
-
 	// c1 should log an error with the block part message as it exceeds the consensus params. The
 	// block is not added to cs.ProposalBlock so the node timeouts.
 	ensureNewTimeout(t, timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
@@ -490,7 +487,6 @@ func TestStateLock_NoPOL(t *testing.T) {
 
 	round++ // moving to the next round
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("#### ONTO ROUND 1")
 	/*
 		Round2 (cs1, B) // B B2
 	*/
@@ -533,7 +529,6 @@ func TestStateLock_NoPOL(t *testing.T) {
 
 	round++ // entering new round
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("#### ONTO ROUND 2")
 	/*
 		Round3 (vs2, _) // B, B2
 	*/
@@ -590,7 +585,6 @@ func TestStateLock_NoPOL(t *testing.T) {
 
 	round++ // entering new round
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("#### ONTO ROUND 3")
 	/*
 		Round4 (vs2, C) // B C // B C
 	*/
@@ -662,7 +656,6 @@ func TestStateLock_POLUpdateLock(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
-	t.Log("### Starting Round 0")
 
 	// start round and wait for propose and prevote
 	startTestRound(ctx, cs1, height, round)
@@ -700,7 +693,6 @@ func TestStateLock_POLUpdateLock(t *testing.T) {
 
 		Check that cs1 is now locked on the new block, D and no longer on the old block.
 	*/
-	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
 
@@ -769,7 +761,6 @@ func TestStateLock_POLRelock(t *testing.T) {
 		Send a precommit for nil from all of the validators to cs1.
 		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
-	t.Log("### Starting Round 0")
 
 	startTestRound(ctx, cs1, height, round)
 
@@ -808,7 +799,6 @@ func TestStateLock_POLRelock(t *testing.T) {
 
 		Check that cs1 updates its 'locked round' value to the current round.
 	*/
-	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
 	propR1 := types.NewProposal(height, round, cs1.ValidRound, blockID, theBlock.Header.Time)
@@ -868,7 +858,6 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
-	t.Log("### Starting Round 0")
 
 	startTestRound(ctx, cs1, height, round)
 
@@ -905,7 +894,6 @@ func TestStateLock_PrevoteNilWhenLockedAndMissProposal(t *testing.T) {
 		Check that cs1 prevotes nil instead of its locked block, but ensure
 		that it maintains its locked block.
 	*/
-	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
 
@@ -957,7 +945,6 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
-	t.Log("### Starting Round 0")
 	startTestRound(ctx, cs1, height, round)
 
 	ensureNewRound(t, newRoundCh, height, round)
@@ -994,7 +981,6 @@ func TestStateLock_PrevoteNilWhenLockedAndDifferentProposal(t *testing.T) {
 		Check that cs1 prevotes nil instead of its locked block, but ensure
 		that it maintains its locked block.
 	*/
-	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
@@ -1059,7 +1045,6 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round.
 	*/
-	t.Log("#### ONTO ROUND 0")
 
 	// start round and wait for propose and prevote
 	startTestRound(ctx, cs1, height, round)
@@ -1101,7 +1086,6 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 		Check that cs1 maintains its lock on B but precommits nil.
 		Send a precommit for nil from >2/3 of the validators to `cs1`.
 	*/
-	t.Log("#### ONTO ROUND 1")
 	round++
 	incrementRound(vs2, vs3, vs4)
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
@@ -1136,7 +1120,6 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 		Send the validator >2/3 prevotes for nil and ensure that it did not
 		unlock its block at the end of the previous round.
 	*/
-	t.Log("#### ONTO ROUND 2")
 	round++
 	incrementRound(vs2, vs3, vs4)
 	cs3 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
@@ -1193,7 +1176,6 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
-	t.Log("### Starting Round 0")
 	startTestRound(ctx, cs1, height, round)
 
 	ensureNewRound(t, newRoundCh, height, round)
@@ -1225,7 +1207,6 @@ func TestStateLock_MissingProposalWhenPOLSeenDoesNotUpdateLock(t *testing.T) {
 
 		Check that cs1 does not update its locked block to this missed block D.
 	*/
-	t.Log("### Starting Round 1")
 	incrementRound(vs2, vs3, vs4)
 	round++
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
@@ -1281,7 +1262,6 @@ func TestStateLock_DoesNotLockOnOldProposal(t *testing.T) {
 
 		This ensures that cs1 will not lock on B.
 	*/
-	t.Log("### Starting Round 0")
 	startTestRound(ctx, cs1, height, round)
 
 	ensureNewRound(t, newRoundCh, height, round)
@@ -1315,7 +1295,6 @@ func TestStateLock_DoesNotLockOnOldProposal(t *testing.T) {
 		cs1 saw a POL for the block it saw in round 0. We ensure that it does not
 		lock on this block, since it did not see a proposal for it in this round.
 	*/
-	t.Log("### Starting Round 1")
 	round++
 	ensureNewRound(t, newRoundCh, height, round)
 
@@ -1379,7 +1358,6 @@ func TestStateLock_POLSafety1(t *testing.T) {
 	ensurePrecommit(t, voteCh, height, round)
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	t.Log("### ONTO ROUND 1")
 	incrementRound(vs2, vs3, vs4)
 	round++ // moving to the next round
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
@@ -1407,8 +1385,6 @@ func TestStateLock_POLSafety1(t *testing.T) {
 
 	require.Nil(t, rs.LockedBlock, "we should not be locked!")
 
-	t.Logf("new prop hash %v", fmt.Sprintf("%X", propBlock.Hash()))
-
 	// go to prevote, prevote for proposal block
 	ensurePrevoteMatch(t, voteCh, height, round, r2BlockID.Hash)
 
@@ -1428,7 +1404,6 @@ func TestStateLock_POLSafety1(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	t.Log("### ONTO ROUND 2")
 	/*Round3
 	we see the polka from round 1 but we shouldn't unlock!
 	*/
@@ -1494,7 +1469,7 @@ func TestStateLock_POLSafety2(t *testing.T) {
 	incrementRound(vs2, vs3, vs4)
 
 	round++ // moving to the next round
-	t.Log("### ONTO Round 1")
+
 	// jump in at round 1
 	startTestRound(ctx, cs1, height, round)
 	ensureNewRound(t, newRoundCh, height, round)
@@ -1536,7 +1511,7 @@ func TestStateLock_POLSafety2(t *testing.T) {
 	addVotes(cs1, prevotes...)
 
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("### ONTO Round 2")
+
 	/*Round2
 	// now we see the polka from round 1, but we shouldnt unlock
 	*/
@@ -1579,7 +1554,6 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 
 		This ensures that cs1 will lock on B in this round but not precommit it.
 	*/
-	t.Log("### Starting Round 0")
 
 	startTestRound(ctx, cs1, height, round)
 
@@ -1617,14 +1591,16 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 		cs1 has now seen greater than 2/3 of the voting power prevote D in this round
 		but cs1 did not see the proposal for D in this round so it will not prevote or precommit it.
 	*/
-	t.Log("### Starting Round 1")
+
 	incrementRound(vs2, vs3, vs4)
 	round++
 	// Generate a new proposal block.
 	cs2 := newState(ctx, t, logger, cs1.state, vs2, kvstore.NewApplication())
 	cs2.ValidRound = 1
 	propR1, propBlockR1 := decideProposal(ctx, t, cs2, vs2, vs2.Height, round)
-	t.Log(propR1.POLRound)
+
+	assert.EqualValues(t, 1, propR1.POLRound)
+
 	propBlockR1Parts, err := propBlockR1.MakePartSet(partSize)
 	require.NoError(t, err)
 	r1BlockID := types.BlockID{
@@ -1658,7 +1634,6 @@ func TestState_PrevotePOLFromPreviousRound(t *testing.T) {
 		Send cs1 prevotes for nil and check that it still prevotes its locked block
 		and not the block that it prevoted.
 	*/
-	t.Log("### Starting Round 2")
 	incrementRound(vs2, vs3, vs4)
 	round++
 	propR2 := types.NewProposal(height, round, 1, r1BlockID, propBlockR1.Header.Time)
@@ -1745,7 +1720,6 @@ func TestProposeValidBlock(t *testing.T) {
 	round++ // moving to the next round
 
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("### ONTO ROUND 1")
 
 	// timeout of propose
 	ensureNewTimeout(t, timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
@@ -1768,7 +1742,6 @@ func TestProposeValidBlock(t *testing.T) {
 	round += 2 // increment by multiple rounds
 
 	ensureNewRound(t, newRoundCh, height, round)
-	t.Log("### ONTO ROUND 3")
 
 	ensureNewTimeout(t, timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
@@ -2474,7 +2447,6 @@ func TestStateHalt1(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	t.Log("### ONTO ROUND 1")
 	/*Round2
 	// we timeout and prevote
 	// a polka happened but we didn't see it!
