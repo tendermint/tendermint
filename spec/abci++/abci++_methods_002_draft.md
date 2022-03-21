@@ -840,7 +840,7 @@ enum TxAction {
 * **Usage**:
     * If `Action` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
     * If `Action` is `UNMODIFIED`, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
-    * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal.
+    * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal. The transaction is _not_ added to the mempool.
     * If `Action` is `REMOVED`, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
       similar to `CheckTx` returning _false_.
 ### TxRecord
