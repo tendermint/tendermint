@@ -123,16 +123,6 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
-// Extends a vote with application-side injection
-message RequestExtendVote {
-  types.Vote vote = 1;
-}
-
-// Verify the vote extension
-message RequestVerifyVoteExtension {
-  types.Vote vote = 1;
-}
-
 message RequestPrepareProposal {
   bytes                   hash   = 1;
   tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
@@ -151,6 +141,16 @@ message RequestProcessProposal {
   repeated bytes          txs                  = 3;
   CommitInfo              proposed_last_commit = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+}
+
+// Extends a vote with application-side injection
+message RequestExtendVote {
+  types.Vote vote = 1;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  types.Vote vote = 1;
 }
 
 message RequestFinalizeBlock {
@@ -312,20 +312,6 @@ message ResponseApplySnapshotChunk {
   }
 }
 
-message ResponseExtendVote {
-  tendermint.types.VoteExtension vote_extension = 1;
-}
-
-message ResponseVerifyVoteExtension {
-  VerifyStatus status = 1;
-
-  enum VerifyStatus {
-    UNKNOWN = 0;
-    ACCEPT  = 1;
-    REJECT  = 2;
-  }
-}
-
 message ResponsePrepareProposal {
   ModifiedTxStatus                 modified_tx_status      = 1;
   repeated TxRecord                tx_records              = 2;
@@ -349,6 +335,20 @@ message ResponseProcessProposal {
   tendermint.types.ConsensusParams consensus_param_updates = 5;
 
   enum ProposalStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
+}
+
+message ResponseExtendVote {
+  tendermint.types.VoteExtension vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  VerifyStatus status = 1;
+
+  enum VerifyStatus {
     UNKNOWN = 0;
     ACCEPT  = 1;
     REJECT  = 2;
