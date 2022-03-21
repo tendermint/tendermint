@@ -131,9 +131,9 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		// containing vote extension
 		5: {
 			"test_chain_id", &Vote{
-				Height:         1,
-				Round:          1,
-				Extension:      []byte("signed"),
+				Height:    1,
+				Round:     1,
+				Extension: []byte("signed"),
 			},
 			[]byte{
 				0x2e,                                   // length
