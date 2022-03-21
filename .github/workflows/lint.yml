@@ -7,23 +7,29 @@ on:
   push:
     branches:
       - master
+permissions:
+  contents: read
+
 jobs:
   golangci:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for golangci/golangci-lint-action to fetch pull requests
     name: golangci-lint
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: '^1.17'
-      - uses: technote-space/get-diff-action@v6.0.1
+      - uses: technote-space/get-diff-action@832a70d288f9623f9af054e9f5d8f52df7492c0a # v6.0.1
         with:
           PATTERNS: |
             **/**.go
             go.mod
             go.sum
-      - uses: golangci/golangci-lint-action@v3.1.0
+      - uses: golangci/golangci-lint-action@b517f99ae23d86ecc4c0dec08dcf48d2336abc29 # v3.1.0
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.44

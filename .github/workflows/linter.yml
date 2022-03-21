@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
       - name: Lint Code Base
-        uses: docker://github/super-linter:v4
+        uses: docker://github/super-linter@sha256:a39073f3991044b0f0280e2eab2ff489ee62005c06d2ccc3c33d05a6b0cf1680 # v4
         env:
           VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: master

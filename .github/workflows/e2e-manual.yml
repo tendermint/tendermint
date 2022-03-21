@@ -4,6 +4,9 @@ name: e2e-manual
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   e2e-nightly-test:
     # Run parallel jobs for the listed testnet groups (must match the
@@ -15,11 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: '1.17'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
 
       - name: Build
         working-directory: test/e2e

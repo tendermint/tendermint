@@ -9,15 +9,18 @@ on:
     paths:
       - "test/fuzz/**/*.go"
 
+permissions:
+  contents: read
+
 jobs:
   fuzz-nightly-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: '1.17'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
 
       - name: Install go-fuzz
         working-directory: test/fuzz
@@ -39,14 +42,14 @@ jobs:
         continue-on-error: true
 
       - name: Archive crashers
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2 # v2
         with:
           name: crashers
           path: test/fuzz/**/crashers
           retention-days: 3
 
       - name: Archive suppressions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@82c141cc518b40d92cc801eee768e7aafc9c2fa2 # v2
         with:
           name: suppressions
           path: test/fuzz/**/suppressions
@@ -61,6 +64,8 @@ jobs:
       crashers-count: ${{ steps.set-crashers-count.outputs.count }}
 
   fuzz-nightly-fail:
+    permissions:
+      contents: none
     needs: fuzz-nightly-test
     if: ${{ needs.fuzz-nightly-test.outputs.crashers-count != 0 }}
     runs-on: ubuntu-latest

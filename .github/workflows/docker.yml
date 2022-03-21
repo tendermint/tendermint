@@ -9,11 +9,14 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"  # Push events to matching v*, i.e. v1.0, v20.15.10
       - "v[0-9]+.[0-9]+.[0-9]+-rc*"  # Push events to matching v*, i.e. v1.0-rc1, v20.15.10-rc5
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
       - name: Prepare
         id: prep
         run: |
@@ -34,22 +37,22 @@ jobs:
           echo ::set-output name=tags::${TAGS}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@master
+        uses: docker/setup-qemu-action@95bd86577812b34f1db6d5e57b728cb63b9aa388 # master
         with:
           platforms: all
 
       - name: Set up Docker Build
-        uses: docker/setup-buildx-action@v1.6.0
+        uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25 # v1.6.0
 
       - name: Login to DockerHub
         if: ${{ github.event_name != 'pull_request' }}
-        uses: docker/login-action@v1.14.1
+        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # v1.14.1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Publish to Docker Hub
-        uses: docker/build-push-action@v2.9.0
+        uses: docker/build-push-action@7f9d37fa544684fb73bfe4835ed7214c255ce02b # v2.9.0
         with:
           context: .
           file: ./DOCKER/Dockerfile

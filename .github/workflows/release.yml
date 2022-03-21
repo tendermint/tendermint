@@ -7,28 +7,33 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"  # Push events to matching v*, i.e. v1.0, v20.15.10
 
+permissions:
+  contents: read
+
 jobs:
   goreleaser:
+    permissions:
+      contents: write  # for goreleaser/goreleaser-action to create a GitHub release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: '1.17'
 
       - name: Build
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@b9169ea22c1ccccedd39ec5d5898be710305f8eb # v2
         if: ${{ github.event_name == 'pull_request' }}
         with:
           version: latest
           args: build --skip-validate   # skip validate skips initial sanity checks in order to be able to fully run
 
       - name: Release
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@b9169ea22c1ccccedd39ec5d5898be710305f8eb # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           version: latest

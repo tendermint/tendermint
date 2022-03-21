@@ -9,8 +9,14 @@ on:
       - master
       - release/**
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for technote-space/get-diff-action to get git reference
     name: Build
     runs-on: ubuntu-latest
     strategy:
@@ -20,11 +26,11 @@ jobs:
         goos: ["linux"]
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: "1.17"
-      - uses: actions/checkout@v3
-      - uses: technote-space/get-diff-action@v6.0.1
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
+      - uses: technote-space/get-diff-action@832a70d288f9623f9af054e9f5d8f52df7492c0a # v6.0.1
         with:
           PATTERNS: |
             **/**.go
@@ -37,15 +43,18 @@ jobs:
         if: "env.GIT_DIFF != ''"
 
   test_abci_cli:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for technote-space/get-diff-action to get git reference
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: "1.17"
-      - uses: actions/checkout@v3
-      - uses: technote-space/get-diff-action@v6.0.1
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
+      - uses: technote-space/get-diff-action@832a70d288f9623f9af054e9f5d8f52df7492c0a # v6.0.1
         with:
           PATTERNS: |
             **/**.go
@@ -59,15 +68,18 @@ jobs:
         if: "env.GIT_DIFF != ''"
 
   test_apps:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for technote-space/get-diff-action to get git reference
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
         with:
           go-version: "1.17"
-      - uses: actions/checkout@v3
-      - uses: technote-space/get-diff-action@v6.0.1
+      - uses: actions/checkout@b0e28b5ac45a892f91e7d036f8200cf5ed489415 # v3
+      - uses: technote-space/get-diff-action@832a70d288f9623f9af054e9f5d8f52df7492c0a # v6.0.1
         with:
           PATTERNS: |
             **/**.go
