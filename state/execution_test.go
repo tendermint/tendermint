@@ -639,8 +639,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 }
 
 // TestPrepareProposalAddedTxsIncluded tests that any transactions marked as ADDED
-// in the prepare proposal response are included in the block. The test also
-// ensures that any transactions added are also checked into the mempool.
+// in the prepare proposal response are included in the block.
 func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	const height = 2
 
@@ -653,7 +652,6 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	txs := factory.MakeTenTxs(height)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
-	mp.On("CheckTx", mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
 	trs := txsToTxRecords(types.Txs(txs))
 	trs[0].Action = abci.TxRecord_ADDED
@@ -686,8 +684,6 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	require.Equal(t, txs[1], block.Data.Txs[1])
 
 	mp.AssertExpectations(t)
-	mp.AssertCalled(t, "CheckTx", types.Tx(trs[0].Tx), mock.Anything, mock.Anything)
-	mp.AssertCalled(t, "CheckTx", types.Tx(trs[1].Tx), mock.Anything, mock.Anything)
 }
 
 // TestPrepareProposalReorderTxs tests that CreateBlock produces a block with transactions

@@ -149,11 +149,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
 		}
 	}
-	for _, atx := range txrSet.AddedTxs() {
-		if err := blockExec.mempool.CheckTx(atx, nil, mempool.TxInfo{}); err != nil {
-			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
-		}
-	}
 	itxs := txrSet.IncludedTxs()
 	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
 }

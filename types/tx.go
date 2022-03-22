@@ -172,11 +172,6 @@ func (t TxRecordSet) IncludedTxs() []Tx {
 	return t.included
 }
 
-// AddedTxs returns the transactions added by the application.
-func (t TxRecordSet) AddedTxs() []Tx {
-	return t.added
-}
-
 // RemovedTxs returns the transactions marked for removal by the application.
 func (t TxRecordSet) RemovedTxs() []Tx {
 	return t.removed
