@@ -7,6 +7,7 @@ import (
 	"fmt"
 	mrand "math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -279,50 +280,44 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 }
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
-	app := kvstore.NewApplication()
-	cc := abciclient.NewLocalCreator(app)
-	wcfg := config.DefaultConfig()
-	wcfg.Mempool.KeepInvalidTxsInCache = true
-	mp, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
-	defer cleanup()
+	testCases := []bool{true, false}
 
-	// 1. An invalid transaction must remain in the cache after Update
-	{
-		a := make([]byte, 8)
-		binary.BigEndian.PutUint64(a, 0)
+	for _, keepInvalidTxs := range testCases {
+		t.Run(strconv.FormatBool(keepInvalidTxs), func(t *testing.T) {
+			app := kvstore.NewApplication()
+			cc := abciclient.NewLocalCreator(app)
+			wcfg := config.DefaultConfig()
+			wcfg.Mempool.KeepInvalidTxsInCache = keepInvalidTxs
+			mp, cleanup := newMempoolWithAppAndConfig(cc, wcfg)
+			defer cleanup()
 
-		b := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, 1)
+			valid := make([]byte, 8)
+			binary.BigEndian.PutUint64(valid, 0)
 
-		err := mp.CheckTx(context.Background(), b, nil, mempool.TxInfo{})
-		require.NoError(t, err)
+			invalid := make([]byte, 8)
+			binary.BigEndian.PutUint64(invalid, 1)
 
-		// simulate new block
-		_ = app.DeliverTx(abci.RequestDeliverTx{Tx: a})
-		_ = app.DeliverTx(abci.RequestDeliverTx{Tx: b})
-		err = mp.Update(1, []types.Tx{a, b},
-			[]*abci.ResponseDeliverTx{{Code: abci.CodeTypeOK}, {Code: 2}}, nil, nil)
-		require.NoError(t, err)
+			// CheckTx will add the transaction to cache as soon ass app.CheckTX returns status OK (which it does)
+			err := mp.CheckTx(context.Background(), invalid, nil, mempool.TxInfo{})
+			require.NoError(t, err)
+			added := mp.cache.Push(invalid)
+			require.False(t, added, "tx should be added to cache in mp.CheckTx")
 
-		// a must be added to the cache
-		err = mp.CheckTx(context.Background(), a, nil, mempool.TxInfo{})
-		require.NoError(t, err)
+			// simulate new block
+			_ = app.DeliverTx(abci.RequestDeliverTx{Tx: valid})
+			_ = app.DeliverTx(abci.RequestDeliverTx{Tx: invalid})
+			err = mp.Update(1, []types.Tx{valid, invalid}, []*abci.ResponseDeliverTx{{Code: abci.CodeTypeOK}, {Code: 2}}, nil, nil)
+			require.NoError(t, err)
 
-		// b must remain in the cache
-		err = mp.CheckTx(context.Background(), b, nil, mempool.TxInfo{})
-		require.NoError(t, err)
-	}
+			// Valid transaction should be in the cache and not removed by mp.Update()
+			added = mp.cache.Push(valid)
+			assert.False(t, added)
 
-	// 2. An invalid transaction must remain in the cache
-	{
-		a := make([]byte, 8)
-		binary.BigEndian.PutUint64(a, 0)
-
-		// remove a from the cache to test (2)
-		mp.cache.Remove(a)
-
-		err := mp.CheckTx(context.Background(), a, nil, mempool.TxInfo{})
-		require.NoError(t, err)
+			// With  when KeepInvalidTxsInCache = false, invalid transaction is removed
+			// on mp.Update() and needs to be re-added
+			added = mp.cache.Push(invalid)
+			assert.Equal(t, !keepInvalidTxs, added)
+		})
 	}
 }
 

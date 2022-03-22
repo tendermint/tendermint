@@ -251,7 +251,7 @@ func (mem *CListMempool) CheckTx(
 			}
 		}
 
-		mem.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
+		mem.logger.Debug("tx exists already in cache", "tx", tx.Hash())
 		return nil
 	}
 
