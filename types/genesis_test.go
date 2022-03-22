@@ -78,7 +78,7 @@ func TestBasicGenesisDoc(t *testing.T) {
 					"vote": "30000000000",
 					"vote_delta": "50000000",
 					"commit": "10000000000",
-					"enable_commit_timeout_bypass": false
+					"bypass_commit_timeout": false
 				},
 				"validator": {"pub_key_types":["ed25519"]},
 				"block": {"max_bytes": "100"},

@@ -93,7 +93,7 @@ type TimeoutParams struct {
 	Vote                      time.Duration `json:"vote,string"`
 	VoteDelta                 time.Duration `json:"vote_delta,string"`
 	Commit                    time.Duration `json:"commit,string"`
-	EnableCommitTimeoutBypass bool          `json:"enable_commit_timeout_bypass"`
+	BypassCommitTimeout bool          `json:"bypass_commit_timeout"`
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -157,7 +157,7 @@ func DefaultTimeoutParams() TimeoutParams {
 		Vote:                      1000 * time.Millisecond,
 		VoteDelta:                 500 * time.Millisecond,
 		Commit:                    1000 * time.Millisecond,
-		EnableCommitTimeoutBypass: false,
+		BypassCommitTimeout: false,
 	}
 }
 
@@ -346,7 +346,7 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 		if params2.Timeout.Commit != nil {
 			res.Timeout.Commit = *params2.Timeout.GetCommit()
 		}
-		res.Timeout.EnableCommitTimeoutBypass = params2.Timeout.GetEnableCommitTimeoutBypass()
+		res.Timeout.BypassCommitTimeout = params2.Timeout.GetBypassCommitTimeout()
 	}
 	return res
 }
@@ -378,7 +378,7 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 			Vote:                      &params.Timeout.Vote,
 			VoteDelta:                 &params.Timeout.VoteDelta,
 			Commit:                    &params.Timeout.Commit,
-			EnableCommitTimeoutBypass: params.Timeout.EnableCommitTimeoutBypass,
+			BypassCommitTimeout: params.Timeout.BypassCommitTimeout,
 		},
 	}
 }
@@ -425,7 +425,7 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 		if pbParams.Timeout.Commit != nil {
 			c.Timeout.Commit = *pbParams.Timeout.GetCommit()
 		}
-		c.Timeout.EnableCommitTimeoutBypass = pbParams.Timeout.EnableCommitTimeoutBypass
+		c.Timeout.BypassCommitTimeout = pbParams.Timeout.BypassCommitTimeout
 	}
 	return c
 }

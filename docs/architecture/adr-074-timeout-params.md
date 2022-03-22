@@ -149,7 +149,7 @@ message TimeoutParams {
  google.protobuf.Duration vote = 3;
  google.protobuf.Duration vote_delta = 4;
  google.protobuf.Duration commit = 5;
- bool enable_commit_timeout_bypass = 6;
+ bool bypass_commit_timeout = 6;
 }
 ```
 

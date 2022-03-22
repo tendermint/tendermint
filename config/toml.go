@@ -608,7 +608,7 @@ var testGenesisFmt = `{
 			"vote": "30000000000",
 			"vote_delta": "50000000",
 			"commit": "10000000000",
-			"enable_commit_timeout_bypass": false
+			"bypass_commit_timeout": false
 		},
 		"evidence": {
 			"max_age_num_blocks": "100000",

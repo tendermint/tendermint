@@ -210,7 +210,7 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 			Vote:                      args.vote,
 			VoteDelta:                 args.voteDelta,
 			Commit:                    args.commit,
-			EnableCommitTimeoutBypass: args.enableCommitTimeoutBypass,
+			BypassCommitTimeout: args.enableCommitTimeoutBypass,
 		},
 	}
 }
@@ -282,7 +282,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					Vote:                      durationPtr(5 * time.Second),
 					VoteDelta:                 durationPtr(400 * time.Millisecond),
 					Commit:                    durationPtr(time.Minute),
-					EnableCommitTimeoutBypass: true,
+					BypassCommitTimeout: true,
 				},
 			},
 			updatedParams: makeParams(makeParamsArgs{
