@@ -35,6 +35,27 @@ type RPCFunc struct {
 	ws       bool          // websocket only
 }
 
+// Call invokes rf with the given arguments.
+// MJF :: fix context plumbing.
+func (rf *RPCFunc) Call(ctx context.Context, args []reflect.Value) (interface{}, error) {
+	returns := rf.f.Call(args)
+
+	// Case 1: There is no non-error result type.
+	if rf.result == nil {
+		if oerr := returns[0].Interface(); oerr != nil {
+			return nil, oerr.(error)
+		}
+		return nil, nil
+	}
+
+	// Case 2: There is a non-error result.
+	if oerr := returns[1].Interface(); oerr != nil {
+		// In case of error, report the error and ignore the result.
+		return nil, oerr.(error)
+	}
+	return returns[0].Interface(), nil
+}
+
 // NewRPCFunc constructs an RPCFunc for f, which must be a function whose type
 // signature matches one of these schemes:
 //

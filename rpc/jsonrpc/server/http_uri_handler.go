@@ -33,10 +33,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			return
 		}
 		jreq := rpctypes.NewRequest(uriReqID)
-		outs := rpcFunc.f.Call(args)
-
-		logger.Debug("HTTPRestRPC", "method", req.URL.Path, "args", args, "returns", outs)
-		result, err := unreflectResult(outs)
+		result, err := rpcFunc.Call(ctx, args)
 		if err == nil {
 			writeHTTPResponse(w, logger, jreq.MakeResponse(result))
 		} else {
