@@ -88,11 +88,11 @@ type SynchronyParams struct {
 
 // TimeoutParams configure the timings of the steps of the Tendermint consensus algorithm.
 type TimeoutParams struct {
-	Propose                   time.Duration `json:"propose,string"`
-	ProposeDelta              time.Duration `json:"propose_delta,string"`
-	Vote                      time.Duration `json:"vote,string"`
-	VoteDelta                 time.Duration `json:"vote_delta,string"`
-	Commit                    time.Duration `json:"commit,string"`
+	Propose             time.Duration `json:"propose,string"`
+	ProposeDelta        time.Duration `json:"propose_delta,string"`
+	Vote                time.Duration `json:"vote,string"`
+	VoteDelta           time.Duration `json:"vote_delta,string"`
+	Commit              time.Duration `json:"commit,string"`
 	BypassCommitTimeout bool          `json:"bypass_commit_timeout"`
 }
 
@@ -152,11 +152,11 @@ func DefaultSynchronyParams() SynchronyParams {
 
 func DefaultTimeoutParams() TimeoutParams {
 	return TimeoutParams{
-		Propose:                   3000 * time.Millisecond,
-		ProposeDelta:              500 * time.Millisecond,
-		Vote:                      1000 * time.Millisecond,
-		VoteDelta:                 500 * time.Millisecond,
-		Commit:                    1000 * time.Millisecond,
+		Propose:             3000 * time.Millisecond,
+		ProposeDelta:        500 * time.Millisecond,
+		Vote:                1000 * time.Millisecond,
+		VoteDelta:           500 * time.Millisecond,
+		Commit:              1000 * time.Millisecond,
 		BypassCommitTimeout: false,
 	}
 }
@@ -373,11 +373,11 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 			Precision:    &params.Synchrony.Precision,
 		},
 		Timeout: &tmproto.TimeoutParams{
-			Propose:                   &params.Timeout.Propose,
-			ProposeDelta:              &params.Timeout.ProposeDelta,
-			Vote:                      &params.Timeout.Vote,
-			VoteDelta:                 &params.Timeout.VoteDelta,
-			Commit:                    &params.Timeout.Commit,
+			Propose:             &params.Timeout.Propose,
+			ProposeDelta:        &params.Timeout.ProposeDelta,
+			Vote:                &params.Timeout.Vote,
+			VoteDelta:           &params.Timeout.VoteDelta,
+			Commit:              &params.Timeout.Commit,
 			BypassCommitTimeout: params.Timeout.BypassCommitTimeout,
 		},
 	}

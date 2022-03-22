@@ -205,11 +205,11 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 			MessageDelay: args.messageDelay,
 		},
 		Timeout: TimeoutParams{
-			Propose:                   args.propose,
-			ProposeDelta:              args.proposeDelta,
-			Vote:                      args.vote,
-			VoteDelta:                 args.voteDelta,
-			Commit:                    args.commit,
+			Propose:             args.propose,
+			ProposeDelta:        args.proposeDelta,
+			Vote:                args.vote,
+			VoteDelta:           args.voteDelta,
+			Commit:              args.commit,
 			BypassCommitTimeout: args.enableCommitTimeoutBypass,
 		},
 	}
@@ -277,11 +277,11 @@ func TestConsensusParamsUpdate(t *testing.T) {
 			}),
 			updates: &tmproto.ConsensusParams{
 				Timeout: &tmproto.TimeoutParams{
-					Propose:                   durationPtr(2 * time.Second),
-					ProposeDelta:              durationPtr(400 * time.Millisecond),
-					Vote:                      durationPtr(5 * time.Second),
-					VoteDelta:                 durationPtr(400 * time.Millisecond),
-					Commit:                    durationPtr(time.Minute),
+					Propose:             durationPtr(2 * time.Second),
+					ProposeDelta:        durationPtr(400 * time.Millisecond),
+					Vote:                durationPtr(5 * time.Second),
+					VoteDelta:           durationPtr(400 * time.Millisecond),
+					Commit:              durationPtr(time.Minute),
 					BypassCommitTimeout: true,
 				},
 			},
