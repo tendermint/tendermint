@@ -206,10 +206,10 @@ func (r *Reactor) OnStart() error {
 		}
 	}
 
-	go r.processStateCh()
-	go r.processDataCh()
-	go r.processVoteCh()
-	go r.processVoteSetBitsCh()
+	go r.processMsgCh(r.stateCh, r.stateCloseCh)
+	go r.processMsgCh(r.dataCh, r.closeCh)
+	go r.processMsgCh(r.voteCh, r.closeCh)
+	go r.processMsgCh(r.voteSetBitsCh, r.closeCh)
 	go r.processPeerUpdates()
 
 	return nil
@@ -1033,9 +1033,7 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.NewRoundStep:
-		r.state.mtx.RLock()
-		initialHeight := r.state.state.InitialHeight
-		r.state.mtx.RUnlock()
+		initialHeight := r.state.InitialHeight()
 
 		if err := msgI.(*NewRoundStepMessage).ValidateHeight(initialHeight); err != nil {
 			r.Logger.Error("peer sent us an invalid msg", "msg", msg, "err", err)
@@ -1051,9 +1049,8 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 		ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage))
 
 	case *tmcons.VoteSetMaj23:
-		r.state.mtx.RLock()
-		height, votes := r.state.Height, r.state.Votes
-		r.state.mtx.RUnlock()
+		height := r.state.CurrentHeight()
+		votes := r.state.HeightVoteSet()
 
 		if height != msg.Height {
 			return nil
@@ -1306,105 +1303,25 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	return err
 }
 
-// processStateCh initiates a blocking process where we listen for and handle
-// envelopes on the StateChannel. Any error encountered during message
-// execution will result in a PeerError being sent on the StateChannel. When
-// the reactor is stopped, we will catch the signal and close the p2p Channel
-// gracefully.
-func (r *Reactor) processStateCh() {
-	defer r.stateCh.Close()
-
+// processMsgCh initiates a blocking process where we listen for and handle
+// envelopes on the StateChannel or DataChannel or VoteChannel or VoteSetBitsChannel.
+// Any error encountered during message execution will result in a PeerError being sent
+// on the StateChannel or DataChannel or VoteChannel or VoteSetBitsChannel.
+// When the reactor is stopped, we will catch the signal and close the p2p Channel gracefully.
+func (r *Reactor) processMsgCh(msgCh *p2p.Channel, closeCh chan struct{}) {
+	defer msgCh.Close()
 	for {
 		select {
-		case envelope := <-r.stateCh.In:
-			if err := r.handleMessage(r.stateCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.stateCh.ID, "envelope", envelope, "err", err)
-				r.stateCh.Error <- p2p.PeerError{
+		case envelope := <-msgCh.In:
+			if err := r.handleMessage(msgCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", msgCh.ID, "envelope", envelope, "err", err)
+				msgCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
 			}
-
-		case <-r.stateCloseCh:
-			r.Logger.Debug("stopped listening on StateChannel; closing...")
-			return
-		}
-	}
-}
-
-// processDataCh initiates a blocking process where we listen for and handle
-// envelopes on the DataChannel. Any error encountered during message
-// execution will result in a PeerError being sent on the DataChannel. When
-// the reactor is stopped, we will catch the signal and close the p2p Channel
-// gracefully.
-func (r *Reactor) processDataCh() {
-	defer r.dataCh.Close()
-
-	for {
-		select {
-		case envelope := <-r.dataCh.In:
-			if err := r.handleMessage(r.dataCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.dataCh.ID, "envelope", envelope, "err", err)
-				r.dataCh.Error <- p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}
-			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on DataChannel; closing...")
-			return
-		}
-	}
-}
-
-// processVoteCh initiates a blocking process where we listen for and handle
-// envelopes on the VoteChannel. Any error encountered during message
-// execution will result in a PeerError being sent on the VoteChannel. When
-// the reactor is stopped, we will catch the signal and close the p2p Channel
-// gracefully.
-func (r *Reactor) processVoteCh() {
-	defer r.voteCh.Close()
-
-	for {
-		select {
-		case envelope := <-r.voteCh.In:
-			if err := r.handleMessage(r.voteCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.voteCh.ID, "envelope", envelope, "err", err)
-				r.voteCh.Error <- p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}
-			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on VoteChannel; closing...")
-			return
-		}
-	}
-}
-
-// processVoteCh initiates a blocking process where we listen for and handle
-// envelopes on the VoteSetBitsChannel. Any error encountered during message
-// execution will result in a PeerError being sent on the VoteSetBitsChannel.
-// When the reactor is stopped, we will catch the signal and close the p2p
-// Channel gracefully.
-func (r *Reactor) processVoteSetBitsCh() {
-	defer r.voteSetBitsCh.Close()
-
-	for {
-		select {
-		case envelope := <-r.voteSetBitsCh.In:
-			if err := r.handleMessage(r.voteSetBitsCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.voteSetBitsCh.ID, "envelope", envelope, "err", err)
-				r.voteSetBitsCh.Error <- p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}
-			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on VoteSetBitsChannel; closing...")
+		case <-closeCh:
+			r.Logger.Debug("stopped listening on a message channel; closing...", "chID", msgCh.ID)
 			return
 		}
 	}
