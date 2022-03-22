@@ -787,9 +787,9 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
 		// cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
-		cs.StartTime = cs.state.ConsensusParams.Timeout.CommitTime(tmtime.Now())
+		cs.StartTime = cs.commitTime(tmtime.Now())
 	} else {
-		cs.StartTime = cs.state.ConsensusParams.Timeout.CommitTime(cs.CommitTime)
+		cs.StartTime = cs.commitTime(cs.CommitTime)
 	}
 
 	cs.Validators = validators
@@ -1262,7 +1262,7 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 	}()
 
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
-	cs.scheduleTimeout(cs.state.ConsensusParams.Timeout.ProposeTimeout(round), height, round, cstypes.RoundStepPropose)
+	cs.scheduleTimeout(cs.proposeTimeout(round), height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -1620,7 +1620,7 @@ func (cs *State) enterPrevoteWait(ctx context.Context, height int64, round int32
 	}()
 
 	// Wait for some more prevotes; enterPrecommit
-	cs.scheduleTimeout(cs.state.ConsensusParams.Timeout.VoteTimeout(round), height, round, cstypes.RoundStepPrevoteWait)
+	cs.scheduleTimeout(cs.voteTimeout(round), height, round, cstypes.RoundStepPrevoteWait)
 }
 
 // Enter: `timeoutPrevote` after any +2/3 prevotes.
@@ -1773,7 +1773,7 @@ func (cs *State) enterPrecommitWait(ctx context.Context, height int64, round int
 	}()
 
 	// wait for some more precommits; enterNewRound
-	cs.scheduleTimeout(cs.state.ConsensusParams.Timeout.VoteTimeout(round), height, round, cstypes.RoundStepPrecommitWait)
+	cs.scheduleTimeout(cs.voteTimeout(round), height, round, cstypes.RoundStepPrecommitWait)
 }
 
 // Enter: +2/3 precommits for block
@@ -2309,7 +2309,7 @@ func (cs *State) addVote(
 		cs.evsw.FireEvent(ctx, types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
-		if cs.state.ConsensusParams.Timeout.BypassCommitTimeout && cs.LastCommit.HasAll() {
+		if cs.bypassCommitTimeout() && cs.LastCommit.HasAll() {
 			// go straight to new round (skip timeout commit)
 			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 			cs.enterNewRound(ctx, cs.Height, 0)
@@ -2422,7 +2422,7 @@ func (cs *State) addVote(
 
 			if !blockID.IsNil() {
 				cs.enterCommit(ctx, height, vote.Round)
-				if cs.state.ConsensusParams.Timeout.BypassCommitTimeout && precommits.HasAll() {
+				if cs.bypassCommitTimeout() && precommits.HasAll() {
 					cs.enterNewRound(ctx, cs.Height, 0)
 				}
 			} else {
@@ -2472,7 +2472,7 @@ func (cs *State) signVote(
 
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
-	timeout := cs.state.ConsensusParams.Timeout.VoteTimeout(cs.Round)
+	timeout := cs.voteTimeout(cs.Round)
 
 	switch msgType {
 	case tmproto.PrecommitType:
@@ -2540,7 +2540,7 @@ func (cs *State) updatePrivValidatorPubKey(rctx context.Context) error {
 		return nil
 	}
 
-	timeout := cs.state.ConsensusParams.Timeout.VoteTimeout(cs.Round)
+	timeout := cs.voteTimeout(cs.Round)
 
 	// no GetPubKey retry beyond the proposal/voting in RetrySignerClient
 	if cs.Step >= cstypes.RoundStepPrecommit && cs.privValidatorType == types.RetrySignerClient {
@@ -2664,6 +2664,49 @@ func repairWalFile(src, dst string) error {
 	}
 
 	return nil
+}
+
+func (cs *State) proposeTimeout(round int32) time.Duration {
+	p := cs.state.ConsensusParams.Timeout.Propose
+	if cs.config.UnsafeProposeTimeoutOverride != nil {
+		p = *cs.config.UnsafeProposeTimeoutOverride
+	}
+	pd := cs.state.ConsensusParams.Timeout.ProposeDelta
+	if cs.config.UnsafeProposeTimeoutDeltaOverride != nil {
+		pd = *cs.config.UnsafeProposeTimeoutDeltaOverride
+	}
+	return time.Duration(
+		p.Nanoseconds()+pd.Nanoseconds()*int64(round),
+	) * time.Nanosecond
+}
+
+func (cs *State) voteTimeout(round int32) time.Duration {
+	v := cs.state.ConsensusParams.Timeout.Vote
+	if cs.config.UnsafeVoteTimeoutOverride != nil {
+		v = *cs.config.UnsafeVoteTimeoutOverride
+	}
+	vd := cs.state.ConsensusParams.Timeout.VoteDelta
+	if cs.config.UnsafeVoteTimeoutDeltaOverride != nil {
+		vd = *cs.config.UnsafeVoteTimeoutDeltaOverride
+	}
+	return time.Duration(
+		v.Nanoseconds()+vd.Nanoseconds()*int64(round),
+	) * time.Nanosecond
+}
+
+func (cs *State) commitTime(t time.Time) time.Time {
+	c := cs.state.ConsensusParams.Timeout.Commit
+	if cs.config.UnsafeCommitTimeoutOverride != nil {
+		c = *cs.config.UnsafeProposeTimeoutOverride
+	}
+	return t.Add(c)
+}
+
+func (cs *State) bypassCommitTimeout() bool {
+	if cs.config.UnsafeBypassCommitTimeoutOverride != nil {
+		return *cs.config.UnsafeBypassCommitTimeoutOverride
+	}
+	return cs.state.ConsensusParams.Timeout.BypassCommitTimeout
 }
 
 func (cs *State) calculateProposalTimestampDifferenceMetric() {
