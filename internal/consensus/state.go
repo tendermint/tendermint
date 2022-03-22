@@ -861,19 +861,35 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			// complicate diagnosing and recovering from the failure.
 			onExit(cs)
 
+			// There are a couple of cases where the we
+			// panic with an error from deeper within the
+			// state machine and in these cases, typically
+			// during a normal shutdown, we can continue
+			// with normal shutdown with safety. These
+			// cases are:
+			if err, ok := r.(error); ok {
+				// TODO(creachadair): In ordinary operation, the WAL autofile should
+				// never be closed. This only happens during shutdown and production
+				// nodes usually halt by panicking. Many existing tests, however,
+				// assume a clean shutdown is possible. Prior to #8111, we were
+				// swallowing the panic in receiveRoutine, making that appear to
+				// work. Filtering this specific error is slightly risky, but should
+				// affect only unit tests. In any case, not re-panicking here only
+				// preserves the pre-existing behavior for this one error type.
+				if errors.Is(err, autofile.ErrAutoFileClosed) {
+					return
+				}
+
+				// don't re-panic if the panic is just an
+				// error and we're already trying to shut down
+				if ctx.Err() != nil {
+					return
+
+				}
+			}
+
 			// Re-panic to ensure the node terminates.
 			//
-			// TODO(creachadair): In ordinary operation, the WAL autofile should
-			// never be closed. This only happens during shutdown and production
-			// nodes usually halt by panicking. Many existing tests, however,
-			// assume a clean shutdown is possible. Prior to #8111, we were
-			// swallowing the panic in receiveRoutine, making that appear to
-			// work. Filtering this specific error is slightly risky, but should
-			// affect only unit tests. In any case, not re-panicking here only
-			// preserves the pre-existing behavior for this one error type.
-			if err, ok := r.(error); ok && errors.Is(err, autofile.ErrAutoFileClosed) {
-				return
-			}
 			panic(r)
 		}
 	}()
