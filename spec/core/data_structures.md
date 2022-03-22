@@ -466,7 +466,7 @@ func SumTruncated(bz []byte) []byte {
 | vote | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration)| Parameter that, along with vote_delta, configures the timeout for the prevote and precommit step of the consensus algorithm. | 3 |
 | vote_delta | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration)| Parameter that, along with vote, configures the timeout for the prevote and precommit step of the consensus algorithm. | 4 |
 | commit | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Parameter that configures how long Tendermint will wait after receiving a quorum of precommits before beginning consensus for the next height.| 5 |
-| enable_commit_timeout_bypass | bool | Parameter that, if enabled, configures the node to proceed immediately to the next height once the node has received all precommits for a block, forgoing the commit timeout. |  6  |
+| bypass_commit_timeout | bool | Parameter that, if enabled, configures the node to proceed immediately to the next height once the node has received all precommits for a block, forgoing the commit timeout. |  6  |
 
 ## Proof
 
