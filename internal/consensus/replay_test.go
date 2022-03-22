@@ -652,12 +652,12 @@ func tempWALWithData(t *testing.T, data []byte) string {
 
 	walFile, err := os.CreateTemp(t.TempDir(), "wal")
 	require.NoError(t, err, "failed to create temp WAL file")
+	t.Cleanup(func() { _ = os.RemoveAll(walFile.Name()) })
 
 	_, err = walFile.Write(data)
 	require.NoError(t, err, "failed to  write to temp WAL file")
 
 	require.NoError(t, walFile.Close(), "failed to close temp WAL file")
-
 	return walFile.Name()
 }
 
