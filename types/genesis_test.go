@@ -72,6 +72,14 @@ func TestBasicGenesisDoc(t *testing.T) {
 			"app_state":{"account_owner": "Bob"},
 			"consensus_params": {
 				"synchrony":  {"precision": "1", "message_delay": "10"},
+				"timeout": {
+					"propose": "30000000000",
+					"propose_delta": "50000000",
+					"vote": "30000000000",
+					"vote_delta": "50000000",
+					"commit": "10000000000",
+					"bypass_commit_timeout": false
+				},
 				"validator": {"pub_key_types":["ed25519"]},
 				"block": {"max_bytes": "100"},
 				"evidence": {"max_age_num_blocks": "100", "max_age_duration": "10"}
