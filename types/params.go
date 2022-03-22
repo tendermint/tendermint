@@ -175,8 +175,9 @@ func (t TimeoutParams) VoteTimeout(round int32) time.Duration {
 	) * time.Nanosecond
 }
 
-// CommitTime returns the amount of time to wait for remaining votes after receiving +2/3 precommits
-// for a single block.
+// CommitTime accepts ti, the time at which the consensus engine received +2/3
+// precommits for a block and returns the point in time at which the consensus
+// engine should begin consensus on the next block.
 func (t TimeoutParams) CommitTime(ti time.Time) time.Time {
 	return ti.Add(t.Commit)
 }
