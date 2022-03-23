@@ -2499,7 +2499,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 	switch vote.Type {
 	case tmproto.PrevoteType:
 		prevotes := cs.Votes.Prevotes(vote.Round)
-		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
+		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.LogString())
 
 		// If +2/3 prevotes for a block or nil for *any* round:
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
@@ -2584,6 +2584,7 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 			"height", vote.Height,
 			"round", vote.Round,
 			"validator", vote.ValidatorProTxHash.String(),
+			"val_index", vote.ValidatorIndex,
 			"data", precommits.LogString())
 
 		blockID, ok := precommits.TwoThirdsMajority()
@@ -2627,7 +2628,6 @@ func (cs *State) signVote(
 	if cs.privValidatorProTxHash == nil {
 		return nil, errProTxHashIsNotSet
 	}
-
 	proTxHash := cs.privValidatorProTxHash
 	valIdx, _ := cs.Validators.GetByProTxHash(proTxHash)
 
@@ -2684,6 +2684,7 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 
 	// If the node not in the validator set, do nothing.
 	if !cs.Validators.HasProTxHash(cs.privValidatorProTxHash) {
+		cs.Logger.Debug("do nothing, node is not a part of validator set")
 		return nil
 	}
 

@@ -468,6 +468,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// we'll update the BitArray capacity later
 		ps.PRS.Prevotes = nil
 		ps.PRS.Precommits = nil
+		ps.PRS.HasCommit = false
 	}
 
 	if psHeight == msg.Height && psRound != msg.Round && msg.Round == psCatchupCommitRound {
@@ -479,7 +480,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	}
 
 	if psHeight != msg.Height {
-		// shift Precommits to LastCommit
+		// Shift Precommits to LastPrecommits.
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
 			ps.PRS.LastPrecommits = ps.PRS.Precommits.Copy()
@@ -538,6 +539,16 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 	}
 
 	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
+}
+
+// ApplyHasCommitMessage updates the peer state for the new commit.
+func (ps *PeerState) ApplyHasCommitMessage(msg *HasCommitMessage) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	if ps.PRS.Height != msg.Height {
+		return
+	}
+	ps.setHasCommit(msg.Height, msg.Round)
 }
 
 // ApplyVoteSetBitsMessage updates the peer state for the bit-array of votes

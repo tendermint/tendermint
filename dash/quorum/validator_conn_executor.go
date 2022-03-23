@@ -264,7 +264,6 @@ func (vc *ValidatorConnExecutor) resolveNodeID(va *types.ValidatorAddress) error
 		)
 		allErrors = multierror.Append(allErrors, fmt.Errorf(method+" error: %w", err))
 	}
-
 	return allErrors
 }
 

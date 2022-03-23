@@ -67,7 +67,6 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	for i, state := range states {
 		privProTxHashes[i] = state.privValidatorProTxHash
 	}
-
 	rts := &reactorTestSuite{
 		network:       p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes, ProTxHashes: privProTxHashes}),
 		states:        make(map[types.NodeID]*State),

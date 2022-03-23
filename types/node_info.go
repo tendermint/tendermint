@@ -203,6 +203,7 @@ func (info NodeInfo) Copy() NodeInfo {
 		Channels:        info.Channels,
 		Moniker:         info.Moniker,
 		Other:           info.Other,
+		ProTxHash:       info.ProTxHash,
 	}
 }
 
@@ -250,6 +251,7 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 			TxIndex:    pb.Other.TxIndex,
 			RPCAddress: pb.Other.RPCAddress,
 		},
+		ProTxHash: pb.ProTxHash,
 	}
 	return dni, nil
 }

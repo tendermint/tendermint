@@ -30,6 +30,9 @@ func (m *Message) Wrap(pb proto.Message) error {
 	case *HasVote:
 		m.Sum = &Message_HasVote{HasVote: msg}
 
+	case *HasCommit:
+		m.Sum = &Message_HasCommit{HasCommit: msg}
+
 	case *VoteSetMaj23:
 		m.Sum = &Message_VoteSetMaj23{VoteSetMaj23: msg}
 
@@ -76,6 +79,9 @@ func (m *Message) Unwrap() (proto.Message, error) {
 
 	case *Message_VoteSetBits:
 		return m.GetVoteSetBits(), nil
+
+	case *Message_HasCommit:
+		return m.GetHasCommit(), nil
 
 	case *Message_Commit:
 		return m.GetCommit(), nil
