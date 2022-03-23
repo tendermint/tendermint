@@ -18,7 +18,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-// PrivValidatorType defines the implemtation types.
+// PrivValidatorType defines the implementation types.
 type PrivValidatorType uint8
 
 const (
@@ -189,6 +189,9 @@ func (pv *MockPV) GetPubKey(ctx context.Context, quorumHash crypto.QuorumHash) (
 
 // GetProTxHash implements PrivValidator.
 func (pv *MockPV) GetProTxHash(ctx context.Context) (crypto.ProTxHash, error) {
+	pv.mtx.RLock()
+	defer pv.mtx.RUnlock()
+
 	if len(pv.ProTxHash) != crypto.ProTxHashSize {
 		return nil, fmt.Errorf("mock proTxHash is invalid size")
 	}

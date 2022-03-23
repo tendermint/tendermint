@@ -209,7 +209,7 @@ func (wal *BaseWAL) WriteSync(msg WALMessage) error {
 
 	if err := wal.FlushAndSync(); err != nil {
 		wal.Logger.Error(`WriteSync failed to flush consensus wal.
-		WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted`,
+		WARNING: may result in creating alternative proposals / votes for the current height if the node restarted`,
 			"err", err)
 		return err
 	}

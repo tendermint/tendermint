@@ -533,7 +533,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			"rejected bad transaction",
 			"priority", wtx.priority,
 			"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
-			"peer_id", txInfo.SenderNodeID,
+			"peer", txInfo.SenderNodeID,
 			"code", checkTxRes.CheckTx.Code,
 			"post_check_err", err,
 		)

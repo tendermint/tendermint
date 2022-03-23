@@ -724,7 +724,7 @@ func makeNodeInfo(
 			TxIndex:    txIndexerStatus,
 			RPCAddress: cfg.RPC.ListenAddress,
 		},
-		ProTxHash: proTxHash,
+		ProTxHash: proTxHash.Copy(),
 	}
 
 	if cfg.P2P.PexReactor {

@@ -8,8 +8,8 @@ import (
 	mrand "math/rand"
 	"regexp"
 	"strings"
-	"sync"
 
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
@@ -17,7 +17,7 @@ import (
 
 // BitArray is a thread-safe implementation of a bit array.
 type BitArray struct {
-	mtx   sync.Mutex
+	mtx   tmsync.RWMutex
 	Bits  int      `json:"bits"`  // NOTE: persisted via reflect, must be exported
 	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }
@@ -50,8 +50,8 @@ func (bA *BitArray) GetIndex(i int) bool {
 	if bA == nil {
 		return false
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	return bA.getIndex(i)
 }
 
@@ -90,8 +90,8 @@ func (bA *BitArray) Copy() *BitArray {
 	if bA == nil {
 		return nil
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	return bA.copy()
 }
 
@@ -126,15 +126,14 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 	if o == nil {
 		return bA.Copy()
 	}
-	bA.mtx.Lock()
-	o.mtx.Lock()
+	o = o.Copy()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	c := bA.copyBits(tmmath.MaxInt(bA.Bits, o.Bits))
 	smaller := tmmath.MinInt(len(bA.Elems), len(o.Elems))
 	for i := 0; i < smaller; i++ {
 		c.Elems[i] |= o.Elems[i]
 	}
-	bA.mtx.Unlock()
-	o.mtx.Unlock()
 	return c
 }
 
@@ -145,12 +144,9 @@ func (bA *BitArray) And(o *BitArray) *BitArray {
 	if bA == nil || o == nil {
 		return nil
 	}
-	bA.mtx.Lock()
-	o.mtx.Lock()
-	defer func() {
-		bA.mtx.Unlock()
-		o.mtx.Unlock()
-	}()
+	o = o.Copy()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	return bA.and(o)
 }
 
@@ -167,8 +163,8 @@ func (bA *BitArray) Not() *BitArray {
 	if bA == nil {
 		return nil // Degenerate
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	return bA.not()
 }
 
@@ -189,8 +185,9 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		// TODO: Decide if we should do 1's complement here?
 		return nil
 	}
-	bA.mtx.Lock()
-	o.mtx.Lock()
+	o = o.Copy()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	// output is the same size as bA
 	c := bA.copyBits(bA.Bits)
 	// Only iterate to the minimum size between the two.
@@ -202,8 +199,6 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		// &^ is and not in golang
 		c.Elems[i] &^= o.Elems[i]
 	}
-	bA.mtx.Unlock()
-	o.mtx.Unlock()
 	return c
 }
 
@@ -212,8 +207,8 @@ func (bA *BitArray) IsEmpty() bool {
 	if bA == nil {
 		return true // should this be opposite?
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	for _, e := range bA.Elems {
 		if e > 0 {
 			return false
@@ -227,8 +222,8 @@ func (bA *BitArray) IsFull() bool {
 	if bA == nil {
 		return true
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 
 	// Check all elements except the last
 	for _, elem := range bA.Elems[:len(bA.Elems)-1] {
@@ -251,9 +246,9 @@ func (bA *BitArray) PickRandom() (int, bool) {
 		return 0, false
 	}
 
-	bA.mtx.Lock()
+	bA.mtx.RLock()
 	trueIndices := bA.getTrueIndices()
-	bA.mtx.Unlock()
+	bA.mtx.RUnlock()
 
 	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
@@ -308,12 +303,14 @@ func (bA *BitArray) StringIndented(indent string) string {
 	if bA == nil {
 		return "nil-BitArray"
 	}
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	return bA.stringIndented(indent)
 }
 
 func (bA *BitArray) CountTrueBits() int {
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 	bits := 0
 	for i := 0; i < bA.Bits; i++ {
 		if bA.getIndex(i) {
@@ -351,8 +348,8 @@ func (bA *BitArray) stringIndented(indent string) string {
 
 // Bytes returns the byte representation of the bits within the bitarray.
 func (bA *BitArray) Bytes() []byte {
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 
 	numBytes := (bA.Bits + 7) / 8
 	bytes := make([]byte, numBytes)
@@ -370,11 +367,9 @@ func (bA *BitArray) Update(o *BitArray) {
 	if bA == nil || o == nil {
 		return
 	}
-
+	o = o.Copy()
 	bA.mtx.Lock()
-	o.mtx.Lock()
 	copy(bA.Elems, o.Elems)
-	o.mtx.Unlock()
 	bA.mtx.Unlock()
 }
 
@@ -385,8 +380,8 @@ func (bA *BitArray) MarshalJSON() ([]byte, error) {
 		return []byte("null"), nil
 	}
 
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	bA.mtx.RLock()
+	defer bA.mtx.RUnlock()
 
 	bits := `"`
 	for i := 0; i < bA.Bits; i++ {
@@ -441,10 +436,7 @@ func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 		return nil
 	}
 
-	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
-
-	bc := bA.copy()
+	bc := bA.Copy()
 	return &tmprotobits.BitArray{Bits: int64(bc.Bits), Elems: bc.Elems}
 }
 

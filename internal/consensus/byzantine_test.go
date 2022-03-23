@@ -232,7 +232,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				lazyNodeState.sendInternalMessage(msgInfo{&BlockPartMessage{lazyNodeState.Height, lazyNodeState.Round, part}, ""})
 			}
 			lazyNodeState.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-			lazyNodeState.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+			lazyNodeState.Logger.Debug("signed proposal block", "block", block)
 		} else if !lazyNodeState.replayMode {
 			lazyNodeState.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}

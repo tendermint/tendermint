@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/rs/zerolog"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -1088,6 +1090,17 @@ func (vals *ValidatorSet) StringIndentedBasic(indent string) string {
 		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)
 
+}
+
+// MarshalZerologObject implements zerolog.LogObjectMarshaler
+func (vals *ValidatorSet) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("proposer", vals.GetProposer().ProTxHash.ShortString())
+	e.Str("quorum_hash", vals.QuorumHash.ShortString())
+	validators := zerolog.Arr()
+	for _, item := range vals.Validators {
+		validators.Object(item)
+	}
+	e.Array("validators", validators)
 }
 
 //-------------------------------------

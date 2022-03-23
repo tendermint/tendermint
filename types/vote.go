@@ -77,8 +77,8 @@ type Vote struct {
 	BlockID            BlockID               `json:"block_id"` // zero if vote is nil.
 	ValidatorProTxHash ProTxHash             `json:"validator_pro_tx_hash"`
 	ValidatorIndex     int32                 `json:"validator_index"`
-	BlockSignature     []byte                `json:"block_signature"`
-	StateSignature     []byte                `json:"state_signature"`
+	BlockSignature     tmbytes.HexBytes      `json:"block_signature"`
+	StateSignature     tmbytes.HexBytes      `json:"state_signature"`
 }
 
 // VoteBlockSignBytes returns the proto-encoding of the canonicalized Vote, for
@@ -216,7 +216,7 @@ func (vote *Vote) Verify(
 	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
 		return nil, nil, fmt.Errorf(
 			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
-			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
+			proTxHash.ShortString(), pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}
 
 	stateSignID := []byte(nil)
@@ -323,6 +323,13 @@ func (vote *Vote) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("vote", vote.String())
 	e.Int64("height", vote.Height)
 	e.Int32("round", vote.Round)
+	e.Str("type", vote.Type.String())
+	e.Str("block_key", vote.BlockID.String())
+	e.Str("block_signature", vote.BlockSignature.ShortString())
+	e.Str("state_signature", vote.StateSignature.ShortString())
+	e.Str("val_proTxHash", vote.ValidatorProTxHash.ShortString())
+	e.Int32("val_index", vote.ValidatorIndex)
+	e.Bool("nil", vote.BlockID.IsZero())
 }
 
 // FromProto converts a proto generetad type to a handwritten type

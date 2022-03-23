@@ -49,7 +49,7 @@ type PeerState struct {
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
-func NewPeerState(logger log.Logger, peerID types.NodeID, proTxHash types.ProTxHash) *PeerState {
+func NewPeerState(logger log.Logger, peerID types.NodeID) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,
@@ -60,8 +60,7 @@ func NewPeerState(logger log.Logger, peerID types.NodeID, proTxHash types.ProTxH
 			LastCommitRound:    -1,
 			CatchupCommitRound: -1,
 		},
-		Stats:     &peerStateStats{},
-		ProTxHash: proTxHash,
+		Stats: &peerStateStats{},
 	}
 }
 
@@ -85,11 +84,18 @@ func (ps *PeerState) IsRunning() bool {
 // GetRoundState returns a shallow copy of the PeerRoundState. There's no point
 // in mutating it since it won't change PeerState.
 func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
+	ps.mtx.RLock()
+	defer ps.mtx.RUnlock()
 
 	prs := ps.PRS.Copy()
 	return &prs
+}
+
+// UpdateRoundState ensures that the update function is called using the blocking mechanism
+func (ps *PeerState) UpdateRoundState(fn func(prs *cstypes.PeerRoundState)) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+	fn(&ps.PRS)
 }
 
 // ToJSON returns a json of PeerState.
@@ -151,14 +157,15 @@ func (ps *PeerState) InitProposalBlockParts(partSetHeader types.PartSetHeader) {
 
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
 func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index int) {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	if ps.PRS.Height != height || ps.PRS.Round != round {
+	prs := ps.GetRoundState()
+	if prs.Height != height || prs.Round != round {
+		ps.logger.Debug("SetHasProposalBlockPart height/round mismatch",
+			"height", height, "round", round, "peer_height", prs.Height, "peer_round", prs.Round)
 		return
 	}
-
+	ps.mtx.Lock()
 	ps.PRS.ProposalBlockParts.SetIndex(index, true)
+	ps.mtx.Unlock()
 }
 
 // PickVoteToSend picks a vote to send to the peer. It will return true if a
@@ -368,10 +375,17 @@ func (ps *PeerState) RecordBlockPart() int {
 
 // BlockPartsSent returns the number of useful block parts the peer has sent us.
 func (ps *PeerState) BlockPartsSent() int {
+	ps.mtx.RLock()
+	defer ps.mtx.RUnlock()
+
+	return ps.Stats.BlockParts
+}
+
+func (ps *PeerState) SetProTxHash(proTxHash types.ProTxHash) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	return ps.Stats.BlockParts
+	ps.ProTxHash = proTxHash.Copy()
 }
 
 // SetHasVote sets the given vote as known by the peer
@@ -386,7 +400,7 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 
 	ps.logger.Debug(
 		"peerState setHasVote",
-		"peer_id", ps.peerID,
+		"peer", ps.peerID,
 		"height", height,
 		"round", round,
 		"peer_height", ps.PRS.Height,
@@ -579,8 +593,8 @@ func (ps *PeerState) String() string {
 
 // StringIndented returns a string representation of the PeerState
 func (ps *PeerState) StringIndented(indent string) string {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
+	ps.mtx.RLock()
+	defer ps.mtx.RUnlock()
 	return fmt.Sprintf(`PeerState{
 %s  Key        %v
 %s  RoundState %v

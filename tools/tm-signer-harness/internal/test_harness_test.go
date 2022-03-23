@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -104,7 +105,7 @@ func TestRemoteSignerTestHarnessSuccessfulRun(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			privKey, err := th.fpv.Key.PrivateKeyForQuorumHash(th.quorumHash)
+			privKey, err := th.fpv.GetPrivateKey(context.TODO(), th.quorumHash)
 			if err != nil {
 				panic(err)
 			}
@@ -138,7 +139,7 @@ func TestRemoteSignerProposalSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			privKey, err := th.fpv.Key.PrivateKeyForQuorumHash(th.quorumHash)
+			privKey, err := th.fpv.GetPrivateKey(context.TODO(), th.quorumHash)
 			if err != nil {
 				panic(err)
 			}
@@ -157,7 +158,7 @@ func TestRemoteSignerVoteSigningFailed(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			privKey, err := th.fpv.Key.PrivateKeyForQuorumHash(th.quorumHash)
+			privKey, err := th.fpv.GetPrivateKey(context.TODO(), th.quorumHash)
 			if err != nil {
 				panic(err)
 			}

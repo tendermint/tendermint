@@ -31,6 +31,8 @@ var (
 	ErrNoHostname = errors.New("no hostname")
 	// ErrNoPort is returned when no valid port is set for the validator address
 	ErrNoPort = errors.New("no port")
+
+	errEmptyAddress = errors.New("address is empty")
 )
 
 // ParseValidatorAddress parses provided address, which should be in `proto://nodeID@host:port` form.
@@ -51,6 +53,9 @@ func stringHasScheme(str string) bool {
 // ParseValidatorAddressWithoutValidation  parses a node address URL into a ValidatorAddress, normalizing it.
 // It does NOT validate parsed address
 func parseValidatorAddressString(urlString string) (ValidatorAddress, error) {
+	if urlString == "" {
+		return ValidatorAddress{}, nil
+	}
 	// url.Parse requires a scheme, so if it fails to parse a scheme-less URL
 	// we try to apply a default scheme.
 	url, err := url.Parse(urlString)
@@ -91,7 +96,9 @@ func parseValidatorAddressString(urlString string) (ValidatorAddress, error) {
 // Validate ensures the validator address is correct.
 // It ignores missing node IDs.
 func (va ValidatorAddress) Validate() error {
-
+	if va.Zero() {
+		return errEmptyAddress
+	}
 	if va.Hostname == "" {
 		return ErrNoHostname
 	}

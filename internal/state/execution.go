@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -274,12 +275,10 @@ func (blockExec *BlockExecutor) ApplyBlockWithLogger(
 	if len(validators) > 0 {
 		blockExec.logger.Debug(
 			"updates to validators",
-			"quorumHash",
-			quorumHash,
-			"thresholdPublicKey",
-			thresholdPublicKey,
-			"updates",
-			types.ValidatorListString(validators),
+			"height", block.Height,
+			"quorumHash", quorumHash.ShortString(),
+			"thresholdPublicKey", tmbytes.HexBytes(thresholdPublicKey.Bytes()).ShortString(),
+			"updates", types.ValidatorListString(validators),
 		)
 	}
 

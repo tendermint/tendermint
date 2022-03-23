@@ -677,7 +677,7 @@ func randVoteSetWithLLMQType(
 }
 
 // Convenience: Return new vote with different validator address/index
-func withValidator(vote *Vote, proTxHash []byte, idx int32) *Vote {
+func withValidator(vote *Vote, proTxHash ProTxHash, idx int32) *Vote {
 	vote = vote.Copy()
 	vote.ValidatorProTxHash = proTxHash
 	vote.ValidatorIndex = idx

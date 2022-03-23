@@ -381,6 +381,11 @@ func (vc *ValidatorConnExecutor) updateConnections() error {
 func (vc *ValidatorConnExecutor) filterAddresses(validators validatorMap) validatorMap {
 	filtered := make(validatorMap, len(validators))
 	for id, validator := range validators {
+		if vc.proTxHash != nil && string(id) == vc.proTxHash.String() {
+			vc.Logger.Debug("validator is ourself", "id", id, "address", validator.NodeAddress.String())
+			continue
+		}
+
 		if err := validator.ValidateBasic(); err != nil {
 			vc.Logger.Debug("validator address is invalid", "id", id, "address", validator.NodeAddress.String())
 			continue

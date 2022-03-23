@@ -1017,7 +1017,7 @@ func randConsensusNetWithPeers(
 
 		proTxHash, _ := privVal.GetProTxHash(context.Background())
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
-		css[i].SetLogger(logger.With("validator", i, "proTxHash", proTxHash.ShortString(), "module", "consensus"))
+		css[i].SetLogger(logger.With("validator", i, "node_proTxHash", proTxHash.ShortString(), "module", "consensus"))
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css, genDoc, peer0Config, func() {

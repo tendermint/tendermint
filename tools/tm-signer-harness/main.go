@@ -150,7 +150,7 @@ func extractKey(tmhome, outputPath string) {
 		os.Exit(1)
 	}
 	quorumHash, _ := fpv.GetFirstQuorumHash(context.Background())
-	privKey, _ := fpv.Key.PrivateKeyForQuorumHash(quorumHash)
+	privKey, _ := fpv.GetPrivateKey(context.TODO(), quorumHash)
 	pkb := privKey.Bytes()
 	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
 		logger.Info("Failed to write private key", "output", outputPath, "err", err)

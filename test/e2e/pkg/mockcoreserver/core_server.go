@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/dashevo/dashd-go/btcjson"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/privval"
@@ -99,7 +100,7 @@ func (c *MockCoreServer) QuorumSign(_ context.Context, cmd btcjson.QuorumCmd) bt
 		bls12381.ReverseBytes(reqID),
 		bls12381.ReverseBytes(msgHash),
 	)
-	privateKey, err := c.FilePV.Key.PrivateKeyForQuorumHash(quorumHash)
+	privateKey, err := c.FilePV.GetPrivateKey(context.TODO(), quorumHash)
 	if err != nil {
 		panic(err)
 	}

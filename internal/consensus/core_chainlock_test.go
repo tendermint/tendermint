@@ -119,7 +119,7 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 		newMockTickerFunc(true),
 		newCounterWithBackwardsCoreChainLocks,
 	)
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	for i := 0; i < nVals; i++ {
 		ticker := NewTimeoutTicker()

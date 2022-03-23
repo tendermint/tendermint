@@ -134,7 +134,7 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 	if added {
 		s.metrics.TotalSnapshots.Add(1)
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
-			"hash", snapshot.Hash)
+			"hash", snapshot.Hash.ShortString())
 	}
 	return added, nil
 }

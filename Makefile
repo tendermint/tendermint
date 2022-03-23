@@ -54,6 +54,11 @@ ifeq (boltdb,$(findstring boltdb,$(TENDERMINT_BUILD_OPTIONS)))
   BUILD_TAGS += boltdb
 endif
 
+# handle deadlock
+ifeq (deadlock,$(findstring deadlock,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += deadlock
+endif
+
 # allow users to pass additional flags via the conventional LDFLAGS variable
 LD_FLAGS += $(LDFLAGS)
 

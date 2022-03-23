@@ -203,8 +203,7 @@ func readPrivKey(keyFilePath string, quorumHash crypto.QuorumHash) (crypto.PrivK
 	if err != nil {
 		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
-
-	return pvKey.PrivateKeyForQuorumHash(quorumHash)
+	return pvKey.PrivateKeys[quorumHash.String()].PrivKey, nil
 }
 
 func makeRandomBlockID() types.BlockID {

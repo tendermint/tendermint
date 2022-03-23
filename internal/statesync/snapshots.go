@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,10 +21,10 @@ type snapshot struct {
 	CoreChainLockedHeight uint32
 	Format                uint32
 	Chunks                uint32
-	Hash                  []byte
+	Hash                  tmbytes.HexBytes
 	Metadata              []byte
 
-	trustedAppHash []byte // populated by light client
+	trustedAppHash tmbytes.HexBytes // populated by light client
 }
 
 // Key generates a snapshot key, used for lookups. It takes into account not only the height and

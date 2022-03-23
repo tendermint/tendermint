@@ -1,6 +1,7 @@
 package p2ptest
 
 import (
+	"bytes"
 	"context"
 	"math/rand"
 	"testing"
@@ -57,13 +58,12 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 		logger:        logger,
 		memoryNetwork: p2p.NewMemoryNetwork(logger, opts.BufferSize),
 	}
-
 	for i := 0; i < opts.NumNodes; i++ {
 		var proTxHash crypto.ProTxHash
 		if i < len(opts.ProTxHashes) {
 			proTxHash = opts.ProTxHashes[i]
 		}
-		node := network.MakeNode(t, proTxHash, opts.NodeOpts)
+		node := network.MakeNode(t, proTxHash, opts.NodeOpts, network.logger.With("validator", i))
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -94,6 +94,7 @@ func (n *Network) Start(t *testing.T) {
 		for _, targetAddress := range dialQueue[i+1:] { // nodes <i already connected
 			targetNode := n.Nodes[targetAddress.NodeID]
 			targetSub := subs[targetAddress.NodeID]
+			// n.logger.Debug("establishing connection", "source", sourceNode, "target", targetNode)
 			added, err := sourceNode.PeerManager.Add(targetAddress)
 			require.NoError(t, err)
 			require.True(t, added)
@@ -103,7 +104,7 @@ func (n *Network) Start(t *testing.T) {
 				require.Equal(t, p2p.PeerUpdate{
 					NodeID:    targetNode.NodeID,
 					Status:    p2p.PeerStatusUp,
-					ProTxHash: targetNode.NodeInfo.ProTxHash,
+					ProTxHash: targetNode.NodeInfo.GetProTxHash(),
 				}, peerUpdate)
 			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
@@ -113,8 +114,9 @@ func (n *Network) Start(t *testing.T) {
 			select {
 			case peerUpdate := <-targetSub.Updates():
 				require.Equal(t, p2p.PeerUpdate{
-					NodeID: sourceNode.NodeID,
-					Status: p2p.PeerStatusUp,
+					NodeID:    sourceNode.NodeID,
+					Status:    p2p.PeerStatusUp,
+					ProTxHash: sourceNode.NodeInfo.GetProTxHash(),
 				}, peerUpdate)
 			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v accepting %v",
@@ -137,6 +139,17 @@ func (n *Network) NodeIDs() []types.NodeID {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// NodeByProTxHash returns a node with the given proTxHash or `nil` if not found.
+func (n *Network) NodeByProTxHash(proTxHash types.ProTxHash) *Node {
+	for _, node := range n.Nodes {
+		if bytes.Equal(node.NodeInfo.ProTxHash, proTxHash) {
+			return node
+		}
+	}
+
+	return nil
 }
 
 // MakeChannels makes a channel on all nodes and returns them, automatically
@@ -232,14 +245,14 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(t *testing.T, proTxHash crypto.ProTxHash, opts NodeOptions) *Node {
+func (n *Network) MakeNode(t *testing.T, proTxHash crypto.ProTxHash, opts NodeOptions, logger log.Logger) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := types.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := types.NodeInfo{
 		NodeID:     nodeID,
 		ListenAddr: "0.0.0.0:0", // FIXME: We have to fake this for now.
 		Moniker:    string(nodeID),
-		ProTxHash:  proTxHash,
+		ProTxHash:  proTxHash.Copy(),
 	}
 
 	transport := n.memoryNetwork.CreateTransport(nodeID)
@@ -255,7 +268,7 @@ func (n *Network) MakeNode(t *testing.T, proTxHash crypto.ProTxHash, opts NodeOp
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		n.logger,
+		logger,
 		p2p.NopMetrics(),
 		nodeInfo,
 		privKey,

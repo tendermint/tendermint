@@ -12,6 +12,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/internal/consensus"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -175,6 +176,8 @@ type Reactor struct {
 	backfilledBlocks   int64
 
 	dashCoreClient dashcore.Client
+
+	csState *consensus.State
 }
 
 // NewReactor returns a reference to a new state sync reactor, which implements
@@ -195,6 +198,7 @@ func NewReactor(
 	tempDir string,
 	ssMetrics *Metrics,
 	client dashcore.Client,
+	csState *consensus.State,
 ) *Reactor {
 	r := &Reactor{
 		chainID:        chainID,
@@ -216,6 +220,7 @@ func NewReactor(
 		providers:      make(map[types.NodeID]*BlockProvider),
 		metrics:        ssMetrics,
 		dashCoreClient: client,
+		csState:        csState,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -327,6 +332,11 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		return sm.State{}, err
 	}
 
+	err = r.publishCommitEvent(commit)
+	if err != nil {
+		return state, err
+	}
+
 	err = r.stateStore.Bootstrap(state)
 	if err != nil {
 		return sm.State{}, fmt.Errorf("failed to bootstrap node with new state: %w", err)
@@ -343,6 +353,13 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	return state, nil
+}
+
+func (r *Reactor) publishCommitEvent(commit *types.Commit) error {
+	if r.csState == nil {
+		return nil
+	}
+	return r.csState.PublishCommitEvent(commit)
 }
 
 // Backfill sequentially fetches, verifies and stores light blocks in reverse

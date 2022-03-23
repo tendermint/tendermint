@@ -9,6 +9,7 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs"
 
@@ -38,7 +39,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	v := vote.ToProto()
 	v2 := vote2.ToProto()
 
-	privKey, err := val.Key.PrivateKeyForQuorumHash(quorumHash)
+	privKey, err := val.GetPrivateKey(context.TODO(), quorumHash)
 	require.NoError(t, err)
 
 	vote.BlockSignature, err = privKey.SignDigest(types.VoteBlockSignID(chainID, v, quorumType, quorumHash))

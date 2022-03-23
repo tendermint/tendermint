@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/rs/zerolog"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
@@ -110,6 +112,20 @@ func (p *Proposal) String() string {
 		p.POLRound,
 		tmbytes.Fingerprint(p.Signature),
 		CanonicalTime(p.Timestamp))
+}
+
+// MarshalZerologObject implements zerolog.LogObjectMarshaler
+func (p *Proposal) MarshalZerologObject(e *zerolog.Event) {
+	if p == nil {
+		return
+	}
+
+	e.Int64("height", p.Height)
+	e.Int32("round", p.Round)
+	e.Str("block_id", p.BlockID.String())
+	e.Int32("pol_round", p.POLRound)
+	e.Str("signature", tmbytes.HexBytes(p.Signature).String())
+	e.Str("timestamp", CanonicalTime(p.Timestamp))
 }
 
 // ProposalBlockSignBytes returns the proto-encoding of the canonicalized Proposal,

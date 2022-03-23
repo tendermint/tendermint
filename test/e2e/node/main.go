@@ -99,6 +99,7 @@ func run(configFile string) error {
 				cfg.PrivValServer,
 				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
 				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+				logger.With("module", dashcore.ModuleName),
 			)
 			if err != nil {
 				return fmt.Errorf("connection to Dash Core RPC failed: %w", err)

@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -55,7 +56,7 @@ func (rs RoundStepType) String() string {
 	case RoundStepApplyCommit:
 		return "RoundStepApplyCommit"
 	default:
-		return "RoundStepUnknown" // Cannot panic.
+		return "RoundStepUnknown(" + strconv.Itoa(int(rs)) + ")" // Cannot panic.
 	}
 }
 

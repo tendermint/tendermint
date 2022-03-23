@@ -176,6 +176,7 @@ func setup(
 		"",
 		m,
 		rts.dashcoreClient,
+		nil,
 	)
 
 	rts.syncer = newSyncer(

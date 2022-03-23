@@ -7,7 +7,6 @@ RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
 RUN apt-get -qq install -y cmake sudo libgmp-dev libleveldb-dev librocksdb-dev >/dev/null
 
 # Set up build directory /src/tenderdash
-ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb,nostrip
 WORKDIR /src/tenderdash
 
 # Install DLV debugger
@@ -27,8 +26,6 @@ RUN make install-bls
 # Copy Tenderdash source
 COPY . .
 
-# Build Tenderdash and install into /usr/bin/tenderdash
-RUN make build && cp build/tenderdash /usr/bin/tenderdash
 COPY test/e2e/docker/entrypoint* /usr/bin/
 
 RUN cd test/e2e && make node && cp build/node /usr/bin/app

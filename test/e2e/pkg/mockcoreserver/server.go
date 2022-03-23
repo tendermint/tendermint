@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 
@@ -30,6 +31,7 @@ type HTTPServer struct {
 	guard    sync.Mutex
 	handlers map[string]*handler
 	httpSrv  *http.Server
+	readyCh  chan struct{}
 }
 
 // On returns a call structure to setup afterwards
@@ -58,10 +60,22 @@ func (s *HTTPServer) Start() {
 		Handler: s.mux,
 	}
 	s.guard.Unlock()
-	err := s.httpSrv.ListenAndServe()
+	l, err := net.Listen("tcp", s.addr)
+	if err != nil {
+		log.Fatalf("unable to listen an address %s: %v", s.addr, err)
+	}
+	go func() {
+		s.readyCh <- struct{}{}
+	}()
+	err = s.httpSrv.Serve(l)
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("unexpected stop a server: %v", err)
 	}
+}
+
+// WaitReady waits a signal in a channel that a server is ready
+func (s *HTTPServer) WaitReady() {
+	<-s.readyCh
 }
 
 // Stop stops http server
@@ -80,6 +94,7 @@ func NewHTTPServer(addr string) *HTTPServer {
 	srv := &HTTPServer{
 		mux:      mux,
 		addr:     addr,
+		readyCh:  make(chan struct{}),
 		handlers: make(map[string]*handler),
 	}
 	return srv

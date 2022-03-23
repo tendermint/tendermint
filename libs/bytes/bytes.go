@@ -101,3 +101,13 @@ func (bz HexBytes) Format(s fmt.State, verb rune) {
 		s.Write([]byte(fmt.Sprintf("%X", []byte(bz))))
 	}
 }
+
+// Copy creates a deep copy of HexBytes. It allocates new buffer and copies data into it.
+func (bz HexBytes) Copy() HexBytes {
+	if bz == nil {
+		return nil
+	}
+	copied := make(HexBytes, len(bz))
+	copy(copied, bz)
+	return copied
+}

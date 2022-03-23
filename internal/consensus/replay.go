@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -84,7 +85,7 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 
 		cs.handleMsg(m, true)
 	case timeoutInfo:
-		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
+		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step.String(), "dur", m.Duration)
 		cs.handleTimeout(m, cs.RoundState)
 	default:
 		return fmt.Errorf("replay: Unknown TimedWALMessage type: %v", reflect.TypeOf(msg.Msg))
@@ -279,7 +280,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) (uint64, error) {
 	if blockHeight < 0 {
 		return 0, fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
 	}
-	appHash := res.LastBlockAppHash
+	appHash := tmbytes.HexBytes(res.LastBlockAppHash)
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,

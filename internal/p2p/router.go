@@ -633,7 +633,8 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
+	proTxHashSetter := SetProTxHashToPeerInfo(peerInfo.ProTxHash)
+	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID, proTxHashSetter) }); err != nil {
 		r.logger.Error("failed to accept connection",
 			"op", "incoming/accepted", "peer", peerInfo.NodeID, "err", err)
 		return

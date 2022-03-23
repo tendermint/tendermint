@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/libs/rand"
 )
 
@@ -70,13 +72,12 @@ func TestValidatorAddress_HostPortProto(t *testing.T) {
 	nodeID := randNodeID()
 
 	tests := []struct {
-		uri          string
-		wantHost     string
-		wantPort     uint16
-		wantProto    string
-		wantNodeID   string
-		wantValid    bool
-		wantParseErr bool
+		uri        string
+		wantHost   string
+		wantPort   uint16
+		wantProto  string
+		wantNodeID string
+		wantError  bool
 	}{
 		{
 			uri:        "tcp://" + nodeID + "@fqdn.address.com:1234",
@@ -84,45 +85,40 @@ func TestValidatorAddress_HostPortProto(t *testing.T) {
 			wantPort:   1234,
 			wantProto:  "tcp",
 			wantNodeID: nodeID,
-			wantValid:  true,
 		},
 		{
-			uri:          "tcp://test@fqdn.address.com:1234",
-			wantHost:     "fqdn.address.com",
-			wantPort:     1234,
-			wantProto:    "tcp",
-			wantValid:    false,
-			wantParseErr: true,
+			uri:       "tcp://test@fqdn.address.com:1234",
+			wantHost:  "fqdn.address.com",
+			wantPort:  1234,
+			wantProto: "tcp",
+			wantError: true,
 		},
 		{
 			uri:       "tcp://127.0.0.1:22",
 			wantHost:  "127.0.0.1",
 			wantPort:  22,
 			wantProto: "tcp",
-			wantValid: true,
 		},
 		{
-			uri:          "",
-			wantValid:    false,
-			wantParseErr: true,
+			uri:       "",
+			wantError: true,
 		},
 		{
-			uri:          "tcp://127.0.0.1",
-			wantHost:     "127.0.0.1",
-			wantPort:     0,
-			wantProto:    "tcp",
-			wantValid:    false,
-			wantParseErr: true,
+			uri:       "tcp://127.0.0.1",
+			wantHost:  "127.0.0.1",
+			wantPort:  0,
+			wantProto: "tcp",
+			wantError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.uri, func(t *testing.T) {
 			va, err := ParseValidatorAddress(tt.uri)
-			if tt.wantParseErr {
+			if tt.wantError {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.EqualValues(t, tt.wantHost, va.Hostname)
 				assert.EqualValues(t, tt.wantPort, va.Port)
 
@@ -131,10 +127,10 @@ func TestValidatorAddress_HostPortProto(t *testing.T) {
 					assert.EqualValues(t, tt.wantNodeID, nodeID)
 				}
 				err = va.Validate()
-				if tt.wantValid {
-					assert.NoError(t, err)
-				} else {
+				if tt.wantError {
 					assert.Error(t, err)
+				} else {
+					require.NoError(t, err)
 				}
 			}
 		})

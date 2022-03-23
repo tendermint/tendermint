@@ -66,7 +66,7 @@ func (info NodeInfo) ID() NodeID {
 }
 
 func (info NodeInfo) GetProTxHash() crypto.ProTxHash {
-	return info.ProTxHash
+	return info.ProTxHash.Copy()
 }
 
 // Validate checks the self-reported DefaultNodeInfo is safe.
@@ -203,7 +203,7 @@ func (info NodeInfo) Copy() NodeInfo {
 		Channels:        info.Channels,
 		Moniker:         info.Moniker,
 		Other:           info.Other,
-		ProTxHash:       info.ProTxHash,
+		ProTxHash:       info.ProTxHash.Copy(),
 	}
 }
 
@@ -222,7 +222,7 @@ func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
 	dni.Version = info.Version
 	dni.Channels = info.Channels
 	dni.Moniker = info.Moniker
-	dni.ProTxHash = info.ProTxHash
+	dni.ProTxHash = info.ProTxHash.Copy()
 	dni.Other = tmp2p.NodeInfoOther{
 		TxIndex:    info.Other.TxIndex,
 		RPCAddress: info.Other.RPCAddress,

@@ -6,7 +6,7 @@ docker:
 	docker build --tag tenderdash/e2e-node -f docker/Dockerfile ../..
 
 node:
-	go build -gcflags="all=-N -l" -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
+	GOTRACEBACK=crash go build -gcflags="all=-N -l" -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
 
 e2e/app/compile:
 	docker run --rm -it --entrypoint "/src/tenderdash/test/e2e/entrypoint.sh" -w "/src/tenderdash/test/e2e" -v $(ROOT_PATH):/src/tenderdash tenderdash/e2e-node

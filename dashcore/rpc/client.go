@@ -5,9 +5,13 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	rpc "github.com/dashevo/dashd-go/rpcclient"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 )
+
+const ModuleName = "rpcclient"
 
 type Client interface {
 	// QuorumInfo returns quorum info
@@ -43,11 +47,12 @@ type Client interface {
 // Handles connection to the underlying dashd instance
 type RPCClient struct {
 	endpoint *rpc.Client
+	logger   log.Logger
 }
 
 // NewRPCClient returns an instance of Client.
 // it will start the endpoint (if not already started)
-func NewRPCClient(host string, username string, password string) (*RPCClient, error) {
+func NewRPCClient(host string, username string, password string, logger log.Logger) (*RPCClient, error) {
 	if host == "" {
 		return nil, fmt.Errorf("unable to establish connection to the Dash Core node")
 	}
@@ -67,7 +72,14 @@ func NewRPCClient(host string, username string, password string) (*RPCClient, er
 		return nil, err
 	}
 
-	dashCoreClient := RPCClient{endpoint: client}
+	if logger == nil {
+		return nil, fmt.Errorf("logger must be set")
+	}
+
+	dashCoreClient := RPCClient{
+		endpoint: client,
+		logger:   logger,
+	}
 
 	return &dashCoreClient, nil
 }
@@ -137,7 +149,7 @@ func (rpcClient *RPCClient) QuorumVerify(
 	signature bytes.HexBytes,
 	quorumHash crypto.QuorumHash,
 ) (bool, error) {
-	fmt.Printf("quorum verify sig %v quorumhash %s", signature, quorumHash)
+	rpcClient.logger.Debug("quorum verify", "sig", signature, "quorumhash", quorumHash)
 	return rpcClient.endpoint.QuorumVerify(
 		quorumType,
 		requestID.String(),

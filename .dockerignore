@@ -4,3 +4,4 @@ test/e2e/networks
 test/logs
 test/p2p/data
 third_party/bls-signatures/build
+*.log

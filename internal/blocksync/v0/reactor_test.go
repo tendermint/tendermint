@@ -343,7 +343,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	newNode := rts.network.MakeNode(t, nil, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),
-	})
+	}, log.TestingLogger())
 	rts.addNode(t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout

@@ -12,6 +12,7 @@ import (
 	"sort"
 
 	bls "github.com/dashpay/bls-signatures/go-bindings"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"

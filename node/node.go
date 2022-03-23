@@ -192,7 +192,7 @@ func makeNode(cfg *config.Config,
 				llmqType = btcjson.LLMQType_100_67
 			}*/
 		if dashCoreRPCClient == nil {
-			rpcClient, err := DefaultDashCoreRPCClient(cfg)
+			rpcClient, err := DefaultDashCoreRPCClient(cfg, logger.With("module", dashcore.ModuleName))
 			if err != nil {
 				return nil, fmt.Errorf("failed to create Dash Core RPC client %w", err)
 			}
@@ -285,7 +285,7 @@ func makeNode(cfg *config.Config,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
 	if len(proTxHash) > 0 {
-		consensusLogger = consensusLogger.With("proTxHash", proTxHash.ShortString())
+		consensusLogger = consensusLogger.With("node_proTxHash", proTxHash.ShortString())
 	}
 	proposedAppVersion := uint64(0)
 	if !stateSync {
@@ -435,6 +435,7 @@ func makeNode(cfg *config.Config,
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 		dashCoreRPCClient,
+		csState,
 	)
 
 	// add the channel descriptors to both the transports
@@ -492,12 +493,12 @@ func makeNode(cfg *config.Config,
 		}
 
 		if cfg.P2P.PexReactor {
-			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger)
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, cfg, sw, logger.With("module", "pex"))
 		}
 	} else {
 		addrBook = nil
 		if cfg.P2P.PexReactor {
-			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
+			pexReactor, err = createPEXReactorV2(cfg, logger.With("module", "pex"), peerManager, router)
 			if err != nil {
 				return nil, err
 			}
@@ -513,7 +514,7 @@ func makeNode(cfg *config.Config,
 	// Start Dash connection executor
 	var validatorConnExecutor *dashquorum.ValidatorConnExecutor
 	if len(proTxHash) > 0 {
-		vcLogger := logger.With("proTxHash", proTxHash.ShortString(), "module", "ValidatorConnExecutor")
+		vcLogger := logger.With("node_proTxHash", proTxHash.ShortString(), "module", "ValidatorConnExecutor")
 		dcm := p2p.NewRouterDashDialer(peerManager, vcLogger)
 		validatorConnExecutor, err = dashquorum.NewValidatorConnExecutor(
 			proTxHash,
@@ -599,11 +600,12 @@ func makeNode(cfg *config.Config,
 }
 
 // DefaultDashCoreRPCClient returns RPC client for the Dash Core node
-func DefaultDashCoreRPCClient(cfg *config.Config) (dashcore.Client, error) {
+func DefaultDashCoreRPCClient(cfg *config.Config, logger log.Logger) (dashcore.Client, error) {
 	return dashcore.NewRPCClient(
 		cfg.PrivValidatorCoreRPCHost,
 		cfg.BaseConfig.PrivValidatorCoreRPCUsername,
 		cfg.BaseConfig.PrivValidatorCoreRPCPassword,
+		logger,
 	)
 }
 

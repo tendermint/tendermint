@@ -106,8 +106,10 @@ func (cm *routerDashDialer) Resolve(va types.ValidatorAddress) (nodeAddress Node
 }
 
 func (cm *routerDashDialer) lookupIPPort(ctx context.Context, ip net.IP, port uint16) (NodeAddress, error) {
-	for nodeID, peer := range cm.peerManager.store.peers {
-		for addr := range peer.AddressInfo {
+	peers := cm.peerManager.Peers()
+	for _, nodeID := range peers {
+		addresses := cm.peerManager.Addresses(nodeID)
+		for _, addr := range addresses {
 			if endpoints, err := addr.Resolve(ctx); err != nil {
 				for _, item := range endpoints {
 					if item.IP.Equal(ip) && item.Port == port {

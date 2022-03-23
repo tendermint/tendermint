@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	sm "github.com/tendermint/tendermint/internal/state"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -213,7 +214,7 @@ func NewStateWithLogger(
 		cs.reconstructLastCommit(state)
 	}
 
-	cs.updateToState(state, nil, logger)
+	cs.updateToState(state, nil)
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
@@ -674,7 +675,7 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 
 // Updates State and increments height to match that of state.
 // The round becomes 0 and cs.Step becomes cstypes.RoundStepNewHeight.
-func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.Logger) {
+func (cs *State) updateToState(state sm.State, commit *types.Commit) {
 	if cs.CommitRound > -1 && 0 < cs.Height && cs.Height != state.LastBlockHeight {
 		panic(fmt.Sprintf(
 			"updateToState() expected state height of %v but found %v",
@@ -704,11 +705,8 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!
 		if state.LastBlockHeight <= cs.state.LastBlockHeight {
-			if logger == nil {
-				logger = cs.Logger
-			}
-			if logger != nil {
-				logger.Debug(
+			if cs.Logger != nil {
+				cs.Logger.Debug(
 					"ignoring updateToState()",
 					"new_height", state.LastBlockHeight+1,
 					"old_height", cs.state.LastBlockHeight+1,
@@ -757,8 +755,8 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit, logger log.
 		height = state.InitialHeight
 	}
 
-	if logger != nil {
-		logger.Debug("updating state height", "newHeight", height)
+	if cs.Logger != nil {
+		cs.Logger.Debug("updating state height", "newHeight", height)
 	}
 
 	// RoundState fields
@@ -935,7 +933,6 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 	)
 
 	msg, peerID := mi.Msg, mi.PeerID
-
 	switch msg := msg.(type) {
 	case *ProposalMessage:
 		// will not cause transition.
@@ -954,10 +951,23 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 				"received block part from wrong round",
 				"height", cs.Height,
 				"cs_round", cs.Round,
+				"block_height", msg.Height,
 				"block_round", msg.Round,
 			)
 			err = nil
 		}
+
+		cs.Logger.Debug(
+			"received block part",
+			"height", cs.Height,
+			"round", cs.Round,
+			"block_height", msg.Height,
+			"block_round", msg.Round,
+			"added", added,
+			"peer", peerID,
+			"index", msg.Part.Index,
+			"error", err,
+		)
 
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
@@ -981,6 +991,16 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
+		cs.Logger.Debug(
+			"received vote",
+			"height", cs.Height,
+			"cs_round", cs.Round,
+			"vote_height", msg.Vote.Height,
+			"vote_round", msg.Vote.Round,
+			"added", added,
+			"peer", peerID,
+			"error", err,
+		)
 	case *CommitMessage:
 		// attempt to add the commit and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
@@ -988,7 +1008,16 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 		if added {
 			cs.statsMsgQueue <- mi
 		}
-
+		cs.Logger.Debug(
+			"received commit",
+			"height", cs.Height,
+			"cs_round", cs.Round,
+			"commit_height", msg.Commit.Height,
+			"commit_round", msg.Commit.Round,
+			"added", added,
+			"peer", peerID,
+			"error", err,
+		)
 	default:
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
 		return
@@ -1007,11 +1036,11 @@ func (cs *State) handleMsg(mi msgInfo, fromReplay bool) {
 }
 
 func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
-	cs.Logger.Debug("received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
+	cs.Logger.Debug("received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step.String())
 
 	// timeouts must be for current height, round, step
 	if ti.Height != rs.Height || ti.Round < rs.Round || (ti.Round == rs.Round && ti.Step < rs.Step) {
-		cs.Logger.Debug("ignoring tock because we are ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step)
+		cs.Logger.Debug("ignoring tock because we are ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step.String())
 		return
 	}
 
@@ -1192,6 +1221,7 @@ func (cs *State) needProofBlock(height int64) bool {
 // Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ):
 // 		after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
+// Caller should hold cs.mtx lock
 func (cs *State) enterPropose(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
@@ -1237,12 +1267,12 @@ func (cs *State) enterPropose(height int64, round int32) {
 
 	// if not a validator, we're done
 	if !cs.Validators.HasProTxHash(proTxHash) {
-		logger.Debug("propose step; this node is not a validator", "proTxHash", proTxHash, "vals", cs.Validators)
+		logger.Debug("propose step; this node is not a validator", "proTxHash", proTxHash.ShortString(), "vals", cs.Validators)
 		return
 	}
 
 	if cs.isProposer(proTxHash) {
-		logger.Debug("propose step; our turn to propose", "proposer", proTxHash, "privValidator",
+		logger.Debug("propose step; our turn to propose", "proposer", proTxHash.ShortString(), "privValidator",
 			cs.privValidator)
 		cs.decideProposal(height, round)
 	} else {
@@ -1289,6 +1319,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
+	quorumHash := validatorsAtProposalHeight.QuorumHash
 
 	proTxHash, err := cs.privValidator.GetProTxHash(context.Background())
 	if err != nil {
@@ -1300,31 +1331,34 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		)
 		return
 	}
-	pubKey, err := cs.privValidator.GetPubKey(context.Background(), validatorsAtProposalHeight.QuorumHash)
+	pubKey, err := cs.privValidator.GetPubKey(context.Background(), quorumHash)
 	if err != nil {
 		cs.Logger.Error(
 			"propose step; failed signing proposal; couldn't get pubKey",
-			"height",
-			height,
-			"round",
-			round,
-			"err",
-			err,
+			"height", height,
+			"round", round,
+			"err", err,
 		)
 		return
 	}
 	messageBytes := types.ProposalBlockSignBytes(cs.state.ChainID, p)
-	cs.Logger.Debug("signing proposal", "height", proposal.Height, "round", proposal.Round,
-		"proposerProTxHash", proTxHash.ShortString(), "publicKey", pubKey.Bytes(),
-		"proposalBytes", messageBytes, "quorumType",
-		validatorsAtProposalHeight.QuorumType, "quorumHash", validatorsAtProposalHeight.QuorumHash)
+	cs.Logger.Debug(
+		"signing proposal",
+		"height", proposal.Height,
+		"round", proposal.Round,
+		"proposer_ProTxHash", proTxHash.ShortString(),
+		"publicKey", tmbytes.HexBytes(pubKey.Bytes()).ShortString(),
+		"proposalBytes", tmbytes.HexBytes(messageBytes).ShortString(),
+		"quorumType", validatorsAtProposalHeight.QuorumType,
+		"quorumHash", quorumHash.ShortString(),
+	)
 	// wait the max amount we would wait for a proposal
 	ctx, cancel := context.WithTimeout(context.TODO(), cs.config.TimeoutPropose)
 	defer cancel()
 	if _, err := cs.privValidator.SignProposal(ctx,
 		cs.state.ChainID,
 		validatorsAtProposalHeight.QuorumType,
-		validatorsAtProposalHeight.QuorumHash,
+		quorumHash,
 		p,
 	); err == nil {
 		proposal.Signature = p.Signature
@@ -1337,7 +1371,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
 		}
 
-		cs.Logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
+		cs.Logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal, "pubKey", pubKey.HexString())
 	} else if !cs.replayMode {
 		cs.Logger.Error("propose step; failed signing proposal", "height", height, "round", round, "err", err)
 	}
@@ -1955,14 +1989,19 @@ func (cs *State) verifyCommit(
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
 	if !blockParts.HasHeader(commit.BlockID.PartSetHeader) {
-		panic("expected ProposalBlockParts header to be commit header")
+		return false, fmt.Errorf("expected ProposalBlockParts header to be commit header")
 	}
 	if !block.HashesTo(commit.BlockID.Hash) {
-		panic("cannot finalize commit; proposal block does not hash to commit hash")
+		cs.Logger.Error("proposal block does not hash to commit hash",
+			"block", block,
+			"commit", commit,
+			"complete_proposal", cs.isProposalComplete(),
+		)
+		return false, fmt.Errorf("cannot finalize commit; proposal block does not hash to commit hash")
 	}
 
 	if err := cs.blockExec.ValidateBlock(cs.state, block); err != nil {
-		panic(fmt.Errorf("+2/3 committed an invalid block: %w", err))
+		return false, fmt.Errorf("+2/3 committed an invalid block: %w", err)
 	}
 	return true, nil
 }
@@ -1980,16 +2019,25 @@ func (cs *State) addCommit(commit *types.Commit) (added bool, err error) {
 	cs.applyCommit(commit, cs.Logger)
 
 	// This will relay the commit to peers
-	if err := cs.eventBus.PublishEventCommit(types.EventDataCommit{Commit: commit}); err != nil {
+	if err := cs.PublishCommitEvent(commit); err != nil {
 		return added, err
 	}
-	cs.evsw.FireEvent(types.EventCommitValue, commit)
 
 	if cs.config.SkipTimeoutCommit {
 		cs.enterNewRound(cs.Height, 0)
 	}
 
 	return added, err
+}
+
+// PublishCommitEvent ...
+func (cs *State) PublishCommitEvent(commit *types.Commit) error {
+	cs.Logger.Debug("publish commit event", "commit", commit)
+	if err := cs.eventBus.PublishEventCommit(types.EventDataCommit{Commit: commit}); err != nil {
+		return err
+	}
+	cs.evsw.FireEvent(types.EventCommitValue, commit)
+	return nil
 }
 
 func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
@@ -2057,7 +2105,7 @@ func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
 	cs.RecordMetrics(height, block)
 
 	// NewHeightStep!
-	cs.updateToState(stateCopy, commit, logger)
+	cs.updateToState(stateCopy, commit)
 
 	fail.Fail() // XXX
 
@@ -2163,7 +2211,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		cs.state.Validators.QuorumHash,
 	)
 
-	proposer := cs.Validators.GetProposer()
+	vset := cs.Validators
+	height := cs.Height
+	proposer := vset.GetProposer()
 
 	//  fmt.Printf("verifying request Id %s signID %s quorum hash %s proposalBlockSignBytes %s\n",
 	//	hex.EncodeToString(proposalRequestId),
@@ -2175,10 +2225,17 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	case proposer.PubKey != nil:
 		// We are part of the validator set
 		if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignID, proposal.Signature) {
-			cs.Logger.Debug("error verifying signature", "height", proposal.Height,
-				"round", proposal.Round, "proposer", proposer.ProTxHash.ShortString(), "signature", proposal.Signature, "pubkey",
-				proposer.PubKey.Bytes(), "quorumType", cs.state.Validators.QuorumType,
-				"quorumHash", cs.state.Validators.QuorumHash, "proposalSignId", proposalBlockSignID)
+			cs.Logger.Debug(
+				"error verifying signature",
+				"height", proposal.Height,
+				"cs_height", height,
+				"round", proposal.Round,
+				"proposal", proposal,
+				"proposer", proposer.ProTxHash.ShortString(),
+				"pubkey", proposer.PubKey.HexString(),
+				"quorumType", cs.state.Validators.QuorumType,
+				"quorumHash", cs.state.Validators.QuorumHash,
+				"proposalSignId", tmbytes.HexBytes(proposalBlockSignID))
 			return ErrInvalidProposalSignature
 		}
 	case cs.Commit != nil && cs.Commit.Height == proposal.Height && cs.Commit.Round == proposal.Round:
@@ -2220,7 +2277,12 @@ func (cs *State) addProposalBlockPart(
 
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
-		cs.Logger.Debug("received block part from wrong height", "height", height, "round", round)
+		cs.Logger.Debug(
+			"received block part from wrong height",
+			"height", cs.Height,
+			"round", cs.Round,
+			"msg_height", height,
+			"msg_round", round)
 		return false, nil
 	}
 
@@ -2230,8 +2292,10 @@ func (cs *State) addProposalBlockPart(
 		// then receive parts from the previous round - not necessarily a bad peer.
 		cs.Logger.Debug(
 			"received a block part when we are not expecting any",
-			"height", height,
-			"round", round,
+			"height", cs.Height,
+			"round", cs.Round,
+			"block_height", height,
+			"block_round", round,
 			"index", part.Index,
 			"peer", peerID,
 		)
@@ -2392,10 +2456,9 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error)
 func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
 	cs.Logger.Debug(
 		"adding vote",
-		"vote_height", vote.Height,
-		"vote_type", vote.Type,
-		"val_index", vote.ValidatorIndex,
-		"cs_height", cs.Height,
+		"vote", vote,
+		"height", cs.Height,
+		"round", cs.Round,
 	)
 
 	// A precommit for the previous height?
@@ -2452,22 +2515,16 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 	// Ignore vote if we do not have public keys to verify votes
 	if !cs.Validators.HasPublicKeys {
 		added = false
-		cs.Logger.Debug("vote received on non-validator, ignoring it", "vote_height", vote.Height,
+		cs.Logger.Debug("vote received on non-validator, ignoring it", "vote", vote,
 			"cs_height", cs.Height, "peer", peerID)
 		return
 	}
 
 	cs.Logger.Debug(
-		"adding vote",
-		"height", vote.Height,
-		"round", vote.Round,
-		"type", vote.Type,
-		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
-		"vote_block_key", vote.BlockID.Key(),
-		"vote_block_signature", vote.BlockSignature,
-		"vote_state_signature", vote.StateSignature,
-		"val_index", vote.ValidatorIndex,
-		"cs_height", cs.Height,
+		"adding vote to vote set",
+		"height", cs.Height,
+		"round", cs.Round,
+		"vote", vote,
 	)
 
 	height := cs.Height
@@ -2476,15 +2533,9 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		if err != nil {
 			cs.Logger.Error(
 				"error adding vote",
-				"vote_height", vote.Height,
-				"vote_round", vote.Round,
-				"vote_type", vote.Type,
-				"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
-				"vote_block_key", vote.BlockID.Key(),
-				"vote_block_signature", vote.BlockSignature,
-				"vote_state_signature", vote.StateSignature,
-				"val_index", vote.ValidatorIndex,
+				"vote", vote,
 				"cs_height", cs.Height,
+				"error", err,
 			)
 		}
 		// Either duplicate, or error upon cs.Votes.AddByIndex()
@@ -2689,10 +2740,11 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	}
 
 	// TODO: pass pubKey to signVote
+	start := time.Now()
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+		cs.Logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "took", time.Since(start).String())
 		return vote
 	}
 

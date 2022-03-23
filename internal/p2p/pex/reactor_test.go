@@ -443,7 +443,7 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 		node := r.network.MakeNode(t, nil, p2ptest.NodeOptions{
 			MaxPeers:     r.opts.MaxPeers,
 			MaxConnected: r.opts.MaxConnected,
-		})
+		}, r.logger.With("validator", i))
 		r.network.Nodes[node.NodeID] = node
 		nodeID := node.NodeID
 		r.pexChannels[nodeID] = node.MakeChannelNoCleanup(

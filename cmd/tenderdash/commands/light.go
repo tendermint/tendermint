@@ -139,7 +139,8 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		light.DashCoreVerification(),
 	}
 
-	dashCoreRPCClient, _ := dashcore.NewRPCClient(dashCoreRPCHost, dashCoreRPCUser, dashCoreRPCPass)
+	rpcLogger := logger.With("module", dashcore.ModuleName)
+	dashCoreRPCClient, _ := dashcore.NewRPCClient(dashCoreRPCHost, dashCoreRPCUser, dashCoreRPCPass, rpcLogger)
 
 	c, err := light.NewHTTPClient(
 		context.Background(),
