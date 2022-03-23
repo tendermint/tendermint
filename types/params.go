@@ -147,7 +147,22 @@ func DefaultSynchronyParams() SynchronyParams {
 		Precision:    505 * time.Millisecond,
 		MessageDelay: 12 * time.Second,
 	}
+}
 
+// SynchronyParamsOrDefaults returns the SynchronyParams, filling in any zero values
+// with the Tendermint defined default values.
+func (s SynchronyParams) SynchronyParamsOrDefaults() SynchronyParams {
+	// TODO: Remove this method and all uses once development on v0.37 begins.
+	// See: https://github.com/tendermint/tendermint/issues/8187
+
+	defaults := DefaultSynchronyParams()
+	if s.Precision == 0 {
+		s.Precision = defaults.Precision
+	}
+	if s.MessageDelay == 0 {
+		s.MessageDelay = defaults.MessageDelay
+	}
+	return s
 }
 
 func DefaultTimeoutParams() TimeoutParams {
@@ -159,6 +174,31 @@ func DefaultTimeoutParams() TimeoutParams {
 		Commit:              1000 * time.Millisecond,
 		BypassCommitTimeout: false,
 	}
+}
+
+// TimeoutParamsOrDefaults returns the SynchronyParams, filling in any zero values
+// with the Tendermint defined default values.
+func (t TimeoutParams) TimeoutParamsOrDefaults() TimeoutParams {
+	// TODO: Remove this method and all uses once development on v0.37 begins.
+	// See: https://github.com/tendermint/tendermint/issues/8187
+
+	defaults := DefaultTimeoutParams()
+	if t.Propose == 0 {
+		t.Propose = defaults.Propose
+	}
+	if t.ProposeDelta == 0 {
+		t.ProposeDelta = defaults.ProposeDelta
+	}
+	if t.Vote == 0 {
+		t.Vote = defaults.Vote
+	}
+	if t.VoteDelta == 0 {
+		t.VoteDelta = defaults.VoteDelta
+	}
+	if t.Commit == 0 {
+		t.Commit = defaults.Commit
+	}
+	return t
 }
 
 // ProposeTimeout returns the amount of time to wait for a proposal.
