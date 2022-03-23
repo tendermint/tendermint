@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -594,6 +595,8 @@ func TestHandshakeReplayAll(t *testing.T) {
 
 	sim := setupSimulator(ctx, t)
 
+	t.Cleanup(leaktest.Check(t))
+
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, 0, m, false)
 	}
@@ -608,6 +611,8 @@ func TestHandshakeReplaySome(t *testing.T) {
 	defer cancel()
 
 	sim := setupSimulator(ctx, t)
+
+	t.Cleanup(leaktest.Check(t))
 
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, 2, m, false)
@@ -638,6 +643,8 @@ func TestHandshakeReplayNone(t *testing.T) {
 	defer cancel()
 
 	sim := setupSimulator(ctx, t)
+
+	t.Cleanup(leaktest.Check(t))
 
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, numBlocks, m, false)
