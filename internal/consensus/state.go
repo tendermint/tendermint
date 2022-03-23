@@ -2668,12 +2668,12 @@ func repairWalFile(src, dst string) error {
 
 func (cs *State) proposeTimeout(round int32) time.Duration {
 	p := cs.state.ConsensusParams.Timeout.Propose
-	if cs.config.UnsafeProposeTimeoutOverride != nil {
-		p = *cs.config.UnsafeProposeTimeoutOverride
+	if cs.config.UnsafeProposeTimeoutOverride != 0 {
+		p = cs.config.UnsafeProposeTimeoutOverride
 	}
 	pd := cs.state.ConsensusParams.Timeout.ProposeDelta
-	if cs.config.UnsafeProposeTimeoutDeltaOverride != nil {
-		pd = *cs.config.UnsafeProposeTimeoutDeltaOverride
+	if cs.config.UnsafeProposeTimeoutDeltaOverride != 0 {
+		pd = cs.config.UnsafeProposeTimeoutDeltaOverride
 	}
 	return time.Duration(
 		p.Nanoseconds()+pd.Nanoseconds()*int64(round),
@@ -2682,12 +2682,12 @@ func (cs *State) proposeTimeout(round int32) time.Duration {
 
 func (cs *State) voteTimeout(round int32) time.Duration {
 	v := cs.state.ConsensusParams.Timeout.Vote
-	if cs.config.UnsafeVoteTimeoutOverride != nil {
-		v = *cs.config.UnsafeVoteTimeoutOverride
+	if cs.config.UnsafeVoteTimeoutOverride != 0 {
+		v = cs.config.UnsafeVoteTimeoutOverride
 	}
 	vd := cs.state.ConsensusParams.Timeout.VoteDelta
-	if cs.config.UnsafeVoteTimeoutDeltaOverride != nil {
-		vd = *cs.config.UnsafeVoteTimeoutDeltaOverride
+	if cs.config.UnsafeVoteTimeoutDeltaOverride != 0 {
+		vd = cs.config.UnsafeVoteTimeoutDeltaOverride
 	}
 	return time.Duration(
 		v.Nanoseconds()+vd.Nanoseconds()*int64(round),
@@ -2696,8 +2696,8 @@ func (cs *State) voteTimeout(round int32) time.Duration {
 
 func (cs *State) commitTime(t time.Time) time.Time {
 	c := cs.state.ConsensusParams.Timeout.Commit
-	if cs.config.UnsafeCommitTimeoutOverride != nil {
-		c = *cs.config.UnsafeProposeTimeoutOverride
+	if cs.config.UnsafeCommitTimeoutOverride != 0 {
+		c = cs.config.UnsafeProposeTimeoutOverride
 	}
 	return t.Add(c)
 }

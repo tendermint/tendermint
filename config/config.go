@@ -969,27 +969,28 @@ type ConsensusConfig struct {
 	// TODO: The following fields are all temporary overrides that should exist only
 	// for the duration of the v0.36 release. The below fields should be completely
 	// removed in the v0.37 release of Tendermint.
+	// See: https://github.com/tendermint/tendermint/issues/8188
 
 	// UnsafeProposeTimeoutOverride provides an unsafe override of the Propose
 	// timeout consensus parameter. It configures how long the consensus engine
 	// will wait to receive a proposal block before prevoting nil.
-	UnsafeProposeTimeoutOverride *time.Duration `mapstructure:"unsafe-propose-timeout-override"`
+	UnsafeProposeTimeoutOverride time.Duration `mapstructure:"unsafe-propose-timeout-override"`
 	// UnsafeProposeTimeoutDeltaOverride provides an unsafe override of the
 	// ProposeDelta timeout consensus parameter. It configures how much the
 	// propose timeout increases with each round.
-	UnsafeProposeTimeoutDeltaOverride *time.Duration `mapstructure:"unsafe-propose-timeout-delta-override"`
+	UnsafeProposeTimeoutDeltaOverride time.Duration `mapstructure:"unsafe-propose-timeout-delta-override"`
 	// UnsafeVoteTimeoutOverride provides an unsafe override of the Vote timeout
 	// consensus parameter. It configures how long the consensus engine will wait
 	// to gather additional votes after receiving +2/3 votes in a round.
-	UnsafeVoteTimeoutOverride *time.Duration `mapstructure:"unsafe-vote-timeout-override"`
+	UnsafeVoteTimeoutOverride time.Duration `mapstructure:"unsafe-vote-timeout-override"`
 	// UnsafeVoteTimeoutDeltaOverride provides an unsafe override of the VoteDelta
 	// timeout consensus parameter. It configures how much the vote timeout
 	// increases with each round.
-	UnsafeVoteTimeoutDeltaOverride *time.Duration `mapstructure:"unsafe-vote-timeout-delta-override"`
+	UnsafeVoteTimeoutDeltaOverride time.Duration `mapstructure:"unsafe-vote-timeout-delta-override"`
 	// UnsafeCommitTimeoutOverride provides an unsafe override of the Commit timeout
 	// consensus parameter. It configures how long the consensus engine will wait
 	// after receiving +2/3 precommits before beginning the next height.
-	UnsafeCommitTimeoutOverride *time.Duration `mapstructure:"unsafe-commit-timeout-override"`
+	UnsafeCommitTimeoutOverride time.Duration `mapstructure:"unsafe-commit-timeout-override"`
 
 	// UnsafeBypassCommitTimeoutOverride provides an unsafe override of the
 	// BypassCommitTimeout consensus parameter. It configures if the consensus
@@ -1041,19 +1042,19 @@ func (cfg *ConsensusConfig) SetWalFile(walFile string) {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *ConsensusConfig) ValidateBasic() error {
-	if cfg.UnsafeProposeTimeoutOverride != nil && *cfg.UnsafeProposeTimeoutOverride < 0 {
+	if cfg.UnsafeProposeTimeoutOverride < 0 {
 		return errors.New("unsafe-propose-timeout-override can't be negative")
 	}
-	if cfg.UnsafeProposeTimeoutDeltaOverride != nil && *cfg.UnsafeProposeTimeoutDeltaOverride < 0 {
+	if cfg.UnsafeProposeTimeoutDeltaOverride < 0 {
 		return errors.New("unsafe-propose-timeout-delta-override can't be negative")
 	}
-	if cfg.UnsafeVoteTimeoutOverride != nil && *cfg.UnsafeVoteTimeoutOverride < 0 {
+	if cfg.UnsafeVoteTimeoutOverride < 0 {
 		return errors.New("unsafe-vote-timeout-override can't be negative")
 	}
-	if cfg.UnsafeVoteTimeoutDeltaOverride != nil && *cfg.UnsafeVoteTimeoutDeltaOverride < 0 {
+	if cfg.UnsafeVoteTimeoutDeltaOverride < 0 {
 		return errors.New("unsafe-vote-timeout-delta-override can't be negative")
 	}
-	if cfg.UnsafeCommitTimeoutOverride != nil && *cfg.UnsafeCommitTimeoutOverride < 0 {
+	if cfg.UnsafeCommitTimeoutOverride < 0 {
 		return errors.New("unsafe-commit-timeout-override can't be negative")
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
