@@ -476,24 +476,29 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
 # This field provides an unsafe override of the Propose timeout consensus parameter.
 # This field configures how long the consensus engine will wait for a proposal block before prevoting nil.
+# If this field is set to a value greater than 0, it will take effect.
 # unsafe-propose-timeout-override =
 
 # This field provides an unsafe override of the ProposeDelta timeout consensus parameter.
 # This field configures how much the propose timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
 # unsafe-propose-timeout-delta-override =
 
 # This field provides an unsafe override of the Vote timeout consensus parameter.
 # This field configures how long the consensus engine will wait after
 # receiving +2/3 votes in a around.
+# If this field is set to a value greater than 0, it will take effect.
 # unsafe-vote-timeout-override =
 
 # This field provides an unsafe override of the VoteDelta timeout consensus parameter.
 # This field configures how much the vote timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
 # unsafe-vote-timeout-delta-override =
 
 # This field provides an unsafe override of the Commit timeout consensus parameter.
 # This field configures how long the consensus engine will wait after receiving
 # +2/3 precommits before beginning the next height.
+# If this field is set to a value greater than 0, it will take effect.
 # unsafe-commit-timeout-override =
 
 # This field provides an unsafe override of the BypassCommitTimeout consensus parameter.
