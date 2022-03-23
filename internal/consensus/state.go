@@ -506,8 +506,8 @@ func (cs *State) OnStop() {
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
 		case <-cs.getOnStopCh():
-		case <-time.After(cs.config.TimeoutCommit):
-			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.config.TimeoutCommit)
+		case <-time.After(cs.state.ConsensusParams.Timeout.Commit):
+			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.state.ConsensusParams.Timeout.Commit)
 		}
 	}
 
@@ -787,9 +787,9 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
 		// cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
-		cs.StartTime = cs.config.Commit(tmtime.Now())
+		cs.StartTime = cs.state.ConsensusParams.Timeout.CommitTime(tmtime.Now())
 	} else {
-		cs.StartTime = cs.config.Commit(cs.CommitTime)
+		cs.StartTime = cs.state.ConsensusParams.Timeout.CommitTime(cs.CommitTime)
 	}
 
 	cs.Validators = validators
@@ -1262,7 +1262,7 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 	}()
 
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
-	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
+	cs.scheduleTimeout(cs.state.ConsensusParams.Timeout.ProposeTimeout(round), height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -1343,7 +1343,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
-	ctxto, cancel := context.WithTimeout(ctx, cs.config.TimeoutPropose)
+	ctxto, cancel := context.WithTimeout(ctx, cs.state.ConsensusParams.Timeout.Propose)
 	defer cancel()
 	if err := cs.privValidator.SignProposal(ctxto, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
@@ -1620,7 +1620,7 @@ func (cs *State) enterPrevoteWait(ctx context.Context, height int64, round int32
 	}()
 
 	// Wait for some more prevotes; enterPrecommit
-	cs.scheduleTimeout(cs.config.Prevote(round), height, round, cstypes.RoundStepPrevoteWait)
+	cs.scheduleTimeout(cs.state.ConsensusParams.Timeout.VoteTimeout(round), height, round, cstypes.RoundStepPrevoteWait)
 }
 
 // Enter: `timeoutPrevote` after any +2/3 prevotes.
@@ -1773,7 +1773,7 @@ func (cs *State) enterPrecommitWait(ctx context.Context, height int64, round int
 	}()
 
 	// wait for some more precommits; enterNewRound
-	cs.scheduleTimeout(cs.config.Precommit(round), height, round, cstypes.RoundStepPrecommitWait)
+	cs.scheduleTimeout(cs.state.ConsensusParams.Timeout.VoteTimeout(round), height, round, cstypes.RoundStepPrecommitWait)
 }
 
 // Enter: +2/3 precommits for block
@@ -2309,7 +2309,7 @@ func (cs *State) addVote(
 		cs.evsw.FireEvent(ctx, types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
-		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+		if cs.state.ConsensusParams.Timeout.BypassCommitTimeout && cs.LastCommit.HasAll() {
 			// go straight to new round (skip timeout commit)
 			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 			cs.enterNewRound(ctx, cs.Height, 0)
@@ -2422,7 +2422,7 @@ func (cs *State) addVote(
 
 			if !blockID.IsNil() {
 				cs.enterCommit(ctx, height, vote.Round)
-				if cs.config.SkipTimeoutCommit && precommits.HasAll() {
+				if cs.state.ConsensusParams.Timeout.BypassCommitTimeout && precommits.HasAll() {
 					cs.enterNewRound(ctx, cs.Height, 0)
 				}
 			} else {
@@ -2472,19 +2472,16 @@ func (cs *State) signVote(
 
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
-	var timeout time.Duration
+	timeout := cs.state.ConsensusParams.Timeout.VoteTimeout(cs.Round)
 
 	switch msgType {
 	case tmproto.PrecommitType:
-		timeout = cs.config.TimeoutPrecommit
 		// if the signedMessage type is for a precommit, add VoteExtension
 		ext, err := cs.blockExec.ExtendVote(ctx, vote)
 		if err != nil {
 			return nil, err
 		}
 		vote.VoteExtension = ext
-	case tmproto.PrevoteType:
-		timeout = cs.config.TimeoutPrevote
 	default:
 		timeout = time.Second
 	}
@@ -2543,12 +2540,7 @@ func (cs *State) updatePrivValidatorPubKey(rctx context.Context) error {
 		return nil
 	}
 
-	var timeout time.Duration
-	if cs.config.TimeoutPrecommit > cs.config.TimeoutPrevote {
-		timeout = cs.config.TimeoutPrecommit
-	} else {
-		timeout = cs.config.TimeoutPrevote
-	}
+	timeout := cs.state.ConsensusParams.Timeout.VoteTimeout(cs.Round)
 
 	// no GetPubKey retry beyond the proposal/voting in RetrySignerClient
 	if cs.Step >= cstypes.RoundStepPrecommit && cs.privValidatorType == types.RetrySignerClient {
