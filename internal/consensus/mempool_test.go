@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -42,7 +43,8 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
-		Power:      10})
+		Power:      10,
+		Params:     factory.ConsensusParams()})
 	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -69,7 +71,8 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
-		Power:      10})
+		Power:      10,
+		Params:     factory.ConsensusParams()})
 	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
@@ -94,7 +97,8 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
-		Power:      10})
+		Power:      10,
+		Params:     factory.ConsensusParams()})
 	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -119,7 +123,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round) // first round at next height
 	checkTxsRange(ctx, t, cs, 0, 1)              // we deliver txs, but don't set a proposal so we get the next round
-	ensureNewTimeout(t, timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
+	ensureNewTimeout(t, timeoutCh, height, round, cs.state.ConsensusParams.Timeout.ProposeTimeout(round).Nanoseconds())
 
 	round++                                      // moving to the next round
 	ensureNewRound(t, newRoundCh, height, round) // wait for the next round
@@ -145,7 +149,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	logger := log.NewNopLogger()
 	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
 		Validators: 1,
-		Power:      10})
+		Power:      10,
+		Params:     factory.ConsensusParams(),
+	})
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -180,7 +186,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
 		Validators: 1,
-		Power:      10})
+		Power:      10,
+		Params:     factory.ConsensusParams()})
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
@@ -310,10 +317,12 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 
 func (app *CounterApplication) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{}
+	return abci.ResponsePrepareProposal{
+		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
+	}
 }
 
 func (app *CounterApplication) ProcessProposal(
 	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
-	return abci.ResponseProcessProposal{Accept: true}
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }

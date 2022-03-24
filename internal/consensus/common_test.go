@@ -546,6 +546,7 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	}
 
 	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
+		Params:     factory.ConsensusParams(),
 		Validators: validators,
 	})
 
@@ -791,7 +792,7 @@ func makeConsensusState(
 	tempDir := t.TempDir()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -850,7 +851,7 @@ func randConsensusNetWithPeers(
 	t.Helper()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, testMinPower)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()

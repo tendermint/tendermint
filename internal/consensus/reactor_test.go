@@ -355,7 +355,7 @@ func TestReactorBasic(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true))
@@ -445,12 +445,12 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, n, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -551,7 +551,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
@@ -574,7 +574,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	// send a tx
 	require.NoError(
 		t,
-		assertMempool(t, states[3].txNotifier).CheckTx(
+		assertMempool(t, states[1].txNotifier).CheckTx(
 			ctx,
 			[]byte{1, 2, 3},
 			nil,
@@ -605,7 +605,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true))
@@ -670,7 +670,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,

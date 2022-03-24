@@ -51,6 +51,37 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
+func (r ResponsePrepareProposal) IsTxStatusUnknown() bool {
+	return r.ModifiedTxStatus == ResponsePrepareProposal_UNKNOWN
+}
+
+func (r ResponsePrepareProposal) IsTxStatusModified() bool {
+	return r.ModifiedTxStatus == ResponsePrepareProposal_MODIFIED
+}
+
+func (r ResponseProcessProposal) IsAccepted() bool {
+	return r.Status == ResponseProcessProposal_ACCEPT
+}
+
+func (r ResponseProcessProposal) IsStatusUnknown() bool {
+	return r.Status == ResponseProcessProposal_UNKNOWN
+}
+
+// IsStatusUnknown returns true if Code is Unknown
+func (r ResponseVerifyVoteExtension) IsStatusUnknown() bool {
+	return r.Status == ResponseVerifyVoteExtension_UNKNOWN
+}
+
+// IsOK returns true if Code is OK
+func (r ResponseVerifyVoteExtension) IsOK() bool {
+	return r.Status == ResponseVerifyVoteExtension_ACCEPT
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResponseVerifyVoteExtension) IsErr() bool {
+	return r.Status != ResponseVerifyVoteExtension_ACCEPT
+}
+
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 
@@ -131,6 +162,16 @@ var _ jsonRoundTripper = (*EventAttribute)(nil)
 
 // -----------------------------------------------
 // construct Result data
+
+func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
+	status := ResponseVerifyVoteExtension_REJECT
+	if ok {
+		status = ResponseVerifyVoteExtension_ACCEPT
+	}
+	return ResponseVerifyVoteExtension{
+		Status: status,
+	}
+}
 
 // deterministicExecTxResult constructs a copy of response that omits
 // non-deterministic fields. The input response is not modified.

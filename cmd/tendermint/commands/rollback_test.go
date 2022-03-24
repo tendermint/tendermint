@@ -53,6 +53,7 @@ func TestRollbackIntegration(t *testing.T) {
 		defer cancel()
 		node2, _, err2 := rpctest.StartTendermint(ctx, cfg, app, rpctest.SuppressStdout)
 		require.NoError(t, err2)
+		t.Cleanup(node2.Wait)
 
 		logger := log.NewNopLogger()
 

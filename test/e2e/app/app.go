@@ -306,7 +306,7 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
 	// None of the transactions are modified by this application.
-	return abci.ResponsePrepareProposal{ModifiedTx: false}
+	return abci.ResponsePrepareProposal{ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED}
 }
 
 // ProcessProposal implements part of the Application interface.
@@ -315,10 +315,10 @@ func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.Re
 	for _, tx := range req.Txs {
 		_, _, err := parseTx(tx)
 		if err != nil {
-			return abci.ResponseProcessProposal{Accept: false}
+			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
 		}
 	}
-	return abci.ResponseProcessProposal{Accept: true}
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }
 
 func (app *Application) Rollback() error {

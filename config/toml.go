@@ -602,6 +602,14 @@ var testGenesisFmt = `{
 			"message_delay": "500000000",
 			"precision": "10000000"
 		},
+		"timeout": {
+			"propose": "30000000",
+			"propose_delta": "50000",
+			"vote": "30000000",
+			"vote_delta": "50000",
+			"commit": "10000000",
+			"bypass_timeout_commit": true
+		},
 		"evidence": {
 			"max_age_num_blocks": "100000",
 			"max_age_duration": "172800000000000",
