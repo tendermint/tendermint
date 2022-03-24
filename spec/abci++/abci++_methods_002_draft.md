@@ -318,8 +318,11 @@ title: Methods
             * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as `ADD`. In this case, Tendermint will add it to the mempool.
         * The Application should be aware that removing and adding transactions may compromise _traceability_.
           > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
-        * If the Application modifies the set of transactions, the modified transactions MUST NOT exceed the configured maximum size `RequestPrepareProposal.max_tx_bytes`.
     * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx_status` to `UNMODIFIED`. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
+    * In order to optimize the block size in busy blockchains, Tendermint might include a list of transactions in `RequestPrepareProposal.txs` whose size
+      in bytes exceeds `RequestPrepareProposal.max_tx_bytes`. In this case:
+        * The Application MUST still abide by the `RequestPrepareProposal.max_tx_bytes` limit in the list of transaction records it returns (excluding those marked as `REMOVE`).
+        * It is _invalid_ to return `ResponsePrepareProposal.modified_tx_status` set to `UNMODIFIED`: Tendermint will panic.
     * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
