@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +25,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -328,6 +326,7 @@ func findProposer(validatorStubs []*validatorStub, proTxHash crypto.ProTxHash) *
 func setupSimulator(t *testing.T) *simulatorTestSuite {
 	t.Helper()
 	cfg := configSetup(t)
+	ctx := context.Background()
 
 	sim := &simulatorTestSuite{
 		Mempool: emptyMempool{},
@@ -386,37 +385,20 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 		vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
-	// HEIGHT 2
-	updatedValidators2, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(
-		css,
-		height,
-		1,
-		false,
-	)
-	height++
-	fmt.Printf("quorum hash is now %X\n", quorumHash2)
-	incrementHeight(vss...)
-	updateTransactions := make([][]byte, len(updatedValidators2)+2)
-	for i := 0; i < len(updatedValidators2); i++ {
-		// start by adding all validator transactions
-		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators2[i].PubKey)
-		require.NoError(t, err)
-		updateTransactions[i] = kvstore.MakeValSetChangeTx(
-			updatedValidators2[i].ProTxHash,
-			&abciPubKey,
-			testMinPower,
-		)
-	}
-	abciThresholdPubKey, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
+	sqm, err := newStateQuorumManager(css)
 	require.NoError(t, err)
-	updateTransactions[len(updatedValidators2)] = kvstore.MakeThresholdPublicKeyChangeTx(
-		abciThresholdPubKey,
-	)
-	updateTransactions[len(updatedValidators2)+1] = kvstore.MakeQuorumHashTx(quorumHash2)
-	for _, updateTransaction := range updateTransactions {
-		err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), updateTransaction, nil, mempl.TxInfo{})
-		assert.Nil(t, err)
-	}
+
+	// HEIGHT 2
+	hvsu2, err := sqm.addValidator(height, 1)
+	require.NoError(t, err)
+	height++
+	incrementHeight(vss...)
+
+	tx, err := hvsu2.tx()
+	require.NoError(t, err)
+
+	err = assertMempool(css[0].txNotifier).CheckTx(ctx, tx, nil, mempl.TxInfo{})
+	assert.Nil(t, err)
 
 	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
@@ -425,7 +407,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if _, err := vss[1].SignProposal(context.Background(), cfg.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
+	if _, err := vss[1].SignProposal(ctx, cfg.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -462,7 +444,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if _, err := vss[2].SignProposal(context.Background(), cfg.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
+	if _, err := vss[2].SignProposal(ctx, cfg.ChainID(), genDoc.QuorumType, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -491,58 +473,27 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	// HEIGHT 4
 	// 1 new validator comes in here from block 2
-	updatedValidators4, _, newThresholdPublicKey, quorumHash4 := updateConsensusNetAddNewValidators(
-		css,
-		height,
-		2,
-		false,
-	)
+	hvsu4, err := sqm.addValidator(height, 2)
+	require.NoError(t, err)
 	height++
 	incrementHeight(vss...)
-	updateTransactions2 := make([][]byte, len(updatedValidators4)+2)
-	for i := 0; i < len(updatedValidators4); i++ {
-		// start by adding all validator transactions
-		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators4[i].PubKey)
-		require.NoError(t, err)
-		updateTransactions2[i] = kvstore.MakeValSetChangeTx(
-			updatedValidators4[i].ProTxHash,
-			&abciPubKey,
-			testMinPower,
-		)
-		var oldPubKey crypto.PubKey
-		for _, validatorAt2 := range updatedValidators2 {
-			if bytes.Equal(validatorAt2.ProTxHash, updatedValidators4[i].ProTxHash) {
-				oldPubKey = validatorAt2.PubKey
-			}
-		}
-		fmt.Printf(
-			"update at height 4 (for 6) %v %v -> %v\n",
-			updatedValidators4[i].ProTxHash,
-			oldPubKey,
-			updatedValidators4[i].PubKey,
-		)
-	}
-	abciThresholdPubKey2, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
+
+	tx, err = hvsu4.tx()
 	require.NoError(t, err)
-	updateTransactions2[len(updatedValidators4)] = kvstore.MakeThresholdPublicKeyChangeTx(
-		abciThresholdPubKey2,
-	)
-	updateTransactions2[len(updatedValidators4)+1] = kvstore.MakeQuorumHashTx(quorumHash4)
-	for _, updateTransaction := range updateTransactions2 {
-		err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), updateTransaction, nil, mempl.TxInfo{})
-		assert.Nil(t, err)
-	}
+
+	err = assertMempool(css[0].txNotifier).CheckTx(ctx, tx, nil, mempl.TxInfo{})
+	assert.Nil(t, err)
+
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
-	if len(propBlock.Txs) != 9 {
-		panic("there should be 9 transactions")
-	}
+	require.Equal(t, 1, len(propBlock.Txs), "there should be 1 transaction")
+	require.Equal(t, tx, []byte(propBlock.Txs[0]))
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	vssProposer := findProposer(vss, css[0].Validators.Proposer.ProTxHash)
 	proposal = types.NewProposal(vss[3].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if _, err := vssProposer.SignProposal(context.Background(), cfg.ChainID(), genDoc.QuorumType, quorumHash2, p); err != nil {
+	if _, err := vssProposer.SignProposal(ctx, cfg.ChainID(), genDoc.QuorumType, hvsu2.quorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -558,10 +509,10 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 
 	valIndexFn := func(cssIdx int) int {
 		for i, vs := range vssForSigning {
-			vsProTxHash, err := vs.GetProTxHash(context.Background())
+			vsProTxHash, err := vs.GetProTxHash(ctx)
 			require.NoError(t, err)
 
-			cssProTxHash, err := css[cssIdx].privValidator.GetProTxHash(context.Background())
+			cssProTxHash, err := css[cssIdx].privValidator.GetProTxHash(ctx)
 			require.NoError(t, err)
 
 			if bytes.Equal(vsProTxHash, cssProTxHash) {
@@ -614,7 +565,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	proposerProTxHash := css[0].RoundState.Validators.GetProposer().ProTxHash
 	valIndexFnByProTxHash := func(proTxHash crypto.ProTxHash) int {
 		for i, vs := range vss {
-			vsProTxHash, err := vs.GetProTxHash(context.Background())
+			vsProTxHash, err := vs.GetProTxHash(ctx)
 			require.NoError(t, err)
 
 			if bytes.Equal(vsProTxHash, proposerProTxHash) {
@@ -624,8 +575,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex := valIndexFnByProTxHash(proposerProTxHash)
-	if _, err := vss[proposerIndex].SignProposal(context.Background(), cfg.ChainID(),
-		genDoc.QuorumType, quorumHash2, p); err != nil {
+	if _, err := vss[proposerIndex].SignProposal(ctx, cfg.ChainID(), genDoc.QuorumType, hvsu2.quorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -665,48 +615,16 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 6
-	//
-	updatedValidators6, _, newThresholdPublicKey, quorumHash6 := updateConsensusNetRemoveValidators(
-		css,
-		height,
-		1,
-		false,
-	)
-	height++
-	updateTransactions3 := make([][]byte, len(updatedValidators6)+2)
-	for i := 0; i < len(updatedValidators6); i++ {
-		// start by adding all validator transactions
-		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators6[i].PubKey)
-		require.NoError(t, err)
-		updateTransactions3[i] = kvstore.MakeValSetChangeTx(
-			updatedValidators6[i].ProTxHash,
-			&abciPubKey,
-			testMinPower,
-		)
-		var oldPubKey crypto.PubKey
-		for _, validatorAt4 := range updatedValidators4 {
-			if bytes.Equal(validatorAt4.ProTxHash, updatedValidators6[i].ProTxHash) {
-				oldPubKey = validatorAt4.PubKey
-			}
-		}
-		fmt.Printf(
-			"update at height 6 (for 8) %v %v -> %v\n",
-			updatedValidators6[i].ProTxHash,
-			oldPubKey,
-			updatedValidators6[i].PubKey,
-		)
-	}
-	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
+	hvsu6, err := sqm.remValidators(height, 1)
 	require.NoError(t, err)
-	updateTransactions3[len(updatedValidators6)] =
-		kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
-	updateTransactions3[len(updatedValidators6)+1] = kvstore.MakeQuorumHashTx(quorumHash6)
-
-	for _, updateTransaction := range updateTransactions3 {
-		err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), updateTransaction, nil, mempl.TxInfo{})
-		assert.Nil(t, err)
-	}
+	height++
 	incrementHeight(vss...)
+	tx, err = hvsu6.tx()
+	require.NoError(t, err)
+
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{})
+	require.NoError(t, err)
+
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
@@ -760,11 +678,15 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	}
 
 	css[0].Logger.Debug(
-		"signed proposal", "height", proposal.Height, "round", proposal.Round,
-		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature,
-		"pubkey", proposerPubKey2.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash",
-		validatorsAtProposalHeight.QuorumHash, "signID", signID,
+		"signed proposal",
+		"height", proposal.Height,
+		"round", proposal.Round,
+		"proposer", proposerProTxHash.ShortString(),
+		"signature", p.Signature,
+		"pubkey", proposerPubKey2.Bytes(),
+		"quorum type", validatorsAtProposalHeight.QuorumType,
+		"quorum hash", validatorsAtProposalHeight.QuorumHash,
+		"signID", signID,
 	)
 
 	proposal.Signature = p.Signature
@@ -872,38 +794,17 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 8
-
-	proTxHashToRemove := updatedValidators6[len(updatedValidators6)-1].ProTxHash
-	updatedValidators8, _, newThresholdPublicKey, quorumHash8 := updateConsensusNetRemoveValidatorsWithProTxHashes(
-		css,
-		height,
-		[]crypto.ProTxHash{proTxHashToRemove},
-		false,
-	)
+	proTxHashToRemove := hvsu6.validators[len(hvsu6.validators)-1].ProTxHash
+	hvsu8, err := sqm.remValidatorsByProTxHash(height, []crypto.ProTxHash{proTxHashToRemove})
+	require.NoError(t, err)
 	height++
 	incrementHeight(vss...)
-
-	updateTransactions4 := make([][]byte, len(updatedValidators8)+2)
-	for i := 0; i < len(updatedValidators8); i++ {
-		// start by adding all validator transactions
-		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators8[i].PubKey)
-		require.NoError(t, err)
-		updateTransactions4[i] = kvstore.MakeValSetChangeTx(
-			updatedValidators8[i].ProTxHash, &abciPubKey, testMinPower,
-		)
-	}
-	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
+	tx, err = hvsu8.tx()
 	require.NoError(t, err)
-	updateTransactions4[len(updatedValidators8)] = kvstore.MakeThresholdPublicKeyChangeTx(
-		abciThresholdPubKey,
-	)
-	updateTransactions4[len(updatedValidators8)+1] = kvstore.MakeQuorumHashTx(quorumHash8)
 
-	for _, updateTransaction := range updateTransactions4 {
-		err = assertMempool(css[0].txNotifier).CheckTx(context.Background(),
-			updateTransaction, nil, mempl.TxInfo{})
-		assert.Nil(t, err)
-	}
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{})
+	assert.Nil(t, err)
+
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}

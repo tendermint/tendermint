@@ -22,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -723,15 +722,14 @@ func (u *validatorUpdater) removeValidatorsAt(height int64, count int) (*privVal
 func (u *validatorUpdater) updateStatePrivVals(privValUpdate *privValUpdate, height int64) {
 	for i, proTxHash := range privValUpdate.newProTxHashes {
 		j := u.stateIndexMap[proTxHash.String()]
-		u.states[j].mtx.Lock()
-		u.states[j].privValidator.UpdatePrivateKey(
+		priVal := u.states[j].PrivValidator()
+		priVal.UpdatePrivateKey(
 			context.Background(),
 			privValUpdate.privKeys[i],
 			privValUpdate.quorumHash,
 			privValUpdate.thresholdPubKey,
 			height,
 		)
-		u.states[j].mtx.Unlock()
 	}
 	u.lastProTxHashes = privValUpdate.newProTxHashes
 }
@@ -742,21 +740,16 @@ func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*privValUpdate, erro
 	}
 	// generate LLMQ data
 	proTxHashes, privKeys, thresholdPubKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
-
-	// make transactions for every validator
-	for i, proTxHash := range proTxHashes {
-		protoPubKey, err := encoding.PubKeyToProto(privKeys[i].PubKey())
-		if err != nil {
-			return nil, err
-		}
-		privVal.txs = append(privVal.txs, kvstore.MakeValSetChangeTx(proTxHash.Bytes(), &protoPubKey, types.DefaultDashVotingPower))
+	pubKeys := make([]crypto.PubKey, len(privKeys))
+	for i, privKey := range privKeys {
+		pubKeys[i] = privKey.PubKey()
 	}
-	privVal.txs = append(privVal.txs, kvstore.MakeQuorumHashTx(privVal.quorumHash))
-	protoThresholdPubKey, err := encoding.PubKeyToProto(thresholdPubKey)
+	// make transactions to update a validator-set
+	tx, err := kvstore.MakeValidatorSetUpdateTx(proTxHashes, pubKeys, thresholdPubKey, privVal.quorumHash)
 	if err != nil {
 		return nil, err
 	}
-	privVal.txs = append(privVal.txs, kvstore.MakeThresholdPublicKeyChangeTx(protoThresholdPubKey))
+	privVal.txs = append(privVal.txs, tx)
 	privVal.privKeys = privKeys
 	privVal.newProTxHashes = proTxHashes
 	privVal.thresholdPubKey = thresholdPubKey

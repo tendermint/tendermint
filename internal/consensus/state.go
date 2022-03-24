@@ -616,6 +616,13 @@ func (cs *State) HeightVoteSet() *cstypes.HeightVoteSet {
 	return cs.Votes
 }
 
+// PrivValidator returns safely a PrivValidator
+func (cs *State) PrivValidator() types.PrivValidator {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+	return cs.privValidator
+}
+
 //------------------------------------------------------------
 // internal functions for managing the state
 

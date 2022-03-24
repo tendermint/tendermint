@@ -297,7 +297,7 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 			invalid := make([]byte, 8)
 			binary.BigEndian.PutUint64(invalid, 1)
 
-			// CheckTx will add the transaction to cache as soon ass app.CheckTX returns status OK (which it does)
+			// CheckTx will add the transaction to cache as soon as app.CheckTX returns status OK (which it does)
 			err := mp.CheckTx(context.Background(), invalid, nil, mempool.TxInfo{})
 			require.NoError(t, err)
 			added := mp.cache.Push(invalid)

@@ -295,21 +295,18 @@ func (pv *MockPV) SignProposal(
 ) ([]byte, error) {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
-	useChainID := chainID
 	if pv.breakProposalSigning {
-		useChainID = "incorrect-chain-id"
+		chainID = "incorrect-chain-id"
 	}
 
-	signID := ProposalBlockSignID(useChainID, proposal, quorumType, quorumHash)
+	signID := ProposalBlockSignID(chainID, proposal, quorumType, quorumHash)
 
-	var privKey crypto.PrivKey
-	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
-		privKey = quorumKeys.PrivKey
-	} else {
+	quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]
+	if !ok {
 		return signID, fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
 	}
 
-	sig, err := privKey.SignDigest(signID)
+	sig, err := quorumKeys.PrivKey.SignDigest(signID)
 	if err != nil {
 		return nil, err
 	}

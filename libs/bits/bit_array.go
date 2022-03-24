@@ -367,7 +367,7 @@ func (bA *BitArray) Update(o *BitArray) {
 	if bA == nil || o == nil {
 		return
 	}
-	o = o.Copy()
+
 	bA.mtx.Lock()
 	copy(bA.Elems, o.Elems)
 	bA.mtx.Unlock()

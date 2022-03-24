@@ -482,7 +482,7 @@ func (pv *FilePV) GetPublicKey(context context.Context, quorumHash crypto.Quorum
 }
 
 // GetHeight ...
-func (pv *FilePV) GetHeight(context context.Context, quorumHash crypto.QuorumHash) (int64, error) {
+func (pv *FilePV) GetHeight(_ context.Context, quorumHash crypto.QuorumHash) (int64, error) {
 	pv.mtx.RLock()
 	defer pv.mtx.RUnlock()
 
@@ -493,11 +493,11 @@ func (pv *FilePV) GetHeight(context context.Context, quorumHash crypto.QuorumHas
 }
 
 // ExtractIntoValidator ...
-func (pv *FilePV) ExtractIntoValidator(context context.Context, quorumHash crypto.QuorumHash) *types.Validator {
+func (pv *FilePV) ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *types.Validator {
+	pubKey, _ := pv.GetPubKey(ctx, quorumHash)
 	pv.mtx.RLock()
 	defer pv.mtx.RUnlock()
 
-	pubKey, _ := pv.GetPubKey(context, quorumHash)
 	if len(pv.Key.ProTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
 	}
@@ -562,8 +562,6 @@ func (pv *FilePV) Save() {
 // NOTE: Unsafe!
 func (pv *FilePV) Reset() {
 	pv.mtx.Lock()
-	defer pv.mtx.Unlock()
-
 	var blockSig []byte
 	var stateSig []byte
 	pv.LastSignState.Height = 0
@@ -573,6 +571,7 @@ func (pv *FilePV) Reset() {
 	pv.LastSignState.StateSignature = stateSig
 	pv.LastSignState.BlockSignBytes = nil
 	pv.LastSignState.StateSignBytes = nil
+	pv.mtx.Unlock()
 	pv.Save()
 }
 

@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -787,176 +786,6 @@ func randConsensusState(
 	}
 }
 
-func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount int, validate bool) ([]*types.Validator, []crypto.ProTxHash, crypto.PubKey, crypto.QuorumHash) {
-	currentHeight, currentValidators := css[0].GetValidatorSet()
-	currentValidatorCount := len(currentValidators.Validators)
-
-	if validate {
-		for _, cssi := range css {
-			height, validators := cssi.GetValidatorSet()
-			if height != currentHeight {
-				panic("they should all have the same heights")
-			}
-			if len(validators.Validators) != currentValidatorCount {
-				panic("they should all have the same initial validator count")
-			}
-			if !currentValidators.Equals(validators) {
-				panic("all validators should be the same")
-			}
-		}
-	}
-
-	validatorProTxHashes := currentValidators.GetProTxHashes()
-	newValidatorProTxHashes := make([]crypto.ProTxHash, addValCount)
-	for i := 0; i < addValCount; i++ {
-		proTxHash, err := css[currentValidatorCount+i].privValidator.GetProTxHash(context.Background())
-		if err != nil {
-			panic(err)
-		}
-		newValidatorProTxHashes[i] = proTxHash
-	}
-	validatorProTxHashes = append(validatorProTxHashes, newValidatorProTxHashes...)
-	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
-	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
-	validatorProTxHashes, privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
-	// privKeys are returned in order
-	quorumHash := crypto.RandQuorumHash()
-	var privVal types.PrivValidator
-	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
-	publicKeys := make([]crypto.PubKey, len(validatorProTxHashes))
-	validatorProTxHashesAsByteArray := make([][]byte, len(validatorProTxHashes))
-	for i := 0; i < len(validatorProTxHashes); i++ {
-		privVal = css[i].privValidator
-		privValProTxHash, err := privVal.GetProTxHash(context.Background())
-		if err != nil {
-			panic(err)
-		}
-		for j, proTxHash := range validatorProTxHashes {
-			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
-				privVal.UpdatePrivateKey(context.Background(), privKeys[j], quorumHash, thresholdPublicKey, height+3)
-				updatedValidators[j] = privVal.ExtractIntoValidator(context.Background(), quorumHash)
-				publicKeys[j] = privKeys[j].PubKey()
-				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
-					panic("the validator public key should match the public key")
-				}
-				validatorProTxHashesAsByteArray[j] = validatorProTxHashes[j].Bytes()
-				break
-			}
-		}
-	}
-	// just do this for sanity testing
-	recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, validatorProTxHashesAsByteArray)
-	if err != nil {
-		panic(err)
-	}
-	if !bytes.Equal(recoveredThresholdPublicKey.Bytes(), thresholdPublicKey.Bytes()) {
-		panic("the recovered public key should match the threshold public key")
-	}
-	return updatedValidators, newValidatorProTxHashes, thresholdPublicKey, quorumHash
-}
-
-func updateConsensusNetRemoveValidators(css []*State, height int64, removeValCount int, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey, crypto.QuorumHash) {
-
-	currentHeight, currentValidators := css[0].GetValidatorSet()
-	currentValidatorCount := len(currentValidators.Validators)
-
-	if removeValCount >= currentValidatorCount {
-		panic("you can not remove all validators")
-	}
-	if validate {
-		for _, cssi := range css {
-			height, validators := cssi.GetValidatorSet()
-			if height != currentHeight {
-				panic("they should all have the same heights")
-			}
-			if len(validators.Validators) != currentValidatorCount {
-				panic("they should all have the same initial validator count")
-			}
-			if !currentValidators.Equals(validators) {
-				panic("all validators should be the same")
-			}
-		}
-	}
-
-	validatorProTxHashes := currentValidators.GetProTxHashes()
-	removedValidatorProTxHashes := validatorProTxHashes[len(validatorProTxHashes)-removeValCount:]
-	return updateConsensusNetRemoveValidatorsWithProTxHashes(css, height, removedValidatorProTxHashes, validate)
-}
-
-func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int64, removalProTxHashes []crypto.ProTxHash, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey, crypto.QuorumHash) {
-	currentValidatorCount := len(css[0].Validators.Validators)
-	currentValidators := css[0].Validators
-
-	if validate {
-		for _, cssi := range css {
-			if len(cssi.Validators.Validators) != currentValidatorCount {
-				panic("they should all have the same initial validator count")
-			}
-			if !currentValidators.Equals(cssi.Validators) {
-				panic("all validators should be the same")
-			}
-		}
-	}
-
-	validatorProTxHashes := currentValidators.GetProTxHashes()
-	var newValidatorProTxHashes []crypto.ProTxHash
-	for _, validatorProTxHash := range validatorProTxHashes {
-		found := false
-		for _, removalProTxHash := range removalProTxHashes {
-			if bytes.Equal(validatorProTxHash, removalProTxHash) {
-				found = true
-			}
-		}
-		if !found {
-			newValidatorProTxHashes = append(newValidatorProTxHashes, validatorProTxHash)
-		}
-	}
-	validatorProTxHashes = newValidatorProTxHashes
-	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
-	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
-	validatorProTxHashes, privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
-	// privKeys are returned in order
-	quorumHash := crypto.RandQuorumHash()
-	var privVal types.PrivValidator
-	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
-	removedValidators := make([]*types.Validator, len(removalProTxHashes))
-	publicKeys := make([]crypto.PubKey, len(validatorProTxHashes))
-	validatorProTxHashesAsByteArray := make([][]byte, len(validatorProTxHashes))
-	for i, proTxHash := range validatorProTxHashes {
-		for _, state := range css {
-			stateProTxHash, err := state.privValidator.GetProTxHash(context.Background())
-			if err != nil {
-				panic(err)
-			}
-			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
-				// we found the prival
-				privVal = state.privValidator
-				privVal.UpdatePrivateKey(context.Background(), privKeys[i], quorumHash, thresholdPublicKey, height+3)
-				updatedValidators[i] = privVal.ExtractIntoValidator(context.Background(), quorumHash)
-				publicKeys[i] = privKeys[i].PubKey()
-				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
-					panic("the validator public key should match the public key")
-				}
-				validatorProTxHashesAsByteArray[i] = validatorProTxHashes[i].Bytes()
-				break
-			}
-		}
-	}
-	for i, proTxHash := range removalProTxHashes {
-		_, removedValidator := currentValidators.GetByProTxHash(proTxHash)
-		removedValidators[i] = removedValidator
-	}
-	// just do this for sanity testing
-	recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, validatorProTxHashesAsByteArray)
-	if err != nil {
-		panic(err)
-	}
-	if !bytes.Equal(recoveredThresholdPublicKey.Bytes(), thresholdPublicKey.Bytes()) {
-		panic("the recovered public key should match the threshold public key")
-	}
-	return updatedValidators, removedValidators, thresholdPublicKey, quorumHash
-}
-
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
 	cfg *config.Config,
@@ -1103,4 +932,127 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorProTxHash.Bytes(), v2.GetValidatorProTxHash()) &&
 		v1.ValidatorIndex == v2.GetValidatorIndex()
+}
+
+type stateQuorumManager struct {
+	states   []*State
+	stateMap map[string]int
+}
+
+func newStateQuorumManager(states []*State) (*stateQuorumManager, error) {
+	manager := stateQuorumManager{
+		states:   states,
+		stateMap: make(map[string]int),
+	}
+	for i, state := range states {
+		proTxHash, err := state.privValidator.GetProTxHash(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		manager.stateMap[proTxHash.String()] = i
+	}
+	return &manager, nil
+}
+
+func (s *stateQuorumManager) addValidator(height int64, cnt int) (*quorumData, error) {
+	currentValidators := s.validatorSet()
+	currentValidatorCount := len(currentValidators.Validators)
+	proTxHashes := currentValidators.GetProTxHashes()
+	for i := 0; i < cnt; i++ {
+		proTxHash, err := s.states[currentValidatorCount+i].privValidator.GetProTxHash(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		proTxHashes = append(proTxHashes, proTxHash)
+	}
+	return s.generateKeysAndUpdateState(proTxHashes, height)
+}
+
+func (s *stateQuorumManager) remValidators(height int64, cnt int) (*quorumData, error) {
+	currentValidators := s.validatorSet()
+	currentValidatorCount := len(currentValidators.Validators)
+	if cnt >= currentValidatorCount {
+		return nil, fmt.Errorf("you can not remove all validators")
+	}
+	validatorProTxHashes := currentValidators.GetProTxHashes()
+	removedValidatorProTxHashes := validatorProTxHashes[len(validatorProTxHashes)-cnt:]
+	return s.remValidatorsByProTxHash(height, removedValidatorProTxHashes)
+}
+
+func (s *stateQuorumManager) remValidatorsByProTxHash(height int64, removal []crypto.ProTxHash) (*quorumData, error) {
+	currentValidators := s.validatorSet()
+	removalMap := make(map[string]struct{})
+	for _, proTxHash := range removal {
+		removalMap[proTxHash.String()] = struct{}{}
+	}
+	l := len(currentValidators.GetProTxHashes()) - len(removal)
+	validatorProTxHashes := make([]crypto.ProTxHash, 0, l)
+	for _, validatorProTxHash := range currentValidators.GetProTxHashes() {
+		if _, ok := removalMap[validatorProTxHash.String()]; !ok {
+			validatorProTxHashes = append(validatorProTxHashes, validatorProTxHash)
+		}
+	}
+	return s.generateKeysAndUpdateState(validatorProTxHashes, height)
+}
+
+func (s *stateQuorumManager) generateKeysAndUpdateState(
+	proTxHashes []crypto.ProTxHash,
+	height int64,
+) (*quorumData, error) {
+	var (
+		privKeys []crypto.PrivKey
+		err      error
+	)
+	qd := quorumData{
+		validators: make([]*types.Validator, len(proTxHashes)),
+		quorumHash: crypto.RandQuorumHash(),
+	}
+	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
+	proTxHashes, privKeys, qd.thresholdPublicKey = bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	for i, proTxHash := range proTxHashes {
+		qd.validators[i], err = s.updateState(proTxHash, privKeys[i], qd.quorumHash, qd.thresholdPublicKey, height+3)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &qd, nil
+}
+
+func (s *stateQuorumManager) updateState(
+	proTxHash crypto.ProTxHash,
+	privKey crypto.PrivKey,
+	quorumHash crypto.QuorumHash,
+	thresholdPubKey crypto.PubKey,
+	height int64,
+) (*types.Validator, error) {
+	j, ok := s.stateMap[proTxHash.String()]
+	if !ok {
+		return nil, fmt.Errorf("a validator (%s) not found", proTxHash.ShortString())
+	}
+	privVal := s.states[j].privValidator
+	privVal.UpdatePrivateKey(context.Background(), privKey, quorumHash, thresholdPubKey, height)
+	return privVal.ExtractIntoValidator(context.Background(), quorumHash), nil
+}
+
+func (s *stateQuorumManager) validatorSet() *types.ValidatorSet {
+	_, vals := s.states[0].GetValidatorSet()
+	return vals
+}
+
+type quorumData struct {
+	validators         []*types.Validator
+	thresholdPublicKey crypto.PubKey
+	quorumHash         crypto.QuorumHash
+}
+
+func (s *quorumData) tx() ([]byte, error) {
+	pubKeys := make([]crypto.PubKey, len(s.validators))
+	for i, val := range s.validators {
+		pubKeys[i] = val.PubKey
+	}
+	proTxHashes := make([]crypto.ProTxHash, len(s.validators))
+	for i, val := range s.validators {
+		proTxHashes[i] = val.ProTxHash
+	}
+	return kvstore.MakeValidatorSetUpdateTx(proTxHashes, pubKeys, s.thresholdPublicKey, s.quorumHash)
 }
