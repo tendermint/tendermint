@@ -438,12 +438,11 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
-	var ext []byte
 	for i := range vs {
+		var ext []byte
+		// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
 		if c.Votes[i].SignedLastBlock {
 			ext = votes[i].Extension
-		} else {
-			ext = nil
 		}
 		vs[i] = abci.ExtendedVoteInfo{
 			Validator:       c.Votes[i].Validator,
