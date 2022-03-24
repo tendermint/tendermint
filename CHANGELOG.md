@@ -1,3 +1,61 @@
+## [0.8.0-dev.1] - 2022-03-24
+
+### Backport
+
+- Backport of [Tendermint 0.35.0](https://github.com/tendermint/tendermint/releases/tag/v0.35.0)
+
+### Bug Fixes
+
+- Panic on precommits does not have any +2/3 votes
+- Improved error handling  in DashCoreSignerClient
+- Abci/example, cmd and test packages were fixed after the upstream backport
+- Some fixes to be able to compile the add
+- Some fixes made by PR feedback
+- Use types.DefaultDashVotingPower rather than internal dashDefaultVotingPower
+- Detect and fix data-race in MockPV (#262)
+- Race condition when logging (#271)
+- Decrease memory used by debug logs (#280)
+- Tendermint stops when validator node id lookup fails (#279)
+- Backport e2e tests (#248)
+
+### Miscellaneous Tasks
+
+- Eliminate compile errors after backport of tendermint 0.35 (#238)
+- Update unit tests after backport fo tendermint v0.35 (#245)
+- Backport Tenderdash 0.7 to 0.8 (#246)
+- Fix e2e tests and protxhash population (#273)
+- Improve logging for debug purposes
+- Stabilize consensus algorithm (#284)
+
+### Refactor
+
+- Apply peer review feedback
+- Change node's proTxHash on slice from pointer of slice (#263)
+- Some minor changes in validate-conn-executor and routerDashDialer (#277)
+- Populate proTxHash in address-book (#274)
+- Replace several functions with an identical body (processStateCh,processDataCh,processVoteCh,processVoteSetBitsCh) on one function processMsgCh (#296)
+
+### Testing
+
+- Ensure commit stateid in wal is OK
+- KeepInvalidTxsInCache test is invalid
+
+### Build
+
+- Bump github.com/lib/pq from 1.10.3 to 1.10.4
+- Run e2e tests in parallel
+- Bump technote-space/get-diff-action from 5.0.1 to 5.0.2
+- Bump github.com/adlio/schema from 1.1.14 to 1.1.15
+- Bump github.com/adlio/schema from 1.1.15 to 1.2.3
+- Bump docker/build-push-action from 2.7.0 to 2.9.0
+- Bump github.com/gorilla/websocket from 1.4.2 to 1.5.0
+- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1
+- Bump actions/github-script from 5 to 6
+- Bump docker/login-action from 1.10.0 to 1.12.0
+- Bump docker/login-action from 1.12.0 to 1.13.0
+- Bump docker/login-action from 1.13.0 to 1.14.1
+- Bump golangci/golangci-lint-action from 2.5.2 to 3.1.0
+
 ## [0.7.0] - 2022-01-24
 
 ### Miscellaneous Tasks
