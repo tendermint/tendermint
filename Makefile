@@ -269,7 +269,7 @@ mockery:
 
 # Build linux binary on other platforms
 build-linux:
-	GOOS=linux GOARCH=amd64 $(MAKE) build
+	GOOS=linux $(MAKE) build
 .PHONY: build-linux
 
 build-docker-localnode:
