@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/bash
 set -eo pipefail
 
 # This script appends the "option go_package" proto option to the file located at $FNAME.
