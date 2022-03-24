@@ -529,7 +529,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
     | hash              | bytes | The header hash of the propsed block that the vote extension refers to.                  | 1            |
     | validator_address | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension | 2            |
     | height            | int64 | Height of the block  (for sanity check).                                                 | 3            |
-    | vote_extension    | bytes | Optional information signed by Tendermint.                                               | 4            |
+    | vote_extension    | bytes | Application-specific information signed by Tendermint. Can have 0 length                 | 4            |
 
 * **Response**:
 
@@ -538,6 +538,9 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
     | status | [VerifyStatus](#VerifyStatus) | `enum` signaling if the application accepts the vote extension | 1            |
 
 * **Usage**:
+    * `RequestVerifyVoteExtension.vote_extension` can be an empty byte array. The Application's interpretation of it should be
+      that the Application running at the process that sent the vote chose not to extend it.
+      Tendermint will always call `RequestVerifyVoteExtension`, even for 0 length vote extensions.
     * If `ResponseVerifyVoteExtension.status` is `REJECT`, Tendermint will reject the whole received vote.
       See the [Requirements](abci++_app_requirements_002_draft.md) section to understand the potential
       liveness implications of this.
@@ -553,9 +556,11 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 When a validator _p_ is in Tendermint consensus round _r_, height _h_, state _prevote_ (**TODO** discuss: I think I must remove the state
 from this condition, but not sure), and _p_ receives a Precommit message for round _r_, height _h_ from _q_:
 
-1. _p_'s Tendermint calls `RequestVerifyVoteExtension`.
-2. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.status`.
-3. If the Application returns
+1. If the Precommit message does not contain a vote extension with a valid signature, Tendermint discards the message as invalid.
+   * a 0-length vote extension is valid as long as its accompanying signature is also valid.
+2. Else, _p_'s Tendermint calls `RequestVerifyVoteExtension`.
+3. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.status`.
+4. If the Application returns
    * _accept_, _p_'s Tendermint will keep the received vote, together with its corresponding
      vote extension in its internal data structures. It will be used to populate the [ExtendedCommitInfo](#extendedcommitinfo)
      structure in calls to `RequestPrepareProposal`, in rounds of height _h + 1_ where _p_ is the proposer.
