@@ -11,7 +11,7 @@ require (
 	github.com/go-kit/kit v0.12.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	github.com/golangci/golangci-lint v1.45.0
+	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
@@ -61,7 +61,7 @@ require (
 	github.com/ashanbrown/makezero v1.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bkielbasa/cyclop v1.2.0 // indirect
-	github.com/blizzy78/varnamelen v0.6.0 // indirect
+	github.com/blizzy78/varnamelen v0.6.1 // indirect
 	github.com/bombsimon/wsl/v3 v3.3.0 // indirect
 	github.com/breml/bidichk v0.2.2 // indirect
 	github.com/breml/errchkjson v0.2.3 // indirect
@@ -119,7 +119,7 @@ require (
 	github.com/gostaticanalysis/nilerr v0.1.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-version v1.2.1 // indirect
+	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
