@@ -14,7 +14,9 @@ endif
 LD_FLAGS = -X ${REPO_NAME}/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://${REPO_NAME}.git
-DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
+BUILD_IMAGE := ghcr.io/tendermint/docker-build-proto
+BASE_BRANCH := v0.8-dev
+DOCKER_PROTO := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
 CGO_ENABLED ?= 1
 
 # handle nostrip
@@ -105,26 +107,28 @@ proto-all: proto-gen proto-lint proto-check-breaking
 .PHONY: proto-all
 
 proto-gen:
-	@docker pull -q tendermintdev/docker-build-proto
-	@echo "Generating Protobuf files"
-	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
+	@echo "Generating Go packages for .proto files"
+	@$(DOCKER_PROTO) sh ./scripts/protocgen.sh
 .PHONY: proto-gen
 
 proto-lint:
-	@$(DOCKER_BUF) lint --error-format=json
+	@echo "Running lint checks for .proto files"
+	@$(DOCKER_PROTO) buf lint --error-format=json
 .PHONY: proto-lint
 
 proto-format:
-	@echo "Formatting Protobuf files"
-	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+	@echo "Formatting .proto files"
+	@$(DOCKER_PROTO) find ./ -not -path "./third_party/*" -name '*.proto' -exec clang-format -i {} \;
 .PHONY: proto-format
 
 proto-check-breaking:
-	@$(DOCKER_BUF) breaking --against ".git#branch=master"
+	@echo "Checking for breaking changes in .proto files"
+	@$(DOCKER_PROTO) buf breaking --against .git#branch=$(BASE_BRANCH)
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	$(DOCKER_BUF) breaking --against "$(HTTPS_GIT)#branch=master"
+	@echo "Checking for breaking changes in .proto files"
+	$(DOCKER_PROTO) buf breaking --against $(HTTPS_GIT)#branch=$(BASE_BRANCH)
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
