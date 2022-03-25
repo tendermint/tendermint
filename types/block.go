@@ -262,9 +262,8 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 //-----------------------------------------------------------------------------
 
 // MaxDataBytes returns the maximum size of block's data.
-//
-// XXX: Panics on negative result.
-func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
+// Returns an error if the max data is negative.
+func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) (int64, error) {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
@@ -272,36 +271,33 @@ func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
 		evidenceBytes
 
 	if maxDataBytes < 0 {
-		panic(fmt.Sprintf(
+		return maxDataBytes, fmt.Errorf(
 			"Negative MaxDataBytes. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
 			maxBytes,
 			-(maxDataBytes - maxBytes),
-		))
+		)
 	}
-
-	return maxDataBytes
+	return maxDataBytes, nil
 }
 
 // MaxDataBytesNoEvidence returns the maximum size of block's data when
 // evidence count is unknown. MaxEvidencePerBlock will be used for the size
 // of evidence.
-//
-// XXX: Panics on negative result.
-func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
+func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) (int64, error) {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
 		MaxCommitBytes(valsCount)
 
 	if maxDataBytes < 0 {
-		panic(fmt.Sprintf(
+		return maxDataBytes, fmt.Errorf(
 			"Negative MaxDataBytesUnknownEvidence. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
 			maxBytes,
 			-(maxDataBytes - maxBytes),
-		))
+		)
 	}
 
-	return maxDataBytes
+	return maxDataBytes, nil
 }
 
 // MakeBlock returns a new block with an empty header, except what can be

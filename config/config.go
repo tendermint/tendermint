@@ -981,6 +981,17 @@ type ConsensusConfig struct {
 	CreateEmptyBlocks         bool          `mapstructure:"create-empty-blocks"`
 	CreateEmptyBlocksInterval time.Duration `mapstructure:"create-empty-blocks-interval"`
 
+	// ExperimentalPrepareProposalTxBytes determines how many bytes will be sent to the application
+	// duration the PreparePropsal call.
+	//
+	// If this field is set to -1 then entire contents of the mempool will be sent
+	// to the application during PrepareProposal.
+	// If the value of ExperimentalPrepareProposalTxBytes is less than the block transaction data size
+	// determined using the ConsensusParams.Block.MaxBytes value, then the number and
+	// size of the transactions sent to the application during PrepareProposal
+	// will be instead determined using the value of ConsensusParams.Block.MaxBytes.
+	ExperimentalPrepareProposalTxBytes int64 `mapstructure:"experimental-prepare-proposal-tx-bytes"`
+
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer-gossip-sleep-duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer-query-maj23-sleep-duration"`
@@ -991,20 +1002,21 @@ type ConsensusConfig struct {
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
-		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
-		TimeoutPropose:              3000 * time.Millisecond,
-		TimeoutProposeDelta:         500 * time.Millisecond,
-		TimeoutPrevote:              1000 * time.Millisecond,
-		TimeoutPrevoteDelta:         500 * time.Millisecond,
-		TimeoutPrecommit:            1000 * time.Millisecond,
-		TimeoutPrecommitDelta:       500 * time.Millisecond,
-		TimeoutCommit:               1000 * time.Millisecond,
-		SkipTimeoutCommit:           false,
-		CreateEmptyBlocks:           true,
-		CreateEmptyBlocksInterval:   0 * time.Second,
-		PeerGossipSleepDuration:     100 * time.Millisecond,
-		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
-		DoubleSignCheckHeight:       int64(0),
+		WalPath:                            filepath.Join(defaultDataDir, "cs.wal", "wal"),
+		TimeoutPropose:                     3000 * time.Millisecond,
+		TimeoutProposeDelta:                500 * time.Millisecond,
+		TimeoutPrevote:                     1000 * time.Millisecond,
+		TimeoutPrevoteDelta:                500 * time.Millisecond,
+		TimeoutPrecommit:                   1000 * time.Millisecond,
+		TimeoutPrecommitDelta:              500 * time.Millisecond,
+		TimeoutCommit:                      1000 * time.Millisecond,
+		SkipTimeoutCommit:                  false,
+		CreateEmptyBlocks:                  true,
+		CreateEmptyBlocksInterval:          0 * time.Second,
+		ExperimentalPrepareProposalTxBytes: 0,
+		PeerGossipSleepDuration:            100 * time.Millisecond,
+		PeerQueryMaj23SleepDuration:        2000 * time.Millisecond,
+		DoubleSignCheckHeight:              int64(0),
 	}
 }
 
@@ -1069,6 +1081,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
 		return errors.New("create-empty-blocks-interval can't be negative")
+	}
+	if cfg.ExperimentalPrepareProposalTxBytes < -1 {
+		return errors.New("prepare-proposal-tx-bytes must be greater than -1")
 	}
 	if cfg.PeerGossipSleepDuration < 0 {
 		return errors.New("peer-gossip-sleep-duration can't be negative")

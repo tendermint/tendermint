@@ -476,6 +476,18 @@ double-sign-check-height = {{ .Consensus.DoubleSignCheckHeight }}
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip-timeout-commit = {{ .Consensus.SkipTimeoutCommit }}
 
+# ExperimentalPrepareProposalTxBytes is an experimental field.
+# This field determines how many bytes will be sent to the application
+# duration the PreparePropsal call.
+#
+# If this field is set to -1 then entire contents of the mempool will be sent
+# to the application during PrepareProposal.
+# If the value of ExperimentalPrepareProposalTxBytes is less than the block transaction data size
+# determined using the ConsensusParams.Block.MaxBytes value, then the number and
+# size of the transactions sent to the application during PrepareProposal
+# will be instead determined using the value of ConsensusParams.Block.MaxBytes.
+experimental-prepare-proposal-tx-bytes = {{ .Consensus.ExperimentalPrepareProposalTxBytes }}
+
 # EmptyBlocks mode and possible interval between empty blocks
 create-empty-blocks = {{ .Consensus.CreateEmptyBlocks }}
 create-empty-blocks-interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"

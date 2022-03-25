@@ -54,14 +54,14 @@ func TxPreCheckFromStore(store Store) mempool.PreCheckFunc {
 }
 
 func TxPreCheckForState(state State) mempool.PreCheckFunc {
-	return func(tx types.Tx) error {
-		maxDataBytes := types.MaxDataBytesNoEvidence(
-			state.ConsensusParams.Block.MaxBytes,
-			state.Validators.Size(),
-		)
-		return mempool.PreCheckMaxBytes(maxDataBytes)(tx)
+	maxDataBytes, err := types.MaxDataBytesNoEvidence(
+		state.ConsensusParams.Block.MaxBytes,
+		state.Validators.Size(),
+	)
+	if err != nil {
+		panic(err)
 	}
-
+	return mempool.PreCheckMaxBytes(maxDataBytes)
 }
 
 // TxPostCheckFromStore returns a function to filter transactions after processing.

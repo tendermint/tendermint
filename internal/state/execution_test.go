@@ -604,6 +604,111 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }
 
+func TestPrepareProposalAppMaxBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		nodeMaxBytes       int64
+		conesensusMaxBytes int64
+		conesensusMaxGas   int64
+
+		expectedMaxBytesCalled int64
+		expectedMaxGasCalled   int64
+	}{
+		{
+			name:               "Local PrepareProposalTxBytes set to 1000",
+			nodeMaxBytes:       5000000,
+			conesensusMaxGas:   100,
+			conesensusMaxBytes: 5000000,
+
+			expectedMaxBytesCalled: 5000000,
+			expectedMaxGasCalled:   -1,
+		},
+		{
+			name:               "Local PrepareProposalTxBytes set to -1",
+			nodeMaxBytes:       -1,
+			conesensusMaxGas:   100,
+			conesensusMaxBytes: 10000000,
+
+			expectedMaxBytesCalled: -1,
+			expectedMaxGasCalled:   -1,
+		},
+		{
+			name:               "Local PrepareProposalTxBytes smaller than block data",
+			nodeMaxBytes:       50000,
+			conesensusMaxGas:   100,
+			conesensusMaxBytes: 10000000,
+
+			expectedMaxBytesCalled: func(t *testing.T) int64 {
+				res, err := types.MaxDataBytes(10000000, 0, 1)
+				require.NoError(t, err)
+				return res
+			}(t),
+			expectedMaxGasCalled: 100,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const height = 2
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			logger := log.NewNopLogger()
+
+			eventBus := eventbus.NewDefault(logger)
+			require.NoError(t, eventBus.Start(ctx))
+
+			app := abcimocks.NewBaseMock()
+			app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+				ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
+			}, nil)
+			cc := abciclient.NewLocalClient(logger, app)
+			proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+			err := proxyApp.Start(ctx)
+			require.NoError(t, err)
+
+			state, stateDB, privVals := makeState(t, 1, height)
+			state.ConsensusParams.Block.MaxBytes = tc.conesensusMaxBytes
+			state.ConsensusParams.Block.MaxGas = tc.conesensusMaxGas
+			stateStore := sm.NewStore(stateDB)
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
+			var txs types.Txs
+
+			var mb int64
+			if tc.nodeMaxBytes <= 0 {
+				mb = 1000
+			}
+			for i := 0; i < int(mb); i++ {
+				txs = append(txs, []byte{byte(i)})
+			}
+
+			mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
+
+			blockExec := sm.NewBlockExecutor(
+				stateStore,
+				logger,
+				proxyApp,
+				mp,
+				sm.EmptyEvidencePool{},
+				nil,
+				eventBus,
+			)
+			pa, _ := state.Validators.GetByIndex(0)
+			commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+			_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, tc.nodeMaxBytes)
+			require.NoError(t, err)
+			mp.AssertCalled(t, "ReapMaxBytesMaxGas", tc.expectedMaxBytesCalled, tc.expectedMaxGasCalled)
+		})
+	}
+}
 func TestEmptyPrepareProposal(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
@@ -649,7 +754,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, 0)
 	require.NoError(t, err)
 }
 
@@ -705,7 +810,7 @@ func TestPrepareProposalPanicOnInvalid(t *testing.T) {
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 	require.Panics(t,
 		func() {
-			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil) //nolint:errcheck
+			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, 0) //nolint:errcheck
 		})
 
 	mp.AssertExpectations(t)
@@ -760,7 +865,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, 0)
 	require.NoError(t, err)
 	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
 
@@ -819,7 +924,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, 0)
 	require.NoError(t, err)
 
 	require.Equal(t, txs[0], block.Data.Txs[0])
@@ -875,7 +980,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, 0)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, types.Tx(trs[i].Tx), tx)
@@ -938,7 +1043,7 @@ func TestPrepareProposalModifiedTxStatusFalse(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil, 0)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, txs[i], tx)

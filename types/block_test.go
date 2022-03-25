@@ -499,7 +499,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		maxBytes      int64
 		valsCount     int
 		evidenceBytes int64
-		panics        bool
+		errors        bool
 		result        int64
 	}{
 		0: {-10, 1, 0, true, 0},
@@ -513,15 +513,12 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 	for i, tc := range testCases {
 		tc := tc
-		if tc.panics {
-			assert.Panics(t, func() {
-				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount)
-			}, "#%v", i)
+		b, err := MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount)
+		if tc.errors {
+			require.Error(t, err, "#%v", i)
 		} else {
-			assert.Equal(t,
-				tc.result,
-				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount),
-				"#%v", i)
+			require.NoError(t, err)
+			assert.Equal(t, tc.result, b, "#%v", i)
 		}
 	}
 }
@@ -530,7 +527,7 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	testCases := []struct {
 		maxBytes  int64
 		valsCount int
-		panics    bool
+		errors    bool
 		result    int64
 	}{
 		0: {-10, 1, true, 0},
@@ -542,15 +539,12 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 
 	for i, tc := range testCases {
 		tc := tc
-		if tc.panics {
-			assert.Panics(t, func() {
-				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount)
-			}, "#%v", i)
+		b, err := MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount)
+		if tc.errors {
+			assert.Error(t, err, "#%v", i)
 		} else {
-			assert.Equal(t,
-				tc.result,
-				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount),
-				"#%v", i)
+			require.NoError(t, err)
+			assert.Equal(t, tc.result, b, "#%v", i)
 		}
 	}
 }
