@@ -129,6 +129,7 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 
 	ps.PRS.ProposalBlockPartSetHeader = proposal.BlockID.PartSetHeader
 	ps.PRS.ProposalBlockParts = bits.NewBitArray(int(proposal.BlockID.PartSetHeader.Total))
+	ps.PRS.VainCatchupTimes = 0
 	ps.PRS.ProposalPOLRound = proposal.POLRound
 	ps.PRS.ProposalPOL = nil // Nil until ProposalPOLMessage received.
 }
@@ -145,6 +146,7 @@ func (ps *PeerState) InitProposalBlockParts(partSetHeader types.PartSetHeader) {
 
 	ps.PRS.ProposalBlockPartSetHeader = partSetHeader
 	ps.PRS.ProposalBlockParts = bits.NewBitArray(int(partSetHeader.Total))
+	ps.PRS.VainCatchupTimes = 0
 }
 
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
@@ -463,6 +465,7 @@ func (ps *PeerState) ApplyNewValidBlockMessage(msg *NewValidBlockMessage) {
 
 	ps.PRS.ProposalBlockPartSetHeader = msg.BlockPartSetHeader
 	ps.PRS.ProposalBlockParts = msg.BlockParts
+	ps.PRS.VainCatchupTimes = 0
 }
 
 // ApplyProposalPOLMessage updates the peer state for the new proposal POL.

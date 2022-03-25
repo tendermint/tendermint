@@ -24,6 +24,8 @@ type PeerRoundState struct {
 	Proposal                   bool                `json:"proposal"`
 	ProposalBlockPartSetHeader types.PartSetHeader `json:"proposal_block_part_set_header"`
 	ProposalBlockParts         *bits.BitArray      `json:"proposal_block_parts"`
+	VainCatchupTimes           int                 `json:"_"`
+
 	// Proposal's POL round. -1 if none.
 	ProposalPOLRound int32 `json:"proposal_pol_round"`
 
