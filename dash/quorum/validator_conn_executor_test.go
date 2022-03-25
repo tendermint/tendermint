@@ -348,7 +348,7 @@ func TestEndBlock(t *testing.T) {
 
 	clientCreator := abciclient.NewLocalCreator(app)
 	require.NotNil(t, clientCreator)
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	require.NotNil(t, proxyApp)
 
 	err := proxyApp.Start()
