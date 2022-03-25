@@ -479,6 +479,11 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 		}
 
 		return
+	} else {
+		prs.VainCatchupTimes++
+		if prs.VainCatchupTimes > 10 {
+			prs.ProposalBlockParts = bits.NewBitArray(prs.ProposalBlockParts.Bits) //the peer may discard the block parts previously, then enterCommit and stuck at not having commit block. We resend the block parts
+		}
 	}
 
 	time.Sleep(r.state.config.PeerGossipSleepDuration)
