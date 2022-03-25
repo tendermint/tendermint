@@ -230,9 +230,6 @@ type BaseConfig struct { //nolint: maligned
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis-file"`
 
-	// Set to whether the node is a masternode or not
-	IsMasternode bool `mapstructure:"is-masternode"`
-
 	// RPC port for Tendermint to query for
 	// an external PrivValidator process
 	PrivValidatorCoreRPCHost string `mapstructure:"priv-validator-core-rpc-host"`
@@ -260,7 +257,6 @@ type BaseConfig struct { //nolint: maligned
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:                      defaultGenesisJSONPath,
-		IsMasternode:                 true,
 		PrivValidatorCoreRPCHost:     "",
 		PrivValidatorCoreRPCUsername: "dashrpc",
 		PrivValidatorCoreRPCPassword: "rpcpassword",
@@ -281,7 +277,6 @@ func DefaultBaseConfig() BaseConfig {
 func SingleNodeBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:                      defaultGenesisJSONPath,
-		IsMasternode:                 true,
 		PrivValidatorCoreRPCHost:     "",
 		PrivValidatorCoreRPCUsername: "",
 		PrivValidatorCoreRPCPassword: "",

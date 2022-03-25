@@ -199,7 +199,7 @@ func makeNode(cfg *config.Config,
 			dashCoreRPCClient = rpcClient
 		}
 
-		if cfg.IsMasternode {
+		if cfg.Mode == config.ModeValidator {
 			// If a local port is provided for Dash Core rpc into the service to sign.
 			privValidator, err = createAndStartPrivValidatorRPCClient(
 				cfg.Consensus.QuorumType,
@@ -235,7 +235,7 @@ func makeNode(cfg *config.Config,
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
 		}
-		if cfg.IsMasternode {
+		if cfg.Mode == config.ModeValidator {
 			proTxHash, err = privValidator.GetProTxHash(context.TODO())
 			if err != nil {
 				return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)

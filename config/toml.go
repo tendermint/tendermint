@@ -154,9 +154,6 @@ filter-peers = {{ .BaseConfig.FilterPeers }}
 #######################################################
 [priv-validator]
 
-# Set to whether we are a masternode or not
-is_masternode = {{ .BaseConfig.IsMasternode }}
-
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
 key-file = "{{ js .PrivValidator.Key }}"
 
