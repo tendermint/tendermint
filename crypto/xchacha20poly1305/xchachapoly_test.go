@@ -83,7 +83,7 @@ func TestRandom(t *testing.T) {
 	}
 }
 
-// AFOREMENTIONED LICENCE
+// AFOREMENTIONED LICENSE
 // Copyright (c) 2009 The Go Authors. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without

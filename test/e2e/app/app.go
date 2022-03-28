@@ -15,9 +15,12 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+const appVersion = 1
+
 // Application is an ABCI application for use by end-to-end tests. It is a
 // simple key/value store for strings, storing data in memory and persisting
 // to disk as JSON, taking state sync snapshots if requested.
+
 type Application struct {
 	abci.BaseApplication
 	logger          log.Logger
@@ -79,7 +82,7 @@ func DefaultConfig(dir string) *Config {
 
 // NewApplication creates the application.
 func NewApplication(cfg *Config) (*Application, error) {
-	state, err := NewState(filepath.Join(cfg.Dir, "state.json"), cfg.PersistInterval)
+	state, err := NewState(cfg.Dir, cfg.PersistInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func NewApplication(cfg *Config) (*Application, error) {
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{
 		Version:          version.ABCIVersion,
-		AppVersion:       1,
+		AppVersion:       appVersion,
 		LastBlockHeight:  int64(app.state.Height),
 		LastBlockAppHash: app.state.Hash,
 	}
@@ -252,6 +255,10 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 		app.restoreChunks = nil
 	}
 	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
+}
+
+func (app *Application) Rollback() error {
+	return app.state.Rollback()
 }
 
 // validatorUpdates generates a validator set update.

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
+	"sort"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -304,6 +305,15 @@ func (cs *State) OnStart() error {
 		}
 	}
 
+	// we need the timeoutRoutine for replay so
+	// we don't block on the tick chan.
+	// NOTE: we will get a build up of garbage go routines
+	// firing on the tockChan until the receiveRoutine is started
+	// to deal with them (by that point, at most one will be valid)
+	if err := cs.timeoutTicker.Start(); err != nil {
+		return err
+	}
+
 	// We may have lost some votes if the process crashed reload from consensus
 	// log to catchup.
 	if cs.doWALCatchup {
@@ -357,15 +367,6 @@ func (cs *State) OnStart() error {
 	}
 
 	if err := cs.evsw.Start(); err != nil {
-		return err
-	}
-
-	// we need the timeoutRoutine for replay so
-	// we don't block on the tick chan.
-	// NOTE: we will get a build up of garbage go routines
-	// firing on the tockChan until the receiveRoutine is started
-	// to deal with them (by that point, at most one will be valid)
-	if err := cs.timeoutTicker.Start(); err != nil {
 		return err
 	}
 
@@ -818,7 +819,20 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		cs.mtx.Lock()
 		added, err = cs.addProposalBlockPart(msg, peerID)
+
+		// We unlock here to yield to any routines that need to read the the RoundState.
+		// Previously, this code held the lock from the point at which the final block
+		// part was recieved until the block executed against the application.
+		// This prevented the reactor from being able to retrieve the most updated
+		// version of the RoundState. The reactor needs the updated RoundState to
+		// gossip the now completed block.
+		//
+		// This code can be further improved by either always operating on a copy
+		// of RoundState and only locking when switching out State's copy of
+		// RoundState with the updated copy or by emitting RoundState events in
+		// more places for routines depending on it to listen for.
 		cs.mtx.Unlock()
+
 		cs.mtx.Lock()
 		if added && cs.ProposalBlockParts.IsComplete() {
 			cs.handleCompleteProposal(msg.Height)
@@ -1566,6 +1580,8 @@ func (cs *State) finalizeCommit(height int64) {
 		return
 	}
 
+	cs.calculatePrevoteMessageDelayMetrics()
+
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
@@ -2279,6 +2295,32 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 	}
 
 	return nil
+}
+
+func (cs *State) calculatePrevoteMessageDelayMetrics() {
+	if cs.Proposal == nil {
+		return
+	}
+
+	ps := cs.Votes.Prevotes(cs.Round)
+	pl := ps.List()
+
+	sort.Slice(pl, func(i, j int) bool {
+		return pl[i].Timestamp.Before(pl[j].Timestamp)
+	})
+
+	var votingPowerSeen int64
+	for _, v := range pl {
+		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
+		votingPowerSeen += val.VotingPower
+		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
+			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			break
+		}
+	}
+	if ps.HasAll() {
+		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+	}
 }
 
 //---------------------------------------------------------

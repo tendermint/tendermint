@@ -424,6 +424,10 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	return bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 }
 
+func (bs *BlockStore) Close() error {
+	return bs.db.Close()
+}
+
 //-----------------------------------------------------------------------------
 
 func calcBlockMetaKey(height int64) []byte {

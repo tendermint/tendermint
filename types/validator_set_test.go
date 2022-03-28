@@ -492,7 +492,9 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 				{Address: []byte("c"), ProposerPriority: 1}}},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
-			11, 1 / 3},
+			11,
+			0, // 1 / 3
+		},
 		2: {ValidatorSet{
 			Validators: []*Validator{
 				{Address: []byte("a"), ProposerPriority: 100},

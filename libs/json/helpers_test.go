@@ -61,7 +61,6 @@ func (c CustomValue) MarshalJSON() ([]byte, error) {
 }
 
 func (c CustomValue) UnmarshalJSON(bz []byte) error {
-	c.Value = "custom"
 	return nil
 }
 

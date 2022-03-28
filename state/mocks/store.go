@@ -4,6 +4,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
+
 	state "github.com/tendermint/tendermint/state"
 
 	tendermintstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -25,6 +26,20 @@ func (_m *Store) Bootstrap(_a0 state.State) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(state.State) error); ok {
 		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Close provides a mock function with given fields:
+func (_m *Store) Close() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
 	} else {
 		r0 = ret.Error(0)
 	}

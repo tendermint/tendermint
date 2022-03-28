@@ -293,7 +293,7 @@ func TestClientServer(t *testing.T) {
 
 	// set up grpc app
 	kvstore = NewApplication()
-	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
+	gclient, gserver, err := makeGRPCClientServer(kvstore, "/tmp/kvstore-grpc")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

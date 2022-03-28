@@ -11,6 +11,7 @@ on:
     branches: [master]
     paths:
       - "**.md"
+      - "**.yml"
 
 jobs:
   build:
@@ -18,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.4.0
       - name: Lint Code Base
         uses: docker://github/super-linter:v3
         env:
@@ -27,6 +28,5 @@ jobs:
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
-          MARKDOWN_CONFIG_FILE: .markdownlint.yml
-          VALIDATE_OPAENAPI: true
+          VALIDATE_OPENAPI: true
           VALIDATE_YAML: true

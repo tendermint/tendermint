@@ -262,7 +262,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	var currentBytes int64 = 0
+	var currentBytes int64
 	for currentBytes <= maxEvidenceBytes {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
 		currentBytes += int64(len(ev.Bytes()))

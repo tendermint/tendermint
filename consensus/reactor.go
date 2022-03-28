@@ -491,7 +491,7 @@ func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 }
 
 func (conR *Reactor) updateRoundStateRoutine() {
-	t := time.NewTicker(100*time.Microsecond)
+	t := time.NewTicker(100 * time.Microsecond)
 	defer t.Stop()
 	for range t.C {
 		if !conR.IsRunning() {
@@ -523,7 +523,6 @@ OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if !peer.IsRunning() || !conR.IsRunning() {
-			logger.Info("Stopping gossipDataRoutine for peer")
 			return
 		}
 		rs := conR.getRoundState()
@@ -667,7 +666,6 @@ OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if !peer.IsRunning() || !conR.IsRunning() {
-			logger.Info("Stopping gossipVotesRoutine for peer")
 			return
 		}
 		rs := conR.getRoundState()
@@ -792,13 +790,11 @@ func (conR *Reactor) gossipVotesForHeight(
 // NOTE: `queryMaj23Routine` has a simple crude design since it only comes
 // into play for liveness when there's a signature DDoS attack happening.
 func (conR *Reactor) queryMaj23Routine(peer p2p.Peer, ps *PeerState) {
-	logger := conR.Logger.With("peer", peer)
 
 OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if !peer.IsRunning() || !conR.IsRunning() {
-			logger.Info("Stopping queryMaj23Routine for peer")
 			return
 		}
 
@@ -1505,7 +1501,7 @@ func (m *NewRoundStepMessage) ValidateHeight(initialHeight int64) error {
 			m.LastCommitRound, initialHeight)
 	}
 	if m.Height > initialHeight && m.LastCommitRound < 0 {
-		return fmt.Errorf("LastCommitRound can only be negative for initial height %v", // nolint
+		return fmt.Errorf("LastCommitRound can only be negative for initial height %v",
 			initialHeight)
 	}
 	return nil

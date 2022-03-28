@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.15
+## v0.34.16
 
 Special thanks to external contributors on this release:
 
@@ -9,6 +9,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+
+   - [cli] \#8081 make the reset command safe to use (@marbar3778).
 
 - Apps
 
@@ -23,6 +25,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
-
-- [\#7057](https://github.com/tendermint/tendermint/pull/7057) Import Postgres driver support for the psql indexer (@creachadair).
-- [\#7106](https://github.com/tendermint/tendermint/pull/7106) Revert mutex change to ABCI Clients (@tychoish).
