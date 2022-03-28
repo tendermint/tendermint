@@ -1,13 +1,13 @@
 queue_rules:
   - name: default
     conditions:
-      - base=v0.35.x
+      - base=v0.8-dev
       - label=S:automerge
 
 pull_request_rules:
-  - name: Automerge to v0.35.x
+  - name: Automerge to v0.8-dev
     conditions:
-      - base=v0.35.x
+      - base=v0.8-dev
       - label=S:automerge
     actions:
       queue:
