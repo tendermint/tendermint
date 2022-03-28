@@ -497,7 +497,7 @@ func (r *Reactor) gossipDataForCatchup(ctx context.Context, rs *cstypes.RoundSta
 		prs.VainCatchupTimes++
 		if prs.VainCatchupTimes >= 10 {
 			prs.ProposalBlockParts = bits.NewBitArray(prs.ProposalBlockParts.Bits) //the peer may discard the block parts previously, then stuck at waiting for commit block. Resend the block parts to him if we have retried many times.
-			ps.PRS.VainCatchupTimes = 0
+			prs.VainCatchupTimes = 0
 		}
 	}
 
