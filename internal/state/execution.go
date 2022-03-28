@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -436,12 +437,23 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
+// extendedCommitInfo assumes that votes from the given commit correspond
+// precisely to those provided in the list of votes, such that vote extensions
+// can be correlated with the votes in the commit.
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
 		var ext []byte
 		// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
 		if c.Votes[i].SignedLastBlock {
+			// We would panic anyways, but at least this will provide more information.
+			if votes[i] == nil {
+				panic(fmt.Sprintf("extendedCommitInfo: expected vote in position %d (%v), but got nil", i, c.Votes[i]))
+			}
+			// Strong guarantee that the vote corresponds to the relevant validator
+			if !bytes.Equal(c.Votes[i].Validator.Address, votes[i].ValidatorAddress) {
+				panic(fmt.Sprintf("extendedCommitInfo: expected votes in position %d to have the same validator address (%v != %v)", i, c.Votes[i].Validator.Address, votes[i].ValidatorAddress))
+			}
 			ext = votes[i].Extension
 		}
 		vs[i] = abci.ExtendedVoteInfo{
