@@ -45,6 +45,10 @@ func (bA *BitArray) reset(bits int) {
 	}
 }
 
+func (bA *BitArray) Reset(bits int) {
+	bA.reset(bits)
+}
+
 // Size returns the number of bits in the bitarray
 func (bA *BitArray) Size() int {
 	if bA == nil {
