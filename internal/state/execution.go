@@ -319,7 +319,7 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 
 	resp, err := blockExec.appClient.ExtendVote(ctx, req)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("ExtendVote call failed: %w", err))
 	}
 	return resp.VoteExtension, nil
 }
@@ -334,7 +334,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, req)
 	if err != nil {
-		return err
+		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
 	}
 
 	if !resp.IsOK() {
