@@ -202,7 +202,10 @@ to undergo any changes in their implementation.
 
 As for the new methods:
 
-* `PrepareProposal` should set `ResponsePrepareProposal.modified_tx` to _false_ and return.
+* `PrepareProposal` should check whether the size of transactions exceeds the byte limit.
+    * If it does: remove transactions at the end of the list until the total byte size conforms to the limit,
+      then set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED` and return.
+    * Else, set `ResponsePrepareProposal.modified_tx_status` to `UNMODIFIED` and return.
 * `ProcessProposal` should set `ResponseProcessProposal.accept` to _true_ and return.
 * `ExtendVote` should set `ResponseExtendVote.extension` to an empty byte array and return.
 * `VerifyVoteExtension` should set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is an empty byte array
