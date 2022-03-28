@@ -1452,11 +1452,7 @@ func (cs *State) enterPrevote(ctx context.Context, height int64, round int32) {
 }
 
 func (cs *State) proposalIsTimely() bool {
-	sp := types.SynchronyParams{
-		Precision:    cs.state.ConsensusParams.Synchrony.Precision,
-		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
-	}
-
+	sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
 	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.Round)
 }
 
@@ -1482,6 +1478,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 		return
 	}
 
+	sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
 	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
 		logger.Debug("prevote step: Proposal is not timely; prevoting nil",
 			"proposed",
@@ -1489,9 +1486,9 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 			"received",
 			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
 			"msg_delay",
-			cs.state.ConsensusParams.Synchrony.MessageDelay,
+			sp.MessageDelay,
 			"precision",
-			cs.state.ConsensusParams.Synchrony.Precision)
+			sp.Precision)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -2667,11 +2664,12 @@ func repairWalFile(src, dst string) error {
 }
 
 func (cs *State) proposeTimeout(round int32) time.Duration {
-	p := cs.state.ConsensusParams.Timeout.Propose
+	tp := cs.state.ConsensusParams.Timeout.TimeoutParamsOrDefaults()
+	p := tp.Propose
 	if cs.config.UnsafeProposeTimeoutOverride != 0 {
 		p = cs.config.UnsafeProposeTimeoutOverride
 	}
-	pd := cs.state.ConsensusParams.Timeout.ProposeDelta
+	pd := tp.ProposeDelta
 	if cs.config.UnsafeProposeTimeoutDeltaOverride != 0 {
 		pd = cs.config.UnsafeProposeTimeoutDeltaOverride
 	}
@@ -2681,11 +2679,12 @@ func (cs *State) proposeTimeout(round int32) time.Duration {
 }
 
 func (cs *State) voteTimeout(round int32) time.Duration {
-	v := cs.state.ConsensusParams.Timeout.Vote
+	tp := cs.state.ConsensusParams.Timeout.TimeoutParamsOrDefaults()
+	v := tp.Vote
 	if cs.config.UnsafeVoteTimeoutOverride != 0 {
 		v = cs.config.UnsafeVoteTimeoutOverride
 	}
-	vd := cs.state.ConsensusParams.Timeout.VoteDelta
+	vd := tp.VoteDelta
 	if cs.config.UnsafeVoteTimeoutDeltaOverride != 0 {
 		vd = cs.config.UnsafeVoteTimeoutDeltaOverride
 	}
@@ -2711,12 +2710,8 @@ func (cs *State) bypassCommitTimeout() bool {
 
 func (cs *State) calculateProposalTimestampDifferenceMetric() {
 	if cs.Proposal != nil && cs.Proposal.POLRound == -1 {
-		tp := types.SynchronyParams{
-			Precision:    cs.state.ConsensusParams.Synchrony.Precision,
-			MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
-		}
-
-		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.Round)
+		sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
+		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.Round)
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}
