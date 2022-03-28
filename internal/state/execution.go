@@ -441,6 +441,9 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 // precisely to those provided in the list of votes, such that vote extensions
 // can be correlated with the votes in the commit.
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+	if len(c.Votes) != len(votes) {
+		panic(fmt.Sprintf("extendedCommitInfo: number of votes from commit differ from the number of votes supplied (%d != %d)", len(c.Votes), len(votes)))
+	}
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
 		var ext []byte
