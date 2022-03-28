@@ -298,7 +298,6 @@ title: Methods
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
-    | modified_tx_status      | [TxModifiedStatus](#TxModifiedStatus)            | `enum` signaling if the application has made changes to the list of transactions.           | 1            |
     | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
     | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
@@ -311,19 +310,15 @@ title: Methods
     * The header contains the height, timestamp, and more - it exactly matches the
       Tendermint block header.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
-        * In this case, the Application should set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED`.
         * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
             * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
             * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as `REMOVED`. In this case, Tendermint will remove `tx` from the mempool.
             * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as `ADD`. In this case, Tendermint will add it to the mempool.
         * The Application should be aware that removing and adding transactions may compromise _traceability_.
           > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
-    * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx_status` to `UNMODIFIED`. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
     * Tendermint MAY include a list of transactions in `RequestPrepareProposal.txs` whose total size in bytes exceeds `RequestPrepareProposal.max_tx_bytes`.
-      Therefore, if the size of `RequestPrepareProposal.txs` is greater than `RequestPrepareProposal.max_tx_bytes`:
-        * the Application MUST make sure that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those
-          transaction records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or `ADDED`.
-        * the Application MUST set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED`. Tendermint will panic otherwise.
+      Therefore, if the size of `RequestPrepareProposal.txs` is greater than `RequestPrepareProposal.max_tx_bytes`, the Application MUST make sure that the
+      `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or `ADDED`.
     * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.

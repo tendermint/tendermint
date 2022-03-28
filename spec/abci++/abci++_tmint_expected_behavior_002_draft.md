@@ -202,10 +202,12 @@ to undergo any changes in their implementation.
 
 As for the new methods:
 
-* `PrepareProposal` should check whether the size of transactions exceeds the byte limit.
-    * If it does: remove transactions at the end of the list until the total byte size conforms to the limit,
-      then set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED` and return.
-    * Else, set `ResponsePrepareProposal.modified_tx_status` to `UNMODIFIED` and return.
+* `PrepareProposal` should create a list of [TxRecord](./abci%2B%2B_methods_002_draft.md#txrecord) each containing a
+  transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must be set to `UNMODIFIED`
+  for all [TxRecord](./abci%2B%2B_methods_002_draft.md#txrecord) elements in the list.
+  The Application should check whether the size of all transactions exceeds the byte limit
+  (`RequestPrepareProposal.max_tx_bytes`). If so, the Application should remove transactions at the end of the list
+  until the total byte size conforms to the limit.
 * `ProcessProposal` should set `ResponseProcessProposal.accept` to _true_ and return.
 * `ExtendVote` should set `ResponseExtendVote.extension` to an empty byte array and return.
 * `VerifyVoteExtension` should set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is an empty byte array
