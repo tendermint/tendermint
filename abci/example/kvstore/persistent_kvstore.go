@@ -267,7 +267,7 @@ func MakeValidatorSetUpdateTx(
 	for i, proTxHash := range proTxHashes {
 		var (
 			pubKey []byte
-			power  int64 = 0
+			power  int64
 		)
 		if i < len(pubKeys) {
 			pubKey = pubKeys[i].Bytes()

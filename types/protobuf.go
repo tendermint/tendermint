@@ -53,10 +53,7 @@ func (tm2pb) ValidatorUpdate(val *Validator) abci.ValidatorUpdate {
 		NodeAddress: val.NodeAddress.String(),
 	}
 	if val.PubKey != nil {
-		pk, err := cryptoenc.PubKeyToProto(val.PubKey)
-		if err != nil {
-			panic(err)
-		}
+		pk := cryptoenc.MustPubKeyToProto(val.PubKey)
 		valUpdate.PubKey = &pk
 	}
 	return valUpdate
@@ -68,10 +65,7 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) abci.ValidatorSetUpdate {
 	for i, val := range vals.Validators {
 		validators[i] = TM2PB.ValidatorUpdate(val)
 	}
-	abciThresholdPublicKey, err := cryptoenc.PubKeyToProto(vals.ThresholdPublicKey)
-	if err != nil {
-		panic(err)
-	}
+	abciThresholdPublicKey := cryptoenc.MustPubKeyToProto(vals.ThresholdPublicKey)
 	return abci.ValidatorSetUpdate{
 		ValidatorUpdates:   validators,
 		ThresholdPublicKey: abciThresholdPublicKey,
@@ -88,10 +82,7 @@ func (tm2pb) NewValidatorUpdate(
 ) abci.ValidatorUpdate {
 	var pubkeyABCI *crypto2.PublicKey
 	if pubkey != nil {
-		pubkeyProto, err := cryptoenc.PubKeyToProto(pubkey)
-		if err != nil {
-			panic(err)
-		}
+		pubkeyProto := cryptoenc.MustPubKeyToProto(pubkey)
 		pubkeyABCI = &pubkeyProto
 	} else {
 		pubkeyABCI = nil

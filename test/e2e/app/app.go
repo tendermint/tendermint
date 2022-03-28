@@ -305,10 +305,7 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 		return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", thresholdPublicKeyUpdateString, err)
 	}
 	thresholdPublicKeyUpdate := bls12381.PubKey(thresholdPublicKeyUpdateBytes)
-	abciThresholdPublicKeyUpdate, err := encoding.PubKeyToProto(thresholdPublicKeyUpdate)
-	if err != nil {
-		panic(err)
-	}
+	abciThresholdPublicKeyUpdate := encoding.MustPubKeyToProto(thresholdPublicKeyUpdate)
 
 	quorumHashUpdateString := app.cfg.QuorumHashUpdate[fmt.Sprintf("%v", height)]
 	if len(quorumHashUpdateString) == 0 {
