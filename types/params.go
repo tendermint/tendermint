@@ -247,24 +247,24 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 			params.Synchrony.Precision)
 	}
 
-	if params.Timeout.Propose < 0 {
-		return fmt.Errorf("timeout.ProposeDelta must not be negative. Got: %d", params.Timeout.Propose)
+	if params.Timeout.Propose <= 0 {
+		return fmt.Errorf("timeout.ProposeDelta must be greater than 0. Got: %d", params.Timeout.Propose)
 	}
 
-	if params.Timeout.ProposeDelta < 0 {
-		return fmt.Errorf("timeout.ProposeDelta must not be negative. Got: %d", params.Timeout.ProposeDelta)
+	if params.Timeout.ProposeDelta <= 0 {
+		return fmt.Errorf("timeout.ProposeDelta must be greater than 0. Got: %d", params.Timeout.ProposeDelta)
 	}
 
-	if params.Timeout.Vote < 0 {
-		return fmt.Errorf("timeout.Vote must not be negative. Got: %d", params.Timeout.Vote)
+	if params.Timeout.Vote <= 0 {
+		return fmt.Errorf("timeout.Vote must be greater than 0. Got: %d", params.Timeout.Vote)
 	}
 
-	if params.Timeout.VoteDelta < 0 {
-		return fmt.Errorf("timeout.VoteDelta must not be negative. Got: %d", params.Timeout.VoteDelta)
+	if params.Timeout.VoteDelta <= 0 {
+		return fmt.Errorf("timeout.VoteDelta must be greater than 0. Got: %d", params.Timeout.VoteDelta)
 	}
 
-	if params.Timeout.Commit < 0 {
-		return fmt.Errorf("timeout.Commit must not be negative. Got: %d", params.Timeout.Commit)
+	if params.Timeout.Commit <= 0 {
+		return fmt.Errorf("timeout.Commit must be greater than 0. Got: %d", params.Timeout.Commit)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
