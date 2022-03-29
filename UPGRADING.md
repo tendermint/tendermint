@@ -63,6 +63,35 @@ callback.
 For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
 defines and describes the new API in detail.
 
+### Timeout Parameter Changes
+
+Tendermint v0.36 updates how the Tendermint consensus timing parameters are
+configured. These parameters, `timeout-propose`, `timeout-propose-delta`,
+`timeout-prevote`, `timeout-prevote-delta`, `timeout-precommit`,
+`timeout-precommit-delta`, `timeout-commit`, and `skip-timeout-commit`, were
+previously configured in `config.toml`. These timing parameters have moved and
+are no longer configured in the `config.toml` file. These parameters have been
+migrated into the `ConsensusParameters`.
+
+These parameters have also been pared-down. There are no longer separate
+parameters for both the `prevote` and `precommit` phases of Tendermint. The
+separate `timeout-prevote` and `timeout-precommit` parameters have been merged
+into a single `timeout-vote` parameter that configures both of these similar
+phases of the consensus protocol.
+
+A set of reasonable defaults have been put in place for these new parameters
+that will take effect when the node starts up in version v0.36. New chains
+created using v0.36 and beyond will be able to configure these parameters in the
+chain's `genesis.json` file. Chains that upgrade to v0.36 from a previous
+compatible version of Tendermint will begin running with the default values.
+Upgrading applications that wish to use different values from the defaults for
+these parameters may do so by setting the `ConsensusParams.Timeout` field of the
+`FinalizeBlock` `ABCI` response.
+
+For more discussion of this, see [ADR 074](https://tinyurl.com/adr074) lays out
+the reasoning for the changes as well as [RFC 009](https://tinyurl.com/rfc009)
+for a discussion of the complexities of upgrading consensus parameters.
+
 ## v0.35
 
 ### ABCI Changes
