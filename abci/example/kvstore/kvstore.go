@@ -285,7 +285,7 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	defer app.mu.Unlock()
 
 	return types.ResponsePrepareProposal{
-		TxRecords:        app.substPrepareTx(req.Txs, req.MaxTxBytes),
+		TxRecords: app.substPrepareTx(req.Txs, req.MaxTxBytes),
 	}
 }
 
@@ -439,9 +439,9 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 func (app *Application) substPrepareTx(blockData [][]byte, max_tx_bytes int64) []*types.TxRecord {
 	trs := make([]*types.TxRecord, len(blockData))
 	var removed []*types.TxRecord
-	var total_bytes int64
+	var totalBytes int64
 	for i, tx := range blockData {
-		if total_bytes > max_tx_bytes {
+		if totalBytes > max_tx_bytes {
 			trs = trs[:i]
 			break
 		}
@@ -454,14 +454,14 @@ func (app *Application) substPrepareTx(blockData [][]byte, max_tx_bytes int64) [
 				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
 				Action: types.TxRecord_ADDED,
 			}
-			total_bytes += int64(len(trs[i].Tx))
+			totalBytes += int64(len(trs[i].Tx))
 			continue
 		}
 		trs[i] = &types.TxRecord{
 			Tx:     tx,
 			Action: types.TxRecord_UNMODIFIED,
 		}
-		total_bytes += int64(len(tx))
+		totalBytes += int64(len(tx))
 	}
 
 	return append(trs, removed...)

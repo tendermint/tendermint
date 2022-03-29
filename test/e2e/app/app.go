@@ -307,9 +307,9 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
 	// None of the transactions are modified by this application.
 	trs := make([]*abci.TxRecord, len(req.Txs))
-	var total_bytes int64
+	var totalBytes int64
 	for i, tx := range req.Txs {
-		if total_bytes > req.MaxTxBytes {
+		if totalBytes > req.MaxTxBytes {
 			trs = trs[:i]
 			break
 		}
@@ -317,7 +317,7 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 			Action: abci.TxRecord_UNMODIFIED,
 			Tx:     tx,
 		}
-		total_bytes += int64(len(tx))
+		totalBytes += int64(len(tx))
 	}
 	return abci.ResponsePrepareProposal{TxRecords: trs}
 }

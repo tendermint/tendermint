@@ -272,7 +272,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 func TestProcessProposal(t *testing.T) {
 	const height = 2
-	txs := factory.MakeTenTxs(height)
+	txs := factory.MakeNTxs(height, 10)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -726,7 +726,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeTenTxs(height)
+	txs := factory.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
@@ -737,7 +737,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords:        trs,
+		TxRecords: trs,
 	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
@@ -785,7 +785,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeTenTxs(height)
+	txs := factory.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
 
@@ -840,7 +840,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeTenTxs(height)
+	txs := factory.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
