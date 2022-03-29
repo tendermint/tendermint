@@ -120,10 +120,10 @@ message TimeoutParams {
   // used to allow slow precommits to arrive for inclusion in the next height before progressing.
   google.protobuf.Duration commit = 5 [(gogoproto.stdduration) = true];
 
-  // enable_commit_timeout_bypass configures the node to proceed immediately to
+  // bypass_commit_timeout configures the node to proceed immediately to
   // the next height once the node has received all precommits for a block, forgoing
   // the remaining commit timeout.
-  // Setting enable_commit_timeout_bypass false (the default) causes Tendermint to wait
-  // for the full commit.
-  bool enable_commit_timeout_bypass = 6;
+  // Setting bypass_commit_timeout false (the default) causes Tendermint to wait
+  // for the full commit timeout.
+  bool bypass_commit_timeout = 6;
 }

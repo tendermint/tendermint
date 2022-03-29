@@ -140,8 +140,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
+	if rpp.IsTxStatusUnknown() {
+		panic(fmt.Sprintf("PrepareProposal responded with ModifiedTxStatus %s", rpp.ModifiedTxStatus.String()))
+	}
 
-	if !rpp.ModifiedTx {
+	if !rpp.IsTxStatusModified() {
 		return block, nil
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
@@ -153,11 +156,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	for _, rtx := range txrSet.RemovedTxs() {
 		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
 			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
-		}
-	}
-	for _, atx := range txrSet.AddedTxs() {
-		if err := blockExec.mempool.CheckTx(ctx, atx, nil, mempool.TxInfo{}); err != nil {
-			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
 		}
 	}
 	itxs := txrSet.IncludedTxs()
@@ -181,8 +179,11 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
+	if resp.IsStatusUnknown() {
+		panic(fmt.Sprintf("ProcessProposal responded with status %s", resp.Status.String()))
+	}
 
-	return resp.Accept, nil
+	return resp.IsAccepted(), nil
 }
 
 // ValidateBlock validates the given block against the given state.

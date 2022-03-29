@@ -123,16 +123,6 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
-// Extends a vote with application-side injection
-message RequestExtendVote {
-  types.Vote vote = 1;
-}
-
-// Verify the vote extension
-message RequestVerifyVoteExtension {
-  types.Vote vote = 1;
-}
-
 message RequestPrepareProposal {
   bytes                   hash   = 1;
   tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
@@ -151,6 +141,16 @@ message RequestProcessProposal {
   repeated bytes          txs                  = 3;
   CommitInfo              proposed_last_commit = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+}
+
+// Extends a vote with application-side injection
+message RequestExtendVote {
+  types.Vote vote = 1;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  types.Vote vote = 1;
 }
 
 message RequestFinalizeBlock {
@@ -312,36 +312,47 @@ message ResponseApplySnapshotChunk {
   }
 }
 
-message ResponseExtendVote {
-  tendermint.types.VoteExtension vote_extension = 1;
-}
-
-message ResponseVerifyVoteExtension {
-  Result result = 1;
-
-  enum Result {
-    UNKNOWN = 0;  // Unknown result, reject vote extension
-    ACCEPT  = 1;  // Vote extension verified, include the vote
-    SLASH   = 2;  // Vote extension verification aborted, continue but slash validator
-    REJECT  = 3;  // Vote extension invalidated
-  }
-}
-
 message ResponsePrepareProposal {
-  bool                             modified_tx             = 1;
+  ModifiedTxStatus                 modified_tx_status      = 1;
   repeated TxRecord                tx_records              = 2;
   bytes                            app_hash                = 3;
   repeated ExecTxResult            tx_results              = 4;
   repeated ValidatorUpdate         validator_updates       = 5;
   tendermint.types.ConsensusParams consensus_param_updates = 6;
+
+  enum ModifiedTxStatus {
+    UNKNOWN    = 0;
+    UNMODIFIED = 1;
+    MODIFIED   = 2;
+  }
 }
 
 message ResponseProcessProposal {
-  bool                             accept                  = 1;
+  ProposalStatus                   status                  = 1;
   bytes                            app_hash                = 2;
   repeated ExecTxResult            tx_results              = 3;
   repeated ValidatorUpdate         validator_updates       = 4;
   tendermint.types.ConsensusParams consensus_param_updates = 5;
+
+  enum ProposalStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
+}
+
+message ResponseExtendVote {
+  tendermint.types.VoteExtension vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  VerifyStatus status = 1;
+
+  enum VerifyStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
 }
 
 message ResponseFinalizeBlock {

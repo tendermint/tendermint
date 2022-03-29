@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -594,6 +595,8 @@ func TestHandshakeReplayAll(t *testing.T) {
 
 	sim := setupSimulator(ctx, t)
 
+	t.Cleanup(leaktest.Check(t))
+
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, 0, m, false)
 	}
@@ -608,6 +611,8 @@ func TestHandshakeReplaySome(t *testing.T) {
 	defer cancel()
 
 	sim := setupSimulator(ctx, t)
+
+	t.Cleanup(leaktest.Check(t))
 
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, 2, m, false)
@@ -639,6 +644,8 @@ func TestHandshakeReplayNone(t *testing.T) {
 
 	sim := setupSimulator(ctx, t)
 
+	t.Cleanup(leaktest.Check(t))
+
 	for _, m := range modes {
 		testHandshakeReplay(ctx, t, sim, numBlocks, m, false)
 	}
@@ -652,12 +659,12 @@ func tempWALWithData(t *testing.T, data []byte) string {
 
 	walFile, err := os.CreateTemp(t.TempDir(), "wal")
 	require.NoError(t, err, "failed to create temp WAL file")
+	t.Cleanup(func() { _ = os.RemoveAll(walFile.Name()) })
 
 	_, err = walFile.Write(data)
 	require.NoError(t, err, "failed to  write to temp WAL file")
 
 	require.NoError(t, walFile.Close(), "failed to close temp WAL file")
-
 	return walFile.Name()
 }
 

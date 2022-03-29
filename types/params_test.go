@@ -19,11 +19,13 @@ var (
 
 func TestConsensusParamsValidation(t *testing.T) {
 	testCases := []struct {
+		name   string
 		params ConsensusParams
 		valid  bool
 	}{
 		// test block params
 		{
+			name: "block params valid",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   1,
 				evidenceAge:  2,
@@ -32,6 +34,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: true,
 		},
 		{
+			name: "block params invalid MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   0,
 				evidenceAge:  2,
@@ -40,6 +43,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: false,
 		},
 		{
+			name: "block params large MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   47 * 1024 * 1024,
 				evidenceAge:  2,
@@ -48,6 +52,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: true,
 		},
 		{
+			name: "block params small MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   10,
 				evidenceAge:  2,
@@ -56,6 +61,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: true,
 		},
 		{
+			name: "block params 100MB MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   100 * 1024 * 1024,
 				evidenceAge:  2,
@@ -64,6 +70,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: true,
 		},
 		{
+			name: "block params MaxBytes too large",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   101 * 1024 * 1024,
 				evidenceAge:  2,
@@ -72,14 +79,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: false,
 		},
 		{
-			params: makeParams(makeParamsArgs{
-				blockBytes:   1024 * 1024 * 1024,
-				evidenceAge:  2,
-				precision:    1,
-				messageDelay: 1}),
-			valid: false,
-		},
-		{
+			name: "block params 1GB MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:   1024 * 1024 * 1024,
 				evidenceAge:  2,
@@ -89,6 +89,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 		},
 		// test evidence params
 		{
+			name: "evidence MaxAge and MaxBytes 0",
 			params: makeParams(makeParamsArgs{
 				blockBytes:       1,
 				evidenceAge:      0,
@@ -98,6 +99,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: false,
 		},
 		{
+			name: "evidence MaxBytes greater than Block.MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:       1,
 				evidenceAge:      2,
@@ -107,6 +109,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: false,
 		},
 		{
+			name: "evidence size below Block.MaxBytes",
 			params: makeParams(makeParamsArgs{
 				blockBytes:       1000,
 				evidenceAge:      2,
@@ -116,6 +119,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: true,
 		},
 		{
+			name: "evidence MaxAgeDuration < 0",
 			params: makeParams(makeParamsArgs{
 				blockBytes:       1,
 				evidenceAge:      -1,
@@ -124,8 +128,8 @@ func TestConsensusParamsValidation(t *testing.T) {
 				messageDelay:     1}),
 			valid: false,
 		},
-		// test no pubkey type provided
 		{
+			name: "no pubkey types",
 			params: makeParams(makeParamsArgs{
 				evidenceAge:  2,
 				pubkeyTypes:  []string{},
@@ -133,8 +137,8 @@ func TestConsensusParamsValidation(t *testing.T) {
 				messageDelay: 1}),
 			valid: false,
 		},
-		// test invalid pubkey type provided
 		{
+			name: "invalid pubkey types",
 			params: makeParams(makeParamsArgs{
 				evidenceAge:  2,
 				pubkeyTypes:  []string{"potatoes make good pubkeys"},
@@ -142,8 +146,8 @@ func TestConsensusParamsValidation(t *testing.T) {
 				messageDelay: 1}),
 			valid: false,
 		},
-		// test invalid pubkey type provided
 		{
+			name: "negative MessageDelay",
 			params: makeParams(makeParamsArgs{
 				evidenceAge:  2,
 				precision:    1,
@@ -151,6 +155,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 			valid: false,
 		},
 		{
+			name: "negative Precision",
 			params: makeParams(makeParamsArgs{
 				evidenceAge:  2,
 				precision:    -1,
@@ -159,27 +164,51 @@ func TestConsensusParamsValidation(t *testing.T) {
 		},
 	}
 	for i, tc := range testCases {
-		if tc.valid {
-			assert.NoErrorf(t, tc.params.ValidateConsensusParams(), "expected no error for valid params (#%d)", i)
-		} else {
-			assert.Errorf(t, tc.params.ValidateConsensusParams(), "expected error for non valid params (#%d)", i)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.valid {
+				assert.NoErrorf(t, tc.params.ValidateConsensusParams(), "expected no error for valid params (#%d)", i)
+			} else {
+				assert.Errorf(t, tc.params.ValidateConsensusParams(), "expected error for non valid params (#%d)", i)
+			}
+		})
 	}
 }
 
 type makeParamsArgs struct {
-	blockBytes       int64
-	blockGas         int64
-	evidenceAge      int64
-	maxEvidenceBytes int64
-	pubkeyTypes      []string
-	precision        time.Duration
-	messageDelay     time.Duration
+	blockBytes          int64
+	blockGas            int64
+	evidenceAge         int64
+	maxEvidenceBytes    int64
+	pubkeyTypes         []string
+	precision           time.Duration
+	messageDelay        time.Duration
+	bypassCommitTimeout bool
+
+	propose      *time.Duration
+	proposeDelta *time.Duration
+	vote         *time.Duration
+	voteDelta    *time.Duration
+	commit       *time.Duration
 }
 
 func makeParams(args makeParamsArgs) ConsensusParams {
 	if args.pubkeyTypes == nil {
 		args.pubkeyTypes = valEd25519
+	}
+	if args.propose == nil {
+		args.propose = durationPtr(1)
+	}
+	if args.proposeDelta == nil {
+		args.proposeDelta = durationPtr(1)
+	}
+	if args.vote == nil {
+		args.vote = durationPtr(1)
+	}
+	if args.voteDelta == nil {
+		args.voteDelta = durationPtr(1)
+	}
+	if args.commit == nil {
+		args.commit = durationPtr(1)
 	}
 	return ConsensusParams{
 		Block: BlockParams{
@@ -198,8 +227,15 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 			Precision:    args.precision,
 			MessageDelay: args.messageDelay,
 		},
+		Timeout: TimeoutParams{
+			Propose:             *args.propose,
+			ProposeDelta:        *args.proposeDelta,
+			Vote:                *args.vote,
+			VoteDelta:           *args.voteDelta,
+			Commit:              *args.commit,
+			BypassCommitTimeout: args.bypassCommitTimeout,
+		},
 	}
-
 }
 
 func TestConsensusParamsHash(t *testing.T) {
@@ -251,6 +287,35 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				},
 			},
 			updatedParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: 2 * time.Second, messageDelay: 4 * time.Second}),
+		},
+		{
+			// update timeout params
+			intialParams: makeParams(makeParamsArgs{
+				propose:             durationPtr(3 * time.Second),
+				proposeDelta:        durationPtr(500 * time.Millisecond),
+				vote:                durationPtr(time.Second),
+				voteDelta:           durationPtr(500 * time.Millisecond),
+				commit:              durationPtr(time.Second),
+				bypassCommitTimeout: false,
+			}),
+			updates: &tmproto.ConsensusParams{
+				Timeout: &tmproto.TimeoutParams{
+					Propose:             durationPtr(2 * time.Second),
+					ProposeDelta:        durationPtr(400 * time.Millisecond),
+					Vote:                durationPtr(5 * time.Second),
+					VoteDelta:           durationPtr(400 * time.Millisecond),
+					Commit:              durationPtr(time.Minute),
+					BypassCommitTimeout: true,
+				},
+			},
+			updatedParams: makeParams(makeParamsArgs{
+				propose:             durationPtr(2 * time.Second),
+				proposeDelta:        durationPtr(400 * time.Millisecond),
+				vote:                durationPtr(5 * time.Second),
+				voteDelta:           durationPtr(400 * time.Millisecond),
+				commit:              durationPtr(time.Minute),
+				bypassCommitTimeout: true,
+			}),
 		},
 		// fine updates
 		{

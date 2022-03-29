@@ -48,7 +48,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
-	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, factory.ConsensusParams())
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
