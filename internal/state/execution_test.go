@@ -879,9 +879,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 }
 
-// TestPrepareProposalPanicOnTooManyTxs tests that the block creation logic panics
-// if the ResponsePrepareProposal returned from the application is invalid.
-func TestPrepareProposalPanicOnTooManyTxs(t *testing.T) {
+// TestPrepareProposalErrorOnTooManyTxs tests that the block creation logic returns
+// an error if the ResponsePrepareProposal returned from the application is invalid.
+func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
