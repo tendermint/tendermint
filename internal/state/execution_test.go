@@ -615,9 +615,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
-	}, nil)
+	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}, nil)
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -677,7 +675,6 @@ func TestPrepareProposalPanicOnInvalid(t *testing.T) {
 
 	// create an invalid ResponsePrepareProposal
 	rpp := abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
 		TxRecords: []*abci.TxRecord{
 			{
 				Action: abci.TxRecord_REMOVED,
@@ -740,7 +737,6 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
 		TxRecords:        trs,
 	}, nil)
 
@@ -799,7 +795,6 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
 		TxRecords:        trs,
 	}, nil)
 
@@ -855,7 +850,6 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
 		TxRecords:        trs,
 	}, nil)
 
@@ -883,68 +877,6 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	mp.AssertExpectations(t)
 
-}
-
-// TestPrepareProposalModifiedTxStatusFalse tests that CreateBlock correctly ignores
-// the ResponsePrepareProposal TxRecords if ResponsePrepareProposal does not
-// set ModifiedTxStatus to true.
-func TestPrepareProposalModifiedTxStatusFalse(t *testing.T) {
-	const height = 2
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	logger := log.NewNopLogger()
-	eventBus := eventbus.NewDefault(logger)
-	require.NoError(t, eventBus.Start(ctx))
-
-	state, stateDB, privVals := makeState(t, 1, height)
-	stateStore := sm.NewStore(stateDB)
-
-	evpool := &mocks.EvidencePool{}
-	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
-
-	txs := factory.MakeTenTxs(height)
-	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
-
-	trs := txsToTxRecords(types.Txs(txs))
-	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
-	trs = trs[1:]
-	trs[0].Action = abci.TxRecord_REMOVED
-	trs[1] = &abci.TxRecord{
-		Tx:     []byte("new"),
-		Action: abci.TxRecord_ADDED,
-	}
-
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
-		TxRecords:        trs,
-	}, nil)
-
-	cc := abciclient.NewLocalClient(logger, app)
-	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
-	err := proxyApp.Start(ctx)
-	require.NoError(t, err)
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		logger,
-		proxyApp,
-		mp,
-		evpool,
-		nil,
-		eventBus,
-	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
-	require.NoError(t, err)
-	for i, tx := range block.Data.Txs {
-		require.Equal(t, txs[i], tx)
-	}
-
-	mp.AssertExpectations(t)
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {

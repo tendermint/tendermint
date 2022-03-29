@@ -140,13 +140,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// purpose for now.
 		panic(err)
 	}
-	if rpp.IsTxStatusUnknown() {
-		panic(fmt.Sprintf("PrepareProposal responded with ModifiedTxStatus %s", rpp.ModifiedTxStatus.String()))
-	}
-
-	if !rpp.IsTxStatusModified() {
-		return block, nil
-	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
 	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {

@@ -317,9 +317,21 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 
 func (app *CounterApplication) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	return abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
+
+	trs := make([]*abci.TxRecord, len(req.Txs))
+	var total_bytes int64
+	for i, tx := range req.Txs {
+		if total_bytes > req.MaxTxBytes {
+			trs = trs[:i]
+			break
+		}
+		trs[i] = &abci.TxRecord{
+			Action: abci.TxRecord_UNMODIFIED,
+			Tx:     tx,
+		}
+		total_bytes += int64(len(tx))
 	}
+	return abci.ResponsePrepareProposal{TxRecords: trs}
 }
 
 func (app *CounterApplication) ProcessProposal(

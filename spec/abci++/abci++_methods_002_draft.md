@@ -872,22 +872,6 @@ enum ProposalStatus {
     * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
     * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
 
-### TxModifiedStatus
-
-```proto
-enum ModifiedTxStatus {
-  UNKNOWN    = 0; // Unknown status. Returning this from the application is always an error.
-  UNMODIFIED = 1; // Status that signals the application has modified the returned list of transactions.
-  MODIFIED   = 2; // Status that signals that the application has not modified the list of transactions.
-}
-```
-
-* **Usage**:
-	* Used within the [PrepareProposal](#PrepareProposal) response.
-    * If `TxModifiedStatus` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `TxModifiedStatus` is `UNMODIFIED`, Tendermint will ignore the contents of the `PrepareProposal` response and use the transactions originally passed to the application during `PrepareProposal`.
-    * If `TxModifiedStatus` is `MODIFIED`, Tendermint will update the block proposal using the contents of the `PrepareProposal` response returned by the application.
-
 ### VerifyStatus
 
 ```proto

@@ -95,7 +95,20 @@ func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) Respons
 }
 
 func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
-	return ResponsePrepareProposal{ModifiedTxStatus: ResponsePrepareProposal_UNMODIFIED}
+	trs := make([]*TxRecord, len(req.Txs))
+	var total_bytes int64
+	for i, tx := range req.Txs {
+		if total_bytes > req.MaxTxBytes {
+			trs = trs[:i]
+			break
+		}
+		trs[i] = &TxRecord{
+			Action: TxRecord_UNMODIFIED,
+			Tx:     tx,
+		}
+		total_bytes += int64(len(tx))
+	}
+	return ResponsePrepareProposal{TxRecords: trs}
 }
 
 func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
