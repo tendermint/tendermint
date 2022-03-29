@@ -279,7 +279,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	const height int64 = 1
-	state, stateDB, privVals := state(t, 1, height)
+	state, stateDB, privVals, _ := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	const partSize uint32 = 256
@@ -379,7 +379,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 
 	const height int64 = 1
-	state, stateDB, _ := state(t, 1, height)
+	state, stateDB, _, _ := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
@@ -449,7 +449,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
+	state, stateDB, _, valAddrs := state(t, types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -519,10 +519,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	state.ChainID = maxChainID
 
 	cs := types.CommitSig{
-		BlockIDFlag:      types.BlockIDFlagNil,
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		Timestamp:        timestamp,
-		Signature:        crypto.CRandBytes(types.MaxSignatureSize),
+		BlockIDFlag: types.BlockIDFlagCommit,
+		Timestamp:   timestamp,
+		Signature:   crypto.CRandBytes(types.MaxSignatureSize),
 	}
 
 	commit := &types.Commit{
@@ -535,14 +534,18 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	// add maximum amount of signatures to a single commit
 	for i := 0; i < types.MaxVotesCount; i++ {
-		votes[i] = &types.Vote{}
+		votes[i] = &types.Vote{
+			ValidatorAddress: valAddrs[i],
+		}
+		cs.ValidatorAddress = valAddrs[i]
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
-		state, commit,
+		state,
+		commit,
 		proposerAddr,
 		votes,
 	)
@@ -699,10 +702,11 @@ func TestNodeSetEventSink(t *testing.T) {
 	t.Cleanup(cleanup(ns))
 }
 
-func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator, []crypto.Address) {
 	t.Helper()
 	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
+	addresses := make([]crypto.Address, nVals)
 	for i := 0; i < nVals; i++ {
 		privVal := types.NewMockPV()
 		privVals[i] = privVal
@@ -712,6 +716,7 @@ func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.Pri
 			Power:   1000,
 			Name:    fmt.Sprintf("test%d", i),
 		}
+		addresses[i] = vals[i].Address
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:    "test-chain",
@@ -731,7 +736,7 @@ func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.Pri
 		s.LastValidators = s.Validators.Copy()
 		require.NoError(t, stateStore.Save(s))
 	}
-	return s, stateDB, privVals
+	return s, stateDB, privVals, addresses
 }
 
 func TestLoadStateFromGenesis(t *testing.T) {

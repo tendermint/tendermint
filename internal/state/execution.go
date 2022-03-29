@@ -1,13 +1,13 @@
 package state
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -437,27 +437,34 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-// extendedCommitInfo assumes that votes from the given commit correspond
-// precisely to those provided in the list of votes, such that vote extensions
-// can be correlated with the votes in the commit.
+// extendedCommitInfo expects a CommitInfo struct along with all of the
+// original votes relating to that commit, including their vote extensions. The
+// order of votes does not matter.
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
 	if len(c.Votes) != len(votes) {
 		panic(fmt.Sprintf("extendedCommitInfo: number of votes from commit differ from the number of votes supplied (%d != %d)", len(c.Votes), len(votes)))
+	}
+	votesByVal := make(map[string]*types.Vote)
+	for _, vote := range votes {
+		if vote != nil {
+			valAddr := vote.ValidatorAddress.String()
+			if _, ok := votesByVal[valAddr]; ok {
+				panic(fmt.Sprintf("extendedCommitInfo: found duplicate vote for validator with address %s", valAddr))
+			}
+			votesByVal[valAddr] = vote
+		}
 	}
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
 		var ext []byte
 		// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
 		if c.Votes[i].SignedLastBlock {
-			// We would panic anyways, but at least this will provide more information.
-			if votes[i] == nil {
-				panic(fmt.Sprintf("extendedCommitInfo: expected vote in position %d (%v), but got nil", i, c.Votes[i]))
+			valAddr := crypto.Address(c.Votes[i].Validator.Address).String()
+			vote, ok := votesByVal[valAddr]
+			if !ok || vote == nil {
+				panic(fmt.Sprintf("extendedCommitInfo: validator with address %s signed last block, but could not find vote for it", valAddr))
 			}
-			// Strong guarantee that the vote corresponds to the relevant validator
-			if !bytes.Equal(c.Votes[i].Validator.Address, votes[i].ValidatorAddress) {
-				panic(fmt.Sprintf("extendedCommitInfo: expected votes in position %d to have the same validator address (%v != %v)", i, c.Votes[i].Validator.Address, votes[i].ValidatorAddress))
-			}
-			ext = votes[i].Extension
+			ext = vote.Extension
 		}
 		vs[i] = abci.ExtendedVoteInfo{
 			Validator:       c.Votes[i].Validator,
