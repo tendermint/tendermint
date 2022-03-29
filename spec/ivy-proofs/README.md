@@ -31,4 +31,3 @@ The easiest way to check the proofs is to use [Docker](https://www.docker.com/).
 3. Run the proofs inside the Docker container: `docker-compose run
 tendermint-proof`. This will check all the proofs with the `ivy_check`
 command and write the output of `ivy_check` to a subdirectory of `./output/'
-

@@ -138,4 +138,3 @@ Proposed.
 
 - Tendermint duplicates data by tracking all pubkeys that were validators during
   the unbonding period
-

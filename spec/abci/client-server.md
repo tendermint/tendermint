@@ -111,4 +111,3 @@ received or a block is committed.
 It is unlikely that you will need to implement a client. For details of
 our client, see
 [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
-

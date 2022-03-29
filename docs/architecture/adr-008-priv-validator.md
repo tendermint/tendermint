@@ -33,4 +33,3 @@ external process. These include:
 - FilePV will encrypt the private key, and the user must enter password to
   decrypt key when process is started.
 - LedgerPV uses a Ledger Nano S to handle all signing.
-

@@ -97,4 +97,3 @@ Has the same feature set as V0.37 but with a focus towards testing, protocol cor
 - Randomized Leader Election
 - ZK proofs / other cryptographic primitives
 - Multichain Tendermint
-

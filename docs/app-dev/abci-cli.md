@@ -228,4 +228,3 @@ pattern of messages.
 For examples of running an ABCI app with
 Tendermint, see the [getting started guide](./getting-started.md).
 Next is the ABCI specification.
-

@@ -32,4 +32,3 @@ Implemented
 - `Query` interface
 
 ### Neutral
-

@@ -179,4 +179,3 @@ curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_cha
 
 Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/block_search)
 for more information on query syntax and other options.
-

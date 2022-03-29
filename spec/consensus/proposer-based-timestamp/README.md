@@ -155,4 +155,3 @@ The full solution is detailed and formalized in the [Protocol Specification][alg
 [issue371]: https://github.com/tendermint/spec/issues/371
 [issue372]: https://github.com/tendermint/spec/issues/372
 [issue377]: https://github.com/tendermint/spec/issues/377
-

@@ -233,4 +233,3 @@ Proposed
 [WIP General/Lazy State-Sync pseudo-spec](https://github.com/tendermint/tendermint/issues/3639) - Jae Proposal
 [Warp Sync Implementation](https://github.com/tendermint/tendermint/pull/3594) - ackratos
 [Chunk Proposal](https://github.com/tendermint/tendermint/pull/3799) - Bucky proposed
-

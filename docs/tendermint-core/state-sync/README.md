@@ -83,4 +83,3 @@ The ABCI application is able to request peer bans and chunk refetching as part o
 
 If no state sync is in progress (i.e. during normal operation), any unsolicited response messages
 are discarded.
-

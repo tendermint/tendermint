@@ -103,4 +103,3 @@ To run the model checking experiments, use the script:
 
 This script assumes that the apalache build is available in
 `~/devl/apalache-unstable`.
-

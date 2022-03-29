@@ -52,4 +52,3 @@ In summary, the light client is not safe when a) more than the trust level of
 validators are malicious and b) all witnesses are malicious.
 
 Information on how to run a light client is located in the [nodes section](../nodes/light-client.md).
-

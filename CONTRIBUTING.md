@@ -341,4 +341,3 @@ not supporting complete OpenAPI 3**.
 
 This command will popup a network and check every endpoint against what has
 been documented.
-

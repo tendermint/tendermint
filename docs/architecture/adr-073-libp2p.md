@@ -233,4 +233,3 @@ the implementation timeline.
 [adr61]: ./adr-061-p2p-refactor-scope.md
 [adr62]: ./adr-062-p2p-architecture.md
 [rfc]: ../rfc/rfc-000-p2p-roadmap.rst
-

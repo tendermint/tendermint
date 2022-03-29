@@ -47,4 +47,3 @@ Implemented
 - Larger size for abci.ResponseQuery
 - Unintuitive proof chaining(it is not clear what `Run()` is doing)
 - Additional codes for registering `OpDecoder`s
-

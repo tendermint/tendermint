@@ -1380,4 +1380,3 @@ curl -X POST https://localhost:26657 -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\
   "jsonrpc": "2.0"
 }
 ```
-

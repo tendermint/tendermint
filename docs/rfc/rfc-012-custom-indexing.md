@@ -350,4 +350,3 @@ something like this (subject to refinement):
 [query]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/pubsub/query/syntax
 [sdk]: https://github.com/cosmos/cosmos-sdk
 [tmdb]: https://pkg.go.dev/github.com/tendermint/tm-db#DB
-

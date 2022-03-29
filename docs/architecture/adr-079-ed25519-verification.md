@@ -55,4 +55,3 @@ Proposed
 ## References
 
 [It’s 255:19AM. Do you know what your validation criteria are?](https://hdevalence.ca/blog/2020-10-04-its-25519am)
-

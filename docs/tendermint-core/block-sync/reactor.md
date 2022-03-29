@@ -276,4 +276,3 @@ attacks by setting up the upper limit on how much data we can receive & send to
 a peer.
 
 Sending incorrectly encoded data will result in stopping the peer.
-

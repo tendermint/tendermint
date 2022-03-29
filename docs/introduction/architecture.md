@@ -133,4 +133,3 @@ The blockchain reactor has two responsibilities:
 
 1. Serve blocks at the request of peers
 2. TODO: learn about the second responsibility of the blockchain reactor
-

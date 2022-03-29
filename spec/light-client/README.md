@@ -204,4 +204,3 @@ protocol, including the safety property, which can be model checked with Apalach
 Similar to the other specifications, [MC_5_3.tla](attacks/MC_5_3.tla) contains concrete parameters to run the model checker. The specification can be checked within seconds.
 
 [tendermint-accountability](./accountability/README.md)
-

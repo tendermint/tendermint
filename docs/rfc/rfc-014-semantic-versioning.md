@@ -92,4 +92,3 @@ Proposed
 
 - [SemVer](https://semver.org/)
 - [Tendermint Tracking Issue](https://github.com/tendermint/tendermint/issues/5680)
-

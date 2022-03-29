@@ -58,4 +58,3 @@ See the following for more extensive documentation:
 - [Tendermint RPC Docs](https://docs.tendermint.com/master/rpc/)
 - [Tendermint in Production](../tendermint-core/running-in-production.md)
 - [ABCI spec](https://github.com/tendermint/tendermint/tree/95cf253b6df623066ff7cd4074a94e7a3f147c7a/spec/abci)
-

@@ -682,4 +682,3 @@ The following alternative approaches were considered:
 [i6729]:         https://github.com/tendermint/tendermint/issues/6729
 [i7247]:         https://github.com/tendermint/tendermint/issues/7247
 [i7273]:         https://github.com/tendermint/tendermint/issues/7273
-

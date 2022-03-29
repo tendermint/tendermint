@@ -126,4 +126,3 @@ consensus parameters before running a height with these new parameter.
 [hashed-params]: https://github.com/tendermint/tendermint/blob/0ae974e63911804d4a2007bd8a9b3ad81d6d2a90/types/params.go#L49
 [init-chain-response]: https://github.com/tendermint/tendermint/blob/0ae974e63911804d4a2007bd8a9b3ad81d6d2a90/abci/types/types.pb.go#L1616
 [adr-74]: https://github.com/tendermint/tendermint/pull/7503
-

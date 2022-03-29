@@ -36,4 +36,3 @@
 > Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
 
 - {reference link}
-

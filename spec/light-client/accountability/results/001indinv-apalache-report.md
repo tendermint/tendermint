@@ -59,4 +59,3 @@ no  |  filename      |  tool      |  timeout  |  init      |  inv             | 
 10     |  apalache  |  NoError    |  8m08s        |  0         |  6.0GB      |  0               |  0               |  2.0M       |  3.0M         |  34
 11     |  apalache  |  NoError    |  9m09s        |  0         |  3.0GB      |  0               |  0               |  284K       |  1.0M         |  128
 12     |  apalache  |  NoError    |  14m          |  0         |  7.0GB      |  0               |  0               |  4.0M       |  5.0M         |  38
-

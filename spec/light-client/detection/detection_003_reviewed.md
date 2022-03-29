@@ -839,4 +839,3 @@ https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/supervisor/
 
 [vtt]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md#lcv-func-main2
-

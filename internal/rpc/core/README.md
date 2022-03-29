@@ -16,4 +16,3 @@ slowness in clients. If the buffer gets full, the subscription will be canceled
 ("client is not pulling messages fast enough"). If Tendermint exits, all
 subscriptions are canceled ("Tendermint exited"). The user can unsubscribe
 using either `/unsubscribe` or `/unsubscribe_all`.
-

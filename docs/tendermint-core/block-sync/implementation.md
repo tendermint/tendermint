@@ -45,4 +45,3 @@ order: 3
 ## Go Routines in Blocksync Reactor
 
 ![Go Routines Diagram](img/bc-reactor-routines.png)
-

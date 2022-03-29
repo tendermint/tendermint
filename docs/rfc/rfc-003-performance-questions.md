@@ -281,4 +281,3 @@ event sends. The following metrics would be a good start for tracking this perfo
 [event-indexer-unbuffered]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/state/indexer/indexer_service.go#L39
 [consensus-event-send]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/internal/consensus/state.go#L1573
 [sdk-query-fix]: https://github.com/cosmos/cosmos-sdk/pull/10045
-

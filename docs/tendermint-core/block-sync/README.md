@@ -69,4 +69,3 @@ Please check [types](https://pkg.go.dev/github.com/tendermint/tendermint/types?u
 ## Implementation
 
 To read more on the implamentation please see the [reactor doc](./reactor.md) and the [implementation doc](./implementation.md)
-

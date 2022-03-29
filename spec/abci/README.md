@@ -25,4 +25,3 @@ This specification is split as follows:
   details about building ABCI applications
 - [Client and Server](./client-server.md) - for those looking to implement their
   own ABCI application servers
-

@@ -86,4 +86,3 @@ Implemented
 - there is an issue where there are too many txs in the DB
 
 ### Neutral
-

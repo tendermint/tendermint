@@ -251,4 +251,3 @@ Reference for IPC delay constants: <http://pages.cs.wisc.edu/~adityav/Evaluation
 | Validator based price oracles     |   |   | X |
 | Immediate Execution with increased time for block execution     | X | X | X |
 | Threshold Encrypted txs     | X | X | X |
-

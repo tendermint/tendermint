@@ -162,4 +162,3 @@ I[10-04|13:54:30.408] Executed block                               module=state 
 I[10-04|13:54:30.410] Committed state                              module=state height=91 txs=0 hash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
 I[10-04|13:54:30.410] Recheck txs                                  module=mempool numtxs=0 height=91
 ```
-

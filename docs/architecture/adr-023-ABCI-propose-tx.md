@@ -181,4 +181,3 @@ Pending
 - [#1776 Plasma and "Internal" Transactions in ABCI Apps](https://github.com/tendermint/tendermint/issues/1776)
 - [Minimal Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426)
 - [Plasma Cash: Plasma with much less per-user data checking](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298)
-

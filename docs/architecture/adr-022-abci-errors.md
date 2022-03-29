@@ -61,4 +61,3 @@ efficiently by lite clients) is left for a separate ADR.
 - Some redundancy with `code` field
 - May encourage more error/code type info to move to the `codespace` string, which
   could impact lite clients.
-

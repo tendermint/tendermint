@@ -45,4 +45,3 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 |--------------|---------------------------|------------------------------------------------------|--------------|
 | pex_request  | [PexRequest](#PexRequest) | Empty request asking for a list of addresses to dial | 3            |
 | pex_response | [PexResponse](#PexResponse)  | List of addresses to dial                            | 4            |
-

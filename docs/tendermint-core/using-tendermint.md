@@ -583,4 +583,3 @@ See the
 guide. You may need to reset your chain between major breaking releases.
 Although, we expect Tendermint to have fewer breaking releases in the future
 (especially after 1.0 release).
-

@@ -132,4 +132,3 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | light_block_response | [LightBlockResponse](#lightblockresponse)  | Respond with a light block                   | 6            |
 | params_request  | [ParamsRequest](#paramsrequest)    | Request the consensus params at a height.                       | 7            |
 | params_response | [ParamsResponse](#paramsresponse)  | Respond with the consensus params                   | 8            |
-

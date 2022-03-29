@@ -201,4 +201,3 @@ nodes to freely fetch and verify prior blocks
 
 - [RFC-001: Block retention](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-077-block-retention.md)
 - [Original issue](https://github.com/tendermint/tendermint/issues/4629)
-

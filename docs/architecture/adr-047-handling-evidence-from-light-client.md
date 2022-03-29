@@ -252,4 +252,3 @@ for a witness to provide the latest block it has. Given the time constraints, if
 is operating at the head of the blockchain, it will have a header with an earlier height but
 a later timestamp. This can be used to prove that the primary has submitted a lunatic header
 which violates monotonically increasing time.
-

@@ -40,4 +40,3 @@ also messages that inform peers what votes the process has seen (`HasVoteMessage
 protocol to determine what messages a process should send to its peers.
 
 We now describe the content of each message exchanged during Tendermint consensus protocol.
-

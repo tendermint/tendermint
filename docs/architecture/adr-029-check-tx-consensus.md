@@ -125,4 +125,3 @@ Performance impact is considered too great. See [#2384](https://github.com/tende
   DeliverTx)
 
 ### Neutral
-

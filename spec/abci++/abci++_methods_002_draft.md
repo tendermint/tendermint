@@ -929,4 +929,3 @@ enum VerifyStatus {
     * Tendermint is to sign the whole data structure and attach it to a Precommit message
     * Upon reception, Tendermint validates the sender's signature and sanity-checks the values of `height`, `round`, and `chain_id`.
       Then it sends `extension` to the Application via `RequestVerifyVoteExtension` for verification.
-

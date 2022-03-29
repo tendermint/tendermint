@@ -31,4 +31,3 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | Name | Type        | Description           | Field Number |
 |------|-------------|-----------------------|--------------|
 | txs  | [Txs](#txs) | List of transactions | 1            |
-

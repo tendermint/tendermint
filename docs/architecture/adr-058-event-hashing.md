@@ -120,4 +120,3 @@ the `LastResultsEvents`. The downside is that the logic is implicit and depends
 largely on the node's operator, who decides what application code to run. The
 above proposal makes it (the logic) explicit and easy to upgrade via
 governance.
-

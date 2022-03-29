@@ -648,4 +648,3 @@ Example:
 ```shell
 $ psql ... -f state/indexer/sink/psql/schema.sql
 ```
-

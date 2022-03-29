@@ -30,4 +30,3 @@ precommit from the WAL.
 
 Make sure to read about [WAL corruption](https://github.com/tendermint/tendermint/blob/master/docs/tendermint-core/running-in-production.md#wal-corruption)
 and recovery strategies.
-

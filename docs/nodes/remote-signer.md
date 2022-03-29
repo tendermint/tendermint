@@ -68,4 +68,3 @@ There are two ways to generate certificates, [openssl](https://www.openssl.org/)
 # self-sign client cerificate with rootCA
  certstrap sign client --CA "<name_CA>" 127.0.0.1
 ```
-

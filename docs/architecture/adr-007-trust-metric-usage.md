@@ -104,4 +104,3 @@ Proposed.
 ### Neutral
 
 - Keep in mind that, good events need to be recorded just as bad events do using this implementation.
-

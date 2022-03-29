@@ -109,4 +109,3 @@ for _, peer := range switch.Peers().List() {
     }
 }
 ```
-

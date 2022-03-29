@@ -269,4 +269,3 @@ Implemented
   Header](https://github.com/tendermint/tendermint/issues/1605)
 - [Gogoproto issues](https://github.com/tendermint/abci/issues/256)
 - [Absent Validators](https://github.com/tendermint/abci/issues/231)
-

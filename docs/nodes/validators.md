@@ -115,4 +115,3 @@ The +2/3 set of precommit votes is called a
 precommits for the same block at the same height&round can serve as
 validation, the canonical commit is included in the next block (see
 [LastCommit](https://github.com/tendermint/tendermint/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#lastcommit)).
-

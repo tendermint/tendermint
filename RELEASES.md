@@ -205,4 +205,3 @@ To create a minor release:
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
    - Do not merge the backport branch into master.
-

@@ -217,4 +217,3 @@ distributed setting as on-chain module. The algorithm works as follows:
             been sent for the value V in round r by the same process (r’ > r) and there are no
             +2/3 of voting-power equivalent PREVOTE(vr, V’) messages (vr ≥ 0 and vr > r and vr < r’)
             as the justification for sending PREVOTE(r’, V’)
-

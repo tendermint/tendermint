@@ -38,4 +38,3 @@ This architecture is largely positive relative to prior docs arrangements.
 A significant portion of the docs automation / build process is in private repos with limited access/visibility to devs. However, these tasks are handled by the SRE team.
 
 ### Neutral
-

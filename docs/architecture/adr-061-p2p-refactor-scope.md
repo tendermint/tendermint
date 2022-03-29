@@ -107,4 +107,3 @@ See issue links above.
 - [#2067: P2P Refactor](https://github.com/tendermint/tendermint/issues/2067)
 
 - [P2P refactor brainstorm document](https://docs.google.com/document/d/1FUTADZyLnwA9z7ndayuhAdAFRKujhh_y73D0ZFdKiOQ/edit?pli=1#)
-

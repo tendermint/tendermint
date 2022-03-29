@@ -227,4 +227,3 @@ amnesia attack, they may cause a fork of the blockchain, at which point an
 off-chain protocol must be engaged to collect votes from all the validators and
 determine who misbehaved. For more details, see [fork
 detection](https://github.com/tendermint/tendermint/pull/3978).
-

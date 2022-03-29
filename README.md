@@ -145,4 +145,3 @@ If you'd like to work full-time on Tendermint Core, [we're hiring](https://inter
 Funding for Tendermint Core development comes primarily from the [Interchain Foundation](https://interchain.io),
 a Swiss non-profit. The Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the for-profit entity
  that also maintains [tendermint.com](https://tendermint.com).
-

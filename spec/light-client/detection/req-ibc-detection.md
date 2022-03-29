@@ -345,4 +345,3 @@ We will need to define what we expect from these components
   the interface, and what the handler does
 
 - we write specs for these components.
-

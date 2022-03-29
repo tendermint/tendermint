@@ -287,4 +287,3 @@ func DetectIBCFork(ibc IBCComponent, lightStore LightStore) (LightNodeProofOfFor
       consensus state
 - Expected precondition
 - Expected postcondition
-

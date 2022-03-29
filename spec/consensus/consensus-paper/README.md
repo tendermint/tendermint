@@ -22,4 +22,3 @@ In order to compile the latex files (and write bibliography), execute
 The generated file is paper.pdf. You can open it with
 
 `$ open paper.pdf`
-

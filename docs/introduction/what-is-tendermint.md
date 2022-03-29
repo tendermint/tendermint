@@ -328,4 +328,3 @@ as ABCI applications.
 The following diagram is Tendermint in a (technical) nutshell.
 
 ![tx-flow](../imgs/tm-transaction-flow.png)
-

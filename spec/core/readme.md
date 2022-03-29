@@ -11,4 +11,3 @@ This section describes the core types and functionality of the Tendermint protoc
 - [Encoding](./encoding.md)
 - [Genesis](./genesis.md)
 - [State](./state.md)
-

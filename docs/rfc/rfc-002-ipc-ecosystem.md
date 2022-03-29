@@ -418,4 +418,3 @@ discussed.
 [json-rpc]: https://www.jsonrpc.org/specification
 [abci-conn]: https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#state
 [adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
-

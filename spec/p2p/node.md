@@ -63,4 +63,3 @@ They do not report the validator node's address in the PEX and
 they may be more strict about the quality of peers they keep.
 
 Sentry nodes belonging to validators that trust each other may wish to maintain persistent connections via VPN with one another, but only report each other sparingly in the PEX.
-

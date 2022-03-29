@@ -637,4 +637,3 @@ func VerifyAndDetect (lightStore LightStore, targetHeight Height)
     - [LC-DATA-PEERLIST-INV.1] is violated
 
 ----
-

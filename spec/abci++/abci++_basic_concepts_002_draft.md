@@ -402,4 +402,3 @@ There are two forms of evidence: Duplicate Vote and Light Client Attack. More
 information can be found in either [data structures](../core/data_structures.md)
 or [accountability](../light-client/accountability/)
 
-

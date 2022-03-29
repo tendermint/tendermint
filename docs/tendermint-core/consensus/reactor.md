@@ -368,4 +368,3 @@ has `SendQueueCapacity` and `RecvBufferCapacity` and
 `RecvMessageCapacity` set to `maxMsgSize`.
 
 Sending incorrectly encoded data will result in stopping the peer.
-

@@ -126,4 +126,3 @@ CGO_LDFLAGS="-lsnappy" make build TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 
 which puts the binary in `./build`.
-

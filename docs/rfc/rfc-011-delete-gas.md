@@ -160,4 +160,3 @@ gossiped along with the transaction.
 [issue-7750]: https://github.com/tendermint/tendermint/issues/7750
 [reap-max-bytes-max-gas]: https://github.com/tendermint/tendermint/blob/1ac58469f32a98f1c0e2905ca1773d9eac7b7103/internal/mempool/types.go#L45
 [add-mempool-error]: https://github.com/tendermint/tendermint/blob/205bfca66f6da1b2dded381efb9ad3792f9404cf/rpc/coretypes/responses.go#L239
-

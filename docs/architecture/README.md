@@ -113,4 +113,3 @@ None
 - [ADR-071: Proposer-Based Timestamps](adr-071-proposer-based-timestamps.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
 
-

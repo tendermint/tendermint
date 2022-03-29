@@ -202,4 +202,3 @@ mutually exclusive.
 [json-response]: https://www.jsonrpc.org/specification#response_object
 [json-notify]: https://www.jsonrpc.org/specification#notification
 [issue2949]: https://github.com/tendermint/tendermint/issues/2949
-

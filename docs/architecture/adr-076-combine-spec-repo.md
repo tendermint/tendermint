@@ -110,4 +110,3 @@ N/A
 
 - https://github.com/tendermint/spec
 - https://github.com/tendermint/tendermint
-
