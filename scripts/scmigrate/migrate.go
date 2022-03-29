@@ -1,3 +1,9 @@
+// Package scmigrate implements a migration for SeenCommit data
+// between 0.34 and 0.35
+//
+// The Migrate implementation is idempotent and finds all seen commit
+// records and a delete all *except* the record corresponding to the
+// highest height.
 package scmigrate
 
 import (
@@ -22,8 +28,13 @@ type toMigrate struct {
 
 const prefixSeenCommit = int64(3)
 
-func makeKeyFromPrefix(ids ...interface{}) []byte {
-	key, err := orderedcode.Append(nil, ids...)
+func makeKeyFromPrefix(ids ...int64) []byte {
+	vals := make([]interface{}, len(ids))
+	for idx := range ids {
+		vals[idx] = ids[idx]
+	}
+
+	key, err := orderedcode.Append(nil, vals...)
 	if err != nil {
 		panic(err)
 	}

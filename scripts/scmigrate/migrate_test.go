@@ -92,18 +92,6 @@ func TestMigrations(t *testing.T) {
 			assertWellOrderedMigrations(t, testData)
 		})
 	})
-	t.Run("KeyProducer", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Fatal("operation should panic")
-			}
-
-		}()
-
-		// should panic if ints rather than int64s
-		makeKeyFromPrefix(int64(3), int(3))
-		t.Fatal("this should be unreachable")
-	})
 	t.Run("GetMigrationsToDelete", func(t *testing.T) {
 		for i := 1; i < 100; i++ {
 			data := appendRandomMigrations([]toMigrate{}, i)
