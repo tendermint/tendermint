@@ -97,3 +97,4 @@ Proposed.
 
 - Caller has to instantiate the AEAD with the private key.
   However it forces them to be aware of what signing algorithm they are using, which is a positive.
+

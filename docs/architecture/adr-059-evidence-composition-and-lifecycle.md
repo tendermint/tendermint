@@ -304,3 +304,4 @@ Implemented
 <!-- > Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here! -->
 
 - [LightClientAttackEvidence](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md)
+

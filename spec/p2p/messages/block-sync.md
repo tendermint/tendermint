@@ -66,3 +66,4 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | block_response    | [BlockResponse](#blockresponse)   | Response with requested block                                | 3            |
 | status_request    | [StatusRequest](#statusrequest)   | Request the highest and lowest block numbers from a peer     | 4            |
 | status_response   | [StatusResponse](#statusresponse)  | Response with the highest and lowest block numbers the store | 5            |
+

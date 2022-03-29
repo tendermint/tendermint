@@ -788,3 +788,4 @@ https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verificatio
 
 [LCV-INV-TP1-link]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification.md#lcv-inv-tp1
+

@@ -137,3 +137,4 @@ of an ongoing process of code modernization:
 
 - remove generic panic handlers which could cover and hide known
   panics.
+

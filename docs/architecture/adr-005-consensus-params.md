@@ -83,3 +83,4 @@ Implemented
 ### Neutral
 
 - The TxSize, which checks validity, may be in conflict with the config's `max_block_size_tx`, which determines proposal sizes
+

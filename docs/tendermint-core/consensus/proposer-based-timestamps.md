@@ -93,3 +93,4 @@ proposed by their peers to be valid either.
 
 * [The PBTS specification](https://github.com/tendermint/tendermint/blob/master/spec/consensus/proposer-based-timestamp/README.md)
  contains all of the details of the algorithm.
+

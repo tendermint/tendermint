@@ -245,3 +245,4 @@ Implemented
 [#1879]: https://github.com/tendermint/tendermint/issues/1879
 [#1880]: https://github.com/tendermint/tendermint/issues/1880
 [#2826]: https://github.com/tendermint/tendermint/issues/2826
+

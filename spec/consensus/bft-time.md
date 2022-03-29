@@ -53,3 +53,4 @@ rs.Proposal.Timestamp == rs.ProposalBlock.Header.Time`.
 
     - otherwise, `vote.Time = time.Now())`. In this case vote is for `nil` so it is not taken into account for
     the timestamp of the next block.
+

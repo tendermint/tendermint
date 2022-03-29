@@ -298,3 +298,4 @@ in HSMs. It creates fixed offsets for relevant fields that need to be read in th
 For more details, see the [signing spec](../consensus/signing.md).
 Also, see the motivating discussion in
 [#1622](https://github.com/tendermint/tendermint/issues/1622).
+

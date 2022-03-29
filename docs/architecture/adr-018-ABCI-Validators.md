@@ -98,3 +98,4 @@ Implemented
 - [ADR-009](https://github.com/tendermint/tendermint/blob/v0.22.8/docs/architecture/adr-009-ABCI-design.md)
 - [Issue #1712 - Don't send PubKey in
   RequestBeginBlock](https://github.com/tendermint/tendermint/issues/1712)
+

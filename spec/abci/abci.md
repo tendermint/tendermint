@@ -775,3 +775,4 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * A snapshot is considered identical across nodes only if _all_ fields are equal (including
     `Metadata`). Chunks may be retrieved from all nodes that have the same snapshot.
     * When sent across the network, a snapshot message can be at most 4 MB.
+

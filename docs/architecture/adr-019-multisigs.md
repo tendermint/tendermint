@@ -160,3 +160,4 @@ Implemented (moved to cosmos-sdk)
 - Suggested implementation requires a new struct for every ASM.
 
 ### Neutral
+

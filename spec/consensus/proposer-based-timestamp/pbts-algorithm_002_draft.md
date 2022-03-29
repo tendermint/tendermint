@@ -146,3 +146,4 @@ Back to [main document][main].
 
 [bfttime]: https://github.com/tendermint/tendermint/blob/master/spec/consensus/bft-time.md
 [arXiv]: https://arxiv.org/pdf/1807.04938.pdf
+

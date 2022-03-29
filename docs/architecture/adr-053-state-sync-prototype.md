@@ -252,3 +252,4 @@ Implemented
 ## References
 
 * [ADR-042](./adr-042-state-sync.md) and its references
+

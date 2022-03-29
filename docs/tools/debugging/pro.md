@@ -104,3 +104,4 @@ Join our [discord chat](https://discord.gg/cosmosnetwork), where we discuss the 
 —
 
 [1]: Of course, you’re free to redirect the Tendermint’s output to a file or forward it to another server.
+

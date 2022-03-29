@@ -21,3 +21,4 @@ Verified evidence that has already been propagated throughout the network. This 
 | Name     | Type                                                        | Description            | Field Number |
 |----------|-------------------------------------------------------------|------------------------|--------------|
 | evidence | [Evidence](../../core/data_structures.md#evidence) | Valid evidence | 1            |
+

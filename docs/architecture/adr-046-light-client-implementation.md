@@ -167,3 +167,4 @@ Implemented
 
 * `Verify` function might be misused (called with non-adjacent headers in
   incorrectly implemented sequential verification)
+

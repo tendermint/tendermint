@@ -139,3 +139,4 @@ Implemented
 
 * social consensus can be prone to errors (for cases where a new light client
   joins a network or it has been offline for too long)
+

@@ -95,3 +95,4 @@ This ADR tries to remain within the scope of extending state sync, however the c
 
 - [Reverse Sync RFC](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-068-reverse-sync.md)
 - [Original Issue](https://github.com/tendermint/tendermint/issues/5617)
+

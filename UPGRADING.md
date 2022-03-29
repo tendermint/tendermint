@@ -1003,3 +1003,4 @@ multiple validator sets at once to accomodate this delay.
 The `ConsensusParams.BlockSize.MaxTxs` was removed in favour of
 `ConsensusParams.BlockSize.MaxBytes`, which is now enforced. This means blocks
 are limitted only by byte-size, not by number of transactions.
+

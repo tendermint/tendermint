@@ -47,3 +47,4 @@ other peers. They stay private to us.
 
 These are IDs of the peers which are allowed to be connected by both inbound or outbound regardless of
 `max_num_inbound_peers` or `max_num_outbound_peers` of user's node reached or not.
+

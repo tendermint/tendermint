@@ -70,3 +70,4 @@ The 95th percentile response time for the application to the `deliver_tx` ABCI m
 ```
 histogram_quantile(0.95, sum by(le) (rate(tendermint_abci_connection_method_timing_bucket{method="deliver_tx"}[5m])))
 ```
+

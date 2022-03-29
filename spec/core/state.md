@@ -119,3 +119,4 @@ implemented to mitigate spam attacks.
 
 Validators from genesis file and `ResponseEndBlock` must have pubkeys of type ∈
 `ConsensusParams.Validator.PubKeyTypes`.
+

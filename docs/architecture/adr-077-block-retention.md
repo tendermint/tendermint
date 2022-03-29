@@ -107,3 +107,4 @@ Accepted
 - State sync issue: <https://github.com/tendermint/tendermint/issues/828>
 
 - Block pruning issue: <https://github.com/tendermint/tendermint/issues/3652>
+

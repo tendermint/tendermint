@@ -1178,3 +1178,4 @@ func Main (primary PeerID, lightStore LightStore, targetHeight Height)
 [FN-ManifestFaulty-link]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#fn-manifestfaulty
 
 [arXiv]: https://arxiv.org/abs/1807.04938
+

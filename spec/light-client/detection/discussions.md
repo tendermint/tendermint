@@ -176,3 +176,4 @@ it with a flag "trusted" that can be used
 - by light client based on the "one correct full node" assumption
 
 ----
+

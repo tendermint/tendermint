@@ -148,3 +148,4 @@ For a chain with 100 validators, that's up to 8kB in savings per block!
 ### Neutral
 
 - Commit.Precommits no longer contains nil values
+

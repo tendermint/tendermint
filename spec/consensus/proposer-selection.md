@@ -321,3 +321,4 @@ Intuitively, a process v jumps ahead in the queue at most (max(A) - min(A))/VP(v
 ```
 
 For current implementation, this means v should be proposer at least VP(v) times out of k * P runs, with scaling factor k=2.
+

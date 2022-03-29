@@ -11,3 +11,4 @@ The evidence reactor works similar to the mempool reactor. When evidence is obse
 
 Sending incorrectly encoded data or data exceeding `maxMsgSize` will result
 in stopping the peer.
+

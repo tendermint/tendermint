@@ -160,3 +160,4 @@ Sometimes it's necessary to rename libraries to avoid naming collisions or ambig
    Make sure the file above (`.editorconfig`) are in the root directory of your
    repo and you have a [plugin for your
    editor](http://editorconfig.org/#download) installed.
+

@@ -175,3 +175,4 @@ To remove your droplets, run:
 ```sh
 terraform destroy -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
 ```
+

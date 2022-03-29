@@ -147,3 +147,4 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | received_vote       | [ReceivedVote](#ReceivedVote)           |                                        | 7            |
 | vote_set_maj23  | [VoteSetMaj23](#votesetmaj23)   |                                        | 8            |
 | vote_set_bits   | [VoteSetBits](#votesetbits)     |                                        | 9            |
+

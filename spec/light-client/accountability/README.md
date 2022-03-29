@@ -306,3 +306,4 @@ Note that detecting this behavior require application knowledge. Detecting this 
 referring to the block before the one in which height happen.  
 
 **Q:** can we say that in this case a validator declines to check if a proposed value is valid before voting for it?
+

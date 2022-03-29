@@ -22,3 +22,4 @@ This section dives into the internals of Go-Tendermint.
 - [Evidence](./evidence/README.md)
 
 For full specifications refer to the [spec repo](https://github.com/tendermint/spec).
+

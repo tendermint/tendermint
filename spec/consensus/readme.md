@@ -30,3 +30,4 @@ for liveness, is described in the [reactors section](./consensus.md).
 
 There is also a [stale markdown description](consensus.md) of the consensus state machine
 (TODO update this).
+

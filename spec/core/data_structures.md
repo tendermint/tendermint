@@ -476,3 +476,4 @@ func SumTruncated(bz []byte) []byte {
 | index     | int64          | Index item to prove.                          | 2            |
 | leaf_hash | bytes          | Hash of item value.                           | 3            |
 | aunts     | repeated bytes | Hashes from leaf's sibling to a root's child. | 4            |
+

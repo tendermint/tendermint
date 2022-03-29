@@ -191,3 +191,4 @@ Accepted
 - [#4451: Place internal APIs under internal package](https://github.com/tendermint/tendermint/issues/4451)
 
 - [On Pluggability](https://docs.google.com/document/d/1G08LnwSyb6BAuCVSMF3EKn47CGdhZ5wPZYJQr4-bw58/edit?ts=5f609f11)
+

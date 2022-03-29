@@ -350,3 +350,4 @@ the block. This is what makes it canonical and ensures every validator agrees on
 even if it is different from the +2/3 votes a validator has seen, which caused the validator to
 commit the respective block. Each block contains a canonical +2/3 commit for the previous
 block.
+

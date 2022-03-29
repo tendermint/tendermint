@@ -575,3 +575,4 @@ before the light client eventually detects a problem. There are several ways to 
 - Instead of querying header by header, the light client tells a full node which header it trusts, and the height of the header it needs. The full node responds with
 the header along with a proof consisting of intermediate headers that the light client can use to verify. Roughly, `VerifyBisection` would then be executed at the full node.
 - We may set a timeout how long `VerifyBisection` may take.
+

@@ -163,3 +163,4 @@ Likewise, `ExtendVote` can also be non-deterministic:
 
 * $e^r_p$ may depend on $w^r_p$ and $s_{p,h-1}$, but may also depend on other values or operations.
 * $w^r_p = w^r_q \nRightarrow e^r_p = e^r_q$
+

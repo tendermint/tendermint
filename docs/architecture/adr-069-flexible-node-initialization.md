@@ -266,3 +266,4 @@ these components more difficult relative to other reactors or
 components.
 
 ![consensus blockchain dependency graph](./img/consensus_blockchain.png)
+

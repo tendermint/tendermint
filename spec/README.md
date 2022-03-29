@@ -79,3 +79,4 @@ Also note that information like the transaction results and the validator set ar
 directly included in the block - only their cryptographic digests (Merkle roots) are.
 Hence, verification of a block requires a separate data structure to store this information.
 We call this the `State`. Block verification also requires access to the previous block.
+

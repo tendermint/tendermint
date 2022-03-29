@@ -103,3 +103,4 @@ Max transaction bytes defines the max size a transaction can be for your node. I
 Max batch bytes defines the amount of bytes the node will send to a peer. Default is 0.
 
 > Note: Unused due to https://github.com/tendermint/tendermint/issues/5796
+

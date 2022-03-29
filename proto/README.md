@@ -19,3 +19,4 @@ The `.proto` files within this section are core to the protocol and updates must
   1b. Merge the RFC.
 2. Make the necessary changes to the `.proto` file(s), [core data structures](../spec/core/data_structures.md) and/or [ABCI protocol](../spec/abci/apps.md).
 3. Rebuild the Go protocol buffers by running `make proto-gen`. Ensure that the project builds correctly by running `make build`.
+

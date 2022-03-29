@@ -54,3 +54,4 @@ Note that this will build and use a different image than the ones provided here.
 ## Contributing
 
 Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/master/CONTRIBUTING.md) for more information.
+

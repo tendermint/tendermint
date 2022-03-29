@@ -156,3 +156,4 @@ Attacks may come through the P2P network or the RPC layer:
 
 * Core verification
 * Bisection/sequential algorithms
+

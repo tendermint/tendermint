@@ -128,3 +128,4 @@ Note that each reactor may handle multiple channels.
 Once a peer is added, incoming messages for a given reactor are handled through
 that reactor's `Receive` method, and output messages are sent directly by the Reactors
 on each peer. A typical reactor maintains per-peer go-routine(s) that handle this.
+

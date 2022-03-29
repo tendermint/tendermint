@@ -126,3 +126,4 @@ because >2/3 of validators (defined in the `genesis.json`) have come online.
 Persistent peers can also be specified in the `config.toml`. See [here](../tendermint-core/configuration.md) for more information about configuration options.
 
 Transactions can then be sent as covered in the single, local node example above.
+

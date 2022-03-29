@@ -25,3 +25,4 @@ install:
   @go install -mod=readonly -ldflags "$(LD_FLAGS)" ./cmd/<app>
 .PHONY: install
 ```
+

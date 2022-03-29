@@ -213,3 +213,4 @@ As for the new methods:
 * `FinalizeBlock` should coalesce the implementation of methods `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit`.
   The logic extracted from `DeliverTx` should be wrappped by a loop that will execute as many times as
   transactions exist in `RequestFinalizeBlock.tx`.
+

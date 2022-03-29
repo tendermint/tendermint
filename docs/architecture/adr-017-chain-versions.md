@@ -97,3 +97,4 @@ Where
 - `Height` is the height the change occured
 - ForkDescription has the same form as ChainDescription but for the fork
 - this allows forks to specify new versions for tendermint or the app, as well as arbitrary changes to the state or validator set
+
