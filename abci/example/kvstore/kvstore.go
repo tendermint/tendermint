@@ -433,7 +433,7 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 }
 
 // substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
-// proposal for transactions with the prefix strips.
+// proposal for transactions with the prefix stripped.
 // It marks all of the original transactions as 'REMOVED' so that
 // Tendermint will remove them from its mempool.
 func (app *Application) substPrepareTx(blockData [][]byte, max_tx_bytes int64) []*types.TxRecord {
