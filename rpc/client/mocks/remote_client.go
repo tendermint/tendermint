@@ -4,14 +4,13 @@ package mocks
 
 import (
 	bytes "github.com/tendermint/tendermint/libs/bytes"
+	client "github.com/tendermint/tendermint/rpc/client"
 
 	context "context"
 
 	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
 	mock "github.com/stretchr/testify/mock"
-
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
 
 	types "github.com/tendermint/tendermint/types"
 )
@@ -68,11 +67,11 @@ func (_m *RemoteClient) ABCIQuery(ctx context.Context, path string, data bytes.H
 }
 
 // ABCIQueryWithOptions provides a mock function with given fields: ctx, path, data, opts
-func (_m *RemoteClient) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+func (_m *RemoteClient) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	ret := _m.Called(ctx, path, data, opts)
 
 	var r0 *coretypes.ResultABCIQuery
-	if rf, ok := ret.Get(0).(func(context.Context, string, bytes.HexBytes, rpcclient.ABCIQueryOptions) *coretypes.ResultABCIQuery); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, bytes.HexBytes, client.ABCIQueryOptions) *coretypes.ResultABCIQuery); ok {
 		r0 = rf(ctx, path, data, opts)
 	} else {
 		if ret.Get(0) != nil {
@@ -81,7 +80,7 @@ func (_m *RemoteClient) ABCIQueryWithOptions(ctx context.Context, path string, d
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, bytes.HexBytes, rpcclient.ABCIQueryOptions) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, bytes.HexBytes, client.ABCIQueryOptions) error); ok {
 		r1 = rf(ctx, path, data, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -451,6 +450,52 @@ func (_m *RemoteClient) GenesisChunked(_a0 context.Context, _a1 uint) (*coretype
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, uint) error); ok {
 		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Header provides a mock function with given fields: ctx, height
+func (_m *RemoteClient) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	ret := _m.Called(ctx, height)
+
+	var r0 *coretypes.ResultHeader
+	if rf, ok := ret.Get(0).(func(context.Context, *int64) *coretypes.ResultHeader); ok {
+		r0 = rf(ctx, height)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultHeader)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *int64) error); ok {
+		r1 = rf(ctx, height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HeaderByHash provides a mock function with given fields: ctx, hash
+func (_m *RemoteClient) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
+	ret := _m.Called(ctx, hash)
+
+	var r0 *coretypes.ResultHeader
+	if rf, ok := ret.Get(0).(func(context.Context, bytes.HexBytes) *coretypes.ResultHeader); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultHeader)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, bytes.HexBytes) error); ok {
+		r1 = rf(ctx, hash)
 	} else {
 		r1 = ret.Error(1)
 	}
