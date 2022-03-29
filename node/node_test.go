@@ -519,9 +519,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	state.ChainID = maxChainID
 
 	cs := types.CommitSig{
-		BlockIDFlag: types.BlockIDFlagCommit,
-		Timestamp:   timestamp,
-		Signature:   crypto.CRandBytes(types.MaxSignatureSize),
+		BlockIDFlag:      types.BlockIDFlagCommit,
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		Timestamp:        timestamp,
+		Signature:        crypto.CRandBytes(types.MaxSignatureSize),
 	}
 
 	commit := &types.Commit{
@@ -537,7 +538,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		votes[i] = &types.Vote{
 			ValidatorAddress: valAddrs[i],
 		}
-		cs.ValidatorAddress = valAddrs[i]
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
