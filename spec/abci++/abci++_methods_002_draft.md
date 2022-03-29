@@ -287,12 +287,13 @@ title: Methods
 
     | Name                    | Type                                        | Description                                                                                                      | Field Number |
     |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|
-    | hash                    | bytes                                       | The block header's hash of the block to propose. Present for convenience (can be derived from the block header). | 1            |
-    | header                  | [Header](../core/data_structures.md#header) | The header of the block to propose.                                                                              | 2            |
-    | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 3            |
-    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 4            |
-    | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 5            |
-    | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 6            |
+    | hash                    | bytes                                       | The block header's hash of the block to propose.                                                                 | 1            |
+    | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 2            |
+    | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 3            |
+    | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 4            |
+    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 5            |
+    | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 6            |
+    | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 7            |
 
 * **Response**:
 
@@ -306,10 +307,9 @@ title: Methods
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
 * **Usage**:
-    * The first five parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
+    * The first six parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
       and `RequestFinalizeBlock`.
-    * The header contains the height, timestamp, and more - it exactly matches the
-      Tendermint block header.
+    * The height and timestamp values match the values from the header of the proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
         * In this case, the Application should set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED`.
         * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
@@ -404,10 +404,11 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     | Name                 | Type                                        | Description                                                                                                    | Field Number |
     |----------------------|---------------------------------------------|----------------------------------------------------------------------------------------------------------------|--------------|
     | hash                 | bytes                                       | The block header's hash of the proposed block. Present for convenience (can be derived from the block header). | 1            |
-    | header               | [Header](../core/data_structures.md#header) | The proposed block's header.                                                                                   | 2            |
-    | txs                  | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                      | 3            |
-    | proposed_last_commit | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the information in the proposed block.                               | 4            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                         | 5            |
+    | height               | int64                                       | The height of the proposed block.                                                                              | 2            |
+    | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the proposed block.  | 3            |
+    | txs                  | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                      | 4            |
+    | proposed_last_commit | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the information in the proposed block.                               | 5            |
+    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                         | 6            |
 
 * **Response**:
 
@@ -426,14 +427,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
         * The Application may fully execute the block as though it was handling `RequestFinalizeBlock`.
           However, any resulting state changes must be kept as _candidate state_,
           and the Application should be ready to backtrack/discard it in case the decided block is different.
-    * The header exactly matches the Tendermint header of the proposed block.
-        * In next-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
-           and _ConsensusHash_ refer to the **last committed block** (data was provided by the last call to
-          `ResponseFinalizeBlock`).
-        * In same-block execution mode, the header hashes _AppHash_, _LastResultHash_, _ValidatorHash_,
-          and _ConsensusHash_ refer to the **same** block being passed in the `Request*` call to this
-          method (data was provided by the call to `ResponsePrepareProposal` at the current height that
-          resulted in the block being passed in the `Request*` call to this method)
+    * The height and timestamp values match the values from the header of the proposed block.
     * If `ResponseProcessProposal.status` is `REJECT`, Tendermint assumes the proposal received
       is not valid.
     * In same-block execution mode, the Application is required to fully execute the block and provide values
@@ -579,7 +573,8 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | Name                 | Type                                        | Description                                                                              | Field Number |
     |----------------------|---------------------------------------------|------------------------------------------------------------------------------------------|--------------|
     | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 1            |
-    | header               | [Header](../core/data_structures.md#header) | The block header.                                                                        | 2            |
+    | height               | int64                                       | The height of the finalized block.                                                       | 2            |
+    | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block.  | 3            |
     | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 3            |
     | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 4            |
     | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                   | 5            |
@@ -588,7 +583,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
-    | events            | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | events                  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
     | tx_results              | repeated [ExecTxResult](#txresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
@@ -599,7 +594,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     * Contains a newly decided block.
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
       `EndBlock`, `Commit` in the previous version of ABCI.
-    * The header exactly matches the Tendermint header of the proposed block.
+    * The height and timestamp values match the values from the header of the proposed block.
     * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.byzantine_validators`
       to determine rewards and punishments for the validators.
     * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.txs`,

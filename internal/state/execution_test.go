@@ -329,7 +329,8 @@ func TestProcessProposal(t *testing.T) {
 
 	expectedRpp := abci.RequestProcessProposal{
 		Hash:                block1.Hash(),
-		Header:              *block1.Header.ToProto(),
+		Height:              block1.Header.Height,
+		Time:                block1.Header.Time,
 		Txs:                 block1.Txs.ToSliceOfBytes(),
 		ByzantineValidators: block1.Evidence.ToABCI(),
 		ProposedLastCommit: abci.CommitInfo{

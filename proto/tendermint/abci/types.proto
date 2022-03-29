@@ -123,23 +123,26 @@ message RequestApplySnapshotChunk {
 }
 
 message RequestPrepareProposal {
-  bytes                   hash   = 1;
-  tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
+  bytes                     hash   = 1;
+  int64                     height = 2;
+  google.protobuf.Timestamp time   = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+
   // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  repeated bytes     txs                  = 3;
-  ExtendedCommitInfo local_last_commit    = 4 [(gogoproto.nullable) = false];
-  repeated Evidence  byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes     txs                  = 4;
+  ExtendedCommitInfo local_last_commit    = 5 [(gogoproto.nullable) = false];
+  repeated Evidence  byzantine_validators = 6 [(gogoproto.nullable) = false];
   // the modified transactions cannot exceed this size.
-  int64 max_tx_bytes = 6;
+  int64 max_tx_bytes = 7;
 }
 
 message RequestProcessProposal {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  CommitInfo              proposed_last_commit = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  bytes                     hash                 = 1;
+  int64                     height               = 2;
+  google.protobuf.Timestamp time                 = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  repeated bytes            txs                  = 4;
+  CommitInfo                proposed_last_commit = 5 [(gogoproto.nullable) = false];
+  repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
 }
 
 // Extends a vote with application-side injection
@@ -157,11 +160,12 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  CommitInfo              decided_last_commit  = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  bytes                     hash                 = 1;
+  int64                     height               = 2;
+  google.protobuf.Timestamp time                 = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  repeated bytes            txs                  = 4;
+  CommitInfo                decided_last_commit  = 5 [(gogoproto.nullable) = false];
+  repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------

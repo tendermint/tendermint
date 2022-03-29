@@ -122,7 +122,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		ctx,
 		abci.RequestPrepareProposal{
 			Hash:                block.Hash(),
-			Header:              *block.Header.ToProto(),
+			Height:              block.Height,
+			Time:                block.Time,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.ToABCI(),
@@ -169,7 +170,8 @@ func (blockExec *BlockExecutor) ProcessProposal(
 ) (bool, error) {
 	req := abci.RequestProcessProposal{
 		Hash:                block.Header.Hash(),
-		Header:              *block.Header.ToProto(),
+		Height:              block.Header.Height,
+		Time:                block.Header.Time,
 		Txs:                 block.Data.Txs.ToSliceOfBytes(),
 		ProposedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 		ByzantineValidators: block.Evidence.ToABCI(),
@@ -225,12 +227,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrInvalidBlock(err)
 	}
 	startTime := time.Now().UnixNano()
-	pbh := block.Header.ToProto()
 	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
-			Header:              *pbh,
+			Height:              block.Header.Height,
+			Time:                block.Header.Time,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
@@ -622,12 +624,12 @@ func ExecCommitBlock(
 	initialHeight int64,
 	s State,
 ) ([]byte, error) {
-	pbh := block.Header.ToProto()
 	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
-			Header:              *pbh,
+			Height:              block.Height,
+			Time:                block.Time,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
