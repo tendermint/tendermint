@@ -12,14 +12,13 @@ The genesis file is the starting point of a chain. An application will populate 
         - `max_bytes`: The max amount of bytes a block can be.
         - `max_gas`: The maximum amount of gas that a block can have.
     - `evidence`
-> Note: For evidence to be considered invalid, evidence must be older than both `max_age_num_blocks` and `max_age_duration`
-        - `max_age_num_blocks`: After this preset amount of blocks has passed a single piece of evidence is considered invalid
+        - `max_age_num_blocks`: After this preset amount of blocks has passed a single piece of evidence is considered invalid.
         - `max_age_duration`: After this preset amount of time has passed a single piece of evidence is considered invalid.
         - `max_bytes`: The max amount of bytes of all evidence included in a block.
     - `validator`
-          - `pub_key_types`: Defines which curves are to be accepted as a valid validator consensus key. Tendermint supports ed25519, sr25519 and secp256k1.
+        - `pub_key_types`: Defines which curves are to be accepted as a valid validator consensus key. Tendermint supports ed25519, sr25519 and secp256k1.
     - `version`
-          - `app_version`: The version of the application. This is set by the application and is used to identify which version of the app a user should be using in order to operate a node.
+        - `app_version`: The version of the application. This is set by the application and is used to identify which version of the app a user should be using in order to operate a node.
     - `synchrony`
         - `message_delay`: A bound on how long a proposal message may take to reach all validators on a network and still be considered valid.
         - `precision`: A bound on how skewed the proposer's clock may be from any validator on the network while still producing valid proposals.
