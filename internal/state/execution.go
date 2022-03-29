@@ -143,7 +143,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
 	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
-		panic(fmt.Errorf("ResponsePrepareProposal validation: %w", err))
+		return nil, ErrPrepareProposalValidationFailed(err)
 	}
 
 	for _, rtx := range txrSet.RemovedTxs() {

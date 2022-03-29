@@ -651,9 +651,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPrepareProposalPanicOnInvalid tests that the block creation logic panics
+// TestPrepareProposalPanicOnNonExistingRemoved tests that the block creation logic panics
 // if the ResponsePrepareProposal returned from the application is invalid.
-func TestPrepareProposalPanicOnInvalid(t *testing.T) {
+func TestPrepareProposalPanicOnNonExistingRemoved(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -879,10 +879,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 }
 
-// TestPrepareProposalModifiedTxStatusFalse tests that CreateBlock correctly ignores
-// the ResponsePrepareProposal TxRecords if ResponsePrepareProposal does not
-// set ModifiedTxStatus to true.
-func TestPrepareProposalModifiedTxStatusFalse(t *testing.T) {
+// TestPrepareProposalPanicOnTooManyTxs tests that the block creation logic panics
+// if the ResponsePrepareProposal returned from the application is invalid.
+func TestPrepareProposalPanicOnTooManyTxs(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -892,27 +891,22 @@ func TestPrepareProposalModifiedTxStatusFalse(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	state, stateDB, privVals := makeState(t, 1, height)
+	// limit max block size
+	state.ConsensusParams.Block.MaxBytes = 2048
 	stateStore := sm.NewStore(stateDB)
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeTenTxs(height)
+	// each tx takes 3 bytes, so 1024 txs shouldn't fit in the max block size
+	txs := factory.MakeNTxs(height, 1024)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
 	trs := txsToTxRecords(types.Txs(txs))
-	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
-	trs = trs[1:]
-	trs[0].Action = abci.TxRecord_REMOVED
-	trs[1] = &abci.TxRecord{
-		Tx:     []byte("new"),
-		Action: abci.TxRecord_ADDED,
-	}
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
 		TxRecords:        trs,
 	}, nil)
 
@@ -932,11 +926,10 @@ func TestPrepareProposalModifiedTxStatusFalse(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+
 	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
-	require.NoError(t, err)
-	for i, tx := range block.Data.Txs {
-		require.Equal(t, txs[i], tx)
-	}
+	require.Nil(t, block)
+	require.ErrorContains(t, err, "transaction data size exceeds maximum")
 
 	mp.AssertExpectations(t)
 }

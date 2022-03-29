@@ -5,6 +5,7 @@ import "fmt"
 type (
 	ErrInvalidBlock error
 	ErrProxyAppConn error
+	ErrPrepareProposalValidationFailed error
 
 	ErrUnknownBlock struct {
 		Height int64
