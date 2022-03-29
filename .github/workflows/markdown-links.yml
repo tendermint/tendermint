@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: gaurav-nelson/github-action-markdown-link-check@v1.0.14
+      - uses: gaurav-nelson/github-action-markdown-link-check@1.0.14
         with:
           check-modified-files-only: 'yes'
           config-file: '.md-link-check.json'
