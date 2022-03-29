@@ -651,9 +651,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPrepareProposalPanicOnNonExistingRemoved tests that the block creation logic panics
-// if the ResponsePrepareProposal returned from the application is invalid.
-func TestPrepareProposalPanicOnNonExistingRemoved(t *testing.T) {
+// TestPrepareProposalErrorOnNonExistingRemoved tests that the block creation logic returns
+// an error if the ResponsePrepareProposal returned from the application is invalid.
+func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -700,10 +700,9 @@ func TestPrepareProposalPanicOnNonExistingRemoved(t *testing.T) {
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	require.Panics(t,
-		func() {
-			blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil) //nolint:errcheck
-		})
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	require.Nil(t, block)
+	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
 
 	mp.AssertExpectations(t)
 }
