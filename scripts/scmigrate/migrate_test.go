@@ -102,13 +102,13 @@ func TestMigrations(t *testing.T) {
 		}
 	})
 	t.Run("InvalidMigrations", func(t *testing.T) {
-		if _, err := makeToMigratge(nil); err == nil {
+		if _, err := makeToMigrate(nil); err == nil {
 			t.Fatal("should error for nil migrations")
 		}
-		if _, err := makeToMigratge([]byte{}); err == nil {
+		if _, err := makeToMigrate([]byte{}); err == nil {
 			t.Fatal("should error for empty migrations")
 		}
-		if _, err := makeToMigratge([]byte("invalid")); err == nil {
+		if _, err := makeToMigrate([]byte("invalid")); err == nil {
 			t.Fatal("should error for empty migrations")
 		}
 	})

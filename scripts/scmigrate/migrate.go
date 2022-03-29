@@ -98,7 +98,7 @@ func getAllSeenCommits(ctx context.Context, db dbm.DB) ([]toMigrate, error) {
 		if !bytes.HasPrefix(nk, scKeyPrefix) {
 			break
 		}
-		commit, err := makeToMigratge(iter.Value())
+		commit, err := makeToMigrate(iter.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +154,7 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 	}
 
 	// write the migration (remove )
-	if err := migrateRecords(ctx, db, scData); err != nil {
+	if err := deleteRecords(ctx, db, scData); err != nil {
 		return fmt.Errorf("writing data: %w", err)
 	}
 
