@@ -3,18 +3,27 @@ package app
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/rand"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+)
+
+const (
+	voteExtensionKey    string = "extensionSum"
+	voteExtensionMaxVal int64  = 128
 )
 
 // Application is an ABCI application for use by end-to-end tests. It is a
@@ -215,10 +224,10 @@ func (app *Application) Commit() abci.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		app.logger.Info("created state sync snapshot", "height", snapshot.Height)
 		err = app.snapshots.Prune(maxSnapshotCount)
 		if err != nil {
-			app.logger.Error("Failed to prune snapshots", "err", err)
+			app.logger.Error("failed to prune snapshots", "err", err)
 		}
 	}
 	retainHeight := int64(0)
@@ -305,6 +314,52 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+	var sum int64
+	var extCount int
+	for _, vote := range req.LocalLastCommit.Votes {
+		if !vote.SignedLastBlock || len(vote.VoteExtension) == 0 {
+			continue
+		}
+		extValue, errVal := binary.Varint(vote.VoteExtension)
+		// This should have been verified in VerifyVoteExtension
+		if errVal <= 0 {
+			panic(fmt.Sprintf("Failed to parse vote extension. Got return value %d", errVal))
+		}
+		valAddr := crypto.Address(vote.Validator.Address)
+		app.logger.Info("got vote extension value in PrepareProposal", "valAddr", valAddr, "value", extValue)
+		sum += extValue
+		extCount++
+	}
+	// We only generate our special transaction if we have vote extensions
+	if extCount > 0 {
+		extTxPrefix := fmt.Sprintf("%s=", voteExtensionKey)
+		extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, sum))
+		app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
+		// Our generated transaction takes precedence over any supplied
+		// transaction that attempts to modify the "extensionSum" value.
+		txRecords := make([]*abci.TxRecord, len(req.Txs)+1)
+		for i, tx := range req.Txs {
+			if strings.HasPrefix(string(tx), extTxPrefix) {
+				txRecords[i] = &abci.TxRecord{
+					Action: abci.TxRecord_REMOVED,
+					Tx:     tx,
+				}
+			} else {
+				txRecords[i] = &abci.TxRecord{
+					Action: abci.TxRecord_UNMODIFIED,
+					Tx:     tx,
+				}
+			}
+		}
+		txRecords[len(req.Txs)] = &abci.TxRecord{
+			Action: abci.TxRecord_ADDED,
+			Tx:     extTx,
+		}
+		return abci.ResponsePrepareProposal{
+			ModifiedTxStatus: abci.ResponsePrepareProposal_MODIFIED,
+			TxRecords:        txRecords,
+		}
+	}
 	// None of the transactions are modified by this application.
 	return abci.ResponsePrepareProposal{ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED}
 }
@@ -319,6 +374,52 @@ func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.Re
 		}
 	}
 	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
+}
+
+// ExtendVote will produce vote extensions in the form of random numbers to
+// demonstrate vote extension nondeterminism.
+//
+// In the next block, if there are any vote extensions from the previous block,
+// a new transaction will be proposed that updates a special value in the
+// key/value store ("extensionSum") with the sum of all of the numbers collected
+// from the vote extensions.
+func (app *Application) ExtendVote(req abci.RequestExtendVote) abci.ResponseExtendVote {
+	// We ignore any requests for vote extensions that don't match our expected
+	// next height.
+	if req.Height != int64(app.state.Height)+1 {
+		return abci.ResponseExtendVote{}
+	}
+	ext := make([]byte, binary.MaxVarintLen64)
+	num := rand.Int63n(voteExtensionMaxVal)
+	extLen := binary.PutVarint(ext, num)
+	app.logger.Info("generated vote extension", "num", num, "ext", fmt.Sprintf("%x", ext[:extLen]), "state.Height", app.state.Height)
+	return abci.ResponseExtendVote{
+		VoteExtension: ext[:extLen],
+	}
+}
+
+// VerifyVoteExtension simply validates vote extensions from other validators
+// without doing anything about them. In this case, it just makes sure that the
+// vote extension is a well-formed integer value.
+func (app *Application) VerifyVoteExtension(req abci.RequestVerifyVoteExtension) abci.ResponseVerifyVoteExtension {
+	// TODO: Should we reject vote extensions that don't match the next height?
+	// We allow vote extensions to be optional
+	if len(req.VoteExtension) == 0 {
+		return abci.ResponseVerifyVoteExtension{
+			Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+		}
+	}
+	num, err := parseVoteExtension(req.VoteExtension)
+	if err != nil {
+		app.logger.Error("failed to verify vote extension", "req", req, "err", err)
+		return abci.ResponseVerifyVoteExtension{
+			Status: abci.ResponseVerifyVoteExtension_REJECT,
+		}
+	}
+	app.logger.Info("verified vote extension value", "req", req, "num", num)
+	return abci.ResponseVerifyVoteExtension{
+		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+	}
 }
 
 func (app *Application) Rollback() error {
@@ -365,4 +466,20 @@ func parseTx(tx []byte) (string, string, error) {
 		return "", "", errors.New("key cannot be empty")
 	}
 	return string(parts[0]), string(parts[1]), nil
+}
+
+// parseVoteExtension attempts to parse the given extension data into a positive
+// integer value.
+func parseVoteExtension(ext []byte) (int64, error) {
+	num, errVal := binary.Varint(ext)
+	if errVal == 0 {
+		return 0, errors.New("vote extension is too small to parse")
+	}
+	if errVal < 0 {
+		return 0, errors.New("vote extension value is too large")
+	}
+	if num >= voteExtensionMaxVal {
+		return 0, fmt.Errorf("vote extension value must be smaller than %d (was %d)", voteExtensionMaxVal, num)
+	}
+	return num, nil
 }
