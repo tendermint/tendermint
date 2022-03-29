@@ -2,7 +2,7 @@
 // between 0.34 and 0.35
 //
 // The Migrate implementation is idempotent and finds all seen commit
-// records and a delete all *except* the record corresponding to the
+// records and deletes all *except* the record corresponding to the
 // highest height.
 package scmigrate
 
@@ -41,7 +41,7 @@ func makeKeyFromPrefix(ids ...int64) []byte {
 	return key
 }
 
-func makeToMigratge(val []byte) (*types.Commit, error) {
+func makeToMigrate(val []byte) (*types.Commit, error) {
 	if len(val) == 0 {
 		return nil, errors.New("empty value")
 	}
@@ -117,7 +117,7 @@ func getAllSeenCommits(ctx context.Context, db dbm.DB) ([]toMigrate, error) {
 	return scData, nil
 }
 
-func migrateRecords(ctx context.Context, db dbm.DB, scData []toMigrate) error {
+func deleteRecords(ctx context.Context, db dbm.DB, scData []toMigrate) error {
 	// delete all the remaining stale values in a single batch
 	batch := db.NewBatch()
 
