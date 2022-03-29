@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/scripts/keymigrate"
+	"github.com/tendermint/tendermint/scripts/scmigrate"
 )
 
 func MakeKeyMigrateCommand() *cobra.Command {
@@ -48,6 +49,13 @@ func MakeKeyMigrateCommand() *cobra.Command {
 				if err = keymigrate.Migrate(ctx, db); err != nil {
 					return fmt.Errorf("running migration for context %q: %w",
 						dbctx, err)
+				}
+
+				if dbctx == "blockstore" {
+					if err := scmigrate.Migrate(ctx, db); err != nil {
+						return fmt.Errorf("running seen commit migration: %w", err)
+
+					}
 				}
 			}
 
