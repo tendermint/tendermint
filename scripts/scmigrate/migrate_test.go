@@ -47,6 +47,18 @@ func assertWellOrderedMigrations(t *testing.T, testData []toMigrate) {
 	})
 }
 
+func getLatestHeight(data []toMigrate) int64 {
+	var out int64
+
+	for _, d := range data {
+		if d.commit.Height >= out {
+			out = d.commit.Height
+		}
+	}
+
+	return out
+}
+
 func insertTestData(t *testing.T, db dbm.DB, data []toMigrate) {
 	t.Helper()
 
@@ -138,6 +150,7 @@ func TestMigrations(t *testing.T) {
 		data := appendRandomMigrations([]toMigrate{}, 1000)
 		insertTestData(t, db, data)
 
+		latestHeight := getLatestHeight(data)
 		for _, test := range []string{"Migration", "Idempotency"} {
 			// run the test twice to make sure that it's
 			// safe to rerun
@@ -152,6 +165,9 @@ func TestMigrations(t *testing.T) {
 				}
 				if len(post) != 1 {
 					t.Fatal("migration was not successful")
+				}
+				if post[0].commit.Height != latestHeight {
+					t.Fatal("migration did not save correct document")
 				}
 			})
 		}
