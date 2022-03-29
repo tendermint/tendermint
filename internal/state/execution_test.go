@@ -652,7 +652,8 @@ func TestEmptyPrepareProposal(t *testing.T) {
 }
 
 // TestPrepareProposalErrorOnNonExistingRemoved tests that the block creation logic returns
-// an error if the ResponsePrepareProposal returned from the application is invalid.
+// an error if the ResponsePrepareProposal returned from the application marks
+//  a transaction as REMOVED that was not present in the original proposal.
 func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 	const height = 2
 	ctx, cancel := context.WithCancel(context.Background())
