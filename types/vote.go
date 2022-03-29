@@ -103,6 +103,21 @@ func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	return bz
 }
 
+// VoteExtensionSignBytes returns the proto-encoding of the canonicalized vote
+// extension for signing. Panics if the marshaling fails.
+//
+// Similar to VoteSignBytes, the encoded Protobuf message is varint
+// length-prefixed for backwards-compatibility with the Amino encoding.
+func VoteExtensionSignBytes(chainID string, vote *tmproto.Vote) []byte {
+	pb := CanonicalizeVoteExtension(chainID, vote)
+	bz, err := protoio.MarshalDelimited(&pb)
+	if err != nil {
+		panic(err)
+	}
+
+	return bz
+}
+
 func (vote *Vote) Copy() *Vote {
 	voteCopy := *vote
 	return &voteCopy

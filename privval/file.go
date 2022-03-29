@@ -369,6 +369,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	}
 
 	signBytes := types.VoteSignBytes(chainID, vote)
+	extSignBytes := types.VoteExtensionSignBytes(chainID, vote)
 
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
@@ -398,18 +399,15 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	if err != nil {
 		return err
 	}
-	if err = pv.saveSigned(height, round, step, signBytes, sig); err != nil {
+	if err := pv.saveSigned(height, round, step, signBytes, sig); err != nil {
 		return err
 	}
 	vote.Signature = sig
 
-	// Sign the vote extension, if any
-	if len(vote.Extension) > 0 {
-		var err error
-		vote.ExtensionSignature, err = pv.Key.PrivKey.Sign(vote.Extension)
-		if err != nil {
-			return err
-		}
+	// Sign the vote extension, regardless of whether it's present or not
+	vote.ExtensionSignature, err = pv.Key.PrivKey.Sign(extSignBytes)
+	if err != nil {
+		return err
 	}
 
 	return nil

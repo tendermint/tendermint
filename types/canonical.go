@@ -65,6 +65,19 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 	}
 }
 
+// CanonicalizeVoteExtension extracts the vote extension from the given vote
+// and constructs a CanonicalizeVoteExtension struct, whose representation in
+// bytes is what is signed in order to produce the vote extension's signature.
+func CanonicalizeVoteExtension(chainID string, vote *tmproto.Vote) tmproto.CanonicalVoteExtension {
+	return tmproto.CanonicalVoteExtension{
+		Extension: vote.Extension,
+		Height:    vote.Height,
+		Round:     vote.Round,
+		ChainId:   chainID,
+		Address:   vote.ValidatorAddress,
+	}
+}
+
 // CanonicalTime can be used to stringify time in a canonical way.
 func CanonicalTime(t time.Time) string {
 	// Note that sending time over amino resets it to
