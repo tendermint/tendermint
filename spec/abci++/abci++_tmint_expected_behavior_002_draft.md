@@ -204,7 +204,7 @@ As for the new methods:
 
 * `PrepareProposal` must create a list of [TxRecord](./abci++_methods_002_draft.md#txrecord) each containing a
   transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must be set to `UNMODIFIED`
-  for all [TxRecord](./abci%2B%2B_methods_002_draft.md#txrecord) elements in the list.
+  for all [TxRecord](./abci++_methods_002_draft.md#txrecord) elements in the list.
   The Application must check whether the size of all transactions exceeds the byte limit
   (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the end of the list
   until the total byte size is at or below the limit.

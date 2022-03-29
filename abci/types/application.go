@@ -98,7 +98,8 @@ func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepa
 	trs := make([]*TxRecord, len(req.Txs))
 	var totalBytes int64
 	for i, tx := range req.Txs {
-		if totalBytes > req.MaxTxBytes {
+		nBytes := int64(len(tx))
+		if totalBytes + nBytes > req.MaxTxBytes {
 			trs = trs[:i]
 			break
 		}
@@ -106,7 +107,7 @@ func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepa
 			Action: TxRecord_UNMODIFIED,
 			Tx:     tx,
 		}
-		totalBytes += int64(len(tx))
+		totalBytes += nBytes
 	}
 	return ResponsePrepareProposal{TxRecords: trs}
 }

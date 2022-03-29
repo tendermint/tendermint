@@ -309,7 +309,8 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 	trs := make([]*abci.TxRecord, len(req.Txs))
 	var totalBytes int64
 	for i, tx := range req.Txs {
-		if totalBytes > req.MaxTxBytes {
+		nBytes := int64(len(tx))
+		if totalBytes + nBytes > req.MaxTxBytes {
 			trs = trs[:i]
 			break
 		}
@@ -317,7 +318,7 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 			Action: abci.TxRecord_UNMODIFIED,
 			Tx:     tx,
 		}
-		totalBytes += int64(len(tx))
+		totalBytes += nBytes
 	}
 	return abci.ResponsePrepareProposal{TxRecords: trs}
 }

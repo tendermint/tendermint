@@ -436,32 +436,31 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 // proposal for transactions with the prefix stripped.
 // It marks all of the original transactions as 'REMOVED' so that
 // Tendermint will remove them from its mempool.
-func (app *Application) substPrepareTx(blockData [][]byte, max_tx_bytes int64) []*types.TxRecord {
+func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*types.TxRecord {
 	trs := make([]*types.TxRecord, len(blockData))
 	var removed []*types.TxRecord
 	var totalBytes int64
 	for i, tx := range blockData {
-		if totalBytes > max_tx_bytes {
-			trs = trs[:i]
-			break
-		}
+		tx_mod := tx
+		action := types.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
 			removed = append(removed, &types.TxRecord{
 				Tx:     tx,
 				Action: types.TxRecord_REMOVED,
 			})
-			trs[i] = &types.TxRecord{
-				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
-				Action: types.TxRecord_ADDED,
-			}
-			totalBytes += int64(len(trs[i].Tx))
-			continue
+			tx_mod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
+			action = types.TxRecord_ADDED
+		}
+		nBytes := int64(len(tx_mod))
+		if totalBytes + nBytes > maxTxBytes {
+			trs = trs[:i]
+			break
 		}
 		trs[i] = &types.TxRecord{
-			Tx:     tx,
-			Action: types.TxRecord_UNMODIFIED,
+			Tx:     tx_mod,
+			Action: action,
 		}
-		totalBytes += int64(len(tx))
+		totalBytes += nBytes
 	}
 
 	return append(trs, removed...)
