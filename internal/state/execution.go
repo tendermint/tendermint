@@ -135,15 +135,15 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// transaction causing an error.
 		//
 		// Also, the App can simply skip any transaction that could cause any kind of trouble.
-		// Either way, we can not recover in a meaningful way, unless we skip proposing
-		// this block, repair what caused the error and try again. Hence, we panic on
-		// purpose for now.
-		panic(err)
+		// Either way, we cannot recover in a meaningful way, unless we skip proposing
+		// this block, repair what caused the error and try again. Hence, we return an
+		// error for now (the production code calling this function is expected to panic).
+		return nil, err
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
 	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
-		return nil, ErrPrepareProposalValidationFailed(err)
+		return nil, err
 	}
 
 	for _, rtx := range txrSet.RemovedTxs() {
