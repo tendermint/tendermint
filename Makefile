@@ -18,6 +18,12 @@ BASE_BRANCH := v0.8-dev
 DOCKER_PROTO := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
 CGO_ENABLED ?= 1
 
+# handle ARM builds
+ifeq (arm,$(GOARCH))
+	export CC = arm-linux-gnueabi-gcc-10
+	export CXX = arm-linux-gnueabi-g++-10
+endif
+
 # handle nostrip
 ifeq (,$(findstring nostrip,$(TENDERMINT_BUILD_OPTIONS)))
   BUILD_FLAGS += -trimpath
@@ -63,8 +69,9 @@ endif
 # allow users to pass additional flags via the conventional LDFLAGS variable
 LD_FLAGS += $(LDFLAGS)
 
-all: check build test install
-build: build-bls
+all: build install
+build: build-bls build-binary
+.PHONY: build
 install: install-bls
 
 .PHONY: all
@@ -87,9 +94,9 @@ install-bls: build-bls
 ###                                Build Tendermint                        ###
 ###############################################################################
 
-build:
+build-binary:
 	CGO_ENABLED=$(CGO_ENABLED) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o $(OUTPUT) ./cmd/tenderdash/
-.PHONY: build
+.PHONY: build-binary
 
 install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tenderdash

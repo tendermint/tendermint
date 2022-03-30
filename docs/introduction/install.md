@@ -2,19 +2,11 @@
 order: 3
 ---
 
-# Install Tendermint
+# Install Tenderdash
 
 ## From Binary
 
-To download pre-built binaries, see the [releases page](https://github.com/tendermint/tendermint/releases).
-
-## Using Homebrew
-
-You can also install the Tendermint binary by simply using homebrew,
-
-```
-brew install tendermint
-```
+To download pre-built binaries, see the [releases page](https://github.com/dashevo/tenderdash/releases).
 
 ## From Source
 
@@ -29,8 +21,8 @@ echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 Get the source code:
 
 ```sh
-git clone https://github.com/tendermint/tendermint.git
-cd tendermint
+git clone https://github.com/dashevo/tenderdash.git
+cd tenderdash
 ```
 
 Then run:
@@ -47,16 +39,31 @@ make build
 
 to put the binary in `./build`.
 
-_DISCLAIMER_ The binary of Tendermint is build/installed without the DWARF
-symbol table. If you would like to build/install Tendermint with the DWARF
+_DISCLAIMER_ The binary of Tenderdash is build/installed without the DWARF
+symbol table. If you would like to build/install Tenderdash with the DWARF
 symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make
 file.
 
-The latest Tendermint is now installed. You can verify the installation by
+The latest Tenderdash is now installed. You can verify the installation by
 running:
 
 ```sh
 tendermint version
+```
+
+
+### Cross-compilation
+
+To cross-compile for ARM platform, you need to install required compilers. On Ubuntu 20.04+:
+
+```bash
+sudo apt-get install gcc-10-arm-linux-gnueabi g++-10-arm-linux-gnueabi
+```
+
+To start the build process, execute:
+
+```bash
+GOOS=linux GOARCH=arm  make
 ```
 
 ## Run
@@ -70,7 +77,7 @@ tendermint start --proxy-app=kvstore
 
 ## Reinstall
 
-If you already have Tendermint installed, and you make updates, simply
+If you already have Tenderdash installed, and you make updates, simply
 
 ```sh
 make install
@@ -113,7 +120,7 @@ Set a database backend to `cleveldb`:
 db_backend = "cleveldb"
 ```
 
-To install Tendermint, run:
+To install Tenderdash, run:
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb

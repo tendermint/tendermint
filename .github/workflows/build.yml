@@ -12,42 +12,6 @@ on:
       - v0.*-dev
 
 jobs:
-  bls-signatures:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/setup-go@v2
-        with:
-          go-version: "^1.17"
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Get BLS library revision
-        id: bls-revision
-        run: |
-          echo "::set-output name=hash::$(git --git-dir=third_party/bls-signatures/src/.git rev-parse HEAD)"
-        shell: bash
-      - uses: actions/cache@v2
-        id: bls-cache
-        with:
-          path: ~/bls-cache
-          key: ${{ runner.os }}-bls-${{ steps.bls-revision.outputs.hash }}
-      - name: Build BLS library
-        run: make install-bls
-        if: steps.bls-cache.outputs.cache-hit != 'true'
-      - name: Save BLS library
-        run: |
-          mkdir -p ~/bls-cache/include
-          cp -vr /usr/local/include/chiabls ~/bls-cache/include
-          cp -vr /usr/local/include/relic* ~/bls-cache/include
-          cp -v /usr/local/lib/libchiabls.a ~/bls-cache/
-        if: steps.bls-cache.outputs.cache-hit != 'true'
-      - uses: actions/cache@v2.1.2
-        with:
-          path: ~/bls-cache
-          key: ${{ runner.os }}-bls-${{ steps.bls-revision.outputs.hash }}
-        if: steps.bls-cache.outputs.cache-hit != 'true'
-
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -70,9 +34,19 @@ jobs:
             go.mod
             go.sum
             Makefile
-      - name: install
-        run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} make build
+      - uses: ./.github/actions/bls
+        name: Install BLS library
         if: "env.GIT_DIFF != ''"
+        with:
+          arch: ${{ matrix.goarch }}
+      - name: install-gcc
+        run: sudo apt-get update -qq && sudo apt-get install -qq --yes gcc-10-arm-linux-gnueabi g++-10-arm-linux-gnueabi
+        if: "matrix.goarch == 'arm'"        
+      - name: install
+        run: |
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} make build-binary
+        if: "env.GIT_DIFF != ''"
+        shell: bash
 
   test_abci_cli:
     runs-on: ubuntu-latest
@@ -111,15 +85,9 @@ jobs:
             **/**.go
             go.mod
             go.sum
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/bls-cache
-          key: ${{ runner.os }}-bls-${{ steps.bls-revision.outputs.hash }}
-      - name: Install BLS library
-        run: |
-          sudo cp -vr ~/bls-cache/include/* /usr/local/include/
-          sudo cp -vr ~/bls-cache/libchiabls.a /usr/local/lib/
+      - uses: ./.github/actions/bls
+        name: Install BLS library
+        if: "env.GIT_DIFF != ''"
       - name: install
         run: make install install_abci
         if: "env.GIT_DIFF != ''"
