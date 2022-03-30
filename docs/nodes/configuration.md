@@ -613,6 +613,6 @@ removed in Tendermint v0.37.
   receiving +2/3 precommits before beginning the next height.
 - `unsafe-bypass-commit-timeout-override`: Configures if the consensus engine
   will wait for the full commit timeout before proceeding to the next height. If
-  this field is set to true, the conesnsus engine will proceed to the next
+  this field is set to true, the consensus engine will proceed to the next
   height as soon as the node has gathered votes from all of the validators on
   the network.

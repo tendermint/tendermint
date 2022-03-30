@@ -78,7 +78,9 @@ configured. These parameters, `timeout-propose`, `timeout-propose-delta`,
 `timeout-precommit-delta`, `timeout-commit`, and `skip-timeout-commit`, were
 previously configured in `config.toml`. These timing parameters have moved and
 are no longer configured in the `config.toml` file. These parameters have been
-migrated into the `ConsensusParameters`.
+migrated into the `ConsensusParameters`. Nodes with these parameters set in the
+local configuration file will see a warning logged on startup indicating that
+these parameters are no longer used.
 
 These parameters have also been pared-down. There are no longer separate
 parameters for both the `prevote` and `precommit` phases of Tendermint. The
@@ -101,9 +103,10 @@ Note, however, that these overrides will be removed in Tendermint v0.37. See
 [configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
 for more information about these overrides.
 
-For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which lays out
-the reasoning for the changes as well as [RFC 009](https://tinyurl.com/rfc009)
-for a discussion of the complexities of upgrading consensus parameters.
+For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
+lays out the reasoning for the changes as well as [RFC
+009](https://tinyurl.com/rfc009) for a discussion of the complexities of
+upgrading consensus parameters.
 
 ## v0.35
 
