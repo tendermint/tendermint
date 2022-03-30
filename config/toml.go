@@ -486,7 +486,7 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
 # This field provides an unsafe override of the Vote timeout consensus parameter.
 # This field configures how long the consensus engine will wait after
-# receiving +2/3 votes in a around.
+# receiving +2/3 votes in a round.
 # If this field is set to a value greater than 0, it will take effect.
 # unsafe-vote-timeout-override = {{ .Consensus.UnsafeVoteTimeoutOverride }}
 
