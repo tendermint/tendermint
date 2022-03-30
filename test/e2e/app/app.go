@@ -320,10 +320,10 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 		if !vote.SignedLastBlock || len(vote.VoteExtension) == 0 {
 			continue
 		}
-		extValue, errVal := binary.Varint(vote.VoteExtension)
+		extValue, err := parseVoteExtension(vote.VoteExtension)
 		// This should have been verified in VerifyVoteExtension
-		if errVal <= 0 {
-			panic(fmt.Sprintf("Failed to parse vote extension. Got return value %d", errVal))
+		if err != nil {
+			panic(fmt.Errorf("failed to parse vote extension in PrepareProposal: %w", err))
 		}
 		valAddr := crypto.Address(vote.Validator.Address)
 		app.logger.Info("got vote extension value in PrepareProposal", "valAddr", valAddr, "value", extValue)
