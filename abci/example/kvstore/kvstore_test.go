@@ -14,8 +14,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -137,52 +135,24 @@ func TestValUpdates(t *testing.T) {
 	fullVals := RandValidatorSetUpdate(total)
 	initVals := RandValidatorSetUpdate(nInit)
 
-	proTxHashes := make([]crypto.ProTxHash, len(fullVals.ValidatorUpdates))
-	pubKeys := make([]crypto.PubKey, len(fullVals.ValidatorUpdates))
-	for i, val := range fullVals.ValidatorUpdates {
-		proTxHashes[i] = val.ProTxHash
-		pubKey, err := encoding.PubKeyFromProto(*val.PubKey)
-		require.NoError(t, err)
-		pubKeys[i] = pubKey
-	}
-	for _, val := range initVals.ValidatorUpdates {
-		proTxHashes = append(proTxHashes, val.ProTxHash)
-	}
-	thresholdPublicKey, err := encoding.PubKeyFromProto(fullVals.ThresholdPublicKey)
-	require.NoError(t, err)
-
 	// initialize with the first nInit
 	kvstore.InitChain(types.RequestInitChain{
 		ValidatorSet: &initVals,
 	})
 
-	kvVals := kvstore.ValidatorSet()
-	valSetEqualTest(t, kvVals, initVals)
+	kvVals, err := kvstore.ValidatorSet()
+	require.NoError(t, err)
+	valSetEqualTest(t, *kvVals, initVals)
 
-	tx, err := MakeValidatorSetUpdateTx(
-		proTxHashes,
-		pubKeys,
-		thresholdPublicKey,
-		fullVals.QuorumHash,
-	)
+	tx, err := MarshalValidatorSetUpdate(&fullVals)
 	require.NoError(t, err)
 
 	// change the validator set to the full validator set
-	removalUpdates := make([]types.ValidatorUpdate, 5)
-	for i := range initVals.ValidatorUpdates {
-		// remove old validators
-		removalUpdates[i] = initVals.ValidatorUpdates[i]
-		removalUpdates[i].PubKey = nil
-		removalUpdates[i].Power = 0
-	}
-	valUpdates := fullVals
-	removalUpdates = append(removalUpdates, fullVals.ValidatorUpdates...)
-	valUpdates.ValidatorUpdates = removalUpdates
+	makeApplyBlock(t, kvstore, 1, fullVals, tx)
 
-	makeApplyBlock(t, kvstore, 1, valUpdates, tx)
-
-	kvVals = kvstore.ValidatorSet()
-	valSetEqualTest(t, kvVals, fullVals)
+	kvVals, err = kvstore.ValidatorSet()
+	require.NoError(t, err)
+	valSetEqualTest(t, *kvVals, fullVals)
 }
 
 func makeApplyBlock(
@@ -200,9 +170,8 @@ func makeApplyBlock(
 
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
 	for i, tx := range txs {
-		if r := kvstore.DeliverTx(types.RequestDeliverTx{Tx: tx}); r.IsErr() {
-			t.Fatal(fmt.Sprintf("i=%d, tx=%s, err=%s", i, tx, r.String()))
-		}
+		r := kvstore.DeliverTx(types.RequestDeliverTx{Tx: tx})
+		require.False(t, r.IsErr(), "i=%d, tx=%s, err=%s", i, tx, r.String())
 	}
 	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
 	kvstore.Commit()
@@ -213,9 +182,7 @@ func makeApplyBlock(
 
 // order doesn't matter
 func valsEqualTest(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
-	if len(vals1) != len(vals2) {
-		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
-	}
+	require.Equal(t, len(vals1), len(vals2), "vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	sort.Sort(types.ValidatorUpdates(vals1))
 	sort.Sort(types.ValidatorUpdates(vals2))
 	for i, v1 := range vals1 {

@@ -157,18 +157,20 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 		require.NoError(t, err)
 
-		proTxHash := pv.Key.ProTxHash
 		pubKey, err := pv.GetFirstPubKey(context.Background())
 		require.NoError(t, err, "private validator must have a public key")
 		rawpub := pubKey.Bytes()
-		result2, err := c.ABCIQuery(context.Background(), "/val", proTxHash.Bytes())
+		result2, err := c.ABCIQuery(context.Background(), "/vsu", []byte{})
 		require.NoError(t, err)
 		qres := result2.Response
 		require.True(t, qres.IsOK())
 
-		var v abci.ValidatorUpdate
-		err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
+		var vsu abci.ValidatorSetUpdate
+		err = abci.ReadMessage(bytes.NewReader(qres.Value), &vsu)
 		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
+		require.Equal(t, 1, len(vsu.ValidatorUpdates))
+		v := vsu.ValidatorUpdates[0]
+		require.Equal(t, pv.Key.ProTxHash.Bytes(), v.ProTxHash)
 
 		pk, err := encoding.PubKeyFromProto(*v.PubKey)
 		require.NoError(t, err)

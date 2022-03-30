@@ -9,35 +9,23 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/dash/llmq"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var ctx = context.Background()
 
 func InitChain(client abcicli.Client) error {
-	const (
-		power = tmtypes.DefaultDashVotingPower
-		total = 10
-	)
-	vals := make([]types.ValidatorUpdate, 0, total)
+	const total = 10
 	ld, err := llmq.Generate(crypto.RandProTxHashes(total))
 	if err != nil {
 		return err
 	}
-	iter := ld.Iter()
-	for iter.Next() {
-		proTxHash, qks := iter.Value()
-		vals = append(vals, types.UpdateValidator(proTxHash, qks.PubKey.Bytes(), power, ""))
-	}
-	abciThresholdPublicKey, err := encoding.PubKeyToProto(ld.ThresholdPubKey)
+	validatorSet, err := types.LLMQToValidatorSetProto(*ld)
 	if err != nil {
 		return err
 	}
-	validatorSet := types.UpdateValidatorSet(vals, abciThresholdPublicKey)
 	_, err = client.InitChainSync(context.Background(), types.RequestInitChain{
-		ValidatorSet: &validatorSet,
+		ValidatorSet: validatorSet,
 	})
 	if err != nil {
 		fmt.Printf("Failed test: InitChain - %v\n", err)

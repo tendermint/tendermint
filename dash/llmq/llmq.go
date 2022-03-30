@@ -32,7 +32,6 @@ type Data struct {
 	ThresholdPrivKey crypto.PrivKey
 	ThresholdPubKey  crypto.PubKey
 	ThresholdSig     []byte
-	QuorumHash       crypto.QuorumHash
 }
 
 // blsLLMQData is an intermediate structure that contains the BLS keys/shares/signatures
@@ -44,10 +43,33 @@ type blsLLMQData struct {
 	pkShares    []*bls.PublicKey
 }
 
+// QuorumProps returns corresponding LLMQ parameters
+// the first integer is an expected size of quorum
+// the second is an expected threshold
+// the third parameter is an error, it returns in a case if quorumType is not supported
+func QuorumProps(quorumType btcjson.LLMQType) (int, int, error) {
+	switch quorumType {
+	case btcjson.LLMQType_50_60:
+		return 50, 30, nil
+	case btcjson.LLMQType_400_60:
+		return 400, 240, nil
+	case btcjson.LLMQType_400_85:
+		return 400, 340, nil
+	case btcjson.LLMQType_100_67:
+		return 100, 67, nil
+	case 101:
+		return 10, 6, nil
+	}
+	return 0, 0, fmt.Errorf("quorumType '%d' doesn't match with available", quorumType)
+}
+
 // MustGenerateForQuorum takes a passed quorum-type to derive a quorum size and threshold value
 // quorum-size is used to generate a list of pro-tx hashes
 func MustGenerateForQuorum(quorumType btcjson.LLMQType) *Data {
-	size, threshold := quorumProps(quorumType)
+	size, threshold, err := QuorumProps(quorumType)
+	if err != nil {
+		panic(err)
+	}
 	return MustGenerate(
 		crypto.RandProTxHashes(size),
 		WithThreshold(threshold),
@@ -255,18 +277,4 @@ func newLLMQDataFromBLSData(ld blsLLMQData, threshold int) *Data {
 	llmqData.ThresholdPrivKey = llmqData.PrivKeys[0]
 	llmqData.ThresholdPubKey = llmqData.PubKeys[0]
 	return &llmqData
-}
-
-func quorumProps(quorumType btcjson.LLMQType) (int, int) {
-	switch quorumType {
-	case btcjson.LLMQType_50_60:
-		return 50, 30
-	case btcjson.LLMQType_400_60:
-		return 400, 240
-	case btcjson.LLMQType_400_85:
-		return 400, 340
-	case btcjson.LLMQType_100_67:
-		return 100, 67
-	}
-	panic(fmt.Sprintf("quorumType '%d' doesn't match with available", quorumType))
 }

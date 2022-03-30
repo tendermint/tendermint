@@ -28,8 +28,7 @@ import (
 )
 
 var (
-	chainID             = "execution_chain"
-	testPartSize uint32 = 65536
+	chainID = "execution_chain"
 )
 
 func TestApplyBlock(t *testing.T) {
@@ -60,10 +59,7 @@ func TestApplyBlock(t *testing.T) {
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
-	blockID := types.BlockID{
-		Hash:          block.Hash(),
-		PartSetHeader: block.MakePartSet(testPartSize).Header(),
-	}
+	blockID := block.BlockID()
 
 	state, err = blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	require.NoError(t, err)
@@ -136,7 +132,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	require.NoError(t, err)
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
-	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+	blockID := block.BlockID()
 
 	_, err = blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
 	require.Nil(t, err)
@@ -356,10 +352,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	block, err := sf.MakeBlock(state, 1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
 
-	blockID := types.BlockID{
-		Hash:          block.Hash(),
-		PartSetHeader: block.MakePartSet(testPartSize).Header(),
-	}
+	blockID := block.BlockID()
 
 	vals := state.Validators
 	proTxHashes := vals.GetProTxHashes()
@@ -450,10 +443,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 	block, err := sf.MakeBlock(state, 1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
-	blockID := types.BlockID{
-		Hash:          block.Hash(),
-		PartSetHeader: block.MakePartSet(testPartSize).Header(),
-	}
+	blockID := block.BlockID()
 
 	publicKey, err := encoding.PubKeyToProto(bls12381.GenPrivKey().PubKey())
 	require.NoError(t, err)

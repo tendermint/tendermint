@@ -529,38 +529,22 @@ func (vals *ValidatorSet) QuorumVotingThresholdPower() int64 {
 	return int64(vals.QuorumTypeThresholdCount()) * DefaultDashVotingPower
 }
 
+// QuorumTypeMemberCount returns a number of validators for a quorum by a type
 func (vals *ValidatorSet) QuorumTypeMemberCount() int {
-	switch vals.QuorumType {
-	case btcjson.LLMQType_50_60:
-		return 50
-	case btcjson.LLMQType_400_60:
-		return 400
-	case btcjson.LLMQType_400_85:
-		return 400
-	case btcjson.LLMQType_100_67:
-		return 100
-	case 101:
-		return 10
-	default:
+	size, _, err := llmq.QuorumProps(vals.QuorumType)
+	if err != nil {
 		return len(vals.Validators)
 	}
+	return size
 }
 
+// QuorumTypeThresholdCount returns a threshold number for a quorum by a type
 func (vals *ValidatorSet) QuorumTypeThresholdCount() int {
-	switch vals.QuorumType {
-	case btcjson.LLMQType_50_60:
-		return 30
-	case btcjson.LLMQType_400_60:
-		return 240
-	case btcjson.LLMQType_400_85:
-		return 340
-	case btcjson.LLMQType_100_67:
-		return 67
-	case 101:
-		return 6
-	default:
+	_, threshold, err := llmq.QuorumProps(vals.QuorumType)
+	if err != nil {
 		return len(vals.Validators)*2/3 + 1
 	}
+	return threshold
 }
 
 // GetProposer returns the current proposer. If the validator set is empty, nil

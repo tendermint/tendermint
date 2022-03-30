@@ -599,13 +599,13 @@ func (t Testnet) HasPerturbations() bool {
 }
 
 // validatorUpdate creates an abci.ValidatorUpdate struct from the current node
-func (n *Node) validatorUpdate(publicKey []byte) (abci.ValidatorUpdate, error) {
+func (n *Node) validatorUpdate(pubKey crypto.PubKey) (abci.ValidatorUpdate, error) {
 	proTxHash := n.ProTxHash.Bytes()
 
 	power := types.DefaultDashVotingPower
 
 	address := n.AddressP2P(false)
-	validatorUpdate := abci.UpdateValidator(proTxHash, publicKey, power, address)
+	validatorUpdate := abci.UpdateValidatorProto(proTxHash, pubKey, power, address)
 	return validatorUpdate, nil
 }
 

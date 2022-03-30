@@ -1005,14 +1005,21 @@ func (s *stateQuorumManager) generateKeysAndUpdateState(
 		return nil, err
 	}
 	qd := quorumData{
-		validators:         make([]*types.Validator, 0, len(proTxHashes)),
-		quorumHash:         crypto.RandQuorumHash(),
-		thresholdPublicKey: lq.ThresholdPubKey,
+		Data:       *lq,
+		quorumHash: crypto.RandQuorumHash(),
+	}
+	vsu, err := abci.LLMQToValidatorSetProto(*lq, abci.WithQuorumHash(qd.quorumHash))
+	if err != nil {
+		return nil, err
+	}
+	qd.tx, err = kvstore.MarshalValidatorSetUpdate(vsu)
+	if err != nil {
+		return nil, err
 	}
 	iter := lq.Iter()
 	for iter.Next() {
 		proTxHash, qks := iter.Value()
-		validator, err := s.updateState(
+		_, err = s.updateState(
 			proTxHash,
 			qks.PrivKey,
 			qd.quorumHash,
@@ -1022,7 +1029,6 @@ func (s *stateQuorumManager) generateKeysAndUpdateState(
 		if err != nil {
 			return nil, err
 		}
-		qd.validators = append(qd.validators, validator)
 	}
 	return &qd, nil
 }
@@ -1049,19 +1055,7 @@ func (s *stateQuorumManager) validatorSet() *types.ValidatorSet {
 }
 
 type quorumData struct {
-	validators         []*types.Validator
-	thresholdPublicKey crypto.PubKey
-	quorumHash         crypto.QuorumHash
-}
-
-func (s *quorumData) tx() ([]byte, error) {
-	pubKeys := make([]crypto.PubKey, len(s.validators))
-	for i, val := range s.validators {
-		pubKeys[i] = val.PubKey
-	}
-	proTxHashes := make([]crypto.ProTxHash, len(s.validators))
-	for i, val := range s.validators {
-		proTxHashes[i] = val.ProTxHash
-	}
-	return kvstore.MakeValidatorSetUpdateTx(proTxHashes, pubKeys, s.thresholdPublicKey, s.quorumHash)
+	llmq.Data
+	quorumHash crypto.QuorumHash
+	tx         []byte
 }
