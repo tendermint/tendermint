@@ -45,6 +45,7 @@ func TestApp_Hash(t *testing.T) {
 	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
+
 		info, err := client.ABCIInfo(ctx)
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
@@ -55,13 +56,11 @@ func TestApp_Hash(t *testing.T) {
 
 		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
 		require.NoError(t, err)
-
-		if info.Response.LastBlockHeight == block.Block.Height {
-			require.Equal(t,
-				fmt.Sprintf("%x", info.Response.LastBlockAppHash),
-				fmt.Sprintf("%x", block.Block.AppHash.Bytes()),
-				"app hash does not match last block's app hash")
-		}
+		require.Equal(t, info.Response.LastBlockHeight, block.Block.Height)
+		require.Equal(t,
+			fmt.Sprintf("%x", info.Response.LastBlockAppHash),
+			fmt.Sprintf("%x", block.Block.AppHash.Bytes()),
+			fmt.Sprintf("app hash does not match last block's app hash at height %d", block.Block.Height))
 
 		require.True(t, status.SyncInfo.LatestBlockHeight >= info.Response.LastBlockHeight,
 			"status out of sync with application")
