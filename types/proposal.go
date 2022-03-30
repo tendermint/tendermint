@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtime "github.com/tendermint/tendermint/libs/time"
@@ -156,9 +155,9 @@ func ProposalBlockSignID(
 
 	signID := crypto.SignID(
 		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(proposalRequestID),
-		bls12381.ReverseBytes(proposalMessageHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(proposalRequestID),
+		tmbytes.Reverse(proposalMessageHash),
 	)
 
 	return signID

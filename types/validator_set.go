@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/dash/llmq"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -458,25 +459,24 @@ func (vals *ValidatorSet) Size() int {
 
 func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidator) {
 	var (
-		proTxHashes    = vals.GetProTxHashes()
 		numValidators  = len(vals.Validators)
-		valz           = make([]*Validator, numValidators)
-		privValidators = make([]PrivValidator, numValidators)
+		valz           = make([]*Validator, 0, numValidators)
+		privValidators = make([]PrivValidator, 0, numValidators)
 	)
-	orderedProTxHashes, privateKeys, thresholdPublicKey :=
-		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	ld := llmq.MustGenerate(vals.GetProTxHashes())
 	quorumHash := crypto.RandQuorumHash()
-
-	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(
-			privateKeys[i],
-			orderedProTxHashes[i],
+	iter := ld.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		privValidators = append(privValidators, NewMockPVWithParams(
+			qks.PrivKey,
+			proTxHash,
 			quorumHash,
-			thresholdPublicKey,
+			ld.ThresholdPubKey,
 			false,
 			false,
-		)
-		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), orderedProTxHashes[i])
+		))
+		valz = append(valz, NewValidatorDefaultVotingPower(qks.PubKey, proTxHash))
 	}
 
 	// Just to make sure
@@ -484,7 +484,7 @@ func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidato
 
 	return NewValidatorSet(
 		valz,
-		thresholdPublicKey,
+		ld.ThresholdPubKey,
 		vals.QuorumType,
 		crypto.RandQuorumHash(),
 		vals.HasPublicKeys,
@@ -1272,19 +1272,20 @@ func ValidatorSetFromExistingValidators(
 //----------------------------------------
 
 func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abci.ValidatorSetUpdate {
-	orderedProTxHashes, privateKeys, thresholdPublicKey :=
-		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
-	var valUpdates []abci.ValidatorUpdate
-	for i := 0; i < len(proTxHashes); i++ {
+	ld := llmq.MustGenerate(proTxHashes)
+	valUpdates := make([]abci.ValidatorUpdate, 0, len(proTxHashes))
+	iter := ld.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
 		valUpdate := TM2PB.NewValidatorUpdate(
-			privateKeys[i].PubKey(),
+			qks.PubKey,
 			DefaultDashVotingPower,
-			orderedProTxHashes[i],
+			proTxHash,
 			"",
 		)
 		valUpdates = append(valUpdates, valUpdate)
 	}
-	abciThresholdPublicKey := cryptoenc.MustPubKeyToProto(thresholdPublicKey)
+	abciThresholdPublicKey := cryptoenc.MustPubKeyToProto(ld.ThresholdPubKey)
 	return abci.ValidatorSetUpdate{
 		ValidatorUpdates:   valUpdates,
 		ThresholdPublicKey: abciThresholdPublicKey,

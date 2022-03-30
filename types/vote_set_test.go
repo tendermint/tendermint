@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -654,22 +654,27 @@ func randVoteSetWithLLMQType(
 	llmqType btcjson.LLMQType,
 	threshold int,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	var (
-		valz           = make([]*Validator, numValidators)
-		privValidators = make([]PrivValidator, numValidators)
-	)
-	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(numValidators, threshold)
+	valz := make([]*Validator, 0, numValidators)
+	privValidators := make([]PrivValidator, 0, numValidators)
+	ld := llmq.MustGenerate(crypto.RandProTxHashes(numValidators), llmq.WithThreshold(threshold))
 	quorumHash := crypto.RandQuorumHash()
-
-	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash,
-			thresholdPublicKey, false, false)
-		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
+	iter := ld.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		privValidators = append(privValidators, NewMockPVWithParams(
+			qks.PrivKey,
+			proTxHash,
+			quorumHash,
+			ld.ThresholdPubKey,
+			false,
+			false,
+		))
+		valz = append(valz, NewValidatorDefaultVotingPower(qks.PubKey, proTxHash))
 	}
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	valSet := NewValidatorSet(valz, thresholdPublicKey, llmqType, quorumHash, true)
+	valSet := NewValidatorSet(valz, ld.ThresholdPubKey, llmqType, quorumHash, true)
 	voteSet := NewVoteSet("test_chain_id", height, round, signedMsgType,
 		valSet, stateID)
 

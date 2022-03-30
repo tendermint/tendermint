@@ -23,7 +23,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -999,21 +999,30 @@ func (s *stateQuorumManager) generateKeysAndUpdateState(
 	proTxHashes []crypto.ProTxHash,
 	height int64,
 ) (*quorumData, error) {
-	var (
-		privKeys []crypto.PrivKey
-		err      error
-	)
-	qd := quorumData{
-		validators: make([]*types.Validator, len(proTxHashes)),
-		quorumHash: crypto.RandQuorumHash(),
-	}
 	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
-	proTxHashes, privKeys, qd.thresholdPublicKey = bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
-	for i, proTxHash := range proTxHashes {
-		qd.validators[i], err = s.updateState(proTxHash, privKeys[i], qd.quorumHash, qd.thresholdPublicKey, height+3)
+	lq, err := llmq.Generate(proTxHashes)
+	if err != nil {
+		return nil, err
+	}
+	qd := quorumData{
+		validators:         make([]*types.Validator, 0, len(proTxHashes)),
+		quorumHash:         crypto.RandQuorumHash(),
+		thresholdPublicKey: lq.ThresholdPubKey,
+	}
+	iter := lq.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		validator, err := s.updateState(
+			proTxHash,
+			qks.PrivKey,
+			qd.quorumHash,
+			lq.ThresholdPubKey,
+			height+3,
+		)
 		if err != nil {
 			return nil, err
 		}
+		qd.validators = append(qd.validators, validator)
 	}
 	return &qd, nil
 }

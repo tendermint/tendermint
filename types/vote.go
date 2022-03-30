@@ -109,9 +109,9 @@ func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 
 	blockSignID := crypto.SignID(
 		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(blockRequestID),
-		bls12381.ReverseBytes(blockMessageHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(blockRequestID),
+		tmbytes.Reverse(blockMessageHash),
 	)
 
 	return blockSignID
@@ -205,9 +205,9 @@ func (vote *Vote) Verify(
 
 	signID := crypto.SignID(
 		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(blockRequestID),
-		bls12381.ReverseBytes(blockMessageHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(blockRequestID),
+		tmbytes.Reverse(blockMessageHash),
 	)
 
 	// fmt.Printf("block vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
@@ -228,8 +228,10 @@ func (vote *Vote) Verify(
 		stateRequestID := stateID.SignRequestID()
 
 		stateSignID = crypto.SignID(
-			quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestID),
-			bls12381.ReverseBytes(stateMessageHash))
+			quorumType,
+			tmbytes.Reverse(quorumHash),
+			tmbytes.Reverse(stateRequestID),
+			tmbytes.Reverse(stateMessageHash))
 
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))

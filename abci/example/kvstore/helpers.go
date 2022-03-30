@@ -1,12 +1,11 @@
 package kvstore
 
 import (
-	tmtypes "github.com/tendermint/tendermint/types"
-
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/dash/llmq"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 func ValUpdate(
@@ -18,13 +17,14 @@ func ValUpdate(
 // the application. Note that the keys are deterministically
 // derived from the index in the array
 func RandValidatorSetUpdate(cnt int) types.ValidatorSetUpdate {
-	res := make([]types.ValidatorUpdate, cnt)
-
-	privKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(cnt)
-	for i := 0; i < cnt; i++ {
-		res[i] = ValUpdate(privKeys[i].PubKey(), proTxHashes[i], tmtypes.RandValidatorAddress())
+	res := make([]types.ValidatorUpdate, 0, cnt)
+	ld := llmq.MustGenerate(crypto.RandProTxHashes(cnt))
+	iter := ld.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		res = append(res, ValUpdate(qks.PubKey, proTxHash, tmtypes.RandValidatorAddress()))
 	}
-	thresholdPublicKeyABCI, err := cryptoenc.PubKeyToProto(thresholdPublicKey)
+	thresholdPublicKeyABCI, err := cryptoenc.PubKeyToProto(ld.ThresholdPubKey)
 	if err != nil {
 		panic(err)
 	}

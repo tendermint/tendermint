@@ -9,7 +9,7 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/privval"
 )
 
@@ -96,9 +96,9 @@ func (c *MockCoreServer) QuorumSign(_ context.Context, cmd btcjson.QuorumCmd) bt
 
 	signID := crypto.SignID(
 		*cmd.LLMQType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(reqID),
-		bls12381.ReverseBytes(msgHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(reqID),
+		tmbytes.Reverse(msgHash),
 	)
 	privateKey, err := c.FilePV.GetPrivateKey(context.TODO(), quorumHash)
 	if err != nil {
@@ -145,9 +145,9 @@ func (c *MockCoreServer) QuorumVerify(ctx context.Context, cmd btcjson.QuorumCmd
 
 	signID := crypto.SignID(
 		*cmd.LLMQType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(reqID),
-		bls12381.ReverseBytes(msgHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(reqID),
+		tmbytes.Reverse(msgHash),
 	)
 	thresholdPublicKey, err := c.FilePV.GetThresholdPublicKey(ctx, quorumHash)
 	if err != nil {

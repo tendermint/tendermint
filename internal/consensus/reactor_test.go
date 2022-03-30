@@ -21,9 +21,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -739,28 +738,25 @@ func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*privValUpdate, erro
 		quorumHash: crypto.RandQuorumHash(),
 	}
 	// generate LLMQ data
-	proTxHashes, privKeys, thresholdPubKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
-	pubKeys := make([]crypto.PubKey, len(privKeys))
-	for i, privKey := range privKeys {
-		pubKeys[i] = privKey.PubKey()
+	ld, err := llmq.Generate(proTxHashes)
+	if err != nil {
+		return nil, err
 	}
 	// make transactions to update a validator-set
-	tx, err := kvstore.MakeValidatorSetUpdateTx(proTxHashes, pubKeys, thresholdPubKey, privVal.quorumHash)
+	tx, err := kvstore.MakeValidatorSetUpdateTx(ld.ProTxHashes, ld.PubKeyShares, ld.ThresholdPubKey, privVal.quorumHash)
 	if err != nil {
 		return nil, err
 	}
 	privVal.txs = append(privVal.txs, tx)
-	privVal.privKeys = privKeys
-	privVal.newProTxHashes = proTxHashes
-	privVal.thresholdPubKey = thresholdPubKey
+	privVal.privKeys = ld.PrivKeyShares
+	privVal.newProTxHashes = ld.ProTxHashes
+	privVal.thresholdPubKey = ld.ThresholdPubKey
 	return &privVal, nil
 }
 
 func validate(t *testing.T, states []*State) {
-
 	currHeight, currValidators := states[0].GetValidatorSet()
 	currValidatorCount := currValidators.Size()
-
 	for validatorID, state := range states {
 		height, validators := state.GetValidatorSet()
 		assert.Equal(t, currHeight, height, "validator_id=%d", validatorID)

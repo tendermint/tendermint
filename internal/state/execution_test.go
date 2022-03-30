@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -23,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -216,7 +217,7 @@ func TestValidateValidatorUpdates(t *testing.T) {
 func TestUpdateValidators(t *testing.T) {
 	validatorSet, _ := types.RandValidatorSet(4)
 	originalProTxHashes := validatorSet.GetProTxHashes()
-	addedProTxHashes := bls12381.CreateProTxHashes(4)
+	addedProTxHashes := crypto.RandProTxHashes(4)
 	combinedProTxHashes := append(originalProTxHashes, addedProTxHashes...) // nolint:gocritic
 	combinedValidatorSet, _ := types.GenerateValidatorSet(types.NewValSetParam(combinedProTxHashes))
 	regeneratedValidatorSet, _ := types.GenerateValidatorSet(types.NewValSetParam(combinedProTxHashes))

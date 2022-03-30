@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash/llmq"
 )
 
 // proTxHashGenerator generates pseudorandom proTxHash based on a seed.
@@ -51,76 +52,40 @@ func (g *quorumHashGenerator) generate() crypto.QuorumHash {
 	return seed
 }
 
-type initNodeFunc func(node *Node) error
-type initValidatorFunc func(node *Node, params validatorParams) error
+type initNodeFunc func(*Node) error
+type initValidatorFunc func(*Node, crypto.ProTxHash, crypto.QuorumKeys) error
 
-type validatorParams struct {
-	crypto.QuorumKeys
-	proTxHash  crypto.ProTxHash
-	quorumHash crypto.QuorumHash
-}
-
-type validatorParamsIter struct {
-	pos                int
-	privKeys           []crypto.PrivKey
-	proTxHashes        []crypto.ProTxHash
-	quorumHash         crypto.QuorumHash
-	thresholdPublicKey crypto.PubKey
-}
-
-func (i *validatorParamsIter) value() validatorParams {
-	privKey := i.privKeys[i.pos]
-	return validatorParams{
-		QuorumKeys: crypto.QuorumKeys{
-			PrivKey:            privKey,
-			PubKey:             privKey.PubKey(),
-			ThresholdPublicKey: i.thresholdPublicKey,
-		},
-		proTxHash:  i.proTxHashes[i.pos],
-		quorumHash: i.quorumHash,
-	}
-}
-
-func (i *validatorParamsIter) next() bool {
-	if i.pos >= len(i.privKeys) {
-		return false
-	}
-	i.pos++
-	return true
-}
-
-func initValidator(iter *validatorParamsIter, handlers ...initValidatorFunc) initNodeFunc {
+func initValidator(iter *llmq.Iter, quorumHash crypto.QuorumHash, handlers ...initValidatorFunc) initNodeFunc {
 	return func(node *Node) error {
-		params := iter.value()
+		if !iter.Next() {
+			return errors.New("unable to move iterator to next an element")
+		}
 		if node.PrivvalKeys == nil {
 			node.PrivvalKeys = make(map[string]crypto.QuorumKeys)
 		}
-		node.PrivvalKeys[params.quorumHash.String()] = params.QuorumKeys
+		proTxHash, qks := iter.Value()
+		node.PrivvalKeys[quorumHash.String()] = qks
 		for _, handler := range handlers {
-			err := handler(node, params)
+			err := handler(node, proTxHash, qks)
 			if err != nil {
 				return err
 			}
-		}
-		if !iter.next() {
-			return errors.New("unable to move iterator to next an element")
 		}
 		return nil
 	}
 }
 
 func updateProTxHash() initValidatorFunc {
-	return func(node *Node, params validatorParams) error {
-		node.ProTxHash = params.proTxHash
+	return func(node *Node, proTxHash crypto.ProTxHash, qks crypto.QuorumKeys) error {
+		node.ProTxHash = proTxHash
 		fmt.Printf("Setting validator %s proTxHash to %s\n", node.Name, node.ProTxHash.ShortString())
 		return nil
 	}
 }
 
 func updateGenesisValidators(testnet *Testnet) initValidatorFunc {
-	return func(node *Node, params validatorParams) error {
-		pk := params.PrivKey.PubKey()
-		vu, err := node.validatorUpdate(pk.Bytes())
+	return func(node *Node, proTxHash crypto.ProTxHash, qks crypto.QuorumKeys) error {
+		vu, err := node.validatorUpdate(qks.PubKey.Bytes())
 		if err != nil {
 			return err
 		}
@@ -143,9 +108,8 @@ func updatePrivvalUpdateHeights(height int, quorumHash crypto.QuorumHash) initNo
 }
 
 func updateValidatorUpdate(valUpdate ValidatorsMap) initValidatorFunc {
-	return func(node *Node, params validatorParams) error {
-		pk := params.PrivKey.PubKey()
-		vu, err := node.validatorUpdate(pk.Bytes())
+	return func(node *Node, proTxHash crypto.ProTxHash, qks crypto.QuorumKeys) error {
+		vu, err := node.validatorUpdate(qks.PubKey.Bytes())
 		if err != nil {
 			return err
 		}
@@ -168,15 +132,14 @@ func initAnyNode(thresholdPublicKey crypto.PubKey, quorumHash crypto.QuorumHash)
 }
 
 func printInitValidatorInfo(height int) initValidatorFunc {
-	return func(node *Node, params validatorParams) error {
-		pubKey := params.PrivKey.PubKey()
+	return func(node *Node, proTxHash crypto.ProTxHash, qks crypto.QuorumKeys) error {
 		if height == 0 {
 			fmt.Printf("Set validator %s/%X (at genesis) pubkey to %X\n", node.Name,
-				node.ProTxHash, pubKey.Bytes())
+				node.ProTxHash, qks.PubKey.Bytes())
 			return nil
 		}
 		fmt.Printf("Set validator %s/%X (at height %d (+ 2)) pubkey to %X\n", node.Name,
-			node.ProTxHash, height, pubKey.Bytes())
+			node.ProTxHash, height, qks.PubKey.Bytes())
 		return nil
 	}
 }
