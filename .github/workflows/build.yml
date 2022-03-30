@@ -65,6 +65,9 @@ jobs:
             **/**.go
             go.mod
             go.sum
+      - name: Install BLS library
+        uses: ./.github/actions/bls
+        if: "env.GIT_DIFF != ''"
       - name: install
         run: make install_abci
         if: "env.GIT_DIFF != ''"
