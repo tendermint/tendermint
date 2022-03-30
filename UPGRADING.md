@@ -88,6 +88,12 @@ Upgrading applications that wish to use different values from the defaults for
 these parameters may do so by setting the `ConsensusParams.Timeout` field of the
 `FinalizeBlock` `ABCI` response.
 
+As a safety measure in case of unusual timing issues during the upgrade to
+v0.36, an operator may override the consensus timeout values for a single node.
+Note, however, that these overrides will be removed in Tendermint v0.37. See
+[configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
+for more information about these overrides.
+
 For more discussion of this, see [ADR 074](https://tinyurl.com/adr074) lays out
 the reasoning for the changes as well as [RFC 009](https://tinyurl.com/rfc009)
 for a discussion of the complexities of upgrading consensus parameters.
