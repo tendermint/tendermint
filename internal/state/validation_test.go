@@ -63,6 +63,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -166,6 +167,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -315,6 +317,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		evpool,
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
