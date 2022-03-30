@@ -1,14 +1,14 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"reflect"
-	"sort"
+	"strings"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -239,42 +239,27 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
 
 // writes a list of available rpc endpoints as an html page
 func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[string]*RPCFunc) {
-	noArgNames := []string{}
-	argNames := []string{}
-	for name, funcData := range funcMap {
-		if len(funcData.args) == 0 {
-			noArgNames = append(noArgNames, name)
+	hasArgs := make(map[string]string)
+	noArgs := make(map[string]string)
+	for name, rf := range funcMap {
+		base := fmt.Sprintf("//%s/%s", r.Host, name)
+		// N.B. Check argNames, not args, since the type list includes the type
+		// of the leading context argument.
+		if len(rf.argNames) == 0 {
+			noArgs[name] = base
 		} else {
-			argNames = append(argNames, name)
-		}
-	}
-	sort.Strings(noArgNames)
-	sort.Strings(argNames)
-	buf := new(bytes.Buffer)
-	buf.WriteString("<html><body>")
-	buf.WriteString("<br>Available endpoints:<br>")
-
-	for _, name := range noArgNames {
-		link := fmt.Sprintf("//%s/%s", r.Host, name)
-		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
-	}
-
-	buf.WriteString("<br>Endpoints that require arguments:<br>")
-	for _, name := range argNames {
-		link := fmt.Sprintf("//%s/%s?", r.Host, name)
-		funcData := funcMap[name]
-		for i, argName := range funcData.argNames {
-			link += argName + "=_"
-			if i < len(funcData.argNames)-1 {
-				link += "&"
+			query := append([]string(nil), rf.argNames...)
+			for i, arg := range query {
+				query[i] = arg + "=_"
 			}
+			hasArgs[name] = base + "?" + strings.Join(query, "&")
 		}
-		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
 	}
-	buf.WriteString("</body></html>")
 	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(200)
-	w.Write(buf.Bytes()) // nolint: errcheck
+	_ = listOfEndpoints.Execute(w, map[string]map[string]string{
+		"NoArgs":  noArgs,
+		"HasArgs": hasArgs,
+	})
 }
 
 func hasDefaultHeight(r rpctypes.RPCRequest, h []reflect.Value) bool {
@@ -285,3 +270,29 @@ func hasDefaultHeight(r rpctypes.RPCRequest, h []reflect.Value) bool {
 		return false
 	}
 }
+
+var listOfEndpoints = template.Must(template.New("list").Parse(`<html>
+<head><title>List of RPC Endpoints</title></head>
+<body>
+
+<h1>Available RPC endpoints:</h1>
+
+{{if .NoArgs}}
+<hr />
+<h2>Endpoints with no arguments:</h2>
+
+<ul>
+{{range $link := .NoArgs}}  <li><a href="{{$link}}">{{$link}}</a></li>
+{{end -}}
+</ul>{{end}}
+
+{{if .HasArgs}}
+<hr />
+<h2>Endpoints that require arguments:</h2>
+
+<ul>
+{{range $link := .HasArgs}}  <li><a href="{{$link}}">{{$link}}</a></li>
+{{end -}}
+</ul>{{end}}
+
+</body></html>`))

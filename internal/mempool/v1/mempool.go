@@ -260,9 +260,9 @@ func (txmp *TxMempool) CheckTx(
 
 	txHash := tx.Key()
 
-	// We add the transaction to the mempool's cache and if the transaction already
-	// exists, i.e. false is returned, then we check if we've seen this transaction
-	// from the same sender and error if we have. Otherwise, we return nil.
+	// We add the transaction to the mempool's cache and if the
+	// transaction is already present in the cache, i.e. false is returned, then we
+	// check if we've seen this transaction and error if we have.
 	if !txmp.cache.Push(tx) {
 		wtx, ok := txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
 		if wtx != nil && ok {
@@ -271,7 +271,7 @@ func (txmp *TxMempool) CheckTx(
 			return types.ErrTxInCache
 		}
 
-		txmp.logger.Debug("tx exists already in cache", "tx", tx.Hash())
+		txmp.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
 		return nil
 	}
 

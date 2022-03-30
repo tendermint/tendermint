@@ -129,11 +129,23 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 }
 
 // ABCIQueryWithOptions returns an error if opts.Prove is false.
+// ABCIQueryWithOptions returns the result for the given height (opts.Height).
+// If no height is provided, the results of the block preceding the latest are returned.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 
 	// always request the proof
 	opts.Prove = true
+
+	// Can't return the latest block results because we won't be able to
+	// prove them. Return the results for the previous block instead.
+	if opts.Height == 0 {
+		res, err := c.next.Status(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can't get latest height: %w", err)
+		}
+		opts.Height = res.SyncInfo.LatestBlockHeight - 1
+	}
 
 	res, err := c.next.ABCIQueryWithOptions(ctx, path, data, opts)
 	if err != nil {
@@ -164,24 +176,25 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	}
 
 	// Validate the value proof against the trusted header.
+
+	// build a Merkle key path from path and resp.Key
+	if c.keyPathFn == nil {
+		return nil, errors.New("please configure Client with KeyPathFn option")
+	}
+
+	kp, err := c.keyPathFn(path, resp.Key)
+	if err != nil {
+		return nil, fmt.Errorf("can't build merkle key path: %w", err)
+	}
+
+	// verify value
 	if resp.Value != nil {
-		// 1) build a Merkle key path from path and resp.Key
-		if c.keyPathFn == nil {
-			return nil, errors.New("please configure Client with KeyPathFn option")
-		}
-
-		kp, err := c.keyPathFn(path, resp.Key)
-		if err != nil {
-			return nil, fmt.Errorf("can't build merkle key path: %w", err)
-		}
-
-		// 2) verify value
 		err = c.prt.VerifyValue(resp.ProofOps, l.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, fmt.Errorf("verify value proof: %w", err)
 		}
 	} else { // OR validate the absence proof against the trusted header.
-		err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, string(resp.Key))
+		err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, kp.String())
 		if err != nil {
 			return nil, fmt.Errorf("verify absence proof: %w", err)
 		}
