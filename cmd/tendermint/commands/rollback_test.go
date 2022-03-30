@@ -47,8 +47,7 @@ func TestRollbackIntegration(t *testing.T) {
 		height, _, err = commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height)
 	})
-	t.Run("Rollback agian", func(t *testing.T) {
-		// should be able to rollback agian.
+	t.Run("Rollback for appHash mismatch case", func(t *testing.T) {
 		require.NoError(t, app.Rollback())
 		height2, _, err := commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height2)
