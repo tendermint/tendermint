@@ -101,7 +101,7 @@ Note, however, that these overrides will be removed in Tendermint v0.37. See
 [configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
 for more information about these overrides.
 
-For more discussion of this, see [ADR 074](https://tinyurl.com/adr074) lays out
+For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which lays out
 the reasoning for the changes as well as [RFC 009](https://tinyurl.com/rfc009)
 for a discussion of the complexities of upgrading consensus parameters.
 
