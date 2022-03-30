@@ -1121,7 +1121,7 @@ func (cfg *ConsensusConfig) DeprecatedFieldWarning() error {
 		fields = append(fields, "skip-timeout-commit")
 	}
 	if len(fields) != 0 {
-		return fmt.Errorf("The following deprecated fields were set in the "+
+		return fmt.Errorf("the following deprecated fields were set in the "+
 			"configuration file: %s. These fields were removed in v0.36. Timeout "+
 			"configuration has been moved to the ConsensusParams. For more information see "+
 			"https://tinyurl.com/adr074", strings.Join(fields, ", "))
