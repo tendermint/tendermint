@@ -1088,9 +1088,8 @@ type TxIndexConfig struct {
 	// If list contains `null`, meaning no indexer service will be used.
 	//
 	// Options:
-	//   1) "null" - no indexer services.
-	//   2) "kv" (default) - the simplest possible indexer,
-	//      backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   1) "null" (default) - no indexer services.
+	//   2) "kv" - a simple indexer backed by key-value storage (see DBBackend)
 	//   3) "psql" - the indexer services backed by PostgreSQL.
 	Indexer []string `mapstructure:"indexer"`
 
@@ -1101,14 +1100,12 @@ type TxIndexConfig struct {
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
-	return &TxIndexConfig{
-		Indexer: []string{"kv"},
-	}
+	return &TxIndexConfig{Indexer: []string{"null"}}
 }
 
 // TestTxIndexConfig returns a default configuration for the transaction indexer.
 func TestTxIndexConfig() *TxIndexConfig {
-	return DefaultTxIndexConfig()
+	return &TxIndexConfig{Indexer: []string{"kv"}}
 }
 
 //-----------------------------------------------------------------------------

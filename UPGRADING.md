@@ -26,6 +26,13 @@ application concern so be very sure to test the application thoroughly
 using realistic workloads and the race detector to ensure your
 applications remains correct.
 
+### Config Changes
+
+The default configuration for a newly-created node now disables indexing for
+ABCI event metadata. Existing node configurations that already have indexing
+turned on are not affected. Operators who wish to enable indexing for a new
+node, however, must now edit the `config.toml` explicitly.
+
 ### RPC Changes
 
 Tendermint v0.36 adds a new RPC event subscription API. The existing event
