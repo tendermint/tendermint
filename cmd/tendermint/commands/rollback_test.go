@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/rpc/client/local"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	e2e "github.com/tendermint/tendermint/test/e2e/app"
@@ -52,6 +53,11 @@ func TestRollbackIntegration(t *testing.T) {
 		height2, _, err := commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height2)
 		require.Equal(t, height-1, height2)
+
+		// reset the pval state for the pval can vote the new block height
+		pval, err := privval.LoadOrGenFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
+		require.NoError(t, err)
+		require.NoError(t, pval.Reset())
 	})
 	t.Run("Restart", func(t *testing.T) {
 		require.True(t, height > 0, "%d", height)
@@ -71,12 +77,12 @@ func TestRollbackIntegration(t *testing.T) {
 		for {
 			select {
 			case <-ctx.Done():
-				t.Fatalf("failed to make progress after 20 seconds. Min height: %d", height)
+				t.Fatalf("failed to make progress after 10 seconds. Min height: %d", height)
 			case <-ticker.C:
 				status, err := client.Status(ctx)
 				require.NoError(t, err)
 
-				if status.SyncInfo.LatestBlockHeight > height+2 {
+				if status.SyncInfo.LatestBlockHeight > height {
 					return
 				}
 			}
