@@ -1004,6 +1004,11 @@ type ConsensusConfig struct {
 	// as soon as the node has gathered votes from all of the validators on the network.
 	UnsafeBypassCommitTimeoutOverride *bool `mapstructure:"unsafe-bypass-commit-timeout-override"`
 
+	// Deprecated timeout parameters. These parameters are present in this struct
+	// so that they can be parsed so that validation can check if they have erroneously
+	// been included and provide a helpful error message.
+	// These fields should be completely removed in v0.37.
+	// See: https://github.com/tendermint/tendermint/issues/8188
 	DeprecatedTimeoutPropose        *interface{} `mapstructure:"timeout-propose"`
 	DeprecatedTimeoutProposeDelta   *interface{} `mapstructure:"timeout-propose-delta"`
 	DeprecatedTimeoutPrevote        *interface{} `mapstructure:"timeout-prevote"`
