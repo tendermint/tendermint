@@ -408,7 +408,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
 
     | Name                    | Type                                             | Description                                                                       | Field Number |
     |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
-    | status                  | [ProposalStatus](#ProposalStatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
+    | status                  | [ProposalStatus](#proposalstatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
     | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions. | 3            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
@@ -827,7 +827,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | info       | string                                                      | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                                                       | Amount of gas requested for transaction.                              | 5            |
     | gas_used   | int64                                                       | Amount of gas consumed by transaction.                                | 6            |
-    | events  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
+    | events     | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 ### TxAction
@@ -847,6 +847,7 @@ enum TxAction {
     * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal. The transaction is _not_ added to the mempool.
     * If `Action` is `REMOVED`, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
       similar to `CheckTx` returning _false_.
+
 ### TxRecord
 
 * **Fields**:
@@ -867,10 +868,10 @@ enum ProposalStatus {
 ```
 
 * **Usage**:
-	* Used within the [ProcessProposal](#ProcessProposal) response.
-    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
-    * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
+    * Used within the [ProcessProposal](#processproposal) response.
+        * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+        * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
+        * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
 
 ### VerifyStatus
 
@@ -883,10 +884,10 @@ enum VerifyStatus {
 ```
 
 * **Usage**:
-	* Used within the [VerifyVoteExtension](#VerifyVoteExtension) response.
-    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
-    * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
+    * Used within the [VerifyVoteExtension](#verifyvoteextension) response.
+        * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+        * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
+        * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
 
 
 ### CanonicalVoteExtension
