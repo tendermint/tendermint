@@ -437,10 +437,10 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 // It marks all of the original transactions as 'REMOVED' so that
 // Tendermint will remove them from its mempool.
 func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*types.TxRecord {
-	trs := make([]*types.TxRecord, len(blockData))
+	trs := make([]*types.TxRecord, 0, len(blockData))
 	var removed []*types.TxRecord
 	var totalBytes int64
-	for i, tx := range blockData {
+	for _, tx := range blockData {
 		txMod := tx
 		action := types.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
@@ -448,18 +448,17 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 				Tx:     tx,
 				Action: types.TxRecord_REMOVED,
 			})
-			tx_mod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
+			txMod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
 			action = types.TxRecord_ADDED
 		}
 		nBytes := int64(len(txMod))
 		if totalBytes + nBytes > maxTxBytes {
-			trs = trs[:i]
 			break
 		}
-		trs[i] = &types.TxRecord{
+		trs = append(trs, &types.TxRecord{
 			Tx:     txMod,
 			Action: action,
-		}
+		})
 		totalBytes += nBytes
 	}
 

@@ -894,14 +894,16 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 
 	state, stateDB, privVals := makeState(t, 1, height)
 	// limit max block size
-	state.ConsensusParams.Block.MaxBytes = 2048
+	state.ConsensusParams.Block.MaxBytes = 60 * 1024
 	stateStore := sm.NewStore(stateDB)
 
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	// each tx takes 3 bytes, so 1024 txs shouldn't fit in the max block size
-	txs := factory.MakeNTxs(height, 1024)
+	const nValidators = 1
+	var bytesPerTx int64 = 3
+	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, 0, nValidators)
+	txs := factory.MakeNTxs(height, maxDataBytes / bytesPerTx + 2) // +2 so that tx don't fit
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
