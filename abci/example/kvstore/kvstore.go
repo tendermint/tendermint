@@ -451,7 +451,7 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 			tx_mod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
 			action = types.TxRecord_ADDED
 		}
-		nBytes := int64(len(tx_mod))
+		nBytes := int64(len(txMod))
 		if totalBytes + nBytes > maxTxBytes {
 			trs = trs[:i]
 			break
