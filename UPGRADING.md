@@ -26,6 +26,13 @@ application concern so be very sure to test the application thoroughly
 using realistic workloads and the race detector to ensure your
 applications remains correct.
 
+### Config Changes
+
+The default configuration for a newly-created node now disables indexing for
+ABCI event metadata. Existing node configurations that already have indexing
+turned on are not affected. Operators who wish to enable indexing for a new
+node, however, must now edit the `config.toml` explicitly.
+
 ### RPC Changes
 
 Tendermint v0.36 adds a new RPC event subscription API. The existing event
@@ -62,6 +69,44 @@ callback.
 
 For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
 defines and describes the new API in detail.
+
+### Timeout Parameter Changes
+
+Tendermint v0.36 updates how the Tendermint consensus timing parameters are
+configured. These parameters, `timeout-propose`, `timeout-propose-delta`,
+`timeout-prevote`, `timeout-prevote-delta`, `timeout-precommit`,
+`timeout-precommit-delta`, `timeout-commit`, and `skip-timeout-commit`, were
+previously configured in `config.toml`. These timing parameters have moved and
+are no longer configured in the `config.toml` file. These parameters have been
+migrated into the `ConsensusParameters`. Nodes with these parameters set in the
+local configuration file will see a warning logged on startup indicating that
+these parameters are no longer used.
+
+These parameters have also been pared-down. There are no longer separate
+parameters for both the `prevote` and `precommit` phases of Tendermint. The
+separate `timeout-prevote` and `timeout-precommit` parameters have been merged
+into a single `timeout-vote` parameter that configures both of these similar
+phases of the consensus protocol.
+
+A set of reasonable defaults have been put in place for these new parameters
+that will take effect when the node starts up in version v0.36. New chains
+created using v0.36 and beyond will be able to configure these parameters in the
+chain's `genesis.json` file. Chains that upgrade to v0.36 from a previous
+compatible version of Tendermint will begin running with the default values.
+Upgrading applications that wish to use different values from the defaults for
+these parameters may do so by setting the `ConsensusParams.Timeout` field of the
+`FinalizeBlock` `ABCI` response.
+
+As a safety measure in case of unusual timing issues during the upgrade to
+v0.36, an operator may override the consensus timeout values for a single node.
+Note, however, that these overrides will be removed in Tendermint v0.37. See
+[configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
+for more information about these overrides.
+
+For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
+lays out the reasoning for the changes as well as [RFC
+009](https://tinyurl.com/rfc009) for a discussion of the complexities of
+upgrading consensus parameters.
 
 ## v0.35
 

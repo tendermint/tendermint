@@ -66,7 +66,7 @@ func TestApplyBlock(t *testing.T) {
 		mock.Anything,
 		mock.Anything,
 		mock.Anything).Return(nil)
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mp, sm.EmptyEvidencePool{}, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mp, sm.EmptyEvidencePool{}, blockStore, eventBus, sm.NopMetrics())
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
@@ -130,7 +130,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			eventBus := eventbus.NewDefault(logger)
 			require.NoError(t, eventBus.Start(ctx))
 
-			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mp, evpool, blockStore, eventBus)
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mp, evpool, blockStore, eventBus, sm.NopMetrics())
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
 
 			for idx, isAbsent := range tc.absentCommitSigs {
@@ -254,8 +254,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp,
-		mp, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp, mp, evpool, blockStore, eventBus, sm.NopMetrics())
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
 	block.Evidence = ev
@@ -300,6 +299,7 @@ func TestProcessProposal(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 
 	block0 := sf.MakeBlock(state, height-1, new(types.Commit))
@@ -517,6 +517,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 
 	updatesSub, err := eventBus.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
@@ -587,6 +588,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 
 	block := sf.MakeBlock(state, 1, new(types.Commit))
@@ -646,6 +648,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
@@ -700,6 +703,7 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 		evpool,
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
@@ -755,6 +759,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 		evpool,
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
@@ -813,6 +818,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 		evpool,
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
@@ -868,6 +874,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		evpool,
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
@@ -927,6 +934,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		evpool,
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)

@@ -11,7 +11,6 @@ require (
 	github.com/go-kit/kit v0.12.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
@@ -30,7 +29,6 @@ require (
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.1
 	github.com/tendermint/tm-db v0.6.6
-	github.com/vektra/mockery/v2 v2.10.0
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 	golang.org/x/net v0.0.0-20211208012354-db4efeb81f4b
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -41,7 +39,9 @@ require (
 
 require (
 	github.com/creachadair/atomicfile v0.2.4
+	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.7
+	github.com/vektra/mockery/v2 v2.10.1
 	gotest.tools v2.2.0+incompatible
 )
 

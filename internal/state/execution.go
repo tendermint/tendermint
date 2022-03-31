@@ -48,14 +48,6 @@ type BlockExecutor struct {
 	cache map[string]struct{}
 }
 
-type BlockExecutorOption func(executor *BlockExecutor)
-
-func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
-	return func(blockExec *BlockExecutor) {
-		blockExec.metrics = metrics
-	}
-}
-
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
@@ -66,25 +58,19 @@ func NewBlockExecutor(
 	evpool EvidencePool,
 	blockStore BlockStore,
 	eventBus *eventbus.EventBus,
-	options ...BlockExecutorOption,
+	metrics *Metrics,
 ) *BlockExecutor {
-	res := &BlockExecutor{
+	return &BlockExecutor{
 		eventBus:   eventBus,
 		store:      stateStore,
 		appClient:  appClient,
 		mempool:    pool,
 		evpool:     evpool,
 		logger:     logger,
-		metrics:    NopMetrics(),
+		metrics:    metrics,
 		cache:      make(map[string]struct{}),
 		blockStore: blockStore,
 	}
-
-	for _, option := range options {
-		option(res)
-	}
-
-	return res
 }
 
 func (blockExec *BlockExecutor) Store() Store {

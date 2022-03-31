@@ -145,6 +145,7 @@ func (rts *reactorTestSuite) addNode(
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventbus,
+		sm.NopMetrics(),
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

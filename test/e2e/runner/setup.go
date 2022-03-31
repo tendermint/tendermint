@@ -237,6 +237,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
+	cfg.TxIndex = config.TestTxIndexConfig()
 
 	if node.LogLevel != "" {
 		cfg.LogLevel = node.LogLevel
