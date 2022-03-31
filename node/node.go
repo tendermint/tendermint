@@ -289,7 +289,7 @@ func makeNode(
 		evPool,
 		blockStore,
 		eventBus,
-		sm.BlockExecutorWithMetrics(nodeMetrics.state),
+		nodeMetrics.state,
 	)
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the

@@ -826,7 +826,7 @@ func applyBlock(
 	eventBus *eventbus.EventBus,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mempool, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
