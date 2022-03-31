@@ -49,18 +49,18 @@ func TestApp_Hash(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
 		// In next-block execution, the app hash is stored in the next block
-		block_height := info.Response.LastBlockHeight + 1
+		blockHeight := info.Response.LastBlockHeight + 1
 
 		for {
 			status, err := client.Status(ctx)
 			require.NoError(t, err)
 			require.NotZero(t, status.SyncInfo.LatestBlockHeight)
-			if status.SyncInfo.LatestBlockHeight >= block_height {
+			if status.SyncInfo.LatestBlockHeight >= blockHeight {
 				break
 			}
 		}
 
-		block, err := client.Block(ctx, &block_height)
+		block, err := client.Block(ctx, &blockHeight)
 		require.NoError(t, err)
 
 		if info.Response.LastBlockHeight == block.Block.Height {
