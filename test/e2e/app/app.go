@@ -331,7 +331,7 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 		extCount++
 	}
 	// We only generate our special transaction if we have vote extensions
-	if extCount > 0 && len(req.Txs) > 0 {
+	if extCount > 0 {
 		extTxPrefix := fmt.Sprintf("%s=", voteExtensionKey)
 		extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, sum))
 		app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
