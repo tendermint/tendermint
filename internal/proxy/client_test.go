@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"gotest.tools/assert"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abcimocks "github.com/tendermint/tendermint/abci/client/mocks"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -21,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"gotest.tools/assert"
 )
 
 //----------------------------------------

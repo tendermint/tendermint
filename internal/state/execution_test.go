@@ -802,7 +802,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords:        trs,
+		TxRecords: trs,
 	})
 
 	cc := abciclient.NewLocalClient(logger, app)
@@ -858,7 +858,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords:        trs,
+		TxRecords: trs,
 	})
 
 	cc := abciclient.NewLocalClient(logger, app)
@@ -910,7 +910,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	const nValidators = 1
 	var bytesPerTx int64 = 3
 	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, 0, nValidators)
-	txs := factory.MakeNTxs(height, maxDataBytes / bytesPerTx + 2) // +2 so that tx don't fit
+	txs := factory.MakeNTxs(height, maxDataBytes/bytesPerTx+2) // +2 so that tx don't fit
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
@@ -918,7 +918,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords:        trs,
+		TxRecords: trs,
 	})
 
 	cc := abciclient.NewLocalClient(logger, app)
