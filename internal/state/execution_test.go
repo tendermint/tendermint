@@ -986,6 +986,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		evpool,
 		nil,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
 	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
