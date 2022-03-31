@@ -62,7 +62,7 @@ func setup(
 		"must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
-		logger:            log.TestingLogger().With("module", "block_sync", "testCase", t.Name()),
+		logger:            log.NewNopLogger().With("module", "block_sync", "testCase", t.Name()),
 		network:           p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		nodes:             make([]types.NodeID, 0, numNodes),
 		reactors:          make(map[types.NodeID]*Reactor, numNodes),
@@ -108,7 +108,7 @@ func (rts *reactorTestSuite) addNode(
 ) {
 	t.Helper()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	rts.nodes = append(rts.nodes, nodeID)
 	rts.app[nodeID] = proxy.New(abciclient.NewLocalClient(logger, &abci.BaseApplication{}), logger, proxy.NopMetrics())
@@ -139,7 +139,7 @@ func (rts *reactorTestSuite) addNode(
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
+		log.NewNopLogger(),
 		rts.app[nodeID],
 		mp,
 		sm.EmptyEvidencePool{},
@@ -227,7 +227,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(64)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -267,7 +267,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(101)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -295,7 +295,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	defer os.RemoveAll(cfg.RootDir)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(65)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
@@ -348,7 +348,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 
 	maxBlockHeight := int64(48)
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
@@ -383,7 +383,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	valSet, otherPrivVals := factory.ValidatorSet(ctx, t, 1, 30)
-	otherGenDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	otherGenDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	newNode := rts.network.MakeNode(ctx, t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),

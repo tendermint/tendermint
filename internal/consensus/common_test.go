@@ -548,6 +548,7 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	}
 
 	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
+		Params:     factory.ConsensusParams(),
 		Validators: validators,
 	})
 
@@ -777,7 +778,7 @@ func ensureMessageBeforeTimeout(t *testing.T, ch <-chan tmpubsub.Message, to tim
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func consensusLogger() log.Logger {
-	return log.TestingLogger().With("module", "consensus")
+	return log.NewNopLogger().With("module", "consensus")
 }
 
 func makeConsensusState(
@@ -793,7 +794,7 @@ func makeConsensusState(
 	tempDir := t.TempDir()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -852,7 +853,7 @@ func randConsensusNetWithPeers(
 	t.Helper()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, testMinPower)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()
@@ -885,8 +886,11 @@ func randConsensusNetWithPeers(
 
 		app := appFunc(logger, filepath.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
-			// simulate handshake, receive app version. If don't do this, replay test will fail
+		switch app.(type) {
+		// simulate handshake, receive app version. If don't do this, replay test will fail
+		case *kvstore.PersistentKVStoreApplication:
+			state.Version.Consensus.App = kvstore.ProtocolVersion
+		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -971,10 +975,6 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
-}
-
-func newPersistentKVStore(logger log.Logger, dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 }
 
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {

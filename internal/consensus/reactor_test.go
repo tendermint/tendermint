@@ -355,7 +355,7 @@ func TestReactorBasic(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true))
@@ -445,12 +445,12 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, n, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -478,7 +478,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 		mempool := mempool.NewTxMempool(
-			log.TestingLogger().With("module", "mempool"),
+			log.NewNopLogger().With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
 		)
@@ -501,10 +501,10 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		evpool2 := sm.EmptyEvidencePool{}
 
-		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+		eventBus := eventbus.NewDefault(log.NewNopLogger().With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
+		blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 
 		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
@@ -551,7 +551,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,
@@ -574,7 +574,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	// send a tx
 	require.NoError(
 		t,
-		assertMempool(t, states[3].txNotifier).CheckTx(
+		assertMempool(t, states[1].txNotifier).CheckTx(
 			ctx,
 			[]byte{1, 2, 3},
 			nil,
@@ -605,7 +605,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx, t,
 		cfg, n, "consensus_reactor_test",
 		newMockTickerFunc(true))
@@ -670,7 +670,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 4
+	n := 2
 	states, cleanup := makeConsensusState(ctx,
 		t,
 		cfg,

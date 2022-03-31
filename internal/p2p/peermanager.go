@@ -42,7 +42,8 @@ const (
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
+	PeerScorePersistent       PeerScore = math.MaxUint8 // persistent peers
+	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -1283,6 +1284,9 @@ func (p *peerInfo) Score() PeerScore {
 	}
 
 	score := p.MutableScore
+	if score > int64(MaxPeerScoreNotPersistent) {
+		score = int64(MaxPeerScoreNotPersistent)
+	}
 
 	for _, addr := range p.AddressInfo {
 		// DialFailures is reset when dials succeed, so this
@@ -1292,10 +1296,6 @@ func (p *peerInfo) Score() PeerScore {
 
 	if score <= 0 {
 		return 0
-	}
-
-	if score >= math.MaxUint8 {
-		return PeerScore(math.MaxUint8)
 	}
 
 	return PeerScore(score)

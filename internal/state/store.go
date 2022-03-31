@@ -488,7 +488,7 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
-		return nil, ErrNoValSetForHeight{height}
+		return nil, ErrNoValSetForHeight{Height: height, Err: err}
 	}
 	if valInfo.ValidatorSet == nil {
 		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)

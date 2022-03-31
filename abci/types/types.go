@@ -53,19 +53,35 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
-// IsUnknown returns true if Code is Unknown
-func (r ResponseVerifyVoteExtension) IsUnknown() bool {
-	return r.Result == ResponseVerifyVoteExtension_UNKNOWN
+func (r ResponsePrepareProposal) IsTxStatusUnknown() bool {
+	return r.ModifiedTxStatus == ResponsePrepareProposal_UNKNOWN
+}
+
+func (r ResponsePrepareProposal) IsTxStatusModified() bool {
+	return r.ModifiedTxStatus == ResponsePrepareProposal_MODIFIED
+}
+
+func (r ResponseProcessProposal) IsAccepted() bool {
+	return r.Status == ResponseProcessProposal_ACCEPT
+}
+
+func (r ResponseProcessProposal) IsStatusUnknown() bool {
+	return r.Status == ResponseProcessProposal_UNKNOWN
+}
+
+// IsStatusUnknown returns true if Code is Unknown
+func (r ResponseVerifyVoteExtension) IsStatusUnknown() bool {
+	return r.Status == ResponseVerifyVoteExtension_UNKNOWN
 }
 
 // IsOK returns true if Code is OK
 func (r ResponseVerifyVoteExtension) IsOK() bool {
-	return r.Result == ResponseVerifyVoteExtension_ACCEPT
+	return r.Status == ResponseVerifyVoteExtension_ACCEPT
 }
 
 // IsErr returns true if Code is something other than OK.
 func (r ResponseVerifyVoteExtension) IsErr() bool {
-	return r.Result != ResponseVerifyVoteExtension_ACCEPT
+	return r.Status != ResponseVerifyVoteExtension_ACCEPT
 }
 
 //---------------------------------------------------------------------------
@@ -159,12 +175,12 @@ func RespondExtendVote(appDataToSign, appDataSelfAuthenticating []byte) Response
 }
 
 func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
-	result := ResponseVerifyVoteExtension_REJECT
+	status := ResponseVerifyVoteExtension_REJECT
 	if ok {
-		result = ResponseVerifyVoteExtension_ACCEPT
+		status = ResponseVerifyVoteExtension_ACCEPT
 	}
 	return ResponseVerifyVoteExtension{
-		Result: result,
+		Status: status,
 	}
 }
 

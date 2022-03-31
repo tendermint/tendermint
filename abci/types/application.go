@@ -66,7 +66,7 @@ func (BaseApplication) ExtendVote(req RequestExtendVote) ResponseExtendVote {
 
 func (BaseApplication) VerifyVoteExtension(req RequestVerifyVoteExtension) ResponseVerifyVoteExtension {
 	return ResponseVerifyVoteExtension{
-		Result: ResponseVerifyVoteExtension_ACCEPT,
+		Status: ResponseVerifyVoteExtension_ACCEPT,
 	}
 }
 
@@ -95,11 +95,11 @@ func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) Respons
 }
 
 func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
-	return ResponsePrepareProposal{}
+	return ResponsePrepareProposal{ModifiedTxStatus: ResponsePrepareProposal_UNMODIFIED}
 }
 
 func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
-	return ResponseProcessProposal{}
+	return ResponseProcessProposal{Status: ResponseProcessProposal_ACCEPT}
 }
 
 func (BaseApplication) FinalizeBlock(req RequestFinalizeBlock) ResponseFinalizeBlock {

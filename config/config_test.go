@@ -29,8 +29,8 @@ func TestConfigValidateBasic(t *testing.T) {
 	cfg := DefaultConfig()
 	assert.NoError(t, cfg.ValidateBasic())
 
-	// tamper with timeout_propose
-	cfg.Consensus.TimeoutPropose = -10 * time.Second
+	// tamper with unsafe-propose-timeout-override
+	cfg.Consensus.UnsafeProposeTimeoutOverride = -10 * time.Second
 	assert.Error(t, cfg.ValidateBasic())
 }
 
@@ -106,25 +106,21 @@ func TestConsensusConfig_ValidateBasic(t *testing.T) {
 		modify    func(*ConsensusConfig)
 		expectErr bool
 	}{
-		"TimeoutPropose":                       {func(c *ConsensusConfig) { c.TimeoutPropose = time.Second }, false},
-		"TimeoutPropose negative":              {func(c *ConsensusConfig) { c.TimeoutPropose = -1 }, true},
-		"TimeoutProposeDelta":                  {func(c *ConsensusConfig) { c.TimeoutProposeDelta = time.Second }, false},
-		"TimeoutProposeDelta negative":         {func(c *ConsensusConfig) { c.TimeoutProposeDelta = -1 }, true},
-		"TimeoutPrevote":                       {func(c *ConsensusConfig) { c.TimeoutPrevote = time.Second }, false},
-		"TimeoutPrevote negative":              {func(c *ConsensusConfig) { c.TimeoutPrevote = -1 }, true},
-		"TimeoutPrevoteDelta":                  {func(c *ConsensusConfig) { c.TimeoutPrevoteDelta = time.Second }, false},
-		"TimeoutPrevoteDelta negative":         {func(c *ConsensusConfig) { c.TimeoutPrevoteDelta = -1 }, true},
-		"TimeoutPrecommit":                     {func(c *ConsensusConfig) { c.TimeoutPrecommit = time.Second }, false},
-		"TimeoutPrecommit negative":            {func(c *ConsensusConfig) { c.TimeoutPrecommit = -1 }, true},
-		"TimeoutPrecommitDelta":                {func(c *ConsensusConfig) { c.TimeoutPrecommitDelta = time.Second }, false},
-		"TimeoutPrecommitDelta negative":       {func(c *ConsensusConfig) { c.TimeoutPrecommitDelta = -1 }, true},
-		"TimeoutCommit":                        {func(c *ConsensusConfig) { c.TimeoutCommit = time.Second }, false},
-		"TimeoutCommit negative":               {func(c *ConsensusConfig) { c.TimeoutCommit = -1 }, true},
-		"PeerGossipSleepDuration":              {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = time.Second }, false},
-		"PeerGossipSleepDuration negative":     {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = -1 }, true},
-		"PeerQueryMaj23SleepDuration":          {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = time.Second }, false},
-		"PeerQueryMaj23SleepDuration negative": {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
-		"DoubleSignCheckHeight negative":       {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
+		"UnsafeProposeTimeoutOverride":               {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutOverride = time.Second }, false},
+		"UnsafeProposeTimeoutOverride negative":      {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutOverride = -1 }, true},
+		"UnsafeProposeTimeoutDeltaOverride":          {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutDeltaOverride = time.Second }, false},
+		"UnsafeProposeTimeoutDeltaOverride negative": {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutDeltaOverride = -1 }, true},
+		"UnsafePrevoteTimeoutOverride":               {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutOverride = time.Second }, false},
+		"UnsafePrevoteTimeoutOverride negative":      {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutOverride = -1 }, true},
+		"UnsafePrevoteTimeoutDeltaOverride":          {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutDeltaOverride = time.Second }, false},
+		"UnsafePrevoteTimeoutDeltaOverride negative": {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutDeltaOverride = -1 }, true},
+		"UnsafeCommitTimeoutOverride":                {func(c *ConsensusConfig) { c.UnsafeCommitTimeoutOverride = time.Second }, false},
+		"UnsafeCommitTimeoutOverride negative":       {func(c *ConsensusConfig) { c.UnsafeCommitTimeoutOverride = -1 }, true},
+		"PeerGossipSleepDuration":                    {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = time.Second }, false},
+		"PeerGossipSleepDuration negative":           {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = -1 }, true},
+		"PeerQueryMaj23SleepDuration":                {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = time.Second }, false},
+		"PeerQueryMaj23SleepDuration negative":       {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
+		"DoubleSignCheckHeight negative":             {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
 	}
 	for desc, tc := range testcases {
 		tc := tc // appease linter

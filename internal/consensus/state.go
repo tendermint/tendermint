@@ -171,9 +171,6 @@ type State struct {
 	doPrevote      func(ctx context.Context, height int64, round int32)
 	setProposal    func(proposal *types.Proposal, t time.Time) error
 
-	// closed when we finish shutting down
-	done chan struct{}
-
 	// synchronous pubsub between consensus state and reactor.
 	// state only emits EventNewRoundStep, EventValidBlock, and EventVote
 	evsw tmevents.EventSwitch
@@ -213,7 +210,6 @@ func NewState(
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(logger),
 		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
-		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
 		evpool:           evpool,
@@ -456,10 +452,6 @@ func (cs *State) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if err := cs.evsw.Start(ctx); err != nil {
-		return err
-	}
-
 	// Double Signing Risk Reduction
 	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
@@ -501,35 +493,28 @@ func (cs *State) loadWalFile(ctx context.Context) error {
 	return nil
 }
 
+func (cs *State) getOnStopCh() chan *cstypes.RoundState {
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
+	return cs.onStopCh
+}
+
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
 	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
-		case <-cs.onStopCh:
-		case <-time.After(cs.config.TimeoutCommit):
-			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.config.TimeoutCommit)
+		case <-cs.getOnStopCh():
+		case <-time.After(cs.state.ConsensusParams.Timeout.Commit):
+			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.state.ConsensusParams.Timeout.Commit)
 		}
-	}
-
-	close(cs.onStopCh)
-
-	if cs.evsw.IsRunning() {
-		cs.evsw.Stop()
 	}
 
 	if cs.timeoutTicker.IsRunning() {
 		cs.timeoutTicker.Stop()
 	}
 	// WAL is stopped in receiveRoutine.
-}
-
-// Wait waits for the the main routine to return.
-// NOTE: be sure to Stop() the event switch and drain
-// any event channels or this may deadlock
-func (cs *State) Wait() {
-	cs.evsw.Wait()
-	<-cs.done
 }
 
 // OpenWAL opens a file to log all consensus messages and timeouts for
@@ -802,9 +787,9 @@ func (cs *State) updateToState(ctx context.Context, state sm.State) {
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
 		// cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
-		cs.StartTime = cs.config.Commit(tmtime.Now())
+		cs.StartTime = cs.commitTime(tmtime.Now())
 	} else {
-		cs.StartTime = cs.config.Commit(cs.CommitTime)
+		cs.StartTime = cs.commitTime(cs.CommitTime)
 	}
 
 	cs.Validators = validators
@@ -864,7 +849,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 		// close wal now that we're done writing to it
 		cs.wal.Stop()
 		cs.wal.Wait()
-		close(cs.done)
 	}
 
 	defer func() {
@@ -877,19 +861,35 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			// complicate diagnosing and recovering from the failure.
 			onExit(cs)
 
+			// There are a couple of cases where the we
+			// panic with an error from deeper within the
+			// state machine and in these cases, typically
+			// during a normal shutdown, we can continue
+			// with normal shutdown with safety. These
+			// cases are:
+			if err, ok := r.(error); ok {
+				// TODO(creachadair): In ordinary operation, the WAL autofile should
+				// never be closed. This only happens during shutdown and production
+				// nodes usually halt by panicking. Many existing tests, however,
+				// assume a clean shutdown is possible. Prior to #8111, we were
+				// swallowing the panic in receiveRoutine, making that appear to
+				// work. Filtering this specific error is slightly risky, but should
+				// affect only unit tests. In any case, not re-panicking here only
+				// preserves the pre-existing behavior for this one error type.
+				if errors.Is(err, autofile.ErrAutoFileClosed) {
+					return
+				}
+
+				// don't re-panic if the panic is just an
+				// error and we're already trying to shut down
+				if ctx.Err() != nil {
+					return
+
+				}
+			}
+
 			// Re-panic to ensure the node terminates.
 			//
-			// TODO(creachadair): In ordinary operation, the WAL autofile should
-			// never be closed. This only happens during shutdown and production
-			// nodes usually halt by panicking. Many existing tests, however,
-			// assume a clean shutdown is possible. Prior to #8111, we were
-			// swallowing the panic in receiveRoutine, making that appear to
-			// work. Filtering this specific error is slightly risky, but should
-			// affect only unit tests. In any case, not re-panicking here only
-			// preserves the pre-existing behavior for this one error type.
-			if err, ok := r.(error); ok && errors.Is(err, autofile.ErrAutoFileClosed) {
-				return
-			}
 			panic(r)
 		}
 	}()
@@ -950,7 +950,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-
 	var (
 		added bool
 		err   error
@@ -967,6 +966,24 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(ctx, msg, peerID)
+
+		// We unlock here to yield to any routines that need to read the the RoundState.
+		// Previously, this code held the lock from the point at which the final block
+		// part was received until the block executed against the application.
+		// This prevented the reactor from being able to retrieve the most updated
+		// version of the RoundState. The reactor needs the updated RoundState to
+		// gossip the now completed block.
+		//
+		// This code can be further improved by either always operating on a copy
+		// of RoundState and only locking when switching out State's copy of
+		// RoundState with the updated copy or by emitting RoundState events in
+		// more places for routines depending on it to listen for.
+		cs.mtx.Unlock()
+
+		cs.mtx.Lock()
+		if added && cs.ProposalBlockParts.IsComplete() {
+			cs.handleCompleteProposal(ctx, msg.Height)
+		}
 		if added {
 			select {
 			case cs.statsMsgQueue <- mi:
@@ -1245,7 +1262,7 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 	}()
 
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
-	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
+	cs.scheduleTimeout(cs.proposeTimeout(round), height, round, cstypes.RoundStepPropose)
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
@@ -1326,7 +1343,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
-	ctxto, cancel := context.WithTimeout(ctx, cs.config.TimeoutPropose)
+	ctxto, cancel := context.WithTimeout(ctx, cs.state.ConsensusParams.Timeout.Propose)
 	defer cancel()
 	if err := cs.privValidator.SignProposal(ctxto, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
@@ -1435,11 +1452,7 @@ func (cs *State) enterPrevote(ctx context.Context, height int64, round int32) {
 }
 
 func (cs *State) proposalIsTimely() bool {
-	sp := types.SynchronyParams{
-		Precision:    cs.state.ConsensusParams.Synchrony.Precision,
-		MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
-	}
-
+	sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
 	return cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.Round)
 }
 
@@ -1465,6 +1478,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 		return
 	}
 
+	sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
 	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
 		logger.Debug("prevote step: Proposal is not timely; prevoting nil",
 			"proposed",
@@ -1472,9 +1486,9 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 			"received",
 			tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
 			"msg_delay",
-			cs.state.ConsensusParams.Synchrony.MessageDelay,
+			sp.MessageDelay,
 			"precision",
-			cs.state.ConsensusParams.Synchrony.Precision)
+			sp.Precision)
 		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1603,7 +1617,7 @@ func (cs *State) enterPrevoteWait(ctx context.Context, height int64, round int32
 	}()
 
 	// Wait for some more prevotes; enterPrecommit
-	cs.scheduleTimeout(cs.config.Prevote(round), height, round, cstypes.RoundStepPrevoteWait)
+	cs.scheduleTimeout(cs.voteTimeout(round), height, round, cstypes.RoundStepPrevoteWait)
 }
 
 // Enter: `timeoutPrevote` after any +2/3 prevotes.
@@ -1756,7 +1770,7 @@ func (cs *State) enterPrecommitWait(ctx context.Context, height int64, round int
 	}()
 
 	// wait for some more precommits; enterNewRound
-	cs.scheduleTimeout(cs.config.Precommit(round), height, round, cstypes.RoundStepPrecommitWait)
+	cs.scheduleTimeout(cs.voteTimeout(round), height, round, cstypes.RoundStepPrecommitWait)
 }
 
 // Enter: +2/3 precommits for block
@@ -2169,44 +2183,43 @@ func (cs *State) addProposalBlockPart(
 		if err := cs.eventBus.PublishEventCompleteProposal(ctx, cs.CompleteProposalEvent()); err != nil {
 			cs.logger.Error("failed publishing event complete proposal", "err", err)
 		}
-
-		// Update Valid* if we can.
-		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-		if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
-				cs.logger.Debug(
-					"updating valid block to new proposal block",
-					"valid_round", cs.Round,
-					"valid_block_hash", cs.ProposalBlock.Hash(),
-				)
-
-				cs.ValidRound = cs.Round
-				cs.ValidBlock = cs.ProposalBlock
-				cs.ValidBlockParts = cs.ProposalBlockParts
-			}
-			// TODO: In case there is +2/3 majority in Prevotes set for some
-			// block and cs.ProposalBlock contains different block, either
-			// proposer is faulty or voting power of faulty processes is more
-			// than 1/3. We should trigger in the future accountability
-			// procedure at this point.
-		}
-
-		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
-			// Move onto the next step
-			cs.enterPrevote(ctx, height, cs.Round)
-			if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
-				cs.enterPrecommit(ctx, height, cs.Round)
-			}
-		} else if cs.Step == cstypes.RoundStepCommit {
-			// If we're waiting on the proposal block...
-			cs.tryFinalizeCommit(ctx, height)
-		}
-
-		return added, nil
 	}
 
 	return added, nil
+}
+func (cs *State) handleCompleteProposal(ctx context.Context, height int64) {
+	// Update Valid* if we can.
+	prevotes := cs.Votes.Prevotes(cs.Round)
+	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+	if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
+		if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			cs.logger.Debug(
+				"updating valid block to new proposal block",
+				"valid_round", cs.Round,
+				"valid_block_hash", cs.ProposalBlock.Hash(),
+			)
+
+			cs.ValidRound = cs.Round
+			cs.ValidBlock = cs.ProposalBlock
+			cs.ValidBlockParts = cs.ProposalBlockParts
+		}
+		// TODO: In case there is +2/3 majority in Prevotes set for some
+		// block and cs.ProposalBlock contains different block, either
+		// proposer is faulty or voting power of faulty processes is more
+		// than 1/3. We should trigger in the future accountability
+		// procedure at this point.
+	}
+
+	if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
+		// Move onto the next step
+		cs.enterPrevote(ctx, height, cs.Round)
+		if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+			cs.enterPrecommit(ctx, height, cs.Round)
+		}
+	} else if cs.Step == cstypes.RoundStepCommit {
+		// If we're waiting on the proposal block...
+		cs.tryFinalizeCommit(ctx, height)
+	}
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
@@ -2293,7 +2306,7 @@ func (cs *State) addVote(
 		cs.evsw.FireEvent(ctx, types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
-		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
+		if cs.bypassCommitTimeout() && cs.LastCommit.HasAll() {
 			// go straight to new round (skip timeout commit)
 			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 			cs.enterNewRound(ctx, cs.Height, 0)
@@ -2406,7 +2419,7 @@ func (cs *State) addVote(
 
 			if !blockID.IsNil() {
 				cs.enterCommit(ctx, height, vote.Round)
-				if cs.config.SkipTimeoutCommit && precommits.HasAll() {
+				if cs.bypassCommitTimeout() && precommits.HasAll() {
 					cs.enterNewRound(ctx, cs.Height, 0)
 				}
 			} else {
@@ -2456,19 +2469,16 @@ func (cs *State) signVote(
 
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
-	var timeout time.Duration
+	timeout := cs.voteTimeout(cs.Round)
 
 	switch msgType {
 	case tmproto.PrecommitType:
-		timeout = cs.config.TimeoutPrecommit
 		// if the signedMessage type is for a precommit, add VoteExtension
 		ext, err := cs.blockExec.ExtendVote(ctx, vote)
 		if err != nil {
 			return nil, err
 		}
 		vote.VoteExtension = ext
-	case tmproto.PrevoteType:
-		timeout = cs.config.TimeoutPrevote
 	default:
 		timeout = time.Second
 	}
@@ -2527,12 +2537,7 @@ func (cs *State) updatePrivValidatorPubKey(rctx context.Context) error {
 		return nil
 	}
 
-	var timeout time.Duration
-	if cs.config.TimeoutPrecommit > cs.config.TimeoutPrevote {
-		timeout = cs.config.TimeoutPrecommit
-	} else {
-		timeout = cs.config.TimeoutPrevote
-	}
+	timeout := cs.voteTimeout(cs.Round)
 
 	// no GetPubKey retry beyond the proposal/voting in RetrySignerClient
 	if cs.Step >= cstypes.RoundStepPrecommit && cs.privValidatorType == types.RetrySignerClient {
@@ -2592,12 +2597,12 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
 		votingPowerSeen += val.VotingPower
 		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
-			cs.metrics.QuorumPrevoteMessageDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			cs.metrics.QuorumPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 			break
 		}
 	}
 	if ps.HasAll() {
-		cs.metrics.FullPrevoteMessageDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+		cs.metrics.FullPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 	}
 }
 
@@ -2658,14 +2663,55 @@ func repairWalFile(src, dst string) error {
 	return nil
 }
 
+func (cs *State) proposeTimeout(round int32) time.Duration {
+	tp := cs.state.ConsensusParams.Timeout.TimeoutParamsOrDefaults()
+	p := tp.Propose
+	if cs.config.UnsafeProposeTimeoutOverride != 0 {
+		p = cs.config.UnsafeProposeTimeoutOverride
+	}
+	pd := tp.ProposeDelta
+	if cs.config.UnsafeProposeTimeoutDeltaOverride != 0 {
+		pd = cs.config.UnsafeProposeTimeoutDeltaOverride
+	}
+	return time.Duration(
+		p.Nanoseconds()+pd.Nanoseconds()*int64(round),
+	) * time.Nanosecond
+}
+
+func (cs *State) voteTimeout(round int32) time.Duration {
+	tp := cs.state.ConsensusParams.Timeout.TimeoutParamsOrDefaults()
+	v := tp.Vote
+	if cs.config.UnsafeVoteTimeoutOverride != 0 {
+		v = cs.config.UnsafeVoteTimeoutOverride
+	}
+	vd := tp.VoteDelta
+	if cs.config.UnsafeVoteTimeoutDeltaOverride != 0 {
+		vd = cs.config.UnsafeVoteTimeoutDeltaOverride
+	}
+	return time.Duration(
+		v.Nanoseconds()+vd.Nanoseconds()*int64(round),
+	) * time.Nanosecond
+}
+
+func (cs *State) commitTime(t time.Time) time.Time {
+	c := cs.state.ConsensusParams.Timeout.Commit
+	if cs.config.UnsafeCommitTimeoutOverride != 0 {
+		c = cs.config.UnsafeProposeTimeoutOverride
+	}
+	return t.Add(c)
+}
+
+func (cs *State) bypassCommitTimeout() bool {
+	if cs.config.UnsafeBypassCommitTimeoutOverride != nil {
+		return *cs.config.UnsafeBypassCommitTimeoutOverride
+	}
+	return cs.state.ConsensusParams.Timeout.BypassCommitTimeout
+}
+
 func (cs *State) calculateProposalTimestampDifferenceMetric() {
 	if cs.Proposal != nil && cs.Proposal.POLRound == -1 {
-		tp := types.SynchronyParams{
-			Precision:    cs.state.ConsensusParams.Synchrony.Precision,
-			MessageDelay: cs.state.ConsensusParams.Synchrony.MessageDelay,
-		}
-
-		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, tp, cs.Round)
+		sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
+		isTimely := cs.Proposal.IsTimely(cs.ProposalReceiveTime, sp, cs.Round)
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}

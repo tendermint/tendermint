@@ -33,7 +33,7 @@ const validationTestsStopHeight int64 = 10
 func TestValidateBlockHeader(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
@@ -137,7 +137,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
@@ -279,7 +279,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	proxyApp := proxy.New(abciclient.NewLocalClient(logger, &testApp{}), logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx))
 
@@ -311,7 +311,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	state.ConsensusParams.Evidence.MaxBytes = 1000
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
+		log.NewNopLogger(),
 		proxyApp,
 		mp,
 		evpool,

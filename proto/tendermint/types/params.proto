@@ -75,7 +75,7 @@ message HashedParams {
 // see the specification of proposer-based timestamps:
 // https://github.com/tendermint/tendermint/tree/master/spec/consensus/proposer-based-timestamp
 message SynchronyParams {
-  // message_delay bounds how long a proposal message may take to reach all validators on a newtork
+  // message_delay bounds how long a proposal message may take to reach all validators on a network
   // and still be considered valid.
   google.protobuf.Duration message_delay = 1 [(gogoproto.stdduration) = true];
   // precision bounds how skewed a proposer's clock may be from any validator
@@ -120,10 +120,10 @@ message TimeoutParams {
   // used to allow slow precommits to arrive for inclusion in the next height before progressing.
   google.protobuf.Duration commit = 5 [(gogoproto.stdduration) = true];
 
-  // enable_commit_timeout_bypass configures the node to proceed immediately to
+  // bypass_commit_timeout configures the node to proceed immediately to
   // the next height once the node has received all precommits for a block, forgoing
   // the remaining commit timeout.
-  // Setting enable_commit_timeout_bypass false (the default) causes Tendermint to wait
-  // for the full commit.
-  bool enable_commit_timeout_bypass = 6;
+  // Setting bypass_commit_timeout false (the default) causes Tendermint to wait
+  // for the full commit timeout.
+  bool bypass_commit_timeout = 6;
 }

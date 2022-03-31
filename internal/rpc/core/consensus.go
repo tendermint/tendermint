@@ -113,6 +113,9 @@ func (env *Environment) ConsensusParams(ctx context.Context, heightPtr *int64) (
 		return nil, err
 	}
 
+	consensusParams.Synchrony = consensusParams.Synchrony.SynchronyParamsOrDefaults()
+	consensusParams.Timeout = consensusParams.Timeout.TimeoutParamsOrDefaults()
+
 	return &coretypes.ResultConsensusParams{
 		BlockHeight:     height,
 		ConsensusParams: consensusParams}, nil

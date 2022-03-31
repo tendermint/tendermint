@@ -48,7 +48,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
-	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, factory.ConsensusParams())
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -79,7 +79,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make Mempool
 			mempool := mempool.NewTxMempool(
-				log.TestingLogger().With("module", "mempool"),
+				log.NewNopLogger().With("module", "mempool"),
 				thisConfig.Mempool,
 				proxyAppConnMem,
 			)
@@ -87,7 +87,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				mempool.EnableTxsAvailable()
 			}
 
-			eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
+			eventBus := eventbus.NewDefault(log.NewNopLogger().With("module", "events"))
 			require.NoError(t, eventBus.Start(ctx))
 
 			// Make a full instance of the evidence pool
@@ -95,7 +95,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			evpool := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
 
 			// Make State
-			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 			cs, err := NewState(ctx, logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
 			require.NoError(t, err)
 			// set private validator

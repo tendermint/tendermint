@@ -223,23 +223,21 @@ func makeNode(
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
-	if !stateSync {
-		if err := consensus.NewHandshaker(
-			logger.With("module", "handshaker"),
-			stateStore, state, blockStore, eventBus, genDoc,
-		).Handshake(ctx, proxyApp); err != nil {
-			return nil, combineCloseError(err, makeCloser(closers))
-		}
+	if err := consensus.NewHandshaker(
+		logger.With("module", "handshaker"),
+		stateStore, state, blockStore, eventBus, genDoc,
+	).Handshake(ctx, proxyApp); err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
+	}
 
-		// Reload the state. It will have the Version.Consensus.App set by the
-		// Handshake, and may have other modifications as well (ie. depending on
-		// what happened during block replay).
-		state, err = stateStore.Load()
-		if err != nil {
-			return nil, combineCloseError(
-				fmt.Errorf("cannot load state: %w", err),
-				makeCloser(closers))
-		}
+	// Reload the state. It will have the Version.Consensus.App set by the
+	// Handshake, and may have other modifications as well (ie. depending on
+	// what happened during block replay).
+	state, err = stateStore.Load()
+	if err != nil {
+		return nil, combineCloseError(
+			fmt.Errorf("cannot load state: %w", err),
+			makeCloser(closers))
 	}
 
 	logNodeStartupInfo(state, pubKey, logger, cfg.Mode)

@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/service"
 )
 
 // ErrListenerWasRemoved is returned by AddEvent if the listener was removed.
@@ -45,18 +44,11 @@ type Fireable interface {
 // They can be removed by calling either RemoveListenerForEvent or
 // RemoveListener (for all events).
 type EventSwitch interface {
-	service.Service
 	Fireable
-	Stop()
-
 	AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error
-	RemoveListenerForEvent(event string, listenerID string)
-	RemoveListener(listenerID string)
 }
 
 type eventSwitch struct {
-	service.BaseService
-
 	mtx        sync.RWMutex
 	eventCells map[string]*eventCell
 	listeners  map[string]*eventListener
@@ -67,15 +59,8 @@ func NewEventSwitch(logger log.Logger) EventSwitch {
 		eventCells: make(map[string]*eventCell),
 		listeners:  make(map[string]*eventListener),
 	}
-	evsw.BaseService = *service.NewBaseService(logger, "EventSwitch", evsw)
 	return evsw
 }
-
-func (evsw *eventSwitch) OnStart(ctx context.Context) error {
-	return nil
-}
-
-func (evsw *eventSwitch) OnStop() {}
 
 func (evsw *eventSwitch) AddListenerForEvent(listenerID, eventValue string, cb EventCallback) error {
 	// Get/Create eventCell and listener.
@@ -101,52 +86,6 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, eventValue string, cb E
 
 	eventCell.AddListener(listenerID, cb)
 	return nil
-}
-
-func (evsw *eventSwitch) RemoveListener(listenerID string) {
-	// Get and remove listener.
-	evsw.mtx.RLock()
-	listener := evsw.listeners[listenerID]
-	evsw.mtx.RUnlock()
-	if listener == nil {
-		return
-	}
-
-	evsw.mtx.Lock()
-	delete(evsw.listeners, listenerID)
-	evsw.mtx.Unlock()
-
-	// Remove callback for each event.
-	listener.SetRemoved()
-	for _, event := range listener.GetEvents() {
-		evsw.RemoveListenerForEvent(event, listenerID)
-	}
-}
-
-func (evsw *eventSwitch) RemoveListenerForEvent(event string, listenerID string) {
-	// Get eventCell
-	evsw.mtx.Lock()
-	eventCell := evsw.eventCells[event]
-	evsw.mtx.Unlock()
-
-	if eventCell == nil {
-		return
-	}
-
-	// Remove listenerID from eventCell
-	numListeners := eventCell.RemoveListener(listenerID)
-
-	// Maybe garbage collect eventCell.
-	if numListeners == 0 {
-		// Lock again and double check.
-		evsw.mtx.Lock()      // OUTER LOCK
-		eventCell.mtx.Lock() // INNER LOCK
-		if len(eventCell.listeners) == 0 {
-			delete(evsw.eventCells, event)
-		}
-		eventCell.mtx.Unlock() // INNER LOCK
-		evsw.mtx.Unlock()      // OUTER LOCK
-	}
 }
 
 func (evsw *eventSwitch) FireEvent(ctx context.Context, event string, data EventData) {
