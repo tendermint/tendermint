@@ -51,7 +51,6 @@ type Client struct {
 	keyPathFn KeyPathFunc
 
 	closers []func()
-	quitCh  chan struct{}
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -92,10 +91,9 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 // NewClient returns a new client.
 func NewClient(logger log.Logger, next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
-		next:   next,
-		lc:     lc,
-		prt:    merkle.DefaultProofRuntime(),
-		quitCh: make(chan struct{}),
+		next: next,
+		lc:   lc,
+		prt:  merkle.DefaultProofRuntime(),
 	}
 	c.BaseService = *service.NewBaseService(logger, "Client", c)
 	for _, o := range opts {
@@ -111,10 +109,6 @@ func (c *Client) OnStart(ctx context.Context) error {
 		return err
 	}
 	c.closers = append(c.closers, ncancel)
-	go func() {
-		defer close(c.quitCh)
-		c.Wait()
-	}()
 
 	return nil
 }
