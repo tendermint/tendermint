@@ -457,7 +457,7 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 			break
 		}
 		trs[i] = &types.TxRecord{
-			Tx:     tx_mod,
+			Tx:     txMod,
 			Action: action,
 		}
 		totalBytes += nBytes
