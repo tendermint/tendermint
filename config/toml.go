@@ -486,7 +486,7 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
 # This field provides an unsafe override of the Vote timeout consensus parameter.
 # This field configures how long the consensus engine will wait after
-# receiving +2/3 votes in a around.
+# receiving +2/3 votes in a round.
 # If this field is set to a value greater than 0, it will take effect.
 # unsafe-vote-timeout-override = {{ .Consensus.UnsafeVoteTimeoutOverride }}
 
@@ -520,8 +520,8 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # to decide which txs to index based on configuration set in the application.
 #
 # Options:
-#   1) "null"
-#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null" (default) - no indexer services.
+#   2) "kv" - a simple indexer backed by key-value storage (see DBBackend)
 #   3) "psql" - the indexer services backed by PostgreSQL.
 # When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = [{{ range $i, $e := .TxIndex.Indexer }}{{if $i}}, {{end}}{{ printf "%q" $e}}{{end}}]
