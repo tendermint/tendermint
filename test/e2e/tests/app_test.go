@@ -56,7 +56,7 @@ func TestApp_Hash(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, status.SyncInfo.LatestBlockHeight)
 			return status.SyncInfo.LatestBlockHeight >= blockHeight
-		}, 60*time.Second, 3*time.Second)
+		}, 60*time.Second, 500*time.Millisecond)
 
 		block, err := client.Block(ctx, &blockHeight)
 		require.NoError(t, err)
