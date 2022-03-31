@@ -451,15 +451,14 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 			txMod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
 			action = types.TxRecord_ADDED
 		}
-		nBytes := int64(len(txMod))
-		if totalBytes + nBytes > maxTxBytes {
+		totalBytes += int64(len(txMod))
+		if totalBytes > maxTxBytes {
 			break
 		}
 		trs = append(trs, &types.TxRecord{
 			Tx:     txMod,
 			Action: action,
 		})
-		totalBytes += nBytes
 	}
 
 	return append(trs, removed...)

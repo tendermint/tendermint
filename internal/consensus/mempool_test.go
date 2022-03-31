@@ -321,15 +321,14 @@ func (app *CounterApplication) PrepareProposal(
 	trs := make([]*abci.TxRecord, 0, len(req.Txs))
 	var totalBytes int64
 	for _, tx := range req.Txs {
-		nBytes := int64(len(tx))
-		if totalBytes + nBytes > req.MaxTxBytes {
+		totalBytes += int64(len(tx))
+		if totalBytes > req.MaxTxBytes {
 			break
 		}
 		trs = append(trs, &abci.TxRecord{
 			Action: abci.TxRecord_UNMODIFIED,
 			Tx:     tx,
 		})
-		totalBytes += nBytes
 	}
 	return abci.ResponsePrepareProposal{TxRecords: trs}
 }
