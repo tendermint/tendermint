@@ -213,5 +213,6 @@ As for the new methods:
 * `VerifyVoteExtension` must set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is an empty byte array
   and _false_ otherwise, then return.
 * `FinalizeBlock` is to coalesce the implementation of methods `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit`.
-  The logic extracted from `DeliverTx` should be wrappped by a loop that must execute one iteration per
+  Legacy applications looking to reuse old code that implemented `DeliverTx` should wrap the legacy
+  `DeliverTx` logic in a loop that executes one transaction iteration per
   transaction in `RequestFinalizeBlock.tx`.
