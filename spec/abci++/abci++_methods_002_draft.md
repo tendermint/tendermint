@@ -534,7 +534,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
     | Name   | Type                          | Description                                                    | Field Number |
     |--------|-------------------------------|----------------------------------------------------------------|--------------|
-    | status | [VerifyStatus](#VerifyStatus) | `enum` signaling if the application accepts the vote extension | 1            |
+    | status | [VerifyStatus](#verifystatus) | `enum` signaling if the application accepts the vote extension | 1            |
 
 * **Usage**:
     * `RequestVerifyVoteExtension.vote_extension` can be an empty byte array. The Application's interpretation of it should be
