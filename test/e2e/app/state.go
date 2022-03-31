@@ -180,10 +180,9 @@ func hashItems(items map[string]string, height uint64) []byte {
 	sort.Strings(keys)
 
 	hasher := sha256.New()
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, height)
-	_, _ = hasher.Write(b)
-	_, _ = hasher.Write([]byte{0})
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], height)
+	_, _ = hasher.Write(b[:])
 	for _, key := range keys {
 		_, _ = hasher.Write([]byte(key))
 		_, _ = hasher.Write([]byte{0})
