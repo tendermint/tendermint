@@ -123,6 +123,9 @@ const (
 	// maxLightBlockRequestRetries is the amount of retries acceptable before
 	// the backfill process aborts
 	maxLightBlockRequestRetries = 20
+
+	// backfillSleepTime uses to sleep if no connected peers to fetch light blocks
+	backfillSleepTime = 1 * time.Second
 )
 
 // Metricer defines an interface used for the rpc sync info query, please see statesync.metrics
@@ -384,6 +387,8 @@ func (r *Reactor) Backfill(ctx context.Context, state sm.State) error {
 		state.InitialHeight,
 		state.LastBlockID,
 		stopTime,
+		backfillSleepTime,
+		lightBlockResponseTimeout,
 	)
 }
 
@@ -393,6 +398,8 @@ func (r *Reactor) backfill(
 	startHeight, stopHeight, initialHeight int64,
 	trustedBlockID types.BlockID,
 	stopTime time.Time,
+	sleepTime time.Duration,
+	lightBlockResponseTimeout time.Duration,
 ) error {
 	r.Logger.Info("starting backfill process...", "startHeight", startHeight,
 		"stopHeight", stopHeight, "stopTime", stopTime, "trustedBlockID", trustedBlockID)
@@ -400,7 +407,6 @@ func (r *Reactor) backfill(
 	r.backfillBlockTotal = startHeight - stopHeight + 1
 	r.metrics.BackFillBlocksTotal.Set(float64(r.backfillBlockTotal))
 
-	const sleepTime = 1 * time.Second
 	var (
 		lastValidatorSet *types.ValidatorSet
 		lastChangeHeight = startHeight
@@ -408,14 +414,15 @@ func (r *Reactor) backfill(
 
 	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, maxLightBlockRequestRetries)
 
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// fetch light blocks across four workers. The aim with deploying concurrent
 	// workers is to equate the network messaging time with the verification
 	// time. Ideally we want the verification process to never have to be
 	// waiting on blocks. If it takes 4s to retrieve a block and 1s to verify
 	// it, then steady state involves four workers.
 	for i := 0; i < int(r.cfg.Fetchers); i++ {
-		ctxWithCancel, cancel := context.WithCancel(ctx)
-		defer cancel()
 		go func() {
 			for {
 				select {
@@ -423,10 +430,9 @@ func (r *Reactor) backfill(
 					// pop the next peer of the list to send a request to
 					peer := r.peers.Pop(ctx)
 					r.Logger.Debug("fetching next block", "height", height, "peer", peer)
-					subCtx, cancel := context.WithTimeout(ctxWithCancel, lightBlockResponseTimeout)
-					defer cancel()
 					lb, err := func() (*types.LightBlock, error) {
-						defer cancel()
+						subCtx, reqCancel := context.WithTimeout(ctxWithCancel, lightBlockResponseTimeout)
+						defer reqCancel()
 						// request the light block with a timeout
 						return r.dispatcher.LightBlock(subCtx, height, peer)
 					}()
