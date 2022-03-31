@@ -41,7 +41,7 @@ require (
 	github.com/creachadair/atomicfile v0.2.4
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.7
-	github.com/vektra/mockery/v2 v2.10.0
+	github.com/vektra/mockery/v2 v2.10.1
 	gotest.tools v2.2.0+incompatible
 )
 
