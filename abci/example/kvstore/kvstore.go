@@ -441,7 +441,7 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 	var removed []*types.TxRecord
 	var totalBytes int64
 	for i, tx := range blockData {
-		tx_mod := tx
+		txMod := tx
 		action := types.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
 			removed = append(removed, &types.TxRecord{
