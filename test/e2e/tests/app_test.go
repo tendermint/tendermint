@@ -48,12 +48,19 @@ func TestApp_Hash(t *testing.T) {
 		info, err := client.ABCIInfo(ctx)
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
+		// In next-block execution, the app hash is stored in the next block
+		block_height := info.Response.LastBlockHeight + 1
 
-		status, err := client.Status(ctx)
-		require.NoError(t, err)
-		require.NotZero(t, status.SyncInfo.LatestBlockHeight)
+		for {
+			status, err := client.Status(ctx)
+			require.NoError(t, err)
+			require.NotZero(t, status.SyncInfo.LatestBlockHeight)
+			if status.SyncInfo.LatestBlockHeight >= block_height {
+				break
+			}
+		}
 
-		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
+		block, err := client.Block(ctx, &block_height)
 		require.NoError(t, err)
 
 		if info.Response.LastBlockHeight == block.Block.Height {
@@ -63,8 +70,6 @@ func TestApp_Hash(t *testing.T) {
 				"app hash does not match last block's app hash")
 		}
 
-		require.True(t, status.SyncInfo.LatestBlockHeight >= info.Response.LastBlockHeight,
-			"status out of sync with application")
 	})
 }
 
