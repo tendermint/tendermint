@@ -911,7 +911,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 			if err := cs.wal.Write(mi); err != nil {
 				cs.logger.Error("failed writing to WAL", "err", err)
 			}
-
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(ctx, mi)
