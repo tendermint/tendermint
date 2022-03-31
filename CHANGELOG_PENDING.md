@@ -12,14 +12,15 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
-    - [rpc] \#7121 Remove the deprecated gRPC interface to the RPC service. (@creachadair)
-    - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
-    - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
-    - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
-    - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
-    - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
-    - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
-    - [cli] \#8081 make the reset command safe to use. (@marbar3778)
+  - [rpc] \#7121 Remove the deprecated gRPC interface to the RPC service. (@creachadair)
+  - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
+  - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
+  - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
+  - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
+  - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
+  - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
+  - [cli] \#8081 make the reset command safe to use. (@marbar3778)
+  - [config] \#8222 default indexer configuration to null. (@creachadair)
 
 - Apps
 

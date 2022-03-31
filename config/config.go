@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -143,6 +144,10 @@ func (cfg *Config) ValidateBasic() error {
 		return fmt.Errorf("error in [instrumentation] section: %w", err)
 	}
 	return nil
+}
+
+func (cfg *Config) DeprecatedFieldWarning() error {
+	return cfg.Consensus.DeprecatedFieldWarning()
 }
 
 //-----------------------------------------------------------------------------
@@ -998,6 +1003,20 @@ type ConsensusConfig struct {
 	// If it is set to true, the consensus engine will proceed to the next height
 	// as soon as the node has gathered votes from all of the validators on the network.
 	UnsafeBypassCommitTimeoutOverride *bool `mapstructure:"unsafe-bypass-commit-timeout-override"`
+
+	// Deprecated timeout parameters. These parameters are present in this struct
+	// so that they can be parsed so that validation can check if they have erroneously
+	// been included and provide a helpful error message.
+	// These fields should be completely removed in v0.37.
+	// See: https://github.com/tendermint/tendermint/issues/8188
+	DeprecatedTimeoutPropose        *interface{} `mapstructure:"timeout-propose"`
+	DeprecatedTimeoutProposeDelta   *interface{} `mapstructure:"timeout-propose-delta"`
+	DeprecatedTimeoutPrevote        *interface{} `mapstructure:"timeout-prevote"`
+	DeprecatedTimeoutPrevoteDelta   *interface{} `mapstructure:"timeout-prevote-delta"`
+	DeprecatedTimeoutPrecommit      *interface{} `mapstructure:"timeout-precommit"`
+	DeprecatedTimeoutPrecommitDelta *interface{} `mapstructure:"timeout-precommit-delta"`
+	DeprecatedTimeoutCommit         *interface{} `mapstructure:"timeout-commit"`
+	DeprecatedSkipTimeoutCommit     *interface{} `mapstructure:"skip-timeout-commit"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -1072,6 +1091,44 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	return nil
 }
 
+func (cfg *ConsensusConfig) DeprecatedFieldWarning() error {
+	var fields []string
+	if cfg.DeprecatedSkipTimeoutCommit != nil {
+		fields = append(fields, "skip-timeout-commit")
+	}
+	if cfg.DeprecatedTimeoutPropose != nil {
+		fields = append(fields, "timeout-propose")
+	}
+	if cfg.DeprecatedTimeoutProposeDelta != nil {
+		fields = append(fields, "timeout-propose-delta")
+	}
+	if cfg.DeprecatedTimeoutPrevote != nil {
+		fields = append(fields, "timeout-prevote")
+	}
+	if cfg.DeprecatedTimeoutPrevoteDelta != nil {
+		fields = append(fields, "timeout-prevote-delta")
+	}
+	if cfg.DeprecatedTimeoutPrecommit != nil {
+		fields = append(fields, "timeout-precommit")
+	}
+	if cfg.DeprecatedTimeoutPrecommitDelta != nil {
+		fields = append(fields, "timeout-precommit-delta")
+	}
+	if cfg.DeprecatedTimeoutCommit != nil {
+		fields = append(fields, "timeout-commit")
+	}
+	if cfg.DeprecatedSkipTimeoutCommit != nil {
+		fields = append(fields, "skip-timeout-commit")
+	}
+	if len(fields) != 0 {
+		return fmt.Errorf("the following deprecated fields were set in the "+
+			"configuration file: %s. These fields were removed in v0.36. Timeout "+
+			"configuration has been moved to the ConsensusParams. For more information see "+
+			"https://tinyurl.com/adr074", strings.Join(fields, ", "))
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 // TxIndexConfig
 // Remember that Event has the following structure:
@@ -1088,9 +1145,8 @@ type TxIndexConfig struct {
 	// If list contains `null`, meaning no indexer service will be used.
 	//
 	// Options:
-	//   1) "null" - no indexer services.
-	//   2) "kv" (default) - the simplest possible indexer,
-	//      backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   1) "null" (default) - no indexer services.
+	//   2) "kv" - a simple indexer backed by key-value storage (see DBBackend)
 	//   3) "psql" - the indexer services backed by PostgreSQL.
 	Indexer []string `mapstructure:"indexer"`
 
@@ -1101,14 +1157,12 @@ type TxIndexConfig struct {
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
-	return &TxIndexConfig{
-		Indexer: []string{"kv"},
-	}
+	return &TxIndexConfig{Indexer: []string{"null"}}
 }
 
 // TestTxIndexConfig returns a default configuration for the transaction indexer.
 func TestTxIndexConfig() *TxIndexConfig {
-	return DefaultTxIndexConfig()
+	return &TxIndexConfig{Indexer: []string{"kv"}}
 }
 
 //-----------------------------------------------------------------------------
