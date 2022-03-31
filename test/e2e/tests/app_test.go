@@ -51,7 +51,7 @@ func TestApp_Hash(t *testing.T) {
 		// In next-block execution, the app hash is stored in the next block
 		blockHeight := info.Response.LastBlockHeight + 1
 
-		require.Eventually(t, func () bool {
+		require.Eventually(t, func() bool {
 			status, err := client.Status(ctx)
 			require.NoError(t, err)
 			require.NotZero(t, status.SyncInfo.LatestBlockHeight)
