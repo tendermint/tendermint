@@ -43,5 +43,6 @@ func signAddVote(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet
 		return false, err
 	}
 	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
 	return voteSet.AddVote(vote)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -200,6 +201,78 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.Equal(t, string(signBytes), string(newSignBytes))
 	valid = pubkey.VerifySignature(newSignBytes, precommit.Signature)
 	require.True(t, valid)
+}
+
+// TestVoteExtension tests that the vote verification behaves correctly in each case
+// of vote extension being set on the vote.
+func TestVoteExtension(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testCases := []struct {
+		name             string
+		extension        []byte
+		includeSignature bool
+		expectError      bool
+	}{
+		{
+			name:             "all fields present",
+			extension:        []byte("extension"),
+			includeSignature: true,
+			expectError:      false,
+		},
+		{
+			name:             "no extension signature",
+			extension:        []byte("extension"),
+			includeSignature: false,
+			expectError:      true,
+		},
+		{
+			name:             "empty extension",
+			includeSignature: true,
+			expectError:      false,
+		},
+		{
+			name:             "no extension and no signature",
+			includeSignature: false,
+			expectError:      true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			height, round := int64(1), int32(0)
+			privVal := NewMockPV()
+			pk, err := privVal.GetPubKey(ctx)
+			require.NoError(t, err)
+			blk := Block{}
+			ps, err := blk.MakePartSet(BlockPartSizeBytes)
+			require.NoError(t, err)
+			vote := &Vote{
+				ValidatorAddress: pk.Address(),
+				ValidatorIndex:   0,
+				Height:           height,
+				Round:            round,
+				Timestamp:        tmtime.Now(),
+				Type:             tmproto.PrecommitType,
+				BlockID:          BlockID{blk.Hash(), ps.Header()},
+			}
+
+			v := vote.ToProto()
+			err = privVal.SignVote(ctx, "test_chain_id", v)
+			require.NoError(t, err)
+			vote.Signature = v.Signature
+			if tc.includeSignature {
+				vote.ExtensionSignature = v.ExtensionSignature
+			}
+			err = vote.Verify("test_chain_id", pk)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestIsVoteTypeValid(t *testing.T) {

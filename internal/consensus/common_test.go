@@ -112,7 +112,8 @@ func (vs *validatorStub) signVote(
 	ctx context.Context,
 	voteType tmproto.SignedMsgType,
 	chainID string,
-	blockID types.BlockID) (*types.Vote, error) {
+	blockID types.BlockID,
+	voteExtension []byte) (*types.Vote, error) {
 
 	pubKey, err := vs.PrivValidator.GetPubKey(ctx)
 	if err != nil {
@@ -127,7 +128,7 @@ func (vs *validatorStub) signVote(
 		Timestamp:        vs.clock.Now(),
 		ValidatorAddress: pubKey.Address(),
 		ValidatorIndex:   vs.Index,
-		Extension:        []byte("extension"),
+		Extension:        voteExtension,
 	}
 	v := vote.ToProto()
 	if err = vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
@@ -157,7 +158,7 @@ func signVote(
 	chainID string,
 	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(ctx, voteType, chainID, blockID)
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, []byte("extension"))
 	require.NoError(t, err, "failed to sign vote")
 
 	vs.lastVote = v
