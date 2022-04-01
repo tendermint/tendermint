@@ -4,13 +4,13 @@ package bls12381_test
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 func TestSignAndValidateBLS12381(t *testing.T) {
@@ -41,15 +41,6 @@ func TestBLSAddress(t *testing.T) {
 	assert.EqualValues(t, decodedAddressBytes, address)
 }
 
-func reverseBytes(bz []byte) []byte {
-	s := make([]byte, len(bz))
-	copy(s, bz)
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
-}
-
 func TestRecoverThresholdPublicKeyFromPublicKeys4(t *testing.T) {
 	proTxHashStrings := make([]string, 4)
 	proTxHashStrings[0] = "FDC09407DA9473CDC5E5AFCBB55712C95765343B2AF900B28BE4004E69CEDBB3"
@@ -60,7 +51,7 @@ func TestRecoverThresholdPublicKeyFromPublicKeys4(t *testing.T) {
 	for i, proTxHashString := range proTxHashStrings {
 		decodedProTxHash, err := hex.DecodeString(proTxHashString)
 		require.NoError(t, err)
-		proTxHashes[i] = reverseBytes(decodedProTxHash)
+		proTxHashes[i] = tmbytes.Reverse(decodedProTxHash)
 	}
 	privateKeyStrings := make([]string, 4)
 	privateKeyStrings[0] = "BT0evsfM4r7Cc5lvbrVjBZuo1FYjMeIFg/6u7gb35M4="
@@ -103,7 +94,7 @@ func TestRecoverThresholdPublicKeyFromPublicKeys5(t *testing.T) {
 	for i, proTxHashString := range proTxHashStrings {
 		decodedProTxHash, err := hex.DecodeString(proTxHashString)
 		require.NoError(t, err)
-		proTxHashes[i] = reverseBytes(decodedProTxHash)
+		proTxHashes[i] = tmbytes.Reverse(decodedProTxHash)
 	}
 	privateKeyStrings := make([]string, 5)
 	privateKeyStrings[0] = "BT0evsfM4r7Cc5lvbrVjBZuo1FYjMeIFg/6u7gb35M4="
@@ -176,66 +167,6 @@ func TestPublicKeyGeneration(t *testing.T) {
 	expectedPublicKeyString := "BBdEXubJCrsGbU3vFyYpfQs1F9iuj6YBB6mc6ntizjX7bh8mnEWk3NkBEs/cVVfN"
 	encodedPublicKeyString := base64.StdEncoding.EncodeToString(privateKey.PubKey().Bytes())
 	require.Equal(t, expectedPublicKeyString, encodedPublicKeyString)
-}
-
-func Test100MemberOverThreshold(t *testing.T) {
-	n := 100
-	threshold := 67
-	privKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(n, threshold)
-	proTxHashesBytes := make([][]byte, len(proTxHashes))
-	for i, proTxHash := range proTxHashes {
-		proTxHashesBytes[i] = proTxHash
-	}
-	signID := crypto.CRandBytes(32)
-	signatures := make([][]byte, 100)
-	var err error
-	for i, privKey := range privKeys {
-		signatures[i], err = privKey.SignDigest(signID)
-		require.NoError(t, err)
-	}
-	omit := rand.Intn(34)
-	offset := 0
-	if omit > 0 {
-		offset = rand.Intn(omit)
-	}
-	check := n - omit
-	require.True(t, check > 66)
-	sig, err := bls12381.RecoverThresholdSignatureFromShares(
-		signatures[offset:check+offset], proTxHashesBytes[offset:check+offset],
-	)
-	require.NoError(t, err)
-	verified := thresholdPublicKey.VerifySignatureDigest(signID, sig)
-	require.True(t, verified, "offset %d check %d", offset, check)
-}
-
-func Test100MemberAtThreshold(t *testing.T) {
-	n := 100
-	threshold := 67
-	privKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(n, threshold)
-	proTxHashesBytes := make([][]byte, len(proTxHashes))
-	for i, proTxHash := range proTxHashes {
-		proTxHashesBytes[i] = proTxHash
-	}
-	signID := crypto.CRandBytes(32)
-	signatures := make([][]byte, 100)
-	var err error
-	for i, privKey := range privKeys {
-		signatures[i], err = privKey.SignDigest(signID)
-		require.NoError(t, err)
-	}
-	omit := 33 // rand.Intn(34)
-	offset := 0
-	if omit > 0 {
-		offset = rand.Intn(omit)
-	}
-	check := n - omit
-	require.True(t, check > 66)
-	sig, err := bls12381.RecoverThresholdSignatureFromShares(
-		signatures[offset:check+offset], proTxHashesBytes[offset:check+offset],
-	)
-	require.NoError(t, err)
-	verified := thresholdPublicKey.VerifySignatureDigest(signID, sig)
-	require.True(t, verified, "offset %d check %d", offset, check)
 }
 
 // func Test100MemberThresholdManyTimes(t *testing.T) {

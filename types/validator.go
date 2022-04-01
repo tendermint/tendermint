@@ -197,10 +197,7 @@ func ValidatorListString(vals []*Validator) string {
 // as its redundant with the pubkey. This also excludes ProposerPriority
 // which changes every round.
 func (v *Validator) Bytes() []byte {
-	pk, err := ce.PubKeyToProto(v.PubKey)
-	if err != nil {
-		panic(err)
-	}
+	pk := ce.MustPubKeyToProto(v.PubKey)
 
 	pbv := tmproto.SimpleValidator{
 		PubKey:      &pk,

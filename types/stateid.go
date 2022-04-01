@@ -9,7 +9,6 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -98,9 +97,9 @@ func (stateID StateID) SignID(chainID string, quorumType btcjson.LLMQType, quoru
 
 	stateSignID := crypto.SignID(
 		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(stateRequestID),
-		bls12381.ReverseBytes(stateMessageHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(stateRequestID),
+		tmbytes.Reverse(stateMessageHash),
 	)
 
 	return stateSignID

@@ -394,10 +394,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 
-	tx, err := hvsu2.tx()
-	require.NoError(t, err)
-
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, tx, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(ctx, hvsu2.tx, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 
 	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
@@ -478,16 +475,13 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 
-	tx, err = hvsu4.tx()
-	require.NoError(t, err)
-
-	err = assertMempool(css[0].txNotifier).CheckTx(ctx, tx, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(ctx, hvsu4.tx, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts = propBlock.MakePartSet(partSize)
 	require.Equal(t, 1, len(propBlock.Txs), "there should be 1 transaction")
-	require.Equal(t, tx, []byte(propBlock.Txs[0]))
+	require.Equal(t, hvsu4.tx, []byte(propBlock.Txs[0]))
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	vssProposer := findProposer(vss, css[0].Validators.Proposer.ProTxHash)
@@ -619,10 +613,8 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 	height++
 	incrementHeight(vss...)
-	tx, err = hvsu6.tx()
-	require.NoError(t, err)
 
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), hvsu6.tx, nil, mempl.TxInfo{})
 	require.NoError(t, err)
 
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
@@ -794,15 +786,13 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 8
-	proTxHashToRemove := hvsu6.validators[len(hvsu6.validators)-1].ProTxHash
+	proTxHashToRemove := hvsu6.ProTxHashes[len(hvsu6.ProTxHashes)-1]
 	hvsu8, err := sqm.remValidatorsByProTxHash(height, []crypto.ProTxHash{proTxHashToRemove})
 	require.NoError(t, err)
 	height++
 	incrementHeight(vss...)
-	tx, err = hvsu8.tx()
-	require.NoError(t, err)
 
-	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), tx, nil, mempl.TxInfo{})
+	err = assertMempool(css[0].txNotifier).CheckTx(context.Background(), hvsu8.tx, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
 
 	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)

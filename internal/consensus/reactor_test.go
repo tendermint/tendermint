@@ -21,9 +21,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-
 	"github.com/tendermint/tendermint/internal/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -592,18 +591,18 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
 	// send newValTx to change vals in block 3
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, addOneVal.txs...)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, addOneVal.tx)
 
 	// wait till everyone makes block 3.
 	// it includes the commit for block 2, which is by the original validator set
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, addOneVal.txs...)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, addOneVal.tx)
 
 	// wait till everyone makes block 4.
 	// it includes the commit for block 3, which is by the original validator set
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
 
 	// the commits for block 4 should be with the updated validator set
-	activeVals = makeProTxHashMap(addOneVal.newProTxHashes)
+	activeVals = makeProTxHashMap(addOneVal.ProTxHashes)
 
 	// wait till everyone makes block 5
 	// it includes the commit for block 4, which should have the updated validator set
@@ -611,19 +610,19 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	validate(t, states)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, addTwoVals.txs...)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, addTwoVals.txs...)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, addTwoVals.tx)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, addTwoVals.tx)
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
 
 	// the commits for block 8 should be with the updated validator set
-	activeVals = makeProTxHashMap(addTwoVals.newProTxHashes)
+	activeVals = makeProTxHashMap(addTwoVals.ProTxHashes)
 
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, addTwoVals.quorumHash, blocksSubs, states)
 
 	validate(t, states)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, removeTwoVals.txs...)
-	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, removeTwoVals.txs...)
+	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states, removeTwoVals.tx)
+	waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, states, removeTwoVals.tx)
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, states)
 
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, removeTwoVals.quorumHash, blocksSubs, states)
@@ -637,14 +636,6 @@ func makeProTxHashMap(proTxHashes []crypto.ProTxHash) map[string]struct{} {
 		res[proTxHash.String()] = struct{}{}
 	}
 	return res
-}
-
-type privValUpdate struct {
-	quorumHash      crypto.QuorumHash
-	thresholdPubKey crypto.PubKey
-	newProTxHashes  []crypto.ProTxHash
-	privKeys        []crypto.PrivKey
-	txs             [][]byte
 }
 
 type validatorUpdater struct {
@@ -679,7 +670,7 @@ func newValidatorUpdater(states []*State, nVals int) (*validatorUpdater, error) 
 	return &updater, nil
 }
 
-func (u *validatorUpdater) addValidatorsAt(height int64, count int) (*privValUpdate, error) {
+func (u *validatorUpdater) addValidatorsAt(height int64, count int) (*quorumData, error) {
 	proTxHashes := u.lastProTxHashes
 	l := len(proTxHashes)
 	// add new newProTxHashes
@@ -698,7 +689,7 @@ func (u *validatorUpdater) addValidatorsAt(height int64, count int) (*privValUpd
 	return res, nil
 }
 
-func (u *validatorUpdater) removeValidatorsAt(height int64, count int) (*privValUpdate, error) {
+func (u *validatorUpdater) removeValidatorsAt(height int64, count int) (*quorumData, error) {
 	l := len(u.lastProTxHashes)
 	if count >= l {
 		return nil, fmt.Errorf("you can not remove all validators")
@@ -719,48 +710,45 @@ func (u *validatorUpdater) removeValidatorsAt(height int64, count int) (*privVal
 	return priValUpdate, nil
 }
 
-func (u *validatorUpdater) updateStatePrivVals(privValUpdate *privValUpdate, height int64) {
-	for i, proTxHash := range privValUpdate.newProTxHashes {
+func (u *validatorUpdater) updateStatePrivVals(data *quorumData, height int64) {
+	iter := data.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
 		j := u.stateIndexMap[proTxHash.String()]
 		priVal := u.states[j].PrivValidator()
 		priVal.UpdatePrivateKey(
 			context.Background(),
-			privValUpdate.privKeys[i],
-			privValUpdate.quorumHash,
-			privValUpdate.thresholdPubKey,
+			qks.PrivKey,
+			data.quorumHash,
+			data.ThresholdPubKey,
 			height,
 		)
 	}
-	u.lastProTxHashes = privValUpdate.newProTxHashes
+	u.lastProTxHashes = data.ProTxHashes
 }
 
-func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*privValUpdate, error) {
-	privVal := privValUpdate{
-		quorumHash: crypto.RandQuorumHash(),
-	}
+func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*quorumData, error) {
 	// generate LLMQ data
-	proTxHashes, privKeys, thresholdPubKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
-	pubKeys := make([]crypto.PubKey, len(privKeys))
-	for i, privKey := range privKeys {
-		pubKeys[i] = privKey.PubKey()
-	}
-	// make transactions to update a validator-set
-	tx, err := kvstore.MakeValidatorSetUpdateTx(proTxHashes, pubKeys, thresholdPubKey, privVal.quorumHash)
+	ld, err := llmq.Generate(proTxHashes)
 	if err != nil {
 		return nil, err
 	}
-	privVal.txs = append(privVal.txs, tx)
-	privVal.privKeys = privKeys
-	privVal.newProTxHashes = proTxHashes
-	privVal.thresholdPubKey = thresholdPubKey
-	return &privVal, nil
+	qd := quorumData{Data: *ld, quorumHash: crypto.RandQuorumHash()}
+	vsu, err := abci.LLMQToValidatorSetProto(*ld, abci.WithQuorumHash(qd.quorumHash))
+	if err != nil {
+		return nil, err
+	}
+	// make transactions to update a validator-set
+	qd.tx, err = kvstore.MarshalValidatorSetUpdate(vsu)
+	if err != nil {
+		return nil, err
+	}
+	return &qd, nil
 }
 
 func validate(t *testing.T, states []*State) {
-
 	currHeight, currValidators := states[0].GetValidatorSet()
 	currValidatorCount := currValidators.Size()
-
 	for validatorID, state := range states {
 		height, validators := state.GetValidatorSet()
 		assert.Equal(t, currHeight, height, "validator_id=%d", validatorID)

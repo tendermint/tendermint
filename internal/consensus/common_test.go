@@ -23,7 +23,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
@@ -999,18 +999,33 @@ func (s *stateQuorumManager) generateKeysAndUpdateState(
 	proTxHashes []crypto.ProTxHash,
 	height int64,
 ) (*quorumData, error) {
-	var (
-		privKeys []crypto.PrivKey
-		err      error
-	)
+	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
+	lq, err := llmq.Generate(proTxHashes)
+	if err != nil {
+		return nil, err
+	}
 	qd := quorumData{
-		validators: make([]*types.Validator, len(proTxHashes)),
+		Data:       *lq,
 		quorumHash: crypto.RandQuorumHash(),
 	}
-	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
-	proTxHashes, privKeys, qd.thresholdPublicKey = bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
-	for i, proTxHash := range proTxHashes {
-		qd.validators[i], err = s.updateState(proTxHash, privKeys[i], qd.quorumHash, qd.thresholdPublicKey, height+3)
+	vsu, err := abci.LLMQToValidatorSetProto(*lq, abci.WithQuorumHash(qd.quorumHash))
+	if err != nil {
+		return nil, err
+	}
+	qd.tx, err = kvstore.MarshalValidatorSetUpdate(vsu)
+	if err != nil {
+		return nil, err
+	}
+	iter := lq.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		_, err = s.updateState(
+			proTxHash,
+			qks.PrivKey,
+			qd.quorumHash,
+			lq.ThresholdPubKey,
+			height+3,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -1040,19 +1055,7 @@ func (s *stateQuorumManager) validatorSet() *types.ValidatorSet {
 }
 
 type quorumData struct {
-	validators         []*types.Validator
-	thresholdPublicKey crypto.PubKey
-	quorumHash         crypto.QuorumHash
-}
-
-func (s *quorumData) tx() ([]byte, error) {
-	pubKeys := make([]crypto.PubKey, len(s.validators))
-	for i, val := range s.validators {
-		pubKeys[i] = val.PubKey
-	}
-	proTxHashes := make([]crypto.ProTxHash, len(s.validators))
-	for i, val := range s.validators {
-		proTxHashes[i] = val.ProTxHash
-	}
-	return kvstore.MakeValidatorSetUpdateTx(proTxHashes, pubKeys, s.thresholdPublicKey, s.quorumHash)
+	llmq.Data
+	quorumHash crypto.QuorumHash
+	tx         []byte
 }

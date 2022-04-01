@@ -10,8 +10,7 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/libs/bytes"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 // MockClient is an implementation of a mock core-server
@@ -141,8 +140,8 @@ func (mc *MockClient) MasternodeListJSON(filter string) (map[string]btcjson.Mast
 
 func (mc *MockClient) QuorumSign(
 	quorumType btcjson.LLMQType,
-	requestID bytes.HexBytes,
-	messageHash bytes.HexBytes,
+	requestID tmbytes.HexBytes,
+	messageHash tmbytes.HexBytes,
 	quorumHash crypto.QuorumHash,
 ) (*btcjson.QuorumSignResult, error) {
 	if !mc.canSign {
@@ -151,9 +150,9 @@ func (mc *MockClient) QuorumSign(
 
 	signID := crypto.SignID(
 		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(requestID),
-		bls12381.ReverseBytes(messageHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(requestID),
+		tmbytes.Reverse(messageHash),
 	)
 	privateKey, err := mc.localPV.GetPrivateKey(context.Background(), quorumHash)
 	if err != nil {
@@ -178,16 +177,16 @@ func (mc *MockClient) QuorumSign(
 
 func (mc *MockClient) QuorumVerify(
 	quorumType btcjson.LLMQType,
-	requestID bytes.HexBytes,
-	messageHash bytes.HexBytes,
-	signature bytes.HexBytes,
+	requestID tmbytes.HexBytes,
+	messageHash tmbytes.HexBytes,
+	signature tmbytes.HexBytes,
 	quorumHash crypto.QuorumHash,
 ) (bool, error) {
 	signID := crypto.SignID(
 		quorumType,
-		bls12381.ReverseBytes(quorumHash),
-		bls12381.ReverseBytes(requestID),
-		bls12381.ReverseBytes(messageHash),
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(requestID),
+		tmbytes.Reverse(messageHash),
 	)
 	thresholdPublicKey, err := mc.localPV.GetThresholdPublicKey(context.Background(), quorumHash)
 	if err != nil {

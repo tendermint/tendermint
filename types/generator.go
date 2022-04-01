@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 )
 
 // RandValidatorSet returns a randomized validator set (size: +numValidators+),
@@ -58,8 +58,8 @@ func GenerateValidatorSet(valParams []ValSetParam, opts ...ValSetOptionFunc) (*V
 	var (
 		n              = len(valParams)
 		proTxHashes    = make([]crypto.ProTxHash, n)
-		valz           = make([]*Validator, n)
-		privValidators = make([]PrivValidator, n)
+		valz           = make([]*Validator, 0, n)
+		privValidators = make([]PrivValidator, 0, n)
 		valzOptsMap    = make(map[string]ValSetParam)
 	)
 	for i, opt := range valParams {
@@ -72,17 +72,18 @@ func GenerateValidatorSet(valParams []ValSetParam, opts ...ValSetOptionFunc) (*V
 	for _, fn := range opts {
 		fn(&valSetOpts)
 	}
-	orderedProTxHashes, privateKeys, thresholdPublicKey :=
-		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	ld := llmq.MustGenerate(proTxHashes)
 	quorumHash := crypto.RandQuorumHash()
-	mockPVFunc := newMockPVFunc(valSetOpts, quorumHash, thresholdPublicKey)
-	for i := 0; i < n; i++ {
-		privValidators[i] = mockPVFunc(orderedProTxHashes[i], privateKeys[i])
-		opt := valzOptsMap[orderedProTxHashes[i].String()]
-		valz[i] = NewValidator(privateKeys[i].PubKey(), opt.VotingPower, orderedProTxHashes[i], "")
+	mockPVFunc := newMockPVFunc(valSetOpts, quorumHash, ld.ThresholdPubKey)
+	iter := ld.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		opt := valzOptsMap[proTxHash.String()]
+		privValidators = append(privValidators, mockPVFunc(proTxHash, qks.PrivKey))
+		valz = append(valz, NewValidator(qks.PubKey, opt.VotingPower, proTxHash, ""))
 	}
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
-	return NewValidatorSet(valz, thresholdPublicKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
+	return NewValidatorSet(valz, ld.ThresholdPubKey, crypto.SmallQuorumType(), quorumHash, true), privValidators
 }
 
 // MakeGenesisValsFromValidatorSet converts ValidatorSet data into a list of GenesisValidator

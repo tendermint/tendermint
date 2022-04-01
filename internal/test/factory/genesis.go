@@ -5,7 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/dash/llmq"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
@@ -15,20 +15,27 @@ func RandGenesisDoc(
 	numValidators int,
 	initialHeight int64,
 ) (*types.GenesisDoc, []types.PrivValidator) {
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
+	validators := make([]types.GenesisValidator, 0, numValidators)
+	privValidators := make([]types.PrivValidator, 0, numValidators)
 
-	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
+	ld := llmq.MustGenerate(crypto.RandProTxHashes(numValidators))
 	quorumHash := crypto.RandQuorumHash()
-	for i := 0; i < numValidators; i++ {
-		val := types.NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
-		validators[i] = types.GenesisValidator{
-			PubKey:    val.PubKey,
-			Power:     val.VotingPower,
-			ProTxHash: val.ProTxHash,
-		}
-		privValidators[i] = types.NewMockPVWithParams(privateKeys[i], proTxHashes[i], quorumHash, thresholdPublicKey,
-			false, false)
+	iter := ld.Iter()
+	for iter.Next() {
+		proTxHash, qks := iter.Value()
+		validators = append(validators, types.GenesisValidator{
+			PubKey:    qks.PubKey,
+			Power:     types.DefaultDashVotingPower,
+			ProTxHash: proTxHash,
+		})
+		privValidators = append(privValidators, types.NewMockPVWithParams(
+			qks.PrivKey,
+			proTxHash,
+			quorumHash,
+			ld.ThresholdPubKey,
+			false,
+			false,
+		))
 	}
 	sort.Sort(types.PrivValidatorsByProTxHash(privValidators))
 
@@ -41,7 +48,7 @@ func RandGenesisDoc(
 		Validators:                   validators,
 		InitialCoreChainLockedHeight: 1,
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
-		ThresholdPublicKey:           thresholdPublicKey,
+		ThresholdPublicKey:           ld.ThresholdPubKey,
 		QuorumHash:                   quorumHash,
 	}, privValidators
 }

@@ -81,13 +81,9 @@ func (bz HexBytes) String() string {
 	return strings.ToUpper(hex.EncodeToString(bz))
 }
 
-func (bz HexBytes) ReversedBytes() HexBytes {
-	s := make([]byte, len(bz))
-	copy(s, bz)
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return s
+// ReverseBytes returns a reversed sequence bytes of the current slice of byte
+func (bz HexBytes) ReverseBytes() HexBytes {
+	return Reverse(bz)
 }
 
 // Format writes either address of 0th element in a slice in base 16 notation,
@@ -110,4 +106,14 @@ func (bz HexBytes) Copy() HexBytes {
 	copied := make(HexBytes, len(bz))
 	copy(copied, bz)
 	return copied
+}
+
+// Reverse returns a reversed sequence bytes of passed slice
+func Reverse(bz []byte) []byte {
+	l := len(bz)
+	s := make([]byte, l)
+	for i, j := 0, l-1; i <= j; i, j = i+1, j-1 {
+		s[i], s[j] = bz[j], bz[i]
+	}
+	return s
 }

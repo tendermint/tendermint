@@ -61,6 +61,11 @@ func (b *Block) StateID() StateID {
 	return StateID{Height: b.Height, LastAppHash: b.AppHash}
 }
 
+// BlockID returns a block ID of this block
+func (b *Block) BlockID() BlockID {
+	return BlockID{Hash: b.Hash(), PartSetHeader: b.MakePartSet(BlockPartSizeBytes).Header()}
+}
+
 // ValidateBasic performs basic validation that doesn't involve state data.
 // It checks the internal consistency of the block.
 // Further validation is done using state#ValidateBlock.

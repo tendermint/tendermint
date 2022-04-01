@@ -113,10 +113,7 @@ func (c *evilConn) Read(data []byte) (n int, err error) {
 	case 1:
 		signature := c.signChallenge()
 		if !c.badAuthSignature {
-			pkpb, err := encoding.PubKeyToProto(c.privKey.PubKey())
-			if err != nil {
-				panic(err)
-			}
+			pkpb := encoding.MustPubKeyToProto(c.privKey.PubKey())
 			bz, err := protoio.MarshalDelimited(&tmp2p.AuthSigMessage{PubKey: pkpb, Sig: signature})
 			if err != nil {
 				panic(err)

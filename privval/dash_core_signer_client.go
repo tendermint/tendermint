@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -257,8 +258,11 @@ func (sc *DashCoreSignerClient) SignVote(
 	proTxHash, _ := sc.GetProTxHash(ctx)
 
 	signID := crypto.SignID(
-		quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestID),
-		bls12381.ReverseBytes(blockMessageHash))
+		quorumType,
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(blockRequestID),
+		tmbytes.Reverse(blockMessageHash),
+	)
 
 	coreSignID, err := hex.DecodeString(blockResponse.SignHash)
 	if err != nil {
@@ -267,7 +271,7 @@ func (sc *DashCoreSignerClient) SignVote(
 	logger.Debug("signed vote", "height", protoVote.Height, "round", protoVote.Round, "voteType", protoVote.Type,
 		"quorumType", quorumType, "quorumHash", quorumHash, "signature", blockDecodedSignature, "signBytes", blockSignBytes,
 		"proTxHash", proTxHash, "signId", signID, "coreBlockRequestId", blockResponse.ID, "blockRequestId",
-		hex.EncodeToString(blockRequestID), "coreSignId", bls12381.ReverseBytes(coreSignID),
+		hex.EncodeToString(blockRequestID), "coreSignId", tmbytes.Reverse(coreSignID),
 		"signId", hex.EncodeToString(signID))
 
 	pubKey, err := sc.GetPubKey(ctx, quorumHash)
@@ -315,9 +319,9 @@ func (sc *DashCoreSignerClient) SignVote(
 	// 	hex.EncodeToString(stateDecodedSignature))
 
 	// stateSignID := crypto.SignID(
-	// sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash),
-	// bls12381.ReverseBytes(stateRequestID),
-	// bls12381.ReverseBytes(stateMessageHash))
+	// sc.defaultQuorumType, tmbytes.Reverse(quorumHash),
+	// tmbytes.Reverse(stateRequestID),
+	// tmbytes.Reverse(stateMessageHash))
 
 	// fmt.Printf("core returned state requestId %s our state request Id %s\n", stateResponse.ID, stateRequestIDString)
 	//
@@ -376,8 +380,8 @@ func (sc *DashCoreSignerClient) SignProposal(
 	//	hex.EncodeToString(decodedSignature))
 	//
 	// signID := crypto.SignID(
-	//  sc.defaultQuorumType, bls12381.ReverseBytes(quorumHash),
-	// bls12381.ReverseBytes(requestIDHash), bls12381.ReverseBytes(messageHash))
+	//  sc.defaultQuorumType, tmbytes.Reverse(quorumHash),
+	// tmbytes.Reverse(requestIDHash), tmbytes.Reverse(messageHash))
 	//
 	// fmt.Printf("core returned requestId %s our request Id %s\n", response.ID, requestIDHashString)
 	// //

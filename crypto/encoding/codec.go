@@ -47,6 +47,15 @@ func PubKeyToProto(k crypto.PubKey) (cryptoproto.PublicKey, error) {
 	return kp, nil
 }
 
+// MustPubKeyToProto returns protobuf encoded public-key otherwise panics error
+func MustPubKeyToProto(k crypto.PubKey) cryptoproto.PublicKey {
+	pubKey, err := PubKeyToProto(k)
+	if err != nil {
+		panic(err)
+	}
+	return pubKey
+}
+
 // PubKeyFromProto takes a protobuf Pubkey and transforms it to a crypto.Pubkey
 func PubKeyFromProto(k cryptoproto.PublicKey) (crypto.PubKey, error) {
 	if k.Sum == nil {

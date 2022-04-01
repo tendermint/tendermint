@@ -640,6 +640,8 @@ func TestReactor_Backfill(t *testing.T) {
 				1,
 				factory.MakeBlockIDWithHash(chain[startHeight].Header.Hash()),
 				stopTime,
+				10*time.Millisecond,
+				100*time.Millisecond,
 			)
 			if failureRate > 3 {
 				require.Error(t, err)
