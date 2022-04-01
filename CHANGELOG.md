@@ -13,7 +13,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 ### BUG FIXES
 
 - [consensus] [\#8079](https://github.com/tendermint/tendermint/issues/8079) start the timeout ticker before relay (backport #7844) (@creachadair).
-- [consensus] [\#7992](https://github.com/tendermint/tendermint/issues/7992) [\#7994](https://github.com/tendermint/tendermint/issues/7994) change lock handling in reactor for handleMsg and reactor to alleviate issues gossiping during long ABCI calls (@williambanfield).
+- [consensus] [\#7992](https://github.com/tendermint/tendermint/issues/7992) [\#7994](https://github.com/tendermint/tendermint/issues/7994) change lock handling in handleMsg and reactor to alleviate issues gossiping during long ABCI calls (@williambanfield).
 
 ## v0.34.16
 
