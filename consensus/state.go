@@ -800,6 +800,8 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(mi msgInfo) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
 	var (
 		added bool
 		err   error
@@ -811,13 +813,10 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		cs.mtx.Lock()
 		err = cs.setProposal(msg.Proposal)
-		cs.mtx.Unlock()
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		cs.mtx.Lock()
 		added, err = cs.addProposalBlockPart(msg, peerID)
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
@@ -850,17 +849,14 @@ func (cs *State) handleMsg(mi msgInfo) {
 			)
 			err = nil
 		}
-		cs.mtx.Unlock()
 
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		cs.mtx.Lock()
 		added, err = cs.tryAddVote(msg.Vote, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
-		cs.mtx.Unlock()
 
 		// if err == ErrAddingVote {
 		// TODO: punish peer
