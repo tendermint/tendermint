@@ -303,7 +303,7 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 		return pexCh, nil
 	}
 
-	reactor, err := pex.NewReactor(ctx, log.NewNopLogger(), peerManager, chCreator, peerUpdates)
+	reactor, err := pex.NewReactor(log.NewNopLogger(), peerManager, chCreator, func(_ context.Context) *p2p.PeerUpdates { return peerUpdates })
 	require.NoError(t, err)
 
 	require.NoError(t, reactor.Start(ctx))
@@ -395,11 +395,10 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 		} else {
 			var err error
 			rts.reactors[nodeID], err = pex.NewReactor(
-				ctx,
 				rts.logger.With("nodeID", nodeID),
 				rts.network.Nodes[nodeID].PeerManager,
 				chCreator,
-				rts.peerUpdates[nodeID],
+				func(_ context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
 			)
 			require.NoError(t, err)
 		}
@@ -453,11 +452,10 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 
 		var err error
 		r.reactors[nodeID], err = pex.NewReactor(
-			ctx,
 			r.logger.With("nodeID", nodeID),
 			r.network.Nodes[nodeID].PeerManager,
 			chCreator,
-			r.peerUpdates[nodeID],
+			func(_ context.Context) *p2p.PeerUpdates { return r.peerUpdates[nodeID] },
 		)
 		require.NoError(t, err)
 		r.nodes = append(r.nodes, nodeID)

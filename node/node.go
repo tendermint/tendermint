@@ -351,7 +351,7 @@ func makeNode(
 
 	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
-		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
+		pexReactor, err = pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
 		if err != nil {
 			return nil, combineCloseError(err, makeCloser(closers))
 		}

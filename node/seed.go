@@ -83,7 +83,7 @@ func makeSeedNode(
 			closer)
 	}
 
-	pexReactor, err := pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
+	pexReactor, err := pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
 	if err != nil {
 		return nil, combineCloseError(err, closer)
 	}
