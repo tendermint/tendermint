@@ -7,13 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 )
 
-const stateFileName = "app_state_%d.json"
+const stateFileName = "app_state_%06d.json"
 
 // State is the application state.
 type State struct {
@@ -28,6 +30,7 @@ type State struct {
 
 	persistInterval uint64
 	initialHeight   uint64
+	path            string
 }
 
 // NewState creates a new state.
@@ -36,6 +39,7 @@ func NewState(dir string, persistInterval uint64) (*State, error) {
 		Values:            make(map[string]string),
 		stateFileTemplate: filepath.Join(dir, stateFileName),
 		persistInterval:   persistInterval,
+		path:              dir,
 	}
 	state.Hash = hashItems(state.Values, state.Height)
 	err := state.load()
@@ -48,37 +52,79 @@ func NewState(dir string, persistInterval uint64) (*State, error) {
 }
 
 func (s *State) currentFile() string {
-	return s.stateFileAtVersion(s.Height)
+	return fmt.Sprintf(s.stateFileTemplate, s.Height)
 }
 
-func (s *State) previousFile() string {
-	return s.stateFileAtVersion(s.Height - 1)
-}
+func (s *State) previousFile() (string, error) {
+	files, err := ioutil.ReadDir(s.path)
+	if err != nil {
+		return "", errors.New("failed to read the tendermint app folder")
+	}
 
-func (s *State) stateFileAtVersion(i uint64) string {
-	return fmt.Sprintf(s.stateFileTemplate, i)
+	sizes := len(files)
+	if sizes == 0 {
+		return "", errors.New("empty data folder")
+	}
+
+	foundCurrentFile := false
+	for i := sizes - 1; i >= 0; i-- {
+		fmt.Println(files[i].Name())
+		if files[i].IsDir() || strings.Contains(files[i].Name(), "new") {
+			continue
+		}
+
+		if filepath.Join(s.path, files[i].Name()) == s.currentFile() {
+			foundCurrentFile = true
+			continue
+		}
+
+		if foundCurrentFile {
+			return filepath.Join(s.path, files[i].Name()), nil
+		}
+	}
+
+	return "", errors.New("no previous state file found")
 }
 
 // load loads state from disk. It does not take out a lock, since it is called
 // during construction.
 func (s *State) load() error {
-	bz, err := os.ReadFile(s.currentFile())
+	files, err := ioutil.ReadDir(s.path)
 	if err != nil {
-		// if the current state doesn't exist then we try recover from the previous state
-		if errors.Is(err, os.ErrNotExist) {
-			bz, err = os.ReadFile(s.previousFile())
-			if err != nil {
-				return fmt.Errorf("failed to read both current and previous state (%q): %w",
-					s.previousFile(), err)
-			}
-		} else {
-			return fmt.Errorf("failed to read state from %q: %w", s.currentFile(), err)
+		return fmt.Errorf("failed to read the tendermint state folder: %w", err)
+	}
+
+	sizes := len(files)
+	if sizes == 0 {
+		return fmt.Errorf("empty data folder: %w", os.ErrNotExist)
+	}
+
+	// the folder stores the app_state with different versions, and the snapshots (in the snapshots subfolder)
+	// when the app loads the files from it, the files contain is sorted in ascending order.
+	retry := 1
+	for i := sizes - 1; i >= 0; i-- {
+		if files[i].IsDir() || strings.Contains(files[i].Name(), "new") {
+			continue
 		}
+
+		bz, err := os.ReadFile(filepath.Join(s.path, files[i].Name()))
+		if err != nil {
+			// if the current state doesn't exist then we try recover from the previous state
+			if errors.Is(err, os.ErrNotExist) && retry > 0 {
+				retry--
+				continue
+			} else {
+				return fmt.Errorf("failed to read state from %q: %w", files[i].Name(), err)
+			}
+		}
+
+		err = json.Unmarshal(bz, s)
+		if err != nil {
+			return fmt.Errorf("invalid state data in %q: %w", files[i].Name(), err)
+		}
+		return nil
 	}
-	err = json.Unmarshal(bz, s)
-	if err != nil {
-		return fmt.Errorf("invalid state data in %q: %w", s.currentFile(), err)
-	}
+
 	return nil
 }
 
@@ -164,13 +210,17 @@ func (s *State) Commit() (uint64, []byte, error) {
 }
 
 func (s *State) Rollback() error {
-	bz, err := os.ReadFile(s.previousFile())
+	prevFile, err := s.previousFile()
 	if err != nil {
-		return fmt.Errorf("failed to read state from %q: %w", s.previousFile(), err)
+		return fmt.Errorf("failed to find previous state file: %w", err)
+	}
+	bz, err := os.ReadFile(prevFile)
+	if err != nil {
+		return fmt.Errorf("failed to read state from %q: %w", prevFile, err)
 	}
 	err = json.Unmarshal(bz, s)
 	if err != nil {
-		return fmt.Errorf("invalid state data in %q: %w", s.previousFile(), err)
+		return fmt.Errorf("invalid state data in %q: %w", prevFile, err)
 	}
 	return nil
 }
