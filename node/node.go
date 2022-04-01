@@ -88,12 +88,11 @@ func newDefaultNode(
 	}
 	if cfg.Mode == config.ModeSeed {
 		return makeSeedNode(
-			ctx,
+			logger,
 			cfg,
 			config.DefaultDBProvider,
 			nodeKey,
 			defaultGenesisDocProviderFunc(cfg),
-			logger,
 		)
 	}
 	pval, err := makeDefaultPrivval(cfg)
