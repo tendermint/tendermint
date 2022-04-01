@@ -40,14 +40,15 @@ type Inspector struct {
 // The Inspector type does not modify the state or block stores.
 // The sinks are used to enable block and transaction querying via the RPC server.
 // The caller is responsible for starting and stopping the Inspector service.
-///
-//nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
 	routes := rpc.Routes(*cfg, ss, bs, es, logger)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
-	is := indexer.NewIndexerService(es, eb)
-	is.SetLogger(logger.With("module", "txindex"))
+	is := indexer.NewService(indexer.ServiceArgs{
+		Sinks:    es,
+		EventBus: eb,
+		Logger:   logger.With("module", "txindex"),
+	})
 	return &Inspector{
 		routes:         routes,
 		config:         cfg,

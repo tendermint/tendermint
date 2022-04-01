@@ -1,0 +1,53 @@
+---
+name: BLS
+description: Build and install BLS library. Assumes the caller did actions/setup-go and actions-checkout.
+inputs:
+  arch:
+    description: "Target architecture, one of: amd64 arm"
+    default: amd64
+    required: false
+outputs:
+  bls_cache_key: 
+    description: Key used by BLS cache
+    value: ${{ runner.os }}-${{ inputs.arch }}-bls-${{ steps.bls-revision.outputs.hash }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.17"
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Get BLS library revision
+      id: bls-revision
+      run: |
+        echo "::set-output name=hash::$(git --git-dir=third_party/bls-signatures/src/.git rev-parse HEAD)"
+      shell: bash
+    - uses: actions/cache@v2
+      id: bls-cache
+      with:
+        path: ~/bls-cache
+        key: ${{ runner.os }}-${{ inputs.arch }}-bls-${{ steps.bls-revision.outputs.hash }}
+    - name: Build BLS library
+      run: make install-bls
+      if: steps.bls-cache.outputs.cache-hit != 'true'
+      shell: bash
+    - name: Save BLS library
+      run: |
+        mkdir -p ~/bls-cache/include
+        cp -vr /usr/local/include/chiabls ~/bls-cache/include
+        cp -vr /usr/local/include/relic* ~/bls-cache/include
+        cp -v /usr/local/lib/libchiabls.a ~/bls-cache/
+      if: steps.bls-cache.outputs.cache-hit != 'true'
+      shell: bash
+    - uses: actions/cache@v2.1.2
+      with:
+        path: ~/bls-cache
+        key: ${{ runner.os }}-${{ inputs.arch }}-bls-${{ steps.bls-revision.outputs.hash }}
+      if: steps.bls-cache.outputs.cache-hit != 'true'
+    - name: Install BLS library
+      run: |
+        sudo cp -vr ~/bls-cache/include/* /usr/local/include/
+        sudo cp -vr ~/bls-cache/libchiabls.a /usr/local/lib/
+      shell: bash

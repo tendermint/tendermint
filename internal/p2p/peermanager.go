@@ -161,6 +161,10 @@ type PeerManagerOptions struct {
 	// consider private and never gossip.
 	PrivatePeers map[types.NodeID]struct{}
 
+	// SelfAddress is the address that will be advertised to peers for them to dial back to us.
+	// If Hostname and Port are unset, Advertise() will include no self-announcement
+	SelfAddress NodeAddress
+
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[types.NodeID]bool
@@ -541,6 +545,7 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 	if !ok {
 		return nil // Assume the address has been removed, ignore.
 	}
+
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
 	if err := m.store.Set(peer); err != nil {
@@ -614,6 +619,7 @@ func (m *PeerManager) Dialed(address NodeAddress, peerOpts ...func(*peerInfo)) e
 		addressInfo.LastDialSuccess = now
 		// If not found, assume address has been removed.
 	}
+
 	if err := m.store.Set(peer); err != nil {
 		return err
 	}
@@ -670,6 +676,11 @@ func (m *PeerManager) Accepted(peerID types.NodeID, peerOpts ...func(*peerInfo))
 	peer, ok := m.store.Get(peerID)
 	if !ok {
 		peer = m.newPeerInfo(peerID)
+	}
+
+	// reset this to avoid penalizing peers for their past transgressions
+	for _, addr := range peer.AddressInfo {
+		addr.DialFailures = 0
 	}
 
 	// If all connections slots are full, but we allow upgrades (and we checked
@@ -830,6 +841,13 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	defer m.mtx.Unlock()
 
 	addresses := make([]NodeAddress, 0, limit)
+
+	// advertise ourselves, to let everyone know how to dial us back
+	// and enable mutual address discovery
+	if m.options.SelfAddress.Hostname != "" && m.options.SelfAddress.Port != 0 {
+		addresses = append(addresses, m.options.SelfAddress)
+	}
+
 	for _, peer := range m.store.Ranked() {
 		if peer.ID == peerID {
 			continue
@@ -1323,15 +1341,23 @@ func (p *peerInfo) Score() PeerScore {
 		return PeerScorePersistent
 	}
 
-	if p.MutableScore <= 0 {
+	score := p.MutableScore
+
+	for _, addr := range p.AddressInfo {
+		// DialFailures is reset when dials succeed, so this
+		// is either the number of dial failures or 0.
+		score -= int64(addr.DialFailures)
+	}
+
+	if score <= 0 {
 		return 0
 	}
 
-	if p.MutableScore >= math.MaxUint8 {
+	if score >= math.MaxUint8 {
 		return PeerScore(math.MaxUint8)
 	}
 
-	return PeerScore(p.MutableScore)
+	return PeerScore(score)
 }
 
 // Validate validates the peer info.

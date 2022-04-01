@@ -1,5 +1,5 @@
 # Runs fuzzing nightly.
-name: fuzz-nightly
+name: Fuzz Tests
 on:
   workflow_dispatch: # allow running workflow manually
   schedule:

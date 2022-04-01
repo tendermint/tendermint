@@ -98,7 +98,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	t.Helper()
 
 	rts.nodes = append(rts.nodes, nodeID)
-	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}))
+	rts.app[nodeID] = proxy.NewAppConns(abciclient.NewLocalCreator(&abci.BaseApplication{}), proxy.NopMetrics())
 	require.NoError(t, rts.app[nodeID].Start())
 
 	blockDB := dbm.NewMemDB()

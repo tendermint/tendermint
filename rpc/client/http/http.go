@@ -92,9 +92,11 @@ type baseRPCClient struct {
 	caller jsonrpcclient.Caller
 }
 
-var _ rpcClient = (*HTTP)(nil)
-var _ rpcClient = (*BatchHTTP)(nil)
-var _ rpcClient = (*baseRPCClient)(nil)
+var (
+	_ rpcClient = (*HTTP)(nil)
+	_ rpcClient = (*BatchHTTP)(nil)
+	_ rpcClient = (*baseRPCClient)(nil)
+)
 
 //-----------------------------------------------------------------------------
 // HTTP
@@ -444,6 +446,31 @@ func (c *baseRPCClient) BlockResults(
 		params["height"] = height
 	}
 	_, err := c.caller.Call(ctx, "block_results", params, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	result := new(coretypes.ResultHeader)
+	params := make(map[string]interface{})
+	if height != nil {
+		params["height"] = height
+	}
+	_, err := c.caller.Call(ctx, "header", params, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
+	result := new(coretypes.ResultHeader)
+	params := map[string]interface{}{
+		"hash": hash,
+	}
+	_, err := c.caller.Call(ctx, "header_by_hash", params, result)
 	if err != nil {
 		return nil, err
 	}

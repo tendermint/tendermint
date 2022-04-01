@@ -243,7 +243,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -353,7 +353,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -420,7 +420,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	cc := abciclient.NewLocalCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err = proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -577,7 +577,8 @@ func TestNodeSetEventSink(t *testing.T) {
 		require.NoError(t, err)
 
 		indexService, eventSinks, err := createAndStartIndexerService(cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID)
+			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
+			indexer.NopMetrics())
 		require.NoError(t, err)
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
@@ -615,49 +616,16 @@ func TestNodeSetEventSink(t *testing.T) {
 	assert.Nil(t, ns)
 	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
 
-	var psqlConn = "test"
-
-	cfg.TxIndex.Indexer = []string{"psql"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	eventSinks = setupTest(t, cfg)
-
-	assert.Equal(t, 1, len(eventSinks))
-	assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
-
-	cfg.TxIndex.Indexer = []string{"psql", "kv"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	eventSinks = setupTest(t, cfg)
-
-	assert.Equal(t, 2, len(eventSinks))
-	// we use map to filter the duplicated sinks, so it's not guarantee the order when append sinks.
-	if eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
-	} else {
-		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, eventSinks[1].Type())
-	}
-
-	cfg.TxIndex.Indexer = []string{"kv", "psql"}
-	cfg.TxIndex.PsqlConn = psqlConn
-	eventSinks = setupTest(t, cfg)
-
-	assert.Equal(t, 2, len(eventSinks))
-	if eventSinks[0].Type() == indexer.KV {
-		assert.Equal(t, indexer.PSQL, eventSinks[1].Type())
-	} else {
-		assert.Equal(t, indexer.PSQL, eventSinks[0].Type())
-		assert.Equal(t, indexer.KV, eventSinks[1].Type())
-	}
+	// N.B. We can't create a PSQL event sink without starting a postgres
+	// instance for it to talk to. The indexer service tests exercise that case.
 
 	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
-	cfg.TxIndex.Indexer = []string{"psql", "kv", "Kv"}
-	cfg.TxIndex.PsqlConn = psqlConn
+	cfg.TxIndex.Indexer = []string{"null", "kv", "Kv"}
 	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)
 
-	cfg.TxIndex.Indexer = []string{"Psql", "kV", "kv", "pSql"}
-	cfg.TxIndex.PsqlConn = psqlConn
+	cfg.TxIndex.Indexer = []string{"Null", "kV", "kv", "nUlL"}
 	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
 	assert.Equal(t, e, err)

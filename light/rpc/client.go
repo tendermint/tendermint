@@ -124,7 +124,7 @@ func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error
 }
 
 // ABCIQuery requests proof by default.
-func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*coretypes.ResultABCIQuery, error) { //nolint:lll
+func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
@@ -265,7 +265,7 @@ func (c *Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 
 // BlockchainInfo calls rpcclient#BlockchainInfo and then verifies every header
 // returned.
-func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
+func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	res, err := c.next.BlockchainInfo(ctx, minHeight, maxHeight)
 	if err != nil {
 		return nil, err
@@ -444,6 +444,40 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 	return res, nil
 }
 
+// Header fetches and verifies the header directly via the light client
+func (c *Client) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	lb, err := c.updateLightClientIfNeededTo(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+
+	return &coretypes.ResultHeader{Header: lb.Header}, nil
+}
+
+// HeaderByHash calls rpcclient#HeaderByHash and updates the client if it's falling behind.
+func (c *Client) HeaderByHash(ctx context.Context, hash tmbytes.HexBytes) (*coretypes.ResultHeader, error) {
+	res, err := c.next.HeaderByHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := res.Header.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	lb, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	if !bytes.Equal(lb.Header.Hash(), res.Header.Hash()) {
+		return nil, fmt.Errorf("primary header hash does not match trusted header hash. (%X != %X)",
+			lb.Header.Hash(), res.Header.Hash())
+	}
+
+	return res, nil
+}
+
 func (c *Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height
 	// or at the latest height if no height is provided.
@@ -536,13 +570,15 @@ func (c *Client) Validators(
 	}
 
 	return &coretypes.ResultValidators{
-		BlockHeight:        l.Height,
-		Validators:         v,
+		BlockHeight: l.Height,
+		Validators:  v,
+		Count:       len(v),
+		Total:       totalCount,
+
 		ThresholdPublicKey: &thresholdPublicKey,
 		QuorumHash:         &quorumHash,
 		QuorumType:         quorumType,
-		Count:              len(v),
-		Total:              totalCount}, nil
+	}, nil
 }
 
 func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {

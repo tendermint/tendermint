@@ -26,7 +26,7 @@ application.
 			return fmt.Errorf("failed to rollback state: %w", err)
 		}
 
-		fmt.Printf("Rolled back state to height %d and hash %v", height, hash)
+		fmt.Printf("Rolled back state to height %d and hash %X", height, hash)
 		return nil
 	},
 }
@@ -40,6 +40,10 @@ func RollbackState(config *cfg.Config) (int64, []byte, error) {
 	if err != nil {
 		return -1, nil, err
 	}
+	defer func() {
+		_ = blockStore.Close()
+		_ = stateStore.Close()
+	}()
 
 	// rollback the last state
 	return state.Rollback(blockStore, stateStore)

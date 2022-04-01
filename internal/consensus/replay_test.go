@@ -1106,7 +1106,7 @@ func testHandshakeReplay(
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
-		proxyApp := proxy.NewAppConns(clientCreator2)
+		proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 		stateDB1 := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
@@ -1144,7 +1144,7 @@ func testHandshakeReplay(
 		proTxHash,
 		cfg.Consensus.AppHashSize,
 	)
-	proxyApp := proxy.NewAppConns(clientCreator2)
+	proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
@@ -1290,7 +1290,7 @@ func buildTMStateFromChain(
 	defer kvstoreApp.Close()
 	clientCreator := abciclient.NewLocalCreator(kvstoreApp)
 
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
@@ -1363,7 +1363,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	{
 		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
 		clientCreator := abciclient.NewLocalCreator(app)
-		proxyApp := proxy.NewAppConns(clientCreator)
+		proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 		err := proxyApp.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -1394,7 +1394,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	{
 		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
 		clientCreator := abciclient.NewLocalCreator(app)
-		proxyApp := proxy.NewAppConns(clientCreator)
+		proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 		err := proxyApp.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -1631,6 +1631,7 @@ func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain
 func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.chain[int64(len(bs.chain))-1]
 }
+func (bs *mockBlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta { return nil }
 func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
@@ -1710,7 +1711,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 		proTxHash,
 		cfg.Consensus.AppHashSize,
 	)
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
@@ -1747,7 +1748,7 @@ func TestHandshakeInitialCoreLockHeight(t *testing.T) {
 	app := &initChainApp{initialCoreHeight: InitialCoreHeight}
 	clientCreator := abciclient.NewLocalCreator(app)
 	require.NotNil(t, clientCreator)
-	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	require.NotNil(t, proxyApp)
 
 	pubKey, err := privVal.GetPubKey(context.TODO(), randQuorumHash)

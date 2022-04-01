@@ -23,6 +23,8 @@ func (env *Environment) GetRoutes() RoutesMap {
 		"blockchain":           rpc.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
 		"genesis":              rpc.NewRPCFunc(env.Genesis, "", true),
 		"genesis_chunked":      rpc.NewRPCFunc(env.GenesisChunked, "chunk", true),
+		"header":               rpc.NewRPCFunc(env.Header, "height", true),
+		"header_by_hash":       rpc.NewRPCFunc(env.HeaderByHash, "hash", true),
 		"block":                rpc.NewRPCFunc(env.Block, "height", true),
 		"block_by_hash":        rpc.NewRPCFunc(env.BlockByHash, "hash", true),
 		"block_results":        rpc.NewRPCFunc(env.BlockResults, "height", true),

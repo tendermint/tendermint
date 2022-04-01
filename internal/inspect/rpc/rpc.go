@@ -27,8 +27,6 @@ type Server struct {
 }
 
 // Routes returns the set of routes used by the Inspector server.
-//
-//nolint: lll
 func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink, logger log.Logger) core.RoutesMap {
 	env := &core.Environment{
 		Config:           cfg,

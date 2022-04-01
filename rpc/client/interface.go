@@ -78,6 +78,8 @@ type SignClient interface {
 	Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error)
 	BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error)
 	BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error)
+	Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error)
+	HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error)
 	Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error)
 	Validators(ctx context.Context, height *int64, page, perPage *int,
 		requestQuorumInfo *bool) (*coretypes.ResultValidators, error)
@@ -135,7 +137,7 @@ type EventsClient interface {
 	//
 	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
 	// or UnsubscribeAll.
-	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) //nolint:lll
+	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error)
 	// Unsubscribe unsubscribes given subscriber from query.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.

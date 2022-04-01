@@ -72,6 +72,8 @@ func (env *Environment) TxSearch(
 
 	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return nil, fmt.Errorf("transaction searching is disabled due to no kvEventSink")
+	} else if len(query) > maxQueryLength {
+		return nil, errors.New("maximum query length exceeded")
 	}
 
 	q, err := tmquery.New(query)

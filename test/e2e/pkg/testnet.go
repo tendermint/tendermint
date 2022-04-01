@@ -72,23 +72,25 @@ type ValidatorConfig struct {
 
 type ValidatorsMap map[*Node]ValidatorConfig
 type Testnet struct {
-	Name                      string
-	File                      string
-	Dir                       string
-	IP                        *net.IPNet
-	InitialHeight             int64
+	Name             string
+	File             string
+	Dir              string
+	IP               *net.IPNet
+	InitialHeight    int64
+	InitialState     map[string]string
+	Validators       ValidatorsMap
+	ValidatorUpdates map[int64]ValidatorsMap
+	Nodes            []*Node
+	KeyType          string
+	Evidence         int
+	LogLevel         string
+	TxSize           int
+	ABCIProtocol     string
+
+	// Tenderdash-specific fields
 	GenesisCoreHeight         uint32 // InitialCoreHeight is a core height put into genesis file
 	InitAppCoreHeight         uint32 // InitAppCoreHeight returned in InitApp response
-	InitialState              map[string]string
-	Validators                ValidatorsMap
-	ValidatorUpdates          map[int64]ValidatorsMap
 	ChainLockUpdates          map[int64]int64
-	Nodes                     []*Node
-	KeyType                   string
-	Evidence                  int
-	LogLevel                  string
-	TxSize                    int64
-	ABCIProtocol              string
 	ThresholdPublicKey        crypto.PubKey
 	ThresholdPublicKeyUpdates map[int64]crypto.PubKey
 	QuorumType                btcjson.LLMQType

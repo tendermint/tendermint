@@ -367,7 +367,7 @@ func main() {
 
  flag.Parse()
 
- logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+ logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
 
  server := abciserver.NewSocketServer(socketAddr, app)
  server.SetLogger(logger)

@@ -111,39 +111,39 @@ func TestBlockFuncs(t *testing.T) {
 		results []int64
 	}{
 		"block.height = 100": {
-			q:       query.MustParse("block.height = 100"),
+			q:       query.MustCompile(`block.height = 100`),
 			results: []int64{},
 		},
 		"block.height = 5": {
-			q:       query.MustParse("block.height = 5"),
+			q:       query.MustCompile(`block.height = 5`),
 			results: []int64{5},
 		},
 		"begin_event.key1 = 'value1'": {
-			q:       query.MustParse("begin_event.key1 = 'value1'"),
+			q:       query.MustCompile(`begin_event.key1 = 'value1'`),
 			results: []int64{},
 		},
 		"begin_event.proposer = 'FCAA001'": {
-			q:       query.MustParse("begin_event.proposer = 'FCAA001'"),
+			q:       query.MustCompile(`begin_event.proposer = 'FCAA001'`),
 			results: []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
 		},
 		"end_event.foo <= 5": {
-			q:       query.MustParse("end_event.foo <= 5"),
+			q:       query.MustCompile(`end_event.foo <= 5`),
 			results: []int64{2, 4},
 		},
 		"end_event.foo >= 100": {
-			q:       query.MustParse("end_event.foo >= 100"),
+			q:       query.MustCompile(`end_event.foo >= 100`),
 			results: []int64{1},
 		},
 		"block.height > 2 AND end_event.foo <= 8": {
-			q:       query.MustParse("block.height > 2 AND end_event.foo <= 8"),
+			q:       query.MustCompile(`block.height > 2 AND end_event.foo <= 8`),
 			results: []int64{4, 6, 8},
 		},
 		"begin_event.proposer CONTAINS 'FFFFFFF'": {
-			q:       query.MustParse("begin_event.proposer CONTAINS 'FFFFFFF'"),
+			q:       query.MustCompile(`begin_event.proposer CONTAINS 'FFFFFFF'`),
 			results: []int64{},
 		},
 		"begin_event.proposer CONTAINS 'FCAA001'": {
-			q:       query.MustParse("begin_event.proposer CONTAINS 'FCAA001'"),
+			q:       query.MustCompile(`begin_event.proposer CONTAINS 'FCAA001'`),
 			results: []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
 		},
 	}
@@ -175,7 +175,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	results, err := indexer.SearchTxEvents(ctx, query.MustParse("account.number = 1"))
+	results, err := indexer.SearchTxEvents(ctx, query.MustCompile(`account.number = 1`))
 	assert.NoError(t, err)
 	assert.Empty(t, results)
 }
@@ -249,7 +249,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.SearchTxEvents(ctx, query.MustParse(tc.q))
+			results, err := indexer.SearchTxEvents(ctx, query.MustCompile(tc.q))
 			require.NoError(t, err)
 			for _, txr := range results {
 				for _, tr := range tc.results {
@@ -273,7 +273,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 
 	ctx := context.Background()
 
-	results, err := indexer.SearchTxEvents(ctx, query.MustParse("account.number >= 1"))
+	results, err := indexer.SearchTxEvents(ctx, query.MustCompile(`account.number >= 1`))
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)
@@ -330,7 +330,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 
 	ctx := context.Background()
 
-	results, err := indexer.SearchTxEvents(ctx, query.MustParse("account.number >= 1"))
+	results, err := indexer.SearchTxEvents(ctx, query.MustCompile(`account.number >= 1`))
 	assert.NoError(t, err)
 
 	require.Len(t, results, 3)

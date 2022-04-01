@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
@@ -85,7 +86,7 @@ func Load(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet) error {
 // generation is primarily the result of backpressure from the
 // broadcast transaction, though there is still some timer-based
 // limiting.
-func loadGenerate(ctx context.Context, r *rand.Rand, chTx chan<- types.Tx, txSize int64, networkSize int) {
+func loadGenerate(ctx context.Context, r *rand.Rand, chTx chan<- types.Tx, txSize int, networkSize int) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	defer close(chTx)
@@ -97,16 +98,11 @@ func loadGenerate(ctx context.Context, r *rand.Rand, chTx chan<- types.Tx, txSiz
 		case <-timer.C:
 		}
 
-		// We keep generating the same 100 keys over and over, with different values.
-		// This gives a reasonable load without putting too much data in the app.
-		id := rand.Int63() % 100 // nolint: gosec
+		// Constrain the key space to avoid using too much
+		// space, while reduce the size of the data in the app.
+		id := r.Int63n(100)
 
-		bz := make([]byte, txSize)
-		_, err := r.Read(bz)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
-		}
-		tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
+		tx := types.Tx(fmt.Sprintf("load-%X=%s", id, tmrand.StrFromSource(r, txSize)))
 
 		select {
 		case <-ctx.Done():

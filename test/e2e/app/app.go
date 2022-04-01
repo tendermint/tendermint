@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/types"
@@ -95,7 +97,7 @@ func DefaultConfig(dir string) *Config {
 
 // NewApplication creates the application.
 func NewApplication(cfg *Config) (*Application, error) {
-	state, err := NewState(filepath.Join(cfg.Dir, "state.json"), cfg.PersistInterval)
+	state, err := NewState(cfg.Dir, cfg.PersistInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +115,9 @@ func NewApplication(cfg *Config) (*Application, error) {
 
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
+	app.state.RLock()
+	defer app.state.RUnlock()
+
 	return abci.ResponseInfo{
 		Version:          version.ABCIVersion,
 		AppVersion:       1,
@@ -289,6 +294,10 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
 }
 
+func (app *Application) Rollback() error {
+	return app.state.Rollback()
+}
+
 // validatorSetUpdates generates a validator set update.
 func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUpdate, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
@@ -336,6 +345,14 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 
 		valUpdates = append(valUpdates, validator)
 	}
+
+	// the validator updates could be returned in arbitrary order,
+	// and that seems potentially bad. This orders the validator
+	// set.
+	sort.Slice(valUpdates, func(i, j int) bool {
+		return valUpdates[i].PubKey.Compare(valUpdates[j].PubKey) < 0
+	})
+
 	valSetUpdates.ValidatorUpdates = valUpdates
 	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
 	valSetUpdates.QuorumHash = quorumHashUpdate
@@ -375,6 +392,7 @@ func (app *Application) chainLockUpdate(height uint64) (*types1.CoreChainLock, e
 	}
 	chainLock := types.NewMockChainLock(uint32(chainlockUpdateHeight))
 	return chainLock.ToProto(), nil
+
 }
 
 // parseTx parses a tx in 'key=value' format into a key and value.

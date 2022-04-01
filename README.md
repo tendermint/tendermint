@@ -37,8 +37,7 @@ contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https
 
 ## Security
 
-To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint).
+To report a security vulnerability, see our [bug bounty program](https://hackerone.com/cosmos).
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
@@ -64,8 +63,8 @@ See the [install instructions](/docs/introduction/install.md).
 ### Quick Start
 
 - [Single node](/docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](/docs/networks/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](/docs/networks/terraform-and-ansible.md)
+- [Local cluster using docker-compose](/docs/tools/docker-compose.md)
+- [Remote cluster using Terraform and Ansible](/docs/tools/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
 ## Contributing
@@ -100,7 +99,6 @@ will work with existing Tendermint blockchains. In these cases you will
 have to start a new blockchain, or write something custom to get the old
 data into the new chain. However, any bump in the PATCH version should be
 compatible with existing blockchain histories.
-
 
 For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
 
@@ -140,7 +138,7 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 - [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
 - [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
 
-## Join us!
+## Join us
 
 Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
 If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!

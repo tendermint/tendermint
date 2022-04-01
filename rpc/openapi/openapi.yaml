@@ -296,28 +296,28 @@ paths:
           Events: []abci.Event{
               {
                   Type: "rewards.withdraw",
-                  Attributes: abci.EventAttribute{
-                      {Key: []byte("address"), Value: []byte("AddrA"), Index: true},
-                      {Key: []byte("source"), Value: []byte("SrcX"), Index: true},
-                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
-                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
+                  Attributes: []abci.EventAttribute{
+                      {Key: "address", Value: "AddrA", Index: true},
+                      {Key: "source", Value: "SrcX", Index: true},
+                      {Key: "amount", Value: "...", Index: true},
+                      {Key: "balance", Value: "...", Index: true},
                   },
               },
               {
                   Type: "rewards.withdraw",
-                  Attributes: abci.EventAttribute{
-                      {Key: []byte("address"), Value: []byte("AddrB"), Index: true},
-                      {Key: []byte("source"), Value: []byte("SrcY"), Index: true},
-                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
-                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
+                  Attributes: []abci.EventAttribute{
+                      {Key: "address", Value: "AddrB", Index: true},
+                      {Key: "source", Value: "SrcY", Index: true},
+                      {Key: "amount", Value: "...", Index: true},
+                      {Key: "balance", Value: "...", Index: true},
                   },
               },
               {
                   Type: "transfer",
-                  Attributes: abci.EventAttribute{
-                      {Key: []byte("sender"), Value: []byte("AddrC"), Index: true},
-                      {Key: []byte("recipient"), Value: []byte("AddrD"), Index: true},
-                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
+                  Attributes: []abci.EventAttribute{
+                      {Key: "sender", Value: "AddrC", Index: true},
+                      {Key: "recipient", Value: "AddrD", Index: true},
+                      {Key: "amount", Value: "...", Index: true},
                   },
               },
           },
@@ -365,10 +365,14 @@ paths:
         import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := rpchttp.New("tcp://0.0.0.0:26657")
-        err := client.Start()
+        client, err := rpchttp.New("tcp://0.0.0.0:26657", "/websocket")
         if err != nil {
-          handle error
+          // handle error
+        }
+
+        err = client.Start()
+        if err != nil {
+          // handle error
         }
         defer client.Stop()
         ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
@@ -376,7 +380,7 @@ paths:
         query := "tm.event = 'Tx' AND tx.height = 3"
         txs, err := client.Subscribe(ctx, "test-client", query)
         if err != nil {
-          handle error
+          // handle error
         }
 
         go func() {
@@ -422,16 +426,20 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := rpchttp.New("tcp://0.0.0.0:26657")
+        client, err := rpchttp.New("tcp://0.0.0.0:26657", "/websocket")
+        if err != nil {
+          // handle error
+        }
+
         err := client.Start()
         if err != nil {
-           handle error
+          // handle error
         }
         defer client.Stop()
         query := "tm.event = 'Tx' AND tx.height = 3"
         err = client.Unsubscribe(context.Background(), "test-client", query)
         if err != nil {
-           handle error
+          // handle error
         }
         ```
       parameters:
@@ -525,7 +533,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /net_info:
     get:
-      summary: Network informations
+      summary: Network information
       operationId: net_info
       tags:
         - Info
@@ -693,6 +701,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /header:
+    get:
+      summary: Get the header at a specified height
+      operationId: header
+      parameters:
+        - in: query
+          name: height
+          schema:
+            type: integer
+            default: 0
+            example: 1
+          description: height to return. If no height is provided, it will fetch the latest height.
+      tags:
+        - Info
+      description: |
+        Retrieve the block header corresponding to a specified height.
+      responses:
+        "200":
+          description: Header information.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeaderResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /header_by_hash:
+    get:
+      summary: Get header by hash
+      operationId: header_by_hash
+      parameters:
+        - in: query
+          name: hash
+          description: header hash
+          required: true
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+      tags:
+        - Info
+      description: |
+        Retrieve the block header corresponding to a block hash.
+      responses:
+        "200":
+          description: Header information.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeaderResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /block:
     get:
       summary: Get block at a specified height
@@ -711,7 +777,7 @@ paths:
         Get Block.
       responses:
         "200":
-          description: Block informations.
+          description: Block information.
           content:
             application/json:
               schema:
@@ -740,7 +806,7 @@ paths:
         Get Block By Hash.
       responses:
         "200":
-          description: Block informations.
+          description: Block information.
           content:
             application/json:
               schema:
@@ -758,7 +824,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -787,7 +853,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch commit information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -968,7 +1034,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch commit information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -1703,13 +1769,21 @@ components:
         block:
           $ref: "#/components/schemas/Block"
     BlockResponse:
-      description: Blockc info
+      description: Block info
       allOf:
         - $ref: "#/components/schemas/JSONRPC"
         - type: object
           properties:
             result:
               $ref: "#/components/schemas/BlockComplete"
+    HeaderResponse:
+      description: Block Header info
+      allOf:
+        - $ref: "#/components/schemas/JSONRPC"
+        - type: object
+          properties:
+            result:
+              $ref: "#/components/schemas/BlockHeader"
 
     ################## FROM NOW ON NEEDS REFACTOR ##################
     BlockResultsResponse:

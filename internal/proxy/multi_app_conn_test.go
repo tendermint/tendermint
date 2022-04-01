@@ -31,7 +31,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 		return clientMock, nil
 	}
 
-	appConns := NewAppConns(creator)
+	appConns := NewAppConns(creator, NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestAppConns_Failure(t *testing.T) {
 		return clientMock, nil
 	}
 
-	appConns := NewAppConns(creator)
+	appConns := NewAppConns(creator, NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)

@@ -145,7 +145,7 @@ func (c Client) DialPeers(
 	return c.env.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent, unconditional, private)
 }
 
-func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
+func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	return c.env.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
 }
 

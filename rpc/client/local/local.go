@@ -154,7 +154,7 @@ func (c *Local) DialPeers(
 	return c.env.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
 }
 
-func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) { //nolint:lll
+func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	return c.env.BlockchainInfo(c.ctx, minHeight, maxHeight)
 }
 
@@ -178,11 +178,19 @@ func (c *Local) BlockResults(ctx context.Context, height *int64) (*coretypes.Res
 	return c.env.BlockResults(c.ctx, height)
 }
 
+func (c *Local) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
+	return c.env.Header(c.ctx, height)
+}
+
+func (c *Local) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
+	return c.env.HeaderByHash(c.ctx, hash)
+}
+
 func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	return c.env.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error) { //nolint:lll
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error) {
 	return c.env.Validators(c.ctx, height, page, perPage, requestQuorumInfo)
 }
 

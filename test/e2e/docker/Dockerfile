@@ -1,7 +1,7 @@
 # We need to build in a Linux environment to support C libraries, e.g. RocksDB.
 # We use Debian instead of Alpine, so that we can use binary database packages
 # instead of spending time compiling them.
-FROM golang:1.16
+FROM golang:1.18-bullseye
 
 RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
 RUN apt-get -qq install -y cmake sudo libgmp-dev libleveldb-dev librocksdb-dev >/dev/null
@@ -11,7 +11,7 @@ WORKDIR /src/tenderdash
 
 # Install DLV debugger
 ENV DEBUG ""
-RUN go get github.com/go-delve/delve/cmd/dlv
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Fetch dependencies separately (for layer caching)
 COPY go.mod go.sum ./
