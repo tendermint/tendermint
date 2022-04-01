@@ -278,7 +278,7 @@ func createConsensusReactor(
 		logger,
 		consensusState,
 		chCreator,
-		peerManager.Subscribe(ctx),
+		peerManager.Subscribe,
 		eventBus,
 		waitSync,
 		csMetrics,

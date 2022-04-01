@@ -108,7 +108,7 @@ func setup(
 			state.logger.With("node", nodeID),
 			state,
 			chCreator(nodeID),
-			node.MakePeerUpdates(ctx, t),
+			func(ctx context.Context) *p2p.PeerUpdates { return node.MakePeerUpdates(ctx, t) },
 			state.eventBus,
 			true,
 			NopMetrics(),

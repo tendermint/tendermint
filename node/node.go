@@ -293,10 +293,11 @@ func makeNode(
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
 	blockSync := !onlyValidatorIsUs(state, pubKey)
+	waitSync := stateSync || blockSync
 
 	csReactor, csState, err := createConsensusReactor(ctx,
 		cfg, stateStore, blockExec, blockStore, mp, evPool,
-		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
+		privValidator, nodeMetrics.consensus, waitSync, eventBus,
 		peerManager, router.OpenChannel, logger,
 	)
 	if err != nil {
