@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.16
+## v0.34.18
 
 Special thanks to external contributors on this release:
 
@@ -9,8 +9,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
-
-   - [cli] \#8081 make the reset command safe to use (@marbar3778).
 
 - Apps
 
