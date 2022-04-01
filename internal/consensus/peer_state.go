@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -44,8 +43,7 @@ type PeerState struct {
 	// ProTxHash is accessible only for the validator
 	ProTxHash types.ProTxHash
 
-	broadcastWG sync.WaitGroup
-	closer      *tmsync.Closer
+	closer *tmsync.Closer
 }
 
 // NewPeerState returns a new PeerState for the given node ID.

@@ -40,8 +40,6 @@ const (
 
 	// 10s is sufficient for most networks.
 	defaultMaxBlockLag = 10 * time.Second
-
-	defaultProviderTimeout = 10 * time.Second
 )
 
 // Option sets a parameter for the light client.
@@ -86,12 +84,6 @@ func MaxBlockLag(d time.Duration) Option {
 	return func(c *Client) { c.maxBlockLag = d }
 }
 
-// Provider timeout is the maximum time that the light client will wait for a
-// provider to respond with a light block.
-func ProviderTimeout(d time.Duration) Option {
-	return func(c *Client) { c.providerTimeout = d }
-}
-
 // Client represents a light client, connected to a single chain, which gets
 // light blocks from a primary provider, verifies them either sequentially or by
 // skipping some and stores them in a trusted store (usually, a local FS).
@@ -103,7 +95,6 @@ type Client struct {
 	maxRetryAttempts uint16 // see MaxRetryAttempts option
 	maxClockDrift    time.Duration
 	maxBlockLag      time.Duration
-	providerTimeout  time.Duration
 
 	// Mutex for locking during changes of the light clients providers
 	providerMutex tmsync.Mutex
@@ -199,7 +190,6 @@ func NewClientFromTrustedStore(
 		pruningSize:       defaultPruningSize,
 		logger:            log.NewNopLogger(),
 		dashCoreRPCClient: dashCoreRPCClient,
-		providerTimeout:   defaultProviderTimeout,
 	}
 
 	for _, o := range options {
@@ -710,11 +700,8 @@ func (c *Client) lightBlockFromPrimaryAtHeight(ctx context.Context, height int64
 }
 
 func (c *Client) getLightBlock(ctx context.Context, p provider.Provider, height int64) (*types.LightBlock, error) {
-	subCtx, cancel := context.WithTimeout(ctx, c.providerTimeout)
-	defer cancel()
-	l, err := p.LightBlock(subCtx, height)
-
-	if err == context.DeadlineExceeded || ctx.Err() != nil {
+	l, err := p.LightBlock(ctx, height)
+	if ctx.Err() != nil {
 		return nil, provider.ErrNoResponse
 	}
 	return l, err
@@ -763,16 +750,19 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		wg                sync.WaitGroup
 	)
 
-	// send out a light block request to all witnesses
-	subctx, cancel := context.WithTimeout(ctx, c.providerTimeout)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	// send out a light block request to all witnesses
 	for index := range c.witnesses {
 		wg.Add(1)
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
 			defer wg.Done()
 
-			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
-			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
+			lb, err := c.witnesses[witnessIndex].LightBlock(ctx, height)
+			select {
+			case witnessResponsesC <- witnessResponse{lb, witnessIndex, err}:
+			case <-ctx.Done():
+			}
 		}(index, witnessResponsesC)
 	}
 

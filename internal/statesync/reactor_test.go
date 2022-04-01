@@ -197,6 +197,7 @@ func setup(
 
 	t.Cleanup(func() {
 		require.NoError(t, rts.reactor.Stop())
+		rts.reactor.Wait()
 		require.False(t, rts.reactor.IsRunning())
 	})
 
@@ -522,6 +523,8 @@ func TestReactor_BlockProviders(t *testing.T) {
 }
 
 func TestReactor_StateProviderP2P(t *testing.T) {
+	t.Cleanup(leaktest.CheckTimeout(t, 1*time.Minute))
+
 	rts := setup(t, nil, nil, nil, 2)
 	// make syncer non nil else test won't think we are state syncing
 	rts.reactor.syncer = rts.syncer
