@@ -169,14 +169,14 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolReactor(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	appClient abciclient.Client,
 	store sm.Store,
 	memplMetrics *mempool.Metrics,
-	peerManager *p2p.PeerManager,
+	pes p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
-	logger log.Logger,
+	getPeerHeight mempool.PeerHeightFetcher,
 ) (service.Service, mempool.Mempool, error) {
 	logger = logger.With("module", "mempool")
 
@@ -189,18 +189,14 @@ func createMempoolReactor(
 		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
 	)
 
-	reactor, err := mempool.NewReactor(
-		ctx,
+	reactor := mempool.NewReactor(
 		logger,
 		cfg.Mempool,
-		peerManager,
 		mp,
 		chCreator,
-		peerManager.Subscribe(ctx),
+		pes,
+		getPeerHeight,
 	)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if cfg.Consensus.WaitForTxs() {
 		mp.EnableTxsAvailable()

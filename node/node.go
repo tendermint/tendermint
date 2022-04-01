@@ -265,9 +265,8 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	mpReactor, mp, err := createMempoolReactor(ctx,
-		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router.OpenChannel, logger,
-	)
+	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
+		peerManager.Subscribe, router.OpenChannel, peerManager.GetHeight)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
