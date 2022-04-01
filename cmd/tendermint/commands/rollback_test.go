@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
@@ -46,12 +47,14 @@ func TestRollbackIntegration(t *testing.T) {
 		require.NoError(t, app.Rollback())
 		height, _, err = commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height)
+		require.Equal(t, height, app.Info(types.RequestInfo{}).LastBlockHeight)
 	})
 	t.Run("Rollback for appHash mismatch case", func(t *testing.T) {
 		require.NoError(t, app.Rollback())
 		height2, _, err := commands.RollbackState(cfg)
 		require.NoError(t, err, "%d", height2)
 		require.Equal(t, height-1, height2)
+		require.Equal(t, height2, app.Info(types.RequestInfo{}).LastBlockHeight)
 
 		// reset the pval state for the pval can vote the new block height
 		pval, err := privval.LoadOrGenFilePV(cfg.PrivValidator.KeyFile(), cfg.PrivValidator.StateFile())
