@@ -257,8 +257,7 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(ctx, logger, nodeMetrics.p2p, nodeInfo, nodeKey,
-		peerManager, cfg, proxyApp)
+	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey, peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),

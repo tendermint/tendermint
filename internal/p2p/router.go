@@ -177,7 +177,6 @@ type Router struct {
 // listening on appropriate interfaces, and will be closed by the Router when it
 // stops.
 func NewRouter(
-	ctx context.Context,
 	logger log.Logger,
 	metrics *Metrics,
 	nodeInfo types.NodeInfo,
@@ -214,13 +213,6 @@ func NewRouter(
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
-
-	qf, err := router.createQueueFactory(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	router.queueFactory = qf
 
 	for _, transport := range transports {
 		for _, protocol := range transport.Protocols() {
@@ -940,8 +932,22 @@ func (r *Router) NodeInfo() types.NodeInfo {
 	return r.nodeInfo.Copy()
 }
 
+func (r *Router) setupQueueFactory(ctx context.Context) error {
+	qf, err := r.createQueueFactory(ctx)
+	if err != nil {
+		return err
+	}
+
+	r.queueFactory = qf
+	return nil
+}
+
 // OnStart implements service.Service.
 func (r *Router) OnStart(ctx context.Context) error {
+	if err := r.setupQueueFactory(ctx); err != nil {
+		return err
+	}
+
 	for _, transport := range r.transports {
 		for _, endpoint := range r.endpoints {
 			if err := transport.Listen(endpoint); err != nil {

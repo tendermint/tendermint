@@ -361,7 +361,6 @@ func createPeerManager(
 }
 
 func createRouter(
-	ctx context.Context,
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
 	nodeInfo types.NodeInfo,
@@ -391,7 +390,6 @@ func createRouter(
 	}
 
 	return p2p.NewRouter(
-		ctx,
 		p2pLogger,
 		p2pMetrics,
 		nodeInfo,
