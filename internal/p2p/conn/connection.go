@@ -9,6 +9,7 @@ import (
 	"net"
 	"reflect"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -45,7 +46,7 @@ const (
 	defaultRecvRate            = int64(512000) // 500KB/s
 	defaultSendTimeout         = 10 * time.Second
 	defaultPingInterval        = 60 * time.Second
-	defaultPongTimeout         = 45 * time.Second
+	defaultPongTimeout         = 90 * time.Second
 )
 
 type receiveCbFunc func(chID byte, msgBytes []byte)
@@ -109,8 +110,10 @@ type MConnection struct {
 	pingTimer  *time.Ticker         // send pings periodically
 
 	// close conn if pong is not received in pongTimeout
-	pongTimer     *time.Timer
-	pongTimeoutCh chan bool // true - timeout, false - peer sent pong
+	lastMsgRecv struct {
+		sync.Mutex
+		at time.Time
+	}
 
 	chStatsTimer *time.Ticker // update channel stats periodically
 
@@ -172,10 +175,6 @@ func NewMConnectionWithConfig(
 	onError errorCbFunc,
 	config MConnConfig,
 ) *MConnection {
-	if config.PongTimeout >= config.PingInterval {
-		panic("pongTimeout must be less than pingInterval (otherwise, next ping will reset pong timer)")
-	}
-
 	mconn := &MConnection{
 		conn:          conn,
 		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
@@ -224,14 +223,26 @@ func (c *MConnection) OnStart() error {
 	}
 	c.flushTimer = timer.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = time.NewTicker(c.config.PingInterval)
-	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTimer = time.NewTicker(updateStats)
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
 	c.quitRecvRoutine = make(chan struct{})
+	c.setRecvLastMsgAt(time.Now())
 	go c.sendRoutine()
 	go c.recvRoutine()
 	return nil
+}
+
+func (c *MConnection) setRecvLastMsgAt(t time.Time) {
+	c.lastMsgRecv.Lock()
+	defer c.lastMsgRecv.Unlock()
+	c.lastMsgRecv.at = t
+}
+
+func (c *MConnection) getLastMessageAt() time.Time {
+	c.lastMsgRecv.Lock()
+	defer c.lastMsgRecv.Unlock()
+	return c.lastMsgRecv.at
 }
 
 // stopServices stops the BaseService and timers and closes the quitSendRoutine.
@@ -426,6 +437,8 @@ func (c *MConnection) sendRoutine() {
 	defer c._recover()
 	protoWriter := protoio.NewDelimitedWriter(c.bufConnWriter)
 
+	pongTimeout := time.NewTicker(c.config.PongTimeout)
+	defer pongTimeout.Stop()
 FOR_LOOP:
 	for {
 		var _n int
@@ -448,21 +461,7 @@ FOR_LOOP:
 				break SELECTION
 			}
 			c.sendMonitor.Update(_n)
-			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
-			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
-				select {
-				case c.pongTimeoutCh <- true:
-				default:
-				}
-			})
 			c.flush()
-		case timeout := <-c.pongTimeoutCh:
-			if timeout {
-				c.Logger.Debug("Pong timeout")
-				err = errors.New("pong timeout")
-			} else {
-				c.stopPongTimer()
-			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
 			_n, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPong{}))
@@ -474,6 +473,14 @@ FOR_LOOP:
 			c.flush()
 		case <-c.quitSendRoutine:
 			break FOR_LOOP
+		case <-pongTimeout.C:
+			// the point of the pong timer is to check to
+			// see if we've seen a message recently, so we
+			// want to make sure that we escape this
+			// select statement on an interval to ensure
+			// that we avoid hanging on to dead
+			// connections for too long.
+			break SELECTION
 		case <-c.send:
 			// Send some PacketMsgs
 			eof := c.sendSomePacketMsgs()
@@ -486,18 +493,21 @@ FOR_LOOP:
 			}
 		}
 
-		if !c.IsRunning() {
-			break FOR_LOOP
+		if time.Since(c.getLastMessageAt()) > c.config.PongTimeout {
+			err = errors.New("pong timeout")
 		}
+
 		if err != nil {
 			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
+		if !c.IsRunning() {
+			break FOR_LOOP
+		}
 	}
 
 	// Cleanup
-	c.stopPongTimer()
 	close(c.doneSendRoutine)
 }
 
@@ -566,6 +576,14 @@ func (c *MConnection) recvRoutine() {
 
 FOR_LOOP:
 	for {
+		select {
+		case <-c.quitRecvRoutine:
+			break FOR_LOOP
+		case <-c.doneSendRoutine:
+			break FOR_LOOP
+		default:
+		}
+
 		// Block until .recvMonitor says we can read.
 		c.recvMonitor.Limit(c._maxPacketMsgSize, atomic.LoadInt64(&c.config.RecvRate), true)
 
@@ -608,6 +626,9 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 
+		// record for pong/heartbeat
+		c.setRecvLastMsgAt(time.Now())
+
 		// Read more depending on packet type.
 		switch pkt := packet.Sum.(type) {
 		case *tmp2p.Packet_PacketPing:
@@ -620,12 +641,9 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketPong:
-			c.Logger.Debug("Receive Pong")
-			select {
-			case c.pongTimeoutCh <- false:
-			default:
-				// never block
-			}
+			// do nothing, we updated the "last message
+			// received" timestamp above, so we can ignore
+			// this message
 		case *tmp2p.Packet_PacketMsg:
 			channelID := byte(pkt.PacketMsg.ChannelID)
 			channel, ok := c.channelsIdx[channelID]
@@ -661,14 +679,6 @@ FOR_LOOP:
 	close(c.pong)
 	for range c.pong {
 		// Drain
-	}
-}
-
-// not goroutine-safe
-func (c *MConnection) stopPongTimer() {
-	if c.pongTimer != nil {
-		_ = c.pongTimer.Stop()
-		c.pongTimer = nil
 	}
 }
 
