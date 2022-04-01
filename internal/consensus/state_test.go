@@ -2215,7 +2215,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	addr := pv1.Address()
 	voteCh := subscribeToVoter(ctx, t, cs1, addr)
 
-	// ensure that the height is commited.
+	// ensure that the height is committed.
 	ensurePrecommit(t, voteCh, height, round)
 	validatePrecommit(ctx, t, cs1, round, round, vss[0], blockID.Hash, blockID.Hash)
 	incrementHeight(vss[1:]...)
