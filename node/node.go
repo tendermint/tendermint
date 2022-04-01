@@ -244,7 +244,7 @@ func makeNode(
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
+	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state.Version.Consensus)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -266,15 +266,14 @@ func makeNode(
 	}
 
 	mpReactor, mp, err := createMempoolReactor(ctx,
-		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
+		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router.OpenChannel, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	evReactor, evPool, edbCloser, err := createEvidenceReactor(ctx,
-		cfg, dbProvider, stateStore, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
-	)
+	evReactor, evPool, edbCloser, err := createEvidenceReactor(logger, cfg, dbProvider,
+		stateStore, blockStore, peerManager.Subscribe, router.OpenChannel, nodeMetrics.evidence, eventBus)
 	closers = append(closers, edbCloser)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -299,7 +298,7 @@ func makeNode(
 	csReactor, csState, err := createConsensusReactor(ctx,
 		cfg, stateStore, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
-		peerManager, router, logger,
+		peerManager, router.OpenChannel, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))

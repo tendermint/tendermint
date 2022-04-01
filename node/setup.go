@@ -175,7 +175,7 @@ func createMempoolReactor(
 	store sm.Store,
 	memplMetrics *mempool.Metrics,
 	peerManager *p2p.PeerManager,
-	router *p2p.Router,
+	chCreator p2p.ChannelCreator,
 	logger log.Logger,
 ) (service.Service, mempool.Mempool, error) {
 	logger = logger.With("module", "mempool")
@@ -195,7 +195,7 @@ func createMempoolReactor(
 		cfg.Mempool,
 		peerManager,
 		mp,
-		router.OpenChannel,
+		chCreator,
 		peerManager.Subscribe(ctx),
 	)
 	if err != nil {
@@ -210,14 +210,13 @@ func createMempoolReactor(
 }
 
 func createEvidenceReactor(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	store sm.Store,
 	blockStore *store.BlockStore,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	logger log.Logger,
+	pes p2p.PeerEventSubscriber,
+	chCreator p2p.ChannelCreator,
 	metrics *evidence.Metrics,
 	eventBus *eventbus.EventBus,
 ) (*evidence.Reactor, *evidence.Pool, closer, error) {
@@ -231,16 +230,12 @@ func createEvidenceReactor(
 
 	evidencePool := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics, eventBus)
 
-	evidenceReactor, err := evidence.NewReactor(
-		ctx,
+	evidenceReactor := evidence.NewReactor(
 		logger,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		chCreator,
+		pes,
 		evidencePool,
 	)
-	if err != nil {
-		return nil, nil, dbCloser, fmt.Errorf("creating evidence reactor: %w", err)
-	}
 
 	return evidenceReactor, evidencePool, dbCloser, nil
 }
@@ -258,7 +253,7 @@ func createConsensusReactor(
 	waitSync bool,
 	eventBus *eventbus.EventBus,
 	peerManager *p2p.PeerManager,
-	router *p2p.Router,
+	chCreator p2p.ChannelCreator,
 	logger log.Logger,
 ) (*consensus.Reactor, *consensus.State, error) {
 	logger = logger.With("module", "consensus")
@@ -286,7 +281,7 @@ func createConsensusReactor(
 		ctx,
 		logger,
 		consensusState,
-		router.OpenChannel,
+		chCreator,
 		peerManager.Subscribe(ctx),
 		eventBus,
 		waitSync,
@@ -422,7 +417,7 @@ func makeNodeInfo(
 	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
-	state sm.State,
+	versionInfo version.Consensus,
 ) (types.NodeInfo, error) {
 
 	txIndexerStatus := "off"
@@ -434,8 +429,8 @@ func makeNodeInfo(
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{
 			P2P:   version.P2PProtocol, // global
-			Block: state.Version.Consensus.Block,
-			App:   state.Version.Consensus.App,
+			Block: versionInfo.Block,
+			App:   versionInfo.App,
 		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
