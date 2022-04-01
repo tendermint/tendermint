@@ -64,6 +64,25 @@ func TestValidateTxRecordSet(t *testing.T) {
 		err := txrSet.Validate(9, []Tx{})
 		require.Error(t, err)
 	})
+	t.Run("should not error on removed transaction size exceeding max data size", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{6, 7, 8, 9}),
+			},
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     Tx([]byte{10}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(9, []Tx{[]byte{10}})
+		require.NoError(t, err)
+	})
 	t.Run("should error on duplicate transactions with the same action", func(t *testing.T) {
 		trs := []*abci.TxRecord{
 			{
