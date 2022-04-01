@@ -107,8 +107,7 @@ func NewReactor(
 	peerManager *p2p.PeerManager,
 	channelCreator p2p.ChannelCreator,
 	pes p2p.PeerEventSubscriber,
-) (*Reactor, error) {
-
+) *Reactor {
 	r := &Reactor{
 		logger:               logger,
 		peerManager:          peerManager,
@@ -120,7 +119,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "PEX", r)
-	return r, nil
+	return r
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
