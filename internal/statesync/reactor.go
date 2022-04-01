@@ -75,13 +75,13 @@ const (
 func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 	return map[p2p.ChannelID]*p2p.ChannelDescriptor{
 		SnapshotChannel: {
-
 			ID:                  SnapshotChannel,
 			MessageType:         new(ssproto.Message),
 			Priority:            6,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: snapshotMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "snapshot",
 		},
 		ChunkChannel: {
 			ID:                  ChunkChannel,
@@ -90,6 +90,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   4,
 			RecvMessageCapacity: chunkMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "chunk",
 		},
 		LightBlockChannel: {
 			ID:                  LightBlockChannel,
@@ -98,6 +99,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: lightBlockMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "light-block",
 		},
 		ParamsChannel: {
 			ID:                  ParamsChannel,
@@ -106,6 +108,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: paramMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "params",
 		},
 	}
 
@@ -233,10 +236,7 @@ func NewReactor(
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
 func (r *Reactor) OnStart(ctx context.Context) error {
-	go r.processCh(ctx, r.snapshotCh, "snapshot")
-	go r.processCh(ctx, r.chunkCh, "chunk")
-	go r.processCh(ctx, r.blockCh, "light block")
-	go r.processCh(ctx, r.paramsCh, "consensus params")
+	go r.processChs(ctx, r.snapshotCh, r.chunkCh, r.blockCh, r.paramsCh)
 	go r.processPeerUpdates(ctx)
 
 	return nil
@@ -797,7 +797,7 @@ func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelop
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -811,7 +811,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 
 	r.logger.Debug("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
 
-	switch chID {
+	switch envelope.ChannelID {
 	case SnapshotChannel:
 		err = r.handleSnapshotMessage(ctx, envelope)
 	case ChunkChannel:
@@ -821,7 +821,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 	case ParamsChannel:
 		err = r.handleParamsMessage(ctx, envelope)
 	default:
-		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", envelope.ChannelID, envelope)
 	}
 
 	return err
@@ -831,22 +831,32 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
-func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string) {
-	iter := ch.Receive(ctx)
+func (r *Reactor) processChs(ctx context.Context, chs ...*p2p.Channel) {
+	// make sure that the iterator get cleaned up correctly in the
+	// case of an error
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	iter := p2p.MergedChannelIterator(ctx, chs...)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(ctx, ch.ID, envelope); err != nil {
+		if err := r.handleMessage(ctx, envelope); err != nil {
 			r.logger.Error("failed to process message",
 				"err", err,
-				"channel", chName,
-				"ch_id", ch.ID,
+				"ch_id", envelope.ChannelID,
 				"envelope", envelope)
-			if serr := ch.SendError(ctx, p2p.PeerError{
-				NodeID: envelope.From,
-				Err:    err,
-			}); serr != nil {
-				return
+
+			for _, ch := range chs {
+				if ch.ID == envelope.ChannelID {
+					if serr := ch.SendError(ctx, p2p.PeerError{
+						NodeID: envelope.From,
+						Err:    err,
+					}); serr != nil {
+						return
+					}
+				}
 			}
+			return
 		}
 	}
 }
