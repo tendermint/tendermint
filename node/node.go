@@ -305,23 +305,18 @@ func makeNode(
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactor, err := blocksync.NewReactor(ctx,
+	bcReactor := blocksync.NewReactor(
 		logger.With("module", "blockchain"),
 		stateStore,
 		blockExec,
 		blockStore,
 		csReactor,
 		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		peerManager.Subscribe,
 		blockSync && !stateSync,
 		nodeMetrics.consensus,
 		eventBus,
 	)
-	if err != nil {
-		return nil, combineCloseError(
-			fmt.Errorf("could not create blocksync reactor: %w", err),
-			makeCloser(closers))
-	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
