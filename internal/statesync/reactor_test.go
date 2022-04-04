@@ -163,7 +163,7 @@ func setup(
 		logger.With("component", "reactor"),
 		conn,
 		chCreator,
-		rts.peerUpdates,
+		func(_ context.Context) *p2p.PeerUpdates { return rts.peerUpdates },
 		rts.stateStore,
 		rts.blockStore,
 		"",
