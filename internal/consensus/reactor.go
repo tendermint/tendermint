@@ -1353,7 +1353,7 @@ func (r *Reactor) proceesChans(ctx context.Context, chans map[p2p.ChannelID]*p2p
 					return
 				}
 			} else {
-				r.logger.Error("recieved invalid channel",
+				r.logger.Error("received on invalid channel",
 					"err", err,
 					"chan_id", envelope.ChannelID)
 			}

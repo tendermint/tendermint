@@ -282,7 +282,7 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 
-	reactor, err := consensus.NewReactor(
+	reactor := consensus.NewReactor(
 		ctx,
 		logger,
 		consensusState,
@@ -292,9 +292,6 @@ func createConsensusReactor(
 		waitSync,
 		csMetrics,
 	)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	return reactor, consensusState, nil
 }
