@@ -306,9 +306,12 @@ func execBlockOnProxyApp(
 
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
-		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
+		Height:              pbh.Height,
+		Time:                pbh.Time,
+		NextValidatorsHash:  pbh.NextValidatorsHash,
+		ProposerAddress:     pbh.ProposerAddress,
 	})
 	if err != nil {
 		logger.Error("error in proxyAppConn.BeginBlock", "err", err)
