@@ -756,7 +756,8 @@ func handleLightBlockRequests(
 						require.NoError(t, err)
 						select {
 						case sending <- p2p.Envelope{
-							From: envelope.To,
+							From:      envelope.To,
+							ChannelID: LightBlockChannel,
 							Message: &ssproto.LightBlockResponse{
 								LightBlock: differntLB,
 							},
