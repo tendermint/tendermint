@@ -152,13 +152,13 @@ type Reactor struct {
 	// These will only be set when a state sync is in progress. It is used to feed
 	// received snapshots and chunks into the syncer and manage incoming and outgoing
 	// providers.
-	mtx                 sync.RWMutex
-	initSyncer          func() *syncer
-	requestSnaphot      func() error
-	syncer              *syncer
-	providers           map[types.NodeID]*BlockProvider
-	createStateProvider func(ctx context.Context, chainID string, initialHeight int64) (StateProvider, error)
-	stateProvider       StateProvider
+	mtx               sync.RWMutex
+	initSyncer        func() *syncer
+	requestSnaphot    func() error
+	syncer            *syncer
+	providers         map[types.NodeID]*BlockProvider
+	initStateProvider func(ctx context.Context, chainID string, initialHeight int64) error
+	stateProvider     StateProvider
 
 	eventBus           *eventbus.EventBus
 	metrics            *Metrics
@@ -214,8 +214,8 @@ func NewReactor(
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
 func (r *Reactor) OnStart(ctx context.Context) error {
+	// construct channels
 	chDesc := getChannelDescriptors()
-
 	snapshotCh, err := r.chCreator(ctx, chDesc[SnapshotChannel])
 	if err != nil {
 		return err
@@ -233,6 +233,9 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		return err
 	}
 
+	// define constructor and helper functions, that hold
+	// references to these channels for use later. This is not
+	// ideal.
 	r.initSyncer = func() *syncer {
 		return newSyncer(
 			r.cfg,
@@ -255,7 +258,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 	r.sendBlockError = blockCh.SendError
 
-	r.createStateProvider = func(ctx context.Context, chainID string, initialHeight int64) (StateProvider, error) {
+	r.initStateProvider = func(ctx context.Context, chainID string, initialHeight int64) error {
 		to := light.TrustOptions{
 			Period: r.cfg.TrustPeriod,
 			Height: r.cfg.TrustHeight,
@@ -267,7 +270,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 		if r.cfg.UseP2P {
 			if err := r.waitForEnoughPeers(ctx, 2); err != nil {
-				return nil, err
+				return err
 			}
 
 			peers := r.peers.All()
@@ -278,17 +281,18 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 			stateProvider, err := NewP2PStateProvider(ctx, chainID, initialHeight, providers, to, paramsCh, r.logger.With("module", "stateprovider"))
 			if err != nil {
-				return nil, fmt.Errorf("failed to initialize P2P state provider: %w", err)
+				return fmt.Errorf("failed to initialize P2P state provider: %w", err)
 			}
-
-			return stateProvider, nil
+			r.stateProvider = stateProvider
+			return nil
 		}
 
 		stateProvider, err := NewRPCStateProvider(ctx, chainID, initialHeight, r.cfg.RPCServers, to, spLogger)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize RPC state provider: %w", err)
+			return fmt.Errorf("failed to initialize RPC state provider: %w", err)
 		}
-		return stateProvider, nil
+		r.stateProvider = stateProvider
+		return nil
 	}
 
 	go r.processChannels(ctx, snapshotCh, chunkCh, blockCh, paramsCh)
@@ -1073,16 +1077,6 @@ func (r *Reactor) waitForEnoughPeers(ctx context.Context, numPeers int) error {
 			)
 			continue
 		}
-	}
-	return nil
-}
-
-func (r *Reactor) initStateProvider(ctx context.Context, chainID string, initialHeight int64) error {
-	var err error
-
-	r.stateProvider, err = r.createStateProvider(ctx, chainID, initialHeight)
-	if err != nil {
-		return fmt.Errorf("failed to initialize P2P state provider: %w", err)
 	}
 	return nil
 }

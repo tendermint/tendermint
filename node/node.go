@@ -337,7 +337,7 @@ func makeNode(
 		logger.With("module", "statesync"),
 		proxyApp,
 		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		peerManager.Subscribe,
 		stateStore,
 		blockStore,
 		cfg.StateSync.TempDir,
@@ -350,10 +350,7 @@ func makeNode(
 
 	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
-		pexReactor, err = pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
-		if err != nil {
-			return nil, combineCloseError(err, makeCloser(closers))
-		}
+		pexReactor = pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
 	}
 	node := &nodeImpl{
 		config:        cfg,

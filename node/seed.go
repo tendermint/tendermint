@@ -82,11 +82,6 @@ func makeSeedNode(
 			closer)
 	}
 
-	pexReactor, err := pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
-	if err != nil {
-		return nil, combineCloseError(err, closer)
-	}
-
 	node := &seedNodeImpl{
 		config:     cfg,
 		logger:     logger,
@@ -99,7 +94,7 @@ func makeSeedNode(
 
 		shutdownOps: closer,
 
-		pexReactor: pexReactor,
+		pexReactor: pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe),
 	}
 	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
 
