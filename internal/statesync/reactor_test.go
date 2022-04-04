@@ -733,7 +733,8 @@ func handleLightBlockRequests(
 					require.NoError(t, err)
 					select {
 					case sending <- p2p.Envelope{
-						From: envelope.To,
+						From:      envelope.To,
+						ChannelID: LightBlockChannel,
 						Message: &ssproto.LightBlockResponse{
 							LightBlock: lb,
 						},
@@ -761,7 +762,8 @@ func handleLightBlockRequests(
 					case 1: // send nil block i.e. pretend we don't have it
 						select {
 						case sending <- p2p.Envelope{
-							From: envelope.To,
+							From:      envelope.To,
+							ChannelID: LightBlockChannel,
 							Message: &ssproto.LightBlockResponse{
 								LightBlock: nil,
 							},
@@ -802,7 +804,8 @@ func handleConsensusParamsRequest(
 			}
 			select {
 			case sending <- p2p.Envelope{
-				From: envelope.To,
+				From:      envelope.To,
+				ChannelID: ParamsChannel,
 				Message: &ssproto.ParamsResponse{
 					Height:          msg.Height,
 					ConsensusParams: paramsProto,
@@ -913,7 +916,8 @@ func handleSnapshotRequests(
 			require.True(t, ok)
 			for _, snapshot := range snapshots {
 				sendingCh <- p2p.Envelope{
-					From: envelope.To,
+					From:      envelope.To,
+					ChannelID: SnapshotChannel,
 					Message: &ssproto.SnapshotsResponse{
 						Height:   snapshot.Height,
 						Format:   snapshot.Format,
@@ -946,7 +950,8 @@ func handleChunkRequests(
 			msg, ok := envelope.Message.(*ssproto.ChunkRequest)
 			require.True(t, ok)
 			sendingCh <- p2p.Envelope{
-				From: envelope.To,
+				From:      envelope.To,
+				ChannelID: ChunkChannel,
 				Message: &ssproto.ChunkResponse{
 					Height:  msg.Height,
 					Format:  msg.Format,
