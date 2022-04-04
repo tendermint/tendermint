@@ -381,6 +381,10 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 
 	idx := 0
 	for nodeID := range rts.network.Nodes {
+		// make a copy to avoid getting hit by the range ref
+		// confusion:
+		nodeID := nodeID
+
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], chBuf)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])

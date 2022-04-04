@@ -61,7 +61,7 @@ type PeerUpdates struct {
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
-// internal use, callers should typically use PeerManager.Subscribe(. The
+// internal use, callers should typically use PeerManager.Subscribe(). The
 // subscriber must call Close() when done.
 func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
