@@ -43,14 +43,14 @@ jobs:
         id: debug_suffix
         with:
           result-encoding: string
-          script: "console.log(context);"
+          script: "console.log(context.payload.ref);"
 
       - name: Set suffix to Docker tags
         uses: actions/github-script@v6
         id: suffix
         with:
           result-encoding: string
-          script: "return (context.payload.release.tag_name.includes('-dev') ? '-dev' : '');"
+          script: "return (context.payload.ref.includes('-dev') ? '-dev' : '');"
 
       - name: Set Docker tags and labels
         id: docker_meta
