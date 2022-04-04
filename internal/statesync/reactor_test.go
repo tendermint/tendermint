@@ -170,16 +170,18 @@ func setup(
 		nil, // eventbus can be nil
 	)
 
-	rts.syncer = newSyncer(
-		*cfg,
-		logger.With("component", "syncer"),
-		conn,
-		stateProvider,
-		rts.snapshotChannel,
-		rts.chunkChannel,
-		"",
-		rts.reactor.metrics,
-	)
+	rts.syncer = &syncer{
+		logger:        logger,
+		stateProvider: stateProvider,
+		conn:          conn,
+		snapshots:     newSnapshotPool(),
+		snapshotCh:    rts.snapshotChannel,
+		chunkCh:       rts.chunkChannel,
+		tempDir:       t.TempDir(),
+		fetchers:      cfg.Fetchers,
+		retryTimeout:  cfg.ChunkRequestTimeout,
+		metrics:       rts.reactor.metrics,
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 

@@ -237,16 +237,18 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	// references to these channels for use later. This is not
 	// ideal.
 	r.initSyncer = func() *syncer {
-		return newSyncer(
-			r.cfg,
-			r.logger,
-			r.conn,
-			r.stateProvider,
-			snapshotCh,
-			chunkCh,
-			r.tempDir,
-			r.metrics,
-		)
+		return &syncer{
+			logger:        r.logger,
+			stateProvider: r.stateProvider,
+			conn:          r.conn,
+			snapshots:     newSnapshotPool(),
+			snapshotCh:    snapshotCh,
+			chunkCh:       chunkCh,
+			tempDir:       r.tempDir,
+			fetchers:      r.cfg.Fetchers,
+			retryTimeout:  r.cfg.ChunkRequestTimeout,
+			metrics:       r.metrics,
+		}
 	}
 	r.dispatcher = NewDispatcher(blockCh)
 	r.requestSnaphot = func() error {
