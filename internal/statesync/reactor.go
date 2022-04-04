@@ -184,7 +184,7 @@ func NewReactor(
 	tempDir string,
 	ssMetrics *Metrics,
 	eventBus *eventbus.EventBus,
-) (*Reactor, error) {
+) *Reactor {
 
 	r := &Reactor{
 		logger:        logger,
@@ -204,7 +204,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
-	return r, nil
+	return r
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for

@@ -154,8 +154,7 @@ func setup(
 
 	logger := log.NewNopLogger()
 
-	var err error
-	rts.reactor, err = NewReactor(
+	rts.reactor = NewReactor(
 		ctx,
 		factory.DefaultTestChainID,
 		1,
@@ -170,7 +169,6 @@ func setup(
 		m,
 		nil, // eventbus can be nil
 	)
-	require.NoError(t, err)
 
 	rts.syncer = newSyncer(
 		*cfg,

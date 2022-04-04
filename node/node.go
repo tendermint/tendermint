@@ -329,7 +329,7 @@ func makeNode(
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor, err := statesync.NewReactor(
+	stateSyncReactor := statesync.NewReactor(
 		ctx,
 		genDoc.ChainID,
 		genDoc.InitialHeight,
@@ -344,9 +344,6 @@ func makeNode(
 		nodeMetrics.statesync,
 		eventBus,
 	)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
 
 	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
