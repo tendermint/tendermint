@@ -142,15 +142,15 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			i := 0
 			for _, ps := range bzReactor.peers {
 				if i < len(bzReactor.peers)/2 {
-					require.NoError(t, bzReactor.voteCh.Send(ctx,
+					rts.voteChannels[bzNodeID].Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.Vote{
 								Vote: prevote1.ToProto(),
 							},
-						}))
+						})
 				} else {
-					require.NoError(t, bzReactor.voteCh.Send(ctx,
+					require.NoError(t, rts.voteChannels[bzNodeID].Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.Vote{

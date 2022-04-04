@@ -104,7 +104,7 @@ func setup(
 	for nodeID, node := range rts.network.Nodes {
 		state := states[i]
 
-		reactor, err := NewReactor(ctx,
+		reactor := NewReactor(ctx,
 			state.logger.With("node", nodeID),
 			state,
 			chCreator(nodeID),
@@ -113,7 +113,6 @@ func setup(
 			true,
 			NopMetrics(),
 		)
-		require.NoError(t, err)
 
 		blocksSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
