@@ -617,6 +617,8 @@ type ChannelDescriptor struct {
 	// given p2p Channel queue.
 	RecvBufferCapacity int
 
+	// Human readable name of the channel, used in logging and
+	// diagnostics.
 	Name string
 }
 
