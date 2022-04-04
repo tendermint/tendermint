@@ -218,7 +218,7 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	for _, cur := range append(unmodifiedCopy, addedCopy...) {
 		size += int64(len(cur))
 		if size > maxSizeBytes {
-			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
+			return fmt.Errorf("transaction data size exceeds maximum %d", maxSizeBytes)
 		}
 	}
 
