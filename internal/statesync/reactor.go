@@ -236,7 +236,10 @@ func NewReactor(
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
 func (r *Reactor) OnStart(ctx context.Context) error {
-	go r.processChs(ctx, r.snapshotCh, r.chunkCh, r.blockCh, r.paramsCh)
+	go r.processCh(ctx, r.snapshotCh)
+	go r.processCh(ctx, r.chunkCh)
+	go r.processCh(ctx, r.blockCh)
+	go r.processCh(ctx, r.paramsCh)
 	go r.processPeerUpdates(ctx)
 
 	return nil
@@ -257,6 +260,29 @@ func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataStateS
 	return r.eventBus.PublishEventStateSyncStatus(ctx, event)
 }
 
+func (r *Reactor) hasSyncer() bool {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.syncer != nil
+}
+
+func (r *Reactor) initSyncer() {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	r.syncer = newSyncer(
+		r.cfg,
+		r.logger,
+		r.conn,
+		r.stateProvider,
+		r.snapshotCh,
+		r.chunkCh,
+		r.tempDir,
+		r.metrics,
+	)
+}
+
 // Sync runs a state sync, fetching snapshots and providing chunks to the
 // application. At the close of the operation, Sync will bootstrap the state
 // store and persist the commit at that height so that either consensus or
@@ -269,34 +295,31 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		return sm.State{}, err
 	}
 
-	r.mtx.Lock()
-	if r.syncer != nil {
-		r.mtx.Unlock()
+	if r.hasSyncer() {
 		return sm.State{}, errors.New("a state sync is already in progress")
 	}
 
+	// r.mtx.Lock()
+	// if r.syncer != nil {
+	// 	r.mtx.Unlock()
+	// 	return sm.State{}, errors.New("a state sync is already in progress")
+	// }
+
 	if err := r.initStateProvider(ctx, r.chainID, r.initialHeight); err != nil {
-		r.mtx.Unlock()
+		// r.mtx.Unlock()
 		return sm.State{}, err
 	}
 
-	r.syncer = newSyncer(
-		r.cfg,
-		r.logger,
-		r.conn,
-		r.stateProvider,
-		r.snapshotCh,
-		r.chunkCh,
-		r.tempDir,
-		r.metrics,
-	)
-	r.mtx.Unlock()
+	// construct and set the syncer in a lock
+	r.initSyncer()
+	// r.mtx.Unlock()
+
 	defer func() {
 		r.mtx.Lock()
+		defer r.mtx.Unlock()
 		// reset syncing objects at the close of Sync
 		r.syncer = nil
 		r.stateProvider = nil
-		r.mtx.Unlock()
 	}()
 
 	requestSnapshotsHook := func() error {
@@ -780,6 +803,8 @@ func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelop
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
+			case <-ctx.Done():
+				return ctx.Err()
 			case <-time.After(time.Second):
 				return errors.New("failed to send consensus params, stateprovider not ready for response")
 			}
@@ -831,32 +856,28 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope) (er
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
-func (r *Reactor) processChs(ctx context.Context, chs ...*p2p.Channel) {
+func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel) {
 	// make sure that the iterator get cleaned up correctly in the
 	// case of an error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	iter := p2p.MergedChannelIterator(ctx, chs...)
+	iter := ch.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
 		if err := r.handleMessage(ctx, envelope); err != nil {
 			r.logger.Error("failed to process message",
 				"err", err,
+				"channel", ch.String(),
 				"ch_id", envelope.ChannelID,
 				"envelope", envelope)
 
-			for _, ch := range chs {
-				if ch.ID == envelope.ChannelID {
-					if serr := ch.SendError(ctx, p2p.PeerError{
-						NodeID: envelope.From,
-						Err:    err,
-					}); serr != nil {
-						return
-					}
-				}
+			if serr := ch.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
+				return
 			}
-			return
 		}
 	}
 }
@@ -883,16 +904,18 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		r.peers.Remove(peerUpdate.NodeID)
 	}
 
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	if r.syncer == nil {
+	if !r.hasSyncer() {
 		return
+
 	}
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
+
+		r.mtx.Lock()
+		defer r.mtx.Unlock()
+
 		r.providers[peerUpdate.NodeID] = newProvider
 		err := r.syncer.AddPeer(ctx, peerUpdate.NodeID)
 		if err != nil {
@@ -906,6 +929,9 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 		}
 
 	case p2p.PeerStatusDown:
+		r.mtx.Lock()
+		defer r.mtx.Unlock()
+
 		delete(r.providers, peerUpdate.NodeID)
 		r.syncer.RemovePeer(peerUpdate.NodeID)
 	}
