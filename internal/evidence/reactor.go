@@ -38,6 +38,7 @@ func GetChannelDescriptor() *p2p.ChannelDescriptor {
 		Priority:            6,
 		RecvMessageCapacity: maxMsgSize,
 		RecvBufferCapacity:  32,
+		Name:                "evidence",
 	}
 }
 

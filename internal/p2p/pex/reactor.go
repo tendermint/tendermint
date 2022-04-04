@@ -63,6 +63,7 @@ func ChannelDescriptor() *conn.ChannelDescriptor {
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: maxMsgSize,
 		RecvBufferCapacity:  128,
+		Name:                "pex",
 	}
 }
 
