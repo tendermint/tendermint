@@ -836,8 +836,7 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope) (er
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
 func (r *Reactor) processChannels(ctx context.Context, chs ...*p2p.Channel) {
-	// make sure that the iterator get cleaned up correctly in the
-	// case of an error
+	// make sure that the iterator gets cleaned up in case of error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -851,25 +850,25 @@ func (r *Reactor) processChannels(ctx context.Context, chs ...*p2p.Channel) {
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
 		if err := r.handleMessage(ctx, envelope); err != nil {
-			if ch, ok := chanTable[envelope.ChannelID]; ok {
-				r.logger.Error("failed to process message",
-					"err", err,
-					"channel", ch.String(),
-					"ch_id", envelope.ChannelID,
-					"envelope", envelope)
-				if serr := ch.SendError(ctx, p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
-			} else {
+			ch, ok := chanTable[envelope.ChannelID]
+			if !ok {
 				r.logger.Error("received impossible message",
 					"envelope_from", envelope.From,
 					"envelope_ch", envelope.ChannelID,
 					"num_chs", len(chanTable),
 					"err", err,
 				)
+				return
+			}
+			r.logger.Error("failed to process message",
+				"err", err,
+				"channel", ch.String(),
+				"ch_id", envelope.ChannelID,
+				"envelope", envelope)
+			if serr := ch.SendError(ctx, p2p.PeerError{
+				NodeID: envelope.From,
+				Err:    err,
+			}); serr != nil {
 				return
 			}
 		}
