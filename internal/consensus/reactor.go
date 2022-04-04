@@ -38,6 +38,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   64,
 			RecvMessageCapacity: maxMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "state",
 		},
 		DataChannel: {
 			// TODO: Consider a split between gossiping current block and catchup
@@ -49,6 +50,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   64,
 			RecvBufferCapacity:  512,
 			RecvMessageCapacity: maxMsgSize,
+			Name:                "data",
 		},
 		VoteChannel: {
 			ID:                  VoteChannel,
@@ -57,6 +59,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   64,
 			RecvBufferCapacity:  128,
 			RecvMessageCapacity: maxMsgSize,
+			Name:                "vote",
 		},
 		VoteSetBitsChannel: {
 			ID:                  VoteSetBitsChannel,
@@ -65,6 +68,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   8,
 			RecvBufferCapacity:  128,
 			RecvMessageCapacity: maxMsgSize,
+			Name:                "voteSet",
 		},
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/conn"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -75,13 +76,13 @@ const (
 func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 	return map[p2p.ChannelID]*p2p.ChannelDescriptor{
 		SnapshotChannel: {
-
 			ID:                  SnapshotChannel,
 			MessageType:         new(ssproto.Message),
 			Priority:            6,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: snapshotMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "snapshot",
 		},
 		ChunkChannel: {
 			ID:                  ChunkChannel,
@@ -90,6 +91,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   4,
 			RecvMessageCapacity: chunkMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "chunk",
 		},
 		LightBlockChannel: {
 			ID:                  LightBlockChannel,
@@ -98,6 +100,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: lightBlockMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "light-block",
 		},
 		ParamsChannel: {
 			ID:                  ParamsChannel,
@@ -106,6 +109,7 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: paramMsgSize,
 			RecvBufferCapacity:  128,
+			Name:                "params",
 		},
 	}
 
@@ -233,10 +237,7 @@ func NewReactor(
 // The caller must be sure to execute OnStop to ensure the outbound p2p Channels are
 // closed. No error is returned.
 func (r *Reactor) OnStart(ctx context.Context) error {
-	go r.processCh(ctx, r.snapshotCh, "snapshot")
-	go r.processCh(ctx, r.chunkCh, "chunk")
-	go r.processCh(ctx, r.blockCh, "light block")
-	go r.processCh(ctx, r.paramsCh, "consensus params")
+	go r.processChannels(ctx, r.snapshotCh, r.chunkCh, r.blockCh, r.paramsCh)
 	go r.processPeerUpdates(ctx)
 
 	return nil
@@ -291,6 +292,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		r.metrics,
 	)
 	r.mtx.Unlock()
+
 	defer func() {
 		r.mtx.Lock()
 		// reset syncing objects at the close of Sync
@@ -780,6 +782,8 @@ func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelop
 		if sp, ok := r.stateProvider.(*stateProviderP2P); ok {
 			select {
 			case sp.paramsRecvCh <- cp:
+			case <-ctx.Done():
+				return ctx.Err()
 			case <-time.After(time.Second):
 				return errors.New("failed to send consensus params, stateprovider not ready for response")
 			}
@@ -797,7 +801,7 @@ func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelop
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -811,7 +815,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 
 	r.logger.Debug("received message", "message", reflect.TypeOf(envelope.Message), "peer", envelope.From)
 
-	switch chID {
+	switch envelope.ChannelID {
 	case SnapshotChannel:
 		err = r.handleSnapshotMessage(ctx, envelope)
 	case ChunkChannel:
@@ -821,7 +825,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 	case ParamsChannel:
 		err = r.handleParamsMessage(ctx, envelope)
 	default:
-		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", envelope.ChannelID, envelope)
 	}
 
 	return err
@@ -831,15 +835,35 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
-func (r *Reactor) processCh(ctx context.Context, ch *p2p.Channel, chName string) {
-	iter := ch.Receive(ctx)
+func (r *Reactor) processChannels(ctx context.Context, chs ...*p2p.Channel) {
+	// make sure that the iterator gets cleaned up in case of error
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	chanTable := make(map[conn.ChannelID]*p2p.Channel, len(chs))
+	for idx := range chs {
+		ch := chs[idx]
+		chanTable[ch.ID] = ch
+	}
+
+	iter := p2p.MergedChannelIterator(ctx, chs...)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(ctx, ch.ID, envelope); err != nil {
+		if err := r.handleMessage(ctx, envelope); err != nil {
+			ch, ok := chanTable[envelope.ChannelID]
+			if !ok {
+				r.logger.Error("received impossible message",
+					"envelope_from", envelope.From,
+					"envelope_ch", envelope.ChannelID,
+					"num_chs", len(chanTable),
+					"err", err,
+				)
+				return
+			}
 			r.logger.Error("failed to process message",
 				"err", err,
-				"channel", chName,
-				"ch_id", ch.ID,
+				"channel", ch.String(),
+				"ch_id", envelope.ChannelID,
 				"envelope", envelope)
 			if serr := ch.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
@@ -875,14 +899,15 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
+
 	if r.syncer == nil {
 		return
 	}
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
-
 		newProvider := NewBlockProvider(peerUpdate.NodeID, r.chainID, r.dispatcher)
+
 		r.providers[peerUpdate.NodeID] = newProvider
 		err := r.syncer.AddPeer(ctx, peerUpdate.NodeID)
 		if err != nil {
