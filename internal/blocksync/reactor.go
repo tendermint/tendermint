@@ -81,8 +81,8 @@ type Reactor struct {
 	consReactor consensusReactor
 	blockSync   *atomicBool
 
-	chCreator p2p.ChannelCreator
-	pes       p2p.PeerEventSubscriber
+	chCreator  p2p.ChannelCreator
+	peerEvents p2p.PeerEventSubscriber
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
@@ -101,7 +101,7 @@ func NewReactor(
 	store *store.BlockStore,
 	consReactor consensusReactor,
 	channelCreator p2p.ChannelCreator,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	blockSync bool,
 	metrics *consensus.Metrics,
 	eventBus *eventbus.EventBus,
@@ -114,7 +114,7 @@ func NewReactor(
 		consReactor: consReactor,
 		blockSync:   newAtomicBool(blockSync),
 		chCreator:   channelCreator,
-		pes:         pes,
+		peerEvents:  peerEvents,
 		metrics:     metrics,
 		eventBus:    eventBus,
 	}
@@ -168,7 +168,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processBlockSyncCh(ctx, blockSyncCh)
-	go r.processPeerUpdates(ctx, r.pes(ctx), blockSyncCh)
+	go r.processPeerUpdates(ctx, r.peerEvents(ctx), blockSyncCh)
 
 	return nil
 }

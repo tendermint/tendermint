@@ -140,7 +140,7 @@ type Reactor struct {
 
 	conn           abciclient.Client
 	tempDir        string
-	pes            p2p.PeerEventSubscriber
+	peerEvents     p2p.PeerEventSubscriber
 	chCreator      p2p.ChannelCreator
 	sendBlockError func(context.Context, p2p.PeerError) error
 
@@ -178,7 +178,7 @@ func NewReactor(
 	logger log.Logger,
 	conn abciclient.Client,
 	channelCreator p2p.ChannelCreator,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	tempDir string,
@@ -193,7 +193,7 @@ func NewReactor(
 		cfg:           cfg,
 		conn:          conn,
 		chCreator:     channelCreator,
-		pes:           pes,
+		peerEvents:    peerEvents,
 		tempDir:       tempDir,
 		stateStore:    stateStore,
 		blockStore:    blockStore,
@@ -296,7 +296,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processChannels(ctx, snapshotCh, chunkCh, blockCh, paramsCh)
-	go r.processPeerUpdates(ctx, r.pes(ctx))
+	go r.processPeerUpdates(ctx, r.peerEvents(ctx))
 
 	return nil
 }

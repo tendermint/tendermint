@@ -81,7 +81,7 @@ type Reactor struct {
 
 	peerManager *p2p.PeerManager
 	chCreator   p2p.ChannelCreator
-	pes         p2p.PeerEventSubscriber
+	peerEvents  p2p.PeerEventSubscriber
 	// list of available peers to loop through and send peer requests to
 	availablePeers map[types.NodeID]struct{}
 
@@ -107,13 +107,13 @@ func NewReactor(
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	channelCreator p2p.ChannelCreator,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 ) *Reactor {
 	r := &Reactor{
 		logger:               logger,
 		peerManager:          peerManager,
 		chCreator:            channelCreator,
-		pes:                  pes,
+		peerEvents:           peerEvents,
 		availablePeers:       make(map[types.NodeID]struct{}),
 		requestsSent:         make(map[types.NodeID]struct{}),
 		lastReceivedRequests: make(map[types.NodeID]time.Time),
@@ -133,7 +133,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	peerUpdates := r.pes(ctx)
+	peerUpdates := r.peerEvents(ctx)
 	go r.processPexCh(ctx, channel)
 	go r.processPeerUpdates(ctx, peerUpdates)
 	return nil

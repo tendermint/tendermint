@@ -174,7 +174,7 @@ func createMempoolReactor(
 	appClient abciclient.Client,
 	store sm.Store,
 	memplMetrics *mempool.Metrics,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
 	peerHeight mempool.PeerHeightFetcher,
 ) (service.Service, mempool.Mempool, error) {
@@ -194,7 +194,7 @@ func createMempoolReactor(
 		cfg.Mempool,
 		mp,
 		chCreator,
-		pes,
+		peerEvents,
 		peerHeight,
 	)
 
@@ -211,7 +211,7 @@ func createEvidenceReactor(
 	dbProvider config.DBProvider,
 	store sm.Store,
 	blockStore *store.BlockStore,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
 	metrics *evidence.Metrics,
 	eventBus *eventbus.EventBus,
@@ -229,7 +229,7 @@ func createEvidenceReactor(
 	evidenceReactor := evidence.NewReactor(
 		logger,
 		chCreator,
-		pes,
+		peerEvents,
 		evidencePool,
 	)
 

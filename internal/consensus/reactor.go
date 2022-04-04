@@ -126,8 +126,8 @@ type Reactor struct {
 	rs          *cstypes.RoundState
 	readySignal chan struct{} // closed when the node is ready to start consensus
 
-	peerUpdateSubscriber p2p.PeerEventSubscriber
-	chCreator            p2p.ChannelCreator
+	peerEvents p2p.PeerEventSubscriber
+	chCreator  p2p.ChannelCreator
 }
 
 // NewReactor returns a reference to a new consensus reactor, which implements
@@ -138,22 +138,22 @@ func NewReactor(
 	logger log.Logger,
 	cs *State,
 	channelCreator p2p.ChannelCreator,
-	peerSubscriber p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	eventBus *eventbus.EventBus,
 	waitSync bool,
 	metrics *Metrics,
 ) *Reactor {
 	r := &Reactor{
-		logger:               logger,
-		state:                cs,
-		waitSync:             waitSync,
-		rs:                   cs.GetRoundState(),
-		peers:                make(map[types.NodeID]*PeerState),
-		eventBus:             eventBus,
-		Metrics:              metrics,
-		peerUpdateSubscriber: peerSubscriber,
-		chCreator:            channelCreator,
-		readySignal:          make(chan struct{}),
+		logger:      logger,
+		state:       cs,
+		waitSync:    waitSync,
+		rs:          cs.GetRoundState(),
+		peers:       make(map[types.NodeID]*PeerState),
+		eventBus:    eventBus,
+		Metrics:     metrics,
+		peerEvents:  peerEvents,
+		chCreator:   channelCreator,
+		readySignal: make(chan struct{}),
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
 
@@ -178,7 +178,7 @@ type channelBundle struct {
 func (r *Reactor) OnStart(ctx context.Context) error {
 	r.logger.Debug("consensus wait sync", "wait_sync", r.WaitSync())
 
-	peerUpdates := r.peerUpdateSubscriber(ctx)
+	peerUpdates := r.peerEvents(ctx)
 
 	var chBundle channelBundle
 	var err error

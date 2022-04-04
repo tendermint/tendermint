@@ -47,9 +47,9 @@ type Reactor struct {
 	service.BaseService
 	logger log.Logger
 
-	evpool              *Pool
-	chCreator           p2p.ChannelCreator
-	peerEventSubscriber p2p.PeerEventSubscriber
+	evpool     *Pool
+	chCreator  p2p.ChannelCreator
+	peerEvents p2p.PeerEventSubscriber
 
 	mtx sync.Mutex
 
@@ -62,15 +62,15 @@ type Reactor struct {
 func NewReactor(
 	logger log.Logger,
 	chCreator p2p.ChannelCreator,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	evpool *Pool,
 ) *Reactor {
 	r := &Reactor{
-		logger:              logger,
-		evpool:              evpool,
-		chCreator:           chCreator,
-		peerEventSubscriber: pes,
-		peerRoutines:        make(map[types.NodeID]context.CancelFunc),
+		logger:       logger,
+		evpool:       evpool,
+		chCreator:    chCreator,
+		peerEvents:   peerEvents,
+		peerRoutines: make(map[types.NodeID]context.CancelFunc),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -89,7 +89,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processEvidenceCh(ctx, ch)
-	go r.processPeerUpdates(ctx, r.peerEventSubscriber(ctx), ch)
+	go r.processPeerUpdates(ctx, r.peerEvents(ctx), ch)
 
 	return nil
 }

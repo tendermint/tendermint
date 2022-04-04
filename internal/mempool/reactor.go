@@ -42,9 +42,9 @@ type Reactor struct {
 	mempool *TxMempool
 	ids     *IDs
 
-	getPeerHeight      PeerHeightFetcher
-	peerEventSubsriber p2p.PeerEventSubscriber
-	chCreator          p2p.ChannelCreator
+	getPeerHeight PeerHeightFetcher
+	peerEvents    p2p.PeerEventSubscriber
+	chCreator     p2p.ChannelCreator
 
 	// observePanic is a function for observing panics that were recovered in methods on
 	// Reactor. observePanic is called with the recovered value.
@@ -60,19 +60,19 @@ func NewReactor(
 	cfg *config.MempoolConfig,
 	txmp *TxMempool,
 	chCreator p2p.ChannelCreator,
-	pes p2p.PeerEventSubscriber,
+	peerEvents p2p.PeerEventSubscriber,
 	getPeerHeight PeerHeightFetcher,
 ) *Reactor {
 	r := &Reactor{
-		logger:             logger,
-		cfg:                cfg,
-		mempool:            txmp,
-		ids:                NewMempoolIDs(),
-		chCreator:          chCreator,
-		peerEventSubsriber: pes,
-		getPeerHeight:      getPeerHeight,
-		peerRoutines:       make(map[types.NodeID]context.CancelFunc),
-		observePanic:       defaultObservePanic,
+		logger:        logger,
+		cfg:           cfg,
+		mempool:       txmp,
+		ids:           NewMempoolIDs(),
+		chCreator:     chCreator,
+		peerEvents:    peerEvents,
+		getPeerHeight: getPeerHeight,
+		peerRoutines:  make(map[types.NodeID]context.CancelFunc),
+		observePanic:  defaultObservePanic,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
@@ -116,7 +116,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processMempoolCh(ctx, ch)
-	go r.processPeerUpdates(ctx, r.peerEventSubsriber(ctx), ch)
+	go r.processPeerUpdates(ctx, r.peerEvents(ctx), ch)
 
 	return nil
 }
