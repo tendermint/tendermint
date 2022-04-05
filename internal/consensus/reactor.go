@@ -425,6 +425,8 @@ func (r *Reactor) getRoundState() *cstypes.RoundState {
 
 func (r *Reactor) gossipDataForCatchup(ctx context.Context, dataCh *p2p.Channel, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) {
 	logger := r.logger.With("height", prs.Height).With("peer", ps.peerID)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 		// ensure that the peer's PartSetHeader is correct
@@ -437,7 +439,11 @@ func (r *Reactor) gossipDataForCatchup(ctx context.Context, dataCh *p2p.Channel,
 				"blockstore_height", r.state.blockStore.Height(),
 			)
 
-			time.Sleep(r.state.config.PeerGossipSleepDuration)
+			timer.Reset(r.state.config.PeerGossipSleepDuration)
+			select {
+			case <-ctx.Done():
+			case <-timer.C:
+			}
 			return
 		} else if !blockMeta.BlockID.PartSetHeader.Equals(prs.ProposalBlockPartSetHeader) {
 			logger.Info(
@@ -446,7 +452,11 @@ func (r *Reactor) gossipDataForCatchup(ctx context.Context, dataCh *p2p.Channel,
 				"peer_block_part_set_header", prs.ProposalBlockPartSetHeader,
 			)
 
-			time.Sleep(r.state.config.PeerGossipSleepDuration)
+			timer.Reset(r.state.config.PeerGossipSleepDuration)
+			select {
+			case <-ctx.Done():
+			case <-timer.C:
+			}
 			return
 		}
 
@@ -459,7 +469,11 @@ func (r *Reactor) gossipDataForCatchup(ctx context.Context, dataCh *p2p.Channel,
 				"peer_block_part_set_header", prs.ProposalBlockPartSetHeader,
 			)
 
-			time.Sleep(r.state.config.PeerGossipSleepDuration)
+			timer.Reset(r.state.config.PeerGossipSleepDuration)
+			select {
+			case <-ctx.Done():
+			case <-timer.C:
+			}
 			return
 		}
 
@@ -467,7 +481,11 @@ func (r *Reactor) gossipDataForCatchup(ctx context.Context, dataCh *p2p.Channel,
 		if err != nil {
 			logger.Error("failed to convert block part to proto", "err", err)
 
-			time.Sleep(r.state.config.PeerGossipSleepDuration)
+			timer.Reset(r.state.config.PeerGossipSleepDuration)
+			select {
+			case <-ctx.Done():
+			case <-timer.C:
+			}
 			return
 		}
 
@@ -484,7 +502,11 @@ func (r *Reactor) gossipDataForCatchup(ctx context.Context, dataCh *p2p.Channel,
 		return
 	}
 
-	time.Sleep(r.state.config.PeerGossipSleepDuration)
+	timer.Reset(r.state.config.PeerGossipSleepDuration)
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }
 
 func (r *Reactor) gossipDataRoutine(ctx context.Context, dataCh *p2p.Channel, ps *PeerState) {
