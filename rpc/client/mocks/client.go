@@ -411,6 +411,29 @@ func (_m *Client) DumpConsensusState(_a0 context.Context) (*coretypes.ResultDump
 	return r0, r1
 }
 
+// Events provides a mock function with given fields: ctx, req
+func (_m *Client) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
+	ret := _m.Called(ctx, req)
+
+	var r0 *coretypes.ResultEvents
+	if rf, ok := ret.Get(0).(func(context.Context, *coretypes.RequestEvents) *coretypes.ResultEvents); ok {
+		r0 = rf(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultEvents)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *coretypes.RequestEvents) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Genesis provides a mock function with given fields: _a0
 func (_m *Client) Genesis(_a0 context.Context) (*coretypes.ResultGenesis, error) {
 	ret := _m.Called(_a0)
