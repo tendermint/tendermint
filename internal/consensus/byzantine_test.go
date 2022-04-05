@@ -141,8 +141,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			// send two votes to all peers (1st to one half, 2nd to another half)
 			i := 0
 			for _, ps := range bzReactor.peers {
+				voteCh := rts.voteChannels[bzNodeID]
 				if i < len(bzReactor.peers)/2 {
-					require.NoError(t, bzReactor.voteCh.Send(ctx,
+
+					require.NoError(t, voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.Vote{
@@ -150,7 +152,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 							},
 						}))
 				} else {
-					require.NoError(t, bzReactor.voteCh.Send(ctx,
+					require.NoError(t, voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.Vote{

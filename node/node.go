@@ -88,12 +88,11 @@ func newDefaultNode(
 	}
 	if cfg.Mode == config.ModeSeed {
 		return makeSeedNode(
-			ctx,
+			logger,
 			cfg,
 			config.DefaultDBProvider,
 			nodeKey,
 			defaultGenesisDocProviderFunc(cfg),
-			logger,
 		)
 	}
 	pval, err := makeDefaultPrivval(cfg)
@@ -244,7 +243,7 @@ func makeNode(
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state)
+	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state.Version.Consensus)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -257,24 +256,21 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(ctx, logger, nodeMetrics.p2p, nodeInfo, nodeKey,
-		peerManager, cfg, proxyApp)
+	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey, peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
 			makeCloser(closers))
 	}
 
-	mpReactor, mp, err := createMempoolReactor(ctx,
-		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
-	)
+	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
+		peerManager.Subscribe, router.OpenChannel, peerManager.GetHeight)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	evReactor, evPool, edbCloser, err := createEvidenceReactor(ctx,
-		cfg, dbProvider, stateStore, blockStore, peerManager, router, logger, nodeMetrics.evidence, eventBus,
-	)
+	evReactor, evPool, edbCloser, err := createEvidenceReactor(logger, cfg, dbProvider,
+		stateStore, blockStore, peerManager.Subscribe, router.OpenChannel, nodeMetrics.evidence, eventBus)
 	closers = append(closers, edbCloser)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -295,11 +291,12 @@ func makeNode(
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
 	blockSync := !onlyValidatorIsUs(state, pubKey)
+	waitSync := stateSync || blockSync
 
 	csReactor, csState, err := createConsensusReactor(ctx,
 		cfg, stateStore, blockExec, blockStore, mp, evPool,
-		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
-		peerManager, router, logger,
+		privValidator, nodeMetrics.consensus, waitSync, eventBus,
+		peerManager, router.OpenChannel, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
@@ -307,23 +304,18 @@ func makeNode(
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
-	bcReactor, err := blocksync.NewReactor(ctx,
+	bcReactor := blocksync.NewReactor(
 		logger.With("module", "blockchain"),
 		stateStore,
 		blockExec,
 		blockStore,
 		csReactor,
 		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		peerManager.Subscribe,
 		blockSync && !stateSync,
 		nodeMetrics.consensus,
 		eventBus,
 	)
-	if err != nil {
-		return nil, combineCloseError(
-			fmt.Errorf("could not create blocksync reactor: %w", err),
-			makeCloser(closers))
-	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
@@ -337,7 +329,7 @@ func makeNode(
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor, err := statesync.NewReactor(
+	stateSyncReactor := statesync.NewReactor(
 		ctx,
 		genDoc.ChainID,
 		genDoc.InitialHeight,
@@ -345,23 +337,17 @@ func makeNode(
 		logger.With("module", "statesync"),
 		proxyApp,
 		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		peerManager.Subscribe,
 		stateStore,
 		blockStore,
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 		eventBus,
 	)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
 
 	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
-		pexReactor, err = pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
-		if err != nil {
-			return nil, combineCloseError(err, makeCloser(closers))
-		}
+		pexReactor = pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
 	}
 	node := &nodeImpl{
 		config:        cfg,

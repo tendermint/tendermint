@@ -190,20 +190,18 @@ func (rts *reactorTestSuite) addNode(
 	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
 		return rts.blockSyncChannels[nodeID], nil
 	}
-	rts.reactors[nodeID], err = NewReactor(
-		ctx,
+	rts.reactors[nodeID] = NewReactor(
 		rts.logger.With("nodeID", nodeID),
 		stateStore,
 		blockExec,
 		blockStore,
 		nil,
 		chCreator,
-		rts.peerUpdates[nodeID],
+		func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
 		rts.blockSync,
 		consensus.NopMetrics(),
 		nil, // eventbus, can be nil
 	)
-	require.NoError(t, err)
 
 	require.NoError(t, rts.reactors[nodeID].Start(ctx))
 	require.True(t, rts.reactors[nodeID].IsRunning())
