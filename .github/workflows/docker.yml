@@ -43,13 +43,13 @@ jobs:
         id: suffix
         with:
           result-encoding: string
-          script: "return (context.payload.ref.includes('-dev') ? '-dev' : '');"
+          script: "return (context.payload.release.tag_name.includes('-dev') ? '-dev' : '');"
 
       - name: Set Docker tags and labels
         id: docker_meta
         uses: docker/metadata-action@v3
         with:
-          images: strophy/tenderdash
+          images: dashpay/tenderdash
           tags: |
             type=match,pattern=v(\d+),group=1
             type=match,pattern=v(\d+.\d+),group=1
