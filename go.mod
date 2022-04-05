@@ -1,6 +1,6 @@
 module github.com/tendermint/tendermint
 
-go 1.15
+go 1.16
 
 require (
 	github.com/BurntSushi/toml v1.0.0

@@ -14,16 +14,19 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v2.4.0
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16'
       - uses: technote-space/get-diff-action@v5
         with:
           PATTERNS: |
             **/**.go
             go.mod
             go.sum
-      - uses: golangci/golangci-lint-action@v2.5.2
+      - uses: golangci/golangci-lint-action@v3.1.0
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.42.1
+          version: v1.45
           args: --timeout 10m
           github-token: ${{ secrets.github_token }}
         if: env.GIT_DIFF
