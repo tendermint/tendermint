@@ -828,6 +828,11 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	return addresses
 }
 
+// PeerEventSubscriber describes the type of the subscription method, to assist
+// in isolating reactors specific construction and lifecycle from the
+// peer manager.
+type PeerEventSubscriber func(context.Context) *PeerUpdates
+
 // Subscribe subscribes to peer updates. The caller must consume the peer
 // updates in a timely fashion and close the subscription when done, otherwise
 // the PeerManager will halt.
