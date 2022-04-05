@@ -38,13 +38,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Debug
-        uses: actions/github-script@v6
-        id: debug_suffix
-        with:
-          result-encoding: string
-          script: "console.log(context.payload.ref);"
-
       - name: Set suffix to Docker tags
         uses: actions/github-script@v6
         id: suffix
