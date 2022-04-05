@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
-
 	types "github.com/tendermint/tendermint/abci/types"
 )
 

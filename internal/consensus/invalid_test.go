@@ -57,7 +57,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	privVal := byzState.privValidator
 	byzState.doPrevote = func(ctx context.Context, height int64, round int32) {
 		defer close(signal)
-		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, privVal)
+		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, rts.voteChannels[node.NodeID], privVal)
 	}
 	byzState.mtx.Unlock()
 
@@ -107,6 +107,7 @@ func invalidDoPrevoteFunc(
 	round int32,
 	cs *State,
 	r *Reactor,
+	voteCh *p2p.Channel,
 	pv types.PrivValidator,
 ) {
 	// routine to:
@@ -155,7 +156,7 @@ func invalidDoPrevoteFunc(
 		count := 0
 		for _, peerID := range ids {
 			count++
-			err := r.voteCh.Send(ctx, p2p.Envelope{
+			err := voteCh.Send(ctx, p2p.Envelope{
 				To: peerID,
 				Message: &tmcons.Vote{
 					Vote: precommit.ToProto(),
