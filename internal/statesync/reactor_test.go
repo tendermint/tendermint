@@ -154,8 +154,7 @@ func setup(
 
 	logger := log.NewNopLogger()
 
-	var err error
-	rts.reactor, err = NewReactor(
+	rts.reactor = NewReactor(
 		ctx,
 		factory.DefaultTestChainID,
 		1,
@@ -163,25 +162,26 @@ func setup(
 		logger.With("component", "reactor"),
 		conn,
 		chCreator,
-		rts.peerUpdates,
+		func(context.Context) *p2p.PeerUpdates { return rts.peerUpdates },
 		rts.stateStore,
 		rts.blockStore,
 		"",
 		m,
 		nil, // eventbus can be nil
 	)
-	require.NoError(t, err)
 
-	rts.syncer = newSyncer(
-		*cfg,
-		logger.With("component", "syncer"),
-		conn,
-		stateProvider,
-		rts.snapshotChannel,
-		rts.chunkChannel,
-		"",
-		rts.reactor.metrics,
-	)
+	rts.syncer = &syncer{
+		logger:        logger,
+		stateProvider: stateProvider,
+		conn:          conn,
+		snapshots:     newSnapshotPool(),
+		snapshotCh:    rts.snapshotChannel,
+		chunkCh:       rts.chunkChannel,
+		tempDir:       t.TempDir(),
+		fetchers:      cfg.Fetchers,
+		retryTimeout:  cfg.ChunkRequestTimeout,
+		metrics:       rts.reactor.metrics,
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 

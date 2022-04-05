@@ -581,12 +581,12 @@ func TestNodeNewSeedNode(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	ns, err := makeSeedNode(ctx,
+	ns, err := makeSeedNode(
+		logger,
 		cfg,
 		config.DefaultDBProvider,
 		nodeKey,
 		defaultGenesisDocProviderFunc(cfg),
-		logger,
 	)
 	t.Cleanup(ns.Wait)
 	t.Cleanup(leaktest.CheckTimeout(t, time.Second))

@@ -104,11 +104,11 @@ func setup(
 	for nodeID, node := range rts.network.Nodes {
 		state := states[i]
 
-		reactor := NewReactor(ctx,
+		reactor := NewReactor(
 			state.logger.With("node", nodeID),
 			state,
 			chCreator(nodeID),
-			node.MakePeerUpdates(ctx, t),
+			func(ctx context.Context) *p2p.PeerUpdates { return node.MakePeerUpdates(ctx, t) },
 			state.eventBus,
 			true,
 			NopMetrics(),

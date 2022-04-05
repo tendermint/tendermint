@@ -126,9 +126,8 @@ type Reactor struct {
 	rs          *cstypes.RoundState
 	readySignal chan struct{} // closed when the node is ready to start consensus
 
-	chCreator p2p.ChannelCreator
-
-	peerUpdates *p2p.PeerUpdates
+	chCreator  p2p.ChannelCreator
+	peerEvents p2p.PeerEventSubscriber
 }
 
 // NewReactor returns a reference to a new consensus reactor, which implements
@@ -136,11 +135,10 @@ type Reactor struct {
 // to relevant p2p Channels and a channel to listen for peer updates on. The
 // reactor will close all p2p Channels when stopping.
 func NewReactor(
-	ctx context.Context,
 	logger log.Logger,
 	cs *State,
 	channelCreator p2p.ChannelCreator,
-	peerUpdates *p2p.PeerUpdates,
+	peerEvents p2p.PeerEventSubscriber,
 	eventBus *eventbus.EventBus,
 	waitSync bool,
 	metrics *Metrics,
@@ -153,7 +151,7 @@ func NewReactor(
 		peers:       make(map[types.NodeID]*PeerState),
 		eventBus:    eventBus,
 		Metrics:     metrics,
-		peerUpdates: peerUpdates,
+		peerEvents:  peerEvents,
 		chCreator:   channelCreator,
 		readySignal: make(chan struct{}),
 	}
@@ -173,11 +171,13 @@ func NewReactor(
 func (r *Reactor) OnStart(ctx context.Context) error {
 	r.logger.Debug("consensus wait sync", "wait_sync", r.WaitSync())
 
+	peerUpdates := r.peerEvents(ctx)
+
 	// start routine that computes peer statistics for evaluating peer quality
 	//
 	// TODO: Evaluate if we need this to be synchronized via WaitGroup as to not
 	// leak the goroutine when stopping the reactor.
-	go r.peerStatsRoutine(ctx)
+	go r.peerStatsRoutine(ctx, peerUpdates)
 
 	go r.updateRoundStateRoutine()
 
@@ -216,7 +216,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	}
 
 	go r.processChans(ctx, chanTable)
-	go r.processPeerUpdates(ctx, chanTable)
+	go r.processPeerUpdates(ctx, peerUpdates, chanTable)
 
 	r.subscribeToBroadcastEvents(stateCh)
 
@@ -334,7 +334,6 @@ func (r *Reactor) subscribeToBroadcastEvents(stateCh *p2p.Channel) {
 				Message:   makeRoundStepMessage(data.(*cstypes.RoundState)),
 			}); err != nil {
 				return err
-
 			}
 
 			select {
@@ -1314,16 +1313,12 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, cha
 	switch envelope.ChannelID {
 	case StateChannel:
 		err = r.handleStateMessage(ctx, chans[StateChannel], envelope, msgI)
-
 	case DataChannel:
 		err = r.handleDataMessage(ctx, envelope, msgI)
-
 	case VoteChannel:
 		err = r.handleVoteMessage(ctx, envelope, msgI)
-
 	case VoteSetBitsChannel:
 		err = r.handleVoteSetBitsMessage(ctx, envelope, msgI)
-
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", envelope.ChannelID, envelope)
 	}
@@ -1364,18 +1359,18 @@ func (r *Reactor) processChans(ctx context.Context, chans map[p2p.ChannelID]*p2p
 // processPeerUpdates initiates a blocking process where we listen for and handle
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
-func (r *Reactor) processPeerUpdates(ctx context.Context, chanTable map[p2p.ChannelID]*p2p.Channel) {
+func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerUpdates, chans map[p2p.ChannelID]*p2p.Channel) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case peerUpdate := <-r.peerUpdates.Updates():
-			r.processPeerUpdate(ctx, peerUpdate, chanTable)
+		case peerUpdate := <-peerUpdates.Updates():
+			r.processPeerUpdate(ctx, peerUpdate, chans)
 		}
 	}
 }
 
-func (r *Reactor) peerStatsRoutine(ctx context.Context) {
+func (r *Reactor) peerStatsRoutine(ctx context.Context, peerUpdates *p2p.PeerUpdates) {
 	for {
 		if !r.IsRunning() {
 			r.logger.Info("stopping peerStatsRoutine")
@@ -1393,7 +1388,7 @@ func (r *Reactor) peerStatsRoutine(ctx context.Context) {
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
-					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
+					peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
@@ -1401,7 +1396,7 @@ func (r *Reactor) peerStatsRoutine(ctx context.Context) {
 
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
-					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
+					peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
