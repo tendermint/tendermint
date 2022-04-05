@@ -29,8 +29,6 @@ type PeerManager interface {
 	GetHeight(types.NodeID) int64
 }
 
-type PeerHeightFetcher func(types.NodeID) int64
-
 // Reactor implements a service that contains mempool of txs that are broadcasted
 // amongst peers. It maintains a map from peer ID to counter, to prevent gossiping
 // txs to the peers you received it from.
@@ -42,7 +40,7 @@ type Reactor struct {
 	mempool *TxMempool
 	ids     *IDs
 
-	getPeerHeight PeerHeightFetcher
+	getPeerHeight func(types.NodeID) int64
 	peerEvents    p2p.PeerEventSubscriber
 	chCreator     p2p.ChannelCreator
 
@@ -61,7 +59,7 @@ func NewReactor(
 	txmp *TxMempool,
 	chCreator p2p.ChannelCreator,
 	peerEvents p2p.PeerEventSubscriber,
-	getPeerHeight PeerHeightFetcher,
+	getPeerHeight func(types.NodeID) int64,
 ) *Reactor {
 	r := &Reactor{
 		logger:        logger,

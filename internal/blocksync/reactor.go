@@ -135,7 +135,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.chCreator = func(_ context.Context, _ *conn.ChannelDescriptor) (*p2p.Channel, error) { return blockSyncCh, nil }
+	r.chCreator = func(context.Context, *conn.ChannelDescriptor) (*p2p.Channel, error) { return blockSyncCh, nil }
 
 	state, err := r.stateStore.Load()
 	if err != nil {

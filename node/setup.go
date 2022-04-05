@@ -176,7 +176,7 @@ func createMempoolReactor(
 	memplMetrics *mempool.Metrics,
 	peerEvents p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
-	peerHeight mempool.PeerHeightFetcher,
+	peerHeight func(types.NodeID) int64,
 ) (service.Service, mempool.Mempool, error) {
 	logger = logger.With("module", "mempool")
 
