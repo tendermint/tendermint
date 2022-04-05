@@ -173,7 +173,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 		return ErrVoteInvalidSignature
 	}
 	extSignBytes := VoteExtensionSignBytes(chainID, v)
-	if vote.Extension != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+	if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil
