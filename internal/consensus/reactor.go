@@ -215,7 +215,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		VoteSetBitsChannel: voteSetBitsCh,
 	}
 
-	go r.proceesChans(ctx, chanTable)
+	go r.processChans(ctx, chanTable)
 	go r.processPeerUpdates(ctx, chanTable)
 
 	r.subscribeToBroadcastEvents(stateCh)
@@ -1331,7 +1331,7 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, cha
 	return err
 }
 
-func (r *Reactor) proceesChans(ctx context.Context, chans map[p2p.ChannelID]*p2p.Channel) {
+func (r *Reactor) processChans(ctx context.Context, chans map[p2p.ChannelID]*p2p.Channel) {
 	toProcess := make([]*p2p.Channel, 0, len(chans))
 	for id := range chans {
 		toProcess = append(toProcess, chans[id])
