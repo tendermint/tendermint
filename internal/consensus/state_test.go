@@ -2184,9 +2184,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: voteExtensions[0],
 	})
-	m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED,
-	}).Once()
+	m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}).Once()
 
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
@@ -2233,7 +2231,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	m.On("PrepareProposal", mock.MatchedBy(func(r abci.RequestPrepareProposal) bool {
 		rpp = r
 		return true
-	})).Return(abci.ResponsePrepareProposal{ModifiedTxStatus: abci.ResponsePrepareProposal_UNMODIFIED})
+	})).Return(abci.ResponsePrepareProposal{})
 
 	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), types.BlockID{}, vss[1:]...)
 	ensureNewRound(t, newRoundCh, height, round)

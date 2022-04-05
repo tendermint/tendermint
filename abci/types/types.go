@@ -51,14 +51,6 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
-func (r ResponsePrepareProposal) IsTxStatusUnknown() bool {
-	return r.ModifiedTxStatus == ResponsePrepareProposal_UNKNOWN
-}
-
-func (r ResponsePrepareProposal) IsTxStatusModified() bool {
-	return r.ModifiedTxStatus == ResponsePrepareProposal_MODIFIED
-}
-
 func (r ResponseProcessProposal) IsAccepted() bool {
 	return r.Status == ResponseProcessProposal_ACCEPT
 }
