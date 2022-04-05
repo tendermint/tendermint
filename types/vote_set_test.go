@@ -510,7 +510,6 @@ func randVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
-
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
