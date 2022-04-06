@@ -196,11 +196,11 @@ func setup(
 }
 
 func TestReactor_Sync(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	const snapshotHeight = 7
-	rts := setup(ctx, t, nil, nil, 2)
+	rts := setup(ctx, t, nil, nil, 100)
 	chain := buildLightBlockChain(ctx, t, 1, 10, time.Now())
 	// app accepts any snapshot
 	rts.conn.On("OfferSnapshot", ctx, mock.AnythingOfType("types.RequestOfferSnapshot")).
@@ -224,8 +224,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	closeCh := make(chan struct{})
 	defer close(closeCh)
-	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh,
-		rts.blockInCh, closeCh, 0)
+	go handleLightBlockRequests(ctx, t, chain, rts.blockOutCh, rts.blockInCh, closeCh, 0)
 	go graduallyAddPeers(ctx, t, rts.peerUpdateCh, closeCh, 1*time.Second)
 	go handleSnapshotRequests(ctx, t, rts.snapshotOutCh, rts.snapshotInCh, closeCh, []snapshot{
 		{
