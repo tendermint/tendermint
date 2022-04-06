@@ -48,7 +48,6 @@ func Test_ResetState(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(config.DBDir(), "tx_index.db"))
 	require.FileExists(t, config.PrivValidatorStateFile())
 	pv = privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	// private validator state should still be in tact. 
+	// private validator state should still be in tact.
 	require.Equal(t, int64(10), pv.LastSignState.Height)
 }
-
