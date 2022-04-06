@@ -1,9 +1,9 @@
 #!/usr/bin/make -f
 
-OUTPUT?=build/tenderdash
+OUTPUT ?= build/tenderdash
 BUILDDIR ?= $(CURDIR)/build
-REPO_NAME=github.com/dashevo/tenderdash
-BUILD_TAGS?=tenderdash
+REPO_NAME ?= github.com/dashevo/tenderdash
+BUILD_TAGS ?= tenderdash
 # If building a release, please checkout the version tag to get the correct version setting
 ifneq ($(shell git symbolic-ref -q --short HEAD),)
 VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
@@ -14,7 +14,7 @@ LD_FLAGS = -X ${REPO_NAME}/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://${REPO_NAME}.git
 BUILD_IMAGE := ghcr.io/tendermint/docker-build-proto
-BASE_BRANCH := v0.8-dev
+BASE_BRANCH ?= v0.8-dev
 DOCKER_PROTO := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
 CGO_ENABLED ?= 1
 
