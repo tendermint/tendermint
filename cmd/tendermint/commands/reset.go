@@ -77,6 +77,11 @@ func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger,
 		logger.Error("error removing all blockchain history", "dir", dbDir, "err", err)
 	}
 
+	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
+		logger.Error("unable to recreate dbDir", "err", err)
+	}
+
+	// recreate the dbDir since the privVal state needs to live there
 	return resetFilePV(privValKeyFile, privValStateFile, logger, keyType)
 }
 
@@ -136,6 +141,7 @@ func resetState(dbDir string, logger log.Logger, keyType string) error {
 			logger.Error("error removing peerstore.db", "dir", peerstore, "err", err)
 		}
 	}
+
 	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
 		logger.Error("unable to recreate dbDir", "err", err)
 	}
