@@ -299,22 +299,6 @@ func (r *Reactor) String() string {
 	return "ConsensusReactor"
 }
 
-// StringIndented returns an indented string representation of the Reactor.
-func (r *Reactor) StringIndented(indent string) string {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-
-	s := "ConsensusReactor{\n"
-	s += indent + "  " + r.state.StringIndented(indent+"  ") + "\n"
-
-	for _, ps := range r.peers {
-		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
-	}
-
-	s += indent + "}"
-	return s
-}
-
 // GetPeerState returns PeerState for a given NodeID.
 func (r *Reactor) GetPeerState(peerID types.NodeID) (*PeerState, bool) {
 	r.mtx.RLock()
