@@ -2,6 +2,13 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.18
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+    - [cli] [\#8258](https://github.com/tendermint/tendermint/pull/8258) Fix a bug in the cli that caused `unsafe-reset-all` to panic
+
 ## v0.34.17
 
 ### BREAKING CHANGES
