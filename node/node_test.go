@@ -138,6 +138,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 	// create node
 	n := getTestNode(ctx, t, cfg, logger)
 
+	require.NoError(t, n.Start(ctx))
+
 	// default config uses the kvstore app
 	appVersion := kvstore.ProtocolVersion
 
@@ -147,7 +149,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	assert.Equal(t, state.Version.Consensus.App, appVersion)
 
 	// check version is set in node info
-	assert.Equal(t, n.nodeInfoProducer().ProtocolVersion.App, appVersion)
+	assert.Equal(t, n.nodeInfo.ProtocolVersion.App, appVersion)
 }
 
 func TestNodeSetPrivValTCP(t *testing.T) {
@@ -624,7 +626,7 @@ func TestNodeSetEventSink(t *testing.T) {
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
-		indexService, eventSinks, err := createAndStartIndexerService(ctx, cfg,
+		indexService, eventSinks, err := createIndexerService(cfg,
 			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
 			indexer.NopMetrics())
 		require.NoError(t, err)

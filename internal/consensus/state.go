@@ -185,6 +185,12 @@ type State struct {
 // StateOption sets an optional parameter on the State.
 type StateOption func(*State)
 
+// SkipStateStoreBootstrap is a state option forces the constructor to
+// skip state bootstrapping during construction.
+func SkipStateStoreBootstrap(sm *State) {
+	sm.initialStatePopulated = true
+}
+
 // NewState returns a new State.
 func NewState(
 	ctx context.Context,
@@ -223,14 +229,14 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
-	if err := cs.updateStateFromStore(ctx); err != nil {
-		return nil, err
-	}
-
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {
 		option(cs)
+	}
+
+	if err := cs.updateStateFromStore(ctx); err != nil {
+		return nil, err
 	}
 
 	return cs, nil
