@@ -12,7 +12,7 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
-  - [cli] \#8081 make the reset command safe to use (@marbar3778).
+  - [cli] \#8081 make the reset command safe to use (@marbar3778) by intoducing `reset-state` command. Fixed by \#8259.
 
 - Apps
 
