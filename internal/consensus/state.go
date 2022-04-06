@@ -124,6 +124,7 @@ type State struct {
 
 	stateStore            sm.Store
 	initialStatePopulated bool
+	skipBootstrapping     bool
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
@@ -188,7 +189,7 @@ type StateOption func(*State)
 // SkipStateStoreBootstrap is a state option forces the constructor to
 // skip state bootstrapping during construction.
 func SkipStateStoreBootstrap(sm *State) {
-	sm.initialStatePopulated = true
+	sm.skipBootstrapping = true
 }
 
 // NewState returns a new State.
@@ -235,8 +236,13 @@ func NewState(
 		option(cs)
 	}
 
-	if err := cs.updateStateFromStore(ctx); err != nil {
-		return nil, err
+	// this is not ideal, but it lets the consensus tests start
+	// node-fragments gracefully while letting the nodes
+	// themselves avoid this.
+	if !cs.skipBootstrapping {
+		if err := cs.updateStateFromStore(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	return cs, nil

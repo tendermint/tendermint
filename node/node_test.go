@@ -62,12 +62,13 @@ func TestNodeStartStop(t *testing.T) {
 
 	require.NoError(t, n.Start(ctx))
 	// wait for the node to produce a block
-	tctx, cancel := context.WithTimeout(ctx, time.Second)
+	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	blocksSub, err := n.EventBus().SubscribeWithArgs(tctx, pubsub.SubscribeArgs{
 		ClientID: "node_test",
 		Query:    types.EventQueryNewBlock,
+		Limit:    1000,
 	})
 	require.NoError(t, err)
 	_, err = blocksSub.Next(tctx)
