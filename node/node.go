@@ -54,10 +54,10 @@ type nodeImpl struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	peerManager      *p2p.PeerManager
-	router           *p2p.Router
-	nodeInfoProducer func() *types.NodeInfo
-	nodeKey          types.NodeKey // our node privkey
+	peerManager *p2p.PeerManager
+	router      *p2p.Router
+	nodeInfo    types.NodeInfo
+	nodeKey     types.NodeKey // our node privkey
 
 	// services
 	eventSinks       []indexer.EventSink
@@ -256,9 +256,9 @@ func makeNode(
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		peerManager:      peerManager,
-		nodeInfoProducer: func() *types.NodeInfo { return &nodeInfo },
-		nodeKey:          nodeKey,
+		peerManager: peerManager,
+		nodeInfo:    nodeInfo,
+		nodeKey:     nodeKey,
 
 		eventSinks: eventSinks,
 
@@ -286,7 +286,7 @@ func makeNode(
 		},
 	}
 
-	node.router, err = createRouter(logger, nodeMetrics.p2p, node.nodeInfoProducer, nodeKey, peerManager, cfg, proxyApp)
+	node.router, err = createRouter(logger, nodeMetrics.p2p, node.NodeInfo, nodeKey, peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
@@ -453,7 +453,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	n.rpcEnv.NodeInfo = n.nodeInfoProducer().Copy()
+	n.rpcEnv.NodeInfo = n.nodeInfo
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
@@ -637,6 +637,10 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 	}()
 
 	return srv
+}
+
+func (n *nodeImpl) NodeInfo() *types.NodeInfo {
+	return &n.nodeInfo
 }
 
 // EventBus returns the Node's EventBus.
