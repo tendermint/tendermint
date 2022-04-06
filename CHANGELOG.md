@@ -230,6 +230,26 @@ Special thanks to external contributors on this release: @JayT106,
 - [cmd/tendermint/commands] [\#6623](https://github.com/tendermint/tendermint/pull/6623) replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
 - [statesync] \6807 Implement P2P state provider as an alternative to RPC (@cmwaters)
 
+## v0.34.18
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+    - [cli] [\#8258](https://github.com/tendermint/tendermint/pull/8258) Fix a bug in the cli that caused `unsafe-reset-all` to panic
+
+## v0.34.17
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+   - [cli] [\#8081](https://github.com/tendermint/tendermint/issues/8081) make the reset command safe to use (@marbar3778).
+
+### BUG FIXES
+
+- [consensus] [\#8079](https://github.com/tendermint/tendermint/issues/8079) start the timeout ticker before relay (backport #7844) (@creachadair).
+- [consensus] [\#7992](https://github.com/tendermint/tendermint/issues/7992) [\#7994](https://github.com/tendermint/tendermint/issues/7994) change lock handling in handleMsg and reactor to alleviate issues gossiping during long ABCI calls (@williambanfield).
+
 ## v0.34.16
 
 Special thanks to external contributors on this release: @yihuang
