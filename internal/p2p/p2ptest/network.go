@@ -261,9 +261,9 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	router, err := p2p.NewRouter(
 		n.logger,
 		p2p.NopMetrics(),
-		nodeInfo,
 		privKey,
 		peerManager,
+		func() *types.NodeInfo { return &nodeInfo },
 		[]p2p.Transport{transport},
 		transport.Endpoints(),
 		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
