@@ -363,7 +363,7 @@ func createPeerManager(
 func createRouter(
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo types.NodeInfo,
+	nodeInfoProducer func() *types.NodeInfo,
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
 	cfg *config.Config,
@@ -392,9 +392,9 @@ func createRouter(
 	return p2p.NewRouter(
 		p2pLogger,
 		p2pMetrics,
-		nodeInfo,
 		nodeKey.PrivKey,
 		peerManager,
+		nodeInfoProducer,
 		[]p2p.Transport{transport},
 		[]p2p.Endpoint{ep},
 		getRouterConfig(cfg, appClient),
