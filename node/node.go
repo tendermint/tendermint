@@ -54,10 +54,10 @@ type nodeImpl struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	peerManager *p2p.PeerManager
-	router      *p2p.Router
-	nodeInfo    types.NodeInfo
-	nodeKey     types.NodeKey // our node privkey
+	peerManager      *p2p.PeerManager
+	router           *p2p.Router
+	nodeInfoProducer func() *types.NodeInfo
+	nodeKey          types.NodeKey // our node privkey
 
 	// services
 	eventSinks       []indexer.EventSink
@@ -213,13 +213,6 @@ func makeNode(
 		}
 	}
 
-	// Determine whether we should attempt state sync.
-	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
-	if stateSync && state.LastBlockHeight > 0 {
-		logger.Info("Found local state with non-zero height, skipping state sync")
-		stateSync = false
-	}
-
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	if err := consensus.NewHandshaker(
@@ -256,7 +249,7 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey, peerManager, cfg, proxyApp)
+	router, err := createRouter(logger, nodeMetrics.p2p, func() *types.NodeInfo { return &nodeInfo }, nodeKey, peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
@@ -287,6 +280,13 @@ func makeNode(
 		eventBus,
 		nodeMetrics.state,
 	)
+
+	// Determine whether we should attempt state sync.
+	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	if stateSync && state.LastBlockHeight > 0 {
+		logger.Info("Found local state with non-zero height, skipping state sync")
+		stateSync = false
+	}
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
@@ -355,10 +355,10 @@ func makeNode(
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		peerManager: peerManager,
-		router:      router,
-		nodeInfo:    nodeInfo,
-		nodeKey:     nodeKey,
+		peerManager:      peerManager,
+		router:           router,
+		nodeInfoProducer: func() *types.NodeInfo { return &nodeInfo },
+		nodeKey:          nodeKey,
 
 		eventSinks: eventSinks,
 
@@ -458,7 +458,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	n.rpcEnv.NodeInfo = n.nodeInfo
+	n.rpcEnv.NodeInfo = n.nodeInfoProducer().Copy()
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
