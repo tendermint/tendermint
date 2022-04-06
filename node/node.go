@@ -213,13 +213,6 @@ func makeNode(
 		}
 	}
 
-	// Determine whether we should attempt state sync.
-	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
-	if stateSync && state.LastBlockHeight > 0 {
-		logger.Info("Found local state with non-zero height, skipping state sync")
-		stateSync = false
-	}
-
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	if err := consensus.NewHandshaker(
@@ -256,25 +249,67 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	router, err := createRouter(logger, nodeMetrics.p2p, nodeInfo, nodeKey, peerManager, cfg, proxyApp)
+	// TODO construct node here:
+	node := &nodeImpl{
+		config:        cfg,
+		logger:        logger,
+		genesisDoc:    genDoc,
+		privValidator: privValidator,
+
+		peerManager: peerManager,
+		nodeInfo:    nodeInfo,
+		nodeKey:     nodeKey,
+
+		eventSinks: eventSinks,
+
+		services: []service.Service{eventBus},
+
+		stateStore: stateStore,
+		blockStore: blockStore,
+
+		shutdownOps: makeCloser(closers),
+
+		rpcEnv: &rpccore.Environment{
+			ProxyApp: proxyApp,
+
+			StateStore: stateStore,
+			BlockStore: blockStore,
+
+			PeerManager: peerManager,
+
+			GenDoc:     genDoc,
+			EventSinks: eventSinks,
+			EventBus:   eventBus,
+			EventLog:   eventLog,
+			Logger:     logger.With("module", "rpc"),
+			Config:     *cfg.RPC,
+		},
+	}
+
+	node.router, err = createRouter(logger, nodeMetrics.p2p, node.NodeInfo, nodeKey, peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
 			makeCloser(closers))
 	}
 
-	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
-		peerManager.Subscribe, router.OpenChannel, peerManager.GetHeight)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
-
 	evReactor, evPool, edbCloser, err := createEvidenceReactor(logger, cfg, dbProvider,
-		stateStore, blockStore, peerManager.Subscribe, router.OpenChannel, nodeMetrics.evidence, eventBus)
+		stateStore, blockStore, peerManager.Subscribe, node.router.OpenChannel, nodeMetrics.evidence, eventBus)
 	closers = append(closers, edbCloser)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	node.services = append(node.services, evReactor)
+	node.rpcEnv.EvidencePool = evPool
+	node.evPool = evPool
+
+	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
+		peerManager.Subscribe, node.router.OpenChannel, peerManager.GetHeight)
+	if err != nil {
+		return nil, combineCloseError(err, makeCloser(closers))
+	}
+	node.rpcEnv.Mempool = mp
+	node.services = append(node.services, mpReactor)
 
 	// make block executor for consensus and blockchain reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
@@ -288,6 +323,13 @@ func makeNode(
 		nodeMetrics.state,
 	)
 
+	// Determine whether we should attempt state sync.
+	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	if stateSync && state.LastBlockHeight > 0 {
+		logger.Info("Found local state with non-zero height, skipping state sync")
+		stateSync = false
+	}
+
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
 	blockSync := !onlyValidatorIsUs(state, pubKey)
@@ -296,11 +338,14 @@ func makeNode(
 	csReactor, csState, err := createConsensusReactor(ctx,
 		cfg, stateStore, blockExec, blockStore, mp, evPool,
 		privValidator, nodeMetrics.consensus, waitSync, eventBus,
-		peerManager, router.OpenChannel, logger,
+		peerManager, node.router.OpenChannel, logger,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	node.services = append(node.services, csReactor)
+	node.rpcEnv.ConsensusState = csState
+	node.rpcEnv.ConsensusReactor = csReactor
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
 	// doing a state sync first.
@@ -310,12 +355,14 @@ func makeNode(
 		blockExec,
 		blockStore,
 		csReactor,
-		router.OpenChannel,
+		node.router.OpenChannel,
 		peerManager.Subscribe,
 		blockSync && !stateSync,
 		nodeMetrics.consensus,
 		eventBus,
 	)
+	node.services = append(node.services, bcReactor)
+	node.rpcEnv.BlockSyncReactor = bcReactor
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
 	// FIXME We need to update metrics here, since other reactors don't have access to them.
@@ -329,14 +376,15 @@ func makeNode(
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor := statesync.NewReactor(
+	node.stateSync = stateSync
+	node.stateSyncReactor = statesync.NewReactor(
 		ctx,
 		genDoc.ChainID,
 		genDoc.InitialHeight,
 		*cfg.StateSync,
 		logger.With("module", "statesync"),
 		proxyApp,
-		router.OpenChannel,
+		node.router.OpenChannel,
 		peerManager.Subscribe,
 		stateStore,
 		blockStore,
@@ -345,61 +393,8 @@ func makeNode(
 		eventBus,
 	)
 
-	var pexReactor service.Service = service.NopService{}
 	if cfg.P2P.PexReactor {
-		pexReactor = pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe)
-	}
-	node := &nodeImpl{
-		config:        cfg,
-		logger:        logger,
-		genesisDoc:    genDoc,
-		privValidator: privValidator,
-
-		peerManager: peerManager,
-		router:      router,
-		nodeInfo:    nodeInfo,
-		nodeKey:     nodeKey,
-
-		eventSinks: eventSinks,
-
-		services: []service.Service{
-			eventBus,
-			evReactor,
-			mpReactor,
-			csReactor,
-			bcReactor,
-			pexReactor,
-		},
-
-		stateStore:       stateStore,
-		blockStore:       blockStore,
-		stateSyncReactor: stateSyncReactor,
-		stateSync:        stateSync,
-		evPool:           evPool,
-
-		shutdownOps: makeCloser(closers),
-
-		rpcEnv: &rpccore.Environment{
-			ProxyApp:       proxyApp,
-			EvidencePool:   evPool,
-			ConsensusState: csState,
-
-			StateStore: stateStore,
-			BlockStore: blockStore,
-
-			ConsensusReactor: csReactor,
-			BlockSyncReactor: bcReactor,
-
-			PeerManager: peerManager,
-
-			GenDoc:     genDoc,
-			EventSinks: eventSinks,
-			EventBus:   eventBus,
-			EventLog:   eventLog,
-			Mempool:    mp,
-			Logger:     logger.With("module", "rpc"),
-			Config:     *cfg.RPC,
-		},
+		node.services = append(node.services, pex.NewReactor(logger, peerManager, node.router.OpenChannel, peerManager.Subscribe))
 	}
 
 	if cfg.Mode == config.ModeValidator {
@@ -642,6 +637,10 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 	}()
 
 	return srv
+}
+
+func (n *nodeImpl) NodeInfo() *types.NodeInfo {
+	return &n.nodeInfo
 }
 
 // EventBus returns the Node's EventBus.

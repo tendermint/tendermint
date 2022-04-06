@@ -29,7 +29,6 @@ type seedNodeImpl struct {
 	// network
 	peerManager *p2p.PeerManager
 	router      *p2p.Router
-	nodeInfo    types.NodeInfo
 	nodeKey     types.NodeKey // our node privkey
 	isListening bool
 
@@ -75,7 +74,7 @@ func makeSeedNode(
 			closer)
 	}
 
-	router, err := createRouter(logger, p2pMetrics, nodeInfo, nodeKey, peerManager, cfg, nil)
+	router, err := createRouter(logger, p2pMetrics, func() *types.NodeInfo { return &nodeInfo }, nodeKey, peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
@@ -87,7 +86,6 @@ func makeSeedNode(
 		logger:     logger,
 		genesisDoc: genDoc,
 
-		nodeInfo:    nodeInfo,
 		nodeKey:     nodeKey,
 		peerManager: peerManager,
 		router:      router,
