@@ -52,7 +52,6 @@ func Test_ResetState(t *testing.T) {
 	require.FileExists(t, config.PrivValidator.StateFile())
 	pv, err = privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
-	// private validator state should still be in tact. 
+	// private validator state should still be in tact.
 	require.Equal(t, int64(10), pv.LastSignState.Height)
 }
-
