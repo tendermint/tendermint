@@ -1,3 +1,14 @@
+## [0.7.1-dev.1] - 2022-04-07
+
+### Bug Fixes
+
+- Network stuck due to outdated proposal block (#327)
+- Don't process WAL logs for old rounds (#331)
+
+### Miscellaneous Tasks
+
+- Update changelog generation config
+
 ## [0.7.0] - 2022-01-24
 
 ### Miscellaneous Tasks
