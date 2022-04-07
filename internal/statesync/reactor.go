@@ -325,7 +325,10 @@ func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataStateS
 // of historical blocks before participating in consensus
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	if r.eventBus != nil {
-		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{Complete: false, Height: r.initialHeight}); err != nil {
+		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+			Complete: false,
+			Height:   r.initialHeight,
+		}); err != nil {
 			return sm.State{}, err
 		}
 	}
