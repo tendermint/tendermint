@@ -310,14 +310,6 @@ func (r *Reactor) OnStop() {
 	r.dispatcher.Close()
 }
 
-func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataStateSyncStatus) error {
-	if r.eventBus == nil {
-		return errors.New("event system is not configured")
-	}
-
-	return r.eventBus.PublishEventStateSyncStatus(ctx, event)
-}
-
 // Sync runs a state sync, fetching snapshots and providing chunks to the
 // application. At the close of the operation, Sync will bootstrap the state
 // store and persist the commit at that height so that either consensus or
@@ -376,6 +368,15 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 
 	if err := r.Backfill(ctx, state); err != nil {
 		r.logger.Error("backfill failed. Proceeding optimistically...", "err", err)
+	}
+
+	if r.eventBus != nil {
+		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+			Complete: true,
+			Height:   state.LastBlockHeight,
+		}); err != nil {
+			return sm.State{}, err
+		}
 	}
 
 	return state, nil
