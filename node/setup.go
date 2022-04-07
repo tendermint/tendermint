@@ -95,8 +95,7 @@ func initDBs(
 	return blockStore, stateDB, makeCloser(closers), nil
 }
 
-func createAndStartIndexerService(
-	ctx context.Context,
+func createIndexerService(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	eventBus *eventbus.EventBus,
@@ -115,10 +114,6 @@ func createAndStartIndexerService(
 		Logger:   logger.With("module", "txindex"),
 		Metrics:  metrics,
 	})
-
-	if err := indexerService.Start(ctx); err != nil {
-		return nil, nil, err
-	}
 
 	return indexerService, eventSinks, nil
 }
@@ -264,6 +259,7 @@ func createConsensusReactor(
 		evidencePool,
 		eventBus,
 		consensus.StateMetrics(csMetrics),
+		consensus.SkipStateStoreBootstrap,
 	)
 	if err != nil {
 		return nil, nil, err

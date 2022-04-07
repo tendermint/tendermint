@@ -100,7 +100,7 @@ these parameters may do so by setting the `ConsensusParams.Timeout` field of the
 As a safety measure in case of unusual timing issues during the upgrade to
 v0.36, an operator may override the consensus timeout values for a single node.
 Note, however, that these overrides will be removed in Tendermint v0.37. See
-[configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
+[configuration](https://github.com/tendermint/tendermint/blob/master/docs/nodes/configuration.md)
 for more information about these overrides.
 
 For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
