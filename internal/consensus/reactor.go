@@ -816,13 +816,20 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 		if logThrottle == 0 {
 			// we sent nothing -- sleep
 			logThrottle = 1
-			logger.Debug(
-				"no votes to send; sleeping",
+			logArgs := []interface{}{
 				"rs.Height", rs.Height,
 				"prs.Height", prs.Height,
-				"localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV", prs.Prevotes,
-				"localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC", prs.Precommits,
-			)
+				"peerPV", prs.Prevotes,
+				"peerPC", prs.Precommits,
+			}
+			if rs.Votes != nil {
+				logArgs = append(logArgs,
+					"localPV", rs.Votes.Prevotes(rs.Round).BitArray(),
+					"localPC", rs.Votes.Precommits(rs.Round).BitArray(),
+				)
+			}
+
+			logger.Debug("no votes to send; sleeping", logArgs...)
 		} else if logThrottle == 2 {
 			logThrottle = 1
 		}
