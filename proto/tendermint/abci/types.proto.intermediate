@@ -134,9 +134,10 @@ message RequestPrepareProposal {
   ExtendedCommitInfo local_last_commit    = 5 [(gogoproto.nullable) = false];
   repeated Evidence  byzantine_validators = 6 [(gogoproto.nullable) = false];
   // address of the public key of the node receiving this PrepareProposal request.
-  bytes proposer_address = 7;
+  bytes proposer_address     = 7;
+  bytes next_validators_hash = 8;
   // the modified transactions cannot exceed this size.
-  int64 max_tx_bytes = 8;
+  int64 max_tx_bytes = 9;
 }
 
 message RequestProcessProposal {
@@ -147,7 +148,8 @@ message RequestProcessProposal {
   CommitInfo                proposed_last_commit = 5 [(gogoproto.nullable) = false];
   repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
   // address of the public key of the original proposer of the block.
-  bytes proposer_address = 7;
+  bytes proposer_address     = 7;
+  bytes next_validators_hash = 8;
 }
 
 // Extends a vote with application-side injection
@@ -168,7 +170,8 @@ message RequestFinalizeBlock {
   CommitInfo                decided_last_commit  = 5 [(gogoproto.nullable) = false];
   repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
   // address of the public key of the original proposer of the block.
-  bytes proposer_address = 7;
+  bytes proposer_address     = 7;
+  bytes next_validators_hash = 8;
 }
 
 //----------------------------------------
