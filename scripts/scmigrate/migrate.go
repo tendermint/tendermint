@@ -130,7 +130,7 @@ func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
 
 	batch := db.NewBatch()
 	batch.Delete(keep.key)
-	batch.Set(makeKeyFromPrefix(prefixSeenCommit), val)
+	batch.Set(wantKey, val)
 	werr := batch.Write()
 	cerr := batch.Close()
 	if werr != nil {
