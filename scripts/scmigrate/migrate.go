@@ -129,8 +129,12 @@ func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
 	}
 
 	batch := db.NewBatch()
-	batch.Delete(keep.key)
-	batch.Set(wantKey, val)
+	if err := batch.Delete(keep.key); err != nil {
+		return err
+	}
+	if err := batch.Set(wantKey, val); err != nil {
+		return err
+	}
 	werr := batch.Write()
 	cerr := batch.Close()
 	if werr != nil {
