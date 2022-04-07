@@ -25,12 +25,17 @@ var keepAddrBook bool
 
 // ResetStateCmd removes the database of the specified Tendermint core instance.
 var ResetStateCmd = &cobra.Command{
-	Use:   "reset-state",
-	Short: "Remove all the data and WAL",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Use:    "reset-state",
+	Short:  "Remove all the data and WAL",
+	PreRun: deprecateSnakeCase,
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		config, err = ParseConfig()
+		if err != nil {
+			return err
+		}
+
 		return resetState(config.DBDir(), logger)
 	},
-	PreRun: deprecateSnakeCase,
 }
 
 func init() {
@@ -42,21 +47,37 @@ var ResetPrivValidatorCmd = &cobra.Command{
 	Use:     "unsafe-reset-priv-validator",
 	Aliases: []string{"unsafe_reset_priv_validator"},
 	Short:   "(unsafe) Reset this node's validator to genesis state",
-	Run:     resetPrivValidator,
 	PreRun:  deprecateSnakeCase,
+	RunE:    resetPrivValidator,
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetAllCmd(cmd *cobra.Command, args []string) error {
-	return resetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
-		config.PrivValidatorStateFile(), logger)
+func resetAllCmd(cmd *cobra.Command, args []string) (err error) {
+	config, err = ParseConfig()
+	if err != nil {
+		return err
+	}
+
+	return resetAll(
+		config.DBDir(),
+		config.P2P.AddrBookFile(),
+		config.PrivValidatorKeyFile(),
+		config.PrivValidatorStateFile(),
+		logger,
+	)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetPrivValidator(cmd *cobra.Command, args []string) {
+func resetPrivValidator(cmd *cobra.Command, args []string) (err error) {
+	config, err = ParseConfig()
+	if err != nil {
+		return err
+	}
+
 	resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
+	return nil
 }
 
 // resetAll removes address book files plus all data, and resets the privValdiator data.
@@ -66,6 +87,7 @@ func resetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logg
 	} else {
 		removeAddrBook(addrBookFile, logger)
 	}
+
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
@@ -139,13 +161,19 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
 	if _, err := os.Stat(privValKeyFile); err == nil {
 		pv := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
 		pv.Reset()
-		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
+		logger.Info(
+			"Reset private validator file to genesis state",
+			"keyFile", privValKeyFile,
+			"stateFile", privValStateFile,
+		)
 	} else {
 		pv := privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
+		logger.Info(
+			"Generated private validator file",
+			"keyFile", privValKeyFile,
+			"stateFile", privValStateFile,
+		)
 	}
 }
 
