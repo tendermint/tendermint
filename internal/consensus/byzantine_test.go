@@ -95,7 +95,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			evpool := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
 
 			// Make State
-			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus)
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 			cs, err := NewState(ctx, logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
 			require.NoError(t, err)
 			// set private validator
@@ -141,8 +141,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			// send two votes to all peers (1st to one half, 2nd to another half)
 			i := 0
 			for _, ps := range bzReactor.peers {
+				voteCh := rts.voteChannels[bzNodeID]
 				if i < len(bzReactor.peers)/2 {
-					require.NoError(t, bzReactor.voteCh.Send(ctx,
+
+					require.NoError(t, voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.Vote{
@@ -150,7 +152,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 							},
 						}))
 				} else {
-					require.NoError(t, bzReactor.voteCh.Send(ctx,
+					require.NoError(t, voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,
 							Message: &tmcons.Vote{

@@ -60,6 +60,7 @@ type Channel struct {
 	errCh chan<- PeerError // peer error reporting
 
 	messageType proto.Message // the channel's message type, used for unmarshaling
+	name        string
 }
 
 // NewChannel creates a new channel. It is primarily for internal and test
@@ -101,6 +102,8 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 		return nil
 	}
 }
+
+func (ch *Channel) String() string { return fmt.Sprintf("p2p.Channel<%d:%s>", ch.ID, ch.name) }
 
 // Receive returns a new unbuffered iterator to receive messages from ch.
 // The iterator runs until ctx ends.

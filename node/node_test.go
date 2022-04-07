@@ -333,6 +333,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		evidencePool,
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
@@ -412,6 +413,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
@@ -487,6 +489,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 
 	blockID := types.BlockID{
@@ -578,12 +581,12 @@ func TestNodeNewSeedNode(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	ns, err := makeSeedNode(ctx,
+	ns, err := makeSeedNode(
+		logger,
 		cfg,
 		config.DefaultDBProvider,
 		nodeKey,
 		defaultGenesisDocProviderFunc(cfg),
-		logger,
 	)
 	t.Cleanup(ns.Wait)
 	t.Cleanup(leaktest.CheckTimeout(t, time.Second))

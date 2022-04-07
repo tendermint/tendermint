@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.17
 
 require (
-	github.com/BurntSushi/toml v1.0.0
+	github.com/BurntSushi/toml v1.1.0
 	github.com/adlio/schema v1.3.0
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
@@ -41,7 +41,7 @@ require (
 	github.com/creachadair/atomicfile v0.2.4
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.7
-	github.com/vektra/mockery/v2 v2.10.0
+	github.com/vektra/mockery/v2 v2.10.4
 	gotest.tools v2.2.0+incompatible
 )
 

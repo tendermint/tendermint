@@ -48,14 +48,6 @@ type BlockExecutor struct {
 	cache map[string]struct{}
 }
 
-type BlockExecutorOption func(executor *BlockExecutor)
-
-func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
-	return func(blockExec *BlockExecutor) {
-		blockExec.metrics = metrics
-	}
-}
-
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
@@ -66,25 +58,19 @@ func NewBlockExecutor(
 	evpool EvidencePool,
 	blockStore BlockStore,
 	eventBus *eventbus.EventBus,
-	options ...BlockExecutorOption,
+	metrics *Metrics,
 ) *BlockExecutor {
-	res := &BlockExecutor{
+	return &BlockExecutor{
 		eventBus:   eventBus,
 		store:      stateStore,
 		appClient:  appClient,
 		mempool:    pool,
 		evpool:     evpool,
 		logger:     logger,
-		metrics:    NopMetrics(),
+		metrics:    metrics,
 		cache:      make(map[string]struct{}),
 		blockStore: blockStore,
 	}
-
-	for _, option := range options {
-		option(res)
-	}
-
-	return res
 }
 
 func (blockExec *BlockExecutor) Store() Store {
@@ -138,22 +124,15 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// transaction causing an error.
 		//
 		// Also, the App can simply skip any transaction that could cause any kind of trouble.
-		// Either way, we can not recover in a meaningful way, unless we skip proposing
-		// this block, repair what caused the error and try again. Hence, we panic on
-		// purpose for now.
-		panic(err)
-	}
-	if rpp.IsTxStatusUnknown() {
-		panic(fmt.Sprintf("PrepareProposal responded with ModifiedTxStatus %s", rpp.ModifiedTxStatus.String()))
-	}
-
-	if !rpp.IsTxStatusModified() {
-		return block, nil
+		// Either way, we cannot recover in a meaningful way, unless we skip proposing
+		// this block, repair what caused the error and try again. Hence, we return an
+		// error for now (the production code calling this function is expected to panic).
+		return nil, err
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
 	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
-		panic(fmt.Errorf("ResponsePrepareProposal validation: %w", err))
+		return nil, err
 	}
 
 	for _, rtx := range txrSet.RemovedTxs() {

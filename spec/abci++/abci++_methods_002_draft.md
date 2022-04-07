@@ -299,7 +299,6 @@ title: Methods
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
-    | modified_tx_status      | [TxModifiedStatus](#TxModifiedStatus)            | `enum` signaling if the application has made changes to the list of transactions.           | 1            |
     | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
     | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
@@ -311,19 +310,15 @@ title: Methods
       and `RequestFinalizeBlock`.
     * The height and timestamp values match the values from the header of the proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
-        * In this case, the Application should set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED`.
         * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
             * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
             * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as `REMOVED`. In this case, Tendermint will remove `tx` from the mempool.
             * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as `ADD`. In this case, Tendermint will add it to the mempool.
         * The Application should be aware that removing and adding transactions may compromise _traceability_.
           > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
-    * If the Application does not modify the preliminary set of transactions `txs`, then it sets `ResponsePrepareProposal.modified_tx_status` to `UNMODIFIED`. In this case, Tendermint will ignore the contents of `ResponsePrepareProposal.tx_records`.
     * Tendermint MAY include a list of transactions in `RequestPrepareProposal.txs` whose total size in bytes exceeds `RequestPrepareProposal.max_tx_bytes`.
-      Therefore, if the size of `RequestPrepareProposal.txs` is greater than `RequestPrepareProposal.max_tx_bytes`:
-        * the Application MUST make sure that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those
-          transaction records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or `ADDED`.
-        * the Application MUST set `ResponsePrepareProposal.modified_tx_status` to `MODIFIED`. Tendermint will panic otherwise.
+      Therefore, if the size of `RequestPrepareProposal.txs` is greater than `RequestPrepareProposal.max_tx_bytes`, the Application MUST make sure that the
+      `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or `ADDED`.
     * In same-block execution mode, the Application must provide values for `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.tx_results`, `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
@@ -414,7 +409,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
 
     | Name                    | Type                                             | Description                                                                       | Field Number |
     |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
-    | status                  | [ProposalStatus](#ProposalStatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
+    | status                  | [ProposalStatus](#proposalstatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
     | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions. | 3            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
@@ -533,7 +528,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
     | Name   | Type                          | Description                                                    | Field Number |
     |--------|-------------------------------|----------------------------------------------------------------|--------------|
-    | status | [VerifyStatus](#VerifyStatus) | `enum` signaling if the application accepts the vote extension | 1            |
+    | status | [VerifyStatus](#verifystatus) | `enum` signaling if the application accepts the vote extension | 1            |
 
 * **Usage**:
     * `RequestVerifyVoteExtension.vote_extension` can be an empty byte array. The Application's interpretation of it should be
@@ -827,7 +822,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | info       | string                                                      | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                                                       | Amount of gas requested for transaction.                              | 5            |
     | gas_used   | int64                                                       | Amount of gas consumed by transaction.                                | 6            |
-    | events  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
+    | events     | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 ### TxAction
@@ -847,6 +842,7 @@ enum TxAction {
     * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal. The transaction is _not_ added to the mempool.
     * If `Action` is `REMOVED`, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
       similar to `CheckTx` returning _false_.
+
 ### TxRecord
 
 * **Fields**:
@@ -867,26 +863,10 @@ enum ProposalStatus {
 ```
 
 * **Usage**:
-	* Used within the [ProcessProposal](#ProcessProposal) response.
-    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
-    * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
-
-### TxModifiedStatus
-
-```proto
-enum ModifiedTxStatus {
-  UNKNOWN    = 0; // Unknown status. Returning this from the application is always an error.
-  UNMODIFIED = 1; // Status that signals the application has modified the returned list of transactions.
-  MODIFIED   = 2; // Status that signals that the application has not modified the list of transactions.
-}
-```
-
-* **Usage**:
-	* Used within the [PrepareProposal](#PrepareProposal) response.
-    * If `TxModifiedStatus` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `TxModifiedStatus` is `UNMODIFIED`, Tendermint will ignore the contents of the `PrepareProposal` response and use the transactions originally passed to the application during `PrepareProposal`.
-    * If `TxModifiedStatus` is `MODIFIED`, Tendermint will update the block proposal using the contents of the `PrepareProposal` response returned by the application.
+    * Used within the [ProcessProposal](#processproposal) response.
+        * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+        * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
+        * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
 
 ### VerifyStatus
 
@@ -899,10 +879,10 @@ enum VerifyStatus {
 ```
 
 * **Usage**:
-	* Used within the [VerifyVoteExtension](#VerifyVoteExtension) response.
-    * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
-    * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
+    * Used within the [VerifyVoteExtension](#verifyvoteextension) response.
+        * If `Status` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
+        * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
+        * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
 
 
 ### CanonicalVoteExtension
