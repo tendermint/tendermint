@@ -26,7 +26,7 @@ PexResponse is an list of net addresses provided to a peer to dial.
 
 | Name  | Type                               | Description                              | Field Number |
 |-------|------------------------------------|------------------------------------------|--------------|
-| addresses | repeated [PexAddress](#PexAddress) | List of peer addresses available to dial | 1            |
+| addresses | repeated [PexAddress](#pexaddress) | List of peer addresses available to dial | 1            |
 
 ### PexAddress
 
@@ -41,7 +41,7 @@ into a `NodeAddress`. See [ParseNodeAddress](https://github.com/tendermint/tende
 
 Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buffers/docs/proto#oneof). The one of consists of two messages.
 
-| Name         | Type                      | Description                                          | Field Number |
-|--------------|---------------------------|------------------------------------------------------|--------------|
-| pex_request  | [PexRequest](#PexRequest) | Empty request asking for a list of addresses to dial | 3            |
-| pex_response | [PexResponse](#PexResponse)  | List of addresses to dial                            | 4            |
+| Name         | Type                        | Description                                          | Field Number |
+|--------------|-----------------------------|------------------------------------------------------|--------------|
+| pex_request  | [PexRequest](#pexrequest)   | Empty request asking for a list of addresses to dial | 3            |
+| pex_response | [PexResponse](#pexresponse) | List of addresses to dial                            | 4            |
