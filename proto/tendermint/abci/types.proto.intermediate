@@ -124,29 +124,28 @@ message RequestApplySnapshotChunk {
 }
 
 message RequestPrepareProposal {
-  bytes                     hash   = 1;
-  int64                     height = 2;
-  google.protobuf.Timestamp time   = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-
+  // the modified transactions cannot exceed this size.
+  int64 max_tx_bytes = 1;
   // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  repeated bytes     txs                  = 4;
-  ExtendedCommitInfo local_last_commit    = 5 [(gogoproto.nullable) = false];
-  repeated Evidence  byzantine_validators = 6 [(gogoproto.nullable) = false];
+  repeated bytes            txs                  = 2;
+  ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
+  repeated Evidence         byzantine_validators = 4 [(gogoproto.nullable) = false];
+  bytes                     hash                 = 5;
+  int64                     height               = 6;
+  google.protobuf.Timestamp time                 = 7 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   // address of the public key of the node receiving this PrepareProposal request.
-  bytes proposer_address     = 7;
-  bytes next_validators_hash = 8;
-  // the modified transactions cannot exceed this size.
-  int64 max_tx_bytes = 9;
+  bytes proposer_address     = 8;
+  bytes next_validators_hash = 9;
 }
 
 message RequestProcessProposal {
-  bytes                     hash                 = 1;
-  int64                     height               = 2;
-  google.protobuf.Timestamp time                 = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  repeated bytes            txs                  = 4;
-  CommitInfo                proposed_last_commit = 5 [(gogoproto.nullable) = false];
-  repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
+  repeated bytes            txs                  = 1;
+  CommitInfo                decided_last_commit  = 2 [(gogoproto.nullable) = false];
+  repeated Evidence         byzantine_validators = 3 [(gogoproto.nullable) = false];
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   // address of the public key of the original proposer of the block.
   bytes proposer_address     = 7;
   bytes next_validators_hash = 8;
@@ -163,12 +162,12 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  bytes                     hash                 = 1;
-  int64                     height               = 2;
-  google.protobuf.Timestamp time                 = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  repeated bytes            txs                  = 4;
-  CommitInfo                decided_last_commit  = 5 [(gogoproto.nullable) = false];
-  repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
+  repeated bytes            txs                  = 1;
+  CommitInfo                decided_last_commit  = 2 [(gogoproto.nullable) = false];
+  repeated Evidence         byzantine_validators = 3 [(gogoproto.nullable) = false];
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   // address of the public key of the original proposer of the block.
   bytes proposer_address     = 7;
   bytes next_validators_hash = 8;
