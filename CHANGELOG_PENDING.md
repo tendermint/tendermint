@@ -27,3 +27,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
