@@ -489,23 +489,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	// TODO: We shouldn't run state sync if we already have state that has a
 	// LastBlockHeight that is not InitialHeight
 	if n.stateSync {
-		bcR := n.rpcEnv.BlockSyncReactor
-
-		// we need to get the genesis state to get parameters such as
-		state, err := sm.MakeGenesisState(n.genesisDoc)
-		if err != nil {
-			return fmt.Errorf("unable to derive state: %w", err)
-		}
-
-		// TODO: we may want to move these events within the respective
-		// reactors.
-		// At the beginning of the statesync start, we use the initialHeight as the event height
-		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
-		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
-		if err := n.stateSyncReactor.PublishStatus(ctx, d); err != nil {
-			n.logger.Error("failed to emit the statesync start event", "err", err)
-		}
-
 		// RUN STATE SYNC NOW:
 		//
 		// TODO: Eventually this should run as part of some
@@ -521,31 +504,13 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 		n.rpcEnv.ConsensusReactor.SetStateSyncingMetrics(0)
 
-		if err := n.stateSyncReactor.PublishStatus(ctx,
-			types.EventDataStateSyncStatus{
-				Complete: true,
-				Height:   ssState.LastBlockHeight,
-			}); err != nil {
-			n.logger.Error("failed to emit the statesync start event", "err", err)
-			return err
-		}
-
 		// TODO: Some form of orchestrator is needed here between the state
 		// advancing reactors to be able to control which one of the three
 		// is running
 		// FIXME Very ugly to have these metrics bleed through here.
 		n.rpcEnv.ConsensusReactor.SetBlockSyncingMetrics(1)
-		if err := bcR.SwitchToBlockSync(ctx, ssState); err != nil {
+		if err := n.rpcEnv.BlockSyncReactor.SwitchToBlockSync(ctx, ssState); err != nil {
 			n.logger.Error("failed to switch to block sync", "err", err)
-			return err
-		}
-
-		if err := bcR.PublishStatus(ctx,
-			types.EventDataBlockSyncStatus{
-				Complete: false,
-				Height:   ssState.LastBlockHeight,
-			}); err != nil {
-			n.logger.Error("failed to emit the block sync starting event", "err", err)
 			return err
 		}
 	}
