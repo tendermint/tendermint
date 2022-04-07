@@ -160,16 +160,16 @@ func NewReactor(
 	eventBus *eventbus.EventBus,
 ) *Reactor {
 	r := &Reactor{
-		logger:      logger,
-		stateStore:  stateStore,
-		blockExec:   blockExec,
-		store:       store,
-		consReactor: consReactor,
-		blockSync:   newAtomicBool(blockSync),
-		chCreator:   channelCreator,
-		peerEvents:  peerEvents,
-		metrics:     metrics,
-		eventBus:    eventBus,
+		logger:           logger,
+		stateStore:       stateStore,
+		blockExec:        blockExec,
+		store:            store,
+		consReactor:      consReactor,
+		blockSync:        newAtomicBool(blockSync),
+		chCreator:        channelCreator,
+		peerEvents:       peerEvents,
+		metrics:          metrics,
+		eventBus:         eventBus,
 		lastTrustedBlock: nil,
 	}
 
@@ -257,53 +257,6 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 	})
 }
 
-<<<<<<< HEAD
-// handleBlockSyncMessage handles envelopes sent from peers on the
-// BlockSyncChannel. It returns an error only if the Envelope.Message is unknown
-// for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleBlockSyncMessage(ctx context.Context, envelope *p2p.Envelope, blockSyncCh *p2p.Channel) error {
-	logger := r.logger.With("peer", envelope.From)
-
-	switch msg := envelope.Message.(type) {
-	case *bcproto.BlockRequest:
-		return r.respondToPeer(ctx, msg, envelope.From)
-	case *bcproto.BlockResponse:
-		block, err := types.BlockFromProto(msg.Block)
-		if err != nil {
-			logger.Error("failed to convert block from proto", "err", err)
-			return err
-		}
-		commit, err := types.CommitFromProto(msg.Commit)
-		if err != nil {
-			logger.Error("failed to convert commit from proto", "err", err)
-			return err
-		}
-
-		r.pool.AddBlock(envelope.From, &BlockResponse{block, commit}, block.Size())
-
-	case *bcproto.StatusRequest:
-		return r.blockSyncCh.Send(ctx, p2p.Envelope{
-			To: envelope.From,
-			Message: &bcproto.StatusResponse{
-				Height: r.store.Height(),
-				Base:   r.store.Base(),
-			},
-		})
-	case *bcproto.StatusResponse:
-		r.pool.SetPeerRange(envelope.From, msg.Base, msg.Height)
-
-	case *bcproto.NoBlockResponse:
-		logger.Debug("peer does not have the requested block", "height", msg.Height)
-
-	default:
-		return fmt.Errorf("received unknown message: %T", msg)
-	}
-
-	return nil
-}
-
-=======
->>>>>>> origin
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
@@ -329,14 +282,16 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 		case *bcproto.BlockResponse:
 			block, err := types.BlockFromProto(msg.Block)
 			if err != nil {
-				r.logger.Error("failed to convert block from proto",
-					"peer", envelope.From,
-					"err", err)
+				r.logger.Error("failed to convert block from proto", "err", err)
+				return err
+			}
+			commit, err := types.CommitFromProto(msg.Commit)
+			if err != nil {
+				r.logger.Error("failed to convert commit from proto", "err", err)
 				return err
 			}
 
-			r.pool.AddBlock(envelope.From, block, block.Size())
-
+			r.pool.AddBlock(envelope.From, &BlockResponse{block, commit}, block.Size())
 		case *bcproto.StatusRequest:
 			return blockSyncCh.Send(ctx, p2p.Envelope{
 				To: envelope.From,
@@ -605,7 +560,6 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				newBlockID            = types.BlockID{Hash: newBlock.block.Hash(), PartSetHeader: newBlockPartSetHeader}
 			)
 
-<<<<<<< HEAD
 			if r.lastTrustedBlock != nil && r.lastTrustedBlock.block != nil {
 				if newBlock.block.Height != r.lastTrustedBlock.block.Height+1 {
 					panic("Need last block")
@@ -628,38 +582,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					)
 
 					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
-					if serr := r.blockSyncCh.SendError(ctx, p2p.PeerError{
-						NodeID: peerID,
-=======
-			// Finally, verify the first block using the second's commit.
-			//
-			// NOTE: We can probably make this more efficient, but note that calling
-			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
-			// currently necessary.
-			if err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit); err != nil {
-				err = fmt.Errorf("invalid last commit: %w", err)
-				r.logger.Error(
-					err.Error(),
-					"last_commit", second.LastCommit,
-					"block_id", firstID,
-					"height", first.Height,
-				)
-
-				// NOTE: We've already removed the peer's request, but we still need
-				// to clean up the rest.
-				peerID := r.pool.RedoRequest(first.Height)
-				if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-					NodeID: peerID,
-					Err:    err,
-				}); serr != nil {
-					return
-				}
-
-				peerID2 := r.pool.RedoRequest(second.Height)
-				if peerID2 != peerID {
 					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-						NodeID: peerID2,
->>>>>>> origin
+						NodeID: peerID,
 						Err:    err,
 					}); serr != nil {
 						return
