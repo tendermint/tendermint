@@ -76,7 +76,10 @@ type BlockPool struct {
 	mtx sync.RWMutex
 	// block requests
 	requesters map[int64]*bpRequester
-	height     int64 // the lowest key in requesters.
+	// block requests to verify blocks against peers
+	// verificationRequesters map[int64]*bpRequester
+
+	height int64 // the lowest key in requesters.
 	// peers
 	peers         map[types.NodeID]*bpPeer
 	maxPeerHeight int64 // the biggest reported height
@@ -102,9 +105,10 @@ func NewBlockPool(
 ) *BlockPool {
 
 	bp := &BlockPool{
-		logger:       logger,
-		peers:        make(map[types.NodeID]*bpPeer),
-		requesters:   make(map[int64]*bpRequester),
+		logger:     logger,
+		peers:      make(map[types.NodeID]*bpPeer),
+		requesters: make(map[int64]*bpRequester),
+		// verificationRequesters: make(map[int64]*bpRequester),
 		height:       start,
 		startHeight:  start,
 		numPending:   0,
@@ -204,6 +208,16 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
+func (pool *BlockPool) PeekBlock() (first *BlockResponse) {
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
+
+	if r := pool.requesters[pool.height]; r != nil {
+		first = r.getBlock()
+	}
+	return
+}
+
 // PeekTwoBlocks returns blocks at pool.height and pool.height+1.
 // We need to see the second block's Commit to validate the first block.
 // So we peek two blocks at a time.
@@ -213,16 +227,15 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block)
 	defer pool.mtx.RUnlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
-		first = r.getBlock()
+		first = r.getBlock().block
 	}
 	if r := pool.requesters[pool.height+1]; r != nil {
-		second = r.getBlock()
+		second = r.getBlock().block
 	}
 	return
 }
 
 // PopRequest pops the first block at pool.height.
-// It must have been validated by 'second'.Commit from PeekTwoBlocks().
 func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
@@ -248,6 +261,10 @@ func (pool *BlockPool) PopRequest() {
 	} else {
 		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
+	// if r := pool.verificationRequesters[pool.height]; r != nil {
+	// 	r.Stop()
+	// 	delete(pool.verificationRequesters, pool.height)
+	// }
 }
 
 // RedoRequest invalidates the block at pool.height,
@@ -268,15 +285,15 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
 // TODO: ensure that blocks come in order for each peer.
-func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, blockSize int) {
+func (pool *BlockPool) AddBlock(peerID types.NodeID, blockResponse *BlockResponse, blockSize int) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	requester := pool.requesters[block.Height]
+	requester := pool.requesters[blockResponse.block.Height]
 	if requester == nil {
 		pool.logger.Error("peer sent us a block we didn't expect",
-			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
-		diff := pool.height - block.Height
+			"peer", peerID, "curHeight", pool.height, "blockHeight", blockResponse.block.Height)
+		diff := pool.height - blockResponse.block.Height
 		if diff < 0 {
 			diff *= -1
 		}
@@ -286,16 +303,18 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, blockSi
 		return
 	}
 
-	if requester.setBlock(block, peerID) {
+	if requester.setBlock(blockResponse, peerID) {
 		atomic.AddInt32(&pool.numPending, -1)
 		peer := pool.peers[peerID]
 		if peer != nil {
 			peer.decrPending(blockSize)
 		}
 	} else {
+
 		err := errors.New("requester is different or block already exists")
-		pool.logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
+		pool.logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", blockResponse.block.Height)
 		pool.sendError(err, peerID)
+
 	}
 }
 
@@ -356,7 +375,13 @@ func (pool *BlockPool) removePeer(peerID types.NodeID) {
 		if requester.getPeerID() == peerID {
 			requester.redo(peerID)
 		}
+
 	}
+	// for _, requester := range pool.verificationRequesters {
+	// 	if requester.getPeerID() == peerID {
+	// 		requester.redo(peerID)
+	// 	}
+	// }
 
 	peer, ok := pool.peers[peerID]
 	if ok {
@@ -403,6 +428,7 @@ func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
 			continue
 		}
 		peer.incrPending()
+
 		return peer
 	}
 	return nil
@@ -420,6 +446,7 @@ func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 	request := newBPRequester(pool.logger, pool, nextHeight)
 
 	pool.requesters[nextHeight] = request
+
 	atomic.AddInt32(&pool.numPending, 1)
 
 	err := request.Start(ctx)
@@ -540,6 +567,11 @@ func (peer *bpPeer) onTimeout() {
 
 //-------------------------------------
 
+type BlockResponse struct {
+	block  *types.Block
+	commit *types.Commit
+}
+
 type bpRequester struct {
 	service.BaseService
 	logger     log.Logger
@@ -550,7 +582,8 @@ type bpRequester struct {
 
 	mtx    sync.Mutex
 	peerID types.NodeID
-	block  *types.Block
+	block  *BlockResponse //*types.Block
+
 }
 
 func newBPRequester(logger log.Logger, pool *BlockPool, height int64) *bpRequester {
@@ -576,7 +609,7 @@ func (bpr *bpRequester) OnStart(ctx context.Context) error {
 func (*bpRequester) OnStop() {}
 
 // Returns true if the peer matches and block doesn't already exist.
-func (bpr *bpRequester) setBlock(block *types.Block, peerID types.NodeID) bool {
+func (bpr *bpRequester) setBlock(block *BlockResponse, peerID types.NodeID) bool {
 	bpr.mtx.Lock()
 	if bpr.block != nil || bpr.peerID != peerID {
 		bpr.mtx.Unlock()
@@ -592,7 +625,7 @@ func (bpr *bpRequester) setBlock(block *types.Block, peerID types.NodeID) bool {
 	return true
 }
 
-func (bpr *bpRequester) getBlock() *types.Block {
+func (bpr *bpRequester) getBlock() *BlockResponse {
 	bpr.mtx.Lock()
 	defer bpr.mtx.Unlock()
 	return bpr.block
