@@ -310,20 +310,21 @@ func (r *Reactor) OnStop() {
 	r.dispatcher.Close()
 }
 
-func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataStateSyncStatus) error {
-	if r.eventBus == nil {
-		return errors.New("event system is not configured")
-	}
-
-	return r.eventBus.PublishEventStateSyncStatus(ctx, event)
-}
-
 // Sync runs a state sync, fetching snapshots and providing chunks to the
 // application. At the close of the operation, Sync will bootstrap the state
 // store and persist the commit at that height so that either consensus or
 // blocksync can commence. It will then proceed to backfill the necessary amount
 // of historical blocks before participating in consensus
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
+	if r.eventBus != nil {
+		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+			Complete: false,
+			Height:   r.initialHeight,
+		}); err != nil {
+			return sm.State{}, err
+		}
+	}
+
 	// We need at least two peers (for cross-referencing of light blocks) before we can
 	// begin state sync
 	if err := r.waitForEnoughPeers(ctx, 2); err != nil {
@@ -357,19 +358,25 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		return sm.State{}, err
 	}
 
-	err = r.stateStore.Bootstrap(state)
-	if err != nil {
+	if err := r.stateStore.Bootstrap(state); err != nil {
 		return sm.State{}, fmt.Errorf("failed to bootstrap node with new state: %w", err)
 	}
 
-	err = r.blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
-	if err != nil {
+	if err := r.blockStore.SaveSeenCommit(state.LastBlockHeight, commit); err != nil {
 		return sm.State{}, fmt.Errorf("failed to store last seen commit: %w", err)
 	}
 
-	err = r.Backfill(ctx, state)
-	if err != nil {
+	if err := r.Backfill(ctx, state); err != nil {
 		r.logger.Error("backfill failed. Proceeding optimistically...", "err", err)
+	}
+
+	if r.eventBus != nil {
+		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+			Complete: true,
+			Height:   state.LastBlockHeight,
+		}); err != nil {
+			return sm.State{}, err
+		}
 	}
 
 	return state, nil
