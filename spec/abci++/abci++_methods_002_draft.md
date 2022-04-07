@@ -293,7 +293,9 @@ title: Methods
     | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 4            |
     | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 5            |
     | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 6            |
-    | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 7            |
+    | proposer_address        | bytes                                       | [Address](../core/data_structures.md#address) of the validator creating the proposal.                            | 7            |
+    | next_validators_hash    | bytes                                       | Merkle root of the next validator set.                                                                           | 8            |
+    | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 9            |
 
 * **Response**:
 
@@ -404,6 +406,8 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     | txs                  | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                      | 4            |
     | proposed_last_commit | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the information in the proposed block.                               | 5            |
     | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                         | 6            |
+    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.                      | 7            |
+    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                                         | 8            |
 
 * **Response**:
 
@@ -570,9 +574,11 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 1            |
     | height               | int64                                       | The height of the finalized block.                                                       | 2            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block.  | 3            |
-    | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 3            |
-    | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 4            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                   | 5            |
+    | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 4            |
+    | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 5            |
+    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                   | 6            |
+    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.| 7            |
+    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                   | 8            |
 
 * **Response**:
 
