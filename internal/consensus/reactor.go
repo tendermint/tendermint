@@ -752,9 +752,6 @@ func (r *Reactor) gossipVotesForHeight(
 func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh *p2p.Channel) {
 	logger := r.logger.With("peer", ps.peerID)
 
-	// XXX: simple hack to throttle logs upon sleep
-	logThrottle := 0
-
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -771,13 +768,6 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 
 		rs := r.getRoundState()
 		prs := ps.GetRoundState()
-
-		switch logThrottle {
-		case 1: // first sleep
-			logThrottle = 2
-		case 2: // no more sleep
-			logThrottle = 0
-		}
 
 		// if height matches, then send LastCommit, Prevotes, and Precommits
 		if rs.Height == prs.Height {
@@ -811,27 +801,6 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 					continue
 				}
 			}
-		}
-
-		if logThrottle == 0 {
-			// we sent nothing -- sleep
-			logThrottle = 1
-			logArgs := []interface{}{
-				"rs.Height", rs.Height,
-				"prs.Height", prs.Height,
-				"peerPV", prs.Prevotes,
-				"peerPC", prs.Precommits,
-			}
-			if rs.Votes != nil {
-				logArgs = append(logArgs,
-					"localPV", rs.Votes.Prevotes(rs.Round).BitArray(),
-					"localPC", rs.Votes.Precommits(rs.Round).BitArray(),
-				)
-			}
-
-			logger.Debug("no votes to send; sleeping", logArgs...)
-		} else if logThrottle == 2 {
-			logThrottle = 1
 		}
 
 		timer.Reset(r.state.config.PeerGossipSleepDuration)
