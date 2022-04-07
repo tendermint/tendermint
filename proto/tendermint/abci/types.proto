@@ -140,7 +140,7 @@ message RequestPrepareProposal {
 
 message RequestProcessProposal {
   repeated bytes            txs                  = 1;
-  CommitInfo                decided_last_commit  = 2 [(gogoproto.nullable) = false];
+  CommitInfo                proposed_last_commit = 2 [(gogoproto.nullable) = false];
   repeated Evidence         byzantine_validators = 3 [(gogoproto.nullable) = false];
   bytes                     hash                 = 4;
   int64                     height               = 5;
