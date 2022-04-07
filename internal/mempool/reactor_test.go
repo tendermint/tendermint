@@ -79,17 +79,14 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 			return rts.mempoolChannels[nodeID], nil
 		}
 
-		rts.reactors[nodeID], err = NewReactor(
-			ctx,
+		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
 			cfg.Mempool,
-			rts.network.Nodes[nodeID].PeerManager,
 			mempool,
 			chCreator,
-			rts.peerUpdates[nodeID],
+			func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
+			rts.network.Nodes[nodeID].PeerManager.GetHeight,
 		)
-
-		require.NoError(t, err)
 		rts.nodes = append(rts.nodes, nodeID)
 
 		require.NoError(t, rts.reactors[nodeID].Start(ctx))
@@ -179,7 +176,7 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	// run the router
 	rts.start(ctx, t)
 
-	go primaryReactor.broadcastTxRoutine(ctx, secondary)
+	go primaryReactor.broadcastTxRoutine(ctx, secondary, rts.mempoolChannels[primary])
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
