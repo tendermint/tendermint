@@ -230,6 +230,12 @@ Special thanks to external contributors on this release: @JayT106,
 - [cmd/tendermint/commands] [\#6623](https://github.com/tendermint/tendermint/pull/6623) replace `$HOME/.some/test/dir` with `t.TempDir` (@tanyabouman)
 - [statesync] \6807 Implement P2P state provider as an alternative to RPC (@cmwaters)
 
+## v0.34.19
+
+### BUG FIXES
+
+- [cli] [\#8270](https://github.com/tendermint/tendermint/issues/8270) fix reset commands (@alexanderbez).
+
 ## v0.34.18
 
 ### BREAKING CHANGES
