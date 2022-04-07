@@ -794,7 +794,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			}
 		}
 
-		rs := cs.RoundState
+		rs := cs.GetRoundState()
 		var mi msgInfo
 
 		select {
@@ -837,7 +837,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 			// if the timeout is relevant to the rs
 			// go to the next step
-			cs.handleTimeout(ti, rs)
+			cs.handleTimeout(ti, *rs)
 
 		case <-cs.Quit():
 			onExit(cs)
@@ -1181,12 +1181,31 @@ func (cs *State) isProposer(proTxHash crypto.ProTxHash) bool {
 	return bytes.Equal(cs.Validators.GetProposer().ProTxHash.Bytes(), proTxHash.Bytes())
 }
 
+// checkValidBlock returns true if cs.ValidBlock is set and still valid (not expired)
+func (cs *State) checkValidBlock() bool {
+	if cs.ValidBlock == nil {
+		return false
+	}
+	if err := cs.blockExec.ValidateBlockTime(cs.config.ProposedBlockTimeWindow, cs.state, cs.ValidBlock); err != nil {
+		cs.Logger.Debug(
+			"proposal block is outdated",
+			"height", cs.Height,
+			"round", cs.Round,
+			"error", err,
+			"block", cs.ValidBlock)
+
+		return false
+	}
+
+	return true
+}
+
 func (cs *State) defaultDecideProposal(height int64, round int32) {
 	var block *types.Block
 	var blockParts *types.PartSet
 
 	// Decide on block
-	if cs.ValidBlock != nil {
+	if cs.checkValidBlock() {
 		// If there is valid block, choose that.
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
@@ -1204,7 +1223,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	}
 
 	// Make proposal
-	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
+	propBlockID := block.BlockID(blockParts.Header())
 	proposedChainLockHeight := cs.state.LastCoreChainLockedBlockHeight
 	if cs.blockExec.NextCoreChainLock != nil && cs.blockExec.NextCoreChainLock.CoreBlockHeight > proposedChainLockHeight {
 		proposedChainLockHeight = cs.blockExec.NextCoreChainLock.CoreBlockHeight
