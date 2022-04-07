@@ -68,7 +68,7 @@ type ValidatorSet struct {
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	vals := &ValidatorSet{}
+	vals := &ValidatorSet{Validators: []*Validator{}}
 	err := vals.updateWithChangeSet(valz, false)
 	if err != nil {
 		panic(fmt.Errorf("cannot create validator set: %w", err))
