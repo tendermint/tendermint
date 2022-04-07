@@ -166,7 +166,9 @@ func setup(
 		rts.blockStore,
 		"",
 		m,
-		nil, // eventbus can be nil
+		nil,   // eventbus can be nil
+		nil,   // post-sync-hook
+		false, // run Sync during Start()
 	)
 
 	rts.syncer = &syncer{
