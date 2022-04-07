@@ -116,6 +116,11 @@ func getAllSeenCommits(ctx context.Context, db dbm.DB) ([]toMigrate, error) {
 }
 
 func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
+	wantKey := makeKeyFromPrefix(prefixSeenCommit)
+	if bytes.Equal(keep.key, wantKey) {
+		return nil // we already did this conversion
+	}
+
 	// This record's key has already been converted to the "new" format, we just
 	// now need to trim off the tail.
 	val, err := db.Get(keep.key)
@@ -123,8 +128,6 @@ func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
 		return err
 	}
 
-	// N.B. Delete before adding so that if we already did this conversion we
-	// wind up with the same results.
 	batch := db.NewBatch()
 	batch.Delete(keep.key)
 	batch.Set(makeKeyFromPrefix(prefixSeenCommit), val)
