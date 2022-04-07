@@ -155,7 +155,6 @@ func setup(
 	logger := log.NewNopLogger()
 
 	rts.reactor = NewReactor(
-		ctx,
 		factory.DefaultTestChainID,
 		1,
 		*cfg,
