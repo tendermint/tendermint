@@ -166,11 +166,12 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  CommitInfo              decided_last_commit  = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  bytes                     hash                 = 1;
+  int64                     height               = 2;
+  google.protobuf.Timestamp time                 = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  repeated bytes            txs                  = 4;
+  CommitInfo                decided_last_commit  = 5 [(gogoproto.nullable) = false];
+  repeated Evidence         byzantine_validators = 6 [(gogoproto.nullable) = false];
   // address of the public key of the original proposer of the block.
   bytes proposer_address     = 7;
   bytes next_validators_hash = 8;
