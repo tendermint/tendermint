@@ -27,3 +27,12 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+<<<<<<< HEAD
+=======
+
+- fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
+- [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
+- [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
+- [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
+- [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
+>>>>>>> f3858e52d (scmigrate: ensure target key is correctly renamed (#8276))

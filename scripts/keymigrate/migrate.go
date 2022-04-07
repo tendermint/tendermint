@@ -15,8 +15,8 @@ import (
 	"math/rand"
 	"runtime"
 	"strconv"
-	"sync"
 
+	"github.com/creachadair/taskgroup"
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 )
@@ -27,7 +27,7 @@ type (
 )
 
 func getAllLegacyKeys(db dbm.DB) ([]keyID, error) {
-	out := []keyID{}
+	var out []keyID
 
 	iter, err := db.Iterator(nil, nil)
 	if err != nil {
@@ -43,11 +43,8 @@ func getAllLegacyKeys(db dbm.DB) ([]keyID, error) {
 			continue
 		}
 
-		// there's inconsistency around tm-db's handling of
-		// key copies.
-		nk := make([]byte, len(k))
-		copy(nk, k)
-		out = append(out, nk)
+		// Make an explicit copy, since not all tm-db backends do.
+		out = append(out, []byte(string(k)))
 	}
 
 	if err = iter.Error(); err != nil {
@@ -59,17 +56,6 @@ func getAllLegacyKeys(db dbm.DB) ([]keyID, error) {
 	}
 
 	return out, nil
-}
-
-func makeKeyChan(keys []keyID) <-chan keyID {
-	out := make(chan keyID, len(keys))
-	defer close(out)
-
-	for _, key := range keys {
-		out <- key
-	}
-
-	return out
 }
 
 func keyIsLegacy(key keyID) bool {
@@ -111,7 +97,7 @@ func keyIsHash(key keyID) bool {
 	return len(key) == 32 && !bytes.Contains(key, []byte("/"))
 }
 
-func migarateKey(key keyID) (keyID, error) {
+func migrateKey(key keyID) (keyID, error) {
 	switch {
 	case bytes.HasPrefix(key, keyID("H:")):
 		val, err := strconv.Atoi(string(key[2:]))
@@ -349,53 +335,23 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 		return err
 	}
 
-	numWorkers := runtime.NumCPU()
-	wg := &sync.WaitGroup{}
+	var errs []string
+	g, start := taskgroup.New(func(err error) error {
+		errs = append(errs, err.Error())
+		return err
+	}).Limit(runtime.NumCPU())
 
-	errs := make(chan error, numWorkers)
-
-	keyCh := makeKeyChan(keys)
-
-	// run migrations.
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for key := range keyCh {
-				err := replaceKey(db, key, migarateKey)
-				if err != nil {
-					errs <- err
-				}
-
-				if ctx.Err() != nil {
-					return
-				}
+	for _, key := range keys {
+		key := key
+		start(func() error {
+			if err := ctx.Err(); err != nil {
+				return err
 			}
-		}()
+			return replaceKey(db, key, migrateKey)
+		})
 	}
-
-	// collect and process the errors.
-	errStrs := []string{}
-	signal := make(chan struct{})
-	go func() {
-		defer close(signal)
-		for err := range errs {
-			if err == nil {
-				continue
-			}
-			errStrs = append(errStrs, err.Error())
-		}
-	}()
-
-	// Wait for everything to be done.
-	wg.Wait()
-	close(errs)
-	<-signal
-
-	// check the error results
-	if len(errs) != 0 {
-		return fmt.Errorf("encountered errors during migration: %v", errStrs)
+	if g.Wait() != nil {
+		return fmt.Errorf("encountered errors during migration: %q", errs)
 	}
-
 	return nil
 }

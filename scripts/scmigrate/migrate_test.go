@@ -1,6 +1,7 @@
 package scmigrate
 
 import (
+	"bytes"
 	"context"
 	"math/rand"
 	"testing"
@@ -104,15 +105,6 @@ func TestMigrations(t *testing.T) {
 			assertWellOrderedMigrations(t, testData)
 		})
 	})
-	t.Run("GetMigrationsToDelete", func(t *testing.T) {
-		for i := 1; i < 100; i++ {
-			data := appendRandomMigrations([]toMigrate{}, i)
-			toMigrate := getMigrationsToDelete(data)
-			if len(data) != len(toMigrate)+1 {
-				t.Fatalf("migration prep did not save one document [original=%d migrations=%d]", len(data), len(toMigrate))
-			}
-		}
-	})
 	t.Run("InvalidMigrations", func(t *testing.T) {
 		if _, err := makeToMigrate(nil); err == nil {
 			t.Fatal("should error for nil migrations")
@@ -156,18 +148,24 @@ func TestMigrations(t *testing.T) {
 			// safe to rerun
 			t.Run(test, func(t *testing.T) {
 				if err := Migrate(ctx, db); err != nil {
-					t.Fatal(err)
+					t.Fatalf("Migration failed: %v", err)
 				}
 
 				post, err := getAllSeenCommits(ctx, db)
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("Fetching seen commits: %v", err)
 				}
+
 				if len(post) != 1 {
-					t.Fatal("migration was not successful")
+					t.Fatalf("Wrong number of commits: got %d, wanted 1", len(post))
 				}
-				if post[0].commit.Height != latestHeight {
-					t.Fatal("migration did not save correct document")
+
+				wantKey := makeKeyFromPrefix(prefixSeenCommit)
+				if !bytes.Equal(post[0].key, wantKey) {
+					t.Errorf("Seen commit key: got %x, want %x", post[0].key, wantKey)
+				}
+				if got := post[0].commit.Height; got != latestHeight {
+					t.Fatalf("Wrong commit height after migration: got %d, wanted %d", got, latestHeight)
 				}
 			})
 		}
