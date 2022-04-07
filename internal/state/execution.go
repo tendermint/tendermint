@@ -127,6 +127,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.ToABCI(),
+			ProposerAddress:     block.ProposerAddress,
 			MaxTxBytes:          maxDataBytes,
 		},
 	)
@@ -175,6 +176,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		Txs:                 block.Data.Txs.ToSliceOfBytes(),
 		ProposedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 		ByzantineValidators: block.Evidence.ToABCI(),
+		ProposerAddress:     block.ProposerAddress,
 	}
 
 	resp, err := blockExec.appClient.ProcessProposal(ctx, req)
@@ -236,6 +238,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
+			ProposerAddress:     block.ProposerAddress,
 		},
 	)
 	endTime := time.Now().UnixNano()
