@@ -171,6 +171,9 @@ message RequestFinalizeBlock {
   repeated bytes          txs                  = 3;
   CommitInfo              decided_last_commit  = 4 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  // address of the public key of the original proposer of the block.
+  bytes proposer_address     = 7;
+  bytes next_validators_hash = 8;
 }
 
 //----------------------------------------
