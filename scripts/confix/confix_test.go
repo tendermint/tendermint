@@ -47,7 +47,7 @@ func TestApplyFixes(t *testing.T) {
 
 	t.Run("Unknown", func(t *testing.T) {
 		err := confix.ApplyFixes(ctx, mustParseConfig(t, "testdata/v31-config.toml"))
-		if err == nil {
+		if err == nil || !strings.Contains(err.Error(), "cannot tell what Tendermint version") {
 			t.Error("ApplyFixes succeeded, but should have failed for an unknown version")
 		}
 	})
