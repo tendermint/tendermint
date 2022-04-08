@@ -2,6 +2,20 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.3
+
+April 8, 2022
+
+Special thanks to external contributors on this release:
+
+### FEATURES
+
+- [cli] \#8081 add a safer-to-use `reset-state` command. (@marbar3778)
+
+### BUG FIXES
+
+- [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
+
 ## v0.35.2
 
 February 28, 2022
