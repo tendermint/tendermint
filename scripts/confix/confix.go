@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"flag"
@@ -17,6 +18,8 @@ import (
 	"github.com/creachadair/tomledit"
 	"github.com/creachadair/tomledit/parser"
 	"github.com/creachadair/tomledit/transform"
+	"github.com/spf13/viper"
+	"github.com/tendermint/tendermint/config"
 )
 
 func init() {
@@ -60,16 +63,18 @@ func main() {
 		log.Fatalf("Updating %q: %v", *configPath, err)
 	}
 
-	out, err := atomicfile.New(*outPath, 0600)
-	if err != nil {
-		log.Fatalf("Open output: %v", err)
+	var buf bytes.Buffer
+	if err := tomledit.Format(&buf, doc); err != nil {
+		log.Fatalf("Formatting config: %v", err)
 	}
-	defer out.Cancel()
 
-	if err := tomledit.Format(out, doc); err != nil {
-		log.Fatalf("Writing config: %v", err)
-	} else if err := out.Close(); err != nil {
-		log.Fatalf("Closing output: %v", err)
+	// Verify that Tendermint can parse the results after our edits.
+	if err := CheckValid(buf.Bytes()); err != nil {
+		log.Fatalf("Updated config is invalid: %v", err)
+	}
+
+	if err := atomicfile.WriteData(*outPath, buf.Bytes(), 0600); err != nil {
+		log.Fatalf("Writing output: %v", err)
 	}
 }
 
@@ -211,4 +216,25 @@ func GuessConfigVersion(doc *tomledit.Document) string {
 
 	// Something older, probably.
 	return ""
+}
+
+// CheckValid checks whether the specified config appears to be a valid
+// Tendermint config file. This emulates how the node loads the config.
+func CheckValid(data []byte) error {
+	v := viper.New()
+	v.SetConfigType("toml")
+
+	if err := v.ReadConfig(bytes.NewReader(data)); err != nil {
+		return fmt.Errorf("reading config: %w", err)
+	}
+
+	var cfg config.Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return fmt.Errorf("decoding config: %w", err)
+	}
+
+	// Stub in required value not stored in the config file, so that validation
+	// will not fail spuriously.
+	cfg.Mode = config.ModeValidator
+	return cfg.ValidateBasic()
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/creachadair/tomledit"
 	"github.com/google/go-cmp/cmp"
+
 	confix "github.com/tendermint/tendermint/scripts/confix"
 )
 
@@ -68,6 +69,9 @@ func TestApplyFixes(t *testing.T) {
 			var before bytes.Buffer
 			if err := tomledit.Format(&before, doc); err != nil {
 				t.Fatalf("Formatting document: %v", err)
+			}
+			if err := confix.CheckValid(before.Bytes()); err != nil {
+				t.Fatalf("Validating output: %v", err)
 			}
 			want := before.String()
 
