@@ -114,6 +114,9 @@ func (env *Environment) validatorAtHeight(h int64) *types.Validator {
 	if err != nil {
 		return nil
 	}
+	if env.ConsensusState == nil {
+		return nil
+	}
 	if env.PubKey == nil {
 		return nil
 	}
