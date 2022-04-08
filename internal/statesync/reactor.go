@@ -143,6 +143,12 @@ type Reactor struct {
 	peerEvents     p2p.PeerEventSubscriber
 	chCreator      p2p.ChannelCreator
 	sendBlockError func(context.Context, p2p.PeerError) error
+	postSyncHook   func(context.Context, sm.State) error
+
+	// when true, the reactor will, during startup perform a
+	// statesync for this node, and otherwise just provide
+	// snapshots to other nodes.
+	needsStateSync bool
 
 	// Dispatcher is used to multiplex light block requests and responses over multiple
 	// peers used by the p2p state provider and in reverse sync.
@@ -171,7 +177,6 @@ type Reactor struct {
 // and querying, references to p2p Channels and a channel to listen for peer
 // updates on. Note, the reactor will close all p2p Channels when stopping.
 func NewReactor(
-	ctx context.Context,
 	chainID string,
 	initialHeight int64,
 	cfg config.StateSyncConfig,
@@ -184,23 +189,26 @@ func NewReactor(
 	tempDir string,
 	ssMetrics *Metrics,
 	eventBus *eventbus.EventBus,
+	postSyncHook func(context.Context, sm.State) error,
+	needsStateSync bool,
 ) *Reactor {
-
 	r := &Reactor{
-		logger:        logger,
-		chainID:       chainID,
-		initialHeight: initialHeight,
-		cfg:           cfg,
-		conn:          conn,
-		chCreator:     channelCreator,
-		peerEvents:    peerEvents,
-		tempDir:       tempDir,
-		stateStore:    stateStore,
-		blockStore:    blockStore,
-		peers:         newPeerList(),
-		providers:     make(map[types.NodeID]*BlockProvider),
-		metrics:       ssMetrics,
-		eventBus:      eventBus,
+		logger:         logger,
+		chainID:        chainID,
+		initialHeight:  initialHeight,
+		cfg:            cfg,
+		conn:           conn,
+		chCreator:      channelCreator,
+		peerEvents:     peerEvents,
+		tempDir:        tempDir,
+		stateStore:     stateStore,
+		blockStore:     blockStore,
+		peers:          newPeerList(),
+		providers:      make(map[types.NodeID]*BlockProvider),
+		metrics:        ssMetrics,
+		eventBus:       eventBus,
+		postSyncHook:   postSyncHook,
+		needsStateSync: needsStateSync,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -300,6 +308,14 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.processChannels(ctx, snapshotCh, chunkCh, blockCh, paramsCh)
 	go r.processPeerUpdates(ctx, r.peerEvents(ctx))
 
+	if r.needsStateSync {
+		r.logger.Info("starting state sync")
+		if _, err := r.Sync(ctx); err != nil {
+			r.logger.Error("state sync failed; shutting down this node", "err", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -375,6 +391,12 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 			Complete: true,
 			Height:   state.LastBlockHeight,
 		}); err != nil {
+			return sm.State{}, err
+		}
+	}
+
+	if r.postSyncHook != nil {
+		if err := r.postSyncHook(ctx, state); err != nil {
 			return sm.State{}, err
 		}
 	}
