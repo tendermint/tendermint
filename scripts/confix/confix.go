@@ -164,7 +164,7 @@ func ApplyFixes(ctx context.Context, doc *tomledit.Document) error {
 	// Check what version of Tendermint might have created this config file, as
 	// a safety check for the updates we are about to make.
 	tmVersion := GuessConfigVersion(doc)
-	if tmVersion == "" {
+	if tmVersion == vUnknown {
 		return errors.New("cannot tell what Tendermint version created this config")
 	} else if tmVersion < v34 {
 		// TODO(creachadair): Add in rewrites for older versions.  This will
