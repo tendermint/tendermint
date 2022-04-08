@@ -836,7 +836,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState, stateCh 
 			return
 		}
 
-		// TODO create more reliable coppies of these
+		// TODO create more reliable copies of these
 		// structures so the following go routines don't race
 		rs := r.getRoundState()
 		if rs.Votes == nil {
