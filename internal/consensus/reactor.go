@@ -211,13 +211,14 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.peerStatsRoutine(ctx, peerUpdates)
 
 	r.subscribeToBroadcastEvents(chBundle.state)
-	go r.updateRoundStateRoutine()
 
 	if !r.WaitSync() {
 		if err := r.state.Start(ctx); err != nil {
 			return err
 		}
 	}
+
+	go r.updateRoundStateRoutine(ctx)
 
 	go r.processStateCh(ctx, chBundle)
 	go r.processDataCh(ctx, chBundle)
@@ -407,17 +408,20 @@ func (r *Reactor) sendNewRoundStepMessage(ctx context.Context, peerID types.Node
 	})
 }
 
-func (r *Reactor) updateRoundStateRoutine() {
+func (r *Reactor) updateRoundStateRoutine(ctx context.Context) {
 	t := time.NewTicker(100 * time.Microsecond)
 	defer t.Stop()
-	for range t.C {
-		if !r.IsRunning() {
+
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-t.C:
+			rs := r.state.GetRoundState()
+			r.mtx.Lock()
+			r.rs = rs
+			r.mtx.Unlock()
 		}
-		rs := r.state.GetRoundState()
-		r.mtx.Lock()
-		r.rs = rs
-		r.mtx.Unlock()
 	}
 }
 
