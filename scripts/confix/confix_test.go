@@ -23,6 +23,7 @@ func TestGuessConfigVersion(t *testing.T) {
 	tests := []struct {
 		path, want string
 	}{
+		{"testdata/non-config.toml", ""},
 		{"testdata/v31-config.toml", ""},
 		{"testdata/v32-config.toml", "v0.32"},
 		{"testdata/v33-config.toml", "v0.33"},
