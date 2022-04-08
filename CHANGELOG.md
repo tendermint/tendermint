@@ -2,6 +2,22 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.3
+
+April 8, 2022
+
+### FEATURES
+
+- [cli] [\#8081](https://github.com/tendermint/tendermint/pull/8081) add a safer-to-use `reset-state` command. (@marbar3778)
+
+### IMPROVEMENTS
+
+- [consensus] [\#8138](https://github.com/tendermint/tendermint/pull/8138) change lock handling in reactor and handleMsg for RoundState. (@williambanfield)
+
+### BUG FIXES
+
+- [cli] [\#8276](https://github.com/tendermint/tendermint/pull/8276) scmigrate: ensure target key is correctly renamed. (@creachadair)
+
 ## v0.35.2
 
 February 28, 2022
