@@ -42,14 +42,14 @@ commit_parsers = [
     { message = "^refactor", group = "Refactor"},
     { message = "^style", group = "Styling"},
     { message = "^test", group = "Testing"},
-    { message = "^chore\\(release\\): prepare for", skip = true},
+    { message = "^chore\\(release\\): update changelog and bump version to", skip = true},
     { message = "^chore", group = "Miscellaneous Tasks"},
     { body = ".*security", group = "Security"},
 ]
 # filter out the commits that are not matched by commit parsers
 filter_commits = false
 # glob pattern for matching git tags
-tag_pattern = "v[0-9]*"
+tag_pattern = '^v[0-9]+.[0-9]+.[0-9]+(-dev\.[0-9]+)?$'
 # regex for skipping tags
 skip_tags = "v0.1.0-beta.1"
 # regex for ignoring tags
