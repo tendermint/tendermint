@@ -836,10 +836,20 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState, stateCh 
 			return
 		}
 
-		rs := r.getRoundState()
-		prs := ps.GetRoundState()
-		// TODO create more reliable coppies of these
+		// TODO create more reliable copies of these
 		// structures so the following go routines don't race
+		rs := r.getRoundState()
+		if rs.Votes == nil {
+			// if we have gotten here, we've connected to
+			// a peer before the state of the reactor has
+			// updated to the current round, so we should
+			// sleep for a while before we attempt to
+			// start gossiping the data that doesn't exist
+			// yet. This prevents a panic.
+			timer.Reset(r.state.config.PeerQueryMaj23SleepDuration)
+			continue
+		}
+		prs := ps.GetRoundState()
 
 		wg := &sync.WaitGroup{}
 
