@@ -12,6 +12,10 @@ Special thanks to external contributors on this release:
 
 - [cli] \#8081 add a safer-to-use `reset-state` command. (@marbar3778)
 
+### IMPROVEMENTS
+
+- [consensus] \#8138 change lock handling in reactor and handleMsg for RoundState. (@williambanfield)
+
 ### BUG FIXES
 
 - [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
