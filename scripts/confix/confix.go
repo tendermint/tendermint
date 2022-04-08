@@ -24,15 +24,15 @@ import (
 
 func init() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `Usage: %[1]s [options] -config <path>
+		fmt.Fprintf(os.Stderr, `Usage: %[1]s -config <src> [-out <dst>]
 
-Modify the contents of the specified -config TOML file to update the
-names, locations, and values of configuration settings to the current
-configuration layout.
+Modify the contents of the specified -config TOML file to update the names,
+locations, and values of configuration settings to the current configuration
+layout. The output is written to -out, or to stdout.
 
-By default, the config file is edited in-place; use -out to write the
-modified file to a different path. In case of any error in updating the
-file, the input is not modified.
+It is valid to set -config and -out to the same path. In that case, the file will
+be modified in-place. In case of any error in updating the file, no output is
+written.
 
 Options:
 `, filepath.Base(os.Args[0]))
@@ -42,15 +42,13 @@ Options:
 
 var (
 	configPath = flag.String("config", "", "Config file path (required)")
-	outPath    = flag.String("out", "", "Output file path (defaults to -input)")
+	outPath    = flag.String("out", "", "Output file path (default stdout)")
 )
 
 func main() {
 	flag.Parse()
 	if *configPath == "" {
 		log.Fatal("You must specify a non-empty -config path")
-	} else if *outPath == "" {
-		*outPath = *configPath
 	}
 
 	doc, err := LoadConfig(*configPath)
@@ -73,7 +71,9 @@ func main() {
 		log.Fatalf("Updated config is invalid: %v", err)
 	}
 
-	if err := atomicfile.WriteData(*outPath, buf.Bytes(), 0600); err != nil {
+	if *outPath == "" {
+		os.Stdout.Write(buf.Bytes())
+	} else if err := atomicfile.WriteData(*outPath, buf.Bytes(), 0600); err != nil {
 		log.Fatalf("Writing output: %v", err)
 	}
 }
