@@ -144,6 +144,10 @@ type Reactor struct {
 	chCreator      p2p.ChannelCreator
 	sendBlockError func(context.Context, p2p.PeerError) error
 	postSyncHook   func(context.Context, sm.State) error
+
+	// when true, the reactor will, during startup perform a
+	// statesync for this node, and otherwise just provide
+	// snapshots to other nodes.
 	needsStateSync bool
 
 	// Dispatcher is used to multiplex light block requests and responses over multiple
