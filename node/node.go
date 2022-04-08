@@ -60,19 +60,17 @@ type nodeImpl struct {
 	nodeKey     types.NodeKey // our node privkey
 
 	// services
-	eventSinks       []indexer.EventSink
-	initialState     sm.State
-	stateStore       sm.Store
-	blockStore       *store.BlockStore // store the blockchain to disk
-	evPool           *evidence.Pool
-	stateSync        bool               // whether the node should state sync on startup
-	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-	indexerService   *indexer.Service
-	services         []service.Service
-	rpcListeners     []net.Listener // rpc servers
-	shutdownOps      closer
-	rpcEnv           *rpccore.Environment
-	prometheusSrv    *http.Server
+	eventSinks     []indexer.EventSink
+	initialState   sm.State
+	stateStore     sm.Store
+	blockStore     *store.BlockStore // store the blockchain to disk
+	evPool         *evidence.Pool
+	indexerService *indexer.Service
+	services       []service.Service
+	rpcListeners   []net.Listener // rpc servers
+	shutdownOps    closer
+	rpcEnv         *rpccore.Environment
+	prometheusSrv  *http.Server
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
@@ -331,13 +329,15 @@ func makeNode(
 		nodeMetrics.consensus.BlockSyncing.Set(1)
 	}
 
+	if cfg.P2P.PexReactor {
+		node.services = append(node.services, pex.NewReactor(logger, peerManager, node.router.OpenChannel, peerManager.Subscribe))
+	}
+
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	node.stateSync = stateSync
-	node.stateSyncReactor = statesync.NewReactor(
-		ctx,
+	node.services = append(node.services, statesync.NewReactor(
 		genDoc.ChainID,
 		genDoc.InitialHeight,
 		*cfg.StateSync,
@@ -350,11 +350,24 @@ func makeNode(
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 		eventBus,
-	)
+		// the post-sync operation
+		func(ctx context.Context, state sm.State) error {
+			csReactor.SetStateSyncingMetrics(0)
 
-	if cfg.P2P.PexReactor {
-		node.services = append(node.services, pex.NewReactor(logger, peerManager, node.router.OpenChannel, peerManager.Subscribe))
-	}
+			// TODO: Some form of orchestrator is needed here between the state
+			// advancing reactors to be able to control which one of the three
+			// is running
+			// FIXME Very ugly to have these metrics bleed through here.
+			csReactor.SetBlockSyncingMetrics(1)
+			if err := bcReactor.SwitchToBlockSync(ctx, state); err != nil {
+				logger.Error("failed to switch to block sync", "err", err)
+				return err
+			}
+
+			return nil
+		},
+		stateSync,
+	))
 
 	if cfg.Mode == config.ModeValidator {
 		node.rpcEnv.PubKey = pubKey
@@ -481,40 +494,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if err := n.stateSyncReactor.Start(ctx); err != nil {
-		return err
-	}
-
-	// Run state sync
-	// TODO: We shouldn't run state sync if we already have state that has a
-	// LastBlockHeight that is not InitialHeight
-	if n.stateSync {
-		// RUN STATE SYNC NOW:
-		//
-		// TODO: Eventually this should run as part of some
-		// separate orchestrator
-		n.logger.Info("starting state sync")
-		ssState, err := n.stateSyncReactor.Sync(ctx)
-		if err != nil {
-			n.logger.Error("state sync failed; shutting down this node", "err", err)
-			// stop the node
-			n.Stop()
-			return err
-		}
-
-		n.rpcEnv.ConsensusReactor.SetStateSyncingMetrics(0)
-
-		// TODO: Some form of orchestrator is needed here between the state
-		// advancing reactors to be able to control which one of the three
-		// is running
-		// FIXME Very ugly to have these metrics bleed through here.
-		n.rpcEnv.ConsensusReactor.SetBlockSyncingMetrics(1)
-		if err := n.rpcEnv.BlockSyncReactor.SwitchToBlockSync(ctx, ssState); err != nil {
-			n.logger.Error("failed to switch to block sync", "err", err)
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -531,7 +510,6 @@ func (n *nodeImpl) OnStop() {
 		reactor.Wait()
 	}
 
-	n.stateSyncReactor.Wait()
 	n.router.Wait()
 	n.rpcEnv.IsListening = false
 
