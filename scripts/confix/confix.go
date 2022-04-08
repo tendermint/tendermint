@@ -166,7 +166,7 @@ func ApplyFixes(ctx context.Context, doc *tomledit.Document) error {
 	tmVersion := GuessConfigVersion(doc)
 	if tmVersion == "" {
 		return errors.New("cannot tell what Tendermint version created this config")
-	} else if tmVersion < "v0.34" {
+	} else if tmVersion < v34 {
 		// TODO(creachadair): Add in rewrites for older versions.  This will
 		// require some digging to discover what the changes were.  The upgrade
 		// instructions do not give specifics.
@@ -185,6 +185,15 @@ func LoadConfig(path string) (*tomledit.Document, error) {
 	return tomledit.Parse(f)
 }
 
+const (
+	vUnknown = ""
+	v32      = "v0.32"
+	v33      = "v0.33"
+	v34      = "v0.34"
+	v35      = "v0.35"
+	v36      = "v0.36"
+)
+
 // GuessConfigVersion attempts to figure out which version of Tendermint
 // created the specified config document. It returns "" if the creating version
 // cannot be determined, otherwise a string of the form "vX.YY".
@@ -192,30 +201,30 @@ func GuessConfigVersion(doc *tomledit.Document) string {
 	hasDisableWS := doc.First("rpc", "experimental-disable-websocket") != nil
 	hasUseLegacy := doc.First("p2p", "use-legacy") != nil // v0.35 only
 	if hasDisableWS && !hasUseLegacy {
-		return "v0.36"
+		return v36
 	}
 
 	hasBlockSync := transform.FindTable(doc, "blocksync") != nil // add: v0.35
 	hasStateSync := transform.FindTable(doc, "statesync") != nil // add: v0.34
 	if hasBlockSync && hasStateSync {
-		return "v0.35"
+		return v35
 	} else if hasStateSync {
-		return "v0.34"
+		return v34
 	}
 
 	hasIndexKeys := doc.First("tx_index", "index_keys") != nil // add: v0.33
 	hasIndexTags := doc.First("tx_index", "index_tags") != nil // rem: v0.33
 	if hasIndexKeys && !hasIndexTags {
-		return "v0.33"
+		return v33
 	}
 
 	hasFastSync := transform.FindTable(doc, "fastsync") != nil // add: v0.32
 	if hasIndexTags && hasFastSync {
-		return "v0.32"
+		return v32
 	}
 
 	// Something older, probably.
-	return ""
+	return vUnknown
 }
 
 // CheckValid checks whether the specified config appears to be a valid
