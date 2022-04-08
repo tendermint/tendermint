@@ -79,7 +79,7 @@ func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, er
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			// this should start as true, if consensus
 			// hasn't started yet, and then flip to false
-			// (or true,) depending on whats actually
+			// (or true,) depending on what's actually
 			// happening.
 			CatchingUp: true,
 		},
