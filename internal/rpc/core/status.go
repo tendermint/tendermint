@@ -77,12 +77,23 @@ func (env *Environment) Status(ctx context.Context) (*coretypes.ResultStatus, er
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			MaxPeerBlockHeight:  env.BlockSyncReactor.GetMaxPeerBlockHeight(),
-			CatchingUp:          env.ConsensusReactor.WaitSync(),
-			TotalSyncedTime:     env.BlockSyncReactor.GetTotalSyncedTime(),
-			RemainingTime:       env.BlockSyncReactor.GetRemainingSyncTime(),
+			// this should start as true, if consensus
+			// hasn't started yet, and then flip to false
+			// (or true,) depending on whats actually
+			// happening.
+			CatchingUp: true,
 		},
 		ValidatorInfo: validatorInfo,
+	}
+
+	if env.ConsensusReactor != nil {
+		result.SyncInfo.CatchingUp = env.ConsensusReactor.WaitSync()
+	}
+
+	if env.BlockSyncReactor != nil {
+		result.SyncInfo.MaxPeerBlockHeight = env.BlockSyncReactor.GetMaxPeerBlockHeight()
+		result.SyncInfo.TotalSyncedTime = env.BlockSyncReactor.GetTotalSyncedTime()
+		result.SyncInfo.RemainingTime = env.BlockSyncReactor.GetRemainingSyncTime()
 	}
 
 	if env.StateSyncMetricer != nil {
