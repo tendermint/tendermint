@@ -260,6 +260,15 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
 	r.state.updateToState(ctx, state)
+	if err := r.state.Start(ctx); err != nil {
+		panic(fmt.Sprintf(`failed to start consensus state: %v
+
+conS:
+%+v
+
+conR:
+%+v`, err, r.state, r))
+	}
 
 	r.mtx.Lock()
 	r.waitSync = false
@@ -271,16 +280,6 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	if skipWAL {
 		r.state.doWALCatchup = false
-	}
-
-	if err := r.state.Start(ctx); err != nil {
-		panic(fmt.Sprintf(`failed to start consensus state: %v
-
-conS:
-%+v
-
-conR:
-%+v`, err, r.state, r))
 	}
 
 	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
@@ -839,16 +838,6 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState, stateCh 
 		// TODO create more reliable copies of these
 		// structures so the following go routines don't race
 		rs := r.getRoundState()
-		if rs.Votes == nil {
-			// if we have gotten here, we've connected to
-			// a peer before the state of the reactor has
-			// updated to the current round, so we should
-			// sleep for a while before we attempt to
-			// start gossiping the data that doesn't exist
-			// yet. This prevents a panic.
-			timer.Reset(r.state.config.PeerQueryMaj23SleepDuration)
-			continue
-		}
 		prs := ps.GetRoundState()
 
 		wg := &sync.WaitGroup{}
