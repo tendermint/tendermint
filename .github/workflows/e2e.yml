@@ -45,7 +45,7 @@ jobs:
 
       - name: Run CI ${{ matrix.testnet }} testnet
         working-directory: test/e2e
-        run: ./run-multiple.sh networks/${{ matrix.testnet }}.toml
+        run: ./build/runner -f networks/${{ matrix.testnet }}.toml
         if: "env.GIT_DIFF != ''"
 
       - name: Emit ${{ matrix.testnet }} logs on failure
@@ -53,3 +53,7 @@ jobs:
         working-directory: test/e2e
         run: ./build/runner -f networks/${{ matrix.testnet }}.toml logs
 
+      - name: Cleanup ${{ matrix.testnet }} configuration
+        working-directory: test/e2e
+        run: ./build/runner -f networks/${{ matrix.testnet }}.toml cleanup
+        if: "env.GIT_DIFF != ''"

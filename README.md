@@ -140,6 +140,9 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 
 ## Join us
 
+Tenderdash is maintained by [Dash Core Group](https://www.dash.org/dcg/).
+If you'd like to work full-time on Tenderdash, [see our Jobs page](https://www.dash.org/dcg/jobs/).
+
 Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
 If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
 

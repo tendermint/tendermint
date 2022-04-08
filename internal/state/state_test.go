@@ -815,40 +815,40 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	// we will keep the same quorum hash as to be able to add validators
 
 	// add 10 validators with the same voting power as the one added directly after genesis:
-	for i := 0; i < 10; i++ {
+
+	for i := 0; i < 5; i++ {
 		ld := llmq.MustGenerate(append(proTxHashes, crypto.RandProTxHash()))
 		abciValidatorSetUpdate, err := abci.LLMQToValidatorSetProto(*ld, quorumHashOpt)
 		require.NoError(t, err)
 		state = execute(oldState, state, abciValidatorSetUpdate)
+		assertLLMQDataWithValidatorSet(t, ld, state.NextValidators)
+		proTxHashes = ld.ProTxHashes
 	}
-	require.Equal(t, 18, len(state.NextValidators.Validators))
 
-	// remove one genesis validator:
-	ld := llmq.MustGenerate(proTxHashes[1:])
+	ld := llmq.MustGenerate(append(proTxHashes, crypto.RandProTxHashes(5)...))
 	abciValidatorSetUpdate, err := abci.LLMQToValidatorSetProto(*ld, quorumHashOpt)
 	require.NoError(t, err)
-	abciValidatorSetUpdate.ValidatorUpdates[0] = abci.ValidatorUpdate{ProTxHash: proTxHashes[0]}
+	state = execute(oldState, state, abciValidatorSetUpdate)
+	assertLLMQDataWithValidatorSet(t, ld, state.NextValidators)
+
+	abciValidatorSetUpdate.ValidatorUpdates[0] = abci.ValidatorUpdate{ProTxHash: ld.ProTxHashes[0]}
 	updatedState = execute(oldState, state, abciValidatorSetUpdate)
 
 	// only the first added val (not the genesis val) should be left
-	assert.Equal(t, 17, len(updatedState.NextValidators.Validators))
+	ld.ProTxHashes = ld.ProTxHashes[1:]
+	assertLLMQDataWithValidatorSet(t, ld, updatedState.NextValidators)
 
-	// call update state until the effect for the 3rd added validator
-	// being proposer for a long time after the genesis validator left wears off:
-	curState := updatedState
-	count := 0
-	isProposerUnchanged := true
-	for isProposerUnchanged {
-		curState = execute(curState, curState, nil)
-		if !bytes.Equal(curState.Validators.Proposer.ProTxHash, curState.NextValidators.Proposer.ProTxHash) {
-			isProposerUnchanged = false
-		}
-		count++
+	abciValidatorSetUpdate.ValidatorUpdates = []abci.ValidatorUpdate{
+		{ProTxHash: ld.ProTxHashes[0]},
+		{ProTxHash: ld.ProTxHashes[1]},
 	}
-	updatedState = curState
-	// the proposer changes after this number of blocks
-	firstProposerChangeExpectedAfter := 1
-	assert.Equal(t, firstProposerChangeExpectedAfter, count)
+	updatedState = execute(state, updatedState, abciValidatorSetUpdate)
+
+	// the second and third should be left
+	ld.ProTxHashes = ld.ProTxHashes[2:]
+	assertLLMQDataWithValidatorSet(t, ld, updatedState.NextValidators)
+
+	updatedState = execute(updatedState, updatedState, nil)
 	// store proposers here to see if we see them again in the same order:
 	numVals := len(updatedState.Validators.Validators)
 	proposers := make([]*types.Validator, numVals)
@@ -1090,8 +1090,8 @@ func TestState_StateID(t *testing.T) {
 }
 
 func blockExecutorFunc(t *testing.T, firstProTxHash crypto.ProTxHash) func(prevState, state sm.State, vsu *abci.ValidatorSetUpdate) sm.State {
-	t.Helper()
 	return func(prevState, state sm.State, vsu *abci.ValidatorSetUpdate) sm.State {
+		t.Helper()
 		resp := &tmstate.ABCIResponses{
 			BeginBlock: &abci.ResponseBeginBlock{},
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: vsu},
@@ -1106,4 +1106,17 @@ func blockExecutorFunc(t *testing.T, firstProTxHash crypto.ProTxHash) func(prevS
 		require.NoError(t, err)
 		return state
 	}
+}
+
+func assertLLMQDataWithValidatorSet(t *testing.T, ld *llmq.Data, valSet *types.ValidatorSet) {
+	require.Equal(t, len(ld.ProTxHashes), len(valSet.Validators))
+	m := make(map[string]struct{})
+	for _, proTxHash := range ld.ProTxHashes {
+		m[proTxHash.String()] = struct{}{}
+	}
+	for _, val := range valSet.Validators {
+		_, ok := m[val.ProTxHash.String()]
+		require.True(t, ok)
+	}
+	require.Equal(t, ld.ThresholdPubKey, valSet.ThresholdPublicKey)
 }
