@@ -117,7 +117,7 @@ func TestMigration(t *testing.T) {
 		})
 		t.Run("Conversion", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
-				nk, err := migarateKey(le)
+				nk, err := migrateKey(le)
 				require.NoError(t, err, kind)
 				require.False(t, keyIsLegacy(nk), kind)
 			}
@@ -159,7 +159,7 @@ func TestMigration(t *testing.T) {
 				"UserKey3":        []byte("foo/bar/baz/1.2/4"),
 			}
 			for kind, key := range table {
-				out, err := migarateKey(key)
+				out, err := migrateKey(key)
 				require.Error(t, err, kind)
 				require.Nil(t, out, kind)
 			}
@@ -177,7 +177,7 @@ func TestMigration(t *testing.T) {
 					return nil, errors.New("hi")
 				}))
 			})
-			t.Run("KeyDisapears", func(t *testing.T) {
+			t.Run("KeyDisappears", func(t *testing.T) {
 				db := dbm.NewMemDB()
 				key := keyID("hi")
 				require.NoError(t, db.Set(key, []byte("world")))
@@ -214,17 +214,6 @@ func TestMigration(t *testing.T) {
 			for _, key := range getNewPrefixKeys(t, 84) {
 				require.False(t, keyIsLegacy(key))
 			}
-		})
-		t.Run("ChannelConversion", func(t *testing.T) {
-			ch := makeKeyChan([]keyID{
-				makeKey(t, "abc", int64(2), int64(42)),
-				makeKey(t, int64(42)),
-			})
-			count := 0
-			for range ch {
-				count++
-			}
-			require.Equal(t, 2, count)
 		})
 		t.Run("Migrate", func(t *testing.T) {
 			_, db := getLegacyDatabase(t)
