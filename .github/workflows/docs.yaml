@@ -1,6 +1,5 @@
 name: Documentation
-# This workflow clones the tendermint/tendermint repository, builds its static
-# documentation, and publishes the results to GitHub Pages.
+# This workflow builds the static documentation site, and publishes the results to GitHub Pages.
 # It runs on every push to the main branch, with changes in the docs and spec directories
 on:
   workflow_dispatch:  # allow manual updates
