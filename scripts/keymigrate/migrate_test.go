@@ -27,7 +27,7 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"BlockPartTwo":      []byte(fmt.Sprintf("P:%d:%d", val+2, val+val)),
 		"BlockCommit":       []byte(fmt.Sprintf("C:%d", val)),
 		"SeenCommit":        []byte(fmt.Sprintf("SC:%d", val)),
-		"BlockHeight":       []byte(fmt.Sprintf("BH:%d", val)),
+		"BlockHeight":       []byte(fmt.Sprintf("BH:%x", val)),
 		"Validators":        []byte(fmt.Sprintf("validatorsKey:%d", val)),
 		"ConsensusParams":   []byte(fmt.Sprintf("consensusParamsKey:%d", val)),
 		"ABCIResponse":      []byte(fmt.Sprintf("abciResponsesKey:%d", val)),

@@ -138,12 +138,16 @@ func migrateKey(key keyID) (keyID, error) {
 
 		return orderedcode.Append(nil, int64(3), int64(val))
 	case bytes.HasPrefix(key, keyID("BH:")):
-		val, err := strconv.Atoi(string(key[3:]))
+		hash := string(key[3:])
+		if len(hash)%2 == 1 {
+			hash = "0" + hash
+		}
+		val, err := hex.DecodeString(hash)
 		if err != nil {
 			return nil, err
 		}
 
-		return orderedcode.Append(nil, int64(4), int64(val))
+		return orderedcode.Append(nil, int64(4), string(val))
 	case bytes.HasPrefix(key, keyID("validatorsKey:")):
 		val, err := strconv.Atoi(string(key[14:]))
 		if err != nil {
