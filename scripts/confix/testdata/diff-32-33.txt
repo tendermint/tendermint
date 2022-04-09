@@ -1,0 +1,6 @@
++M p2p.persistent_peers_max_dial_period
++M p2p.unconditional_peer_ids
++M tx_index.index_all_keys
+-M tx_index.index_all_tags
++M tx_index.index_keys
+-M tx_index.index_tags
