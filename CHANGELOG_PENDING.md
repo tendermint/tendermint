@@ -25,3 +25,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
