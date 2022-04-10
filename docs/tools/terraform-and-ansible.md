@@ -164,7 +164,7 @@ page](https://app.logz.io/#/dashboard/data-sources/Filebeat), then:
 yum install systemd-devel || echo "This will only work on RHEL-based systems."
 apt-get install libsystemd-dev || echo "This will only work on Debian-based systems."
 
-go get github.com/mheese/journalbeat
+go install github.com/mheese/journalbeat@latest
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 ```
 
