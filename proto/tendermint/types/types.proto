@@ -142,6 +142,24 @@ message CommitSig {
   bytes signature = 4;
 }
 
+message ExtendedCommit {
+  int64   height   = 1;
+  int32   round    = 2;
+  BlockID block_id = 3
+      [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  repeated ExtendedCommitSig extended_signatures = 4 [(gogoproto.nullable) = false];
+}
+
+message ExtendedCommitSig {
+  BlockIDFlag               block_id_flag     = 1;
+  bytes                     validator_address = 2;
+  google.protobuf.Timestamp timestamp         = 3
+      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes signature = 4;
+  bytes vote_extension = 5;
+  bytes extension_signature = 6;
+}
+
 message Proposal {
   SignedMsgType type      = 1;
   int64         height    = 2;
