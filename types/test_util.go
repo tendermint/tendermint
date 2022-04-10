@@ -33,7 +33,7 @@ func makeCommit(ctx context.Context, blockID BlockID, height int64, round int32,
 		}
 	}
 
-	return voteSet.MakeCommit(), nil
+	return voteSet.MakeExtendedCommit().StripExtensions(), nil
 }
 
 func signAddVote(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
