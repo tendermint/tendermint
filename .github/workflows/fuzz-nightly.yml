@@ -21,7 +21,7 @@ jobs:
 
       - name: Install go-fuzz
         working-directory: test/fuzz
-        run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
+        run: go install github.com/dvyukov/go-fuzz/go-fuzz@latest github.com/dvyukov/go-fuzz/go-fuzz-build@latest
 
       - name: Fuzz mempool
         working-directory: test/fuzz
