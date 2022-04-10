@@ -463,6 +463,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				"height", height,
 			)
 
+			r.logger.Error("XXXXXXX", "startHeight", r.pool.startHeight, "InitialHeight", state.InitialHeight, "blocksSynced", blocksSynced)
+
 			switch {
 			//case state.LastBlockHeight > 0 && r.store.LoadBlockExtCommit(state.LastBlockHeight) == nil:
 			case state.LastBlockHeight > 0 && blocksSynced == 0:
