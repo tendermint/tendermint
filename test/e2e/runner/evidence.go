@@ -178,7 +178,7 @@ func generateLightClientAttackEvidence(
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
-				Commit: commit,
+				Commit: commit.StripExtensions(),
 			},
 			ValidatorSet: conflictingVals,
 		},

@@ -611,31 +611,31 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //
 // Panics if the vote type is not PrecommitType or if there's no +2/3 votes for
 // a single block.
-func (voteSet *VoteSet) MakeCommit() *Commit {
+func (voteSet *VoteSet) MakeExtendedCommit() *ExtendedCommit {
 	if voteSet.signedMsgType != tmproto.PrecommitType {
-		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
+		panic("Cannot MakeExtendCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
 	// Make sure we have a 2/3 majority
 	if voteSet.maj23 == nil {
-		panic("Cannot MakeCommit() unless a blockhash has +2/3")
+		panic("Cannot MakeExtendCommit() unless a blockhash has +2/3")
 	}
 
-	// For every validator, get the precommit
-	commitSigs := make([]CommitSig, len(voteSet.votes))
+	// For every validator, get the precommit with extensions
+	extCommitSigs := make([]ExtendedCommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
-		commitSig := v.CommitSig()
+		extCommitSig := v.ExtendedCommitSig()
 		// if block ID exists but doesn't match, exclude sig
-		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
-			commitSig = NewCommitSigAbsent()
+		if extCommitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
+			extCommitSig = NewExtendedCommitSigAbsent()
 		}
 
-		commitSigs[i] = commitSig
+		extCommitSigs[i] = extCommitSig
 	}
 
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
+	return NewExtendedCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, extCommitSigs)
 }
 
 //--------------------------------------------------------------------------------

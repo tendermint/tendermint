@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round int32, voteSet *types.VoteSet, validators []types.PrivValidator, now time.Time) (*types.Commit, error) {
+func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round int32, voteSet *types.VoteSet, validators []types.PrivValidator, now time.Time) (*types.ExtendedCommit, error) {
 	// all sign
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey(ctx)
@@ -37,5 +37,5 @@ func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round 
 		}
 	}
 
-	return voteSet.MakeCommit(), nil
+	return voteSet.MakeExtendedCommit(), nil
 }

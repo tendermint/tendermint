@@ -76,7 +76,7 @@ type Reactor struct {
 	stateStore sm.Store
 
 	blockExec   *sm.BlockExecutor
-	store       *store.BlockStore
+	store       sm.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
 	blockSync   *atomicBool
@@ -186,15 +186,24 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
 	block := r.store.LoadBlock(msg.Height)
 	if block != nil {
+		extCommit := r.store.LoadBlockExtCommit(msg.Height)
+		if extCommit == nil {
+			r.logger.Error("peer requesting a block; we have the block but not its extended commit (%v)", block)
+			return fmt.Errorf("blockstore has block but not extended commit %v", block)
+		}
 		blockProto, err := block.ToProto()
 		if err != nil {
-			r.logger.Error("failed to convert msg to protobuf", "err", err)
+			r.logger.Error("failed to convert block to protobuf", "err", err)
 			return err
 		}
+		extCommitProto := extCommit.ToProto()
 
 		return blockSyncCh.Send(ctx, p2p.Envelope{
-			To:      peerID,
-			Message: &bcproto.BlockResponse{Block: blockProto},
+			To: peerID,
+			Message: &bcproto.BlockResponse{
+				Block:     blockProto,
+				ExtCommit: extCommitProto,
+			},
 		})
 	}
 
@@ -236,8 +245,15 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 					"err", err)
 				return err
 			}
+			extCommit, err := types.ExtendedCommitFromProto(msg.ExtCommit)
+			if err != nil {
+				r.logger.Error("failed to convert extended commit from proto",
+					"peer", envelope.From,
+					"err", err)
+				return err
+			}
 
-			r.pool.AddBlock(envelope.From, block, block.Size())
+			r.pool.AddBlock(envelope.From, block, extCommit, block.Size())
 
 		case *bcproto.StatusRequest:
 			return blockSyncCh.Send(ctx, p2p.Envelope{
@@ -448,6 +464,10 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			)
 
 			switch {
+			case r.pool.startHeight > state.InitialHeight && blocksSynced == 0:
+				//If we have state-synced, we need to blocksync at least one block
+				continue
+
 			case r.pool.IsCaughtUp():
 				r.logger.Info("switching to consensus reactor", "height", height)
 
@@ -490,9 +510,12 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// TODO: Uncouple from request routine.
 
 			// see if there are any blocks to sync
-			first, second := r.pool.PeekTwoBlocks()
-			if first == nil || second == nil {
-				// we need both to sync the first block
+			first, second, extCommit := r.pool.PeekTwoBlocks()
+			if first == nil || second == nil || extCommit == nil {
+				if first != nil && extCommit == nil {
+					r.logger.Error("peeked a block without extended commit", "height", first.Height)
+				}
+				// we need all to sync the first block
 				continue
 			} else {
 				// try again quickly next loop
@@ -517,6 +540,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// NOTE: We can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
+			// TODO Should we also validate against the extended commit?
 			if err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit); err != nil {
 				err = fmt.Errorf("invalid last commit: %w", err)
 				r.logger.Error(
@@ -549,7 +573,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				r.pool.PopRequest()
 
 				// TODO: batch saves so we do not persist to disk every block
-				r.store.SaveBlock(first, firstParts, second.LastCommit)
+				r.store.SaveBlock(first, firstParts, extCommit)
 
 				var err error
 

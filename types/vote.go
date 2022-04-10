@@ -85,6 +85,34 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
+func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
+	if vote == nil {
+		return NewExtendedCommitSigAbsent()
+	}
+
+	var blockIDFlag BlockIDFlag
+	switch {
+	case vote.BlockID.IsComplete():
+		blockIDFlag = BlockIDFlagCommit
+		if vote.ExtensionSignature == nil {
+			panic(fmt.Sprintf("Invalid vote %v - a BlockID is complete but missing vote extension signature", vote))
+		}
+	case vote.BlockID.IsNil():
+		blockIDFlag = BlockIDFlagNil
+	default:
+		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
+	}
+
+	return ExtendedCommitSig{
+		BlockIDFlag:        blockIDFlag,
+		ValidatorAddress:   vote.ValidatorAddress,
+		Timestamp:          vote.Timestamp,
+		Signature:          vote.Signature,
+		VoteExtension:      vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
+	}
+}
+
 // VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
 // signing. Panics if the marshaling fails.
 //
