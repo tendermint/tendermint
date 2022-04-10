@@ -221,26 +221,22 @@ func TestVoteExtension(t *testing.T) {
 			includeSignature: true,
 			expectError:      false,
 		},
-		// TODO: Re-enable once
-		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
-		//{
-		//	name:             "no extension signature",
-		//	extension:        []byte("extension"),
-		//	includeSignature: false,
-		//	expectError:      true,
-		//},
+		{
+			name:             "no extension signature",
+			extension:        []byte("extension"),
+			includeSignature: false,
+			expectError:      true,
+		},
 		{
 			name:             "empty extension",
 			includeSignature: true,
 			expectError:      false,
 		},
-		// TODO: Re-enable once
-		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
-		//{
-		//	name:             "no extension and no signature",
-		//	includeSignature: false,
-		//	expectError:      true,
-		//},
+		{
+			name:             "no extension and no signature",
+			includeSignature: false,
+			expectError:      true,
+		},
 	}
 
 	for _, tc := range testCases {

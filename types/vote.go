@@ -173,9 +173,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 		return ErrVoteInvalidSignature
 	}
 	extSignBytes := VoteExtensionSignBytes(chainID, v)
-	// TODO: Remove extension signature nil check to enforce vote extension
-	//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-	if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+	if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil
