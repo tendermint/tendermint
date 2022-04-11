@@ -106,13 +106,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		abci.RequestPrepareProposal{
-			Height:              block.Height,
-			Time:                block.Time,
+			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.ToABCI(),
+			Height:              block.Height,
+			Time:                block.Time,
 			NextValidatorsHash:  block.NextValidatorsHash,
-			MaxTxBytes:          maxDataBytes,
+			ProposerAddress:     block.ProposerAddress,
 		},
 	)
 	if err != nil {
