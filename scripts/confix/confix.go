@@ -133,6 +133,14 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6396.
+		//
+		// TODO(creachadair): backport into v0.35.x.
+		Desc:    "Remove vestigial mempool.wal-dir setting",
+		T:       transform.Remove(parser.Key{"mempool", "wal-dir"}),
+		ErrorOK: true,
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
