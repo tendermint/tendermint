@@ -173,17 +173,17 @@ rounds, but the evaluation of the `timely` predicate is only relevant at round
 The `timely` predicate is evaluated when a process receives a proposal.
 More precisely, let `p` be a correct process:
 
-- `receiveTime_p[r]` is the time `p` reads from its local clock when `p` is at
-  round `r` and receives the proposal of round `r`.
+- `proposalReceptionTime(p,r)` is the time `p` reads from its local clock when
+  `p` is at round `r` and receives the proposal of round `r`.
 
 #### **[PBTS-TIMELY.0]**
 
 The proposal `(v, v.time, v.round)` is considered `timely` by a correct process
 `p` if:
 
-1. `receiveTime_p[v.round]` is set, and
-1. `receiveTime_p[v.round] >= v.time - PRECISION`, and
-1. `receiveTime_p[v.round] <= v.time + MSGDELAY + PRECISION`.
+1. `proposalReceptionTime(p,v.round)` is set, and
+1. `proposalReceptionTime(p,v.round) >= v.time - PRECISION`, and
+1. `proposalReceptionTime(p,v.round) <= v.time + MSGDELAY + PRECISION`.
 
 A correct process at round `v.round` only sends a `PREVOTE` for `v` if the
 associated proposal time `v.time` is considered `timely`.
@@ -294,14 +294,14 @@ If
 
 then there is a correct process `p` (not necessarily the same above considered) such that:
 
-- `beginRound(p,v.round) - MSGDELAY - PRECISION <= v.time <= receiveTime_p[v.round] + PRECISION`
+- `beginRound(p,v.round) - MSGDELAY - PRECISION <= v.time <= proposalReceptionTime(p,v.round) + PRECISION`
 
 The above invariant incorporate some assumptions.
 First, `p` started round `v.round` at which the decided value `v` was first proposed.
 Moreover, `p` started it while its clock marked a time that allowed `v.time` to
 still be considered timely ([PBTS-TIMELY.0], condition 3.).
 Second, `p` received the `PROPOSAL` message that originally proposed `v`, as
-`receiveTime_p[v.round]` is set, and received it when its clock marked a time
+`proposalReceptionTime(p,v.round)` is set, and received it when its clock marked a time
 greater, short of the maximum clock drift `PRECISION`, than `v.time`
 ([PBTS-TIMELY.0], conditions 1 and 2.)
 As a result, process `p` must have considered the proposal time `v.time` timely
