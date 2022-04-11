@@ -97,6 +97,16 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6241.
+		Desc: `Add top-level mode setting (default "full")`,
+		T: transform.EnsureKey(nil, &parser.KeyValue{
+			Block: parser.Comments{"Mode of Node: full | validator | seed"},
+			Name:  parser.Key{"mode"},
+			Value: parser.MustValue(`"full"`),
+		}),
+		ErrorOK: true,
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/7121.
 		Desc: "Remove gRPC settings from the [rpc] section",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
@@ -238,8 +248,5 @@ func CheckValid(data []byte) error {
 		return fmt.Errorf("decoding config: %w", err)
 	}
 
-	// Stub in required value not stored in the config file, so that validation
-	// will not fail spuriously.
-	cfg.Mode = config.ModeValidator
 	return cfg.ValidateBasic()
 }
