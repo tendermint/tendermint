@@ -9,8 +9,9 @@
  - [Timely Proposals](#timely-proposals)
     - [Timely Proof-of-Locks](#timely-proof-of-locks)
     - [Derived Proof-of-Locks](#derived-proof-of-locks)
- - [Safety](#safety)
- - [Liveness](#liveness)
+ - [Temporal Analysis](#temporal-analysis)
+    - [Safety](#safety)
+    - [Liveness](#liveness)
 
 ## System Model
 
@@ -267,65 +268,44 @@ Thus, if there is a `POL(v,r)` with `r > v.round`, then there is a valid
 `POL(v,vr)` with `v.round <= vr < r`.
 If `vr = v.round` then `POL(vr,v)` is a timely proof-of-lock and we are done.
 Otherwise, there is another valid `POL(v,vr')` with `v.round <= vr' < vr`,
-and the same reasoning can be applied until we get `vr' = v.round` and observe
-a timely proof-of-lock (which is guaranteed, as `vr` necessarily decreases at
-each recursive iteration).
+and the above reasoning can be recursively applied until we get `vr' = v.round`
+and observe a timely proof-of-lock.
 
-### SAFETY
+## Temporal analysis
 
-The safety of the algorithm requires a *timely* proof-of-lock for a decided value,
-either directly evaluated by a correct process,
-or indirectly received through a derived proof-of-lock.
+Let `beginRound(p,r)` be the time the process `p` reads from its clock when it
+starts round `r` of consensus.
+
+### Safety
+
+The safety of PBTS requires that if a value `v` is decided, then at least one
+correct process `p` considered the associated proposal time `v.time` timely
+([PBTS-INV-TIMELY.0] property).
+Following the definition of timely proposals and proof-of-locks, we require
+this condition to be asserted at a specific round of consensus, defined as
+`v.round`:
 
 #### **[PBTS-CONSENSUS-TIME-VALID.0]**
 
 If
 
-- there is a valid commit `C` for height `k` and round `r`, and
+- there is a valid commit `C` for a value `v`
 - `C` contains a `PRECOMMIT` message from at least one correct process
 
-Then, where `p` is one such correct process:
+then there is a correct process `p` (not necessarily the same above considered) such that:
 
-- since `p` is correct, `p` received a valid `POL(v,r)`, and
-- `POL(v,r)` contains a `PREVOTE` message from at least one correct process, and
-- `POL(v,r)` is derived from a timely `POL(v,r*)` with `r* <= r`, and
-- `POL(v,r*)` contains a `PREVOTE` message from at least one correct process, and
-- a correct process considered a proposal for `v` `timely` at round `r*`.
+- `beginRound(p,v.round) - MSGDELAY - PRECISION <= v.time <= receiveTime_p[v.round] + PRECISION`
 
-### LIVENESS
-
-In terms of liveness, we need to ensure that a proposal broadcast by a correct process
-will be considered `timely` by any correct process that is ready to accept that proposal.
-So, if:
-
-- the proposer `p` of a round `r` is correct,
-- there is no `POL(v',r')` for any value `v'` and any round `r' < r`,
-- `p` proposes a valid value `v` and sets `v.time` to the time it reads from its local clock,
-
-Then let `q` be a correct process that receives `p`'s proposal, we have:
-
-- `q` receives `p`'s proposal after its clock reads `v.time - PRECISION`, and
-- if `q` is at or joins round `r` while `p`'s proposal is being transmitted,
-then `q` receives `p`'s proposal before its clock reads `v.time + MSGDELAY + PRECISION`
-
-> Note that, before `GST`, we cannot ensure that every correct process receives `p`'s proposals, nor that it does it while ready to accept a round `r` proposal.
-
-A correct process `q` as above defined must then consider `p`'s proposal `timely`.
-It will then broadcast a `PREVOTE` message for `v` at round `r`,
-thus enabling, from the Time-Validity point of view, `v` to be eventually decided.
-
-#### Under-estimated `MSGDELAY`s
-
-The liveness assumptions of PBTS are conditioned by a conservative and clever
-choice of the timing parameters, specially of `MSGDELAY`.
-In fact, if the transmission delay for a message carrying a proposal is wrongly
-estimated, correct processes may never consider a valid proposal as `timely`.
-
-To circumvent this liveness issue, which could result from a misconfiguration,
-we assume that the `MSGDELAY` parameter can be increased as rounds do not
-succeed on deciding a value, possibly because no proposal is considered
-`timely` by enough processes.
-The precise behavior for this workaround is under [discussion](https://github.com/tendermint/spec/issues/371).
+The above invariant incorporate some assumptions.
+First, `p` started round `v.round` at which the decided value `v` was first proposed.
+Moreover, `p` started it while its clock marked a time that allowed `v.time` to
+still be considered timely ([PBTS-TIMELY.0], condition 3.).
+Second, `p` received the `PROPOSAL` message that originally proposed `v`, as
+`receiveTime_p[v.round]` is set, and received it when its clock marked a time
+greater, short of the maximum clock drift `PRECISION`, than `v.time`
+([PBTS-TIMELY.0], conditions 1 and 2.)
+As a result, process `p` must have considered the proposal time `v.time` timely
+at round `v.round`.
 
 Back to [main document][main].
 
