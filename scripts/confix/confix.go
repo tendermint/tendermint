@@ -85,9 +85,18 @@ var plan = transform.Plan{
 		T:    transform.SnakeToKebab(),
 	},
 	{
-		// Since https://github.com/tendermint/tendermint/pull/6896.
-		Desc:    "Rename [fastsync] to [blocksync]",
-		T:       transform.Rename(parser.Key{"fastsync"}, parser.Key{"blocksync"}),
+		// [fastsync]  renamed in https://github.com/tendermint/tendermint/pull/6896.
+		// [blocksync] removed in https://github.com/tendermint/tendermint/pull/7159.
+		Desc: "Remove [fastsync] and [blocksync] sections",
+		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
+			if t := transform.FindTable(doc, "fastsync"); t != nil {
+				t.Remove()
+			}
+			if t := transform.FindTable(doc, "blocksync"); t != nil {
+				t.Remove()
+			}
+			return nil
+		}),
 		ErrorOK: true,
 	},
 	{
@@ -144,22 +153,6 @@ var plan = transform.Plan{
 				e.Name = parser.Key{strings.TrimPrefix(e.Name[0], pvPrefix)}
 				sec.Items = append(sec.Items, e.KeyValue)
 			}
-			return nil
-		}),
-	},
-	{
-		// v1 removed: https://github.com/tendermint/tendermint/pull/5728
-		// v2 deprecated: https://github.com/tendermint/tendermint/pull/6730
-		Desc: `Set blocksync.version to "v0"`,
-		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
-			v := doc.First("blocksync", "version")
-			if v == nil {
-				return nil // nothing to do
-			} else if !v.IsMapping() {
-				// This shouldn't happen, but is easier to debug than a panic.
-				return fmt.Errorf("blocksync.version is weird: %v", v)
-			}
-			v.Value.X = parser.MustValue(`"v0"`).X
 			return nil
 		}),
 	},
