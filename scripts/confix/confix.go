@@ -141,6 +141,18 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6323.
+		//
+		// TODO(creachadair): backport into v0.35.x.
+		Desc: "Add new [p2p] queue-type setting",
+		T: transform.EnsureKey(parser.Key{"p2p"}, &parser.KeyValue{
+			Block: parser.Comments{"Select the p2p internal queue"},
+			Name:  parser.Key{"queue-type"},
+			Value: parser.MustValue(`"priority"`),
+		}),
+		ErrorOK: true,
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
