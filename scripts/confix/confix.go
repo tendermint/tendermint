@@ -80,24 +80,28 @@ func main() {
 
 var plan = transform.Plan{
 	{
+		// Since https://github.com/tendermint/tendermint/pull/5777.
 		Desc: "Rename everything from snake_case to kebab-case",
 		T:    transform.SnakeToKebab(),
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6896.
 		Desc:    "Rename [fastsync] to [blocksync]",
 		T:       transform.Rename(parser.Key{"fastsync"}, parser.Key{"blocksync"}),
 		ErrorOK: true,
 	},
 	{
-		Desc: "Move top-level fast_sync key under [blocksync]",
+		// Since https://github.com/tendermint/tendermint/pull/7159.
+		Desc: "Move top-level fast_sync key to blocksync.enable",
 		T: transform.MoveKey(
 			parser.Key{"fast-sync"},
 			parser.Key{"blocksync"},
-			parser.Key{"fast-sync"},
+			parser.Key{"enable"},
 		),
 		ErrorOK: true,
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
 			const pvPrefix = "priv-validator-"
@@ -144,6 +148,8 @@ var plan = transform.Plan{
 		}),
 	},
 	{
+		// v1 removed: https://github.com/tendermint/tendermint/pull/5728
+		// v2 deprecated: https://github.com/tendermint/tendermint/pull/6730
 		Desc: `Set blocksync.version to "v0"`,
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
 			v := doc.First("blocksync", "version")
@@ -166,7 +172,7 @@ func ApplyFixes(ctx context.Context, doc *tomledit.Document) error {
 	tmVersion := GuessConfigVersion(doc)
 	if tmVersion == vUnknown {
 		return errors.New("cannot tell what Tendermint version created this config")
-	} else if tmVersion < v34 {
+	} else if tmVersion < v34 || tmVersion > v36 {
 		// TODO(creachadair): Add in rewrites for older versions.  This will
 		// require some digging to discover what the changes were.  The upgrade
 		// instructions do not give specifics.
