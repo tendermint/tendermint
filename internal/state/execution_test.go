@@ -339,6 +339,8 @@ func TestProcessProposal(t *testing.T) {
 			Round: 0,
 			Votes: voteInfos,
 		},
+		NextValidatorsHash: block1.NextValidatorsHash,
+		ProposerAddress:    block1.ProposerAddress,
 	}
 
 	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
