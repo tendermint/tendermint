@@ -290,12 +290,10 @@ title: Methods
     | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 1            |
     | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 2            |
     | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 3            |
-    | byzantine_validators    | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                           | 4            |
-    | hash                    | bytes                                       | The block header's hash of the block to propose.                                                                 | 5            |
-    | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 6            |
-    | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 7            |
-    | proposer_address        | bytes                                       | [Address](../core/data_structures.md#address) of the validator creating the proposal.                            | 8            |
-    | next_validators_hash    | bytes                                       | Merkle root of the next validator set.                                                                           | 9            |
+    | byzantine_validators    | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                                           | 4            |
+    | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 5            |
+    | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 6            |
+    | next_validators_hash    | bytes                                       | Merkle root of the next validator set.                                                                           | 7            |
 
 * **Response**:
 
