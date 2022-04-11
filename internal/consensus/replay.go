@@ -244,27 +244,25 @@ func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client)
 		return fmt.Errorf("error calling Info: %w", err)
 	}
 
-	appBlockHeight := res.LastBlockHeight
-	if appBlockHeight < 0 {
-		return fmt.Errorf("got a negative last block height (%d) from the app", appBlockHeight)
+	if res.LastBlockHeight < 0 {
+		return fmt.Errorf("got a negative last block height (%d) from the app", res.LastBlockHeight)
 	}
-	appHash := res.LastBlockAppHash
 
 	h.logger.Info("ABCI Handshake App Info",
-		"height", appBlockHeight,
-		"hash", appHash,
+		"height", res.LastBlockHeight,
+		"hash", res.LastBlockAppHash,
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
 	)
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, appBlockHeight, appClient)
+	_, err = h.ReplayBlocks(ctx, h.initialState, appClient, *res)
 	if err != nil {
 		return fmt.Errorf("error on replay: %w", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
-		"appHeight", appBlockHeight, "appHash", appHash)
+		"appHeight", res.LastBlockHeight, "appHash", res.LastBlockAppHash)
 
 	// TODO: (on restart) replay mempool
 
@@ -277,13 +275,17 @@ func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client)
 func (h *Handshaker) ReplayBlocks(
 	ctx context.Context,
 	state sm.State,
-	appHash []byte,
-	appBlockHeight int64,
 	appClient abciclient.Client,
+	appInfo abci.ResponseInfo,
 ) ([]byte, error) {
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := state.LastBlockHeight
+
+	appBlockHeight := appInfo.LastBlockHeight
+	appHash := appInfo.LastBlockAppHash
+	appVer := appInfo.AppVersion
+
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",
@@ -337,6 +339,7 @@ func (h *Handshaker) ReplayBlocks(
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
 			}
 
+			state.Version.Consensus.App = appVer
 			if res.ConsensusParams != nil {
 				state.ConsensusParams = state.ConsensusParams.UpdateConsensusParams(res.ConsensusParams)
 				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
