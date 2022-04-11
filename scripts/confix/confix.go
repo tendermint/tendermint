@@ -178,6 +178,30 @@ var plan = transform.Plan{
 		}),
 	},
 	{
+		// Added "chunk-fetchers" https://github.com/tendermint/tendermint/pull/6566.
+		// This value was backported into v0.34.11 (modulo casing).
+		// Renamed to "fetchers"  https://github.com/tendermint/tendermint/pull/6587.
+		//
+		// TODO(creachadair): backport into v0.35.x.
+		Desc: "Rename statesync.chunk-fetchers to statesync.fetchers",
+		T: transform.Func(func(ctx context.Context, doc *tomledit.Document) error {
+			// If the key already exists, rename it preserving its value.
+			if found := doc.First("statesync", "chunk-fetchers"); found != nil {
+				found.KeyValue.Name = parser.Key{"fetchers"}
+				return nil
+			}
+
+			// Otherwise, add it.
+			return transform.EnsureKey(parser.Key{"statesync"}, &parser.KeyValue{
+				Block: parser.Comments{
+					"The number of concurrent chunk and block fetchers to run (default: 4).",
+				},
+				Name:  parser.Key{"fetchers"},
+				Value: parser.MustValue("4"),
+			})(ctx, doc)
+		}),
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
