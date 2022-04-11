@@ -143,6 +143,12 @@ type Reactor struct {
 	peerEvents     p2p.PeerEventSubscriber
 	chCreator      p2p.ChannelCreator
 	sendBlockError func(context.Context, p2p.PeerError) error
+	postSyncHook   func(context.Context, sm.State) error
+
+	// when true, the reactor will, during startup perform a
+	// statesync for this node, and otherwise just provide
+	// snapshots to other nodes.
+	needsStateSync bool
 
 	// Dispatcher is used to multiplex light block requests and responses over multiple
 	// peers used by the p2p state provider and in reverse sync.
@@ -171,7 +177,6 @@ type Reactor struct {
 // and querying, references to p2p Channels and a channel to listen for peer
 // updates on. Note, the reactor will close all p2p Channels when stopping.
 func NewReactor(
-	ctx context.Context,
 	chainID string,
 	initialHeight int64,
 	cfg config.StateSyncConfig,
@@ -184,23 +189,26 @@ func NewReactor(
 	tempDir string,
 	ssMetrics *Metrics,
 	eventBus *eventbus.EventBus,
+	postSyncHook func(context.Context, sm.State) error,
+	needsStateSync bool,
 ) *Reactor {
-
 	r := &Reactor{
-		logger:        logger,
-		chainID:       chainID,
-		initialHeight: initialHeight,
-		cfg:           cfg,
-		conn:          conn,
-		chCreator:     channelCreator,
-		peerEvents:    peerEvents,
-		tempDir:       tempDir,
-		stateStore:    stateStore,
-		blockStore:    blockStore,
-		peers:         newPeerList(),
-		providers:     make(map[types.NodeID]*BlockProvider),
-		metrics:       ssMetrics,
-		eventBus:      eventBus,
+		logger:         logger,
+		chainID:        chainID,
+		initialHeight:  initialHeight,
+		cfg:            cfg,
+		conn:           conn,
+		chCreator:      channelCreator,
+		peerEvents:     peerEvents,
+		tempDir:        tempDir,
+		stateStore:     stateStore,
+		blockStore:     blockStore,
+		peers:          newPeerList(),
+		providers:      make(map[types.NodeID]*BlockProvider),
+		metrics:        ssMetrics,
+		eventBus:       eventBus,
+		postSyncHook:   postSyncHook,
+		needsStateSync: needsStateSync,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -300,6 +308,14 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.processChannels(ctx, snapshotCh, chunkCh, blockCh, paramsCh)
 	go r.processPeerUpdates(ctx, r.peerEvents(ctx))
 
+	if r.needsStateSync {
+		r.logger.Info("starting state sync")
+		if _, err := r.Sync(ctx); err != nil {
+			r.logger.Error("state sync failed; shutting down this node", "err", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -310,20 +326,21 @@ func (r *Reactor) OnStop() {
 	r.dispatcher.Close()
 }
 
-func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataStateSyncStatus) error {
-	if r.eventBus == nil {
-		return errors.New("event system is not configured")
-	}
-
-	return r.eventBus.PublishEventStateSyncStatus(ctx, event)
-}
-
 // Sync runs a state sync, fetching snapshots and providing chunks to the
 // application. At the close of the operation, Sync will bootstrap the state
 // store and persist the commit at that height so that either consensus or
 // blocksync can commence. It will then proceed to backfill the necessary amount
 // of historical blocks before participating in consensus
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
+	if r.eventBus != nil {
+		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+			Complete: false,
+			Height:   r.initialHeight,
+		}); err != nil {
+			return sm.State{}, err
+		}
+	}
+
 	// We need at least two peers (for cross-referencing of light blocks) before we can
 	// begin state sync
 	if err := r.waitForEnoughPeers(ctx, 2); err != nil {
@@ -357,19 +374,31 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 		return sm.State{}, err
 	}
 
-	err = r.stateStore.Bootstrap(state)
-	if err != nil {
+	if err := r.stateStore.Bootstrap(state); err != nil {
 		return sm.State{}, fmt.Errorf("failed to bootstrap node with new state: %w", err)
 	}
 
-	err = r.blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
-	if err != nil {
+	if err := r.blockStore.SaveSeenCommit(state.LastBlockHeight, commit); err != nil {
 		return sm.State{}, fmt.Errorf("failed to store last seen commit: %w", err)
 	}
 
-	err = r.Backfill(ctx, state)
-	if err != nil {
+	if err := r.Backfill(ctx, state); err != nil {
 		r.logger.Error("backfill failed. Proceeding optimistically...", "err", err)
+	}
+
+	if r.eventBus != nil {
+		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+			Complete: true,
+			Height:   state.LastBlockHeight,
+		}); err != nil {
+			return sm.State{}, err
+		}
+	}
+
+	if r.postSyncHook != nil {
+		if err := r.postSyncHook(ctx, state); err != nil {
+			return sm.State{}, err
+		}
 	}
 
 	return state, nil

@@ -752,9 +752,6 @@ func (r *Reactor) gossipVotesForHeight(
 func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh *p2p.Channel) {
 	logger := r.logger.With("peer", ps.peerID)
 
-	// XXX: simple hack to throttle logs upon sleep
-	logThrottle := 0
-
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -771,13 +768,6 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 
 		rs := r.getRoundState()
 		prs := ps.GetRoundState()
-
-		switch logThrottle {
-		case 1: // first sleep
-			logThrottle = 2
-		case 2: // no more sleep
-			logThrottle = 0
-		}
 
 		// if height matches, then send LastCommit, Prevotes, and Precommits
 		if rs.Height == prs.Height {
@@ -813,20 +803,6 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 			}
 		}
 
-		if logThrottle == 0 {
-			// we sent nothing -- sleep
-			logThrottle = 1
-			logger.Debug(
-				"no votes to send; sleeping",
-				"rs.Height", rs.Height,
-				"prs.Height", prs.Height,
-				"localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV", prs.Prevotes,
-				"localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC", prs.Precommits,
-			)
-		} else if logThrottle == 2 {
-			logThrottle = 1
-		}
-
 		timer.Reset(r.state.config.PeerGossipSleepDuration)
 		select {
 		case <-ctx.Done():
@@ -860,10 +836,20 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState, stateCh 
 			return
 		}
 
-		rs := r.getRoundState()
-		prs := ps.GetRoundState()
-		// TODO create more reliable coppies of these
+		// TODO create more reliable copies of these
 		// structures so the following go routines don't race
+		rs := r.getRoundState()
+		if rs.Votes == nil {
+			// if we have gotten here, we've connected to
+			// a peer before the state of the reactor has
+			// updated to the current round, so we should
+			// sleep for a while before we attempt to
+			// start gossiping the data that doesn't exist
+			// yet. This prevents a panic.
+			timer.Reset(r.state.config.PeerQueryMaj23SleepDuration)
+			continue
+		}
+		prs := ps.GetRoundState()
 
 		wg := &sync.WaitGroup{}
 

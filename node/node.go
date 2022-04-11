@@ -60,18 +60,17 @@ type nodeImpl struct {
 	nodeKey     types.NodeKey // our node privkey
 
 	// services
-	eventSinks       []indexer.EventSink
-	stateStore       sm.Store
-	blockStore       *store.BlockStore // store the blockchain to disk
-	evPool           *evidence.Pool
-	stateSync        bool               // whether the node should state sync on startup
-	stateSyncReactor *statesync.Reactor // for hosting and restoring state sync snapshots
-
-	services      []service.Service
-	rpcListeners  []net.Listener // rpc servers
-	shutdownOps   closer
-	rpcEnv        *rpccore.Environment
-	prometheusSrv *http.Server
+	eventSinks     []indexer.EventSink
+	initialState   sm.State
+	stateStore     sm.Store
+	blockStore     *store.BlockStore // store the blockchain to disk
+	evPool         *evidence.Pool
+	indexerService *indexer.Service
+	services       []service.Service
+	rpcListeners   []net.Listener // rpc servers
+	shutdownOps    closer
+	rpcEnv         *rpccore.Environment
+	prometheusSrv  *http.Server
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
@@ -157,20 +156,8 @@ func makeNode(
 
 	nodeMetrics := defaultMetricsProvider(cfg.Instrumentation)(genDoc.ChainID)
 
-	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp := proxy.New(client, logger.With("module", "proxy"), nodeMetrics.proxy)
-	if err := proxyApp.Start(ctx); err != nil {
-		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
-	}
-
-	// EventBus and IndexerService must be started before the handshake because
-	// we might need to index the txs of the replayed block as this might not have happened
-	// when the node stopped last time (i.e. the node stopped or crashed after it saved the block
-	// but before it indexed the txs)
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	if err := eventBus.Start(ctx); err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
 
 	var eventLog *eventlog.Log
 	if w := cfg.RPC.EventLogWindowSize; w > 0 {
@@ -185,13 +172,11 @@ func makeNode(
 		}
 	}
 
-	indexerService, eventSinks, err := createAndStartIndexerService(
-		ctx, cfg, dbProvider, eventBus,
-		logger, genDoc.ChainID, nodeMetrics.indexer)
+	indexerService, eventSinks, err := createIndexerService(
+		cfg, dbProvider, eventBus, logger, genDoc.ChainID, nodeMetrics.indexer)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
-	closers = append(closers, func() error { indexerService.Stop(); return nil })
 
 	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
 	if err != nil {
@@ -213,34 +198,6 @@ func makeNode(
 		}
 	}
 
-	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
-	// and replays any blocks as necessary to sync tendermint with the app.
-	if err := consensus.NewHandshaker(
-		logger.With("module", "handshaker"),
-		stateStore, state, blockStore, eventBus, genDoc,
-	).Handshake(ctx, proxyApp); err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
-
-	// Reload the state. It will have the Version.Consensus.App set by the
-	// Handshake, and may have other modifications as well (ie. depending on
-	// what happened during block replay).
-	state, err = stateStore.Load()
-	if err != nil {
-		return nil, combineCloseError(
-			fmt.Errorf("cannot load state: %w", err),
-			makeCloser(closers))
-	}
-
-	logNodeStartupInfo(state, pubKey, logger, cfg.Mode)
-
-	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
-	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(cfg, nodeKey, eventSinks, genDoc, state.Version.Consensus)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
-
 	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
 	closers = append(closers, peerCloser)
 	if err != nil {
@@ -257,15 +214,15 @@ func makeNode(
 		privValidator: privValidator,
 
 		peerManager: peerManager,
-		nodeInfo:    nodeInfo,
 		nodeKey:     nodeKey,
 
-		eventSinks: eventSinks,
+		eventSinks:     eventSinks,
+		indexerService: indexerService,
+		services:       []service.Service{eventBus},
 
-		services: []service.Service{eventBus},
-
-		stateStore: stateStore,
-		blockStore: blockStore,
+		initialState: state,
+		stateStore:   stateStore,
+		blockStore:   blockStore,
 
 		shutdownOps: makeCloser(closers),
 
@@ -372,13 +329,15 @@ func makeNode(
 		nodeMetrics.consensus.BlockSyncing.Set(1)
 	}
 
+	if cfg.P2P.PexReactor {
+		node.services = append(node.services, pex.NewReactor(logger, peerManager, node.router.OpenChannel, peerManager.Subscribe))
+	}
+
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> block sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	node.stateSync = stateSync
-	node.stateSyncReactor = statesync.NewReactor(
-		ctx,
+	node.services = append(node.services, statesync.NewReactor(
 		genDoc.ChainID,
 		genDoc.InitialHeight,
 		*cfg.StateSync,
@@ -391,11 +350,24 @@ func makeNode(
 		cfg.StateSync.TempDir,
 		nodeMetrics.statesync,
 		eventBus,
-	)
+		// the post-sync operation
+		func(ctx context.Context, state sm.State) error {
+			csReactor.SetStateSyncingMetrics(0)
 
-	if cfg.P2P.PexReactor {
-		node.services = append(node.services, pex.NewReactor(logger, peerManager, node.router.OpenChannel, peerManager.Subscribe))
-	}
+			// TODO: Some form of orchestrator is needed here between the state
+			// advancing reactors to be able to control which one of the three
+			// is running
+			// FIXME Very ugly to have these metrics bleed through here.
+			csReactor.SetBlockSyncingMetrics(1)
+			if err := bcReactor.SwitchToBlockSync(ctx, state); err != nil {
+				logger.Error("failed to switch to block sync", "err", err)
+				return err
+			}
+
+			return nil
+		},
+		stateSync,
+	))
 
 	if cfg.Mode == config.ModeValidator {
 		node.rpcEnv.PubKey = pubKey
@@ -408,6 +380,48 @@ func makeNode(
 
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
+	if err := n.rpcEnv.ProxyApp.Start(ctx); err != nil {
+		return fmt.Errorf("error starting proxy app connections: %w", err)
+	}
+
+	// EventBus and IndexerService must be started before the handshake because
+	// we might need to index the txs of the replayed block as this might not have happened
+	// when the node stopped last time (i.e. the node stopped or crashed after it saved the block
+	// but before it indexed the txs)
+	if err := n.rpcEnv.EventBus.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := n.indexerService.Start(ctx); err != nil {
+		return err
+	}
+
+	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
+	// and replays any blocks as necessary to sync tendermint with the app.
+	if err := consensus.NewHandshaker(n.logger.With("module", "handshaker"),
+		n.stateStore, n.initialState, n.blockStore, n.rpcEnv.EventBus, n.genesisDoc,
+	).Handshake(ctx, n.rpcEnv.ProxyApp); err != nil {
+		return err
+	}
+
+	// Reload the state. It will have the Version.Consensus.App set by the
+	// Handshake, and may have other modifications as well (ie. depending on
+	// what happened during block replay).
+	state, err := n.stateStore.Load()
+	if err != nil {
+		return fmt.Errorf("cannot load state: %w", err)
+	}
+
+	logNodeStartupInfo(state, n.rpcEnv.PubKey, n.logger, n.config.Mode)
+
+	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
+	// TODO: Use a persistent peer database.
+	n.nodeInfo, err = makeNodeInfo(n.config, n.nodeKey, n.eventSinks, n.genesisDoc, state.Version.Consensus)
+	if err != nil {
+		return err
+	}
+	// Start Internal Services
+
 	if n.config.RPC.PprofListenAddress != "" {
 		rpcCtx, rpcCancel := context.WithCancel(ctx)
 		srv := &http.Server{Addr: n.config.RPC.PprofListenAddress, Handler: nil}
@@ -445,7 +459,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
-	state, err := n.stateStore.Load()
+	state, err = n.stateStore.Load()
 	if err != nil {
 		return err
 	}
@@ -480,75 +494,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
-	if err := n.stateSyncReactor.Start(ctx); err != nil {
-		return err
-	}
-
-	// Run state sync
-	// TODO: We shouldn't run state sync if we already have state that has a
-	// LastBlockHeight that is not InitialHeight
-	if n.stateSync {
-		bcR := n.rpcEnv.BlockSyncReactor
-
-		// we need to get the genesis state to get parameters such as
-		state, err := sm.MakeGenesisState(n.genesisDoc)
-		if err != nil {
-			return fmt.Errorf("unable to derive state: %w", err)
-		}
-
-		// TODO: we may want to move these events within the respective
-		// reactors.
-		// At the beginning of the statesync start, we use the initialHeight as the event height
-		// because of the statesync doesn't have the concreate state height before fetched the snapshot.
-		d := types.EventDataStateSyncStatus{Complete: false, Height: state.InitialHeight}
-		if err := n.stateSyncReactor.PublishStatus(ctx, d); err != nil {
-			n.logger.Error("failed to emit the statesync start event", "err", err)
-		}
-
-		// RUN STATE SYNC NOW:
-		//
-		// TODO: Eventually this should run as part of some
-		// separate orchestrator
-		n.logger.Info("starting state sync")
-		ssState, err := n.stateSyncReactor.Sync(ctx)
-		if err != nil {
-			n.logger.Error("state sync failed; shutting down this node", "err", err)
-			// stop the node
-			n.Stop()
-			return err
-		}
-
-		n.rpcEnv.ConsensusReactor.SetStateSyncingMetrics(0)
-
-		if err := n.stateSyncReactor.PublishStatus(ctx,
-			types.EventDataStateSyncStatus{
-				Complete: true,
-				Height:   ssState.LastBlockHeight,
-			}); err != nil {
-			n.logger.Error("failed to emit the statesync start event", "err", err)
-			return err
-		}
-
-		// TODO: Some form of orchestrator is needed here between the state
-		// advancing reactors to be able to control which one of the three
-		// is running
-		// FIXME Very ugly to have these metrics bleed through here.
-		n.rpcEnv.ConsensusReactor.SetBlockSyncingMetrics(1)
-		if err := bcR.SwitchToBlockSync(ctx, ssState); err != nil {
-			n.logger.Error("failed to switch to block sync", "err", err)
-			return err
-		}
-
-		if err := bcR.PublishStatus(ctx,
-			types.EventDataBlockSyncStatus{
-				Complete: false,
-				Height:   ssState.LastBlockHeight,
-			}); err != nil {
-			n.logger.Error("failed to emit the block sync starting event", "err", err)
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -565,7 +510,6 @@ func (n *nodeImpl) OnStop() {
 		reactor.Wait()
 	}
 
-	n.stateSyncReactor.Wait()
 	n.router.Wait()
 	n.rpcEnv.IsListening = false
 
