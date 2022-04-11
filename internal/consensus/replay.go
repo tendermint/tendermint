@@ -257,12 +257,6 @@ func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client)
 		"protocol-version", res.AppVersion,
 	)
 
-	// Only set the version if there is no existing state.
-	if h.initialState.LastBlockHeight == 0 {
-		h.initialState.Version.Consensus.App = res.AppVersion
-		h.initialState.ConsensusParams.Version.AppVersion = res.AppVersion
-	}
-
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(ctx, h.initialState, appHash, appBlockHeight, appClient)
 	if err != nil {
@@ -347,6 +341,12 @@ func (h *Handshaker) ReplayBlocks(
 				state.ConsensusParams = state.ConsensusParams.UpdateConsensusParams(res.ConsensusParams)
 				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
 			}
+
+			if state.Version.Consensus.App != state.ConsensusParams.Version.AppVersion {
+				return nil, fmt.Errorf("mismatched App version:  VersionAppVer(%d)  ConsensusParamsAppVer (%d)",
+					state.Version.Consensus.App, state.ConsensusParams.Version.AppVersion)
+			}
+
 			// We update the last results hash with the empty hash, to conform with RFC-6962.
 			state.LastResultsHash = merkle.HashFromByteSlices(nil)
 			if err := h.stateStore.Save(state); err != nil {

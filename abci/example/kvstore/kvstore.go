@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
+	protoTypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -101,7 +102,13 @@ func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInit
 			panic("problem updating validators")
 		}
 	}
-	return types.ResponseInitChain{}
+	return types.ResponseInitChain{
+		ConsensusParams: &protoTypes.ConsensusParams{
+			Version: &protoTypes.VersionParams{
+				AppVersion: ProtocolVersion,
+			},
+		},
+	}
 }
 
 func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
