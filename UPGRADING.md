@@ -50,7 +50,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
   ```shell
   # Install the tool.
-  go install github.com/tendermint/tendermint/scripts/confix@latest
+  go install github.com/tendermint/tendermint/scripts/confix@v0.35.x
 
   # Run the tool with the old configuration file as input.
   # Replace the -config argument with your path.
