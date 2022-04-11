@@ -77,7 +77,7 @@ message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -130,16 +130,16 @@ message RequestPrepareProposal {
   // sent to the app for possible modifications.
   repeated bytes            txs                  = 2;
   ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
-  repeated Evidence         byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior      byzantine_validators = 4 [(gogoproto.nullable) = false];
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
 }
 
 message RequestProcessProposal {
-  repeated bytes    txs                  = 1;
-  CommitInfo        proposed_last_commit = 2 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators = 3 [(gogoproto.nullable) = false];
+  repeated bytes       txs                  = 1;
+  CommitInfo           proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
@@ -160,9 +160,9 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  repeated bytes    txs                  = 1;
-  CommitInfo        decided_last_commit  = 2 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators = 3 [(gogoproto.nullable) = false];
+  repeated bytes       txs                  = 1;
+  CommitInfo           decided_last_commit  = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
@@ -465,14 +465,14 @@ message ExtendedVoteInfo {
   bytes     vote_extension    = 3;
 }
 
-enum EvidenceType {
+enum MisbehaviorType {
   UNKNOWN             = 0;
   DUPLICATE_VOTE      = 1;
   LIGHT_CLIENT_ATTACK = 2;
 }
 
-message Evidence {
-  EvidenceType type = 1;
+message Misbehavior {
+  MisbehaviorType type = 1;
   // The offending validator
   Validator validator = 2 [(gogoproto.nullable) = false];
   // The height when the offense occurred

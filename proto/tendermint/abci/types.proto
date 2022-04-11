@@ -3,8 +3,6 @@ package tendermint.abci;
 
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
-// For more information on gogo.proto, see:
-// https://github.com/gogo/protobuf/blob/master/extensions.md
 import "tendermint/crypto/proof.proto";
 import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
@@ -12,9 +10,14 @@ import "tendermint/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
 
-// This file is copied from http://github.com/tendermint/abci
-// NOTE: When using custom types, mind the warnings.
-// https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
+// This file is a temporary workaround to enable development during the ABCI++
+// project. This file should be deleted and any references to it removed when
+// the ongoing work on ABCI++ is completed.
+//
+// For the duration of ABCI++, this file should be able to build the `abci/types/types.pb.go`
+// file. Any changes that update that file must come as a result of a change in
+// this .proto file.
+// For more information, see https://github.com/tendermint/tendermint/issues/8066
 
 //----------------------------------------
 // Request types
@@ -77,6 +80,7 @@ message RequestBeginBlock {
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
+}
 }
 
 enum CheckTxType {
@@ -150,16 +154,12 @@ message RequestProcessProposal {
 
 // Extends a vote with application-side injection
 message RequestExtendVote {
-  bytes hash   = 1;
-  int64 height = 2;
+  types.Vote vote = 1;
 }
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
-  bytes hash              = 1;
-  bytes validator_address = 2;
-  int64 height            = 3;
-  bytes vote_extension    = 4;
+  types.Vote vote = 1;
 }
 
 message RequestFinalizeBlock {
@@ -349,7 +349,7 @@ message ResponseProcessProposal {
 }
 
 message ResponseExtendVote {
-  bytes vote_extension = 1;
+  tendermint.types.VoteExtension vote_extension = 1;
 }
 
 message ResponseVerifyVoteExtension {
@@ -366,7 +366,7 @@ message ResponseFinalizeBlock {
   repeated Event events = 1
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   repeated ExecTxResult            tx_results              = 2;
-  repeated ValidatorUpdate         validator_updates       = 3;
+  repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
   bytes                            app_hash                = 5;
   int64                            retain_height           = 6;
@@ -419,10 +419,10 @@ message ExecTxResult {
 //
 // One usage is indexing transaction results.
 message TxResult {
-  int64             height = 1;
-  uint32            index  = 2;
-  bytes             tx     = 3;
-  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+  int64        height = 1;
+  uint32       index  = 2;
+  bytes        tx     = 3;
+  ExecTxResult result = 4 [(gogoproto.nullable) = false];
 }
 
 message TxRecord {
@@ -458,23 +458,14 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
+  reserved 3;  // Placeholder for tendermint_signed_extension in v0.37
+  reserved 4;  // Placeholder for app_signed_extension in v0.37
 }
 
-// ExtendedVoteInfo
 message ExtendedVoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
   bytes     vote_extension    = 3;
-}
-
-// CanonicalVoteExtension
-// TODO: move this to core Tendermint data structures
-message CanonicalVoteExtension {
-  bytes  extension = 1;
-  int64  height    = 2;
-  int32  round     = 3;
-  string chain_id  = 4;
-  bytes  address   = 5;
 }
 
 enum MisbehaviorType {
