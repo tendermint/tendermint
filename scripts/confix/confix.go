@@ -89,24 +89,11 @@ var plan = transform.Plan{
 		// [blocksync] removed in https://github.com/tendermint/tendermint/pull/7159.
 		Desc: "Remove [fastsync] and [blocksync] sections",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
-			if t := transform.FindTable(doc, "fastsync"); t != nil {
-				t.Remove()
-			}
-			if t := transform.FindTable(doc, "blocksync"); t != nil {
-				t.Remove()
-			}
+			doc.First("fast-sync").Remove()
+			transform.FindTable(doc, "fastsync").Remove()
+			transform.FindTable(doc, "blocksync").Remove()
 			return nil
 		}),
-		ErrorOK: true,
-	},
-	{
-		// Since https://github.com/tendermint/tendermint/pull/7159.
-		Desc: "Move top-level fast_sync key to blocksync.enable",
-		T: transform.MoveKey(
-			parser.Key{"fast-sync"},
-			parser.Key{"blocksync"},
-			parser.Key{"enable"},
-		),
 		ErrorOK: true,
 	},
 	{
