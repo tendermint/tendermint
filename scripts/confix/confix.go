@@ -202,6 +202,22 @@ var plan = transform.Plan{
 		}),
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6807.
+		// Backported into v0.34.13 (modulo casing).
+		//
+		// TODO(creachadair): backport into v0.35.x.
+		Desc: "Add statesync.use-p2p setting",
+		T: transform.EnsureKey(parser.Key{"statesync"}, &parser.KeyValue{
+			Block: parser.Comments{
+				"# State sync uses light client verification to verify state. This can be done either through the",
+				"# P2P layer or RPC layer. Set this to true to use the P2P layer. If false (default), RPC layer",
+				"# will be used.",
+			},
+			Name:  parser.Key{"use-p2p"},
+			Value: parser.MustValue("false"),
+		}),
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
