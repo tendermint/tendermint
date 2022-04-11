@@ -134,6 +134,8 @@ message RequestPrepareProposal {
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
+  // address of the public key of the validator proposing the block.
+  bytes proposer_address = 8;
 }
 
 message RequestProcessProposal {
