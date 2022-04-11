@@ -63,6 +63,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -166,6 +167,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -315,6 +317,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		evpool,
 		blockStore,
 		eventBus,
+		sm.NopMetrics(),
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -335,7 +338,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 				evidence = append(evidence, newEv)
 				currentBytes += int64(len(newEv.Bytes()))
 			}
-			block := state.MakeBlock(height, testfactory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+			block := state.MakeBlock(height, testfactory.MakeNTxs(height, 10), lastCommit, evidence, proposerAddr)
 
 			err := blockExec.ValidateBlock(ctx, state, block)
 			if assert.Error(t, err) {

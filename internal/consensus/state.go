@@ -124,6 +124,7 @@ type State struct {
 
 	stateStore            sm.Store
 	initialStatePopulated bool
+	skipBootstrapping     bool
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
@@ -185,6 +186,12 @@ type State struct {
 // StateOption sets an optional parameter on the State.
 type StateOption func(*State)
 
+// SkipStateStoreBootstrap is a state option forces the constructor to
+// skip state bootstrapping during construction.
+func SkipStateStoreBootstrap(sm *State) {
+	sm.skipBootstrapping = true
+}
+
 // NewState returns a new State.
 func NewState(
 	ctx context.Context,
@@ -223,14 +230,19 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
-	if err := cs.updateStateFromStore(ctx); err != nil {
-		return nil, err
-	}
-
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 	cs.BaseService = *service.NewBaseService(logger, "State", cs)
 	for _, option := range options {
 		option(cs)
+	}
+
+	// this is not ideal, but it lets the consensus tests start
+	// node-fragments gracefully while letting the nodes
+	// themselves avoid this.
+	if !cs.skipBootstrapping {
+		if err := cs.updateStateFromStore(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	return cs, nil
@@ -1415,7 +1427,11 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	ret, err := cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	if err != nil {
+		panic(err)
+	}
+	return ret, nil
 }
 
 // Enter: `timeoutPropose` after entering Propose.

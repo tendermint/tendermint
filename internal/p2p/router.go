@@ -150,7 +150,6 @@ type Router struct {
 
 	metrics            *Metrics
 	options            RouterOptions
-	nodeInfo           types.NodeInfo
 	privKey            crypto.PrivKey
 	peerManager        *PeerManager
 	chDescs            []*ChannelDescriptor
@@ -162,8 +161,9 @@ type Router struct {
 	peerMtx    sync.RWMutex
 	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
 	// the channels that the peer queue has open
-	peerChannels map[types.NodeID]ChannelIDSet
-	queueFactory func(int) queue
+	peerChannels     map[types.NodeID]ChannelIDSet
+	queueFactory     func(int) queue
+	nodeInfoProducer func() *types.NodeInfo
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
 	// channels on router start. This depends on whether we want to allow
@@ -177,12 +177,11 @@ type Router struct {
 // listening on appropriate interfaces, and will be closed by the Router when it
 // stops.
 func NewRouter(
-	ctx context.Context,
 	logger log.Logger,
 	metrics *Metrics,
-	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
+	nodeInfoProducer func() *types.NodeInfo,
 	transports []Transport,
 	endpoints []Endpoint,
 	options RouterOptions,
@@ -193,10 +192,10 @@ func NewRouter(
 	}
 
 	router := &Router{
-		logger:   logger,
-		metrics:  metrics,
-		nodeInfo: nodeInfo,
-		privKey:  privKey,
+		logger:           logger,
+		metrics:          metrics,
+		privKey:          privKey,
+		nodeInfoProducer: nodeInfoProducer,
 		connTracker: newConnTracker(
 			options.MaxIncomingConnectionAttempts,
 			options.IncomingConnectionWindow,
@@ -214,13 +213,6 @@ func NewRouter(
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
-
-	qf, err := router.createQueueFactory(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	router.queueFactory = qf
 
 	for _, transport := range transports {
 		for _, protocol := range transport.Protocols() {
@@ -281,6 +273,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
 	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
+	channel.name = chDesc.Name
 
 	var wrapper Wrapper
 	if w, ok := messageType.(Wrapper); ok {
@@ -291,7 +284,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	r.channelMessages[id] = messageType
 
 	// add the channel to the nodeInfo if it's not already there.
-	r.nodeInfo.AddChannel(uint16(chDesc.ID))
+	r.nodeInfoProducer().AddChannel(uint16(chDesc.ID))
 
 	for _, t := range r.transports {
 		t.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
@@ -722,7 +715,8 @@ func (r *Router) handshakePeer(
 		defer cancel()
 	}
 
-	peerInfo, peerKey, err := conn.Handshake(ctx, r.nodeInfo, r.privKey)
+	nodeInfo := r.nodeInfoProducer()
+	peerInfo, peerKey, err := conn.Handshake(ctx, *nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, err
 	}
@@ -737,7 +731,7 @@ func (r *Router) handshakePeer(
 		return peerInfo, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
-	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+	if err := r.nodeInfoProducer().CompatibleWith(peerInfo); err != nil {
 		return peerInfo, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
@@ -937,11 +931,25 @@ func (r *Router) evictPeers(ctx context.Context) {
 
 // NodeInfo returns a copy of the current NodeInfo. Used for testing.
 func (r *Router) NodeInfo() types.NodeInfo {
-	return r.nodeInfo.Copy()
+	return r.nodeInfoProducer().Copy()
+}
+
+func (r *Router) setupQueueFactory(ctx context.Context) error {
+	qf, err := r.createQueueFactory(ctx)
+	if err != nil {
+		return err
+	}
+
+	r.queueFactory = qf
+	return nil
 }
 
 // OnStart implements service.Service.
 func (r *Router) OnStart(ctx context.Context) error {
+	if err := r.setupQueueFactory(ctx); err != nil {
+		return err
+	}
+
 	for _, transport := range r.transports {
 		for _, endpoint := range r.endpoints {
 			if err := transport.Listen(endpoint); err != nil {
@@ -950,11 +958,12 @@ func (r *Router) OnStart(ctx context.Context) error {
 		}
 	}
 
+	nodeInfo := r.nodeInfoProducer()
 	r.logger.Info(
 		"starting router",
-		"node_id", r.nodeInfo.NodeID,
-		"channels", r.nodeInfo.Channels,
-		"listen_addr", r.nodeInfo.ListenAddr,
+		"node_id", nodeInfo.NodeID,
+		"channels", nodeInfo.Channels,
+		"listen_addr", nodeInfo.ListenAddr,
 		"transports", len(r.transports),
 	)
 

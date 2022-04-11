@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"

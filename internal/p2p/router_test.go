@@ -106,12 +106,11 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		nil,
 		nil,
 		p2p.RouterOptions{},
@@ -409,12 +408,11 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			sub := peerManager.Subscribe(ctx)
 
 			router, err := p2p.NewRouter(
-				ctx,
 				log.NewNopLogger(),
 				p2p.NopMetrics(),
-				selfInfo,
 				selfKey,
 				peerManager,
+				func() *types.NodeInfo { return &selfInfo },
 				[]p2p.Transport{mockTransport},
 				nil,
 				p2p.RouterOptions{},
@@ -464,12 +462,11 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{},
@@ -502,12 +499,11 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{},
@@ -554,12 +550,11 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{},
@@ -658,12 +653,11 @@ func TestRouter_DialPeers(t *testing.T) {
 			sub := peerManager.Subscribe(ctx)
 
 			router, err := p2p.NewRouter(
-				ctx,
 				log.NewNopLogger(),
 				p2p.NopMetrics(),
-				selfInfo,
 				selfKey,
 				peerManager,
+				func() *types.NodeInfo { return &selfInfo },
 				[]p2p.Transport{mockTransport},
 				nil,
 				p2p.RouterOptions{},
@@ -744,12 +738,11 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	require.True(t, added)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{
@@ -819,12 +812,11 @@ func TestRouter_EvictPeers(t *testing.T) {
 	sub := peerManager.Subscribe(ctx)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{},
@@ -882,12 +874,11 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{},
@@ -938,12 +929,11 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 	sub := peerManager.Subscribe(ctx)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		log.NewNopLogger(),
 		p2p.NopMetrics(),
-		selfInfo,
 		selfKey,
 		peerManager,
+		func() *types.NodeInfo { return &selfInfo },
 		[]p2p.Transport{mockTransport},
 		nil,
 		p2p.RouterOptions{},

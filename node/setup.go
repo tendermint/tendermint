@@ -95,8 +95,7 @@ func initDBs(
 	return blockStore, stateDB, makeCloser(closers), nil
 }
 
-func createAndStartIndexerService(
-	ctx context.Context,
+func createIndexerService(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	eventBus *eventbus.EventBus,
@@ -115,10 +114,6 @@ func createAndStartIndexerService(
 		Logger:   logger.With("module", "txindex"),
 		Metrics:  metrics,
 	})
-
-	if err := indexerService.Start(ctx); err != nil {
-		return nil, nil, err
-	}
 
 	return indexerService, eventSinks, nil
 }
@@ -169,14 +164,14 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolReactor(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	appClient abciclient.Client,
 	store sm.Store,
 	memplMetrics *mempool.Metrics,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	logger log.Logger,
+	peerEvents p2p.PeerEventSubscriber,
+	chCreator p2p.ChannelCreator,
+	peerHeight func(types.NodeID) int64,
 ) (service.Service, mempool.Mempool, error) {
 	logger = logger.With("module", "mempool")
 
@@ -189,18 +184,14 @@ func createMempoolReactor(
 		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
 	)
 
-	reactor, err := mempool.NewReactor(
-		ctx,
+	reactor := mempool.NewReactor(
 		logger,
 		cfg.Mempool,
-		peerManager,
 		mp,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		chCreator,
+		peerEvents,
+		peerHeight,
 	)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if cfg.Consensus.WaitForTxs() {
 		mp.EnableTxsAvailable()
@@ -210,14 +201,13 @@ func createMempoolReactor(
 }
 
 func createEvidenceReactor(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	store sm.Store,
 	blockStore *store.BlockStore,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	logger log.Logger,
+	peerEvents p2p.PeerEventSubscriber,
+	chCreator p2p.ChannelCreator,
 	metrics *evidence.Metrics,
 	eventBus *eventbus.EventBus,
 ) (*evidence.Reactor, *evidence.Pool, closer, error) {
@@ -231,16 +221,12 @@ func createEvidenceReactor(
 
 	evidencePool := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics, eventBus)
 
-	evidenceReactor, err := evidence.NewReactor(
-		ctx,
+	evidenceReactor := evidence.NewReactor(
 		logger,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		chCreator,
+		peerEvents,
 		evidencePool,
 	)
-	if err != nil {
-		return nil, nil, dbCloser, fmt.Errorf("creating evidence reactor: %w", err)
-	}
 
 	return evidenceReactor, evidencePool, dbCloser, nil
 }
@@ -258,7 +244,7 @@ func createConsensusReactor(
 	waitSync bool,
 	eventBus *eventbus.EventBus,
 	peerManager *p2p.PeerManager,
-	router *p2p.Router,
+	chCreator p2p.ChannelCreator,
 	logger log.Logger,
 ) (*consensus.Reactor, *consensus.State, error) {
 	logger = logger.With("module", "consensus")
@@ -273,6 +259,7 @@ func createConsensusReactor(
 		evidencePool,
 		eventBus,
 		consensus.StateMetrics(csMetrics),
+		consensus.SkipStateStoreBootstrap,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -282,20 +269,15 @@ func createConsensusReactor(
 		consensusState.SetPrivValidator(ctx, privValidator)
 	}
 
-	reactor, err := consensus.NewReactor(
-		ctx,
+	reactor := consensus.NewReactor(
 		logger,
 		consensusState,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		chCreator,
+		peerManager.Subscribe,
 		eventBus,
 		waitSync,
 		csMetrics,
 	)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	return reactor, consensusState, nil
 }
 
@@ -375,10 +357,9 @@ func createPeerManager(
 }
 
 func createRouter(
-	ctx context.Context,
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo types.NodeInfo,
+	nodeInfoProducer func() *types.NodeInfo,
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
 	cfg *config.Config,
@@ -405,12 +386,11 @@ func createRouter(
 	}
 
 	return p2p.NewRouter(
-		ctx,
 		p2pLogger,
 		p2pMetrics,
-		nodeInfo,
 		nodeKey.PrivKey,
 		peerManager,
+		nodeInfoProducer,
 		[]p2p.Transport{transport},
 		[]p2p.Endpoint{ep},
 		getRouterConfig(cfg, appClient),
@@ -422,7 +402,7 @@ func makeNodeInfo(
 	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
-	state sm.State,
+	versionInfo version.Consensus,
 ) (types.NodeInfo, error) {
 
 	txIndexerStatus := "off"
@@ -434,8 +414,8 @@ func makeNodeInfo(
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{
 			P2P:   version.P2PProtocol, // global
-			Block: state.Version.Consensus.Block,
-			App:   state.Version.Consensus.App,
+			Block: versionInfo.Block,
+			App:   versionInfo.App,
 		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,

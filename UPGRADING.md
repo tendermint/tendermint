@@ -28,10 +28,28 @@ applications remains correct.
 
 ### Config Changes
 
-The default configuration for a newly-created node now disables indexing for
-ABCI event metadata. Existing node configurations that already have indexing
-turned on are not affected. Operators who wish to enable indexing for a new
-node, however, must now edit the `config.toml` explicitly.
+- We have added a new, experimental tool to help operators migrate
+  configuration files created by previous versions of Tendermint.
+  To try this tool, run:
+
+  ```shell
+  # Install the tool.
+  go install github.com/tendermint/tendermint/scripts/confix@latest
+
+  # Run the tool with the old configuration file as input.
+  # Replace the -config argument with your path.
+  confix -config ~/.tendermint/config/config.toml -out updated.toml
+  ```
+
+  This tool should be able to update configurations from v0.34 and v0.35.  We
+  plan to extend it to handle older configuration files in the future. For now,
+  it will report an error (without making any changes) if it does not recognize
+  the version that created the file.
+
+- The default configuration for a newly-created node now disables indexing for
+  ABCI event metadata. Existing node configurations that already have indexing
+  turned on are not affected. Operators who wish to enable indexing for a new
+  node, however, must now edit the `config.toml` explicitly.
 
 ### RPC Changes
 
@@ -100,7 +118,7 @@ these parameters may do so by setting the `ConsensusParams.Timeout` field of the
 As a safety measure in case of unusual timing issues during the upgrade to
 v0.36, an operator may override the consensus timeout values for a single node.
 Note, however, that these overrides will be removed in Tendermint v0.37. See
-[configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
+[configuration](https://github.com/tendermint/tendermint/blob/master/docs/nodes/configuration.md)
 for more information about these overrides.
 
 For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which

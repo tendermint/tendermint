@@ -92,7 +92,7 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 	snapshot := abci.Snapshot{
 		Height: state.Height,
 		Format: 1,
-		Hash:   hashItems(state.Values),
+		Hash:   hashItems(state.Values, state.Height),
 		Chunks: byteChunks(bz),
 	}
 	err = os.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)

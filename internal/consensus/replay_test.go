@@ -826,7 +826,7 @@ func applyBlock(
 	eventBus *eventbus.EventBus,
 ) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mempool, evpool, blockStore, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
@@ -944,7 +944,7 @@ func buildTMStateFromChain(
 	return state
 }
 
-func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
+func TestHandshakeErrorsIfAppReturnsWrongAppHash(t *testing.T) {
 	// 1. Initialize tendermint and commit 3 blocks with the following app hashes:
 	//		- 0x01
 	//		- 0x02
@@ -988,12 +988,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
-		assert.Panics(t, func() {
-			h := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
-			if err = h.Handshake(ctx, proxyApp); err != nil {
-				t.Log(err)
-			}
-		})
+		h := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
+		assert.Error(t, h.Handshake(ctx, proxyApp))
 	}
 
 	// 3. Tendermint must panic if app returns wrong hash for the last block
@@ -1008,12 +1004,8 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		require.NoError(t, err)
 		t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
-		assert.Panics(t, func() {
-			h := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
-			if err = h.Handshake(ctx, proxyApp); err != nil {
-				t.Log(err)
-			}
-		})
+		h := NewHandshaker(logger, stateStore, state, store, eventBus, genDoc)
+		require.Error(t, h.Handshake(ctx, proxyApp))
 	}
 }
 

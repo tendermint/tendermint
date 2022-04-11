@@ -58,22 +58,16 @@ Special thanks to external contributors on this release:
 - [rpc] [\#7270](https://github.com/tendermint/tendermint/pull/7270) Add `header` and `header_by_hash` RPC Client
   queries. (@fedekunze)
 - [rpc] [\#7701] Add `ApplicationInfo` to `status` rpc call which contains the application version. (@jonasbostoen)
-- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous
-  tendermint state in the event of non-determinstic app hash or reverting an upgrade.
-- [mempool, rpc] \#7041 Add removeTx operation to the RPC layer. (@tychoish)
-- [consensus] \#7354 add a new `synchrony` field to the `ConsensusParameter` struct for controlling the parameters of
-  the proposer-based timestamp algorithm. (@williambanfield)
-- [consensus] \#7376 Update the proposal logic per the Propose-based timestamps specification so that the proposer will
-  wait for the previous block time to occur before proposing the next block. (@williambanfield)
-- [consensus] \#7391 Use the proposed block timestamp as the proposal timestamp. Update the block validation logic to
-  ensure that the proposed block's timestamp matches the timestamp in the proposal message. (@williambanfield)
-- [consensus] \#7415 Update proposal validation logic to Prevote nil if a proposal does not meet the conditions for
-  Timelyness per the proposer-based timestamp specification. (@anca)
-- [consensus] \#7382 Update block validation to no longer require the block timestamp to be the median of the timestamps
-  of the previous commit. (@anca)
-- [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still
-  start consensus at the genesis time. (@anca)
+- [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
+- [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
+- [consensus] \#7354 add a new `synchrony` field to the `ConsensusParameter` struct for controlling the parameters of the proposer-based timestamp algorithm. (@williambanfield)
+- [consensus] \#7376 Update the proposal logic per the Propose-based timestamps specification so that the proposer will wait for the previous block time to occur before proposing the next block. (@williambanfield)
+- [consensus] \#7391 Use the proposed block timestamp as the proposal timestamp. Update the block validation logic to ensure that the proposed block's timestamp matches the timestamp in the proposal message. (@williambanfield)
+- [consensus] \#7415 Update proposal validation logic to Prevote nil if a proposal does not meet the conditions for Timelyness per the proposer-based timestamp specification. (@anca)
+- [consensus] \#7382 Update block validation to no longer require the block timestamp to be the median of the timestamps of the previous commit. (@anca)
+- [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
 - [consensus] \#8195 Help peer that is stuck at waiting for commit block by re-sending the block parts. (@james-ray)
+- [cli] \#8281 Add a tool to update old config files to the latest version. (@creachadair)
 
 ### IMPROVEMENTS
 
@@ -97,3 +91,5 @@ Special thanks to external contributors on this release:
 - [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
 - [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
 - [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
+- [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
+- [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)

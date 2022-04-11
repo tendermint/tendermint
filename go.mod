@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.17
 
 require (
-	github.com/BurntSushi/toml v1.0.0
+	github.com/BurntSushi/toml v1.1.0
 	github.com/adlio/schema v1.3.0
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/lib/pq v1.10.4
+	github.com/lib/pq v1.10.5
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/mroth/weightedrand v0.4.1
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20210609091139-0a56a4bca00b
@@ -39,9 +39,10 @@ require (
 
 require (
 	github.com/creachadair/atomicfile v0.2.4
+	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.7
-	github.com/vektra/mockery/v2 v2.10.0
+	github.com/vektra/mockery/v2 v2.10.4
 	gotest.tools v2.2.0+incompatible
 )
 
@@ -72,6 +73,7 @@ require (
 	github.com/charithe/durationcheck v0.0.9 // indirect
 	github.com/chavacava/garif v0.0.0-20210405164556-e8a0a408d6af // indirect
 	github.com/containerd/continuity v0.2.1 // indirect
+	github.com/creachadair/tomledit v0.0.11
 	github.com/daixiang0/gci v0.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect
