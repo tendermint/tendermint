@@ -48,8 +48,7 @@ type BlockExecutor struct {
 	cache map[string]struct{}
 }
 
-// NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
-// Call SetEventBus to provide one.
+// NewBlockExecutor returns a new BlockExecutor with the passed-in EventBus.
 func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
