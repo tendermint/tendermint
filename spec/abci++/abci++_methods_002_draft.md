@@ -294,6 +294,7 @@ title: Methods
     | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 5            |
     | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 6            |
     | next_validators_hash    | bytes                                       | Merkle root of the next validator set.                                                                           | 7            |
+    | proposer_address        | bytes                                       | [Address](../core/data_structures.md#address) of the validator that is creating the proposal.                    | 8            |
 
 * **Response**:
 
