@@ -308,7 +308,7 @@ title: Methods
 * **Usage**:
     * The first six parameters of `RequestPrepareProposal` are the same as `RequestProcessProposal`
       and `RequestFinalizeBlock`.
-    * The height and timestamp values match the values from the header of the proposed block.
+    * The height and time values match the values from the header of the proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint considers to be a good block proposal, called _raw proposal_. The Application can modify this set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
         * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx` be a transaction in `txs`:
             * If the Application considers that `tx` should not be proposed in this block, e.g., there are other transactions with higher priority, then it should not include it in `tx_records`. In this case, Tendermint won't remove `tx` from the mempool. The Application should be extra-careful, as abusing this feature may cause transactions to stay forever in the mempool.
@@ -369,7 +369,7 @@ and _p_'s _validValue_ is `nil`:
     * _p_'s Tendermint creates a block header.
 2. _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block.
    The call is synchronous: Tendermint's execution will block until the Application returns from the call.
-3. The Application checks the block (header, transactions, commit info, evidences). Besides,
+3. The Application checks the block (hashes, transactions, commit info, misbehavior). Besides,
     * in same-block execution mode, the Application can (and should) provide `ResponsePrepareProposal.app_hash`,
       `ResponsePrepareProposal.validator_updates`, or
       `ResponsePrepareProposal.consensus_param_updates`.
@@ -418,9 +418,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
 
 * **Usage**:
-    * Contains a full proposed block.
-        * The parameters and types of `RequestProcessProposal` are the same as `RequestPrepareProposal`
-          and `RequestFinalizeBlock`.
+    * Contains fields from the proposed block.
         * The Application may fully execute the block as though it was handling `RequestFinalizeBlock`.
           However, any resulting state changes must be kept as _candidate state_,
           and the Application should be ready to backtrack/discard it in case the decided block is different.
@@ -575,8 +573,8 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 4            |
     | height               | int64                                       | The height of the finalized block.                                                       | 5            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block.  | 6            |
-    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.| 7            |
-    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                   | 8            |
+    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                   | 7            |
+    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.| 8            |
 
 * **Response**:
 
@@ -590,7 +588,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 6            |
 
 * **Usage**:
-    * Contains a newly decided block.
+    * Contains the fields of the newly decided block.
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
       `EndBlock`, `Commit` in the previous version of ABCI.
     * The height and timestamp values match the values from the header of the proposed block.
@@ -701,7 +699,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
     | Name               | Type                                                                                                                                 | Description                                                                  | Field Number |
     |--------------------|--------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------|
-    | type               | [MisbehaviorType](#misbehaviortype)                                                                                                  | Type of the evidence. An enum of possible evidence's.                        | 1            |
+    | type               | [MisbehaviorType](#misbehaviortype)                                                                                                  | Type of the misbehavior. An enum of possible misbehaviors.                   | 1            |
     | validator          | [Validator](#validator)                                                                                                              | The offending validator                                                      | 2            |
     | height             | int64                                                                                                                                | Height when the offense occurred                                             | 3            |
     | time               | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Time of the block that was committed at the height that the offense occurred | 4            |
