@@ -270,7 +270,7 @@ type testApp struct {
 	abci.BaseApplication
 
 	CommitVotes         []abci.VoteInfo
-	ByzantineValidators []abci.Evidence
+	ByzantineValidators []abci.Misbehavior
 	ValidatorUpdates    []abci.ValidatorUpdate
 }
 
