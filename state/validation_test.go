@@ -246,7 +246,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
-		[]abci.Evidence{})
+		[]abci.Misbehavior{})
 
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()

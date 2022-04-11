@@ -193,16 +193,16 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	ev := []types.Evidence{dve, lcae}
 
-	abciEv := []abci.Evidence{
+	abciMb := []abci.Misbehavior{
 		{
-			Type:             abci.EvidenceType_DUPLICATE_VOTE,
+			Type:             abci.MisbehaviorType_DUPLICATE_VOTE,
 			Height:           3,
 			Time:             defaultEvidenceTime,
 			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
 			TotalVotingPower: 10,
 		},
 		{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Type:             abci.MisbehaviorType_LIGHT_CLIENT_ATTACK,
 			Height:           8,
 			Time:             defaultEvidenceTime,
 			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
@@ -242,7 +242,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
-	assert.Equal(t, abciEv, app.ByzantineValidators)
+	assert.Equal(t, abciMb, app.ByzantineValidators)
 }
 
 func TestProcessProposal(t *testing.T) {

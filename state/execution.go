@@ -115,12 +115,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.proxyApp.PrepareProposalSync(
 		abci.RequestPrepareProposal{
-			Hash:                block.Hash(),
-			Header:              *block.Header.ToProto(),
+			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.Evidence.ToABCI(),
-			MaxTxBytes:          maxDataBytes,
+			Height:              block.Height,
+			Time:                block.Time,
+			NextValidatorsHash:  block.NextValidatorsHash,
+			ProposerAddress:     block.ProposerAddress,
 		},
 	)
 	if err != nil {
