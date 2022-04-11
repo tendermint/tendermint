@@ -98,6 +98,8 @@ var plan = transform.Plan{
 	},
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6241.
+		//
+		// TODO(creachadair): backport into v0.35.x.
 		Desc: `Add top-level mode setting (default "full")`,
 		T: transform.EnsureKey(nil, &parser.KeyValue{
 			Block: parser.Comments{"Mode of Node: full | validator | seed"},
@@ -114,6 +116,20 @@ var plan = transform.Plan{
 			doc.First("rpc", "grpc-max-open-connections").Remove()
 			return nil
 		}),
+	},
+	{
+		// Since https://github.com/tendermint/tendermint/pull/8217.
+		Desc: "Remove per-node consensus timeouts (converted to consensus parameters)",
+		T: transform.Remove(
+			parser.Key{"consensus", "skip-timeout-commit"},
+			parser.Key{"consensus", "timeout-commit"},
+			parser.Key{"consensus", "timeout-precommit"},
+			parser.Key{"consensus", "timeout-precommit-delta"},
+			parser.Key{"consensus", "timeout-prevote"},
+			parser.Key{"consensus", "timeout-prevote-delta"},
+			parser.Key{"consensus", "timeout-propose"},
+			parser.Key{"consensus", "timeout-propose-delta"},
+		),
 		ErrorOK: true,
 	},
 	{
