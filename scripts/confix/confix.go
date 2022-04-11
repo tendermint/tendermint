@@ -153,6 +153,31 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/6353.
+		//
+		// TODO(creachadair): backport into v0.35.x.
+		Desc: "Add [p2p] connection count and rate limit settings",
+		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
+			tab := transform.FindTable(doc, "p2p")
+			if tab == nil {
+				return errors.New("p2p table not found")
+			}
+			transform.InsertMapping(tab.Section, &parser.KeyValue{
+				Block: parser.Comments{"Maximum number of connections (inbound and outbound)."},
+				Name:  parser.Key{"max-connections"},
+				Value: parser.MustValue("64"),
+			}, false)
+			transform.InsertMapping(tab.Section, &parser.KeyValue{
+				Block: parser.Comments{
+					"Rate limits the number of incoming connection attempts per IP address.",
+				},
+				Name:  parser.Key{"max-incoming-connection-attempts"},
+				Value: parser.MustValue("100"),
+			}, false)
+			return nil
+		}),
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
