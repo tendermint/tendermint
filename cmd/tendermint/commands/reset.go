@@ -13,64 +13,50 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MakeResetAllCommand constructs a command that removes the database of
+// MakeResetCommand constructs a command that removes the database of
 // the specified Tendermint core instance.
-func MakeResetAllCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var keyType string
+func MakeResetCommand(conf *config.Config, logger log.Logger) *cobra.Command {
+	var (
+		resetAllFlag       bool
+		resetPrivValFlag   bool
+		resetPeerStoreFlag bool
+		keyType            string
+	)
 
 	cmd := &cobra.Command{
-		Use:   "unsafe-reset-all",
-		Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
+		Use:   "reset",
+		Short: "Remove all tendermint data, resetting to genesis state.",
+		Long: `Removes block, state and evidence store. Does not alter priv-validator state or your peer store.
+If resetting, don't forget to reset application state as well.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return resetAll(conf.DBDir(), conf.PrivValidator.KeyFile(),
-				conf.PrivValidator.StateFile(), logger, keyType)
+			if resetAllFlag {
+				return ResetAll(conf.DBDir(), conf.PrivValidator.KeyFile(),
+					conf.PrivValidator.StateFile(), logger, keyType)
+			}
+			if resetPrivValFlag {
+				return ResetFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile(), logger, keyType)
+			}
+			if resetPeerStoreFlag {
+				return ResetPeerStore(conf.DBDir())
+			}
+			return ResetState(conf.DBDir(), logger)
 		},
 	}
 	cmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
 		"Key type to generate privval file with. Options: ed25519, secp256k1")
+	cmd.Flags().BoolVar(&resetAllFlag, "all", false, "Resets all block data and priv validator state. Only use in testing")
+	cmd.Flags().BoolVar(&resetPrivValFlag, "privval", false, "Resets all priv validator state. Only use in testing")
+	cmd.Flags().BoolVar(&resetPeerStoreFlag, "peers", false, "Flushes entire peer address book")
 
 	return cmd
 }
-
-// MakeResetStateCommand constructs a command that removes the database of
-// the specified Tendermint core instance.
-func MakeResetStateCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var keyType string
-
-	return &cobra.Command{
-		Use:   "reset-state",
-		Short: "Remove all the data and WAL",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return resetState(conf.DBDir(), logger, keyType)
-		},
-	}
-}
-
-func MakeResetPrivateValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var keyType string
-
-	cmd := &cobra.Command{
-		Use:   "unsafe-reset-priv-validator",
-		Short: "(unsafe) Reset this node's validator to genesis state",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return resetFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile(), logger, keyType)
-		},
-	}
-
-	cmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
-		"Key type to generate privval file with. Options: ed25519, secp256k1")
-	return cmd
-
-}
-
-// XXX: this is totally unsafe.
-// it's only suitable for testnets.
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 
 // resetAll removes address book files plus all data, and resets the privValdiator data.
-func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
+// Exported for extenal CLI usage
+func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
 	} else {
@@ -82,17 +68,16 @@ func resetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger,
 	}
 
 	// recreate the dbDir since the privVal state needs to live there
-	return resetFilePV(privValKeyFile, privValStateFile, logger, keyType)
+	return ResetFilePV(privValKeyFile, privValStateFile, logger, keyType)
 }
 
 // resetState removes address book files plus all databases.
-func resetState(dbDir string, logger log.Logger, keyType string) error {
+func ResetState(dbDir string, logger log.Logger) error {
 	blockdb := filepath.Join(dbDir, "blockstore.db")
 	state := filepath.Join(dbDir, "state.db")
 	wal := filepath.Join(dbDir, "cs.wal")
 	evidence := filepath.Join(dbDir, "evidence.db")
 	txIndex := filepath.Join(dbDir, "tx_index.db")
-	peerstore := filepath.Join(dbDir, "peerstore.db")
 
 	if tmos.FileExists(blockdb) {
 		if err := os.RemoveAll(blockdb); err == nil {
@@ -134,21 +119,10 @@ func resetState(dbDir string, logger log.Logger, keyType string) error {
 		}
 	}
 
-	if tmos.FileExists(peerstore) {
-		if err := os.RemoveAll(peerstore); err == nil {
-			logger.Info("Removed peerstore.db", "dir", peerstore)
-		} else {
-			logger.Error("error removing peerstore.db", "dir", peerstore, "err", err)
-		}
-	}
-
-	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
-		logger.Error("unable to recreate dbDir", "err", err)
-	}
-	return nil
+	return tmos.EnsureDir(dbDir, 0700)
 }
 
-func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
+func ResetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if _, err := os.Stat(privValKeyFile); err == nil {
 		pv, err := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
 		if err != nil {
@@ -169,6 +143,14 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, key
 		}
 		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
+	}
+	return nil
+}
+
+func ResetPeerStore(dbDir string) error {
+	peerstore := filepath.Join(dbDir, "peerstore.db")
+	if tmos.FileExists(peerstore) {
+		return os.RemoveAll(peerstore)
 	}
 	return nil
 }

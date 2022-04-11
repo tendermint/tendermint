@@ -24,7 +24,7 @@ func Test_ResetAll(t *testing.T) {
 	require.NoError(t, err)
 	pv.LastSignState.Height = 10
 	pv.Save()
-	require.NoError(t, resetAll(config.DBDir(), config.PrivValidator.KeyFile(),
+	require.NoError(t, ResetAll(config.DBDir(), config.PrivValidator.KeyFile(),
 		config.PrivValidator.StateFile(), logger, types.ABCIPubKeyTypeEd25519))
 	require.DirExists(t, config.DBDir())
 	require.NoFileExists(t, filepath.Join(config.DBDir(), "block.db"))
@@ -48,7 +48,7 @@ func Test_ResetState(t *testing.T) {
 	require.NoError(t, err)
 	pv.LastSignState.Height = 10
 	pv.Save()
-	require.NoError(t, resetState(config.DBDir(), logger, types.ABCIPubKeyTypeEd25519))
+	require.NoError(t, ResetState(config.DBDir(), logger))
 	require.DirExists(t, config.DBDir())
 	require.NoFileExists(t, filepath.Join(config.DBDir(), "block.db"))
 	require.NoFileExists(t, filepath.Join(config.DBDir(), "state.db"))
