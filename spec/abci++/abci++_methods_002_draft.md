@@ -400,12 +400,12 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     |----------------------|---------------------------------------------|----------------------------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                      | 1            |
     | proposed_last_commit | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the information in the proposed block.                               | 2            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                         | 3            |
-    | hash                 | bytes                                       | The block header's hash of the proposed block. Present for convenience (can be derived from the block header). | 4            |
+    | byzantine_validators    | repeated [Misbehavior](#misbehavior)     | List of information about validators that acted incorrectly.                                                   | 3            |
+    | hash                 | bytes                                       | The block header's hash of the proposed block.                                                                 | 4            |
     | height               | int64                                       | The height of the proposed block.                                                                              | 5            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the proposed block.  | 6            |
-    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.                      | 7            |
-    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                                         | 8            |
+    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                                         | 7            |
+    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.                      | 8            |
 
 * **Response**:
 
@@ -571,7 +571,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     |----------------------|---------------------------------------------|------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 1            |
     | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 2            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                   | 3            |
+    | byzantine_validators | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                             | 3            |
     | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 4            |
     | height               | int64                                       | The height of the finalized block.                                                       | 5            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block.  | 6            |
@@ -695,23 +695,23 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * Validator identified by PubKey
     * Used to tell Tendermint to update the validator set
 
-### Evidence
+### Misbehavior
 
 * **Fields**:
 
     | Name               | Type                                                                                                                                 | Description                                                                  | Field Number |
     |--------------------|--------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------|
-    | type               | [EvidenceType](#evidencetype)                                                                                                        | Type of the evidence. An enum of possible evidence's.                        | 1            |
+    | type               | [MisbehaviorType](#misbehaviortype)                                                                                                  | Type of the evidence. An enum of possible evidence's.                        | 1            |
     | validator          | [Validator](#validator)                                                                                                              | The offending validator                                                      | 2            |
     | height             | int64                                                                                                                                | Height when the offense occurred                                             | 3            |
     | time               | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Time of the block that was committed at the height that the offense occurred | 4            |
     | total_voting_power | int64                                                                                                                                | Total voting power of the validator set at height `Height`                   | 5            |
 
-#### EvidenceType
+#### MisbehaviorType
 
 * **Fields**
 
-    EvidenceType is an enum with the listed fields:
+    MisbehaviorType is an enum with the listed fields:
 
     | Name                | Field Number |
     |---------------------|--------------|
