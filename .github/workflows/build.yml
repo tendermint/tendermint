@@ -20,7 +20,7 @@ jobs:
         goos: ["linux"]
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "1.17"
       - uses: actions/checkout@v3
@@ -41,7 +41,7 @@ jobs:
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "1.17"
       - uses: actions/checkout@v3
@@ -63,7 +63,7 @@ jobs:
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "1.17"
       - uses: actions/checkout@v3
