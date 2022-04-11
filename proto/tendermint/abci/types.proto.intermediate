@@ -131,24 +131,22 @@ message RequestPrepareProposal {
   repeated bytes            txs                  = 2;
   ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
   repeated Evidence         byzantine_validators = 4 [(gogoproto.nullable) = false];
-  bytes                     hash                 = 5;
-  int64                     height               = 6;
-  google.protobuf.Timestamp time                 = 7 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  // address of the public key of the node receiving this PrepareProposal request.
-  bytes proposer_address     = 8;
-  bytes next_validators_hash = 9;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
 }
 
 message RequestProcessProposal {
-  repeated bytes            txs                  = 1;
-  CommitInfo                proposed_last_commit = 2 [(gogoproto.nullable) = false];
-  repeated Evidence         byzantine_validators = 3 [(gogoproto.nullable) = false];
+  repeated bytes    txs                  = 1;
+  CommitInfo        proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Evidence byzantine_validators = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
   // address of the public key of the original proposer of the block.
-  bytes proposer_address     = 7;
-  bytes next_validators_hash = 8;
+  bytes proposer_address = 8;
 }
 
 // Extends a vote with application-side injection
@@ -162,15 +160,16 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  repeated bytes            txs                  = 1;
-  CommitInfo                decided_last_commit  = 2 [(gogoproto.nullable) = false];
-  repeated Evidence         byzantine_validators = 3 [(gogoproto.nullable) = false];
+  repeated bytes    txs                  = 1;
+  CommitInfo        decided_last_commit  = 2 [(gogoproto.nullable) = false];
+  repeated Evidence byzantine_validators = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  // address of the public key of the original proposer of the block.
-  bytes proposer_address     = 7;
-  bytes next_validators_hash = 8;
+  bytes                     next_validators_hash = 7;
+  // proposer_address is the address of the public key of the original proposer of the block.
+  bytes proposer_address = 8;
 }
 
 //----------------------------------------
