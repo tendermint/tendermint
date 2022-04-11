@@ -28,10 +28,28 @@ applications remains correct.
 
 ### Config Changes
 
-The default configuration for a newly-created node now disables indexing for
-ABCI event metadata. Existing node configurations that already have indexing
-turned on are not affected. Operators who wish to enable indexing for a new
-node, however, must now edit the `config.toml` explicitly.
+- We have added a new, experimental tool to help operators migrate
+  configuration files created by previous versions of Tendermint.
+  To try this tool, run:
+
+  ```shell
+  # Install the tool.
+  go install github.com/tendermint/tendermint/scripts/confix@latest
+
+  # Run the tool with the old configuration file as input.
+  # Replace the -config argument with your path.
+  confix -config ~/.tendermint/config/config.toml -out updated.toml
+  ```
+
+  This tool should be able to update configurations from v0.34 and v0.35.  We
+  plan to extend it to handle older configuration files in the future. For now,
+  it will report an error (without making any changes) if it does not recognize
+  the version that created the file.
+
+- The default configuration for a newly-created node now disables indexing for
+  ABCI event metadata. Existing node configurations that already have indexing
+  turned on are not affected. Operators who wish to enable indexing for a new
+  node, however, must now edit the `config.toml` explicitly.
 
 ### RPC Changes
 
