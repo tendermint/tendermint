@@ -749,10 +749,9 @@ func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, roun
 		msg.Data())
 
 	vote := voteEvent.Vote
-	require.Equal(t, height, vote.Height)
-	require.Equal(t, round, vote.Round)
-
-	require.Equal(t, voteType, vote.Type)
+	require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+	require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+	require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 }
 
 func ensureNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
