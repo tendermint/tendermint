@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -332,6 +333,15 @@ func (vote *Vote) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("val_proTxHash", vote.ValidatorProTxHash.ShortString())
 	e.Int32("val_index", vote.ValidatorIndex)
 	e.Bool("nil", vote.BlockID.IsZero())
+}
+
+func (vote *Vote) HasVoteMessage() *tmcons.HasVote {
+	return &tmcons.HasVote{
+		Height: vote.Height,
+		Round:  vote.Round,
+		Type:   vote.Type,
+		Index:  vote.ValidatorIndex,
+	}
 }
 
 // FromProto converts a proto generetad type to a handwritten type

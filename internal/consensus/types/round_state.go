@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -170,6 +172,29 @@ func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 		Height: rs.Height,
 		Round:  rs.Round,
 		Step:   rs.Step.String(),
+	}
+}
+
+// NewRoundStepMessage generates tmcons.NewRoundStep message for the RoundState.
+func (rs RoundState) NewRoundStepMessage() *tmcons.NewRoundStep {
+	return &tmcons.NewRoundStep{
+		Height:                rs.Height,
+		Round:                 rs.Round,
+		Step:                  uint32(rs.Step),
+		SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
+		LastCommitRound:       rs.LastCommit.GetRound(),
+	}
+}
+
+// NewValidBlockMessage generates tmcons.NewValidBlock message for the RoundState.
+func (rs RoundState) NewValidBlockMessage() *tmcons.NewValidBlock {
+	psHeader := rs.ProposalBlockParts.Header()
+	return &tmcons.NewValidBlock{
+		Height:             rs.Height,
+		Round:              rs.Round,
+		BlockPartSetHeader: psHeader.ToProto(),
+		BlockParts:         rs.ProposalBlockParts.BitArray().ToProto(),
+		IsCommit:           rs.Step == RoundStepApplyCommit,
 	}
 }
 

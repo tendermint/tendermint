@@ -22,6 +22,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -791,6 +792,14 @@ func (commit *Commit) ValidateBasic() error {
 		}
 	}
 	return nil
+}
+
+// Broadcasts HasCommitMessage to peers that care.
+func (commit *Commit) HasCommitMessage() *tmcons.HasCommit {
+	return &tmcons.HasCommit{
+		Height: commit.Height,
+		Round:  commit.Round,
+	}
 }
 
 // Hash returns the hash of the commit

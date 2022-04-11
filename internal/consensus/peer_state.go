@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,10 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+var (
+	errPeerClosed = errors.New("peer is closed")
 )
 
 // peerStateStats holds internal statistics for a peer.
