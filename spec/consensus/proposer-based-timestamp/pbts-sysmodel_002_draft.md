@@ -273,14 +273,18 @@ and observe a timely proof-of-lock.
 
 ## Temporal analysis
 
-Let `beginRound(p,r)` be the time the process `p` reads from its clock when it
-starts round `r` of consensus.
+In this section we present invariants that need be observed for ensuring that
+PBTS is both safe and live.
+
+In addition to the variables and system parameters already defined, we use
+`beginRound(p,r)` to represent the time the process `p` reads from its clock
+when it starts round `r` of consensus.
 
 ### Safety
 
 The safety of PBTS requires that if a value `v` is decided, then at least one
-correct process `p` considered the associated proposal time `v.time` timely
-([PBTS-INV-TIMELY.0] property).
+correct process `p` considered the associated proposal time `v.time`
+[timely](#pbts-timely0).
 Following the definition of timely proposals and proof-of-locks, we require
 this condition to be asserted at a specific round of consensus, defined as
 `v.round`:
@@ -297,15 +301,16 @@ then there is a correct process `p` (not necessarily the same above considered) 
 - `beginRound(p,v.round) - MSGDELAY - PRECISION <= v.time <= proposalReceptionTime(p,v.round) + PRECISION`
 
 The above invariant incorporate some assumptions.
-First, `p` started round `v.round` at which the decided value `v` was first proposed.
+First, that `p` started round `v.round` at which the decided value `v` was
+first proposed.
 Moreover, `p` started it while its clock marked a time that allowed `v.time` to
-still be considered timely ([PBTS-TIMELY.0], condition 3.).
-Second, `p` received the `PROPOSAL` message that originally proposed `v`, as
-`proposalReceptionTime(p,v.round)` is set, and received it when its clock marked a time
-greater, short of the maximum clock drift `PRECISION`, than `v.time`
-([PBTS-TIMELY.0], conditions 1 and 2.)
-As a result, process `p` must have considered the proposal time `v.time` timely
-at round `v.round`.
+still be considered timely.
+Second, that `p` received the `PROPOSAL` message that originally proposed `v`,
+as `proposalReceptionTime(p,v.round)` is set, and received it when its clock
+marked a time greater, short of the maximum clock drift `PRECISION`, than
+`v.time`.
+As a result of these conditions, from [PBTS-TIMELY.0], process `p` must have
+considered the proposal time `v.time` timely at round `v.round`.
 
 Back to [main document][main].
 
