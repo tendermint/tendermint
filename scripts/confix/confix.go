@@ -97,6 +97,16 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
+		// Since https://github.com/tendermint/tendermint/pull/7121.
+		Desc: "Remove gRPC settings from the [rpc] section",
+		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
+			doc.First("rpc", "grpc-laddr").Remove()
+			doc.First("rpc", "grpc-max-open-connections").Remove()
+			return nil
+		}),
+		ErrorOK: true,
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6462.
 		Desc: "Move priv-validator settings under [priv-validator]",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
