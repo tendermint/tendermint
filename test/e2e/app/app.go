@@ -379,9 +379,18 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 // It accepts any proposal that does not contain a malformed transaction.
 func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
 	for _, tx := range req.Txs {
-		_, _, err := parseTx(tx)
+		k, v, err := parseTx(tx)
 		if err != nil {
+			app.logger.Error("malformed transaction in ProcessProposal", "tx", tx, "err", err)
 			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+		}
+		// Additional check for vote extension-related txs
+		if k == voteExtensionKey {
+			_, err := strconv.Atoi(v)
+			if err != nil {
+				app.logger.Error("malformed vote extension transaction", k, v, "err", err)
+				return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+			}
 		}
 	}
 	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
