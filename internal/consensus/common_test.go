@@ -350,6 +350,8 @@ func validatePrecommit(
 		require.True(t, bytes.Equal(vote.BlockID.Hash, votedBlockHash), "Expected precommit to be for proposal block")
 	}
 
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	if lockedBlockHash == nil {
 		require.False(t, cs.LockedRound != lockRound || cs.LockedBlock != nil,
 			"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
