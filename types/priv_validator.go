@@ -96,8 +96,12 @@ func (pv MockPV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vot
 		return err
 	}
 	vote.Signature = sig
-	vote.ExtensionSignature, err = pv.PrivKey.Sign(extSignBytes)
-	return err
+	extSig, err := pv.PrivKey.Sign(extSignBytes)
+	if err != nil {
+		return err
+	}
+	vote.ExtensionSignature = extSig
+	return nil
 }
 
 // Implements PrivValidator.

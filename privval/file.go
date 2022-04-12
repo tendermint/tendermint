@@ -405,10 +405,11 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	vote.Signature = sig
 
 	// Sign the vote extension, regardless of whether it's present or not
-	vote.ExtensionSignature, err = pv.Key.PrivKey.Sign(extSignBytes)
+	extSig, err := pv.Key.PrivKey.Sign(extSignBytes)
 	if err != nil {
 		return err
 	}
+	vote.ExtensionSignature = extSig
 
 	return nil
 }
