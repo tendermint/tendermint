@@ -76,7 +76,7 @@ message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -123,23 +123,31 @@ message RequestApplySnapshotChunk {
 }
 
 message RequestPrepareProposal {
-  bytes                   hash   = 1;
-  tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
+  // the modified transactions cannot exceed this size.
+  int64 max_tx_bytes = 1;
   // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  repeated bytes     txs                  = 3;
-  ExtendedCommitInfo local_last_commit    = 4 [(gogoproto.nullable) = false];
-  repeated Evidence  byzantine_validators = 5 [(gogoproto.nullable) = false];
-  // the modified transactions cannot exceed this size.
-  int64 max_tx_bytes = 6;
+  repeated bytes            txs                  = 2;
+  ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior      byzantine_validators = 4 [(gogoproto.nullable) = false];
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the validator proposing the block.
+  bytes proposer_address = 8;
 }
 
 message RequestProcessProposal {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  CommitInfo              proposed_last_commit = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes       txs                  = 1;
+  CommitInfo           proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the proposed block.
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the original proposer of the block.
+  bytes proposer_address = 8;
 }
 
 // Extends a vote with application-side injection
@@ -157,11 +165,16 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  CommitInfo              decided_last_commit  = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes       txs                  = 1;
+  CommitInfo           decided_last_commit  = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the proposed block.
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // proposer_address is the address of the public key of the original proposer of the block.
+  bytes proposer_address = 8;
 }
 
 //----------------------------------------
@@ -341,6 +354,7 @@ message ResponseExtendVote {
   bytes vote_extension = 1;
 }
 
+
 message ResponseVerifyVoteExtension {
   VerifyStatus status = 1;
 
@@ -355,7 +369,7 @@ message ResponseFinalizeBlock {
   repeated Event events = 1
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   repeated ExecTxResult            tx_results              = 2;
-  repeated ValidatorUpdate         validator_updates       = 3;
+  repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
   bytes                            app_hash                = 5;
   int64                            retain_height           = 6;
@@ -408,10 +422,10 @@ message ExecTxResult {
 //
 // One usage is indexing transaction results.
 message TxResult {
-  int64             height = 1;
-  uint32            index  = 2;
-  bytes             tx     = 3;
-  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+  int64        height = 1;
+  uint32       index  = 2;
+  bytes        tx     = 3;
+  ExecTxResult result = 4 [(gogoproto.nullable) = false];
 }
 
 message TxRecord {
@@ -466,14 +480,15 @@ message CanonicalVoteExtension {
   bytes  address   = 5;
 }
 
-enum EvidenceType {
+
+enum MisbehaviorType {
   UNKNOWN             = 0;
   DUPLICATE_VOTE      = 1;
   LIGHT_CLIENT_ATTACK = 2;
 }
 
-message Evidence {
-  EvidenceType type = 1;
+message Misbehavior {
+  MisbehaviorType type = 1;
   // The offending validator
   Validator validator = 2 [(gogoproto.nullable) = false];
   // The height when the offense occurred
