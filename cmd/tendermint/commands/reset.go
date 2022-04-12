@@ -16,46 +16,67 @@ import (
 // MakeResetCommand constructs a command that removes the database of
 // the specified Tendermint core instance.
 func MakeResetCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var (
-		resetAllFlag       bool
-		resetPrivValFlag   bool
-		resetPeerStoreFlag bool
-		keyType            string
-	)
+	var keyType string
 
-	cmd := &cobra.Command{
+	resetCmd := &cobra.Command{
 		Use:   "reset",
-		Short: "Remove all tendermint data, resetting to genesis state.",
-		Long: `Removes block, state and evidence store. Does not alter priv-validator state or your peer store.
-If resetting, don't forget to reset application state as well.`,
+		Short: "Set of commands to conveniently reset tendermint related data",
+	}
+
+	resetBlocksCmd := &cobra.Command{
+		Use:   "blockchain",
+		Short: "Removes all blocks, state, transactions and evidence stored by the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if resetAllFlag {
-				return ResetAll(conf.DBDir(), conf.PrivValidator.KeyFile(),
-					conf.PrivValidator.StateFile(), logger, keyType)
-			}
-			if resetPrivValFlag {
-				return ResetFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile(), logger, keyType)
-			}
-			if resetPeerStoreFlag {
-				return ResetPeerStore(conf.DBDir())
-			}
 			return ResetState(conf.DBDir(), logger)
 		},
 	}
-	cmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
-		"Key type to generate privval file with. Options: ed25519, secp256k1")
-	cmd.Flags().BoolVar(&resetAllFlag, "all", false, "Resets all block data and priv validator state. Only use in testing")
-	cmd.Flags().BoolVar(&resetPrivValFlag, "privval", false, "Resets all priv validator state. Only use in testing")
-	cmd.Flags().BoolVar(&resetPeerStoreFlag, "peers", false, "Flushes entire peer address book")
 
-	return cmd
+	resetPeersCmd := &cobra.Command{
+		Use:   "peers",
+		Short: "Removes all peer addresses",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ResetPeerStore(conf.DBDir())
+		},
+	}
+
+	resetSignerCmd := &cobra.Command{
+		Use:   "unsafe-signer",
+		Short: "esets private validator signer state",
+		Long: `Resets private validator signer state. 
+Only use in testing. This can cause the node to double sign`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ResetFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile(), logger, keyType)
+		},
+	}
+
+	resetAllCmd := &cobra.Command{
+		Use:   "unsafe-all",
+		Short: "Removes all tendermint data including signing state",
+		Long: `Removes all tendermint data including signing state. 
+Only use in testing. This can cause the node to double sign`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ResetAll(conf.DBDir(), conf.PrivValidator.KeyFile(),
+				conf.PrivValidator.StateFile(), logger, keyType)
+		},
+	}
+
+	resetSignerCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+		"Signer key type. Options: ed25519, secp256k1")
+
+	resetAllCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+		"Signer key type. Options: ed25519, secp256k1")
+
+	resetCmd.AddCommand(resetBlocksCmd)
+	resetCmd.AddCommand(resetPeersCmd)
+	resetCmd.AddCommand(resetSignerCmd)
+	resetCmd.AddCommand(resetAllCmd)
+
+	return resetCmd
 }
 
-// XXX: this is totally unsafe.
-// it's only suitable for testnets.
-
-// resetAll removes address book files plus all data, and resets the privValdiator data.
+// ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported for extenal CLI usage
+// XXX: this is unsafe and should only suitable for testnets.
 func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if err := os.RemoveAll(dbDir); err == nil {
 		logger.Info("Removed all blockchain history", "dir", dbDir)
@@ -71,7 +92,7 @@ func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger,
 	return ResetFilePV(privValKeyFile, privValStateFile, logger, keyType)
 }
 
-// resetState removes address book files plus all databases.
+// ResetState removes all blocks, tendermint state, indexed transactions and evidence.
 func ResetState(dbDir string, logger log.Logger) error {
 	blockdb := filepath.Join(dbDir, "blockstore.db")
 	state := filepath.Join(dbDir, "state.db")
@@ -122,6 +143,9 @@ func ResetState(dbDir string, logger log.Logger) error {
 	return tmos.EnsureDir(dbDir, 0700)
 }
 
+// ResetFilePV loads the file private validator and resets the watermark to 0. If used on an existing network,
+// this can cause the node to double sign.
+// XXX: this is unsafe and should only suitable for testnets.
 func ResetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, keyType string) error {
 	if _, err := os.Stat(privValKeyFile); err == nil {
 		pv, err := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
@@ -147,6 +171,8 @@ func ResetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, key
 	return nil
 }
 
+// ResetPeerStore removes the peer store containing all information used by the tendermint networking layer
+// In the case of a reset, new peers will need to be set either via the config or through the discovery mechanism
 func ResetPeerStore(dbDir string) error {
 	peerstore := filepath.Join(dbDir, "peerstore.db")
 	if tmos.FileExists(peerstore) {

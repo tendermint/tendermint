@@ -182,7 +182,7 @@ node example/counter.js
 In another window, reset and start `tendermint`:
 
 ```sh
-tendermint unsafe-reset-all
+tendermint reset unsafe-all
 tendermint start
 ```
 
