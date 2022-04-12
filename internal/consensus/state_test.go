@@ -2211,7 +2211,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	pv1, err := cs1.privValidator.GetPubKey(ctx)
 	require.NoError(t, err)
 	addr := pv1.Address()
-	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+	voteCh := subscribeToVoter(ctx, t, cs1, addr, tmproto.PrecommitType)
 
 	// ensure that the height is committed.
 	ensurePrecommit(t, voteCh, height, round)
