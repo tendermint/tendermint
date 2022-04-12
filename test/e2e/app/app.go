@@ -313,6 +313,16 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
 }
 
+// PrepareProposal will take the given transactions and attempt to prepare a
+// proposal from them when it's our turn to do so. In the process, vote
+// extensions from the previous round of consensus, if present, will be used to
+// construct a special transaction whose value is the sum of all of the vote
+// extensions from the previous round.
+//
+// NB: Assumes that the supplied transactions do not exceed `req.MaxTxBytes`.
+// If adding a special vote extension-generated transaction would cause the
+// total number of transaction bytes to exceed `req.MaxTxBytes`, we will not
+// append our special vote extension transaction.
 func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
 	var sum int64
 	var extCount int
@@ -332,6 +342,7 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 	}
 	// We only generate our special transaction if we have vote extensions
 	if extCount > 0 {
+		var totalBytes int64
 		extTxPrefix := fmt.Sprintf("%s=", voteExtensionKey)
 		extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, sum))
 		app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
@@ -349,11 +360,22 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 					Action: abci.TxRecord_UNMODIFIED,
 					Tx:     tx,
 				}
+				totalBytes += int64(len(tx))
 			}
 		}
-		txRecords[len(req.Txs)] = &abci.TxRecord{
-			Action: abci.TxRecord_ADDED,
-			Tx:     extTx,
+		if totalBytes+int64(len(extTx)) < req.MaxTxBytes {
+			txRecords[len(req.Txs)] = &abci.TxRecord{
+				Action: abci.TxRecord_ADDED,
+				Tx:     extTx,
+			}
+		} else {
+			app.logger.Info(
+				"too many txs to include special vote extension-generated tx",
+				"totalBytes", totalBytes,
+				"MaxTxBytes", req.MaxTxBytes,
+				"extTx", extTx,
+				"extTxLen", len(extTx),
+			)
 		}
 		return abci.ResponsePrepareProposal{
 			TxRecords: txRecords,
