@@ -730,10 +730,9 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 			msg.Data())
 
 		vote := voteEvent.Vote
-		require.Equal(t, height, vote.Height)
-		require.Equal(t, round, vote.Round)
-
-		require.Equal(t, voteType, vote.Type)
+		require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 		if hash == nil {
 			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
 		} else {
@@ -741,6 +740,7 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 		}
 	}
 }
+
 func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, voteType tmproto.SignedMsgType) {
 	t.Helper()
 	msg := ensureMessageBeforeTimeout(t, voteCh, ensureTimeout)
