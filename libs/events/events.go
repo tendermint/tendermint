@@ -58,7 +58,7 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, eventValue string, cb E
 	}
 	evsw.mtx.Unlock()
 
-	eventCell.AddListener(listenerID, cb)
+	eventCell.addListener(listenerID, cb)
 	return nil
 }
 
@@ -73,7 +73,7 @@ func (evsw *eventSwitch) FireEvent(ctx context.Context, event string, data Event
 	}
 
 	// Fire event for all listeners in eventCell
-	eventCell.FireEvent(ctx, data)
+	eventCell.fireEvent(ctx, data)
 }
 
 //-----------------------------------------------------------------------------
@@ -92,13 +92,13 @@ func newEventCell() *eventCell {
 	}
 }
 
-func (cell *eventCell) AddListener(listenerID string, cb EventCallback) {
+func (cell *eventCell) addListener(listenerID string, cb EventCallback) {
 	cell.mtx.Lock()
 	defer cell.mtx.Unlock()
 	cell.listeners[listenerID] = cb
 }
 
-func (cell *eventCell) FireEvent(ctx context.Context, data EventData) {
+func (cell *eventCell) fireEvent(ctx context.Context, data EventData) {
 	cell.mtx.RLock()
 	eventCallbacks := make([]EventCallback, 0, len(cell.listeners))
 	for _, cb := range cell.listeners {
