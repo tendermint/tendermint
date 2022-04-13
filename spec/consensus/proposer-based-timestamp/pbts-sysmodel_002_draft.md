@@ -341,8 +341,9 @@ according to condition 3. of [PBTS-TIMELY.0].
 In addition, it requires correct processes to stay long enough in round
 `v.round` so that they can receive the `PROPOSAL` message of round `v.round`.
 It assumed here that the proposer of `v` broadcasts a `PROPOSAL` message at
-time `v.time`, according to its local clock, and that every correct process
-should receive this message by local time `v.time + MSGDELAY + PRECISION`.
+time `v.time`, according to its local clock, so that every correct process
+should receive this message by time `v.time + MSGDELAY + PRECISION`, according
+to their local clocks.
 
 Back to [main document][main].
 
