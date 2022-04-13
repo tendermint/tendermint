@@ -35,7 +35,16 @@ still needed demonstrate the correctness of the chosen solution.
 
 ## Background
 
-This document assumes that all validators have equal voting power for the sake of simplicity.
+This document assumes that all validators have equal voting power for the sake of simplicity. This is done
+without loss of generality.
+
+### Basic Definitions
+
+TODO: Precommit votes, precommit messages
+
+TODO: Re-read "commits do not contain nil votes", catchup messages
+
+TODO: Mention somewhere that statesync is not really relevant for this problem... only for the first block after statesync'ing.
 
 ### Problem Description
 
@@ -53,14 +62,14 @@ The *extended commit* is a *commit* where a mandatory vote extension is attached
 non-`nil` vote in the *commit*. This mandatory vote extension can be empty, but needs to be signed.
 The signing is carried out with the sending validator's private key (the same as the vote it extends),
 but is independent from the vote, so a vote can be separated from its extension.
-The reason for vote extensions to be mandatory is that, otherwise, an intermediate node could remove
-(and thus censor) the extension of a precommit message.
+The reason for vote extensions to be mandatory is that, otherwise, a (malicious) node can omit a vote
+extension while still providing/forwarding/sending the corresponding precommit vote.
 
-When a validator takes an active part in consensus at height *h*, it has all the data it needs in its
-`LastCommit` structure to decide on *h* and propose in *h+1*. Things are not so easy in the cases when
+When a validator takes an active part in consensus at height *h*, it has all the data it needs in memory,
+in its consensus state, to decide on *h* and propose in *h+1*. Things are not so easy in the cases when
 *v* cannot take part in consensus because it is late (e.g., it falls behind, it crashes
 and recovers, or it just starts after the others). If *v* does not take part, it cannot actively
-gather precommit votes (and their corresponding extensions) in order to decide.
+gather precommit messages (which include vote extensions) in order to decide.
 Before ABCI++, this wasn't a problem: full nodes are supposed to persist past blocks in the block store,
 so other nodes would realise that *v* is late and send it the missing decided block at height *h* and
 the corresponding commit (kept in block *h+1*) so that *v* can catch up.
@@ -71,8 +80,9 @@ of the needed *extended commit* are not part of the blockchain.
 
 Before we tackle the description of the possible cases we need to address, let us describe the following
 incremental improvement to the ABCI++ logic. Upon decision, a full node persists (e.g., in the block
-store) the extended commit that allowed the node to decide. For the moment, let us assume that only the
-*latest* extended commit is persisted.
+store) the extended commit that allowed the node to decide. For the moment, let us assume the node only
+needs to keep its *most recent* extended commit, and MAY remove any older extended commits from persistent
+storage.
 This improvement is so obvious that all solutions descibed in the [Discussion](#discussion) section use
 it as a building block. Moreover, it completely addresses by itself some of the cases described in this
 subsection.
@@ -104,8 +114,9 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     This case has been raised in some discussions, the main concern being whether the vote extensions
     for the previous height would be lost across the network. With the improvement described above,
     namely persisting the latest extended commit at decision time, this case is solved.
-    When a crashed validator recovers, it handshakes with the Application and recovers the last extended
-    commit from persistent storage. If need be, it also reconstructs messages for the unfinished height
+    When a crashed validator recovers, it recovers the last extended commit from persistent storage
+    and handshakes with the Application.
+    If need be, it also reconstructs messages for the unfinished height
     (including all precommits received) from the WAL.
     Then, the validator can resume where it was at the time of the crash. Thus, as extensions are
     persisted, either in the WAL (in the form of received precommit messages), or in the latest
@@ -121,7 +132,8 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     In this case, blockchain progress halts, i.e. surviving full nodes keep increasing rounds
     indefinitely, until some of the crashed validators are able to recover.
     Those validators that recover first will handshake with the Application and recover at the height
-    they crashed, which is still the same the block nodes are stuck in, so they don't need to catch up.
+    they crashed, which is still the same the nodes that did not crash are stuck in, so they don't need
+    to catch up.
     Further, they had persisted the extended commit for the previous height. Nothing to solve.
 
     For those validators recovering later, we are in case (g) below.
@@ -151,7 +163,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     These lagging nodes then need to catch up. They have to obtain the information they need to make
     progress from other nodes. For each height *h*, this includes the decided block for *h*, and the
     precommit votes also for *deciding h* (which can be extracted from the block at height *h+1*).
-    At a given height, say *h_c* a node will consider itself *caught up*, based on the (maybe out of
+    At a given height, say *h_c*, a node will consider itself *caught up*, based on the (maybe out of
     date) information it is getting from its peers. Then, the node needs to be ready to propose
     at height *h_c+1* which entails having received the vote extensions for *h_c*.
 
@@ -187,7 +199,7 @@ These are the solutions proposed in discussions leading up to this RFC.
 
     This is the simplest solution, considered as a way to provide vote extensions in a simple enough
     way so that it can be part of v0.36.
-    It consists in changing the specification so as to not *require* that all precommit votes used upon
+    It consists in changing the specification so as to not *require* that precommit votes used upon
     `PrepareProposal` contain their corresponding vote extensions. In other words, we render vote
     extensions optional.
     There are strong implications stemming from such a relaxation of the original specification.
@@ -228,8 +240,8 @@ These are the solutions proposed in discussions leading up to this RFC.
 
     This solution consists in modifying the Tendermint algorithm to skip the *send proposal* step in
     heights where the node does not have the required vote extensions to populate the call to
-    `PrepareProposal`. The assumption is that the validator is late and, therefore, up-to-date
-    validators have already proposed (and decided) for that height.
+    `PrepareProposal`. The main idea behind is that this should only happen when the validator is late
+    and, therefore, up-to-date validators have already proposed (and decided) for that height.
     A small variation of this solution is, rather than skipping the *send proposal* step, the validator
     sends a special *empty* or *bottom* proposal to signal other nodes that it is not ready to propose
     at (any round of) the current height.
@@ -285,9 +297,8 @@ These are the solutions proposed in discussions leading up to this RFC.
           *h' > h*
         - it has received an extended commit for *h'* and has verified:
             - the precommit vote signatures in the extended commit
-            - the vote extension signatures in the extended commit (each being signed with the same
-              key as the precommit vote it extends)
-            - all non-`nil` precommit votes have their corresponding extension
+            - the vote extension signatures in the extended commit: each is signed with the same
+              key as the precommit vote it extends
 
     This invariant ensures that the node in catch-up mode:
 
@@ -372,21 +383,26 @@ Thus, blocksync has all the data it requires to switch to the consensus reactor,
 - The node is still at height 0 (where no commit or extended commit is needed)
 - The node has processed at least 1 block in blocksync
 
+As a side note, a chain might be started at a height *h_i > 0*, all other heights less than
+*h_i* being non-existent. In this case, the chain is still considered to be at height 0 before block
+*h_i* is applied (so the condition above is still correct for this case).
+
 Additionally, when a validator falls behind while having already switched to the consensus reactor,
 peer nodes have enough information in their block store to reconstruct the extended votes and send
 them to the validator falling behind.
 
 This solution requires a few changes to the consensus reactor:
 
-- upon saving block for a given height in the block store at decision time, save the extended commit
-  as well
+- upon saving the block for a given height in the block store at decision time, save the
+  corresponding extended commit as well
 - in the catch-up mechanism, when a node realizes that another peer is more than 2 heights
   behind, it uses the extended commit (rather than the canoncial commit as done previously) to
   reconstruct the votes with their corresponding extensions
 
 The changes to the blocksync reactor are more substantial:
 
-- the `BlockResponse` message is extended to include the extended commit
+- the `BlockResponse` message is extended to include the extended commit of the same height as
+  the block included in the response (just as they are stored in the block store)
 - structure `bpRequester` is likewise extended to hold the received extended commits coming in
   `BlockResponse` messages
 - method `PeekTwoBlocks` is modified to also return the extended commit corresponding to the first block
@@ -427,7 +443,8 @@ new situations, roughly equivalent to cases (g.1) and (g.2) described above.
 A formalization work to show or prove the correctness of the different use cases and solutions
 presented here (and any other that may be found) needs to be carried out.
 A question that needs a precise answer is how many extended commits (one?, two?) a node needs
-to persist when implementing solution 3 without Tendermint's current limitations.
+to keep in persistent memory when implementing Solution 3 described above without Tendermint's
+current limitations.
 Another important invariant we need to prove formally is that the set of vote extensions
 required to make progress will always be held somewhere in the network.
 
