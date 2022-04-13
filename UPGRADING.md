@@ -124,7 +124,7 @@ for more information about these overrides.
 For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
 lays out the reasoning for the changes as well as [RFC
 009](https://tinyurl.com/rfc009) for a discussion of the complexities of
-upgrading consensus parameters.\
+upgrading consensus parameters.
 
 ### CLI Changes
 
