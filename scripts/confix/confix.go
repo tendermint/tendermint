@@ -98,8 +98,6 @@ var plan = transform.Plan{
 	},
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6241.
-		//
-		// TODO(creachadair): backport into v0.35.x.
 		Desc: `Add top-level mode setting (default "full")`,
 		T: transform.EnsureKey(nil, &parser.KeyValue{
 			Block: parser.Comments{"Mode of Node: full | validator | seed"},
@@ -134,16 +132,12 @@ var plan = transform.Plan{
 	},
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6396.
-		//
-		// TODO(creachadair): backport into v0.35.x.
 		Desc:    "Remove vestigial mempool.wal-dir setting",
 		T:       transform.Remove(parser.Key{"mempool", "wal-dir"}),
 		ErrorOK: true,
 	},
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6323.
-		//
-		// TODO(creachadair): backport into v0.35.x.
 		Desc: "Add new [p2p] queue-type setting",
 		T: transform.EnsureKey(parser.Key{"p2p"}, &parser.KeyValue{
 			Block: parser.Comments{"Select the p2p internal queue"},
@@ -154,8 +148,6 @@ var plan = transform.Plan{
 	},
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6353.
-		//
-		// TODO(creachadair): backport into v0.35.x.
 		Desc: "Add [p2p] connection count and rate limit settings",
 		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
 			tab := transform.FindTable(doc, "p2p")
@@ -181,8 +173,6 @@ var plan = transform.Plan{
 		// Added "chunk-fetchers" https://github.com/tendermint/tendermint/pull/6566.
 		// This value was backported into v0.34.11 (modulo casing).
 		// Renamed to "fetchers"  https://github.com/tendermint/tendermint/pull/6587.
-		//
-		// TODO(creachadair): backport into v0.35.x.
 		Desc: "Rename statesync.chunk-fetchers to statesync.fetchers",
 		T: transform.Func(func(ctx context.Context, doc *tomledit.Document) error {
 			// If the key already exists, rename it preserving its value.
@@ -204,8 +194,6 @@ var plan = transform.Plan{
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6807.
 		// Backported into v0.34.13 (modulo casing).
-		//
-		// TODO(creachadair): backport into v0.35.x.
 		Desc: "Add statesync.use-p2p setting",
 		T: transform.EnsureKey(parser.Key{"statesync"}, &parser.KeyValue{
 			Block: parser.Comments{
