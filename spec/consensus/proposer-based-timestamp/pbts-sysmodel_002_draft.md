@@ -309,6 +309,41 @@ Moreover, the reception time of the original proposal for `v`, according with
 This is the requirement established by PBTS for issuing a `PREVOTE` for the
 proposal `(v, v.time, v.round)`, so for the eventual decision of `v`.
 
+### Liveness
+
+The liveness of PBTS relies on correct processes accepting proposal times
+assigned by correct proposers.
+We thus present a set of conditions for assigning a proposal time `v.time` so
+that every correct process should be able to issue a `PREVOTE` for `v`.
+
+#### **[PBTS-LIVENESS.0]**
+
+If
+
+- the proposer of a round `r` of consensus is correct
+- and it proposes a value `v` for the first time, with associated proposal time `v.time`
+
+then the proposal `(v, v.time, r)` is accepted by every correct process provided that:
+
+- `min{p is correct : beginRound(p,r)} <= v.time <= max{p is correct : beginRound(p,r)}` and
+- `max{p is correct : beginRound(p,r)} <= v.time + MSGDELAY + PRECISION <= min{p is correct : beginRound(p,r+1)}`
+
+The first condition establishes a range of safe proposal times `v.time` for round `r`.
+It is trivially observed if a correct proposer `p` sets `v.time` to the time it
+reads from its clock when starting round `r` and proposing `v`.
+A `PROPOSAL` message sent by `p` at local time `v.time` should not be received
+by any correct process before its local clock reads `v.time - PRECISION`, so
+that condition 2. of [PBTS-TIMELY.0] is observed.
+
+The second condition establishes that every correct process should start round
+`v.round` at a local time that allows `v.time` to still be considered timely,
+according to condition 3. of [PBTS-TIMELY.0].
+In addition, it requires correct processes to stay long enough in round
+`v.round` so that they can receive the `PROPOSAL` message of round `v.round`.
+It assumed here that the proposer of `v` broadcasts a `PROPOSAL` message at
+time `v.time`, according to its local clock, and that every correct process
+should receive this message by local time `v.time + MSGDELAY + PRECISION`.
+
 Back to [main document][main].
 
 [main]: ./README.md
