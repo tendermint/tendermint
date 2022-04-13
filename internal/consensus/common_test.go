@@ -380,7 +380,7 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte,
 		vt[t] = struct{}{}
 	}
 
-	ch := make(chan tmpubsub.Message, 1)
+	ch := make(chan tmpubsub.Message)
 	if err := cs.eventBus.Observe(ctx, func(msg tmpubsub.Message) error {
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
