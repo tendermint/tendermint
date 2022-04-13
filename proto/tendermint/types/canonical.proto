@@ -36,11 +36,11 @@ message CanonicalVote {
   string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
 }
 
-// CanonicalVoteExtension
+// CanonicalVoteExtension provides us a way to serialize a vote extension from
+// a particular validator such that we can sign over those serialized bytes.
 message CanonicalVoteExtension {
   bytes  extension = 1;
   int64  height    = 2;
   int32  round     = 3;
   string chain_id  = 4;
-  bytes  address   = 5;
 }

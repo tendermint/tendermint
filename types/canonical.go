@@ -74,7 +74,6 @@ func CanonicalizeVoteExtension(chainID string, vote *tmproto.Vote) tmproto.Canon
 		Height:    vote.Height,
 		Round:     vote.Round,
 		ChainId:   chainID,
-		Address:   vote.ValidatorAddress,
 	}
 }
 
