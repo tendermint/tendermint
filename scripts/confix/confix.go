@@ -117,6 +117,16 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
+		// Added in https://github.com/tendermint/tendermint/pull/6466.
+		Desc: `Add mempool.version default to "v1"`,
+		T: transform.EnsureKey(parser.Key{"mempool"}, &parser.KeyValue{
+			Block: parser.Comments{`Mempool version to use`},
+			Name:  parser.Key{"version"},
+			Value: parser.MustValue(`"v1"`),
+		}),
+		ErrorOK: true,
+	},
+	{
 		// Since https://github.com/tendermint/tendermint/pull/6323.
 		Desc: "Add new [p2p] queue-type setting",
 		T: transform.EnsureKey(parser.Key{"p2p"}, &parser.KeyValue{
