@@ -283,13 +283,12 @@ when it starts round `r` of consensus.
 ### Safety
 
 The safety of PBTS requires that if a value `v` is decided, then at least one
-correct process `p` considered the associated proposal time `v.time`
-[timely](#pbts-timely0).
-Following the definition of timely proposals and proof-of-locks, we require
-this condition to be asserted at a specific round of consensus, defined as
-`v.round`:
+correct process `p` considered the associated proposal time `v.time` timely.
+Following the definition of [timely proposals](#pbts-timely0) and
+proof-of-locks, we require this condition to be asserted at a specific round of
+consensus, defined as `v.round`:
 
-#### **[PBTS-CONSENSUS-TIME-VALID.0]**
+#### **[PBTS-SAFETY.0]**
 
 If
 
@@ -298,19 +297,17 @@ If
 
 then there is a correct process `p` (not necessarily the same above considered) such that:
 
-- `beginRound(p,v.round) - MSGDELAY - PRECISION <= v.time <= proposalReceptionTime(p,v.round) + PRECISION`
+- `beginRound(p,v.round) <= proposalReceptionTime(p,v.round) <= beginRound(p,v.round+1)` and
+- `proposalReceptionTime (p,v.round) - MSGDELAY - PRECISION <= v.time <= proposalReceptionTime(p,v.round) + PRECISION`
 
-The above invariant incorporate some assumptions.
-First, that `p` started round `v.round` at which the decided value `v` was
-first proposed.
-Moreover, `p` started it while its clock marked a time that allowed `v.time` to
-still be considered timely.
-Second, that `p` received the `PROPOSAL` message that originally proposed `v`,
-as `proposalReceptionTime(p,v.round)` is set, and received it when its clock
-marked a time greater, short of the maximum clock drift `PRECISION`, than
-`v.time`.
-As a result of these conditions, from [PBTS-TIMELY.0], process `p` must have
-considered the proposal time `v.time` timely at round `v.round`.
+That is, a correct process `p` started round `v.round` and, while still at
+round `v.round`, received a `PROPOSAL` message from round `v.round` proposing
+`v`.
+Moreover, the reception time of the original proposal for `v`, according with
+`p`'s local clock, enabled `p` to consider the proposal time `v.time` as
+`timely`.
+This is the requirement established by PBTS for issuing a `PREVOTE` for the
+proposal `(v, v.time, v.round)`, so for the eventual decision of `v`.
 
 Back to [main document][main].
 
