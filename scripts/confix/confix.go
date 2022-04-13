@@ -131,9 +131,13 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
-		// Since https://github.com/tendermint/tendermint/pull/6396.
-		Desc:    "Remove vestigial mempool.wal-dir setting",
-		T:       transform.Remove(parser.Key{"mempool", "wal-dir"}),
+		// Removed wal-dir: https://github.com/tendermint/tendermint/pull/6396.
+		// Removed version: https://github.com/tendermint/tendermint/pull/7171.
+		Desc: "Remove vestigial mempool.wal-dir settings",
+		T: transform.Remove(
+			parser.Key{"mempool", "wal-dir"},
+			parser.Key{"mempool", "version"},
+		),
 		ErrorOK: true,
 	},
 	{
