@@ -224,6 +224,8 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
+	// TODO: Remove the extension length check such that we always require
+	//       extension signatures to be present.
 	if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
 		return errors.New("vote extension signature is missing")
 	}
