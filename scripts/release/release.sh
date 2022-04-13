@@ -37,6 +37,7 @@ To use, you need to checkout your current development branch (like 'v0.7-dev') f
 where flags can be one of:
     -r=<x.y.z-dev.n>, --release=<x.y.z-dev.n> - release number, like 0.7.0 (REQUIRED)
     --cleanup - clean up before releasing; it can remove your local changes
+    -C=<path> - path to local Tenderdash repository
     -h, --help - display this help message
 
 ## Examples
@@ -88,6 +89,15 @@ function parseArgs {
             fi
             shift
             ;;
+        -C=*)
+            REPO_DIR="${arg#*=}"
+            shift
+            ;;
+        -C)
+            shift
+            REPO_DIR="${1#*=}"
+            shift
+            ;;
         -h | --help)
             displayHelp
             shift
@@ -122,6 +132,7 @@ function configureFinal() {
         TARGET_BRANCH="v${VERSION_WITHOUT_PRERELEASE%.*}-dev"
     fi
 
+    debug "Repository: ${REPO_DIR}"
     debug "Release type: ${RELEASE_TYPE}"
     debug "Latest tag: ${LATEST_TAG}"
     debug "Previous version: ${CURRENT_VERSION}"
@@ -154,15 +165,23 @@ function validate {
 
 function generateChangelog {
     debug Generating CHANGELOG
+
+    echo 2>"${REPO_DIR}/build/CHANGELOG_CURRENT.md"
+
     docker run -ti -u "$(id -u)" \
         -v "${REPO_DIR}/.git":/app/:ro -v "${REPO_DIR}/scripts/release/cliff.toml":/cliff.toml:ro \
         -v "${REPO_DIR}/CHANGELOG.md":/CHANGELOG.md \
+        -v "${REPO_DIR}/build/CHANGELOG_CURRENT.md":/CHANGELOG_CURRENT.md \
         orhunp/git-cliff:latest \
         --config /cliff.toml \
         --strip all \
         --tag "$NEW_PACKAGE_VERSION" \
-        --prepend /CHANGELOG.md \
-        --unreleased
+        --output /CHANGELOG_CURRENT.md \
+        --unreleased \
+        "${LATEST_TAG}..HEAD"
+
+    cat "${REPO_DIR}/build/CHANGELOG_CURRENT.md" "${REPO_DIR}/CHANGELOG.md" >"${REPO_DIR}/build/CHANGELOG_NEW.md"
+    mv -f "${REPO_DIR}/build/CHANGELOG_NEW.md" "${REPO_DIR}/CHANGELOG.md"
 }
 
 function updateVersionGo {
@@ -185,7 +204,7 @@ function createReleasePR {
     debug "Creating milestone $MILESTONE if it doesn't exist yet"
     gh api --silent --method POST 'repos/dashevo/tenderdash/milestones' --field "title=${MILESTONE}" || true
 
-    if gh pr view release_0.7.0-dev.7 >/dev/null; then
+    if [[ -n "$(getPrURL)" ]]; then
         debug "PR for branch $TARGET_BRANCH already exists, skipping creation"
     else
         debug "Creating PR for branch $TARGET_BRANCH"
@@ -197,8 +216,49 @@ function createReleasePR {
     fi
 }
 
+function getPrURL() {
+    gh pr list --json url --jq '.[0].url' -H "${RELEASE_BRANCH}" -B "$TARGET_BRANCH"
+}
+
+function getPrState() {
+    gh pr list --json state --jq .[0].state -H "${RELEASE_BRANCH}" -B "$TARGET_BRANCH" --state all
+}
+
+function waitForMerge() {
+    debug 'Waiting for the PR to be merged; use ^C to cancel'
+
+    while [[ "$(getPrState)" != "MERGED" ]]; do
+        sleep 5
+    done
+}
+
+function createRelease() {
+    gh_args=""
+    if [[ "$RELEASE_TYPE" = "prerelease" ]]; then
+        gh_args=--prerelease
+    fi
+
+    gh release create \
+        --draft \
+        --notes-file "${REPO_DIR}/build/CHANGELOG_CURRENT.md" \
+        --title "v${NEW_PACKAGE_VERSION}" \
+        $gh_args \
+        "v${NEW_PACKAGE_VERSION}"
+}
+
+function deleteRelease() {
+    if [[ "$(gh release view --json isDraft --jq .isDraft "v${NEW_PACKAGE_VERSION}")" == "true" ]]; then
+        gh release delete "v${NEW_PACKAGE_VERSION}"
+    fi
+}
+
+function getReleaseUrl() {
+    gh release view --json url --jq .url "v${NEW_PACKAGE_VERSION}"
+}
+
 function cleanup() {
     debug Cleaning up
+
     git checkout --quiet -- "${REPO_DIR}/CHANGELOG.md"
     git checkout --quiet "${SOURCE_BRANCH}" || true
     git branch --quiet -D "${RELEASE_BRANCH}" || true
@@ -214,6 +274,7 @@ configureFinal
 
 if [ -n "$CLEANUP" ]; then
     cleanup
+    deleteRelease
 fi
 
 validate
@@ -221,6 +282,20 @@ generateChangelog
 updateVersionGo
 createReleasePR
 
+PR_URL="$(getPrURL)"
+
+success "New release branch ${RELEASE_BRANCH} for ${NEW_PACKAGE_VERSION} prepared successfully."
+success "Release PR: ${PR_URL}"
+success "Please review it, merge and create a release in Github."
+
+waitForMerge
+
+success "Release branch ${RELEASE_BRANCH} for ${NEW_PACKAGE_VERSION} is merged. Preparing the release."
+createRelease
+
 cleanup
 
-success "Pull Request for a new release {$NEW_PACKAGE_VERSION} created successfully."
+sleep 5 # wait for the release to be finalized
+
+success "Release ${NEW_PACKAGE_VERSION} created successfully."
+success "Accept it at: $(getReleaseUrl)"
