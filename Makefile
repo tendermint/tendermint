@@ -178,7 +178,7 @@ go.sum: go.mod
 
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
-	go get github.com/RobotsAndPencils/goviz
+	go install github.com/RobotsAndPencils/goviz@latest
 	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 3 | dot -Tpng -o dependency-graph.png
 .PHONY: draw_deps
 

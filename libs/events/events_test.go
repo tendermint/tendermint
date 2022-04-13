@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
@@ -18,9 +16,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
+	evsw := NewEventSwitch()
 
 	messages := make(chan EventData)
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
@@ -45,9 +41,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
+	evsw := NewEventSwitch()
 
 	doneSum := make(chan uint64)
 	doneSending := make(chan uint64)
@@ -81,9 +75,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
+	evsw := NewEventSwitch()
 
 	doneSum := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -143,8 +135,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-	evsw := NewEventSwitch(logger)
+	evsw := NewEventSwitch()
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
@@ -235,9 +226,8 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 func TestManageListenersAsync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.NewTestingLogger(t)
 
-	evsw := NewEventSwitch(logger)
+	evsw := NewEventSwitch()
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)

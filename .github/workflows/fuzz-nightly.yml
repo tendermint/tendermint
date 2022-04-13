@@ -13,7 +13,7 @@ jobs:
   fuzz-nightly-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: '1.17'
 
@@ -21,7 +21,7 @@ jobs:
 
       - name: Install go-fuzz
         working-directory: test/fuzz
-        run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
+        run: go install github.com/dvyukov/go-fuzz/go-fuzz@latest github.com/dvyukov/go-fuzz/go-fuzz-build@latest
 
       - name: Fuzz mempool
         working-directory: test/fuzz
@@ -39,14 +39,14 @@ jobs:
         continue-on-error: true
 
       - name: Archive crashers
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: crashers
           path: test/fuzz/**/crashers
           retention-days: 3
 
       - name: Archive suppressions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: suppressions
           path: test/fuzz/**/suppressions
