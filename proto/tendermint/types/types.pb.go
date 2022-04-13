@@ -479,8 +479,8 @@ type Vote struct {
 	// Vote extension provided by the application. Only valid for precommit
 	// messages.
 	Extension []byte `protobuf:"bytes,9,opt,name=extension,proto3" json:"extension,omitempty"`
-	// Signature by the validator if they participated in consensus for the
-	// associated block.
+	// Vote extension signature by the validator if they participated in
+	// consensus for the associated block.
 	ExtensionSignature []byte `protobuf:"bytes,10,opt,name=extension_signature,json=extensionSignature,proto3" json:"extension_signature,omitempty"`
 }
 

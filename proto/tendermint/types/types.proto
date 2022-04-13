@@ -118,8 +118,8 @@ message Vote {
   // Vote extension provided by the application. Only valid for precommit
   // messages.
   bytes extension = 9;
-  // Signature by the validator if they participated in consensus for the
-  // associated block.
+  // Vote extension signature by the validator if they participated in
+  // consensus for the associated block.
   bytes extension_signature = 10;
 }
 
