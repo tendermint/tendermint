@@ -40,30 +40,36 @@ without loss of generality.
 
 ### Basic Definitions
 
-TODO: Precommit votes, precommit messages
-
-TODO: Re-read "commits do not contain nil votes", catchup messages
-
-TODO: Mention somewhere that statesync is not really relevant for this problem... only for the first block after statesync'ing.
-
-### Problem Description
-
-In the version of [ABCI](https://github.com/tendermint/spec/blob/4fb99af/spec/abci/README.md) present up to
-v0.35, for any height *h*, a validator *v* MUST have the decided block *b* and a *commit* for height *h* in
-order to decide at height *h*, and propose at height *h+1* in the rounds of *h+1* where *v* is a proposer.
 This *commit* consists of more than *2n/3* precommit votes voting for *b*, where *n* is the size of the
 validator set at height *h*.
 
-In [ABCI++](https://github.com/tendermint/tendermint/blob/4743a7ad0/spec/abci%2B%2B/README.md),
-the information that a validator *v* MUST have to be able to decide in height *h* is the same:
-the decided block *b* and a *commit* for height *h*. In contrast, *v* MUST have *b* and an
-*extended commit* in order to propose at height *h+1*.
+
 The *extended commit* is a *commit* where a mandatory vote extension is attached to every
 non-`nil` vote in the *commit*. This mandatory vote extension can be empty, but needs to be signed.
 The signing is carried out with the sending validator's private key (the same as the vote it extends),
 but is independent from the vote, so a vote can be separated from its extension.
 The reason for vote extensions to be mandatory is that, otherwise, a (malicious) node can omit a vote
 extension while still providing/forwarding/sending the corresponding precommit vote.
+
+TODO: Precommit votes, precommit messages
+
+TODO: Mention somewhere that statesync is not really relevant for this problem... only for the first block after statesync'ing.
+
+TODO: Re-read. Bear in mind: "precomit vote" vs "precommit message"
+
+TODO: Re-read "commits do not contain nil votes", catchup messages
+
+### Problem Description
+
+In the version of [ABCI](https://github.com/tendermint/spec/blob/4fb99af/spec/abci/README.md) present up to
+Tendermint v0.35, for any height *h*, a validator *v* MUST have the decided block *b* and a commit for
+height *h* in order to decide at height *h*. Then, *v* just needs a commit to propose at height
+*h+1*, in the rounds of *h+1* where *v* is a proposer.
+
+In [ABCI++](https://github.com/tendermint/tendermint/blob/4743a7ad0/spec/abci%2B%2B/README.md),
+the information that a validator *v* MUST have to be able to decide in *h* does not change with
+respect to pre-existing ABCI: the decided block *b* and a commit for *h*.
+In contrast, for proposing in *h+1*, a commit is not enough: *v* MUST now have an extended commit.
 
 When a validator takes an active part in consensus at height *h*, it has all the data it needs in memory,
 in its consensus state, to decide on *h* and propose in *h+1*. Things are not so easy in the cases when
@@ -222,12 +228,15 @@ These are the solutions proposed in discussions leading up to this RFC.
     to be canonicalized in the next block.
     With this solution, the current mechanisms implemented both in the blocksync and consensus reactors
     would still be correct, as all the information a node needs to catch up, and to start proposing when
-    it considers it is caught up, can now be recovered from past blocks.
+    it considers itself as caught-up, can now be recovered from past blocks.
 
     This solution has two main drawbacks.
 
-    - It changes the block format, in particular, the way light blocks are verified; thus breaking
-      backwards compatiblity in features such as light clients and IBC (the latter relying on the former).
+    - As the block format changes, upgrading a chain requires a hard fork. Furthermore,
+      all existing light client implementations will stop working until they are upgraded to deal with
+      the new format (e.g., how certain hashes calculated and/or how certain signatures are checked).
+      For instance, let us consider IBC, which relies on light clients. An IBC connection between
+      two chains will be broken if only one chain upgrades.
     - The extra information (i.e., the vote extensions) that is now kept in the blockchain is not really
         needed *at every height* for a late node to catch up.
         - This information is only needed to be able to *propose* at the height the validator considers
@@ -266,54 +275,51 @@ These are the solutions proposed in discussions leading up to this RFC.
     - all validators receive the *catch-up* message from *m*, decide on height *h*, and proceed to
       height *h+1*.
 
-    At this point, *all* validators have advanced to *h+1* beleiving they are late, and so, expecting
-    the *supposed* leading majority of validators to propose for *h+1*. As a result, the blockhain progress
-    grinds to a halt. Furthermore, if the malicious node decides to *disappear* (together with the
-    precommit messages), we have a situation we cannot recover from if the *p2p* layer is not able to,
-    eventually, relay more than *2n/3* precommit messages sent originally for height *h*, round *r*.
+    At this point, *all* validators have advanced to *h+1* believing they are late, and so, expecting
+    the *hypothetical* leading majority of validators to propose for *h+1*. As a result, the
+    blockhain progress grinds to a halt.
+    A (rather complex) ad-hoc mechanism would need to be carried out by node operators to roll
+    back all validators to the precommit step of height *h*, round *r*.
 
 - **3.** *Require extended commits to be available at switching time*.
 
-    This is more involved than all previous solutions, and builds on an idea used in solution 2:
+    This is more involved than all previous solutions, and builds on an idea used in Solution 2:
     vote extensions are actually not needed for Tendermint to make progress as long as the
     validator is *certain* it is late.
 
     We define two modes. The first is denoted *catch-up mode*, and Tendermint only calls
     `FinalizeBlock` for each height when in this mode. The second is denoted *consensus mode*, in
-    which the validator considers itself up to date and calls `PrepareProposal`, `ExtendVote`, and `VerifyVoteExtension`, before calling `FinalizeBlock`, as prescribed by the
-    [ABCI++ specification](https://github.com/tendermint/tendermint/blob/4743a7ad0/spec/abci%2B%2B/README.md).
+    which the validator considers itself up to date and fully participates in consensus and calls
+    `PrepareProposal`, `ExtendVote`, and `VerifyVoteExtension`, before calling `FinalizeBlock`.
 
     The catch-up mode does not need vote extension information to make progress, as all it needs is the
     decided block at each height to call `FinalizeBlock` and keep the state-machine replication making
-    progress. The consensus mode, on the other hand, does need vote extension information at every height.
+    progress. The consensus mode, on the other hand, does need vote extension information when
+    starting every height.
 
-    When a validator falls behind for whatever reason, e.g. cases (d), (e), (f), and (g) above, it
-    follows the catch-up mode as long as it considers itself out of date. The key safety property we need
-    to provide is the following:
+    When a validator in consensus mode falls behind for whatever reason, e.g. cases (d), (e), (f),
+    and (g) above, we introduce the following key safety property:
 
-    - for every height *h*, a node in catch-up mode does not accept a (gossipped) block for height
-        *h+1* **until**:
-        - it has received and (light-client) verified all the blocks leading up to a new height
-          *h' > h*
+    - for every height *h*, a node refuses to switch to catch-up mode **until**:
+        - it has received and (light-client) verified all the blocks from *h+1* leading up to a
+          new height *h'*, where *h < h'*
         - it has received an extended commit for *h'* and has verified:
             - the precommit vote signatures in the extended commit
             - the vote extension signatures in the extended commit: each is signed with the same
               key as the precommit vote it extends
 
-    This invariant ensures that the node in catch-up mode:
+    If the conditions above hold, namely receiving a valid sequence of blocks in the node's future,
+    starting at *h+1*, and an extended commit corresponding to the last block in the sequence, then
+    the node:
 
-    - cannot be attacked by being fed a block without extensions in a similar way as explained for
-      solution 2.
-    - at any moment, there exists a future height *h'* for which the node holds the (light-client
-      verified) block and *a* corresponding (verified) extended commit.
+    - switches to catch-up mode,
+    - applies all blocks (calling `FinalizeBlock` only), and
+    - switches back to consensus mode using the extended commit to propose in the rounds of
+      *h' + 1* where it is the proposer.
 
-    The second bullet above allows a node to have the *flexibility* to decide when to consider itself
-    as caught up (independently of any network conditions) and switch to consensus mode by using the
-    extended commit for *h'* to build a proposal in the rounds of *h' + 1* where it is the proposer.
-
-    Of course, the node may fall behind later on. In that case, it rejects switching back to consensus
-    mode until it receives a sequence of blocks and an extended commit that abides by the invariant
-    specified above.
+    This mechanism, together with the invariant it uses, ensures that the node cannot be attacked by
+    being fed a block without extensions to make it beleive it is late, in a similar way as explained
+    for Solution 2.
 
 ### Feasibility of the Proposed Solutions
 
