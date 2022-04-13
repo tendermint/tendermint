@@ -52,8 +52,6 @@ sections.
 - [RFC-012: Event Indexing Revisited](./rfc-012-custom-indexing.md)
 - [RFC-013: ABCI++](./rfc-013-abci++.md)
 - [RFC-014: Semantic Versioning](./rfc-014-semantic-versioning.md)
-
-
 - [RFC-017: ABCI++ Vote Extension Propagation](./rfc-017-abci++-vote-extension-propag.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
