@@ -23,7 +23,7 @@ func Test_ResetAll(t *testing.T) {
 	pv, err := privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
 	pv.LastSignState.Height = 10
-	pv.Save()
+	require.NoError(t, pv.Save())
 	require.NoError(t, ResetAll(config.DBDir(), config.PrivValidator.KeyFile(),
 		config.PrivValidator.StateFile(), logger, types.ABCIPubKeyTypeEd25519))
 	require.DirExists(t, config.DBDir())
@@ -47,7 +47,7 @@ func Test_ResetState(t *testing.T) {
 	pv, err := privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
 	require.NoError(t, err)
 	pv.LastSignState.Height = 10
-	pv.Save()
+	require.NoError(t, pv.Save())
 	require.NoError(t, ResetState(config.DBDir(), logger))
 	require.DirExists(t, config.DBDir())
 	require.NoFileExists(t, filepath.Join(config.DBDir(), "block.db"))
