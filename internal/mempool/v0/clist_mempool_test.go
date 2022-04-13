@@ -248,13 +248,13 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	for _, tx := range txs {
 		reqRes := abciclient.NewReqRes(abci.ToRequestCheckTx(abci.RequestCheckTx{Tx: tx}))
 		reqRes.Response = abci.ToResponseCheckTx(abci.ResponseCheckTx{Code: abci.CodeTypeOK})
-		// SetDone allows the ReqRes to process its callback synchronously.
-		// This simulates the Response being ready for the client immediately.
-		reqRes.SetDone()
 
 		mockClient.On("CheckTxAsync", mock.Anything, mock.Anything).Return(reqRes, nil)
 		err := mp.CheckTx(context.Background(), tx, nil, mempool.TxInfo{})
 		require.NoError(t, err)
+
+		// ensure that the callback that the mempool sets on the ReqRes is run.
+		reqRes.InvokeCallback()
 	}
 
 	// Calling update to remove the first transaction from the mempool.
