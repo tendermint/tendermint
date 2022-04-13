@@ -447,13 +447,23 @@ func (app *Application) ExtendVote(req abci.RequestExtendVote) abci.ResponseExte
 // without doing anything about them. In this case, it just makes sure that the
 // vote extension is a well-formed integer value.
 func (app *Application) VerifyVoteExtension(req abci.RequestVerifyVoteExtension) abci.ResponseVerifyVoteExtension {
-	// TODO: Should we reject vote extensions that don't match the next height?
 	// We allow vote extensions to be optional
 	if len(req.VoteExtension) == 0 {
 		return abci.ResponseVerifyVoteExtension{
 			Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 		}
 	}
+	if req.Height != int64(app.state.Height)+1 {
+		app.logger.Error(
+			"got request to verify a vote extension at an unexpected height",
+			"requestHeight", req.Height,
+			"appHeight", app.state.Height,
+		)
+		return abci.ResponseVerifyVoteExtension{
+			Status: abci.ResponseVerifyVoteExtension_REJECT,
+		}
+	}
+
 	num, err := parseVoteExtension(req.VoteExtension)
 	if err != nil {
 		app.logger.Error("failed to verify vote extension", "req", req, "err", err)
