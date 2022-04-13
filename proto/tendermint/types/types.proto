@@ -112,11 +112,14 @@ message Vote {
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes validator_address = 6;
   int32 validator_index   = 7;
-  // Signature by the validator if they participated in consensus for the associated block.
+  // Vote signature by the validator if they participated in consensus for the
+  // associated block.
   bytes signature = 8;
-  // Vote extension provided by the application. Only valid for precommit messages.
+  // Vote extension provided by the application. Only valid for precommit
+  // messages.
   bytes extension = 9;
-  // Signature by the validator if they participated in consensus for the associated block.
+  // Signature by the validator if they participated in consensus for the
+  // associated block.
   bytes extension_signature = 10;
 }
 

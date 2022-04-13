@@ -473,11 +473,14 @@ type Vote struct {
 	Timestamp        time.Time     `protobuf:"bytes,5,opt,name=timestamp,proto3,stdtime" json:"timestamp"`
 	ValidatorAddress []byte        `protobuf:"bytes,6,opt,name=validator_address,json=validatorAddress,proto3" json:"validator_address,omitempty"`
 	ValidatorIndex   int32         `protobuf:"varint,7,opt,name=validator_index,json=validatorIndex,proto3" json:"validator_index,omitempty"`
-	// Signature by the validator if they participated in consensus for the associated block.
+	// Vote signature by the validator if they participated in consensus for the
+	// associated block.
 	Signature []byte `protobuf:"bytes,8,opt,name=signature,proto3" json:"signature,omitempty"`
-	// Vote extension provided by the application. Only valid for precommit messages.
+	// Vote extension provided by the application. Only valid for precommit
+	// messages.
 	Extension []byte `protobuf:"bytes,9,opt,name=extension,proto3" json:"extension,omitempty"`
-	// Signature by the validator if they participated in consensus for the associated block.
+	// Signature by the validator if they participated in consensus for the
+	// associated block.
 	ExtensionSignature []byte `protobuf:"bytes,10,opt,name=extension_signature,json=extensionSignature,proto3" json:"extension_signature,omitempty"`
 }
 
