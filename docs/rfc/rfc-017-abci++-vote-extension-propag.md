@@ -218,10 +218,12 @@ These are the solutions proposed in discussions leading up to this RFC.
     - It changes the blockchain format, in particular, the way light blocks are verified; thus breaking
       backwards compatiblity in features such as light clients and IBC (the latter relying on the former).
     - The extra information (i.e., the vote extensions) that is now kept in the blockchain is not really
-      needed *at every height* for a late node to catch up. This information is only needed to be able
-      to *propose* at the height the validator considers itself as caught-up. If a validator is indeed
-      late for height *h*, it is useless (although correct) for it to call `PrepareProposal`, or
-      `ExtendVote`, since the block is already decided.
+        needed *at every height* for a late node to catch up.
+        - This information is only needed to be able to *propose* at the height the validator considers
+          itself as caught-up. If a validator is indeed late for height *h*, it is useless (although
+          correct) for it to call `PrepareProposal`, or `ExtendVote`, since the block is already decided.
+        - Moreover, some uses cases require pretty sizeable vote extensions, which would result in an
+          important waste of space in the blockchain.
 
 - **2.** *Skip* propose *step in Tendermint algorithm*.
 
@@ -358,9 +360,9 @@ in out-of-date heights.
 
 The base implementation (for which an experimental patch exists) consists in the conservative
 approach of persisting in the block store *all* extended commits for which we have also stored
-the full block.
-Note that this does not apply to light blocks that might have been saved in the block store as a
-result of running statesync at startup.
+the full block. Currently, when statesync is run at startup, saves light blocks (incomplete block
+containing the header and commit, but, e.g., no transactions). This implementation does not seek
+to receive or persist those light blocks as they would not be of any use.
 
 Then, we modify the blocksync reactor so that peers *always* send requested full blocks together
 with the corresponding extended commit in the `BlockResponse` messages. This guarantees that the
