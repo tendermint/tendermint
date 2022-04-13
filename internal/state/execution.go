@@ -48,8 +48,7 @@ type BlockExecutor struct {
 	cache map[string]struct{}
 }
 
-// NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
-// Call SetEventBus to provide one.
+// NewBlockExecutor returns a new BlockExecutor with the passed-in EventBus.
 func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
@@ -107,12 +106,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		abci.RequestPrepareProposal{
-			Hash:                block.Hash(),
-			Header:              *block.Header.ToProto(),
+			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.ToABCI(),
-			MaxTxBytes:          maxDataBytes,
+			Height:              block.Height,
+			Time:                block.Time,
+			NextValidatorsHash:  block.NextValidatorsHash,
+			ProposerAddress:     block.ProposerAddress,
 		},
 	)
 	if err != nil {
@@ -148,10 +149,13 @@ func (blockExec *BlockExecutor) ProcessProposal(
 ) (bool, error) {
 	req := abci.RequestProcessProposal{
 		Hash:                block.Header.Hash(),
-		Header:              *block.Header.ToProto(),
+		Height:              block.Header.Height,
+		Time:                block.Header.Time,
 		Txs:                 block.Data.Txs.ToSliceOfBytes(),
 		ProposedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 		ByzantineValidators: block.Evidence.ToABCI(),
+		ProposerAddress:     block.ProposerAddress,
+		NextValidatorsHash:  block.NextValidatorsHash,
 	}
 
 	resp, err := blockExec.appClient.ProcessProposal(ctx, req)
@@ -204,15 +208,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrInvalidBlock(err)
 	}
 	startTime := time.Now().UnixNano()
-	pbh := block.Header.ToProto()
 	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
-			Header:              *pbh,
+			Height:              block.Header.Height,
+			Time:                block.Header.Time,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
+			ProposerAddress:     block.ProposerAddress,
+			NextValidatorsHash:  block.NextValidatorsHash,
 		},
 	)
 	endTime := time.Now().UnixNano()
@@ -601,12 +607,12 @@ func ExecCommitBlock(
 	initialHeight int64,
 	s State,
 ) ([]byte, error) {
-	pbh := block.Header.ToProto()
 	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
 		abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
-			Header:              *pbh,
+			Height:              block.Height,
+			Time:                block.Time,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),

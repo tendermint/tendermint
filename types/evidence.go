@@ -23,13 +23,13 @@ import (
 // Evidence represents any provable malicious activity by a validator.
 // Verification logic for each evidence is part of the evidence module.
 type Evidence interface {
-	ABCI() []abci.Evidence // forms individual evidence to be sent to the application
-	Bytes() []byte         // bytes which comprise the evidence
-	Hash() []byte          // hash of the evidence
-	Height() int64         // height of the infraction
-	String() string        // string format of the evidence
-	Time() time.Time       // time of the infraction
-	ValidateBasic() error  // basic consistency check
+	ABCI() []abci.Misbehavior // forms individual evidence to be sent to the application
+	Bytes() []byte            // bytes which comprise the evidence
+	Hash() []byte             // hash of the evidence
+	Height() int64            // height of the infraction
+	String() string           // string format of the evidence
+	Time() time.Time          // time of the infraction
+	ValidateBasic() error     // basic consistency check
 
 	// Implementations must support tagged encoding in JSON.
 	jsontypes.Tagged
@@ -87,9 +87,9 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 }
 
 // ABCI returns the application relevant representation of the evidence
-func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
-	return []abci.Evidence{{
-		Type: abci.EvidenceType_DUPLICATE_VOTE,
+func (dve *DuplicateVoteEvidence) ABCI() []abci.Misbehavior {
+	return []abci.Misbehavior{{
+		Type: abci.MisbehaviorType_DUPLICATE_VOTE,
 		Validator: abci.Validator{
 			Address: dve.VoteA.ValidatorAddress,
 			Power:   dve.ValidatorPower,
@@ -257,12 +257,12 @@ func (*LightClientAttackEvidence) TypeTag() string { return "tendermint/LightCli
 
 var _ Evidence = &LightClientAttackEvidence{}
 
-// ABCI forms an array of abci evidence for each byzantine validator
-func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
-	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
+// ABCI forms an array of abci.Misbehavior for each byzantine validator
+func (l *LightClientAttackEvidence) ABCI() []abci.Misbehavior {
+	abciEv := make([]abci.Misbehavior, len(l.ByzantineValidators))
 	for idx, val := range l.ByzantineValidators {
-		abciEv[idx] = abci.Evidence{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+		abciEv[idx] = abci.Misbehavior{
+			Type:             abci.MisbehaviorType_LIGHT_CLIENT_ATTACK,
 			Validator:        TM2PB.Validator(val),
 			Height:           l.Height(),
 			Time:             l.Timestamp,
@@ -683,8 +683,8 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 
 // ToABCI converts the evidence list to a slice of the ABCI protobuf messages
 // for use when communicating the evidence to an application.
-func (evl EvidenceList) ToABCI() []abci.Evidence {
-	var el []abci.Evidence
+func (evl EvidenceList) ToABCI() []abci.Misbehavior {
+	var el []abci.Misbehavior
 	for _, e := range evl {
 		el = append(el, e.ABCI()...)
 	}

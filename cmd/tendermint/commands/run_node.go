@@ -105,7 +105,7 @@ func NewRunNodeCmd(nodeProvider cfg.ServiceProvider, conf *cfg.Config, logger lo
 				return err
 			}
 
-			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+			ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer cancel()
 
 			n, err := nodeProvider(ctx, conf, logger)
