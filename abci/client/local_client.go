@@ -327,12 +327,13 @@ func (app *localClient) ApplySnapshotChunkSync(
 
 func (app *localClient) callback(req *types.Request, res *types.Response) *ReqRes {
 	app.Callback(req, res)
-	return newLocalReqRes(req, res)
+	rr := newLocalReqRes(req, res)
+	rr.callbackInvoked = true
+	return rr
 }
 
 func newLocalReqRes(req *types.Request, res *types.Response) *ReqRes {
 	reqRes := NewReqRes(req)
 	reqRes.Response = res
-	reqRes.SetDone()
 	return reqRes
 }
