@@ -128,17 +128,17 @@ upgrading consensus parameters.\
 
 ### CLI Changes
 
-The functionality around resetting a node has been extended to make it safer. The CLI
-now has four `reset` subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`
-in replacement of the previous `unsafe-reset-all`.
+The functionality around resetting a node has been extended to make it safer. The
+`unsafe-reset-all` command has been replaced by a `reset` command with four
+subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
 
-- `tendermint reset blockchain`: clears a node of all blocks, tendermint state, evidence,
-  and indexed transactions. NOTE: this won't affect application state which will need
-  to be separately reset. Please look into `tendermint rollback` in the event that you
-  need to rollback the last state due to application non-determinisim.
-- `tendermint reset peers`: clears the peer store which persist information on peers used
-  by the networking layer. This could be important when clearing stale addresses or switching
-  to using a defined set of peers.
+- `tendermint reset blockchain`: Clears a node of all blocks, consensus state, evidence,
+  and indexed transactions. NOTE: This command does not reset application state.
+  If you need to rollback the last application state (to recover from application
+  nondeterminism), see instead the `tendermint rollback` command.
+- `tendermint reset peers`: Clears the peer store, which persists information on peers used
+  by the networking layer. This can be used to get rid of stale addresses or to switch
+  to a predefined set of static peers.
 - `tendermint reset unsafe-signer`: Resets the watermark level of the PrivVal File signer
   allowing it to sign votes from the genesis height. This should only be used in testing as
   it can lead to the node double signing.
