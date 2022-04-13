@@ -35,8 +35,7 @@ still needed demonstrate the correctness of the chosen solution.
 
 ## Background
 
-For simplicity in the way sets of validators or votes are expressed in this text, and without loss
-of generality, the remainder of this document assumes that all validators have equal voting power.
+This document assumes that all validators have equal voting power for the sake of simplicity.
 
 ### Problem Description
 
