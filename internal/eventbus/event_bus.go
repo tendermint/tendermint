@@ -51,7 +51,16 @@ func (b *EventBus) NumClientSubscriptions(clientID string) int {
 }
 
 func (b *EventBus) SubscribeWithArgs(ctx context.Context, args tmpubsub.SubscribeArgs) (Subscription, error) {
-	return b.pubsub.SubscribeWithArgs(ctx, args)
+	sub, err := b.pubsub.SubscribeWithArgs(ctx, args)
+	if sub != nil {
+		return sub, err
+	}
+
+	// A nil-valued *tmpubsub.Subscription is still a valid implementation of
+	// Subscription. Internally, interface values are `(concrete-type, value)`.
+	// In this case, it would be `(*tmpubsub.Subscription, nil)`. That will
+	// cause panics, so instead we need to explicitly return nil.
+	return nil, err
 }
 
 func (b *EventBus) Unsubscribe(ctx context.Context, args tmpubsub.UnsubscribeArgs) error {
