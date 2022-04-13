@@ -33,31 +33,46 @@ analize the viability of one of the proposed solutions in the context of Tenderm
 based on reactors. Finally, [Formalization Work](#formalization-work) brifely discusses the work
 still needed demonstrate the correctness of the chosen solution.
 
+The high_level subsections are aimed at readers who are familiar with consensus algorithms, in
+particular with the one described in the Tendermint (white paper), but who are not necessarily
+acquainted with the details of the Tendermint codebase. The other subsections, which go into
+implementation details, are best understood by engineers with deep knowledge of the implementation of
+the blocksync and consensus reactors.
+
 ## Background
+
+### Basic Definitions
 
 This document assumes that all validators have equal voting power for the sake of simplicity. This is done
 without loss of generality.
 
-### Basic Definitions
+There are two types of votes in Tendermint: *prevotes* and *precommits*. Vote can be `nil` or refer to
+a proposed block. This RFC focuses on precommits,
+also known as *precommit votes*. In this document we sometimes call them simply *votes*.
 
-This *commit* consists of more than *2n/3* precommit votes voting for *b*, where *n* is the size of the
-validator set at height *h*.
+Validators send precommit votes to their peer nodes in *precommit messages*. According to the
+[ABCI++ specification](https://github.com/tendermint/tendermint/blob/4743a7ad0/spec/abci%2B%2B/README.md),
+a precommit message MUST also contain a *vote extension*.
+This mandatory vote extension can be empty, but MUST be signed with the same key as the precommit
+vote (i.e., the sending validator's).
+Nevertheless, the vote extension is independent from the vote, so a vote can be separated from its
+extension.
+The reason for vote extensions to be mandatory in precommit messages is that, otherwise, a (malicious)
+node can omit a vote extension while still providing/forwarding/sending the corresponding precommit vote.
 
-
-The *extended commit* is a *commit* where a mandatory vote extension is attached to every
-non-`nil` vote in the *commit*. This mandatory vote extension can be empty, but needs to be signed.
-The signing is carried out with the sending validator's private key (the same as the vote it extends),
-but is independent from the vote, so a vote can be separated from its extension.
-The reason for vote extensions to be mandatory is that, otherwise, a (malicious) node can omit a vote
-extension while still providing/forwarding/sending the corresponding precommit vote.
-
-TODO: Precommit votes, precommit messages
+A *commit* for height *h* consists of more than *2n_h/3* precommit votes voting for a block *b*,
+where *n_h* is the size of the validator set at height *h*. A commit does not contain `nil` precommit
+votes. An *extended commit* is a *commit* where every precommit vote is attached its vote extension.
 
 TODO: Mention somewhere that statesync is not really relevant for this problem... only for the first block after statesync'ing.
 
 TODO: Re-read. Bear in mind: "precomit vote" vs "precommit message"
 
 TODO: Re-read "commits do not contain nil votes", catchup messages
+
+TODO: Solution 2. Add details on reactors?
+
+TODO: State sync to *h*, latest height: *h+1*. What then?
 
 ### Problem Description
 
