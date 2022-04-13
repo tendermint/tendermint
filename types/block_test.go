@@ -572,7 +572,7 @@ func TestCommitToVoteSet(t *testing.T) {
 
 	for i := int32(0); int(i) < len(vals); i++ {
 		vote1 := voteWithoutExtension(voteSet.GetByIndex(i))
-		vote2 := voteWithoutExtension(voteSet2.GetByIndex(i))
+		vote2 := voteSet2.GetByIndex(i)
 		vote3 := commit.GetVote(i)
 
 		vote1bz, err := vote1.ToProto().Marshal()
