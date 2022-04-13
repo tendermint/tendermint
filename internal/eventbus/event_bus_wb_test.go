@@ -20,5 +20,7 @@ func TestEventBusNilSubscription(t *testing.T) {
 	assert.True(t, txsSub == nil)
 
 	// This will panic
-	txsSub.ID()
+	if txsSub != nil {
+		txsSub.ID()
+	}
 }
