@@ -44,6 +44,24 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * The fast sync process as well as the blockchain package and service has all
   been renamed to block sync
 
+* We have added a new, experimental tool to help operators migrate
+  configuration files created by previous versions of Tendermint.
+  To try this tool, run:
+
+  ```shell
+  # Install the tool.
+  go install github.com/tendermint/tendermint/scripts/confix@v0.35.x
+
+  # Run the tool with the old configuration file as input.
+  # Replace the -config argument with your path.
+  confix -config ~/.tendermint/config/config.toml -out updated.toml
+  ```
+
+  This tool should be able to update configurations from v0.34 to v0.35.  We
+  plan to extend it to handle older configuration files in the future. For now,
+  it will report an error (without making any changes) if it does not recognize
+  the version that created the file.
+
 ### Database Key Format Changes
 
 The format of all tendermint on-disk database keys changes in
@@ -113,11 +131,11 @@ To access any of the functionality previously available via the
 `node.Node` type, use the `*local.Local` "RPC" client, that exposes
 the full RPC interface provided as direct function calls. Import the
 `github.com/tendermint/tendermint/rpc/client/local` package and pass
-the node service as in the following: 
+the node service as in the following:
 
 ```go
     node := node.NewDefault() //construct the node object
-    // start and set up the node service 
+    // start and set up the node service
 
     client := local.New(node.(local.NodeService))
     // use client object to interact with the node
@@ -144,10 +162,10 @@ both stacks.
 The P2P library was reimplemented in this release. The new implementation is
 enabled by default in this version of Tendermint. The legacy implementation is still
 included in this version of Tendermint as a backstop to work around unforeseen
-production issues. The new and legacy version are interoperable. If necessary, 
+production issues. The new and legacy version are interoperable. If necessary,
 you can enable the legacy implementation in the server configuration file.
 
-To make use of the legacy P2P implemementation add or update the following field of 
+To make use of the legacy P2P implemementation add or update the following field of
 your server's configuration file under the `[p2p]` section:
 
 ```toml
@@ -172,8 +190,8 @@ in the order in which they were received.
 
 * `priority`: A priority queue of messages.
 
-* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A 
-weighted deficit round robin queue is created per peer. Each queue contains a 
+* `wdrr`: A queue implementing the Weighted Deficit Round Robin algorithm. A
+weighted deficit round robin queue is created per peer. Each queue contains a
 separate 'flow' for each of the channels of communication that exist between any two
 peers. Tendermint maintains a channel per message type between peers. Each WDRR
 queue maintains a shared buffered with a fixed capacity through which messages on different

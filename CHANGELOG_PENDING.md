@@ -22,6 +22,8 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
+- [cli] \#8300 Add a tool to update old config files to the latest version [backport \#8281]. (@creachadair)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
