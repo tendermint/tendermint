@@ -309,9 +309,6 @@ func (s *Server) Wait() { <-s.exited; s.BaseService.Wait() }
 // OnStart implements Service.OnStart by starting the server.
 func (s *Server) OnStart(ctx context.Context) error { s.run(ctx); return nil }
 
-// OnReset implements Service.OnReset. It has no effect for this service.
-func (s *Server) OnReset() error { return nil }
-
 func (s *Server) publish(ctx context.Context, data types.EventData, events []abci.Event) error {
 	s.pubs.RLock()
 	defer s.pubs.RUnlock()
