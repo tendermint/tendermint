@@ -12,7 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: gaurav-nelson/github-action-markdown-link-check@1.0.14
+      - uses: technote-space/get-diff-action@v6.0.1
+        with:
+          PATTERNS: |
+            **/**.md
+      - uses: creachadair/github-action-markdown-link-check@master
         with:
           check-modified-files-only: 'yes'
           config-file: '.md-link-check.json'
+        if: env.GIT_DIFF
