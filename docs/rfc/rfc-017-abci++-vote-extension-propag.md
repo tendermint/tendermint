@@ -153,7 +153,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     progress from other nodes. For each height *h*, this includes the decided block for *h*, and the
     precommit votes also for *deciding h* (which can be extracted from the block at height *h+1*).
     At a given height, say *h_c* a node will consider itself *caught up*, based on the (maybe out of
-    date) information it is getting from other nodes. Then, the node needs to be ready to propose
+    date) information it is getting from its peers. Then, the node needs to be ready to propose
     at height *h_c+1* which entails having received the vote extensions for *h_c*.
 
     As the vote extensions are *not* stored in the blockchain, and it is difficult to have strong
