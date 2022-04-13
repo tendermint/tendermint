@@ -215,7 +215,7 @@ These are the solutions proposed in discussions leading up to this RFC.
 
     This solution has two main drawbacks.
 
-    - It changes the blockchain format, in particular, the way light blocks are verified; thus breaking
+    - It changes the block format, in particular, the way light blocks are verified; thus breaking
       backwards compatiblity in features such as light clients and IBC (the latter relying on the former).
     - The extra information (i.e., the vote extensions) that is now kept in the blockchain is not really
         needed *at every height* for a late node to catch up.
