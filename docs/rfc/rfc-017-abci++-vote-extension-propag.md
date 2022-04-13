@@ -122,7 +122,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     In this case, blockchain progress halts, i.e. surviving full nodes keep increasing rounds
     indefinitely, until some of the crashed validators are able to recover.
     Those validators that recover first will handshake with the Application and recover at the height
-    they crashed, which is still the same the blocked nodes are stuck in, so they don't need to catch up.
+    they crashed, which is still the same the block nodes are stuck in, so they don't need to catch up.
     Further, they had persisted the extended commit for the previous height. Nothing to solve.
 
     For those validators recovering later, we are in case (g) below.
