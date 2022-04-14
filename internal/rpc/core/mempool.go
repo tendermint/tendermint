@@ -37,30 +37,23 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 	err := env.Mempool.CheckTx(
 		ctx.Context(),
 		tx,
-<<<<<<< HEAD
-		func(res *abci.Response) { resCh <- res },
-=======
 		func(res *abci.ResponseCheckTx) {
 			select {
-			case <-ctx.Done():
+			case <-ctx.Context().Done():
 			case resCh <- res:
 			}
 		},
->>>>>>> c45367e22 (rpc: avoid leaking threads (#8328))
 		mempool.TxInfo{},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-<<<<<<< HEAD
-	res := <-resCh
-	r := res.GetCheckTx()
-=======
 	select {
-	case <-ctx.Done():
-		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Err())
-	case r := <-resCh:
+	case <-ctx.Context().Done():
+		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Context().Err())
+	case res := <-resCh:
+		r := res.GetCheckTx()
 		return &coretypes.ResultBroadcastTx{
 			Code:         r.Code,
 			Data:         r.Data,
@@ -70,8 +63,6 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 			Hash:         tx.Hash(),
 		}, nil
 	}
->>>>>>> c45367e22 (rpc: avoid leaking threads (#8328))
-
 }
 
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
@@ -81,56 +72,23 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 	err := env.Mempool.CheckTx(
 		ctx.Context(),
 		tx,
-<<<<<<< HEAD
-		func(res *abci.Response) { resCh <- res },
-=======
 		func(res *abci.ResponseCheckTx) {
 			select {
-			case <-ctx.Done():
+			case <-ctx.Context().Done():
 			case resCh <- res:
 			}
 		},
->>>>>>> c45367e22 (rpc: avoid leaking threads (#8328))
 		mempool.TxInfo{},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-<<<<<<< HEAD
-	r := (<-resCh).GetCheckTx()
-	if r.Code != abci.CodeTypeOK {
-		return &coretypes.ResultBroadcastTxCommit{
-			CheckTx: *r,
-			Hash:    tx.Hash(),
-		}, fmt.Errorf("transaction encountered error (%s)", r.MempoolError)
-	}
-
-	if !indexer.KVSinkEnabled(env.EventSinks) {
-		return &coretypes.ResultBroadcastTxCommit{
-				CheckTx: *r,
-				Hash:    tx.Hash(),
-			},
-			errors.New("cannot wait for commit because kvEventSync is not enabled")
-	}
-
-	startAt := time.Now()
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
-	count := 0
-	for {
-		count++
-		select {
-		case <-ctx.Context().Done():
-			env.Logger.Error("Error on broadcastTxCommit",
-				"duration", time.Since(startAt),
-				"err", err)
-=======
 	select {
-	case <-ctx.Done():
-		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Err())
-	case r := <-resCh:
+	case <-ctx.Context().Done():
+		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Context().Err())
+	case res := <-resCh:
+		r := res.GetCheckTx()
 		if r.Code != abci.CodeTypeOK {
 			return &coretypes.ResultBroadcastTxCommit{
 				CheckTx: *r,
@@ -139,7 +97,6 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 		}
 
 		if !indexer.KVSinkEnabled(env.EventSinks) {
->>>>>>> c45367e22 (rpc: avoid leaking threads (#8328))
 			return &coretypes.ResultBroadcastTxCommit{
 					CheckTx: *r,
 					Hash:    tx.Hash(),
@@ -147,14 +104,6 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 				errors.New("cannot confirm transaction because kvEventSink is not enabled")
 		}
 
-<<<<<<< HEAD
-			return &coretypes.ResultBroadcastTxCommit{
-				CheckTx:   *r,
-				DeliverTx: txres.TxResult,
-				Hash:      tx.Hash(),
-				Height:    txres.Height,
-			}, nil
-=======
 		startAt := time.Now()
 		timer := time.NewTimer(0)
 		defer timer.Stop()
@@ -163,7 +112,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 		for {
 			count++
 			select {
-			case <-ctx.Done():
+			case <-ctx.Context().Done():
 				env.Logger.Error("error on broadcastTxCommit",
 					"duration", time.Since(startAt),
 					"err", err)
@@ -182,13 +131,12 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 				}
 
 				return &coretypes.ResultBroadcastTxCommit{
-					CheckTx:  *r,
-					TxResult: txres.TxResult,
-					Hash:     tx.Hash(),
-					Height:   txres.Height,
+					CheckTx:   *r,
+					DeliverTx: txres.TxResult,
+					Hash:      tx.Hash(),
+					Height:    txres.Height,
 				}, nil
 			}
->>>>>>> c45367e22 (rpc: avoid leaking threads (#8328))
 		}
 	}
 }
