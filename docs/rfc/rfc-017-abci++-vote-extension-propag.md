@@ -305,7 +305,7 @@ These are the solutions proposed in discussions leading up to this RFC.
     We define two modes. The first is denoted *catch-up mode*, and Tendermint only calls
     `FinalizeBlock` for each height when in this mode. The second is denoted *consensus mode*, in
     which the validator considers itself up to date and fully participates in consensus and calls
-    `PrepareProposal`, `ExtendVote`, and `VerifyVoteExtension`, before calling `FinalizeBlock`.
+    `PrepareProposal`/`ProcessProposal`, `ExtendVote`, and `VerifyVoteExtension`, before calling `FinalizeBlock`.
 
     The catch-up mode does not need vote extension information to make progress, as all it needs is the
     decided block at each height to call `FinalizeBlock` and keep the state-machine replication making
