@@ -429,6 +429,11 @@ func (app *Application) ExtendVote(req abci.RequestExtendVote) abci.ResponseExte
 	// We ignore any requests for vote extensions that don't match our expected
 	// next height.
 	if req.Height != int64(app.state.Height)+1 {
+		app.logger.Error(
+			"got unexpected height in ExtendVote request",
+			"expectedHeight", app.state.Height+1,
+			"requestHeight", req.Height,
+		)
 		return abci.ResponseExtendVote{}
 	}
 	ext := make([]byte, binary.MaxVarintLen64)
@@ -455,9 +460,9 @@ func (app *Application) VerifyVoteExtension(req abci.RequestVerifyVoteExtension)
 	}
 	if req.Height != int64(app.state.Height)+1 {
 		app.logger.Error(
-			"got request to verify a vote extension at an unexpected height",
+			"got unexpected height in VerifyVoteExtension request",
+			"expectedHeight", app.state.Height,
 			"requestHeight", req.Height,
-			"appHeight", app.state.Height,
 		)
 		return abci.ResponseVerifyVoteExtension{
 			Status: abci.ResponseVerifyVoteExtension_REJECT,
