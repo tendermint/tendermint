@@ -12,11 +12,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/creachadair/atomicfile"
 	"github.com/creachadair/tomledit"
-	"github.com/creachadair/tomledit/parser"
 	"github.com/creachadair/tomledit/transform"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/config"
@@ -78,6 +76,7 @@ func main() {
 	}
 }
 
+<<<<<<< HEAD
 var plan = transform.Plan{
 	{
 		// Since https://github.com/tendermint/tendermint/pull/5777.
@@ -260,6 +259,8 @@ var plan = transform.Plan{
 	},
 }
 
+=======
+>>>>>>> 69874c205 (confix: convert tx-index.indexer from string to array (#8342))
 // ApplyFixes transforms doc and reports whether it succeeded.
 func ApplyFixes(ctx context.Context, doc *tomledit.Document) error {
 	// Check what version of Tendermint might have created this config file, as
