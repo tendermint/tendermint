@@ -25,15 +25,19 @@ var plan = transform.Plan{
 		T:    transform.SnakeToKebab(),
 	},
 	{
-		// [fastsync]  renamed in https://github.com/tendermint/tendermint/pull/6896.
-		// [blocksync] removed in https://github.com/tendermint/tendermint/pull/7159.
-		Desc: "Remove [fastsync] and [blocksync] sections",
-		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
-			doc.First("fast-sync").Remove()
-			transform.FindTable(doc, "fastsync").Remove()
-			transform.FindTable(doc, "blocksync").Remove()
-			return nil
-		}),
+		// Since https://github.com/tendermint/tendermint/pull/6896.
+		Desc:    "Rename [fastsync] to [blocksync]",
+		T:       transform.Rename(parser.Key{"fastsync"}, parser.Key{"blocksync"}),
+		ErrorOK: true,
+	},
+	{
+		// Since https://github.com/tendermint/tendermint/pull/7159.
+		Desc: "Move top-level fast_sync key to blocksync.enable",
+		T: transform.MoveKey(
+			parser.Key{"fast-sync"},
+			parser.Key{"blocksync"},
+			parser.Key{"enable"},
+		),
 		ErrorOK: true,
 	},
 	{
@@ -47,37 +51,19 @@ var plan = transform.Plan{
 		ErrorOK: true,
 	},
 	{
-		// Since https://github.com/tendermint/tendermint/pull/7121.
-		Desc: "Remove gRPC settings from the [rpc] section",
-		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
-			doc.First("rpc", "grpc-laddr").Remove()
-			doc.First("rpc", "grpc-max-open-connections").Remove()
-			return nil
-		}),
-	},
-	{
-		// Since https://github.com/tendermint/tendermint/pull/8217.
-		Desc: "Remove per-node consensus timeouts (converted to consensus parameters)",
-		T: transform.Remove(
-			parser.Key{"consensus", "skip-timeout-commit"},
-			parser.Key{"consensus", "timeout-commit"},
-			parser.Key{"consensus", "timeout-precommit"},
-			parser.Key{"consensus", "timeout-precommit-delta"},
-			parser.Key{"consensus", "timeout-prevote"},
-			parser.Key{"consensus", "timeout-prevote-delta"},
-			parser.Key{"consensus", "timeout-propose"},
-			parser.Key{"consensus", "timeout-propose-delta"},
-		),
+		// Since https://github.com/tendermint/tendermint/pull/6396.
+		Desc:    "Remove vestigial mempool.wal-dir setting",
+		T:       transform.Remove(parser.Key{"mempool", "wal-dir"}),
 		ErrorOK: true,
 	},
 	{
-		// Removed wal-dir: https://github.com/tendermint/tendermint/pull/6396.
-		// Removed version: https://github.com/tendermint/tendermint/pull/7171.
-		Desc: "Remove vestigial mempool.wal-dir settings",
-		T: transform.Remove(
-			parser.Key{"mempool", "wal-dir"},
-			parser.Key{"mempool", "version"},
-		),
+		// Added in https://github.com/tendermint/tendermint/pull/6466.
+		Desc: `Add mempool.version default to "v1"`,
+		T: transform.EnsureKey(parser.Key{"mempool"}, &parser.KeyValue{
+			Block: parser.Comments{`Mempool version to use`},
+			Name:  parser.Key{"version"},
+			Value: parser.MustValue(`"v1"`),
+		}),
 		ErrorOK: true,
 	},
 	{
@@ -147,6 +133,22 @@ var plan = transform.Plan{
 			},
 			Name:  parser.Key{"use-p2p"},
 			Value: parser.MustValue("false"),
+		}),
+	},
+	{
+		// v1 removed: https://github.com/tendermint/tendermint/pull/5728
+		// v2 deprecated: https://github.com/tendermint/tendermint/pull/6730
+		Desc: `Set blocksync.version to "v0"`,
+		T: transform.Func(func(_ context.Context, doc *tomledit.Document) error {
+			v := doc.First("blocksync", "version")
+			if v == nil {
+				return nil // nothing to do
+			} else if !v.IsMapping() {
+				// This shouldn't happen, but is easier to debug than a panic.
+				return fmt.Errorf("blocksync.version is weird: %v", v)
+			}
+			v.Value.X = parser.MustValue(`"v0"`).X
+			return nil
 		}),
 	},
 	{
