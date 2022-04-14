@@ -198,7 +198,7 @@ var plan = transform.Plan{
 	},
 	{
 		// Since https://github.com/tendermint/tendermint/pull/6411.
-		Desc: "Convert tx.index.indexer from a string to a list of strings",
+		Desc: "Convert tx-index.indexer from a string to a list of strings",
 		T: transform.Func(func(ctx context.Context, doc *tomledit.Document) error {
 			idx := doc.First("tx-index", "indexer")
 			if idx == nil {
