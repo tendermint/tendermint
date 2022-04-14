@@ -39,7 +39,7 @@ func getAllLegacyKeys(db dbm.DB) ([]keyID, error) {
 
 		// make sure it's a key with a legacy format, and skip
 		// all other keys, to make it safe to resume the migration.
-		if !keyIsLegacy(k) {
+		if !checkKeyType(k).isLegacy() {
 			continue
 		}
 
@@ -58,55 +58,123 @@ func getAllLegacyKeys(db dbm.DB) ([]keyID, error) {
 	return out, nil
 }
 
-func keyIsLegacy(key keyID) bool {
-	for _, prefix := range []keyID{
-		// core "store"
-		keyID("consensusParamsKey:"),
-		keyID("abciResponsesKey:"),
-		keyID("validatorsKey:"),
-		keyID("stateKey"),
-		keyID("H:"),
-		keyID("P:"),
-		keyID("C:"),
-		keyID("SC:"),
-		keyID("BH:"),
-		// light
-		keyID("size"),
-		keyID("lb/"),
-		// evidence
-		keyID([]byte{0x00}),
-		keyID([]byte{0x01}),
-		// tx index
-		keyID("tx.height/"),
-		keyID("tx.hash/"),
-	} {
-		if bytes.HasPrefix(key, prefix) {
-			return true
+// keyType is an enumeration for the structural type of a key.
+type keyType int
+
+func (t keyType) isLegacy() bool { return t != nonLegacyKey }
+
+const (
+	nonLegacyKey keyType = iota // non-legacy key (presumed already converted)
+	consensusParamsKey
+	abciResponsesKey
+	validatorsKey
+	stateStoreKey        // state storage record
+	blockMetaKey         // H:
+	blockPartKey         // P:
+	commitKey            // C:
+	seenCommitKey        // SC:
+	blockHashKey         // BH:
+	lightSizeKey         // size
+	lightBlockKey        // lb/
+	evidenceCommittedKey // \x00
+	evidencePendingKey   // \x01
+	txHeightKey          // tx.height/... (special case)
+	abciEventKey         // name/value/height/index
+	txHashKey            // 32-byte transaction hash (unprefixed)
+)
+
+var prefixes = []struct {
+	prefix []byte
+	ktype  keyType
+}{
+	{[]byte("consensusParamsKey:"), consensusParamsKey},
+	{[]byte("abciResponsesKey:"), abciResponsesKey},
+	{[]byte("validatorsKey:"), validatorsKey},
+	{[]byte("stateKey"), stateStoreKey},
+	{[]byte("H:"), blockMetaKey},
+	{[]byte("P:"), blockPartKey},
+	{[]byte("C:"), commitKey},
+	{[]byte("SC:"), seenCommitKey},
+	{[]byte("BH:"), blockHashKey},
+	{[]byte("size"), lightSizeKey},
+	{[]byte("lb/"), lightBlockKey},
+	{[]byte("\x00"), evidenceCommittedKey},
+	{[]byte("\x01"), evidencePendingKey},
+}
+
+// checkKeyType classifies a candidate key based on its structure.
+func checkKeyType(key keyID) keyType {
+	for _, p := range prefixes {
+		if bytes.HasPrefix(key, p.prefix) {
+			return p.ktype
 		}
 	}
 
-	// this means it's a tx index...
-	if bytes.Count(key, []byte("/")) >= 3 {
-		return true
+	// A legacy event key has the form:
+	//
+	//    <name> / <value> / <height> / <index>
+	//
+	// Transaction hashes are stored as a raw binary hash with no prefix.
+	//
+	// Because a hash can contain any byte, it is possible (though unlikely)
+	// that a hash could have the correct form for an event key, in which case
+	// we would translate it incorrectly.  To reduce the likelihood of an
+	// incorrect interpretation, we parse candidate event keys and check for
+	// some structural properties before making a decision.
+	//
+	// Note, though, that nothing prevents event names or values from containing
+	// additional "/" separators, so the parse has to be forgiving.
+	parts := bytes.Split(key, []byte("/"))
+	if len(parts) >= 4 {
+		// Special case for tx.height.
+		if len(parts) == 4 && bytes.Equal(parts[0], []byte("tx.height")) {
+			return txHeightKey
+		}
+
+		// The name cannot be empty, but we don't know where the name ends and
+		// the value begins, so insist that there be something.
+		var n int
+		for _, part := range parts[:len(parts)-2] {
+			n += len(part)
+		}
+		// Check whether the last two fields could be .../height/index.
+		if n > 0 && isDecimal(parts[len(parts)-1]) && isDecimal(parts[len(parts)-2]) {
+			return abciEventKey
+		}
 	}
 
-	return keyIsHash(key)
+	// If we get here, it's not an event key. Treat it as a hash if it is the
+	// right length. Note that it IS possible this could collide with the
+	// translation of some other key (though not a hash, since encoded hashes
+	// will be longer). The chance of that is small, but there is nothing we can
+	// do to detect it.
+	if len(key) == 32 {
+		return txHashKey
+	}
+	return nonLegacyKey
 }
 
-func keyIsHash(key keyID) bool {
-	return len(key) == 32 && !bytes.Contains(key, []byte("/"))
+// isDecimal reports whether buf is a non-empty sequence of Unicode decimal
+// digits.
+func isDecimal(buf []byte) bool {
+	for _, c := range buf {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(buf) != 0
 }
 
 func migrateKey(key keyID) (keyID, error) {
-	switch {
-	case bytes.HasPrefix(key, keyID("H:")):
+	switch checkKeyType(key) {
+	case blockMetaKey:
 		val, err := strconv.Atoi(string(key[2:]))
 		if err != nil {
 			return nil, err
 		}
 
 		return orderedcode.Append(nil, int64(0), int64(val))
-	case bytes.HasPrefix(key, keyID("P:")):
+	case blockPartKey:
 		parts := bytes.Split(key[2:], []byte(":"))
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("block parts key has %d rather than 2 components",
@@ -123,21 +191,21 @@ func migrateKey(key keyID) (keyID, error) {
 		}
 
 		return orderedcode.Append(nil, int64(1), int64(valOne), int64(valTwo))
-	case bytes.HasPrefix(key, keyID("C:")):
+	case commitKey:
 		val, err := strconv.Atoi(string(key[2:]))
 		if err != nil {
 			return nil, err
 		}
 
 		return orderedcode.Append(nil, int64(2), int64(val))
-	case bytes.HasPrefix(key, keyID("SC:")):
+	case seenCommitKey:
 		val, err := strconv.Atoi(string(key[3:]))
 		if err != nil {
 			return nil, err
 		}
 
 		return orderedcode.Append(nil, int64(3), int64(val))
-	case bytes.HasPrefix(key, keyID("BH:")):
+	case blockHashKey:
 		hash := string(key[3:])
 		if len(hash)%2 == 1 {
 			hash = "0" + hash
@@ -148,34 +216,34 @@ func migrateKey(key keyID) (keyID, error) {
 		}
 
 		return orderedcode.Append(nil, int64(4), string(val))
-	case bytes.HasPrefix(key, keyID("validatorsKey:")):
+	case validatorsKey:
 		val, err := strconv.Atoi(string(key[14:]))
 		if err != nil {
 			return nil, err
 		}
 
 		return orderedcode.Append(nil, int64(5), int64(val))
-	case bytes.HasPrefix(key, keyID("consensusParamsKey:")):
+	case consensusParamsKey:
 		val, err := strconv.Atoi(string(key[19:]))
 		if err != nil {
 			return nil, err
 		}
 
 		return orderedcode.Append(nil, int64(6), int64(val))
-	case bytes.HasPrefix(key, keyID("abciResponsesKey:")):
+	case abciResponsesKey:
 		val, err := strconv.Atoi(string(key[17:]))
 		if err != nil {
 			return nil, err
 		}
 
 		return orderedcode.Append(nil, int64(7), int64(val))
-	case bytes.HasPrefix(key, keyID("stateKey")):
+	case stateStoreKey:
 		return orderedcode.Append(nil, int64(8))
-	case bytes.HasPrefix(key, []byte{0x00}): // committed evidence
+	case evidenceCommittedKey:
 		return convertEvidence(key, 9)
-	case bytes.HasPrefix(key, []byte{0x01}): // pending evidence
+	case evidencePendingKey:
 		return convertEvidence(key, 10)
-	case bytes.HasPrefix(key, keyID("lb/")):
+	case lightBlockKey:
 		if len(key) < 24 {
 			return nil, fmt.Errorf("light block evidence %q in invalid format", string(key))
 		}
@@ -186,9 +254,9 @@ func migrateKey(key keyID) (keyID, error) {
 		}
 
 		return orderedcode.Append(nil, int64(11), int64(val))
-	case bytes.HasPrefix(key, keyID("size")):
+	case lightSizeKey:
 		return orderedcode.Append(nil, int64(12))
-	case bytes.HasPrefix(key, keyID("tx.height")):
+	case txHeightKey:
 		parts := bytes.Split(key, []byte("/"))
 		if len(parts) != 4 {
 			return nil, fmt.Errorf("key has %d parts rather than 4", len(parts))
@@ -211,7 +279,7 @@ func migrateKey(key keyID) (keyID, error) {
 		}
 
 		return orderedcode.Append(nil, elems...)
-	case bytes.Count(key, []byte("/")) >= 3: // tx indexer
+	case abciEventKey:
 		parts := bytes.Split(key, []byte("/"))
 
 		elems := make([]interface{}, 0, 4)
@@ -247,7 +315,7 @@ func migrateKey(key keyID) (keyID, error) {
 			elems = append(elems, string(appKey), int64(val), int64(val2))
 		}
 		return orderedcode.Append(nil, elems...)
-	case keyIsHash(key):
+	case txHashKey:
 		return orderedcode.Append(nil, "tx.hash", string(key))
 	default:
 		return nil, fmt.Errorf("key %q is in the wrong format", string(key))
