@@ -12,6 +12,12 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
+const (
+	// maxQueryLength is the maximum length of a query string that will be
+	// accepted. This is just a safety check to avoid outlandish queries.
+	maxQueryLength = 512
+)
+
 // Subscribe for events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
 func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
@@ -21,6 +27,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
 	} else if env.EventBus.NumClientSubscriptions(addr) >= env.Config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
+	} else if len(query) > maxQueryLength {
+		return nil, errors.New("maximum query length exceeded")
 	}
 
 	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)
