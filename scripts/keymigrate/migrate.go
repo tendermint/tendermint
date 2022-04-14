@@ -118,13 +118,12 @@ func checkKeyType(key keyID) keyType {
 	//
 	// Because a hash can contain any byte, it is possible (though unlikely)
 	// that a hash could have the correct form for an event key, in which case
-	// we would translate it incorrectly.
-	// To reduce the likelihood of an incorrect interpretation, we parse
-	// candidate event keys and check for some structural properties before
-	// making a decision.
+	// we would translate it incorrectly.  To reduce the likelihood of an
+	// incorrect interpretation, we parse candidate event keys and check for
+	// some structural properties before making a decision.
 	//
 	// Note, though, that nothing prevents event names or values from containing
-	// additioal "/" separators, so the parse has to be forgiving.
+	// additional "/" separators, so the parse has to be forgiving.
 	parts := bytes.Split(key, []byte("/"))
 	if len(parts) >= 4 {
 		// Special case for tx.height.
