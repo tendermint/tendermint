@@ -76,8 +76,6 @@ type BlockPool struct {
 	mtx sync.RWMutex
 	// block requests
 	requesters map[int64]*bpRequester
-	// block requests to verify blocks against peers
-	// verificationRequesters map[int64]*bpRequester
 
 	height int64 // the lowest key in requesters.
 	// peers
