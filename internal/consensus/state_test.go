@@ -352,8 +352,7 @@ func TestStateFullRound1(t *testing.T) {
 	ensureNewProposal(propCh, height, round)
 	propBlockHash := cs.GetRoundState().ProposalBlock.Hash()
 
-	ensurePrevote(voteCh, height, round) // wait for prevote
-	validatePrevote(t, cs, round, vss[0], propBlockHash)
+	ensurePrevoteMatch(t, voteCh, height, round, propBlockHash)
 
 	ensurePrecommit(voteCh, height, round) // wait for precommit
 
