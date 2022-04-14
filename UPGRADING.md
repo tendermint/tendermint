@@ -126,6 +126,25 @@ lays out the reasoning for the changes as well as [RFC
 009](https://tinyurl.com/rfc009) for a discussion of the complexities of
 upgrading consensus parameters.
 
+### CLI Changes
+
+The functionality around resetting a node has been extended to make it safer. The
+`unsafe-reset-all` command has been replaced by a `reset` command with four
+subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
+
+- `tendermint reset blockchain`: Clears a node of all blocks, consensus state, evidence,
+  and indexed transactions. NOTE: This command does not reset application state.
+  If you need to rollback the last application state (to recover from application
+  nondeterminism), see instead the `tendermint rollback` command.
+- `tendermint reset peers`: Clears the peer store, which persists information on peers used
+  by the networking layer. This can be used to get rid of stale addresses or to switch
+  to a predefined set of static peers.
+- `tendermint reset unsafe-signer`: Resets the watermark level of the PrivVal File signer
+  allowing it to sign votes from the genesis height. This should only be used in testing as
+  it can lead to the node double signing.
+- `tendermint reset unsafe-all`: A summation of the other three commands. This will delete
+  the entire `data` directory which may include application data as well.
+
 ## v0.35
 
 ### ABCI Changes
