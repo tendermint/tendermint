@@ -1,4 +1,8 @@
-## [0.7.1-dev.1] - 2022-04-07
+## [0.7.1] - 2022-04-13
+
+### Build
+
+- Implement full release workflow in the release script (#332) (#345)
 
 ### Bug Fixes
 
