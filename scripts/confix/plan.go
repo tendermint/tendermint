@@ -156,10 +156,8 @@ var plan = transform.Plan{
 			const pvPrefix = "priv-validator-"
 
 			var found []*tomledit.Entry
-			doc.Scan(func(key parser.Key, e *tomledit.Entry) bool {
-				if e.IsSection() && !e.IsGlobal() {
-					return false // no more candidates
-				} else if len(key) == 1 && strings.HasPrefix(key[0], pvPrefix) {
+			doc.Global.Scan(func(key parser.Key, e *tomledit.Entry) bool {
+				if len(key) == 1 && strings.HasPrefix(key[0], pvPrefix) {
 					found = append(found, e)
 				}
 				return true
