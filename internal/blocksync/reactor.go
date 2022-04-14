@@ -244,7 +244,7 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 		if blockCommit != nil {
 			return blockSyncCh.Send(ctx, p2p.Envelope{
 				To:      peerID,
-				Message: &bcproto.BlockResponse{Block: block, Commit: blockCommit},
+				Message: &bcproto.BlockResponse{Block: block},
 			})
 		}
 	}
@@ -285,13 +285,8 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 				r.logger.Error("failed to convert block from proto", "err", err)
 				return err
 			}
-			commit, err := types.CommitFromProto(msg.Commit)
-			if err != nil {
-				r.logger.Error("failed to convert commit from proto", "err", err)
-				return err
-			}
 
-			r.pool.AddBlock(envelope.From, &BlockResponse{block, commit}, block.Size())
+			r.pool.AddBlock(envelope.From, block, block.Size())
 		case *bcproto.StatusRequest:
 			return blockSyncCh.Send(ctx, p2p.Envelope{
 				To: envelope.From,
@@ -533,50 +528,75 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			//
 			// TODO: Uncouple from request routine.
 
-			newBlock := r.pool.PeekBlock()
+			newBlock, verifyBlock := r.pool.PeekTwoBlocks()
 
-			if newBlock == nil {
+			if newBlock == nil || verifyBlock == nil {
 				continue
 			} else {
 				didProcessCh <- struct{}{}
 			}
 
-			if r.lastTrustedBlock == nil && r.initialState.LastBlockHeight != 0 {
-				r.lastTrustedBlock = &BlockResponse{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
-				if r.lastTrustedBlock == nil {
-					panic("Failed to load last trusted block")
-				}
-			}
-			newBlockParts, err2 := newBlock.block.MakePartSet(types.BlockPartSizeBytes)
+			newBlockParts, err2 := newBlock.MakePartSet(types.BlockPartSizeBytes)
 			if err2 != nil {
 				r.logger.Error("failed to make ",
-					"height", newBlock.block.Height,
+					"height", newBlock.Height,
 					"err", err2.Error())
 				return
 			}
 
 			var (
 				newBlockPartSetHeader = newBlockParts.Header()
-				newBlockID            = types.BlockID{Hash: newBlock.block.Hash(), PartSetHeader: newBlockPartSetHeader}
+				newBlockID            = types.BlockID{Hash: newBlock.Hash(), PartSetHeader: newBlockPartSetHeader}
 			)
 
-			if r.lastTrustedBlock != nil && r.lastTrustedBlock.block != nil {
-				if newBlock.block.Height != r.lastTrustedBlock.block.Height+1 {
-					panic("Need last block")
+			// ToDo @jmalicevic
+			// newBlock.last commit - validates r.lastTrustedBlock
+			// if fail - peer dismissed
+			// r.lastTrustedBlock.header. nextValidator = newBlock. validator
+			// validators. validate (newBlock)
+			if r.lastTrustedBlock != nil {
+
+				// If the blockID in LastCommit of NewBlock does not match the trusted block
+				// we can assume NewBlock is not correct
+				if !(newBlock.LastCommit.BlockID.Equals(r.lastTrustedBlock.commit.BlockID)) {
+					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+						NodeID: peerID,
+						Err:    errors.New("invalid block for verification"),
+					}); serr != nil {
+						return
+					}
 				}
 
-				// ToDo @jmalicevic
-				// newBlock.last commit - validates r.lastTrustedBlock
-				// if fail - peer dismissed
-				// r.lastTrustedBlock.header. nextValidator = newBlock. validator
-				// validators. validate (newBlock)
+				// Todo: Verify verifyBlock.LastCommit validators against state.NextValidators
+				// If they do not match, need a new verifyBlock
 
-				err := r.VerifyAdjacent(&types.SignedHeader{Header: &r.lastTrustedBlock.block.Header, Commit: r.lastTrustedBlock.commit}, &types.SignedHeader{Header: &newBlock.block.Header, Commit: newBlock.commit}, state.NextValidators)
+				if err := state.NextValidators.VerifyCommitLight(state.ChainID, newBlockID, newBlock.Height, verifyBlock.LastCommit); err != nil {
+
+					err = fmt.Errorf("invalid verification block, validator hash does not match %w", err)
+					r.logger.Error(
+						err.Error(),
+						"last_commit", verifyBlock.LastCommit,
+						"block_id", newBlockID,
+						"height", r.lastTrustedBlock.block.Height,
+					)
+					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 2)
+					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+						NodeID: peerID,
+						Err:    err,
+					}); serr != nil {
+						return
+					}
+				}
+				// Verify NewBlock usign the validator set obtained after applying the last block
+				// Note: VerifyAdjacent in the LightClient relies on a trusting period which is not applicable here
+				// ToDo: We need witness verification here as well
+				err := r.VerifyAdjacent(&types.SignedHeader{Header: &r.lastTrustedBlock.block.Header, Commit: r.lastTrustedBlock.commit}, &types.SignedHeader{Header: &newBlock.Header, Commit: verifyBlock.LastCommit}, state.NextValidators)
 				if err != nil {
 					err = fmt.Errorf("invalid last commit: %w", err)
 					r.logger.Error(
 						err.Error(),
-						"last_commit", newBlock.block.LastCommit,
+						"last_commit", verifyBlock.LastCommit,
 						"block_id", newBlockID,
 						"height", r.lastTrustedBlock.block.Height,
 					)
@@ -589,38 +609,45 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						return
 					}
 				}
-
 			} else {
+
+				if r.initialState.LastBlockHeight != 0 {
+					r.lastTrustedBlock = &BlockResponse{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
+					if r.lastTrustedBlock == nil {
+						panic("Failed to load last trusted block")
+					}
+				}
 				// chainID := r.initialState.ChainID
 				oldHash := r.initialState.Validators.Hash()
-				if !bytes.Equal(oldHash, newBlock.block.ValidatorsHash) {
+				if !bytes.Equal(oldHash, newBlock.ValidatorsHash) {
 
 					fmt.Println(
 
 						"initial hash ", r.initialState.Validators.Hash(),
-						"new hash ", newBlock.block.ValidatorsHash,
+						"new hash ", newBlock.ValidatorsHash,
 					)
 					return
 				}
-
+				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
 			}
-			r.lastTrustedBlock = newBlock
+			r.lastTrustedBlock.block = newBlock
+			r.lastTrustedBlock.commit = verifyBlock.LastCommit
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
-			r.store.SaveBlock(newBlock.block, newBlockParts, newBlock.commit)
+			r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
 
 			var err error
 
 			// TODO: Same thing for app - but we would need a way to get the hash
 			// without persisting the state.
-			state, err = r.blockExec.ApplyBlock(ctx, state, newBlockID, newBlock.block)
+			state, err = r.blockExec.ApplyBlock(ctx, state, newBlockID, newBlock)
 			if err != nil {
 				// TODO: This is bad, are we zombie?
-				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.block.Height, newBlock.block.Hash(), err))
+				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
 			}
 
-			r.metrics.RecordConsMetrics(newBlock.block)
+			r.metrics.RecordConsMetrics(newBlock)
 
 			blocksSynced++
 

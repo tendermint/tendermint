@@ -208,7 +208,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
-func (pool *BlockPool) PeekBlock() (first *BlockResponse) {
+func (pool *BlockPool) PeekBlock() (first *types.Block) {
 	pool.mtx.RLock()
 	defer pool.mtx.RUnlock()
 
@@ -227,10 +227,10 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block)
 	defer pool.mtx.RUnlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
-		first = r.getBlock().block
+		first = r.getBlock()
 	}
 	if r := pool.requesters[pool.height+1]; r != nil {
-		second = r.getBlock().block
+		second = r.getBlock()
 	}
 	return
 }
@@ -245,10 +245,11 @@ func (pool *BlockPool) PopRequest() {
 		delete(pool.requesters, pool.height)
 		pool.height++
 		pool.lastAdvance = time.Now()
-
 		// the lastSyncRate will be updated every 100 blocks, it uses the adaptive filter
 		// to smooth the block sync rate and the unit represents the number of blocks per second.
-		if (pool.height-pool.startHeight)%100 == 0 {
+		// -1 because the start height is assumed to be 1  @jmalicevic ToDo, verify it is still OK when
+		// starting height is not 1
+		if (pool.height-pool.startHeight-1)%100 == 0 {
 			newSyncRate := 100 / time.Since(pool.lastHundredBlockTimeStamp).Seconds()
 			if pool.lastSyncRate == 0 {
 				pool.lastSyncRate = newSyncRate
@@ -285,15 +286,15 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
 // TODO: ensure that blocks come in order for each peer.
-func (pool *BlockPool) AddBlock(peerID types.NodeID, blockResponse *BlockResponse, blockSize int) {
+func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, blockSize int) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	requester := pool.requesters[blockResponse.block.Height]
+	requester := pool.requesters[block.Height]
 	if requester == nil {
 		pool.logger.Error("peer sent us a block we didn't expect",
-			"peer", peerID, "curHeight", pool.height, "blockHeight", blockResponse.block.Height)
-		diff := pool.height - blockResponse.block.Height
+			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
+		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
 		}
@@ -303,7 +304,7 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, blockResponse *BlockRespons
 		return
 	}
 
-	if requester.setBlock(blockResponse, peerID) {
+	if requester.setBlock(block, peerID) {
 		atomic.AddInt32(&pool.numPending, -1)
 		peer := pool.peers[peerID]
 		if peer != nil {
@@ -312,7 +313,7 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, blockResponse *BlockRespons
 	} else {
 
 		err := errors.New("requester is different or block already exists")
-		pool.logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", blockResponse.block.Height)
+		pool.logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
 		pool.sendError(err, peerID)
 
 	}
@@ -582,7 +583,7 @@ type bpRequester struct {
 
 	mtx    sync.Mutex
 	peerID types.NodeID
-	block  *BlockResponse //*types.Block
+	block  *types.Block //*types.Block
 
 }
 
@@ -609,7 +610,7 @@ func (bpr *bpRequester) OnStart(ctx context.Context) error {
 func (*bpRequester) OnStop() {}
 
 // Returns true if the peer matches and block doesn't already exist.
-func (bpr *bpRequester) setBlock(block *BlockResponse, peerID types.NodeID) bool {
+func (bpr *bpRequester) setBlock(block *types.Block, peerID types.NodeID) bool {
 	bpr.mtx.Lock()
 	if bpr.block != nil || bpr.peerID != peerID {
 		bpr.mtx.Unlock()
@@ -625,7 +626,7 @@ func (bpr *bpRequester) setBlock(block *BlockResponse, peerID types.NodeID) bool
 	return true
 }
 
-func (bpr *bpRequester) getBlock() *BlockResponse {
+func (bpr *bpRequester) getBlock() *types.Block {
 	bpr.mtx.Lock()
 	defer bpr.mtx.Unlock()
 	return bpr.block

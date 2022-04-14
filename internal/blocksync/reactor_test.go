@@ -275,6 +275,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	require.Eventually(
 		t,
 		func() bool {
+			//t.Logf("%d %d %s", rts.reactors[rts.nodes[1]].pool.height, rts.reactors[rts.nodes[0]].pool.height, rts.reactors[rts.nodes[1]].GetRemainingSyncTime())
 			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
 				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001
 		},
@@ -315,7 +316,10 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	secondaryPool := rts.reactors[rts.nodes[1]].pool
 	require.Eventually(
 		t,
-		func() bool { return secondaryPool.MaxPeerHeight() > 0 && secondaryPool.IsCaughtUp() },
+		func() bool {
+			t.Logf("%d %d", secondaryPool.MaxPeerHeight(), secondaryPool.height)
+			return secondaryPool.MaxPeerHeight() > 0 && secondaryPool.IsCaughtUp()
+		},
 		10*time.Second,
 		10*time.Millisecond,
 		"expected node to be fully synced",
