@@ -2191,6 +2191,10 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
 	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(ctx, t, cs1, addr)
 
 	startTestRound(ctx, cs1, height, round)
 	ensureNewRound(t, newRoundCh, height, round)
@@ -2208,14 +2212,10 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 		signAddPrecommitWithExtension(ctx, t, cs1, config.ChainID(), blockID, voteExtensions[i+1], vs)
 	}
 
-	pv1, err := cs1.privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
-	addr := pv1.Address()
-	voteCh := subscribeToVoter(ctx, t, cs1, addr, tmproto.PrecommitType)
+	ensurePrevote(t, voteCh, height, round)
 
 	// ensure that the height is committed.
-	ensurePrecommit(t, voteCh, height, round)
-	validatePrecommit(ctx, t, cs1, round, round, vss[0], blockID.Hash, blockID.Hash)
+	ensurePrecommitMatch(t, voteCh, height, round, blockID.Hash)
 	incrementHeight(vss[1:]...)
 
 	height++

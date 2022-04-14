@@ -350,20 +350,19 @@ func validatePrecommit(
 		require.True(t, bytes.Equal(vote.BlockID.Hash, votedBlockHash), "Expected precommit to be for proposal block")
 	}
 
-	cs.mtx.RLock()
-	defer cs.mtx.RUnlock()
+	rs := cs.GetRoundState()
 	if lockedBlockHash == nil {
-		require.False(t, cs.LockedRound != lockRound || cs.LockedBlock != nil,
+		require.False(t, rs.LockedRound != lockRound || rs.LockedBlock != nil,
 			"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
 			lockRound,
-			cs.LockedRound,
-			cs.LockedBlock)
+			rs.LockedRound,
+			rs.LockedBlock)
 	} else {
-		require.False(t, cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash),
+		require.False(t, rs.LockedRound != lockRound || !bytes.Equal(rs.LockedBlock.Hash(), lockedBlockHash),
 			"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
 			lockRound,
-			cs.LockedRound,
-			cs.LockedBlock.Hash(),
+			rs.LockedRound,
+			rs.LockedBlock.Hash(),
 			lockedBlockHash)
 	}
 }
@@ -380,7 +379,7 @@ func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte,
 		vt[t] = struct{}{}
 	}
 
-	ch := make(chan tmpubsub.Message)
+	ch := make(chan tmpubsub.Message, 1)
 	if err := cs.eventBus.Observe(ctx, func(msg tmpubsub.Message) error {
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
