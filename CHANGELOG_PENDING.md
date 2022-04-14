@@ -29,3 +29,4 @@ Special thanks to external contributors on this release:
 ### BUG FIXES
 
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
+- [cli] \#8352 keymigrat: ensure transaction hash keys are correctly translated. (@creachadair)
