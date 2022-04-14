@@ -200,7 +200,7 @@ var plan = transform.Plan{
 		T: transform.Func(func(ctx context.Context, doc *tomledit.Document) error {
 			idx := doc.First("tx-index", "indexer")
 			if idx == nil {
-				// No indexer setting: Default to ["null"] per #8222.
+				// No previous indexer setting: Default to ["null"] per #8222.
 				return transform.EnsureKey(parser.Key{"tx-index"}, &parser.KeyValue{
 					Block: parser.Comments{"The backend database list to back the indexer."},
 					Name:  parser.Key{"indexer"},
