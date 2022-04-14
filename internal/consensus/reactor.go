@@ -211,13 +211,14 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	go r.peerStatsRoutine(ctx, peerUpdates)
 
 	r.subscribeToBroadcastEvents(chBundle.state)
-	go r.updateRoundStateRoutine()
 
 	if !r.WaitSync() {
 		if err := r.state.Start(ctx); err != nil {
 			return err
 		}
 	}
+
+	go r.updateRoundStateRoutine(ctx)
 
 	go r.processStateCh(ctx, chBundle)
 	go r.processDataCh(ctx, chBundle)
@@ -260,6 +261,15 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
 	r.state.updateToState(ctx, state)
+	if err := r.state.Start(ctx); err != nil {
+		panic(fmt.Sprintf(`failed to start consensus state: %v
+
+conS:
+%+v
+
+conR:
+%+v`, err, r.state, r))
+	}
 
 	r.mtx.Lock()
 	r.waitSync = false
@@ -271,16 +281,6 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	if skipWAL {
 		r.state.doWALCatchup = false
-	}
-
-	if err := r.state.Start(ctx); err != nil {
-		panic(fmt.Sprintf(`failed to start consensus state: %v
-
-conS:
-%+v
-
-conR:
-%+v`, err, r.state, r))
 	}
 
 	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
@@ -408,17 +408,20 @@ func (r *Reactor) sendNewRoundStepMessage(ctx context.Context, peerID types.Node
 	})
 }
 
-func (r *Reactor) updateRoundStateRoutine() {
+func (r *Reactor) updateRoundStateRoutine(ctx context.Context) {
 	t := time.NewTicker(100 * time.Microsecond)
 	defer t.Stop()
-	for range t.C {
-		if !r.IsRunning() {
+
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-t.C:
+			rs := r.state.GetRoundState()
+			r.mtx.Lock()
+			r.rs = rs
+			r.mtx.Unlock()
 		}
-		rs := r.state.GetRoundState()
-		r.mtx.Lock()
-		r.rs = rs
-		r.mtx.Unlock()
 	}
 }
 
@@ -752,9 +755,6 @@ func (r *Reactor) gossipVotesForHeight(
 func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh *p2p.Channel) {
 	logger := r.logger.With("peer", ps.peerID)
 
-	// XXX: simple hack to throttle logs upon sleep
-	logThrottle := 0
-
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -771,13 +771,6 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 
 		rs := r.getRoundState()
 		prs := ps.GetRoundState()
-
-		switch logThrottle {
-		case 1: // first sleep
-			logThrottle = 2
-		case 2: // no more sleep
-			logThrottle = 0
-		}
 
 		// if height matches, then send LastCommit, Prevotes, and Precommits
 		if rs.Height == prs.Height {
@@ -813,20 +806,6 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 			}
 		}
 
-		if logThrottle == 0 {
-			// we sent nothing -- sleep
-			logThrottle = 1
-			logger.Debug(
-				"no votes to send; sleeping",
-				"rs.Height", rs.Height,
-				"prs.Height", prs.Height,
-				"localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV", prs.Prevotes,
-				"localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC", prs.Precommits,
-			)
-		} else if logThrottle == 2 {
-			logThrottle = 1
-		}
-
 		timer.Reset(r.state.config.PeerGossipSleepDuration)
 		select {
 		case <-ctx.Done():
@@ -860,10 +839,10 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, ps *PeerState, stateCh 
 			return
 		}
 
+		// TODO create more reliable copies of these
+		// structures so the following go routines don't race
 		rs := r.getRoundState()
 		prs := ps.GetRoundState()
-		// TODO create more reliable coppies of these
-		// structures so the following go routines don't race
 
 		wg := &sync.WaitGroup{}
 

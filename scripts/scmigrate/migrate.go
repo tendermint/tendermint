@@ -73,8 +73,6 @@ func sortMigrations(scData []toMigrate) {
 	})
 }
 
-func getMigrationsToDelete(in []toMigrate) []toMigrate { return in[1:] }
-
 func getAllSeenCommits(ctx context.Context, db dbm.DB) ([]toMigrate, error) {
 	scKeyPrefix := makeKeyFromPrefix(prefixSeenCommit)
 	iter, err := db.Iterator(
@@ -117,6 +115,34 @@ func getAllSeenCommits(ctx context.Context, db dbm.DB) ([]toMigrate, error) {
 	return scData, nil
 }
 
+func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
+	wantKey := makeKeyFromPrefix(prefixSeenCommit)
+	if bytes.Equal(keep.key, wantKey) {
+		return nil // we already did this conversion
+	}
+
+	// This record's key has already been converted to the "new" format, we just
+	// now need to trim off the tail.
+	val, err := db.Get(keep.key)
+	if err != nil {
+		return err
+	}
+
+	batch := db.NewBatch()
+	if err := batch.Delete(keep.key); err != nil {
+		return err
+	}
+	if err := batch.Set(wantKey, val); err != nil {
+		return err
+	}
+	werr := batch.Write()
+	cerr := batch.Close()
+	if werr != nil {
+		return werr
+	}
+	return cerr
+}
+
 func deleteRecords(ctx context.Context, db dbm.DB, scData []toMigrate) error {
 	// delete all the remaining stale values in a single batch
 	batch := db.NewBatch()
@@ -141,20 +167,29 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 	scData, err := getAllSeenCommits(ctx, db)
 	if err != nil {
 		return fmt.Errorf("sourcing tasks to migrate: %w", err)
+	} else if len(scData) == 0 {
+		return nil // nothing to do
 	}
 
-	// sort earliest->latest commits.
+	// Sort commits in decreasing order of height.
 	sortMigrations(scData)
 
-	// trim the one we want to save:
-	scData = getMigrationsToDelete(scData)
+	// Keep and rename the newest seen commit, delete the rest.
+	// In TM < v0.35 we kept a last-seen commit for each height; in v0.35 we
+	// retain only the latest.
+	keep, remove := scData[0], scData[1:]
 
-	if len(scData) <= 1 {
+	if err := renameRecord(ctx, db, keep); err != nil {
+		return fmt.Errorf("renaming seen commit record: %w", err)
+	}
+
+	if len(remove) == 0 {
 		return nil
 	}
 
-	// write the migration (remove )
-	if err := deleteRecords(ctx, db, scData); err != nil {
+	// Remove any older seen commits. Prior to v0.35, we kept these records for
+	// all heights, but v0.35 keeps only the latest.
+	if err := deleteRecords(ctx, db, remove); err != nil {
 		return fmt.Errorf("writing data: %w", err)
 	}
 

@@ -407,6 +407,13 @@ func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	go r.requestRoutine(ctx, bsCh)
 	go r.poolRoutine(ctx, true, bsCh)
 
+	if err := r.PublishStatus(ctx, types.EventDataBlockSyncStatus{
+		Complete: false,
+		Height:   state.LastBlockHeight,
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 

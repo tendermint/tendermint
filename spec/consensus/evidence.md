@@ -1,7 +1,7 @@
 # Evidence
 
 Evidence is an important component of Tendermint's security model. Whilst the core
-consensus protocol provides correctness gaurantees for state machine replication
+consensus protocol provides correctness guarantees for state machine replication
 that can tolerate less than 1/3 failures, the evidence system looks to detect and
 gossip byzantine faults whose combined power is greater than  or equal to 1/3. It is worth noting that
 the evidence system is designed purely to detect possible attacks, gossip them,
