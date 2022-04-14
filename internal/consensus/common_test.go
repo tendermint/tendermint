@@ -367,29 +367,18 @@ func validatePrecommit(
 	}
 }
 
-// subscribeToVoter allows one to subscribe to vote messages from the validator
-// associated with the given address. If supplied, only the specified vote
-// types will be published via the return channel; if not supplied, all vote
-// types will be published via the return channel.
-func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte, voteTypes ...tmproto.SignedMsgType) <-chan tmpubsub.Message {
+func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
 	t.Helper()
-
-	vt := make(map[tmproto.SignedMsgType]struct{})
-	for _, t := range voteTypes {
-		vt[t] = struct{}{}
-	}
 
 	ch := make(chan tmpubsub.Message, 1)
 	if err := cs.eventBus.Observe(ctx, func(msg tmpubsub.Message) error {
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
 		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
-			if _, wanted := vt[vote.Vote.Type]; len(vt) == 0 || wanted {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case ch <- msg:
-				}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case ch <- msg:
 			}
 		}
 		return nil
