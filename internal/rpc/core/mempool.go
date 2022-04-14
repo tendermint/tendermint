@@ -37,7 +37,7 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 	err := env.Mempool.CheckTx(
 		ctx.Context(),
 		tx,
-		func(res *abci.ResponseCheckTx) {
+		func(res *abci.Response) {
 			select {
 			case <-ctx.Context().Done():
 			case resCh <- res:
@@ -72,7 +72,7 @@ func (env *Environment) BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*
 	err := env.Mempool.CheckTx(
 		ctx.Context(),
 		tx,
-		func(res *abci.ResponseCheckTx) {
+		func(res *abci.Response) {
 			select {
 			case <-ctx.Context().Done():
 			case resCh <- res:
