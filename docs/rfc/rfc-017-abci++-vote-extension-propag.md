@@ -267,7 +267,7 @@ These are the solutions proposed in discussions leading up to this RFC.
     `PrepareProposal`. The main idea behind is that this should only happen when the validator is late
     and, therefore, up-to-date validators have already proposed (and decided) for that height.
     A small variation of this solution is, rather than skipping the *send proposal* step, the validator
-    sends a special *empty* or *bottom* proposal to signal other nodes that it is not ready to propose
+    sends a special *empty* or *bottom* (⊥) proposal to signal other nodes that it is not ready to propose
     at (any round of) the current height.
 
     The appeal of this solution is its simplicity. A possible implementation does not need to extend
