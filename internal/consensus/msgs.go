@@ -222,7 +222,7 @@ func (*VoteMessage) TypeTag() string { return "tendermint/Vote" }
 
 // ValidateBasic performs basic validation.
 func (m *VoteMessage) ValidateBasic() error {
-	return m.Vote.ValidateBasic()
+	return m.Vote.ValidateBasic(true)
 }
 
 // String returns a string representation.
@@ -534,7 +534,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 			Part:   parts,
 		}
 	case *tmcons.Message_Vote:
-		vote, err := types.VoteFromProto(msg.Vote.Vote)
+		vote, err := types.VoteFromProto(msg.Vote.Vote, true)
 		if err != nil {
 			return nil, fmt.Errorf("vote msg to proto error: %w", err)
 		}

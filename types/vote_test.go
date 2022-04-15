@@ -332,6 +332,7 @@ func TestVoteString(t *testing.T) {
 	}
 }
 
+//TODO (Sergio): Maybe add a test case with vote.ValidateBasic(false)?
 func TestVoteValidateBasic(t *testing.T) {
 	privVal := NewMockPV()
 
@@ -363,7 +364,7 @@ func TestVoteValidateBasic(t *testing.T) {
 			vote.Signature = v.Signature
 			require.NoError(t, err)
 			tc.malleateVote(vote)
-			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tc.expectErr, vote.ValidateBasic(true) != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }

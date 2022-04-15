@@ -208,7 +208,9 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 }
 
 // ValidateBasic performs basic validation.
-func (vote *Vote) ValidateBasic() error {
+// Votes within DuplicateVoteEvidence do not contain extensions, so they set mustHaveExt to false
+// otherwise mustHaveExt must be true
+func (vote *Vote) ValidateBasic(mustHaveExt bool) error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
 	}
@@ -250,7 +252,7 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
-	if len(vote.ExtensionSignature) == 0 {
+	if mustHaveExt && vote.Type == tmproto.PrecommitType && len(vote.ExtensionSignature) == 0 {
 		return errors.New("vote extension signature is missing")
 	}
 
@@ -296,7 +298,9 @@ func VotesToProto(votes []*Vote) []*tmproto.Vote {
 
 // FromProto converts a proto generetad type to a handwritten type
 // return type, nil if everything converts safely, otherwise nil, error
-func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
+// Votes within DuplicateVoteEvidence do not contain extensions, so they set mustHaveExt to false
+// otherwise mustHaveExt must be true
+func VoteFromProto(pv *tmproto.Vote, mustHaveExt bool) (*Vote, error) {
 	if pv == nil {
 		return nil, errors.New("nil vote")
 	}
@@ -318,5 +322,5 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	vote.Extension = pv.Extension
 	vote.ExtensionSignature = pv.ExtensionSignature
 
-	return vote, vote.ValidateBasic()
+	return vote, vote.ValidateBasic(mustHaveExt)
 }

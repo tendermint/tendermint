@@ -140,10 +140,10 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
-	if err := dve.VoteA.ValidateBasic(); err != nil {
+	if err := dve.VoteA.ValidateBasic(false); err != nil {
 		return fmt.Errorf("invalid VoteA: %w", err)
 	}
-	if err := dve.VoteB.ValidateBasic(); err != nil {
+	if err := dve.VoteB.ValidateBasic(false); err != nil {
 		return fmt.Errorf("invalid VoteB: %w", err)
 	}
 	// Enforce Votes are lexicographically sorted on blockID
@@ -211,12 +211,12 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, errors.New("nil duplicate vote evidence")
 	}
 
-	vA, err := VoteFromProto(pb.VoteA)
+	vA, err := VoteFromProto(pb.VoteA, false)
 	if err != nil {
 		return nil, err
 	}
 
-	vB, err := VoteFromProto(pb.VoteB)
+	vB, err := VoteFromProto(pb.VoteB, false)
 	if err != nil {
 		return nil, err
 	}
