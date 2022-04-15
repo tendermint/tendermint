@@ -60,11 +60,10 @@ its extension.
 The reason for vote extensions to be mandatory in precommit messages is that, otherwise, a (malicious)
 node can omit a vote extension while still providing/forwarding/sending the corresponding precommit vote.
 
-A *commit* for height *h* consists of more than *2n<sub>h</sub>/3* precommit votes voting for a block
-*b*, where *n<sub>h</sub>* denotes the size of the validator set at height *h*. The validator set at
-height *h* is denoted *valset<sub>h</sub>*. A commit does not
-contain `nil` precommit votes. An *extended commit* is a *commit* where every precommit vote is attached
-its vote extension.
+The validator set at height *h* is denoted *valset<sub>h</sub>*. A *commit* for height *h* consists of more
+than *2n<sub>h</sub>/3* precommit votes voting for a block *b*, where *n<sub>h</sub>* denotes the size of
+*valset<sub>h</sub>*. A commit does not contain `nil` precommit votes. An *extended commit* is a *commit*
+where every precommit vote is attached its vote extension.
 
 TODO: Mention somewhere that statesync is not really relevant for this problem... only for the first block after statesync'ing.
 
@@ -96,7 +95,7 @@ in its consensus state, to decide on *h* and propose in *h+1*. Things are not so
 *v* cannot take part in consensus because it is late (e.g., it falls behind, it crashes
 and recovers, or it just starts after the others). If *v* does not take part, it cannot actively
 gather precommit messages (which include vote extensions) in order to decide.
-Before ABCI++, this wasn't a problem: full nodes are supposed to persist past blocks in the block store,
+Before ABCI++, this was not a problem: full nodes are supposed to persist past blocks in the block store,
 so other nodes would realise that *v* is late and send it the missing decided block at height *h* and
 the corresponding commit (kept in block *h+1*) so that *v* can catch up.
 However, we cannot apply this catch-up technique for ABCI++, as the vote extensions, which are part
@@ -141,7 +140,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     extended commit, the only way that vote extensions needed to start the next height could be lost
     forever would be if all validators crashed and never recovered (e.g. disk corruption).
     Since a *correct* node MUST eventually recover, this violates Tendermint's assumption of more than
-    *2n/3* correct validators.
+    *2n<sub>h</sub>/3* correct validators for every height *h*.
 
     No problem to solve here.
 
@@ -149,7 +148,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
 
     Let us assume the validator set does not change between *h* and *h+1*.
     It is not possible by the nature of the Tendermint algorithm, which requires more
-    than *2n<sub>h</sub>/3* prevote and precommit votes for each height *h* in order to make progress.
+    than *2n<sub>h</sub>/3* precommit votes for some round of height *h* in order to make progress.
     So, only up to *n<sub>h</sub>/3* validators can lag behind.
 
     On the other hand, for the case where there are changes to the validator set between *h* and
@@ -157,16 +156,16 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
 
 - **(d)** *Validator set changes completely between* h *and* h+1.
 
-    If sets *valset<sub>h</sub>* and *valset<sub>h+1</sub>* are disjoint, all full nodes that are
-    validators in *h* could lag behind from *h+1* on, but at least *2n<sub>h</sub>/3* of them should
-    have actively participated in conensus at *h*. So, as of height *h*, only a minority of validators
-    in height *h* can be lagging behind, although they could all lag behind from *h+1* on, as they are no
+    If sets *valset<sub>h</sub>* and *valset<sub>h+1</sub>* are disjoint,
+    more than *2n<sub>h</sub>/3* of validators in height *h* should
+    have actively participated in conensus in *h*. So, as of height *h*, only a minority of validators
+    in *h* can be lagging behind, although they could all lag behind from *h+1* on, as they are no
     longer validators, but only full nodes. This situation falls under the assumptions of case (h) below.
 
     As for validators in *valset<sub>h+1</sub>*, as they were not validators as of height *h*, they
-    could all be lagging behind by that time. However, be the time *h* finishes and *h+1* begins, the
-    chain will halt until at least *2n<sub>h+1</sub>/3* of them have caught up and started consensus
-    at height *h+1*. If set *valset<sub>h+1</sub>* does not change for a while in *h+2* and subsequent
+    could all be lagging behind by that time. However, by the time *h* finishes and *h+1* begins, the
+    chain will halt until more than *2n<sub>h+1</sub>/3* of them have caught up and started consensus
+    at height *h+1*. If set *valset<sub>h+1</sub>* does not change in *h+2* and subsequent
     heights, only up to *2n<sub>h+1</sub>/3* validators will be able to lag behind. Thus, we have
     converted this case into case (h) below.
 
