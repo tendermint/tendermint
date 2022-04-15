@@ -1,19 +1,28 @@
-package secretconnection
+//go:build gofuzz || go1.18
+
+package tests
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"log"
+	"testing"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/libs/async"
 	sc "github.com/tendermint/tendermint/internal/p2p/conn"
 )
 
-func Fuzz(data []byte) int {
+func FuzzP2PSecretConnection(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		fuzz(data)
+	})
+}
+
+func fuzz(data []byte) {
 	if len(data) == 0 {
-		return -1
+		return
 	}
 
 	fooConn, barConn := makeSecretConnPair()
@@ -50,8 +59,6 @@ func Fuzz(data []byte) int {
 	if !bytes.Equal(data, dataRead) {
 		panic("bytes written != read")
 	}
-
-	return 1
 }
 
 type kvstoreConn struct {
