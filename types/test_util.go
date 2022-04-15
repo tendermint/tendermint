@@ -46,13 +46,3 @@ func signAddVote(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet
 	vote.ExtensionSignature = v.ExtensionSignature
 	return voteSet.AddVote(vote)
 }
-
-// Votes constructed from commits don't have extensions, because we don't store
-// the extensions themselves in the commit. This method is used to construct a
-// copy of a vote, but nil its extension and signature.
-func voteWithoutExtension(v *Vote) *Vote {
-	vc := v.Copy()
-	vc.Extension = nil
-	vc.ExtensionSignature = nil
-	return vc
-}

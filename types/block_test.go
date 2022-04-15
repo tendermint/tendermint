@@ -254,6 +254,17 @@ func TestNilDataHashDoesntCrash(t *testing.T) {
 	assert.Equal(t, emptyBytes, []byte(new(Data).Hash()))
 }
 
+//TODO: (sergio) moved from types/block_test.go... remove if test no longer use it
+// Votes constructed from commits don't have extensions, because we don't store
+// the extensions themselves in the commit. This method is used to construct a
+// copy of a vote, but nil its extension and signature.
+func voteWithoutExtension(v *Vote) *Vote {
+	vc := v.Copy()
+	vc.Extension = nil
+	vc.ExtensionSignature = nil
+	return vc
+}
+
 func TestCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
