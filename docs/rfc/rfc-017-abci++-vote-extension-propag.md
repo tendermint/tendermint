@@ -3,6 +3,7 @@
 ## Changelog
 
 - 11-Apr-2022: Initial draft (@sergio-mena).
+- 15-Apr-2022: Addressed initial comments. First complete version (@sergio-mena).
 
 ## Abstract
 
@@ -62,20 +63,14 @@ node can omit a vote extension while still providing/forwarding/sending the corr
 
 The validator set at height *h* is denoted *valset<sub>h</sub>*. A *commit* for height *h* consists of more
 than *2n<sub>h</sub>/3* precommit votes voting for a block *b*, where *n<sub>h</sub>* denotes the size of
-*valset<sub>h</sub>*. A commit does not contain `nil` precommit votes. An *extended commit* is a *commit*
-where every precommit vote is attached its vote extension.
+*valset<sub>h</sub>*. A commit does not contain `nil` precommit votes, and all votes in it refer to the
+same block. An *extended commit* is a *commit* where every precommit vote is attached its vote extension.
 
-TODO: Mention somewhere that statesync is not really relevant for this problem... only for the first block after statesync'ing.
-
-TODO: Re-read. Bear in mind: "precomit vote" vs "precommit message"
-
-TODO: Re-read "commits do not contain nil votes", catchup messages
-
-TODO: Re-read "valsets can change completely"
-
-TODO: Solution 2. Add details on reactors?
-
-TODO: State sync to *h*, latest height: *h+1*. What then?
+> TODO: [From Daniel] Node statesyncs to *h*, but latest height is *h+1*. What then?
+>
+> My thoughts: Can we show that *h+1* will be finalized by up-to-date nodes? I think we can. Else,
+> we probably need to modify statesync to not send Application snapshots that are less than 2 heights
+> away from the current height.
 
 ### Problem Description
 
@@ -160,13 +155,13 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     more than *2n<sub>h</sub>/3* of validators in height *h* should
     have actively participated in conensus in *h*. So, as of height *h*, only a minority of validators
     in *h* can be lagging behind, although they could all lag behind from *h+1* on, as they are no
-    longer validators, but only full nodes. This situation falls under the assumptions of case (h) below.
+    longer validators, only full nodes. This situation falls under the assumptions of case (h) below.
 
     As for validators in *valset<sub>h+1</sub>*, as they were not validators as of height *h*, they
     could all be lagging behind by that time. However, by the time *h* finishes and *h+1* begins, the
     chain will halt until more than *2n<sub>h+1</sub>/3* of them have caught up and started consensus
     at height *h+1*. If set *valset<sub>h+1</sub>* does not change in *h+2* and subsequent
-    heights, only up to *2n<sub>h+1</sub>/3* validators will be able to lag behind. Thus, we have
+    heights, only up to *n<sub>h+1</sub>/3* validators will be able to lag behind. Thus, we have
     converted this case into case (h) below.
 
 - **(e)** *Enough validators crash to block the rest*.
@@ -199,15 +194,38 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
 
 - **(h)** *Advancing majority, lagging minority*
 
-    In this case, a set of full nodes, of which *n/3* or less are validators, fall behind an arbitrary
-    number of heights (e.g., temporary disconnection or network partition, memory thrashing, crashes,
-    new nodes).
-    These lagging nodes then need to catch up. They have to obtain the information they need to make
-    progress from other nodes. For each height *h*, this includes the decided block for *h*, and the
+    In this case, a set of full nodes, denoted *L<sub>h<sub>p</sub></sub>*, fall behind
+    (e.g., temporary disconnection or network partition, memory thrashing, crashes, new nodes)
+    an arbitrary
+    number of heights,
+    say between *h<sub>s</sub>* and *h<sub>p</sub>*, where *h<sub>p</sub>* is the present height.
+
+    Obviously, less than *n<sub>h<sub>p</sub></sub>/3* validators of *h<sub>p</sub>* can be part
+    of *L<sub>h<sub>p</sub></sub>*, since we need enough caught-up validators to make progress
+    at the present height.
+    Further, validator set changes between *h<sub>s</sub>* and *h<sub>p</sub>* impose an
+    additional restriction on which full nodes can be part of *L<sub>h<sub>p</sub></sub>*.
+    Since every node in *L<sub>h<sub>p</sub></sub>* did not take part in any consensus between
+    *h<sub>s</sub>* and *h<sub>p</sub>*, we have this restriction on *L<sub>h<sub>p</sub></sub>*:
+
+    - for each height *h*, where *h<sub>s</sub> ≤ h < h<sub>p</sub>*,
+    | *valset<sub>h</sub>* \ *L<sub>h<sub>p</sub></sub>*  | *> 2n<sub>h<sub>p</sub></sub>/3*
+
+    If this property did not hold for a particular height *h*, where
+    *h<sub>s</sub> ≤ h < h<sub>p</sub>*, Tendermint could not have progressed beyond *h* and
+    therefore *h<sub>p</sub>* could not be the present height (a contradiction).
+
+    These lagging nodes in *L<sub>h<sub>p</sub></sub>* need to catch up. They have to obtain the
+    information needed to make
+    progress from other nodes. For each height *h* between *h<sub>s</sub>* and *h<sub>p</sub>*,
+    this includes the decided block for *h*, and the
     precommit votes also for *deciding h* (which can be extracted from the block at height *h+1*).
-    At a given height, say *h_c*, a node will consider itself *caught up*, based on the (maybe out of
-    date) information it is getting from its peers. Then, the node needs to be ready to propose
-    at height *h_c+1* which entails having received the vote extensions for *h_c*.
+
+    At a given height  *h<sub>c</sub>* (where possibly *h<sub>c</sub> << h<sub>p</sub>*),
+    a full node in *L<sub>h<sub>p</sub></sub>* will consider itself *caught up*, based on the
+    (maybe out of date) information it is getting from its peers. Then, the node needs to be ready to
+    propose at height *h<sub>c</sub>+1* requires having received which the vote extensions for
+    *</sub>* h<sub>.
 
     As the vote extensions are *not* stored in the blockchain, and it is difficult to have strong
     guarantees on *when* a late node considers itself caught up, providing the late note with the right
@@ -221,15 +239,44 @@ them converge into case (h).
 
 We now briefly describe the current catch-up mechanisms in the reactors concerned in Tendermint.
 
+#### Statesync
+
+Full nodes optionally run statesync just after starting, when they start from scratch
+(TODO: folks, please keep me honest here... do we also run statsync when we recover?).
+If statesync succeeds, an Application snapshot is installed, and Tendermint jumps from height 0 directly
+to the height the Application snapshop represents, without applying the block of any previous height.
+Some light blocks are received and stored in the block store for running light-client verification of
+all the skipped blocks. Light blocks are incomplete blocks, typically containing the header and the
+canonical commit but, e.g., no transactions. They are stored in the block store as "signed headers".
+
+The statesync reactor is not really relevant for solving the problem discussed in this RFC. We will
+nevertheless mention it when needed; in particular, to understand some corner cases.
+
 #### Blocksync
 
-TODO
+The blocksync reactor kicks in after start up or recovery (and, optionally, after statesync is done)
+and sends the following messages to its peers:
+
+- `StatusRequest` to query the height its peers are currently at, and
+- `BlockRequest`, asking for blocks of heights the local node is missing.
+
+Using `BlockResponse` messages received from peers, the blocksync reactor validates each received
+block using the block of the following height, saves the block in the block store, and sends the
+block to the Application for execution.
+
+If blocksync has validated and applied the block for the height *previous* to the highest seen in
+a `StatusResponse` message, or if no progress has been made after a timeout, the node considers
+itself as caught up and switches to the consensus reactor.
 
 #### Consensus Reactor
 
-TODO
+The consensus reactor runs the full Tendermint algorithm. For a validator this means it has to
+propose blocks, and send/receive prevote/precommit messages, as mandated by Tendermint, before it can
+decide and move on to the next height.
 
-> TODO: I have considered *inserting* statesync somehow in this RFC. Do folks think this is needed?
+If a full node that is running the consensus reactor falls behind at height *h*, when a peer node
+realises this it will retrieve the canonical commit of *h+1* from the block store, and *convert*
+it into a set of precommit votes and will send those to the late node.
 
 ## Discussion
 
@@ -237,7 +284,7 @@ TODO
 
 These are the solutions proposed in discussions leading up to this RFC.
 
-- **0.** *Vote extensions are made **best effort** in the specification*.
+- **Solution 0.** *Vote extensions are made **best effort** in the specification*.
 
     This is the simplest solution, considered as a way to provide vote extensions in a simple enough
     way so that it can be part of v0.36.
@@ -253,10 +300,10 @@ These are the solutions proposed in discussions leading up to this RFC.
       this behavior of `VerifyVoteExtension` is adding a constraint to Tendermint's conditions for
       liveness.
       In this situation, it is better and simpler to just drop the vote extension rejected by the
-      Application via `VerifyVoteExtension`, but still consider the vote itself valid as long as its
-      signature verifies.
+      Application via `VerifyVoteExtension`, but still consider the precommit vote itself valid as long
+      as its signature verifies.
 
-- **1.** *Include vote extensions in the blockchain*.
+- **Solution 1.** *Include vote extensions in the blockchain*.
 
     Another obvious solution, which has somehow been considered in the past, is to include the vote
     extensions and their signatures in the blockchain.
@@ -264,11 +311,11 @@ These are the solutions proposed in discussions leading up to this RFC.
     to be canonicalized in the next block.
     With this solution, the current mechanisms implemented both in the blocksync and consensus reactors
     would still be correct, as all the information a node needs to catch up, and to start proposing when
-    it considers itself as caught-up, can now be recovered from past blocks.
+    it considers itself as caught-up, can now be recovered from past blocks saved in the block store.
 
     This solution has two main drawbacks.
 
-    - As the block format changes, upgrading a chain requires a hard fork. Furthermore,
+    - As the block format must change, upgrading a chain requires a hard fork. Furthermore,
       all existing light client implementations will stop working until they are upgraded to deal with
       the new format (e.g., how certain hashes calculated and/or how certain signatures are checked).
       For instance, let us consider IBC, which relies on light clients. An IBC connection between
@@ -278,14 +325,14 @@ These are the solutions proposed in discussions leading up to this RFC.
         - This information is only needed to be able to *propose* at the height the validator considers
           itself as caught-up. If a validator is indeed late for height *h*, it is useless (although
           correct) for it to call `PrepareProposal`, or `ExtendVote`, since the block is already decided.
-        - Moreover, some uses cases require pretty sizeable vote extensions, which would result in an
+        - Moreover, some use cases require pretty sizeable vote extensions, which would result in an
           important waste of space in the blockchain.
 
-- **2.** *Skip* propose *step in Tendermint algorithm*.
+- **Solution 2.** *Skip* propose *step in Tendermint algorithm*.
 
     This solution consists in modifying the Tendermint algorithm to skip the *send proposal* step in
     heights where the node does not have the required vote extensions to populate the call to
-    `PrepareProposal`. The main idea behind is that this should only happen when the validator is late
+    `PrepareProposal`. The main idea behind this is that it should only happen when the validator is late
     and, therefore, up-to-date validators have already proposed (and decided) for that height.
     A small variation of this solution is, rather than skipping the *send proposal* step, the validator
     sends a special *empty* or *bottom* (⊥) proposal to signal other nodes that it is not ready to propose
@@ -299,27 +346,36 @@ These are the solutions proposed in discussions leading up to this RFC.
     However, this solution can be attacked by a byzantine node in the network in the following way.
     Let us consider the following scenario:
 
-    - all validators send out precommit messages, with vote extensions, for height *h*, round *r*,
-      roughly at the same time,
-    - all validators then wait until they gather enough precommit messages for height *h*, round *r*,
-      in order to decide in height *h*,
-    - all those precommit messages (and any further message for height *h*) get delayed indefinitely,
-    - an intermediate (malicious) node *m* manages to gather more than *2n/3* of the precommit messages
-      for height *h*, round *r*, as well as the proposed block the precommit messages refer to,
-    - node *m* uses the precommit messages to build a commit (not extended commit), which it then sends
-      to *all* validators in order to convince them they are late,
-    - all validators receive the *catch-up* message from *m*, decide on height *h*, and proceed to
+    - all validators in *valset<sub>h</sub>* send out precommit messages, with vote extensions,
+      for height *h*, round 1, roughly at the same time,
+    - all those precommit messages contain non-`nil` precommit votes, which vote for block *b*
+    - all validators in *valset<sub>h</sub>* then wait until they gather enough precommit
+      messages for height *h*, round 1, in order to decide in height *h*,
+    - all precommit messages sent in height *h*, round 1, and all messages sent in
+      height *h*, round *r > 1* get delayed indefinitely,
+    - an intermediate (malicious) full node *m* manages to receive block *b*, and gather more than
+      *2n<sub>h</sub>/3* precommit messages for height *h*, round 1,
+    - one way or another, the solution should have a mechanism for a full node to tell another full
+      node it is late; this mechanism should somehow include a message type containing － at the very
+      least － the decided block and a commit (not necessarily an extended commit) for *h*;
+      let us call this message type *catch-up message*,
+    - node *m* uses the gathered precommit messages to build a commit for height *h*, round 1,
+    - in order to convince them they are late, node *m* sends all full nodes a catch-up message with
+      block *b*, and the commit for height *h*, round 1,
+    - all full nodes receive the *catch-up* message from *m*, decide on height *h*, and proceed to
       height *h+1*.
 
-    At this point, *all* validators have advanced to *h+1* believing they are late, and so, expecting
-    the *hypothetical* leading majority of validators to propose for *h+1*. As a result, the
-    blockhain progress grinds to a halt.
+    At this point, *all* full nodes, including all validators in *valset<sub>h+1</sub>*, have advanced
+    to height *h+1* believing they are late, and so, expecting the *hypothetical* leading majority of
+    validators in *valset<sub>h+1</sub>* to propose for *h+1*. As a result, the blockhain
+    grinds to a halt.
     A (rather complex) ad-hoc mechanism would need to be carried out by node operators to roll
-    back all validators to the precommit step of height *h*, round *r*.
+    back all validators to the precommit step of height *h*, round *r*, so that they can regenerate
+    vote extensions (remember vote extensions are non-deterministic) and continue execution.
 
-- **3.** *Require extended commits to be available at switching time*.
+- **Solution 3.** *Require extended commits to be available at switching time*.
 
-    This is more involved than all previous solutions, and builds on an idea used in Solution 2:
+    This one is more involved than all previous solutions, and builds on an idea present in Solution 2:
     vote extensions are actually not needed for Tendermint to make progress as long as the
     validator is *certain* it is late.
 
@@ -334,24 +390,26 @@ These are the solutions proposed in discussions leading up to this RFC.
     progress. The consensus mode, on the other hand, does need vote extension information when
     starting every height.
 
-    When a validator in consensus mode falls behind for whatever reason, e.g. cases (b), (d), (e),
-    (f), (g), and (h) above, we introduce the following key safety property:
+    Validators are in consensus mode by default. When a validator in consensus mode falls behind
+    for whatever reason, e.g. cases (b), (d), (e), (f), (g), or (h) above, we introduce the following
+    key safety property:
 
-    - for every height *h*, a node refuses to switch to catch-up mode **until**:
-        - it has received and (light-client) verified all the blocks from *h+1* leading up to a
-          new height *h'*, where *h < h'*
+    - for every height *h<sub>p</sub>*, a full node *f* in *h<sub>p</sub>* refuses to switch to catch-up
+        mode **until** there exists a height *h'* such that:
+        - *p* has received and (light-client) verified the blocks of
+          all heights *h*, where *h<sub>p</sub> ≤ h ≤ h'*
         - it has received an extended commit for *h'* and has verified:
             - the precommit vote signatures in the extended commit
             - the vote extension signatures in the extended commit: each is signed with the same
               key as the precommit vote it extends
 
-    If the conditions above hold, namely receiving a valid sequence of blocks in the node's future,
-    starting at *h+1*, and an extended commit corresponding to the last block in the sequence, then
-    the node:
+    If the condition above holds for *h<sub>p</sub>*, namely receiving a valid sequence of blocks in
+    the *f*'s future, and an extended commit corresponding to the last block in the sequence, then
+    node *f*:
 
     - switches to catch-up mode,
-    - applies all blocks (calling `FinalizeBlock` only), and
-    - switches back to consensus mode using the extended commit to propose in the rounds of
+    - applies all blocks between *h<sub>p</sub>* and *h'* (calling `FinalizeBlock` only), and
+    - switches back to consensus mode using the extended commit for *h'* to propose in the rounds of
       *h' + 1* where it is the proposer.
 
     This mechanism, together with the invariant it uses, ensures that the node cannot be attacked by
@@ -361,10 +419,10 @@ These are the solutions proposed in discussions leading up to this RFC.
 ### Feasibility of the Proposed Solutions
 
 Solution 0, besides the drawbacks described in the previous section, provides guarantees that are
-weaker than the rest. The Application does not have the assurance that more than *2n/3* vote
-extensions will *always* be available when calling `PrepareProposal`.
-This level of guarantees is probably not strong enough for vote extensions to be useful for some of
-the use cases that motivated them in the first place, e.g., encrypted mempool transactions.
+weaker than the rest. The Application does not have the assurance that more than *2n<sub>h</sub>/3* vote
+extensions will *always* be available when calling `PrepareProposal` at height *h+1*.
+This level of guarantees is probably not strong enough for vote extensions to be useful for some
+important use cases that motivated them in the first place, e.g., encrypted mempool transactions.
 
 Solution 1, while being simple in that the changes needed in the current Tendermint codebase would
 be rather small, is changing the block format, and would therefore require all blockchains using
@@ -390,8 +448,8 @@ The main limitations affecting the current version of Tendermint are the followi
   Such a mechanism does not exist at the time of writing this RFC.
 
 The blocksync reactor featuring light client verification is being actively worked on (tentatively
-for v0.37). So it is best if this RFC does not try to solve that problem, but just makes sure
-the outcomes are compatible with that effort (TODO: check this paragraph with Callum/Jasmina).
+for v0.37). So it is best if this RFC does not try to delve into that problem, but just makes sure
+its outcomes are compatible with that effort (TODO: check this paragraph with Callum/Jasmina).
 
 In subsection [Cases to Address](#cases-to-address), we concluded that we can focus on
 solving case (h) in theortical terms.
@@ -408,32 +466,41 @@ This is important in order to discuss the different possible implementations.
 #### Base Implementation: Persist and Propagate Extended Commit History
 
 In order to circumvent the fact that we cannot switch from the consensus reactor back to blocksync,
-rather than just keeping the few (TODO: 1?, 2?) most recent extended commits, nodes will need to keep
+rather than just keeping the few most recent extended commits, nodes will need to keep
 and gossip a backlog of extended commits so that the consensus reactor can still propose and decide
-in out-of-date heights.
+in out-of-date heights (even if those proposals will be useless).
 
-The base implementation (for which an experimental patch exists) consists in the conservative
+The base implementation － for which an experimental patch exists － consists in the conservative
 approach of persisting in the block store *all* extended commits for which we have also stored
-the full block. Currently, when statesync is run at startup, saves light blocks (incomplete block
-containing the header and commit, but, e.g., no transactions). This implementation does not seek
-to receive or persist those light blocks as they would not be of any use.
+the full block. Currently, when statesync is run at startup, it saves light blocks.
+This base implementation does not seek
+to receive or persist extended commits for those light blocks as they would not be of any use.
 
 Then, we modify the blocksync reactor so that peers *always* send requested full blocks together
 with the corresponding extended commit in the `BlockResponse` messages. This guarantees that the
 block store being reconstructed by blocksync has the same information as that of peers that are
-up to date.
-Thus, blocksync has all the data it requires to switch to the consensus reactor, as long as:
+up to date (at least starting from the latest snapshot applied by statesync before starting blocksync).
+Thus, blocksync has all the data it requires to switch to the consensus reactor, as long as one of
+the following exit conditions are met:
 
 - The node is still at height 0 (where no commit or extended commit is needed)
 - The node has processed at least 1 block in blocksync
 
-As a side note, a chain might be started at a height *h_i > 0*, all other heights less than
-*h_i* being non-existent. In this case, the chain is still considered to be at height 0 before block
-*h_i* is applied (so the condition above is still correct for this case).
+The second condition is needed in case the node has installed an Application snapshot during statesync.
+If that is the case, at the time blocksync starts, the block store only has the data statesync has saved:
+light blocks, and no extended commits.
+Hence we need to blocksync at least one block from another node, which will be sent with its corresponding extended commit, before we can switch to consensus.
 
-Additionally, when a validator falls behind while having already switched to the consensus reactor,
-peer nodes have enough information in their block store to reconstruct the extended votes and send
-them to the validator falling behind.
+As a side note, a chain might be started at a height *h<sub>i</sub> > 0*, all other heights
+*h < h<sub>i</sub>* being non-existent. In this case, the chain is still considered to be at height 0 before
+block *h<sub>i</sub>* is applied, so the first condition above allows the node to switch to consensus even
+if blocksync has not processed any block (which is always the case if all nodes are starting from scratch).
+
+When a validator falls behind while having already switched to the consensus reactor, a peer node can
+simply retrieve the extended commit for the required height from the block store and reconstruct a set of
+precommit votes together with their extensions and send them in the form of precommit messages to the
+validator falling behind, regardless of whether the peer node holds the extended commit because it
+actually participated in that consensus and thus received the precommit messages, or it received the extended commit via a `BlockResponse` message while running blocksync.
 
 This solution requires a few changes to the consensus reactor:
 
@@ -441,7 +508,7 @@ This solution requires a few changes to the consensus reactor:
   corresponding extended commit as well
 - in the catch-up mechanism, when a node realizes that another peer is more than 2 heights
   behind, it uses the extended commit (rather than the canoncial commit as done previously) to
-  reconstruct the votes with their corresponding extensions
+  reconstruct the precommit votes with their corresponding extensions
 
 The changes to the blocksync reactor are more substantial:
 
@@ -460,27 +527,29 @@ The two main drawbacks of this base implementation are:
 
 #### Possible Optimization: Pruning the Extended Commit History
 
-If we cannot switch from the consensus reactor back to the blocksync reactor, and we do not have
-the catch-up mechanism in the consensus reactor explained above, we cannot prune the extended commit
-backlog in the block store without sacrificing the implementation's correctness. The asynchronous
+If we cannot switch from the consensus reactor back to the blocksync reactor we cannot prune the extended commit backlog in the block store without sacrificing the implementation's correctness. The asynchronous
 nature of our distributed system model allows a process to fall behing an arbitrary number of
 heights, and thus all extended commits need to be kept *just in case* a node that late had
 previously switched to the consensus reactor.
 
-However, there is a possibility to optimize the base implementation. We could prune from the block
-store all extended commits that are more than *d* heights in the past. Then, we need to handle two
-new situations, roughly equivalent to cases (h.1) and (h.2) described above.
+However, there is a possibility to optimize the base implementation. Every time we enter a new height,
+we could prune from the block store all extended commits that are more than *d* heights in the past.
+Then, we need to handle two new situations, roughly equivalent to cases (h.1) and (h.2) described above.
 
-- (h.1) A node starts from scratch or recovers after a crash, and (for simplicity of explanation)
-  it does not run statesync.
-  In this case, the blocksync reactor needs to be improved to make sure it cannot switch to consensus
-  until it has received a valid extended commit for a height in its future. This extended commit
-  will allow the node to switch from the blocksync reactor to the consensus reactor and immediately
-  act as a proposer if required.
+- (h.1) A node starts from scratch or recovers after a crash. In thisy case, we need to modify the
+    blocksync reactor's base implementation.
+    - when receiving a `BlockResponse` message, it MUST accept that the extended commit set to `nil`,
+    - when sending a `BlockResponse` message, if the block store contains the extended commit for that
+      height, it MUST set it in the message, otherwise it sets it to `nil`,
+    - the exit conditions used for the base implementation are no longer valid; the only reliable exit
+      condition now consists in making sure that the last block processed by blocksync was received with
+      the corresponding commit, and not `nil`; this extended commit will allow the node to switch from
+      the blocksync reactor to the consensus reactor and immediately act as a proposer if required.
 - (h.2) A node already running the consensus reactor falls behind beyond *d* heights. In principle,
-  the node will be stuck as no other node can provide the vote extensions it needs to make progress.
-  However we can have the node crash and recover as a workaround. This effectively converts this case
-  into the previous one.
+  the node will be stuck forever as no other node can provide the vote extensions it needs to make
+  progress (they all have pruned the corresponding extended commit).
+  However we can manually have the node crash and recover as a workaround. This effectively converts
+  this case into (h.1).
 
 ### Formalization Work
 
