@@ -156,7 +156,6 @@ GB, a savings of 112 GB. While that is a large factor of reduction it's worth
 bearing in mind that, at [GCP's cost][gcp-storage-pricing] of $.026 USD per GB,
 that is a total savings of around $2.50 per month.
 
-#### Reduce IBC MsgRecvUpdate size
 
 
 
