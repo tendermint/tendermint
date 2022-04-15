@@ -107,19 +107,19 @@ func TestMigration(t *testing.T) {
 
 		t.Run("Legacy", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
-				require.True(t, keyIsLegacy(le), kind)
+				require.True(t, checkKeyType(le).isLegacy(), kind)
 			}
 		})
 		t.Run("New", func(t *testing.T) {
 			for kind, ne := range newPrefixes {
-				require.False(t, keyIsLegacy(ne), kind)
+				require.False(t, checkKeyType(ne).isLegacy(), kind)
 			}
 		})
 		t.Run("Conversion", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
 				nk, err := migrateKey(le)
 				require.NoError(t, err, kind)
-				require.False(t, keyIsLegacy(nk), kind)
+				require.False(t, checkKeyType(nk).isLegacy(), kind)
 			}
 		})
 		t.Run("Hashes", func(t *testing.T) {
@@ -129,8 +129,12 @@ func TestMigration(t *testing.T) {
 				}
 			})
 			t.Run("ContrivedLegacyKeyDetection", func(t *testing.T) {
-				require.True(t, keyIsLegacy([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
-				require.False(t, keyIsLegacy([]byte("xxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxx")))
+				// length 32: should appear to be a hash
+				require.Equal(t, txHashKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
+
+				// length ≠ 32: should not appear to be a hash
+				require.Equal(t, nonLegacyKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx--")))
+				require.Equal(t, nonLegacyKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
 			})
 		})
 	})
@@ -204,7 +208,7 @@ func TestMigration(t *testing.T) {
 			require.Equal(t, size, len(keys))
 			legacyKeys := 0
 			for _, k := range keys {
-				if keyIsLegacy(k) {
+				if checkKeyType(k).isLegacy() {
 					legacyKeys++
 				}
 			}
@@ -212,7 +216,7 @@ func TestMigration(t *testing.T) {
 		})
 		t.Run("KeyIdempotency", func(t *testing.T) {
 			for _, key := range getNewPrefixKeys(t, 84) {
-				require.False(t, keyIsLegacy(key))
+				require.False(t, checkKeyType(key).isLegacy())
 			}
 		})
 		t.Run("Migrate", func(t *testing.T) {
