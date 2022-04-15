@@ -40,7 +40,7 @@ perform any request-response cycles to produce the cryptographic material.
 ### Brief notes on pairing-based elliptic-curve cryptography
 
 Pairing-based elliptic-curve cryptography is quite complex and relies on several
-types of high-level math. Cryptography, in general, relies on being finding
+types of high-level math. Cryptography, in general, relies on being able to find
 problems with an asymmetry between the difficulty of calculating the solution
 and verifying that a given solution is correct.
 
