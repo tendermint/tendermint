@@ -19,14 +19,14 @@ checktoc() {
     local tag="$2"'-*-*'
     local out="$workdir/${dir}.out.txt"
     (
-	cd "$dir" >/dev/null
-	find . -type f -maxdepth 1 -name "$tag" -not -exec grep -q "({})" README.md ';' -print
+        cd "$dir" >/dev/null
+        find . -type f -maxdepth 1 -name "$tag" -not -exec grep -q "({})" README.md ';' -print
     ) > "$out"
     if [[ -s "$out" ]] ; then
         echo "-- The following files in $dir lack a ToC entry:
 "
-	cat "$out"
-	return 1
+        cat "$out"
+        return 1
     fi
 }
 
