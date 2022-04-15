@@ -3,6 +3,7 @@
 ## Changelog
 
 - April 8, 2022: Initial draft (@cmwaters)
+- April 15, 2022: Incorporation of feedback
 
 ## Abstract
 
@@ -20,25 +21,19 @@ The following is a list of points of discussion around the architecture of the n
 
 ### Dependency Tree
 
-The node object is currently stuffed with every component that possibly exists within Tendermint. In the constructor, all objects are built and interlaid with one another in some awkward dance. My guiding principle is that the node should only be made up of the components that it wants to have direct control of throughout its life. The node is a service which currently has the purpose of starting other services up in a particular order and stopping them all when commanded to do so. However, there are many services which are direct dependents i.e. the mempool and evidence services should only should be working when the consensus service is running. I propose to form more of a hierarchical structure of dependents which forces us to be clear about the relations that one component has to the other (as opposed to having a free for all with information passing from all components to one another). More concretely, I propose the following dependency tree:
+The node object is currently stuffed with every component that possibly exists within Tendermint. In the constructor, all objects are built and interlaid with one another in some awkward dance. My guiding principle is that the node should only be made up of the components that it wants to have direct control of throughout its life. The node is a service which currently has the purpose of starting other services up in a particular order and stopping them all when commanded to do so. However, there are many services which are not direct dependents i.e. the mempool and evidence services should only be working when the consensus service is running. I propose to form more of a hierarchical structure of dependents which forces us to be clear about the relations that one component has to the other. More concretely, I propose the following dependency tree:
 
-- Node (also the orchestrator which I cover more in the next section)
-  - Networking/P2P (service to allow communication across nodes via channels)
-    - PEX reactor (or whatever this turns into post libP2P)
-  - Consensus (network wide state advancing mechanism)
-    - Block Executor (the central component used to advance state via blocks)
-    - Mempool (gossiping of transactions. To be used by the proposer)
-    - Evidence (gossiping of evidence. To be used by the proposer)
-  - Blocksync (local node state advancing mechanism)
-    - Block Exector
-  - Statesync (local node state advancing mechanism)
-    - Block Executor
+![](./images/node-dependency-tree.svg)
 
-Note that I've intentionally omitted any mention of the RPC because it's a challenging issue that deserves it's own section.
+Many of the further discussion topics circle back to this representation of the node.
+
+As pointed out by Michael (@creachadair), It's also important to distinguish two dimensions which may require different characteristics of the architecture. There is the starting and stopping of services and their general lifecycle management. What is the correct oder of operations to starting a node for example. Then there is the question of the needs of the service during actual operation. Does it require access to events? Which data does it need read access from and so forth.
+
+An alternative model and one that perhaps better suits the latter of these dimensions is the notion of an internal message passing system. Either the events bus or p2p layer could serve as a viable transport. This would essentially allow all services to communicate with any other service and could perhaps provide a solution to the coordination problem (presented below) without a centralized coordinator. The other main advantage is that such a system would be more robust to disruptions and changes to the code which may make a hierarchical structure quickly outdated and suboptimal. The addition of message routing is an added complexity to implement, will increase the degree of asynchronicity in the system and may make it harder to debug problems that are across multiple services.
 
 ### Coordination of State Advancing Mechanisms
 
-Advancement of state in Tendermint is simply defined in heights: If the node is at height n, how does it get to height n +1 and so on. Based on this definition we have three components that help a node to advance in height: consensus, statesync and blocksync. The way these components behave currently is very tightly coupled to one another with references passed back and forth. My guiding principal is that each of these should be able to operate completely independent of each other i.e. a node should be able to run solely blocksync indefinitely. There have been several ideas suggested towards improving this flow. I've been leaning strongly towards a centralized system, whereby an orchestrator, in this case the node, decides what services to start and stop. To reach such a state, Tendermint:
+Advancement of state in Tendermint is simply defined in heights: If the node is at height n, how does it get to height n + 1 and so on. Based on this definition we have three components that help a node to advance in height: consensus, statesync and blocksync. The way these components behave currently is very tightly coupled to one another with references passed back and forth. My guiding principal is that each of these should be able to operate completely independent of each other i.e. a node should be able to run solely blocksync indefinitely. There have been several ideas suggested towards improving this flow. I've been leaning strongly towards a centralized system, whereby an orchestrator, in this case the node, decides what services to start and stop. To reach such a state, Tendermint:
 
 -  Should be able to open and close channels dynamically and effectively broadcast which services it is running. In catch up, it should just have the channels it needs open. For example, receiving transactions to a node's mempool while statesyncing isn't a valuable use of bandwidth.
 - Should draw a distinction between a service and a process.  
@@ -58,10 +53,12 @@ The orchestrator allows for some deal of variablity in how a node is constructed
 
 The block executor is an important component that is currently used by both consensus and blocksync to perform the execution grunt work with the application: applying blocks and updating state. Principally, I think it should be the only component that can write (and possibly even read) the block and state stores and we should clean up other references to the storage engine if we can. This would mean:
 
-- The reactors Consensus, BlockSync and StateSync should all import the executor for advancing state ie.  `ApplyBlock` and `BootstrapState` 
+- The reactors Consensus, BlockSync and StateSync should all import the executor for advancing state ie.  `ApplyBlock` and `BootstrapState`.
 - Pruning should also be a concern of the block executor as well as `FinalizeBlock` and `Commit`. This can simplify consensus to focus just on the consensus part.
 
-### RPC System, Metrics and Events
+### The Interprocess communication systems: RPC, P2P, ABCI, and Events
+
+The schematic supplied above shows the relations between the different services, the node, the block executor, and the storage layer. Represented as colourful dots are the components responsible for different roles of interprocess communication. These components permeate throughout the code base, seeping into most services. What can provide powerful functionality on one hand can also become a twisted vine, creating messy corner cases and convoluting the protocols themselves.
 
 The last aspect that hasn't been touched so far is the RPC, metrics and events. With the exception of `/broadcast_tx`, a node could operate normally without any of these components yet would behave as a black box. These components allow for introspection, monitoring and querying of the communal artifact that is the blockchain. Like logging, the other element these have in common is that they are all dispersed throughout every component. On this front we should:
 
