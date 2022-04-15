@@ -398,3 +398,4 @@ development appears to be active so formal verification may be forthcoming.
 [bls]: https://github.com/supranational/blst
 [prysm-blst]: https://github.com/prysmaticlabs/prysm/blob/develop/go.mod#L75
 [gnark]: https://github.com/ConsenSys/gnark-crypto/
+[eth-2-adoption]: https://notes.ethereum.org/@GW1ZUbNKR5iRjjKYx6_dJQ/Skxf3tNcg_
