@@ -271,6 +271,130 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	assert.Equal(t, abciMb, app.ByzantineValidators)
 }
 
+// TestExtendVote tests that ExtendVote calls the application with the correct
+// data.
+func TestExtendVote(t *testing.T) {
+	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app := abcimocks.NewBaseMock()
+	logger := log.NewNopLogger()
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	_, stateDB, _ := makeState(t, 1, height)
+	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp,
+		new(mpmocks.Mempool),
+		sm.EmptyEvidencePool{},
+		blockStore,
+		eventBus,
+		sm.NopMetrics(),
+	)
+	app.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{VoteExtension: []byte("extension")}, nil)
+	v := &types.Vote{
+		BlockID: types.BlockID{
+			Hash: []byte("hash"),
+		},
+		Height: height,
+	}
+	ext, err := blockExec.ExtendVote(ctx, v)
+	require.NoError(t, err)
+	require.Equal(t, []byte("extension"), ext)
+	app.AssertCalled(t, "ExtendVote", abci.RequestExtendVote{Hash: v.BlockID.Hash, Height: height})
+}
+
+// TestVerifyVoteExtension tests that VerifyVoteExtension calls the application
+// with the correct data and correctly returns an error if the application
+// does not accept the vote.
+func TestVerifyVoteExtension(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		responseStatus abci.ResponseVerifyVoteExtension_VerifyStatus
+		expectError    bool
+	}{
+		{
+			name:           "error on reject",
+			responseStatus: abci.ResponseVerifyVoteExtension_REJECT,
+			expectError:    true,
+		},
+		{
+			name:           "error on unknown",
+			responseStatus: abci.ResponseVerifyVoteExtension_UNKNOWN,
+			expectError:    true,
+		},
+		{
+			name:           "no error on accept",
+			responseStatus: abci.ResponseVerifyVoteExtension_ACCEPT,
+			expectError:    false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const height = 2
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			app := abcimocks.NewBaseMock()
+			logger := log.NewNopLogger()
+			cc := abciclient.NewLocalClient(logger, app)
+			proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+			err := proxyApp.Start(ctx)
+			require.NoError(t, err)
+
+			_, stateDB, privVals := makeState(t, 1, height)
+			stateStore := sm.NewStore(stateDB)
+			blockStore := store.NewBlockStore(dbm.NewMemDB())
+
+			eventBus := eventbus.NewDefault(logger)
+			require.NoError(t, eventBus.Start(ctx))
+			blockExec := sm.NewBlockExecutor(
+				stateStore,
+				logger,
+				proxyApp,
+				new(mpmocks.Mempool),
+				sm.EmptyEvidencePool{},
+				blockStore,
+				eventBus,
+				sm.NopMetrics(),
+			)
+			var addr string
+			for addr = range privVals {
+			}
+			app.On("VerifyVoteExtension", mock.Anything).Return(abci.ResponseVerifyVoteExtension{Status: tc.responseStatus})
+			v := &types.Vote{
+				BlockID: types.BlockID{
+					Hash: []byte("hash"),
+				},
+				Height:           height,
+				ValidatorAddress: []byte(addr),
+				Extension:        []byte("extension"),
+			}
+			err = blockExec.VerifyVoteExtension(ctx, v)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			app.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+				Hash:             v.BlockID.Hash,
+				ValidatorAddress: v.ValidatorAddress,
+				Height:           height,
+				VoteExtension:    []byte("extension"),
+			})
+		})
+	}
+}
+
 func TestProcessProposal(t *testing.T) {
 	const height = 2
 	txs := factory.MakeNTxs(height, 10)
