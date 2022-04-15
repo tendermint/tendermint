@@ -31,6 +31,7 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
@@ -535,6 +536,22 @@ func TestNodeSetEventSink(t *testing.T) {
 		t.Cleanup(func() { require.NoError(t, indexService.Stop()) })
 		return eventSinks
 	}
+	cleanup := func(ns service.Service) func() {
+		return func() {
+			n, ok := ns.(*nodeImpl)
+			if !ok {
+				return
+			}
+			if n == nil {
+				return
+			}
+			if !n.IsRunning() {
+				return
+			}
+			assert.NoError(t, n.Stop())
+			n.Wait()
+		}
+	}
 
 	eventSinks := setupTest(t, cfg)
 	assert.Equal(t, 1, len(eventSinks))
@@ -555,7 +572,8 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"kvv"}
 	ns, err := newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("unsupported event sink type"), err)
+	assert.Contains(t, err.Error(), "unsupported event sink type")
+	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{}
 	eventSinks = setupTest(t, cfg)
@@ -566,7 +584,8 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"psql"}
 	ns, err = newDefaultNode(cfg, logger)
 	assert.Nil(t, ns)
-	assert.Equal(t, errors.New("the psql connection settings cannot be empty"), err)
+	assert.Contains(t, err.Error(), "the psql connection settings cannot be empty")
+	t.Cleanup(cleanup(ns))
 
 	// N.B. We can't create a PSQL event sink without starting a postgres
 	// instance for it to talk to. The indexer service tests exercise that case.
@@ -575,12 +594,14 @@ func TestNodeSetEventSink(t *testing.T) {
 	cfg.TxIndex.Indexer = []string{"null", "kv", "Kv"}
 	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
+	t.Cleanup(cleanup(ns))
 
 	cfg.TxIndex.Indexer = []string{"Null", "kV", "kv", "nUlL"}
 	_, err = newDefaultNode(cfg, logger)
 	require.Error(t, err)
-	assert.Equal(t, e, err)
+	assert.Contains(t, err.Error(), e.Error())
+	t.Cleanup(cleanup(ns))
 }
 
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
