@@ -2,9 +2,9 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.4
+## v0.35.5
 
-Month, DD, YYYY
+Month DD, YYYY
 
 Special thanks to external contributors on this release:
 
@@ -22,11 +22,6 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
-- [cli] \#8300 Add a tool to update old config files to the latest version [backport \#8281]. (@creachadair)
-
 ### IMPROVEMENTS
 
 ### BUG FIXES
-
-- [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
-- [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
