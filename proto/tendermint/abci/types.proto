@@ -424,6 +424,7 @@ message ExecTxResult {
 // TxResult contains results of executing the transaction.
 //
 // One usage is indexing transaction results.
+//TODO: (Sergio) Why is this type defined here, if ABCI doesn't use it?
 message TxResult {
   int64        height = 1;
   uint32       index  = 2;
