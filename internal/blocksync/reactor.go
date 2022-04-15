@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/light"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/types"
 )
@@ -65,55 +64,6 @@ type peerError struct {
 
 func (e peerError) Error() string {
 	return fmt.Sprintf("error with peer %v: %s", e.peerID, e.err.Error())
-}
-
-func (r *Reactor) VerifyAdjacent(
-	trustedHeader *types.SignedHeader, // height=X
-	untrustedHeader *types.SignedHeader, // height=X+1
-	untrustedVals *types.ValidatorSet, // height=X+1)
-) error {
-
-	if len(trustedHeader.NextValidatorsHash) == 0 {
-		return errors.New("next validators hash in trusted header is empty")
-	}
-
-	if untrustedHeader.Height != trustedHeader.Height+1 {
-		return errors.New("headers must be adjacent in height")
-	}
-
-	if err := untrustedHeader.ValidateBasic(trustedHeader.ChainID); err != nil {
-		return fmt.Errorf("untrustedHeader.ValidateBasic failed: %w", err)
-	}
-
-	if untrustedHeader.Height <= trustedHeader.Height {
-		return fmt.Errorf("expected new header height %d to be greater than one of old header %d",
-			untrustedHeader.Height,
-			trustedHeader.Height)
-	}
-
-	if !untrustedHeader.Time.After(trustedHeader.Time) {
-		return fmt.Errorf("expected new header time %v to be after old header time %v",
-			untrustedHeader.Time,
-			trustedHeader.Time)
-	}
-
-	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
-		return fmt.Errorf("expected new header validators (%X) to match those that were supplied (%X) at height %d",
-			untrustedHeader.ValidatorsHash,
-			untrustedVals.Hash(),
-			untrustedHeader.Height,
-		)
-	}
-
-	// Check the validator hashes are the same
-	if !bytes.Equal(untrustedHeader.ValidatorsHash, trustedHeader.NextValidatorsHash) {
-		err := fmt.Errorf("expected old header's next validators (%X) to match those from new header (%X)",
-			trustedHeader.NextValidatorsHash,
-			untrustedHeader.ValidatorsHash,
-		)
-		return light.ErrInvalidHeader{Reason: err}
-	}
-	return nil
 }
 
 // Reactor handles long-term catchup syncing.
@@ -556,75 +506,46 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				newBlockID            = types.BlockID{Hash: newBlock.Hash(), PartSetHeader: newBlockPartSetHeader}
 			)
 
-			// ToDo @jmalicevic
-			// newBlock.last commit - validates r.lastTrustedBlock
-			// if fail - peer dismissed
-			// r.lastTrustedBlock.header. nextValidator = newBlock. validator
-			// validators. validate (newBlock)
 			if r.lastTrustedBlock != nil {
+				err := VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.NextValidators)
 
-				// If the blockID in LastCommit of NewBlock does not match the trusted block
-				// we can assume NewBlock is not correct
-				if !(newBlock.LastCommit.BlockID.Equals(r.lastTrustedBlock.commit.BlockID)) {
-					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
-					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-						NodeID: peerID,
-						Err:    errors.New("invalid block for verification"),
-					}); serr != nil {
-						return
-					}
-				}
-
-				// Todo: Verify verifyBlock.LastCommit validators against state.NextValidators
-				// If they do not match, need a new verifyBlock
-
-				if err := state.NextValidators.VerifyCommitLight(state.ChainID, newBlockID, newBlock.Height, verifyBlock.LastCommit); err != nil {
-
-					err = fmt.Errorf("invalid verification block, validator hash does not match %w", err)
-					r.logger.Error(
-						err.Error(),
-						"last_commit", verifyBlock.LastCommit,
-						"block_id", newBlockID,
-						"height", r.lastTrustedBlock.block.Height,
-					)
-					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 2)
-					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-						NodeID: peerID,
-						Err:    err,
-					}); serr != nil {
-						return
-					}
-				}
-				// Verify NewBlock usign the validator set obtained after applying the last block
-				// Note: VerifyAdjacent in the LightClient relies on a trusting period which is not applicable here
-				// ToDo: We need witness verification here as well
-				err := r.VerifyAdjacent(&types.SignedHeader{Header: &r.lastTrustedBlock.block.Header, Commit: r.lastTrustedBlock.commit}, &types.SignedHeader{Header: &newBlock.Header, Commit: verifyBlock.LastCommit}, state.NextValidators)
 				if err != nil {
-					err = fmt.Errorf("invalid last commit: %w", err)
-					r.logger.Error(
-						err.Error(),
-						"last_commit", verifyBlock.LastCommit,
-						"block_id", newBlockID,
-						"height", r.lastTrustedBlock.block.Height,
-					)
-
-					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
-					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-						NodeID: peerID,
-						Err:    err,
-					}); serr != nil {
-						return
+					switch err.(type) {
+					case ErrBlockIDDiff:
+					case ErrValidationFailed:
+						peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+						if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+							NodeID: peerID,
+							Err:    errors.New("invalid block for verification"),
+						}); serr != nil {
+							return
+						}
+					case ErrInvalidVerifyBlock:
+						r.logger.Error(
+							err.Error(),
+							"last_commit", verifyBlock.LastCommit,
+							"block_id", newBlockID,
+							"height", r.lastTrustedBlock.block.Height,
+						)
+						peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 2)
+						if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+							NodeID: peerID,
+							Err:    err,
+						}); serr != nil {
+							return
+						}
 					}
-				}
-			} else {
 
+				}
+
+			} else {
+				// we need to load the last block we trusted
 				if r.initialState.LastBlockHeight != 0 {
 					r.lastTrustedBlock = &BlockResponse{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
 					if r.lastTrustedBlock == nil {
 						panic("Failed to load last trusted block")
 					}
 				}
-				// chainID := r.initialState.ChainID
 				oldHash := r.initialState.Validators.Hash()
 				if !bytes.Equal(oldHash, newBlock.ValidatorsHash) {
 
