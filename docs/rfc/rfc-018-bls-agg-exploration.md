@@ -76,7 +76,8 @@ BLS signatures rely on pairing-based elliptic-curve cryptography to produce
 various types of signatures. For a more in-depth but still high level discussion
 pairing-based elliptic-curve cryptography, see Vitalik Buterin's post on
 [Exploring Elliptic Curve Pairings][vitalik-pairing-post]. For much more in
-depth discussion, see the specific paper on BLS12-381, 
+depth discussion, see the specific paper on BLS12-381, [Short signatures from
+ the Weil Pairing][bls-weil-pairing] and
 [Compact Multi-Signatures for Smaller Blockchains][multi-signatures-smaller-blockchains].
 
 ### Adoption
@@ -396,3 +397,4 @@ development appears to be active so formal verification may be forthcoming.
 [prysm-blst]: https://github.com/prysmaticlabs/prysm/blob/develop/go.mod#L75
 [gnark]: https://github.com/ConsenSys/gnark-crypto/
 [eth-2-adoption]: https://notes.ethereum.org/@GW1ZUbNKR5iRjjKYx6_dJQ/Skxf3tNcg_
+[bls-weil-pairing]: https://www.iacr.org/archive/asiacrypt2001/22480516.pdf
