@@ -51,7 +51,7 @@ and `e(P + Q, R) = e(P, R) * e(Q, R)`. The most familiar example of this is
 exponentiation. Written in common notation, `P^(Q+R) = P^Q * P^R`.
 
 Pairing-based elliptic-curve cryptography creates a bilinear mapping using
-an elliptic-curve. With some original curve, you can define two groups,
+elliptic curves over a finite field. With some original curve, you can define two groups,
 `G1` and `G2` which are points of the original curve _modulo_ different values.
 Finally, you define a third group `Gt`, where points from `G1` and `G2` satisfy
 the property of bilinearity with `Gt`. In this scheme, the function `e` takes
@@ -338,11 +338,12 @@ the block.
 
 ### Library Support
 
-BLS signatures creation is limited, although active development appears to be
-ongoing. Cryptographic algorithms are difficult to implement correctly and
-correctness issues are extremely serious and dangerous. No further exploration
-of BLS should be undertaken without strong assurance of a well tested and
-continually supported library for creating and verifying BLS signatures.
+Libraries for BLS signature creation are limited in number, although active 
+development appears to be ongoing. Cryptographic algorithms are difficult to
+implement correctly and correctness issues are extremely serious and dangerous.
+No further exploration of BLS should be undertaken without strong assurance of
+a well-tested library with continuing support for creating and verifying BLS
+signatures.
 
 #### Go Standard Library
 
