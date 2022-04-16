@@ -25,7 +25,7 @@ possibly different content where, given the messages and signature, a verifier
 should be able to determine that each party signed the designated messages.
 * **Threshold Signature**: A _short_ signature generated from multiple signers
 where, given a message and the signature, a verifier is able to determine that
-a large enough share of the parties signed the message. The identifies of the
+a large enough share of the parties signed the message. The identities of the
 parties that contributed to the signature are not revealed.
 * **BLS Signature**: An elliptic-curve pairing based signature system that
 has some nice properties for short multi-signatures. May stand for
