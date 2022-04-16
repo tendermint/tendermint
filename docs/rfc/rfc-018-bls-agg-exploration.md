@@ -231,7 +231,7 @@ I cannot find support listed for Google Cloud, although perhaps it exists.
 In my estimation, yes. With the implementation of proposer-based timestamps, 
 all validators now produce signatures on only one of two messages:
 
-1. A [CanonicalVote][canonical-vote] where the BlockID is the hash of the block or
+1. A [CanonicalVote][canonical-vote-proto] where the BlockID is the hash of the block or
 2. A `CanonicalVote` where the `BlockID` is nil.
 
 The block structure can be updated to perform hashing and validation in a new
