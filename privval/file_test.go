@@ -326,6 +326,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 
 	vpb2.Timestamp = vpb2.Timestamp.Add(time.Millisecond)
 	vpb2.Signature = nil
+	vpb2.ExtensionSignature = nil
 
 	err = privVal.SignVote(ctx, "mychainid", vpb2)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated timestamp and vote extension")
