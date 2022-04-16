@@ -27,7 +27,7 @@ should be able to determine that each party signed the designated messages.
 where, given a message and the signature, a verifier is able to determine that
 a large enough share of the parties signed the message. The identities of the
 parties that contributed to the signature are not revealed.
-* **BLS Signature**: An elliptic-curve pairing based signature system that
+* **BLS Signature**: An elliptic-curve pairing-based signature system that
 has some nice properties for short multi-signatures. May stand for
 *Boneh-Lynn-Schacham* or *Barreto-Lynn-Scott* depending on the context. A
 BLS signature is type of signature scheme that is distinct from other forms
@@ -45,7 +45,7 @@ problems with an asymmetry between the difficulty of calculating the solution
 and verifying that a given solution is correct.
 
 Pairing-based cryptography works by operating on mathematical functions that
-satisfy the property of 'bilinear mapping'. This property is satisfied for
+satisfy the property of **bilinear mapping**. This property is satisfied for
 functions `e` with values `P`, `Q`, and `R` where `e(P, Q + R) = e(P, Q) * e(P, R)`
 and `e(P + Q, R) = e(P, R) * e(Q, R)`. The most familiar example of this is
 exponentiation. Written in common notation, `P^(Q+R) = P^Q * P^R`.
@@ -212,7 +212,7 @@ blocks and votes.
 
 #### Many HSMs do not support aggregated signatures
 
-HSMs or 'Hardware Signing Modules' are a popular way to manage private keys.
+**Hardware Signing Modules** (HSM) are a popular way to manage private keys.
 They provide additional security for key management and should be used when
 possible for storing highly sensitive private key material.
 
