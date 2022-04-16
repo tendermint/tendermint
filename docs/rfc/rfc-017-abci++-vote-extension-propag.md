@@ -224,8 +224,8 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     At a given height  *h<sub>c</sub>* (where possibly *h<sub>c</sub> << h<sub>p</sub>*),
     a full node in *L<sub>h<sub>p</sub></sub>* will consider itself *caught up*, based on the
     (maybe out of date) information it is getting from its peers. Then, the node needs to be ready to
-    propose at height *h<sub>c</sub>+1* requires having received which the vote extensions for
-    *</sub>* h<sub>.
+    propose at height *h<sub>c</sub>+1*, which requires having received the vote extensions for
+    *h<sub>c</sub>*.
 
     As the vote extensions are *not* stored in the blockchain, and it is difficult to have strong
     guarantees on *when* a late node considers itself caught up, providing the late note with the right
