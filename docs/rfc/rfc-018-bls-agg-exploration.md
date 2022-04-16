@@ -46,9 +46,9 @@ and verifying that a given solution is correct.
 
 Pairing-based cryptography works by operating on mathematical functions that
 satisfy the property of 'bilinear mapping'. This property is satisfied for
-functions `e` with values `P`, `Q`, and `R` where `e(P, Q + R) = e(P, Q) + e(P, R)`
+functions `e` with values `P`, `Q`, and `R` where `e(P, Q + R) = e(P, Q) * e(P, R)`
 and `e(P + Q, R) = e(P, R) * e(Q, R)`. The most familiar example of this is
-exponentiation. Written in common notation, P^(Q+R) = P^Q * P^R.
+exponentiation. Written in common notation, `P^(Q+R) = P^Q * P^R`.
 
 Pairing-based elliptic-curve cryptography creates a bilinear mapping using
 an elliptic-curve. With some original curve, you can define two groups,
@@ -75,7 +75,7 @@ decide which should be larger, the public keys or the signatures.
 BLS signatures rely on pairing-based elliptic-curve cryptography to produce
 various types of signatures. For a more in-depth but still high level discussion
 pairing-based elliptic-curve cryptography, see Vitalik Buterin's post on
-[Exploring Elliptic Curve Pairings][vitalik-curve-post]. For much more in
+[Exploring Elliptic Curve Pairings][vitalik-pairing-post]. For much more in
 depth discussion, see the specific paper on BLS12-381, 
 [Compact Multi-Signatures for Smaller Blockchains][multi-signatures-smaller-blockchains].
 
@@ -223,7 +223,7 @@ Below is a list of popular HSMs along with their support for BLS signatures.
 * Amazon Cloud HSM
   * [No support][cloud-hsm-support]
 * Ledger
-  * [Lists support for the BLS12-381 curve][ledger-bls-announce],
+  * [Lists support for the BLS12-381 curve][ledger-bls-announce]
 
 I cannot find support listed for Google Cloud, although perhaps it exists.
 
