@@ -282,7 +282,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	const height int64 = 1
-	state, stateDB, privVals, _ := state(t, 1, height)
+	state, stateDB, privVals := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	const partSize uint32 = 256
@@ -383,7 +383,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	require.NoError(t, err)
 
 	const height int64 = 1
-	state, stateDB, _, _ := state(t, 1, height)
+	state, stateDB, _ := state(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
@@ -454,7 +454,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _, valAddrs := state(t, types.MaxVotesCount, int64(1))
+	state, stateDB, privVals := state(t, types.MaxVotesCount, int64(1))
+
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -541,8 +542,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	// add maximum amount of signatures to a single commit
 	for i := 0; i < types.MaxVotesCount; i++ {
+		pubKey, err := privVals[i].GetPubKey(ctx)
+		require.NoError(t, err)
 		votes[i] = &types.Vote{
-			ValidatorAddress: valAddrs[i],
+			ValidatorAddress: pubKey.Address(),
 		}
 		commit.Signatures = append(commit.Signatures, cs)
 	}
@@ -708,11 +711,10 @@ func TestNodeSetEventSink(t *testing.T) {
 	t.Cleanup(cleanup(ns))
 }
 
-func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator, []crypto.Address) {
+func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 	t.Helper()
 	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
-	addresses := make([]crypto.Address, nVals)
 	for i := 0; i < nVals; i++ {
 		privVal := types.NewMockPV()
 		privVals[i] = privVal
@@ -722,7 +724,6 @@ func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.Pri
 			Power:   1000,
 			Name:    fmt.Sprintf("test%d", i),
 		}
-		addresses[i] = vals[i].Address
 	}
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:    "test-chain",
@@ -742,7 +743,7 @@ func state(t *testing.T, nVals int, height int64) (sm.State, dbm.DB, []types.Pri
 		s.LastValidators = s.Validators.Copy()
 		require.NoError(t, stateStore.Save(s))
 	}
-	return s, stateDB, privVals, addresses
+	return s, stateDB, privVals
 }
 
 func TestLoadStateFromGenesis(t *testing.T) {
