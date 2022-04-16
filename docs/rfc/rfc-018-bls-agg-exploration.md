@@ -184,12 +184,12 @@ that light client verification would proceed more quickly.
 
 ##### Vote Gossip
 
-It is possible to aggregate signatures during voting and not need to gossip all 
-*n* validator signatures to all other validators. Theoretically, subsets of
-the signatures could be aggregated during consensus to produce vote messages
-carrying aggregated signatures. Implementations of this would certainly
-increase the complexity of the gossip layer but may possibly reduce the total
-number of signatures required to be verified by each validator.
+It is possible to aggregate subsets of signatures during voting, so that the
+network need not gossip all *n* validator signatures to all *n* validators.
+Theoretically, subsets of the signatures could be aggregated during consensus
+and vote messages could carry those aggregated signatures. Implementing this
+would certainly increase the complexity of the gossip layer but could possibly
+reduce the total number of signatures required to be verified by each validator.
 
 ##### Block Gossip
 
