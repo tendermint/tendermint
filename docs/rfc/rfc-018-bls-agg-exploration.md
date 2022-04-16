@@ -14,7 +14,7 @@
 The terms that are attached to these types of cryptographic signing systems
 become confusing quickly. Different sources appear to use slightly different
 meanings of each term and this can certainly add to the confusion. Below is
-a brief glossary that may be helpful in 
+a brief glossary that may be helpful in understanding the discussion that follows.
 
 * **Multi-Signature**: A signature generated over a single message
 where, given the message and signature, a verifier is able to determine
