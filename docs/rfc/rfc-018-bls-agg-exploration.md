@@ -46,7 +46,7 @@ and verifying that a given solution is correct.
 
 Pairing-based cryptography works by operating on mathematical functions that
 satisfy the property of 'bilinear mapping'. This property is satisfied for
-functions `e` with values `P`, `Q`, and `R` where `e(P, Q + R) = e(P, Q) * e(P, R)`
+functions `e` with values `P`, `Q`, and `R` where `e(P, Q + R) = e(P, Q) + e(P, R)`
 and `e(P + Q, R) = e(P, R) * e(Q, R)`. The most familiar example of this is
 exponentiation. Written in common notation, P^(Q+R) = P^Q * P^R.
 
