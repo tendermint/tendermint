@@ -149,7 +149,7 @@ number of validators in the set over time so the signature size over the history
 of the chain is likely less than that value). 
 
 Signature aggregation would only produce two signatures for the entire block.
-One for the yays and one for the nays. Each BLS aggregated signature is 48
+One for the yeas and one for the nays. Each BLS aggregated signature is 48
 bytes, per the [IETF standard of BLS signatures][bls-ietf-ecdsa-compare].
 Over the lifetime of the same cosmos hub chain, that would amount to about 1
 GB, a savings of 112 GB. While that is a large factor of reduction it's worth
@@ -256,7 +256,7 @@ message AggregatedSignature {
   // nay_signature is an aggregated signature produced from all of the vote
   // signatures from votes for 'nil' for this block.
   // nay_signature should be made from all of the validators that were both not
-  // in the 'yays' BitArray and not in the 'absent' BitArray.
+  // in the 'yeas' BitArray and not in the 'absent' BitArray.
   repeated bytes nay_signature = 4;
 }
 ```
