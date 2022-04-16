@@ -156,7 +156,7 @@ GB, a savings of 112 GB. While that is a large factor of reduction it's worth
 bearing in mind that, at [GCP's cost][gcp-storage-pricing] of $.026 USD per GB,
 that is a total savings of around $2.50 per month.
 
-#### Reduce Signature Verification Creation and Verification Time
+#### Reduce Signature Creation and Verification Time
 
 From the [IETF draft standard on BLS Signatures][bls-ietf], BLS signatures can be
 created in 370 microseconds and verified in 2700 microseconds. Our current
