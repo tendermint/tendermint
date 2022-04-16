@@ -323,7 +323,7 @@ Backwards compatibility is an important consideration for signature verification
 Specifically, it is important to consider whether chains using current versions
 of IBC would be able to interact with chains adopting BLS.
 
-Because the Block shared by IBC and Tendermint is produced and parsed using
+Because the `Block` shared by IBC and Tendermint is produced and parsed using
 protobuf, new structures can be added to the Block without breaking the
 ability of legacy users to parse the new structure. Breaking changes between
 current users of IBC and new Tendermint blocks only occur if data that is
