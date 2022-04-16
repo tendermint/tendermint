@@ -156,9 +156,6 @@ GB, a savings of 112 GB. While that is a large factor of reduction it's worth
 bearing in mind that, at [GCP's cost][gcp-storage-pricing] of $.026 USD per GB,
 that is a total savings of around $2.50 per month.
 
-
-
-
 #### Reduce Signature Verification Creation and Verification Time
 
 From the [IETF draft standard on BLS Signatures][bls-ietf], BLS signatures can be
@@ -244,19 +241,19 @@ alongside the current `Commit.Signatures` field. This new field, tentatively nam
 
 ```proto
 message AggregatedSignature {
-  // yays is a BitArray representing which validators in the active validator
-  // set issued a 'yay' vote for the block.
-  tendermint.libs.bits.BitArray yays = 1;
+  // yeas is a BitArray representing which validators in the active validator
+  // set issued a 'yea' vote for the block.
+  tendermint.libs.bits.BitArray yeas = 1;
 
   // absent is a BitArray representing which validators in the active
   // validator set did not issue votes for the block.
-  tendermint.libs.bits.BitArray abstent = 2;
+  tendermint.libs.bits.BitArray absent = 2;
 
-  // yay_signature is an aggregated signature produced from all of the vote
+  // yea_signature is an aggregated signature produced from all of the vote
   // signatures for the block.
-  repeated bytes yay_signature = 3;
+  repeated bytes yea_signature = 3;
 
-  // yay_signature is an aggregated signature produced from all of the vote
+  // nay_signature is an aggregated signature produced from all of the vote
   // signatures from votes for 'nil' for this block.
   // nay_signature should be made from all of the validators that were both not
   // in the 'yays' BitArray and not in the 'absent' BitArray.
