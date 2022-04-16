@@ -122,7 +122,7 @@ the public key associated with that validator.
 IBC would no longer need to transmit a large set of signatures when
 updating state. These state updates do not happen for every IBC packet, only
 when changing an IBC light client's view of the counterparty chain's state.
-General [packets][ibc-packet] only contain enough information to correctly
+General [IBC packets][ibc-packet] only contain enough information to correctly
 route the data to the counterparty chain.
 
 IBC does persist commit signatures to the chain in these `MsgUpdateClient`
