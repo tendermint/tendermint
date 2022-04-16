@@ -21,20 +21,14 @@ import (
 )
 
 func TestGenLoadValidator(t *testing.T) {
-	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
-	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
-	require.NoError(t, err)
-
-	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
-	require.NoError(t, err)
+	privVal, tempKeyFileName, tempStateFileName := newTestFilePV(t)
 
 	height := int64(100)
 	privVal.LastSignState.Height = height
 	require.NoError(t, privVal.Save())
 	addr := privVal.GetAddress()
 
-	privVal, err = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
+	privVal, err := LoadFilePV(tempKeyFileName, tempStateFileName)
 	assert.NoError(t, err)
 	assert.Equal(t, addr, privVal.GetAddress(), "expected privval addr to be the same")
 	assert.Equal(t, height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
@@ -44,14 +38,8 @@ func TestResetValidator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
-	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
-	require.NoError(t, err)
-
-	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
-	require.NoError(t, err)
-	emptyState := FilePVLastSignState{filePath: tempStateFile.Name()}
+	privVal, _, tempStateFileName := newTestFilePV(t)
+	emptyState := FilePVLastSignState{filePath: tempStateFileName}
 
 	// new priv val has empty state
 	assert.Equal(t, privVal.LastSignState, emptyState)
@@ -62,7 +50,7 @@ func TestResetValidator(t *testing.T) {
 	randBytes := tmrand.Bytes(tmhash.Size)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
-	err = privVal.SignVote(ctx, "mychainid", vote.ToProto())
+	err := privVal.SignVote(ctx, "mychainid", vote.ToProto())
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -160,13 +148,7 @@ func TestSignVote(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
-	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
-	require.NoError(t, err)
-
-	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
-	require.NoError(t, err)
+	privVal, _, _ := newTestFilePV(t)
 
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
@@ -183,7 +165,7 @@ func TestSignVote(t *testing.T) {
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
 	v := vote.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", v)
+	err := privVal.SignVote(ctx, "mychainid", v)
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
@@ -215,13 +197,7 @@ func TestSignProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
-	require.NoError(t, err)
-	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
-	require.NoError(t, err)
-
-	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
-	require.NoError(t, err)
+	privVal, _, _ := newTestFilePV(t)
 
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
@@ -237,7 +213,7 @@ func TestSignProposal(t *testing.T) {
 	proposal := newProposal(height, round, block1, ts)
 	pbp := proposal.ToProto()
 
-	err = privVal.SignProposal(ctx, "mychainid", pbp)
+	err := privVal.SignProposal(ctx, "mychainid", pbp)
 	assert.NoError(t, err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
@@ -320,4 +296,16 @@ func newProposal(height int64, round int32, blockID types.BlockID, t time.Time) 
 		BlockID:   blockID,
 		Timestamp: t,
 	}
+}
+
+func newTestFilePV(t *testing.T) (*FilePV, string, string) {
+	tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
+	require.NoError(t, err)
+	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
+	require.NoError(t, err)
+
+	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
+	require.NoError(t, err)
+
+	return privVal, tempKeyFile.Name(), tempStateFile.Name()
 }
