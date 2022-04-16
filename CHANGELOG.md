@@ -10,14 +10,14 @@ Special thanks to external contributors on this release: @firelizzard18
 
 ### FEATURES
 
-- [cli] \#8300 Add a tool to update old config files to the latest version [backport \#8281]. (@creachadair)
+- [cli] [\#8300](https://github.com/tendermint/tendermint/pull/8300) Add a tool to update old config files to the latest version [backport [\#8281](https://github.com/tendermint/tendermint/pull/8281)]. (@creachadair)
 
 ### IMPROVEMENTS
 
 ### BUG FIXES
 
-- [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
-- [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
+- [cli] [\#8294](https://github.com/tendermint/tendermint/pull/8294) keymigrate: ensure block hash keys are correctly translated. (@creachadair)
+- [cli] [\#8352](https://github.com/tendermint/tendermint/pull/8352) keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
 
 ## v0.35.3
 
