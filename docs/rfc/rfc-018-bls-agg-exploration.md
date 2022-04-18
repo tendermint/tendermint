@@ -147,12 +147,12 @@ IBC module could be slightly smaller.
 
 #### Reduce Block Size
 
-At the moment, the commit size contains a 512 bit signature for each validator
-that voted for the block. For the cosmos hub, which has 175 validators in the
-validator set, this amounts to about 11kb per block. That is around 113 GB over
-the lifetime of the chain's 10118561 blocks. (Note, the hub has increased the
-number of validators in the set over time so the signature size over the history
-of the chain is likely less than that value). 
+At the moment, a commit contains a 64-byte (512-bit) signature for each validator
+that voted for the block. For the Cosmos Hub, which has 175 validators in the
+active set, this amounts to about 11 KiB per block. That gives an upper bound of
+around 113 GiB over the lifetime of the chain's 10.12M blocks. (Note, the hub has
+increased the number of validators in the active set over time so the total
+signature size over the history of the chain is likely somewhat less than that).
 
 Signature aggregation would only produce two signatures for the entire block.
 One for the yeas and one for the nays. Each BLS aggregated signature is 48
