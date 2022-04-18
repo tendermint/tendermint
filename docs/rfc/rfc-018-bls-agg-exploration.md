@@ -22,7 +22,7 @@ that each party signed the message as well as which parties signed the message.
 May be short or may vary with number of signers.
 * **Aggregated Signature**: A _short_ signature generated over messages with
 possibly different content where, given the messages and signature, a verifier
-should be able to determine that each party signed the designated messages.
+should be able to determine that all the parties signed the designated messages.
 * **Threshold Signature**: A _short_ signature generated from multiple signers
 where, given a message and the signature, a verifier is able to determine that
 a large enough share of the parties signed the message. The identities of the
