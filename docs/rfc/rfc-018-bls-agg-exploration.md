@@ -207,11 +207,11 @@ instead of the full list of multi-signatures as we have them now.
 
 #### Heterogeneous key types cannot be aggregated
 
-Only one type of signature can be aggregated and our legacy signing schemes
-cannot be aggregated. In practice, this means that aggregated signatures can
-be created over the set of all validators that use BLS signatures and validators
-with alternative key types, such as Ed25519 must be included separately in
-blocks and votes.
+Aggregation requires a specific signature algorithm, and our legacy signing schemes
+cannot be aggregated. In practice, this means that aggregated signatures could
+be created for a subset of validators using BLS signatures, and validators
+with other key types (such as Ed25519) would still have to be be separately
+propagated in blocks and votes.
 
 #### Many HSMs do not support aggregated signatures
 
