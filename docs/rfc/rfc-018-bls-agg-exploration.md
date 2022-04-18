@@ -139,7 +139,7 @@ data in the header.
 Adding BLS signatures would create a new signature type that must be
 understood by the IBC module and by the relayers. For some operations, such
 as state updates, the set of data written into the chain and received by the
-IBC module would be slightly smaller.
+IBC module could be slightly smaller.
 
 ## Discussion
 
