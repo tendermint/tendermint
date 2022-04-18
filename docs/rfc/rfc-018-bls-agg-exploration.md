@@ -101,10 +101,9 @@ incurs overhead, so frequently re-aggregating may incur a significant
 overhead. How costly this is is still subject to further investigation and
 performance testing.
 
-Each validator will still need to receive vote extension data
-from the peer validators in order for consensus to proceed. As a result, any
-advantage gained by aggregating signatures across the vote message will be
-nullified as a result of the addition of vote extensions.
+Even if vote signatures were aggregated before gossip, each validator would still
+need to receive and verify vote extension data from each (individual) peer validator in 
+order for consensus to proceed. That displaces any advantage gained by aggregating signatures across the vote message in the presence of vote extensions.
 
 #### Block Creation
 
