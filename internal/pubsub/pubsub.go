@@ -287,7 +287,7 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 }
 
 // Publish publishes the given message. An error will be returned to the caller
-// if the context is canceled.
+// if the pubsub server has shut down.
 func (s *Server) Publish(msg types.EventData) error {
 	return s.publish(msg, []abci.Event{})
 }
