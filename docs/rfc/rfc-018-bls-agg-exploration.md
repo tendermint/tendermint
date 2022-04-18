@@ -34,7 +34,10 @@ has some nice properties for short multi-signatures. May stand for
 BLS signature is type of signature scheme that is distinct from other forms
 of elliptic-curve signatures such as ECDSA and EdDSA.
 * **Interactive**: Cryptographic scheme where parties need to perform one or
-more request-response cycles to produce the cryptographic material.
+more request-response cycles to produce the cryptographic material. For
+example, an interactive signature scheme may require the signer and the
+verifier to cooperate to create and/or verify the signature, rather than a
+signature being created ahead of time.
 * **Non-interactive**: Cryptographic scheme where parties do not need to
 perform any request-response cycles to produce the cryptographic material.
 
