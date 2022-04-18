@@ -116,10 +116,12 @@ signature per validator.
 
 #### Block Verification
 
-Verification of blocks would not verify a set of many signatures. Verification
-would instead check the single multi-signature using the public keys stored
-by the validator. Currently, we verify each validator signature using
-the public key associated with that validator.
+Currently, we verify each validator signature using the public key associated
+with that validator.  With signature aggregation, verification of blocks would
+not verify many signatures individually, but would instead check the (single)
+multi-signature using the public keys stored by the validator. This would also
+require a mechanism for indicating which validators are included in the
+aggregated signature.
 
 #### IBC Relaying
 
