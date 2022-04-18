@@ -151,14 +151,14 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 	defer cancel()
 
 	r := setupSingle(ctx, t)
-	peer := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID(t)}
+	peer := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID()}
 	added, err := r.manager.Add(peer)
 	require.NoError(t, err)
 	require.True(t, added)
 
 	addresses := make([]p2pproto.PexAddress, 101)
 	for i := 0; i < len(addresses); i++ {
-		nodeAddress := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID(t)}
+		nodeAddress := p2p.NodeAddress{Protocol: p2p.MemoryProtocol, NodeID: randomNodeID()}
 		addresses[i] = p2pproto.PexAddress{
 			URL: nodeAddress.String(),
 		}
@@ -730,6 +730,6 @@ func newNodeID(t *testing.T, id string) types.NodeID {
 	return nodeID
 }
 
-func randomNodeID(t *testing.T) types.NodeID {
+func randomNodeID() types.NodeID {
 	return types.NodeIDFromPubKey(ed25519.GenPrivKey().PubKey())
 }

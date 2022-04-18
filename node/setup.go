@@ -172,7 +172,7 @@ func createMempoolReactor(
 	peerEvents p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
 	peerHeight func(types.NodeID) int64,
-) (service.Service, mempool.Mempool, error) {
+) (service.Service, mempool.Mempool) {
 	logger = logger.With("module", "mempool")
 
 	mp := mempool.NewTxMempool(
@@ -197,7 +197,7 @@ func createMempoolReactor(
 		mp.EnableTxsAvailable()
 	}
 
-	return reactor, mp, nil
+	return reactor, mp
 }
 
 func createEvidenceReactor(

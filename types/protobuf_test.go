@@ -14,11 +14,11 @@ import (
 
 func TestABCIPubKey(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
-	err := testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
+	err := testABCIPubKey(t, pkEd)
 	assert.NoError(t, err)
 }
 
-func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
+func testABCIPubKey(t *testing.T, pk crypto.PubKey) error {
 	abciPubKey, err := encoding.PubKeyToProto(pk)
 	require.NoError(t, err)
 	pk2, err := encoding.PubKeyFromProto(abciPubKey)

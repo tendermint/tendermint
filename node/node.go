@@ -260,11 +260,8 @@ func makeNode(
 	node.rpcEnv.EvidencePool = evPool
 	node.evPool = evPool
 
-	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
+	mpReactor, mp := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
 		peerManager.Subscribe, node.router.OpenChannel, peerManager.GetHeight)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
 	node.rpcEnv.Mempool = mp
 	node.services = append(node.services, mpReactor)
 
