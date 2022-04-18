@@ -8,7 +8,7 @@ require (
 	github.com/adlio/schema v1.3.0
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-	github.com/creachadair/atomicfile v0.2.4
+	github.com/creachadair/atomicfile v0.2.5
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/creachadair/tomledit v0.0.16
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
