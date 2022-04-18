@@ -54,8 +54,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.False(t, indexer.IndexingEnabled([]indexer.EventSink{}))
 
 	// event sink setup
-	pool, err := setupDB(t)
-	assert.NoError(t, err)
+	pool := setupDB(t)
 
 	store := dbm.NewMemDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
@@ -133,7 +132,7 @@ func resetDB(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func setupDB(t *testing.T) (*dockertest.Pool, error) {
+func setupDB(t *testing.T) *dockertest.Pool {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 	assert.NoError(t, err)
@@ -187,7 +186,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	err = migrator.Apply(psqldb, sm)
 	assert.NoError(t, err)
 
-	return pool, nil
+	return pool
 }
 
 func teardown(t *testing.T, pool *dockertest.Pool) error {
