@@ -16,10 +16,11 @@ become confusing quickly. Different sources appear to use slightly different
 meanings of each term and this can certainly add to the confusion. Below is
 a brief glossary that may be helpful in understanding the discussion that follows.
 
+* **Short Signature**: A signature that does not vary in length with the
+number of signers.
 * **Multi-Signature**: A signature generated over a single message
-where, given the message and signature, a verifier is able to determine
-that each party signed the message as well as which parties signed the message.
-May be short or may vary with number of signers.
+where, given the message and signature, a verifier is able to determine that
+all parties signed the message. May be short or may vary with number of signers.
 * **Aggregated Signature**: A _short_ signature generated over messages with
 possibly different content where, given the messages and signature, a verifier
 should be able to determine that all the parties signed the designated messages.
