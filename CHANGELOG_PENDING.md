@@ -19,7 +19,7 @@ Special thanks to external contributors on this release:
   - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
   - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
   - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
-  - [cli] \#8081 make the reset command safe to use. (@marbar3778)
+  - [cli] \#8081 make the reset command safe to use by intoducing `reset-state` command. Fixed by \#8259. (@marbar3778, @cmwaters)
   - [config] \#8222 default indexer configuration to null. (@creachadair)
 
 - Apps
@@ -84,3 +84,4 @@ Special thanks to external contributors on this release:
 - [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
 - [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
+- [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
