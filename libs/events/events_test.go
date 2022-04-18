@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 
 	messages := make(chan EventData)
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case messages <- data:
 				return nil
@@ -28,7 +29,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 				return ctx.Err()
 			}
 		}))
-	go evsw.FireEvent(ctx, "event", "data")
+	go evsw.FireEvent("event", "data")
 	received := <-messages
 	if received != "data" {
 		t.Errorf("message received does not match: %v", received)
@@ -48,7 +49,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	numbers := make(chan uint64, 4)
 	// subscribe one listener for one event
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -75,6 +76,8 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	t.Cleanup(leaktest.Check(t))
+
 	evsw := NewEventSwitch()
 
 	doneSum := make(chan uint64)
@@ -84,7 +87,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	numbers := make(chan uint64, 4)
 	// subscribe one listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -93,7 +96,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -102,7 +105,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -135,6 +138,8 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	t.Cleanup(leaktest.Check(t))
+
 	evsw := NewEventSwitch()
 
 	doneSum1 := make(chan uint64)
@@ -146,7 +151,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -155,7 +160,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -164,7 +169,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -173,7 +178,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -182,7 +187,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -238,7 +243,7 @@ func TestManageListenersAsync(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -247,7 +252,7 @@ func TestManageListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -256,7 +261,7 @@ func TestManageListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -265,7 +270,7 @@ func TestManageListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -274,7 +279,7 @@ func TestManageListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -283,7 +288,7 @@ func TestManageListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -303,7 +308,7 @@ func TestManageListenersAsync(t *testing.T) {
 			eventNumber := r1.Intn(3) + 1
 			go evsw.AddListenerForEvent(fmt.Sprintf("listener%v", listenerNumber), //nolint:errcheck // ignore for tests
 				fmt.Sprintf("event%v", eventNumber),
-				func(context.Context, EventData) error { return nil })
+				func(EventData) error { return nil })
 		}
 	}
 	addListenersStress()
@@ -358,7 +363,7 @@ func fireEvents(ctx context.Context, evsw Fireable, event string, doneChan chan 
 			break
 		}
 
-		evsw.FireEvent(ctx, event, i)
+		evsw.FireEvent(event, i)
 		sentSum += i
 	}
 

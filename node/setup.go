@@ -231,56 +231,6 @@ func createEvidenceReactor(
 	return evidenceReactor, evidencePool, dbCloser, nil
 }
 
-func createConsensusReactor(
-	ctx context.Context,
-	cfg *config.Config,
-	store sm.Store,
-	blockExec *sm.BlockExecutor,
-	blockStore sm.BlockStore,
-	mp mempool.Mempool,
-	evidencePool *evidence.Pool,
-	privValidator types.PrivValidator,
-	csMetrics *consensus.Metrics,
-	waitSync bool,
-	eventBus *eventbus.EventBus,
-	peerManager *p2p.PeerManager,
-	chCreator p2p.ChannelCreator,
-	logger log.Logger,
-) (*consensus.Reactor, *consensus.State, error) {
-	logger = logger.With("module", "consensus")
-
-	consensusState, err := consensus.NewState(ctx,
-		logger,
-		cfg.Consensus,
-		store,
-		blockExec,
-		blockStore,
-		mp,
-		evidencePool,
-		eventBus,
-		consensus.StateMetrics(csMetrics),
-		consensus.SkipStateStoreBootstrap,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if privValidator != nil && cfg.Mode == config.ModeValidator {
-		consensusState.SetPrivValidator(ctx, privValidator)
-	}
-
-	reactor := consensus.NewReactor(
-		logger,
-		consensusState,
-		chCreator,
-		peerManager.Subscribe,
-		eventBus,
-		waitSync,
-		csMetrics,
-	)
-	return reactor, consensusState, nil
-}
-
 func createPeerManager(
 	cfg *config.Config,
 	dbProvider config.DBProvider,

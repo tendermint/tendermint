@@ -160,7 +160,6 @@ func (pkz privKeys) ChangeKeys(delta int) privKeys {
 // NOTE: Expected to have a large validator set size ~ 100 validators.
 func genLightBlocksWithKeys(
 	t testing.TB,
-	chainID string,
 	numBlocks int64,
 	valSize int,
 	valVariation float32,

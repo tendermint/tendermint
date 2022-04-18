@@ -505,7 +505,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 
-		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
+		cs, err := NewState(logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
 		require.NoError(t, err)
 		cs.SetPrivValidator(ctx, pv)
