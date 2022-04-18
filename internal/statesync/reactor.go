@@ -333,7 +333,7 @@ func (r *Reactor) OnStop() {
 // of historical blocks before participating in consensus
 func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	if r.eventBus != nil {
-		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+		if err := r.eventBus.PublishEventStateSyncStatus(types.EventDataStateSyncStatus{
 			Complete: false,
 			Height:   r.initialHeight,
 		}); err != nil {
@@ -387,7 +387,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 	}
 
 	if r.eventBus != nil {
-		if err := r.eventBus.PublishEventStateSyncStatus(ctx, types.EventDataStateSyncStatus{
+		if err := r.eventBus.PublishEventStateSyncStatus(types.EventDataStateSyncStatus{
 			Complete: true,
 			Height:   state.LastBlockHeight,
 		}); err != nil {

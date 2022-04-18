@@ -491,8 +491,7 @@ func newStateWithConfigAndBlockStore(
 	require.NoError(t, eventBus.Start(ctx))
 
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
-	cs, err := NewState(ctx,
-		logger.With("module", "consensus"),
+	cs, err := NewState(logger.With("module", "consensus"),
 		thisConfig.Consensus,
 		stateStore,
 		blockExec,
