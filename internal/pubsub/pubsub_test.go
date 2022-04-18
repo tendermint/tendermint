@@ -42,7 +42,7 @@ func TestSubscribeWithArgs(t *testing.T) {
 		require.Equal(t, 1, s.NumClients())
 		require.Equal(t, 1, s.NumClientSubscriptions(clientID))
 
-		require.NoError(t, s.Publish(ctx, pubstring("Ka-Zar")))
+		require.NoError(t, s.Publish(pubstring("Ka-Zar")))
 		sub.mustReceive(ctx, pubstring("Ka-Zar"))
 	})
 	t.Run("PositiveLimit", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestSubscribeWithArgs(t *testing.T) {
 			Query:    query.All,
 			Limit:    10,
 		}))
-		require.NoError(t, s.Publish(ctx, pubstring("Aggamon")))
+		require.NoError(t, s.Publish(pubstring("Aggamon")))
 		sub.mustReceive(ctx, pubstring("Aggamon"))
 	})
 }
@@ -72,7 +72,7 @@ func TestObserver(t *testing.T) {
 	}))
 
 	const input = pubstring("Lions and tigers and bears, oh my!")
-	require.NoError(t, s.Publish(ctx, input))
+	require.NoError(t, s.Publish(input))
 	<-done
 	require.Equal(t, got, input)
 }
@@ -106,9 +106,9 @@ func TestPublishDoesNotBlock(t *testing.T) {
 	go func() {
 		defer close(published)
 
-		require.NoError(t, s.Publish(ctx, pubstring("Quicksilver")))
-		require.NoError(t, s.Publish(ctx, pubstring("Asylum")))
-		require.NoError(t, s.Publish(ctx, pubstring("Ivan")))
+		require.NoError(t, s.Publish(pubstring("Quicksilver")))
+		require.NoError(t, s.Publish(pubstring("Asylum")))
+		require.NoError(t, s.Publish(pubstring("Ivan")))
 	}()
 
 	select {
@@ -149,9 +149,9 @@ func TestSlowSubscriber(t *testing.T) {
 		Query:    query.All,
 	}))
 
-	require.NoError(t, s.Publish(ctx, pubstring("Fat Cobra")))
-	require.NoError(t, s.Publish(ctx, pubstring("Viper")))
-	require.NoError(t, s.Publish(ctx, pubstring("Black Panther")))
+	require.NoError(t, s.Publish(pubstring("Fat Cobra")))
+	require.NoError(t, s.Publish(pubstring("Viper")))
+	require.NoError(t, s.Publish(pubstring("Black Panther")))
 
 	// We had capacity for one item, so we should get that item, but after that
 	// the subscription should have been terminated by the publisher.
@@ -176,7 +176,7 @@ func TestDifferentClients(t *testing.T) {
 		Attributes: []abci.EventAttribute{{Key: "type", Value: "NewBlock"}},
 	}}
 
-	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Iceman"), events))
+	require.NoError(t, s.PublishWithEvents(pubstring("Iceman"), events))
 	sub1.mustReceive(ctx, pubstring("Iceman"))
 
 	sub2 := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
@@ -195,7 +195,7 @@ func TestDifferentClients(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Ultimo"), events))
+	require.NoError(t, s.PublishWithEvents(pubstring("Ultimo"), events))
 	sub1.mustReceive(ctx, pubstring("Ultimo"))
 	sub2.mustReceive(ctx, pubstring("Ultimo"))
 
@@ -210,7 +210,7 @@ func TestDifferentClients(t *testing.T) {
 		Attributes: []abci.EventAttribute{{Key: "type", Value: "NewRoundStep"}},
 	}}
 
-	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Valeria Richards"), events))
+	require.NoError(t, s.PublishWithEvents(pubstring("Valeria Richards"), events))
 	sub3.mustTimeOut(ctx, 100*time.Millisecond)
 }
 
@@ -259,7 +259,7 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, s.PublishWithEvents(ctx, pubstring("Iceman"), events))
+			require.NoError(t, s.PublishWithEvents(pubstring("Iceman"), events))
 
 			if tc.expected != nil {
 				sub.mustReceive(ctx, tc.expected)
@@ -288,7 +288,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 		Query:    q,
 	}))
 
-	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Goblin Queen"), events))
+	require.NoError(t, s.PublishWithEvents(pubstring("Goblin Queen"), events))
 	sub1.mustReceive(ctx, pubstring("Goblin Queen"))
 
 	// Subscribing a second time with the same client ID and query fails.
@@ -302,7 +302,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	}
 
 	// The attempt to re-subscribe does not disrupt the existing sub.
-	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Spider-Man"), events))
+	require.NoError(t, s.PublishWithEvents(pubstring("Spider-Man"), events))
 	sub1.mustReceive(ctx, pubstring("Spider-Man"))
 }
 
@@ -325,7 +325,7 @@ func TestUnsubscribe(t *testing.T) {
 	}))
 
 	// Publishing should still work.
-	require.NoError(t, s.Publish(ctx, pubstring("Nick Fury")))
+	require.NoError(t, s.Publish(pubstring("Nick Fury")))
 
 	// The unsubscribed subscriber should report as such.
 	sub.mustFail(ctx, pubsub.ErrUnsubscribed)
@@ -373,7 +373,7 @@ func TestResubscribe(t *testing.T) {
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, args))
 
-	require.NoError(t, s.Publish(ctx, pubstring("Cable")))
+	require.NoError(t, s.Publish(pubstring("Cable")))
 	sub.mustReceive(ctx, pubstring("Cable"))
 }
 
@@ -394,7 +394,7 @@ func TestUnsubscribeAll(t *testing.T) {
 	}))
 
 	require.NoError(t, s.UnsubscribeAll(ctx, clientID))
-	require.NoError(t, s.Publish(ctx, pubstring("Nick Fury")))
+	require.NoError(t, s.Publish(pubstring("Nick Fury")))
 
 	sub1.mustFail(ctx, pubsub.ErrUnsubscribed)
 	sub2.mustFail(ctx, pubsub.ErrUnsubscribed)
@@ -410,13 +410,24 @@ func TestBufferCapacity(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	require.NoError(t, s.Publish(ctx, pubstring("Nighthawk")))
-	require.NoError(t, s.Publish(ctx, pubstring("Sage")))
+	require.NoError(t, s.Publish(pubstring("Nighthawk")))
+	require.NoError(t, s.Publish(pubstring("Sage")))
 
 	ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 
-	require.ErrorIs(t, s.Publish(ctx, pubstring("Ironclad")), context.DeadlineExceeded)
+	sig := make(chan struct{})
+
+	go func() { defer close(sig); _ = s.Publish(pubstring("Ironclad")) }()
+
+	select {
+	case <-sig:
+		t.Fatal("should not fire")
+
+	case <-ctx.Done():
+		return
+	}
+
 }
 
 func newTestServer(ctx context.Context, t testing.TB, logger log.Logger) *pubsub.Server {

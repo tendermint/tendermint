@@ -68,7 +68,7 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 		require.NoError(t, client.Start(ctx))
 		t.Cleanup(client.Wait)
 
-		mempool := setup(ctx, t, client, 0)
+		mempool := setup(t, client, 0)
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
