@@ -12,29 +12,28 @@ import (
 	"testing"
 
 	"github.com/tendermint/tendermint/libs/log"
-	rs "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-var rpcFuncMap = map[string]*rs.RPCFunc{
-	"c": rs.NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) {
-		return "foo", nil
-	}, "s", "i"),
-}
-var mux *http.ServeMux
-
-func init() {
-	mux = http.NewServeMux()
-	rs.RegisterRPCFuncs(mux, rpcFuncMap, log.NewNopLogger())
-}
-
 func FuzzRPCJSONRPCServer(f *testing.F) {
+	var rpcFuncMap = map[string]*rpcserver.RPCFunc{
+		"c": rpcserver.NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) {
+			return "foo", nil
+		}, "s", "i"),
+	}
+
+	mux := http.NewServeMux()
+	rpcserver.RegisterRPCFuncs(mux, rpcFuncMap, log.NewNopLogger())
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if len(data) == 0 {
 			return
 		}
 
-		req, _ := http.NewRequest("POST", "http://localhost/", bytes.NewReader(data))
+		req, err := http.NewRequest("POST", "http://localhost/", bytes.NewReader(data))
+		if err != nil {
+			panic(err)
+		}
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		res := rec.Result()
@@ -50,20 +49,20 @@ func FuzzRPCJSONRPCServer(f *testing.F) {
 		}
 
 		if outputJSONIsSlice(blob) {
-			recv := []types.RPCResponse{}
+			var recv []types.RPCResponse
 			if err := json.Unmarshal(blob, &recv); err != nil {
 				panic(err)
 			}
 			return
 		}
-		recv := &types.RPCResponse{}
-		if err := json.Unmarshal(blob, recv); err != nil {
+		var recv types.RPCResponse
+		if err := json.Unmarshal(blob, &recv); err != nil {
 			panic(err)
 		}
 	})
 }
 
 func outputJSONIsSlice(input []byte) bool {
-	slice := []interface{}{}
+	var slice []json.RawMessage
 	return json.Unmarshal(input, &slice) == nil
 }
