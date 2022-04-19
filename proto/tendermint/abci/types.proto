@@ -324,7 +324,13 @@ message ResponseExtendVote {
 }
 
 message ResponseVerifyVoteExtension {
-  bool accept = 1;
+  VerifyStatus status = 1;
+
+  enum VerifyStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
 }
 
 message ResponseFinalizeBlock {
@@ -351,6 +357,9 @@ message CommitInfo {
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
+// ExtendedCommitInfo is similar to CommitInfo except that it is only used in
+// the PrepareProposal request such that Tendermint can provide vote extensions
+// to the application.
 message ExtendedCommitInfo {
   // The round at which the block proposer decided in the previous height.
   int32 round = 1;
@@ -421,19 +430,13 @@ message VoteInfo {
   bool      signed_last_block = 2;
 }
 
-// TODO: move this to core Tendermint data structures
-message CanonicalVoteExtension {
-  bytes  extension = 1;
-  int64  height    = 2;
-  int32  round     = 3;
-  string chain_id  = 4;
-  bytes  address   = 5;
-}
-
 message ExtendedVoteInfo {
-  Validator validator         = 1 [(gogoproto.nullable) = false];
-  bool      signed_last_block = 2;
-  bytes     vote_extension    = 3;
+  // The validator that sent the vote.
+  Validator validator = 1 [(gogoproto.nullable) = false];
+  // Indicates whether the validator signed the last block, allowing for rewards based on validator availability.
+  bool signed_last_block = 2;
+  // Non-deterministic extension provided by the sending validator's application.
+  bytes vote_extension = 3;
 }
 
 enum MisbehaviorType {

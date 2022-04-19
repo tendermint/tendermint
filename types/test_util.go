@@ -44,6 +44,7 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 		return false, err
 	}
 	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
 	return voteSet.AddVote(vote)
 }
 
@@ -77,6 +78,7 @@ func MakeVote(
 	}
 
 	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote, nil
 }
@@ -98,4 +100,14 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 	}
 	block.fillHeader()
 	return block
+}
+
+// Votes constructed from commits don't have extensions, because we don't store
+// the extensions themselves in the commit. This method is used to construct a
+// copy of a vote, but nil its extension and signature.
+func voteWithoutExtension(v *Vote) *Vote {
+	vc := v.Copy()
+	vc.Extension = nil
+	vc.ExtensionSignature = nil
+	return vc
 }

@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/cosmos/gogoproto/jsonpb"
-
-	types "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -53,14 +51,8 @@ func (r ResponseProcessProposal) IsStatusUnknown() bool {
 	return r.Status == ResponseProcessProposal_UNKNOWN
 }
 
-// IsOK returns true if Code is OK
-func (r ResponseVerifyVoteExtension) IsOK() bool {
-	return r.Result <= ResponseVerifyVoteExtension_ACCEPT
-}
-
-// IsErr returns true if Code is something other than OK.
-func (r ResponseVerifyVoteExtension) IsErr() bool {
-	return r.Result > ResponseVerifyVoteExtension_ACCEPT
+func (r ResponseVerifyVoteExtension) IsAccepted() bool {
+	return r.Status == ResponseVerifyVoteExtension_ACCEPT
 }
 
 //---------------------------------------------------------------------------
@@ -171,22 +163,3 @@ func MarshalTxResults(r []*ExecTxResult) ([][]byte, error) {
 
 // -----------------------------------------------
 // construct Result data
-
-func RespondExtendVote(appDataToSign, appDataSelfAuthenticating []byte) ResponseExtendVote {
-	return ResponseExtendVote{
-		VoteExtension: &types.VoteExtension{
-			AppDataToSign:             appDataToSign,
-			AppDataSelfAuthenticating: appDataSelfAuthenticating,
-		},
-	}
-}
-
-func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
-	result := ResponseVerifyVoteExtension_REJECT
-	if ok {
-		result = ResponseVerifyVoteExtension_ACCEPT
-	}
-	return ResponseVerifyVoteExtension{
-		Result: result,
-	}
-}

@@ -4,20 +4,28 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/version"
 )
 
-const appVersion = 1
+const (
+	appVersion                 = 1
+	voteExtensionKey    string = "extensionSum"
+	voteExtensionMaxVal int64  = 128
+)
 
 // Application is an ABCI application for use by end-to-end tests. It is a
 // simple key/value store for strings, storing data in memory and persisting
@@ -282,8 +290,69 @@ func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestA
 	return &abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil
 }
 
+// PrepareProposal will take the given transactions and attempt to prepare a
+// proposal from them when it's our turn to do so. In the process, vote
+// extensions from the previous round of consensus, if present, will be used to
+// construct a special transaction whose value is the sum of all of the vote
+// extensions from the previous round.
+//
+// NB: Assumes that the supplied transactions do not exceed `req.MaxTxBytes`.
+// If adding a special vote extension-generated transaction would cause the
+// total number of transaction bytes to exceed `req.MaxTxBytes`, we will not
+// append our special vote extension transaction.
 func (app *Application) PrepareProposal(
 	_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
+	var sum int64
+	var extCount int
+	for _, vote := range req.LocalLastCommit.Votes {
+		if !vote.SignedLastBlock || len(vote.VoteExtension) == 0 {
+			continue
+		}
+		extValue, err := parseVoteExtension(vote.VoteExtension)
+		// This should have been verified in VerifyVoteExtension
+		if err != nil {
+			panic(fmt.Errorf("failed to parse vote extension in PrepareProposal: %w", err))
+		}
+		valAddr := crypto.Address(vote.Validator.Address)
+		app.logger.Info("got vote extension value in PrepareProposal", "valAddr", valAddr, "value", extValue)
+		sum += extValue
+		extCount++
+	}
+
+	if app.cfg.PrepareProposalDelay != 0 {
+		time.Sleep(app.cfg.PrepareProposalDelay)
+	}
+
+	// We only generate our special transaction if we have vote extensions
+	if extCount > 0 {
+		var totalBytes int64
+		extTxPrefix := fmt.Sprintf("%s=", voteExtensionKey)
+		extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, sum))
+		app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
+		// Our generated transaction takes precedence over any supplied
+		// transaction that attempts to modify the "extensionSum" value.
+		txs := make([][]byte, len(req.Txs)+1)
+		for i, tx := range req.Txs {
+			if strings.HasPrefix(string(tx), extTxPrefix) {
+				continue
+			}
+			txs[i] = tx
+			totalBytes += int64(len(tx))
+		}
+		if totalBytes+int64(len(extTx)) < req.MaxTxBytes {
+			txs[len(req.Txs)] = extTx
+		} else {
+			app.logger.Info(
+				"too many txs to include special vote extension-generated tx",
+				"totalBytes", totalBytes,
+				"MaxTxBytes", req.MaxTxBytes,
+				"extTx", extTx,
+				"extTxLen", len(extTx),
+			)
+		}
+		return abci.ResponsePrepareProposal{Txs: txs}
+	}
+	// None of the transactions are modified by this application.
 	txs := make([][]byte, 0, len(req.Txs))
 	var totalBytes int64
 	for _, tx := range req.Txs {
@@ -294,10 +363,6 @@ func (app *Application) PrepareProposal(
 		txs = append(txs, tx)
 	}
 
-	if app.cfg.PrepareProposalDelay != 0 {
-		time.Sleep(app.cfg.PrepareProposalDelay)
-	}
-
 	return &abci.ResponsePrepareProposal{Txs: txs}, nil
 }
 
@@ -305,9 +370,18 @@ func (app *Application) PrepareProposal(
 // It accepts any proposal that does not contain a malformed transaction.
 func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
-		_, _, err := parseTx(tx)
+		k, v, err := parseTx(tx)
 		if err != nil {
+			app.logger.Error("malformed transaction in ProcessProposal", "tx", tx, "err", err)
 			return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}, nil
+		}
+		// Additional check for vote extension-related txs
+		if k == voteExtensionKey {
+			_, err := strconv.Atoi(v)
+			if err != nil {
+				app.logger.Error("malformed vote extension transaction", k, v, "err", err)
+				return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+			}
 		}
 	}
 
@@ -316,6 +390,70 @@ func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProc
 	}
 
 	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
+}
+
+// ExtendVote will produce vote extensions in the form of random numbers to
+// demonstrate vote extension nondeterminism.
+//
+// In the next block, if there are any vote extensions from the previous block,
+// a new transaction will be proposed that updates a special value in the
+// key/value store ("extensionSum") with the sum of all of the numbers collected
+// from the vote extensions.
+func (app *Application) ExtendVote(req abci.RequestExtendVote) abci.ResponseExtendVote {
+	// We ignore any requests for vote extensions that don't match our expected
+	// next height.
+	if req.Height != int64(app.state.Height)+1 {
+		app.logger.Error(
+			"got unexpected height in ExtendVote request",
+			"expectedHeight", app.state.Height+1,
+			"requestHeight", req.Height,
+		)
+		return abci.ResponseExtendVote{}
+	}
+	ext := make([]byte, binary.MaxVarintLen64)
+	// We don't care that these values are generated by a weak random number
+	// generator. It's just for test purposes.
+	// nolint:gosec // G404: Use of weak random number generator
+	num := rand.Int63n(voteExtensionMaxVal)
+	extLen := binary.PutVarint(ext, num)
+	app.logger.Info("generated vote extension", "num", num, "ext", fmt.Sprintf("%x", ext[:extLen]), "state.Height", app.state.Height)
+	return abci.ResponseExtendVote{
+		VoteExtension: ext[:extLen],
+	}
+}
+
+// VerifyVoteExtension simply validates vote extensions from other validators
+// without doing anything about them. In this case, it just makes sure that the
+// vote extension is a well-formed integer value.
+func (app *Application) VerifyVoteExtension(req abci.RequestVerifyVoteExtension) abci.ResponseVerifyVoteExtension {
+	// We allow vote extensions to be optional
+	if len(req.VoteExtension) == 0 {
+		return abci.ResponseVerifyVoteExtension{
+			Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+		}
+	}
+	if req.Height != int64(app.state.Height)+1 {
+		app.logger.Error(
+			"got unexpected height in VerifyVoteExtension request",
+			"expectedHeight", app.state.Height,
+			"requestHeight", req.Height,
+		)
+		return abci.ResponseVerifyVoteExtension{
+			Status: abci.ResponseVerifyVoteExtension_REJECT,
+		}
+	}
+
+	num, err := parseVoteExtension(req.VoteExtension)
+	if err != nil {
+		app.logger.Error("failed to verify vote extension", "req", req, "err", err)
+		return abci.ResponseVerifyVoteExtension{
+			Status: abci.ResponseVerifyVoteExtension_REJECT,
+		}
+	}
+	app.logger.Info("verified vote extension value", "req", req, "num", num)
+	return abci.ResponseVerifyVoteExtension{
+		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+	}
 }
 
 func (app *Application) Rollback() error {
@@ -351,4 +489,20 @@ func parseTx(tx []byte) (string, string, error) {
 		return "", "", errors.New("key cannot be empty")
 	}
 	return string(parts[0]), string(parts[1]), nil
+}
+
+// parseVoteExtension attempts to parse the given extension data into a positive
+// integer value.
+func parseVoteExtension(ext []byte) (int64, error) {
+	num, errVal := binary.Varint(ext)
+	if errVal == 0 {
+		return 0, errors.New("vote extension is too small to parse")
+	}
+	if errVal < 0 {
+		return 0, errors.New("vote extension value is too large")
+	}
+	if num >= voteExtensionMaxVal {
+		return 0, fmt.Errorf("vote extension value must be smaller than %d (was %d)", voteExtensionMaxVal, num)
+	}
+	return num, nil
 }

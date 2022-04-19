@@ -251,6 +251,7 @@ func makeVote(
 	require.NoError(t, err)
 
 	v.Signature = vpb.Signature
+	v.ExtensionSignature = vpb.ExtensionSignature
 	return v
 }
 

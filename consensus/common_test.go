@@ -93,7 +93,8 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 func (vs *validatorStub) signVote(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
-	header types.PartSetHeader) (*types.Vote, error) {
+	header types.PartSetHeader,
+	voteExtension []byte) (*types.Vote, error) {
 
 	pubKey, err := vs.PrivValidator.GetPubKey()
 	if err != nil {
@@ -101,42 +102,40 @@ func (vs *validatorStub) signVote(
 	}
 
 	vote := &types.Vote{
-		ValidatorIndex:   vs.Index,
-		ValidatorAddress: pubKey.Address(),
+		Type:             voteType,
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        tmtime.Now(),
-		Type:             voteType,
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
-		VoteExtension:    types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(pubKey.Address())),
+		Timestamp:        tmtime.Now(),
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   vs.Index,
+		Extension:        voteExtension,
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(test.DefaultTestChainID, v); err != nil {
+	if err = vs.PrivValidator.SignVote(test.DefaultTestChainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
-	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
 		v.Signature = vs.lastVote.Signature
 		v.Timestamp = vs.lastVote.Timestamp
+		v.ExtensionSignature = vs.lastVote.ExtensionSignature
 	}
 
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote, err
 }
 
 // Sign vote for type/hash/header
 func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(voteType, hash, header)
+	v, err := vs.signVote(voteType, hash, header, []byte("extension"))
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
-
-	// TODO: remove hardcoded vote extension.
-	// currently set for abci/examples/kvstore/persistent_kvstore.go
-	v.VoteExtension = types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(v.ValidatorAddress))
 
 	vs.lastVote = v
 
@@ -317,21 +316,22 @@ func validatePrecommit(
 		}
 	}
 
+	rs := cs.GetRoundState()
 	if lockedBlockHash == nil {
-		if cs.LockedRound != lockRound || cs.LockedBlock != nil {
+		if rs.LockedRound != lockRound || rs.LockedBlock != nil {
 			panic(fmt.Sprintf(
 				"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
 				lockRound,
-				cs.LockedRound,
-				cs.LockedBlock))
+				rs.LockedRound,
+				rs.LockedBlock))
 		}
 	} else {
-		if cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash) {
+		if rs.LockedRound != lockRound || !bytes.Equal(rs.LockedBlock.Hash(), lockedBlockHash) {
 			panic(fmt.Sprintf(
 				"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
 				lockRound,
-				cs.LockedRound,
-				cs.LockedBlock.Hash(),
+				rs.LockedRound,
+				rs.LockedBlock.Hash(),
 				lockedBlockHash))
 		}
 	}
@@ -965,5 +965,6 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 		v1.Height == v2.GetHeight() &&
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorAddress.Bytes(), v2.GetValidatorAddress()) &&
-		v1.ValidatorIndex == v2.GetValidatorIndex()
+		v1.ValidatorIndex == v2.GetValidatorIndex() &&
+		bytes.Equal(v1.Extension, v2.Extension)
 }

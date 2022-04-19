@@ -286,6 +286,7 @@ func (th *TestHarness) TestSignVote() error {
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
 		vote.Signature = v.Signature
+		vote.ExtensionSignature = v.ExtensionSignature
 		th.logger.Debug("Signed vote", "vote", vote)
 		// validate the contents of the vote
 		if err := vote.ValidateBasic(); err != nil {

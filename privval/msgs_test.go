@@ -22,23 +22,14 @@ var stamp = time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC)
 
 func exampleVote() *types.Vote {
 	return &types.Vote{
-		Type:      tmproto.SignedMsgType(1),
-		Height:    3,
-		Round:     2,
-		Timestamp: stamp,
-		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartSetHeader: types.PartSetHeader{
-				Total: 1000000,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
-			},
-		},
+		Type:             tmproto.PrecommitType,
+		Height:           3,
+		Round:            2,
+		BlockID:          types.BlockID{Hash: tmhash.Sum([]byte("blockID_hash")), PartSetHeader: types.PartSetHeader{Total: 1000000, Hash: tmhash.Sum([]byte("blockID_part_set_header_hash"))}},
+		Timestamp:        stamp,
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
-		VoteExtension: types.VoteExtension {
-			AppDataToSign: []byte("app_data_to_sign"),
-			AppDataSelfAuthenticating: []byte("app_data_self_authenticating"),
-		},
+		Extension:        []byte("extension"),
 	}
 }
 

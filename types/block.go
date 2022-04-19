@@ -594,21 +594,19 @@ const (
 
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
-	BlockIDFlag      BlockIDFlag         `json:"block_id_flag"`
-	ValidatorAddress Address             `json:"validator_address"`
-	Timestamp        time.Time           `json:"timestamp"`
-	Signature        []byte              `json:"signature"`
-	VoteExtension    VoteExtensionToSign `json:"vote_extension"`
+	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
+	ValidatorAddress Address     `json:"validator_address"`
+	Timestamp        time.Time   `json:"timestamp"`
+	Signature        []byte      `json:"signature"`
 }
 
 // NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
-func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time, ext VoteExtensionToSign) CommitSig {
+func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
 	return CommitSig{
 		BlockIDFlag:      BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
 		Timestamp:        ts,
 		Signature:        signature,
-		VoteExtension:    ext,
 	}
 }
 
@@ -641,14 +639,12 @@ func (cs CommitSig) Absent() bool {
 // 1. first 6 bytes of signature
 // 2. first 6 bytes of validator address
 // 3. block ID flag
-// 4. first 6 bytes of the vote extension
-// 5. timestamp
+// 4. timestamp
 func (cs CommitSig) String() string {
-	return fmt.Sprintf("CommitSig{%X by %X on %v with %X @ %s}",
+	return fmt.Sprintf("CommitSig{%X by %X on %v @ %s}",
 		tmbytes.Fingerprint(cs.Signature),
 		tmbytes.Fingerprint(cs.ValidatorAddress),
 		cs.BlockIDFlag,
-		tmbytes.Fingerprint(cs.VoteExtension.BytesPacked()),
 		CanonicalTime(cs.Timestamp))
 }
 
@@ -720,7 +716,6 @@ func (cs *CommitSig) ToProto() *tmproto.CommitSig {
 		ValidatorAddress: cs.ValidatorAddress,
 		Timestamp:        cs.Timestamp,
 		Signature:        cs.Signature,
-		VoteExtension:    cs.VoteExtension.ToProto(),
 	}
 }
 
@@ -732,7 +727,6 @@ func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
 	cs.ValidatorAddress = csp.ValidatorAddress
 	cs.Timestamp = csp.Timestamp
 	cs.Signature = csp.Signature
-	cs.VoteExtension = VoteExtensionToSignFromProto(csp.VoteExtension)
 
 	return cs.ValidateBasic()
 }
@@ -799,7 +793,6 @@ func (commit *Commit) GetVote(valIdx int32) *Vote {
 		ValidatorAddress: commitSig.ValidatorAddress,
 		ValidatorIndex:   valIdx,
 		Signature:        commitSig.Signature,
-		VoteExtension:    commitSig.VoteExtension.ToVoteExtension(),
 	}
 }
 

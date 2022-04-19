@@ -46,7 +46,7 @@ func makeAndCommitGoodBlock(
 	}
 
 	// Simulate a lastCommit for this block from all validators for the next height
-	commit, err := makeValidCommit(height, blockID, state.Validators, privVals)
+	commit, _, err := makeValidCommit(height, blockID, state.Validators, privVals)
 	if err != nil {
 		return state, types.BlockID{}, nil, err
 	}
@@ -88,17 +88,20 @@ func makeValidCommit(
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
-) (*types.Commit, error) {
-	sigs := make([]types.CommitSig, 0)
+) (*types.Commit, []*types.Vote, error) {
+	t.Helper()
+	sigs := make([]types.CommitSig, vals.Size())
+	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
 		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, vote.CommitSig())
+		sigs[i] = vote.CommitSig()
+		votes[i] = vote
 	}
-	return types.NewCommit(height, 0, blockID, sigs), nil
+	return types.NewCommit(height, 0, blockID, sigs), votes, nil
 }
 
 func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {

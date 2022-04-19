@@ -765,7 +765,6 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			if err := cs.wal.Write(mi); err != nil {
 				cs.Logger.Error("failed writing to WAL", "err", err)
 			}
-
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi)
@@ -2244,11 +2243,12 @@ func (cs *State) signVote(
 		if err != nil {
 			return nil, err
 		}
-		vote.VoteExtension = ext
+		vote.Extension = ext
 	}
 	v := vote.ToProto()
 	err := cs.privValidator.SignVote(cs.state.ChainID, v)
 	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
 	vote.Timestamp = v.Timestamp
 
 	return vote, err

@@ -32,6 +32,7 @@ func MakeCommitFromVoteSet(blockID types.BlockID, voteSet *types.VoteSet, valida
 			return nil, err
 		}
 		vote.Signature = v.Signature
+		vote.ExtensionSignature = v.ExtensionSignature
 		if _, err := voteSet.AddVote(vote); err != nil {
 			return nil, err
 		}
@@ -79,10 +80,11 @@ func MakeCommit(blockID types.BlockID, height int64, round int32, valSet *types.
 		}
 
 		sigs[idx] = types.CommitSig{
-			BlockIDFlag:      types.BlockIDFlagCommit,
-			ValidatorAddress: addr,
-			Timestamp:        now,
-			Signature:        v.Signature,
+			BlockIDFlag:        types.BlockIDFlagCommit,
+			ValidatorAddress:   addr,
+			Timestamp:          now,
+			Signature:          v.Signature,
+			ExtensionSignature: v.ExtensionSignature,
 		}
 	}
 

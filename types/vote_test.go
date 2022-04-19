@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/protoio"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -129,12 +131,13 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		},
 		// containing vote extension
 		5: {
-			"test_chain_id", &Vote{Height: 1, Round: 1, VoteExtension: VoteExtension{
-				AppDataToSign:             []byte("signed"),
-				AppDataSelfAuthenticating: []byte("auth"),
-			}},
+			"test_chain_id", &Vote{
+				Height:    1,
+				Round:     1,
+				Extension: []byte("extension"),
+			},
 			[]byte{
-				0x38,                                   // length
+				0x2e,                                   // length
 				0x11,                                   // (field_number << 3) | wire_type
 				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
 				0x19,                                   // (field_number << 3) | wire_type
@@ -145,13 +148,6 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				// (field_number << 3) | wire_type
 				0x32,
 				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64, // chainID
-				// (field_number << 3) | wire_type
-				0x3a,
-				0x8,                                // length
-				0xa,                                // (field_number << 3) | wire_type
-				0x6,                                // length
-				0x73, 0x69, 0x67, 0x6e, 0x65, 0x64, // AppDataSigned
-				// SelfAuthenticating data is excluded on signing
 			}, // chainID
 		},
 	}
@@ -202,6 +198,82 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.Equal(t, string(signBytes), string(newSignBytes))
 	valid = pubkey.VerifySignature(newSignBytes, precommit.Signature)
 	require.True(t, valid)
+}
+
+// TestVoteExtension tests that the vote verification behaves correctly in each case
+// of vote extension being set on the vote.
+func TestVoteExtension(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testCases := []struct {
+		name             string
+		extension        []byte
+		includeSignature bool
+		expectError      bool
+	}{
+		{
+			name:             "all fields present",
+			extension:        []byte("extension"),
+			includeSignature: true,
+			expectError:      false,
+		},
+		// TODO: Re-enable once
+		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
+		//{
+		//	name:             "no extension signature",
+		//	extension:        []byte("extension"),
+		//	includeSignature: false,
+		//	expectError:      true,
+		//},
+		{
+			name:             "empty extension",
+			includeSignature: true,
+			expectError:      false,
+		},
+		// TODO: Re-enable once
+		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
+		//{
+		//	name:             "no extension and no signature",
+		//	includeSignature: false,
+		//	expectError:      true,
+		//},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			height, round := int64(1), int32(0)
+			privVal := NewMockPV()
+			pk, err := privVal.GetPubKey(ctx)
+			require.NoError(t, err)
+			blk := Block{}
+			ps, err := blk.MakePartSet(BlockPartSizeBytes)
+			require.NoError(t, err)
+			vote := &Vote{
+				ValidatorAddress: pk.Address(),
+				ValidatorIndex:   0,
+				Height:           height,
+				Round:            round,
+				Timestamp:        tmtime.Now(),
+				Type:             tmproto.PrecommitType,
+				BlockID:          BlockID{blk.Hash(), ps.Header()},
+			}
+
+			v := vote.ToProto()
+			err = privVal.SignVote(ctx, "test_chain_id", v)
+			require.NoError(t, err)
+			vote.Signature = v.Signature
+			if tc.includeSignature {
+				vote.ExtensionSignature = v.ExtensionSignature
+			}
+			err = vote.Verify("test_chain_id", pk)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestIsVoteTypeValid(t *testing.T) {
