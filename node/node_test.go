@@ -28,6 +28,7 @@ import (
 	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
@@ -636,11 +637,9 @@ func TestNodeSetEventSink(t *testing.T) {
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
-		indexService, eventSinks, err := createIndexerService(cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
-			indexer.NopMetrics())
+		eventSinks, err := sink.EventSinksFromConfig(cfg, config.DefaultDBProvider, genDoc.ChainID)
 		require.NoError(t, err)
-		t.Cleanup(indexService.Wait)
+
 		return eventSinks
 	}
 	cleanup := func(ns service.Service) func() {
