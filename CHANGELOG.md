@@ -2,6 +2,23 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.4
+
+April 18, 2022
+
+Special thanks to external contributors on this release: @firelizzard18
+
+### FEATURES
+
+- [cli] [\#8300](https://github.com/tendermint/tendermint/pull/8300) Add a tool to update old config files to the latest version [backport [\#8281](https://github.com/tendermint/tendermint/pull/8281)]. (@creachadair)
+
+### IMPROVEMENTS
+
+### BUG FIXES
+
+- [cli] [\#8294](https://github.com/tendermint/tendermint/pull/8294) keymigrate: ensure block hash keys are correctly translated. (@creachadair)
+- [cli] [\#8352](https://github.com/tendermint/tendermint/pull/8352) keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
+
 ## v0.35.3
 
 April 8, 2022
@@ -110,7 +127,7 @@ Special thanks to external contributors on this release: @JayT106,
 
 - [\#7106](https://github.com/tendermint/tendermint/pull/7106) Revert mutex change to ABCI Clients (@tychoish).
 - [\#7142](https://github.com/tendermint/tendermint/pull/7142) mempool: remove panic when recheck-tx was not sent to ABCI application (@williambanfield).
-- [consensus]: [\#7060](https://github.com/tendermint/tendermint/pull/7060)
+- [consensus]: [\#7060](https://github.com/tendermint/tendermint/pull/7060) <!-- markdown-link-check-disable-line -->
   wait until peerUpdates channel is closed to close remaining peers (@williambanfield)
 - [privval] [\#5638](https://github.com/tendermint/tendermint/pull/5638) Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [evidence] [\#6375](https://github.com/tendermint/tendermint/pull/6375) Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)
@@ -1416,7 +1433,7 @@ Special thanks to external contributors on this release: @jon-certik, @gracenoah
 *August 28, 2019*
 
 @climber73 wrote the [Writing a Tendermint Core application in Java
-(gRPC)](https://github.com/tendermint/tendermint/blob/master/docs/guides/java.md)
+(gRPC)](https://github.com/tendermint/tendermint/blob/master/docs/guides/java.md) <!-- markdown-link-check-disable-line -->
 guide.
 
 Special thanks to external contributors on this release:
@@ -3688,7 +3705,7 @@ containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusCon
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) accomodate new config
 
 - Logger
-  - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`.
+  - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`. <!-- markdown-link-check-disable-next-line -->
 See our new [logging library](https://github.com/tendermint/tmlibs/log) and [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
   - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) to accept a logger

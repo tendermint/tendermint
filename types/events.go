@@ -1,7 +1,6 @@
 package types
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -308,15 +307,15 @@ func QueryForEvent(eventValue string) *tmquery.Query {
 
 // BlockEventPublisher publishes all block related events
 type BlockEventPublisher interface {
-	PublishEventNewBlock(ctx context.Context, block EventDataNewBlock) error
-	PublishEventNewBlockHeader(ctx context.Context, header EventDataNewBlockHeader) error
-	PublishEventNewEvidence(ctx context.Context, evidence EventDataNewEvidence) error
-	PublishEventTx(context.Context, EventDataTx) error
-	PublishEventValidatorSetUpdates(context.Context, EventDataValidatorSetUpdates) error
+	PublishEventNewBlock(EventDataNewBlock) error
+	PublishEventNewBlockHeader(EventDataNewBlockHeader) error
+	PublishEventNewEvidence(EventDataNewEvidence) error
+	PublishEventTx(EventDataTx) error
+	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
 }
 
 type TxEventPublisher interface {
-	PublishEventTx(context.Context, EventDataTx) error
+	PublishEventTx(EventDataTx) error
 }
 
 // eventWithAttr constructs a single abci.Event with a single attribute.

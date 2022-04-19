@@ -115,7 +115,7 @@ func getAllSeenCommits(ctx context.Context, db dbm.DB) ([]toMigrate, error) {
 	return scData, nil
 }
 
-func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
+func renameRecord(db dbm.DB, keep toMigrate) error {
 	wantKey := makeKeyFromPrefix(prefixSeenCommit)
 	if bytes.Equal(keep.key, wantKey) {
 		return nil // we already did this conversion
@@ -143,7 +143,7 @@ func renameRecord(ctx context.Context, db dbm.DB, keep toMigrate) error {
 	return cerr
 }
 
-func deleteRecords(ctx context.Context, db dbm.DB, scData []toMigrate) error {
+func deleteRecords(db dbm.DB, scData []toMigrate) error {
 	// delete all the remaining stale values in a single batch
 	batch := db.NewBatch()
 
@@ -179,7 +179,7 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 	// retain only the latest.
 	keep, remove := scData[0], scData[1:]
 
-	if err := renameRecord(ctx, db, keep); err != nil {
+	if err := renameRecord(db, keep); err != nil {
 		return fmt.Errorf("renaming seen commit record: %w", err)
 	}
 
@@ -189,7 +189,7 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 
 	// Remove any older seen commits. Prior to v0.35, we kept these records for
 	// all heights, but v0.35 keeps only the latest.
-	if err := deleteRecords(ctx, db, remove); err != nil {
+	if err := deleteRecords(db, remove); err != nil {
 		return fmt.Errorf("writing data: %w", err)
 	}
 

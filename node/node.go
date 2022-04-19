@@ -260,11 +260,8 @@ func makeNode(
 	node.rpcEnv.EvidencePool = evPool
 	node.evPool = evPool
 
-	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
+	mpReactor, mp := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
 		peerManager.Subscribe, node.router.OpenChannel, peerManager.GetHeight)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
 	node.rpcEnv.Mempool = mp
 	node.services = append(node.services, mpReactor)
 
@@ -292,16 +289,32 @@ func makeNode(
 	blockSync := !onlyValidatorIsUs(state, pubKey)
 	waitSync := stateSync || blockSync
 
-	csReactor, csState, err := createConsensusReactor(ctx,
-		cfg, stateStore, blockExec, blockStore, mp, evPool,
-		privValidator, nodeMetrics.consensus, waitSync, eventBus,
-		peerManager, node.router.OpenChannel, logger,
+	csState, err := consensus.NewState(logger.With("module", "consensus"),
+		cfg.Consensus,
+		stateStore,
+		blockExec,
+		blockStore,
+		mp,
+		evPool,
+		eventBus,
+		consensus.StateMetrics(nodeMetrics.consensus),
+		consensus.SkipStateStoreBootstrap,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
-	node.services = append(node.services, csReactor)
 	node.rpcEnv.ConsensusState = csState
+
+	csReactor := consensus.NewReactor(
+		logger,
+		csState,
+		node.router.OpenChannel,
+		peerManager.Subscribe,
+		eventBus,
+		waitSync,
+		nodeMetrics.consensus,
+	)
+	node.services = append(node.services, csReactor)
 	node.rpcEnv.ConsensusReactor = csReactor
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
@@ -370,6 +383,9 @@ func makeNode(
 	))
 
 	if cfg.Mode == config.ModeValidator {
+		if privValidator != nil {
+			csState.SetPrivValidator(ctx, privValidator)
+		}
 		node.rpcEnv.PubKey = pubKey
 	}
 
