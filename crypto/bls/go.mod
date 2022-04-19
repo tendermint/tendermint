@@ -2,7 +2,10 @@ module github.com/tendermint/tendermint/crypto/bls
 
 go 1.17
 
-require github.com/tendermint/tendermint v0.35.4
+require (
+	github.com/supranational/blst v0.3.7
+	github.com/tendermint/tendermint v0.35.4
+)
 
 require (
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20210609091139-0a56a4bca00b // indirect
