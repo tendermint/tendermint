@@ -12,9 +12,9 @@ cp ./proto/tendermint/types/types.proto.intermediate ./proto/tendermint/types/ty
 
 MODNAME="$(go list -m)"
 find ./proto/tendermint -name '*.proto' -not -path "./proto/tendermint/abci/types.proto" \
-	-exec sh ./scripts/protopackage.sh {} "$MODNAME" ';'
+	-exec ./scripts/protopackage.sh {} "$MODNAME" ';'
 
-sh ./scripts/protopackage.sh ./proto/tendermint/abci/types.proto $MODNAME "abci/types"
+./scripts/protopackage.sh ./proto/tendermint/abci/types.proto $MODNAME "abci/types"
 
 make proto-gen
 
