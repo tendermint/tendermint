@@ -359,7 +359,7 @@ func TestSignAndValidateBLS12(t *testing.T) {
 	msg := crypto.CRandBytes(128)
 	sig, err := privKey.Sign(msg)
 	require.Nil(t, err)
-	fmt.Printf("restoring signature: %x\n", sig)
+	//fmt.Printf("restoring signature: %x\n", sig)
 
 	// Test the signature
 	assert.True(t, pubKey.VerifySignature(msg, sig))

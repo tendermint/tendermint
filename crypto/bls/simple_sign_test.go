@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/tendermint/tendermint/crypto/bls/blst"
+	"github.com/tendermint/tendermint/crypto/bls/ostracon"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
@@ -30,6 +31,26 @@ func TestEd25519SignVerify(t *testing.T) {
 func TestBlstSignVerify(t *testing.T) {
 	m := []byte("a test message to be signed")
 	privKey := blst.GenPrivKey()
+	pubKey := privKey.PubKey()
+
+	sig, err := privKey.Sign(m)
+	if err != nil {
+		t.Error("Unexpected nil signature or error", m, sig, err)
+	}
+	if !pubKey.VerifySignature(m, sig) {
+		t.Error("Failed to verify signature produced by the key", m, sig)
+	}
+	if pubKey.VerifySignature(scrambleBytes(m), sig) {
+		t.Error("Unexpected to verify scrambled message", scrambleBytes(m), sig)
+	}
+	if pubKey.VerifySignature(m, scrambleBytes(sig)) {
+		t.Error("Unexpected to verify scrambled signature", m, scrambleBytes(sig))
+	}
+}
+
+func TestOstraconSignVerify(t *testing.T) {
+	m := []byte("a test message to be signed")
+	privKey := ostracon.GenPrivKey()
 	pubKey := privKey.PubKey()
 
 	sig, err := privKey.Sign(m)
