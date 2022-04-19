@@ -1,4 +1,4 @@
-package bls
+package ostracon
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 
 	"github.com/herumi/bls-eth-go-binary/bls"
 
-	"github.com/line/ostracon/crypto"
-	"github.com/line/ostracon/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 var _ crypto.PrivKey = PrivKey{}
@@ -140,10 +140,11 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	return sign.Serialize(), nil
 }
 
-// VRFProve is not supported in BLS12.
-func (privKey PrivKey) VRFProve(seed []byte) (crypto.Proof, error) {
-	return nil, fmt.Errorf("VRF prove is not supported by the BLS12")
-}
+// FIXME: Type crypto.Proof not defined in Tendermint.
+//// VRFProve is not supported in BLS12.
+//func (privKey PrivKey) VRFProve(seed []byte) (crypto.Proof, error) {
+//	return nil, fmt.Errorf("VRF prove is not supported by the BLS12")
+//}
 
 // PubKey gets the corresponding public key from the private key.
 func (privKey PrivKey) PubKey() crypto.PubKey {
@@ -211,10 +212,11 @@ func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 	return blsSign.VerifyHash(&blsPubKey, hash[:])
 }
 
-// VRFVerify is not supported in BLS12.
-func (pubKey PubKey) VRFVerify(proof crypto.Proof, seed []byte) (crypto.Output, error) {
-	return nil, fmt.Errorf("VRF verify is not supported by the BLS12")
-}
+// FIXME: Types crypto.Proof and crypto.Output not defined in Tendermint.
+//// VRFVerify is not supported in BLS12.
+//func (pubKey PubKey) VRFVerify(proof crypto.Proof, seed []byte) (crypto.Output, error) {
+//	return nil, fmt.Errorf("VRF verify is not supported by the BLS12")
+//}
 
 func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeyBLS12{%X}", pubKey[:])
