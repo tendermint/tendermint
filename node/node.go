@@ -439,7 +439,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	// Start Internal Services
 
 	if n.config.RPC.PprofListenAddress != "" {
-		rpcCtx, rpcCancel := context.WithCancel(ctx)
+		signal := make(chan struct{})
 		srv := &http.Server{Addr: n.config.RPC.PprofListenAddress, Handler: nil}
 		go func() {
 			select {
@@ -447,7 +447,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 				sctx, scancel := context.WithTimeout(context.Background(), time.Second)
 				defer scancel()
 				_ = srv.Shutdown(sctx)
-			case <-rpcCtx.Done():
+			case <-signal:
 			}
 		}()
 
@@ -456,7 +456,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 			if err := srv.ListenAndServe(); err != nil {
 				n.logger.Error("pprof server error", "err", err)
-				rpcCancel()
+				close(signal)
 			}
 		}()
 	}
@@ -578,21 +578,21 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 		),
 	}
 
-	promCtx, promCancel := context.WithCancel(ctx)
+	signal := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
 			sctx, scancel := context.WithTimeout(context.Background(), time.Second)
 			defer scancel()
 			_ = srv.Shutdown(sctx)
-		case <-promCtx.Done():
+		case <-signal:
 		}
 	}()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			n.logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
-			promCancel()
+			close(signal)
 		}
 	}()
 
