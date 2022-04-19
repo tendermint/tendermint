@@ -107,6 +107,7 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	}
 
 	w.mtx.Lock()
+	defer w.mtx.Unlock()
 	info, ok := w.subscriptions[query]
 	if ok {
 		if info.id != "" {
@@ -114,7 +115,6 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 		}
 		delete(w.subscriptions, info.query)
 	}
-	w.mtx.Unlock()
 
 	return nil
 }
@@ -129,8 +129,8 @@ func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	}
 
 	w.mtx.Lock()
+	defer w.mtx.Unlock()
 	w.subscriptions = make(map[string]*wsSubscription)
-	w.mtx.Unlock()
 
 	return nil
 }
