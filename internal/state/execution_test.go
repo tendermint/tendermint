@@ -654,8 +654,8 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 }
 
@@ -709,8 +709,8 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
 
@@ -765,8 +765,8 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
 
@@ -824,8 +824,8 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 
 	require.Equal(t, txs[0], block.Data.Txs[0])
@@ -880,8 +880,8 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, types.Tx(trs[i].Tx), tx)
@@ -940,9 +940,9 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
 
@@ -992,9 +992,9 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "an injected error")
 
