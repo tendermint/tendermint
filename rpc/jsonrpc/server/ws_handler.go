@@ -36,11 +36,7 @@ type WebsocketManager struct {
 
 // NewWebsocketManager returns a new WebsocketManager that passes a map of
 // functions, connection options and logger to new WS connections.
-func NewWebsocketManager(
-	logger log.Logger,
-	funcMap map[string]*RPCFunc,
-	wsConnOptions ...func(*wsConnection),
-) *WebsocketManager {
+func NewWebsocketManager(logger log.Logger, funcMap map[string]*RPCFunc, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
 		Upgrader: websocket.Upgrader{
@@ -137,12 +133,7 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func newWSConnection(
-	baseConn *websocket.Conn,
-	funcMap map[string]*RPCFunc,
-	logger log.Logger,
-	options ...func(*wsConnection),
-) *wsConnection {
+func newWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, logger log.Logger, options ...func(*wsConnection)) *wsConnection {
 	wsc := &wsConnection{
 		Logger:          logger,
 		remoteAddr:      baseConn.RemoteAddr().String(),
