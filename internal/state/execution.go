@@ -292,7 +292,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(ctx, blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 
 	return state, nil
 }
@@ -558,7 +558,6 @@ func (state State) Update(
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
 func fireEvents(
-	ctx context.Context,
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
@@ -566,7 +565,7 @@ func fireEvents(
 	finalizeBlockResponse *abci.ResponseFinalizeBlock,
 	validatorUpdates []*types.Validator,
 ) {
-	if err := eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
+	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:               block,
 		BlockID:             blockID,
 		ResultFinalizeBlock: *finalizeBlockResponse,
@@ -574,7 +573,7 @@ func fireEvents(
 		logger.Error("failed publishing new block", "err", err)
 	}
 
-	if err := eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
+	if err := eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
 		Header:              block.Header,
 		NumTxs:              int64(len(block.Txs)),
 		ResultFinalizeBlock: *finalizeBlockResponse,
@@ -584,7 +583,7 @@ func fireEvents(
 
 	if len(block.Evidence) != 0 {
 		for _, ev := range block.Evidence {
-			if err := eventBus.PublishEventNewEvidence(ctx, types.EventDataNewEvidence{
+			if err := eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
 				Evidence: ev,
 				Height:   block.Height,
 			}); err != nil {
@@ -600,7 +599,7 @@ func fireEvents(
 	}
 
 	for i, tx := range block.Data.Txs {
-		if err := eventBus.PublishEventTx(ctx, types.EventDataTx{
+		if err := eventBus.PublishEventTx(types.EventDataTx{
 			TxResult: abci.TxResult{
 				Height: block.Height,
 				Index:  uint32(i),
@@ -613,7 +612,7 @@ func fireEvents(
 	}
 
 	if len(finalizeBlockResponse.ValidatorUpdates) > 0 {
-		if err := eventBus.PublishEventValidatorSetUpdates(ctx,
+		if err := eventBus.PublishEventValidatorSetUpdates(
 			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
 			logger.Error("failed publishing event", "err", err)
 		}
@@ -672,7 +671,7 @@ func ExecCommitBlock(
 		}
 
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-		fireEvents(ctx, be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 	}
 
 	// Commit block, get hash back

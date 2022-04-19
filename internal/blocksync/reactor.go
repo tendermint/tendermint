@@ -359,7 +359,7 @@ func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	go r.requestRoutine(ctx, bsCh)
 	go r.poolRoutine(ctx, true, bsCh)
 
-	if err := r.PublishStatus(ctx, types.EventDataBlockSyncStatus{
+	if err := r.PublishStatus(types.EventDataBlockSyncStatus{
 		Complete: false,
 		Height:   state.LastBlockHeight,
 	}); err != nil {
@@ -609,11 +609,11 @@ func (r *Reactor) GetRemainingSyncTime() time.Duration {
 	return time.Duration(int64(remain * float64(time.Second)))
 }
 
-func (r *Reactor) PublishStatus(ctx context.Context, event types.EventDataBlockSyncStatus) error {
+func (r *Reactor) PublishStatus(event types.EventDataBlockSyncStatus) error {
 	if r.eventBus == nil {
 		return errors.New("event bus is not configured")
 	}
-	return r.eventBus.PublishEventBlockSyncStatus(ctx, event)
+	return r.eventBus.PublishEventBlockSyncStatus(event)
 }
 
 // atomicBool is an atomic Boolean, safe for concurrent use by multiple

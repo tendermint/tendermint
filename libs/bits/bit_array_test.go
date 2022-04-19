@@ -13,25 +13,25 @@ import (
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
-func randBitArray(bits int) (*BitArray, []byte) {
+func randBitArray(bits int) *BitArray {
 	src := tmrand.Bytes((bits + 7) / 8)
 	bA := NewBitArray(bits)
 	for i := 0; i < len(src); i++ {
 		for j := 0; j < 8; j++ {
 			if i*8+j >= bits {
-				return bA, src
+				return bA
 			}
 			setBit := src[i]&(1<<uint(j)) > 0
 			bA.SetIndex(i*8+j, setBit)
 		}
 	}
-	return bA, src
+	return bA
 }
 
 func TestAnd(t *testing.T) {
 
-	bA1, _ := randBitArray(51)
-	bA2, _ := randBitArray(31)
+	bA1 := randBitArray(51)
+	bA2 := randBitArray(31)
 	bA3 := bA1.And(bA2)
 
 	var bNil *BitArray
@@ -54,9 +54,8 @@ func TestAnd(t *testing.T) {
 }
 
 func TestOr(t *testing.T) {
-
-	bA1, _ := randBitArray(51)
-	bA2, _ := randBitArray(31)
+	bA1 := randBitArray(51)
+	bA2 := randBitArray(31)
 	bA3 := bA1.Or(bA2)
 
 	bNil := (*BitArray)(nil)
@@ -191,10 +190,7 @@ func TestEmptyFull(t *testing.T) {
 }
 
 func TestUpdateNeverPanics(t *testing.T) {
-	newRandBitArray := func(n int) *BitArray {
-		ba, _ := randBitArray(n)
-		return ba
-	}
+	newRandBitArray := func(n int) *BitArray { return randBitArray(n) }
 	pairs := []struct {
 		a, b *BitArray
 	}{
