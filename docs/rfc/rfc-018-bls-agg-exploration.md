@@ -185,6 +185,13 @@ block data more quickly.
 Additionally, the faster signature verification times of BLS signatures mean
 that light client verification would proceed more quickly.
 
+However, verification of an aggregated signature is all-or-nothing. The verifier
+cannot check that some singular signer had a signature included in the block.
+Instead, the verifier must use all public keys to check if some signature
+was included. This does mean that any light client implementation must always
+be able to fetch all public keys for any height instead of potentially being
+able to check if some singular validator's key signed the block.
+
 #### Reduce Gossip Bandwidth
 
 ##### Vote Gossip
