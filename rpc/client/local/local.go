@@ -78,11 +78,7 @@ func (c *Local) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes)
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
-func (c *Local) ABCIQueryWithOptions(
-	ctx context.Context,
-	path string,
-	data bytes.HexBytes,
-	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+func (c *Local) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	return c.env.ABCIQuery(ctx, path, data, opts.Height, opts.Prove)
 }
 
@@ -189,23 +185,11 @@ func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coret
 	return c.env.Tx(ctx, hash, prove)
 }
 
-func (c *Local) TxSearch(
-	ctx context.Context,
-	queryString string,
-	prove bool,
-	page,
-	perPage *int,
-	orderBy string,
-) (*coretypes.ResultTxSearch, error) {
+func (c *Local) TxSearch(ctx context.Context, queryString string, prove bool, page, perPage *int, orderBy string) (*coretypes.ResultTxSearch, error) {
 	return c.env.TxSearch(ctx, queryString, prove, page, perPage, orderBy)
 }
 
-func (c *Local) BlockSearch(
-	ctx context.Context,
-	queryString string,
-	page, perPage *int,
-	orderBy string,
-) (*coretypes.ResultBlockSearch, error) {
+func (c *Local) BlockSearch(ctx context.Context, queryString string, page, perPage *int, orderBy string) (*coretypes.ResultBlockSearch, error) {
 	return c.env.BlockSearch(ctx, queryString, page, perPage, orderBy)
 }
 
@@ -213,11 +197,7 @@ func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*core
 	return c.env.BroadcastEvidence(ctx, coretypes.Evidence{Value: ev})
 }
 
-func (c *Local) Subscribe(
-	ctx context.Context,
-	subscriber,
-	queryString string,
-	capacity ...int) (out <-chan coretypes.ResultEvent, err error) {
+func (c *Local) Subscribe(ctx context.Context, subscriber, queryString string, capacity ...int) (<-chan coretypes.ResultEvent, error) {
 	q, err := query.New(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)
@@ -251,12 +231,7 @@ func (c *Local) Subscribe(
 	return outc, nil
 }
 
-func (c *Local) eventsRoutine(
-	ctx context.Context,
-	sub eventbus.Subscription,
-	subArgs pubsub.SubscribeArgs,
-	outc chan<- coretypes.ResultEvent,
-) {
+func (c *Local) eventsRoutine(ctx context.Context, sub eventbus.Subscription, subArgs pubsub.SubscribeArgs, outc chan<- coretypes.ResultEvent) {
 	qstr := subArgs.Query.String()
 	for {
 		msg, err := sub.Next(ctx)
@@ -271,17 +246,24 @@ func (c *Local) eventsRoutine(
 			}
 			continue
 		}
-		outc <- coretypes.ResultEvent{
+		select {
+		case outc <- coretypes.ResultEvent{
 			SubscriptionID: msg.SubscriptionID(),
 			Query:          qstr,
 			Data:           msg.Data(),
 			Events:         msg.Events(),
+		}:
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
 // Try to resubscribe with exponential backoff.
 func (c *Local) resubscribe(ctx context.Context, subArgs pubsub.SubscribeArgs) eventbus.Subscription {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
 	attempts := 0
 	for {
 		if !c.IsRunning() {
@@ -294,7 +276,13 @@ func (c *Local) resubscribe(ctx context.Context, subArgs pubsub.SubscribeArgs) e
 		}
 
 		attempts++
-		time.Sleep((10 << uint(attempts)) * time.Millisecond) // 10ms -> 20ms -> 40ms
+		timer.Reset((10 << uint(attempts)) * time.Millisecond) // 10ms -> 20ms -> 40ms
+		select {
+		case <-timer.C:
+			continue
+		case <-ctx.Done():
+			return nil
+		}
 	}
 }
 

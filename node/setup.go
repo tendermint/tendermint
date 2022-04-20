@@ -23,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -95,34 +94,6 @@ func initDBs(
 	return blockStore, stateDB, makeCloser(closers), nil
 }
 
-func createAndStartIndexerService(
-	ctx context.Context,
-	cfg *config.Config,
-	dbProvider config.DBProvider,
-	eventBus *eventbus.EventBus,
-	logger log.Logger,
-	chainID string,
-	metrics *indexer.Metrics,
-) (*indexer.Service, []indexer.EventSink, error) {
-	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	indexerService := indexer.NewService(indexer.ServiceArgs{
-		Sinks:    eventSinks,
-		EventBus: eventBus,
-		Logger:   logger.With("module", "txindex"),
-		Metrics:  metrics,
-	})
-
-	if err := indexerService.Start(ctx); err != nil {
-		return nil, nil, err
-	}
-
-	return indexerService, eventSinks, nil
-}
-
 func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
@@ -169,15 +140,15 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolReactor(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	appClient abciclient.Client,
 	store sm.Store,
 	memplMetrics *mempool.Metrics,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	logger log.Logger,
-) (service.Service, mempool.Mempool, error) {
+	peerEvents p2p.PeerEventSubscriber,
+	chCreator p2p.ChannelCreator,
+	peerHeight func(types.NodeID) int64,
+) (service.Service, mempool.Mempool) {
 	logger = logger.With("module", "mempool")
 
 	mp := mempool.NewTxMempool(
@@ -189,35 +160,30 @@ func createMempoolReactor(
 		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
 	)
 
-	reactor, err := mempool.NewReactor(
-		ctx,
+	reactor := mempool.NewReactor(
 		logger,
 		cfg.Mempool,
-		peerManager,
 		mp,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
+		chCreator,
+		peerEvents,
+		peerHeight,
 	)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if cfg.Consensus.WaitForTxs() {
 		mp.EnableTxsAvailable()
 	}
 
-	return reactor, mp, nil
+	return reactor, mp
 }
 
 func createEvidenceReactor(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	store sm.Store,
 	blockStore *store.BlockStore,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	logger log.Logger,
+	peerEvents p2p.PeerEventSubscriber,
+	chCreator p2p.ChannelCreator,
 	metrics *evidence.Metrics,
 	eventBus *eventbus.EventBus,
 ) (*evidence.Reactor, *evidence.Pool, closer, error) {
@@ -225,78 +191,13 @@ func createEvidenceReactor(
 	if err != nil {
 		return nil, nil, func() error { return nil }, fmt.Errorf("unable to initialize evidence db: %w", err)
 	}
-	dbCloser := evidenceDB.Close
 
 	logger = logger.With("module", "evidence")
 
 	evidencePool := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics, eventBus)
+	evidenceReactor := evidence.NewReactor(logger, chCreator, peerEvents, evidencePool)
 
-	evidenceReactor, err := evidence.NewReactor(
-		ctx,
-		logger,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
-		evidencePool,
-	)
-	if err != nil {
-		return nil, nil, dbCloser, fmt.Errorf("creating evidence reactor: %w", err)
-	}
-
-	return evidenceReactor, evidencePool, dbCloser, nil
-}
-
-func createConsensusReactor(
-	ctx context.Context,
-	cfg *config.Config,
-	store sm.Store,
-	blockExec *sm.BlockExecutor,
-	blockStore sm.BlockStore,
-	mp mempool.Mempool,
-	evidencePool *evidence.Pool,
-	privValidator types.PrivValidator,
-	csMetrics *consensus.Metrics,
-	waitSync bool,
-	eventBus *eventbus.EventBus,
-	peerManager *p2p.PeerManager,
-	router *p2p.Router,
-	logger log.Logger,
-) (*consensus.Reactor, *consensus.State, error) {
-	logger = logger.With("module", "consensus")
-
-	consensusState, err := consensus.NewState(ctx,
-		logger,
-		cfg.Consensus,
-		store,
-		blockExec,
-		blockStore,
-		mp,
-		evidencePool,
-		eventBus,
-		consensus.StateMetrics(csMetrics),
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if privValidator != nil && cfg.Mode == config.ModeValidator {
-		consensusState.SetPrivValidator(ctx, privValidator)
-	}
-
-	reactor, err := consensus.NewReactor(
-		ctx,
-		logger,
-		consensusState,
-		router.OpenChannel,
-		peerManager.Subscribe(ctx),
-		eventBus,
-		waitSync,
-		csMetrics,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return reactor, consensusState, nil
+	return evidenceReactor, evidencePool, evidenceDB.Close, nil
 }
 
 func createPeerManager(
@@ -375,10 +276,9 @@ func createPeerManager(
 }
 
 func createRouter(
-	ctx context.Context,
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
-	nodeInfo types.NodeInfo,
+	nodeInfoProducer func() *types.NodeInfo,
 	nodeKey types.NodeKey,
 	peerManager *p2p.PeerManager,
 	cfg *config.Config,
@@ -405,12 +305,11 @@ func createRouter(
 	}
 
 	return p2p.NewRouter(
-		ctx,
 		p2pLogger,
 		p2pMetrics,
-		nodeInfo,
 		nodeKey.PrivKey,
 		peerManager,
+		nodeInfoProducer,
 		[]p2p.Transport{transport},
 		[]p2p.Endpoint{ep},
 		getRouterConfig(cfg, appClient),
@@ -422,7 +321,7 @@ func makeNodeInfo(
 	nodeKey types.NodeKey,
 	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
-	state sm.State,
+	versionInfo version.Consensus,
 ) (types.NodeInfo, error) {
 
 	txIndexerStatus := "off"
@@ -434,8 +333,8 @@ func makeNodeInfo(
 	nodeInfo := types.NodeInfo{
 		ProtocolVersion: types.ProtocolVersion{
 			P2P:   version.P2PProtocol, // global
-			Block: state.Version.Consensus.Block,
-			App:   state.Version.Consensus.App,
+			Block: versionInfo.Block,
+			App:   versionInfo.App,
 		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,

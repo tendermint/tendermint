@@ -10,7 +10,6 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -70,31 +69,6 @@ type syncer struct {
 	avgChunkTime             int64
 	lastSyncedSnapshotHeight int64
 	processingSnapshot       *snapshot
-}
-
-// newSyncer creates a new syncer.
-func newSyncer(
-	cfg config.StateSyncConfig,
-	logger log.Logger,
-	conn abciclient.Client,
-	stateProvider StateProvider,
-	snapshotCh *p2p.Channel,
-	chunkCh *p2p.Channel,
-	tempDir string,
-	metrics *Metrics,
-) *syncer {
-	return &syncer{
-		logger:        logger,
-		stateProvider: stateProvider,
-		conn:          conn,
-		snapshots:     newSnapshotPool(),
-		snapshotCh:    snapshotCh,
-		chunkCh:       chunkCh,
-		tempDir:       tempDir,
-		fetchers:      cfg.Fetchers,
-		retryTimeout:  cfg.ChunkRequestTimeout,
-		metrics:       metrics,
-	}
 }
 
 // AddChunk adds a chunk to the chunk queue, if any. It returns false if the chunk has already

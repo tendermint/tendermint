@@ -28,10 +28,28 @@ applications remains correct.
 
 ### Config Changes
 
-The default configuration for a newly-created node now disables indexing for
-ABCI event metadata. Existing node configurations that already have indexing
-turned on are not affected. Operators who wish to enable indexing for a new
-node, however, must now edit the `config.toml` explicitly.
+- We have added a new, experimental tool to help operators migrate
+  configuration files created by previous versions of Tendermint.
+  To try this tool, run:
+
+  ```shell
+  # Install the tool.
+  go install github.com/tendermint/tendermint/scripts/confix@latest
+
+  # Run the tool with the old configuration file as input.
+  # Replace the -config argument with your path.
+  confix -config ~/.tendermint/config/config.toml -out updated.toml
+  ```
+
+  This tool should be able to update configurations from v0.34 and v0.35.  We
+  plan to extend it to handle older configuration files in the future. For now,
+  it will report an error (without making any changes) if it does not recognize
+  the version that created the file.
+
+- The default configuration for a newly-created node now disables indexing for
+  ABCI event metadata. Existing node configurations that already have indexing
+  turned on are not affected. Operators who wish to enable indexing for a new
+  node, however, must now edit the `config.toml` explicitly.
 
 ### RPC Changes
 
@@ -100,13 +118,32 @@ these parameters may do so by setting the `ConsensusParams.Timeout` field of the
 As a safety measure in case of unusual timing issues during the upgrade to
 v0.36, an operator may override the consensus timeout values for a single node.
 Note, however, that these overrides will be removed in Tendermint v0.37. See
-[configuration](https://github.com/tendermint/tendermint/blob/wb/issue-8182/docs/nodes/configuration.md)
+[configuration](https://github.com/tendermint/tendermint/blob/master/docs/nodes/configuration.md)
 for more information about these overrides.
 
 For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
 lays out the reasoning for the changes as well as [RFC
 009](https://tinyurl.com/rfc009) for a discussion of the complexities of
 upgrading consensus parameters.
+
+### CLI Changes
+
+The functionality around resetting a node has been extended to make it safer. The
+`unsafe-reset-all` command has been replaced by a `reset` command with four
+subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
+
+- `tendermint reset blockchain`: Clears a node of all blocks, consensus state, evidence,
+  and indexed transactions. NOTE: This command does not reset application state.
+  If you need to rollback the last application state (to recover from application
+  nondeterminism), see instead the `tendermint rollback` command.
+- `tendermint reset peers`: Clears the peer store, which persists information on peers used
+  by the networking layer. This can be used to get rid of stale addresses or to switch
+  to a predefined set of static peers.
+- `tendermint reset unsafe-signer`: Resets the watermark level of the PrivVal File signer
+  allowing it to sign votes from the genesis height. This should only be used in testing as
+  it can lead to the node double signing.
+- `tendermint reset unsafe-all`: A summation of the other three commands. This will delete
+  the entire `data` directory which may include application data as well.
 
 ## v0.35
 

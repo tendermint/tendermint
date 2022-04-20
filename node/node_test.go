@@ -28,6 +28,7 @@ import (
 	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
@@ -62,12 +63,13 @@ func TestNodeStartStop(t *testing.T) {
 
 	require.NoError(t, n.Start(ctx))
 	// wait for the node to produce a block
-	tctx, cancel := context.WithTimeout(ctx, time.Second)
+	tctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	blocksSub, err := n.EventBus().SubscribeWithArgs(tctx, pubsub.SubscribeArgs{
 		ClientID: "node_test",
 		Query:    types.EventQueryNewBlock,
+		Limit:    1000,
 	})
 	require.NoError(t, err)
 	_, err = blocksSub.Next(tctx)
@@ -137,6 +139,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 
 	// create node
 	n := getTestNode(ctx, t, cfg, logger)
+
+	require.NoError(t, n.Start(ctx))
 
 	// default config uses the kvstore app
 	appVersion := kvstore.ProtocolVersion
@@ -451,7 +455,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
+	state, stateDB, privVals := state(t, types.MaxVotesCount, int64(1))
+
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -534,17 +539,25 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		BlockID: blockID,
 	}
 
+	votes := make([]*types.Vote, types.MaxVotesCount)
+
 	// add maximum amount of signatures to a single commit
 	for i := 0; i < types.MaxVotesCount; i++ {
+		pubKey, err := privVals[i].GetPubKey(ctx)
+		require.NoError(t, err)
+		votes[i] = &types.Vote{
+			ValidatorAddress: pubKey.Address(),
+		}
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
-		state, commit,
+		state,
+		commit,
 		proposerAddr,
-		nil,
+		votes,
 	)
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
@@ -581,12 +594,12 @@ func TestNodeNewSeedNode(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	ns, err := makeSeedNode(ctx,
+	ns, err := makeSeedNode(
+		logger,
 		cfg,
 		config.DefaultDBProvider,
 		nodeKey,
 		defaultGenesisDocProviderFunc(cfg),
-		logger,
 	)
 	t.Cleanup(ns.Wait)
 	t.Cleanup(leaktest.CheckTimeout(t, time.Second))
@@ -624,11 +637,9 @@ func TestNodeSetEventSink(t *testing.T) {
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
-		indexService, eventSinks, err := createAndStartIndexerService(ctx, cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
-			indexer.NopMetrics())
+		eventSinks, err := sink.EventSinksFromConfig(cfg, config.DefaultDBProvider, genDoc.ChainID)
 		require.NoError(t, err)
-		t.Cleanup(indexService.Wait)
+
 		return eventSinks
 	}
 	cleanup := func(ns service.Service) func() {

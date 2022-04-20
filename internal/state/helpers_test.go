@@ -46,7 +46,7 @@ func makeAndCommitGoodBlock(
 	state, blockID := makeAndApplyGoodBlock(ctx, t, state, height, lastCommit, proposerAddr, blockExec, evidence)
 
 	// Simulate a lastCommit for this block from all validators for the next height
-	commit := makeValidCommit(ctx, t, height, blockID, state.Validators, privVals)
+	commit, _ := makeValidCommit(ctx, t, height, blockID, state.Validators, privVals)
 
 	return state, blockID, commit
 }
@@ -62,7 +62,7 @@ func makeAndApplyGoodBlock(
 	evidence []types.Evidence,
 ) (sm.State, types.BlockID) {
 	t.Helper()
-	block := state.MakeBlock(height, factory.MakeTenTxs(height), lastCommit, evidence, proposerAddr)
+	block := state.MakeBlock(height, factory.MakeNTxs(height, 10), lastCommit, evidence, proposerAddr)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
@@ -82,17 +82,19 @@ func makeValidCommit(
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
-) *types.Commit {
+) (*types.Commit, []*types.Vote) {
 	t.Helper()
-	sigs := make([]types.CommitSig, 0)
+	sigs := make([]types.CommitSig, vals.Size())
+	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
 		vote, err := factory.MakeVote(ctx, privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
 		require.NoError(t, err)
-		sigs = append(sigs, vote.CommitSig())
+		sigs[i] = vote.CommitSig()
+		votes[i] = vote
 	}
 
-	return types.NewCommit(height, 0, blockID, sigs)
+	return types.NewCommit(height, 0, blockID, sigs), votes
 }
 
 func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
@@ -270,7 +272,7 @@ type testApp struct {
 	abci.BaseApplication
 
 	CommitVotes         []abci.VoteInfo
-	ByzantineValidators []abci.Evidence
+	ByzantineValidators []abci.Misbehavior
 	ValidatorUpdates    []abci.ValidatorUpdate
 }
 

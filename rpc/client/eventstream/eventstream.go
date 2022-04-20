@@ -189,6 +189,5 @@ type MissedItemsError struct {
 
 // Error satisfies the error interface.
 func (e *MissedItemsError) Error() string {
-	return fmt.Sprintf("missed events matching %q between %q and %q",
-		e.Query, e.NewestSeen, e.OldestPresent)
+	return fmt.Sprintf("missed events matching %q between %q and %q", e.Query, e.NewestSeen, e.OldestPresent)
 }

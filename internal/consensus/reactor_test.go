@@ -104,16 +104,15 @@ func setup(
 	for nodeID, node := range rts.network.Nodes {
 		state := states[i]
 
-		reactor, err := NewReactor(ctx,
+		reactor := NewReactor(
 			state.logger.With("node", nodeID),
 			state,
 			chCreator(nodeID),
-			node.MakePeerUpdates(ctx, t),
+			func(ctx context.Context) *p2p.PeerUpdates { return node.MakePeerUpdates(ctx, t) },
 			state.eventBus,
 			true,
 			NopMetrics(),
 		)
-		require.NoError(t, err)
 
 		blocksSub, err := state.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 			ClientID: testSubscriber,
@@ -506,7 +505,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 
-		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
+		cs, err := NewState(logger.With("validator", i, "module", "consensus"),
 			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
 		require.NoError(t, err)
 		cs.SetPrivValidator(ctx, pv)

@@ -616,6 +616,10 @@ type ChannelDescriptor struct {
 	// RecvBufferCapacity defines the max buffer size of inbound messages for a
 	// given p2p Channel queue.
 	RecvBufferCapacity int
+
+	// Human readable name of the channel, used in logging and
+	// diagnostics.
+	Name string
 }
 
 func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
