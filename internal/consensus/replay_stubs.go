@@ -57,7 +57,6 @@ func (emptyMempool) CloseWAL()      {}
 // the real app.
 
 func newMockProxyApp(
-	ctx context.Context,
 	logger log.Logger,
 	appHash []byte,
 	abciResponses *tmstate.ABCIResponses,

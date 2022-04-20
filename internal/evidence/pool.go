@@ -338,7 +338,7 @@ func (evpool *Pool) addPendingEvidence(ctx context.Context, ev types.Evidence) e
 		return nil
 
 	}
-	return evpool.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
+	return evpool.eventBus.PublishEventEvidenceValidated(types.EventDataEvidenceValidated{
 		Evidence: ev,
 		Height:   ev.Height(),
 	})

@@ -387,7 +387,7 @@ func TestClient(t *testing.T) {
 		// the appropriate range
 
 		numBlocks := int64(300)
-		mockHeaders, mockVals, _ := genLightBlocksWithKeys(t, chainID, numBlocks, 101, 2, bTime)
+		mockHeaders, mockVals, _ := genLightBlocksWithKeys(t, numBlocks, 101, 2, bTime)
 
 		lastBlock := &types.LightBlock{SignedHeader: mockHeaders[numBlocks], ValidatorSet: mockVals[numBlocks]}
 		mockNode := &provider_mocks.Provider{}
@@ -773,7 +773,7 @@ func TestClient(t *testing.T) {
 		logger := log.NewNopLogger()
 
 		{
-			headers, vals, _ := genLightBlocksWithKeys(t, chainID, 9, 3, 0, bTime)
+			headers, vals, _ := genLightBlocksWithKeys(t, 9, 3, 0, bTime)
 			delete(headers, 1)
 			delete(headers, 2)
 			delete(vals, 1)

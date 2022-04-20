@@ -379,7 +379,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			}
 
 			wg.Add(1)
-			go func(p *BlockProvider, peer types.NodeID) {
+			go func(peer types.NodeID) {
 				defer wg.Done()
 
 				timer := time.NewTimer(0)
@@ -424,7 +424,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 					}
 				}
 
-			}(p, peer)
+			}(peer)
 		}
 		sig := make(chan struct{})
 		go func() { wg.Wait(); close(sig) }()

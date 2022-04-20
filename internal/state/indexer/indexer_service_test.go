@@ -54,8 +54,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	assert.False(t, indexer.IndexingEnabled([]indexer.EventSink{}))
 
 	// event sink setup
-	pool, err := setupDB(t)
-	assert.NoError(t, err)
+	pool := setupDB(t)
 
 	store := dbm.NewMemDB()
 	eventSinks := []indexer.EventSink{kv.NewEventSink(store), pSink}
@@ -71,7 +70,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	t.Cleanup(service.Wait)
 
 	// publish block with txs
-	err = eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
+	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
 		NumTxs: int64(2),
 	})
@@ -82,7 +81,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("foo"),
 		Result: abci.ExecTxResult{Code: 0},
 	}
-	err = eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: *txResult1})
+	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
 	require.NoError(t, err)
 	txResult2 := &abci.TxResult{
 		Height: 1,
@@ -90,7 +89,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("bar"),
 		Result: abci.ExecTxResult{Code: 0},
 	}
-	err = eventBus.PublishEventTx(ctx, types.EventDataTx{TxResult: *txResult2})
+	err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
 	require.NoError(t, err)
 
 	time.Sleep(100 * time.Millisecond)
@@ -133,7 +132,7 @@ func resetDB(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func setupDB(t *testing.T) (*dockertest.Pool, error) {
+func setupDB(t *testing.T) *dockertest.Pool {
 	t.Helper()
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 	assert.NoError(t, err)
@@ -187,7 +186,7 @@ func setupDB(t *testing.T) (*dockertest.Pool, error) {
 	err = migrator.Apply(psqldb, sm)
 	assert.NoError(t, err)
 
-	return pool, nil
+	return pool
 }
 
 func teardown(t *testing.T, pool *dockertest.Pool) error {

@@ -68,7 +68,7 @@ type ValidatorSet struct {
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	vals := &ValidatorSet{}
+	vals := &ValidatorSet{Validators: []*Validator{}}
 	err := vals.updateWithChangeSet(valz, false)
 	if err != nil {
 		panic(fmt.Errorf("cannot create validator set: %w", err))
@@ -235,9 +235,6 @@ func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 
 // Makes a copy of the validator list.
 func validatorListCopy(valsList []*Validator) []*Validator {
-	if valsList == nil {
-		return nil
-	}
 	valsCopy := make([]*Validator, len(valsList))
 	for i, val := range valsList {
 		valsCopy[i] = val.Copy()

@@ -180,7 +180,7 @@ for applications built w/ Cosmos SDK).
 				return err
 			}
 
-			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGTERM)
+			ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer cancel()
 
 			go func() {

@@ -19,7 +19,7 @@ Special thanks to external contributors on this release:
   - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
   - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
   - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
-  - [cli] \#8081 make the reset command safe to use. (@marbar3778)
+  - [cli] \#8081 make the reset command safe to use by intoducing `reset-state` command. Fixed by \#8259. (@marbar3778, @cmwaters)
   - [config] \#8222 default indexer configuration to null. (@creachadair)
 
 - Apps
@@ -62,6 +62,7 @@ Special thanks to external contributors on this release:
 - [consensus] \#7415 Update proposal validation logic to Prevote nil if a proposal does not meet the conditions for Timelyness per the proposer-based timestamp specification. (@anca)
 - [consensus] \#7382 Update block validation to no longer require the block timestamp to be the median of the timestamps of the previous commit. (@anca)
 - [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
+- [cli] \#8281 Add a tool to update old config files to the latest version. (@creachadair)
 
 ### IMPROVEMENTS
 
@@ -81,3 +82,6 @@ Special thanks to external contributors on this release:
 - [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
 - [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
 - [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
+- [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
+- [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
+- [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
