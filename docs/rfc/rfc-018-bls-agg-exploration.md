@@ -20,7 +20,7 @@ a brief glossary that may be helpful in understanding the discussion that follow
 number of signers.
 * **Multi-Signature**: A signature generated over a single message
 where, given the message and signature, a verifier is able to determine that
-all parties signed the message. May be short or may vary with number of signers.
+all parties signed the message. May be short or may vary with the number of signers.
 * **Aggregated Signature**: A _short_ signature generated over messages with
 possibly different content where, given the messages and signature, a verifier
 should be able to determine that all the parties signed the designated messages.
@@ -150,14 +150,14 @@ IBC module could be slightly smaller.
 At the moment, a commit contains a 64-byte (512-bit) signature for each validator
 that voted for the block. For the Cosmos Hub, which has 175 validators in the
 active set, this amounts to about 11 KiB per block. That gives an upper bound of
-around 113 GiB over the lifetime of the chain's 10.12M blocks. (Note, the hub has
+around 113 GiB over the lifetime of the chain's 10.12M blocks. (Note, the Hub has
 increased the number of validators in the active set over time so the total
 signature size over the history of the chain is likely somewhat less than that).
 
 Signature aggregation would only produce two signatures for the entire block.
 One for the yeas and one for the nays. Each BLS aggregated signature is 48
 bytes, per the [IETF standard of BLS signatures][bls-ietf-ecdsa-compare].
-Over the lifetime of the same cosmos hub chain, that would amount to about 1
+Over the lifetime of the same Cosmos Hub chain, that would amount to about 1
 GB, a savings of 112 GB. While that is a large factor of reduction it's worth
 bearing in mind that, at [GCP's cost][gcp-storage-pricing] of $.026 USD per GB,
 that is a total savings of around $2.50 per month.
@@ -168,7 +168,7 @@ From the [IETF draft standard on BLS Signatures][bls-ietf], BLS signatures can b
 created in 370 microseconds and verified in 2700 microseconds. Our current
 [Ed25519 implementation][voi-ed25519-perf] lists a 27.5 microsecond signature creation time
 and 5.19 milliseconds to perform batch verification on 128 signatures, which is
-slightly fewer than the 175 in the hub. blst, a popular implementation of BLS
+slightly fewer than the 175 in the Hub. blst, a popular implementation of BLS
 signature aggregation was benchmarked to perform verification on 100 signatures in
 1.5 milliseconds [when run locally][blst-verify-bench] on an 8 thread machine and
 pre-aggregated public keys.
@@ -310,17 +310,17 @@ validator did not actually produce the vote itself.
 The main mechanisms for preventing this require that each entity prove that it
 can can sign data with just their private key. The options involve either
 ensuring that each entity sign a _different_ message when producing every
-signature _or_ producing a [proof of possession][bls-ietf-pop] when announcing
+signature _or_ producing a [proof of possession][bls-ietf-pop] (PoP) when announcing
 their key to the network.
 
-A proof of possession is a message that demonstrates ownership of a private
-key. A simple scheme for proof of possession is one where the entity announcing
+A PoP is a message that demonstrates ownership of a private
+key. A simple scheme for PoP is one where the entity announcing
 its new public key to the network includes a digital signature over the bytes
 of the public key generated using the associated private key. Everyone receiving
-the public key and associated proof-of-possession can easily verify that the
+the public key and associated proof-of-possession can easily verify the
 signature and be sure the entity owns the private key.
 
-This proof-of-possession scheme suits the Tendermint use case quite well since
+This PoP scheme suits the Tendermint use case quite well since
 validator keys change infrequently so the associated PoPs would not be onerous
 to produce, verify, and store. Using this scheme allows signature verification
 to proceed more quickly, since all signatures are over identical data and
@@ -405,7 +405,7 @@ development appears to be active so formal verification may be forthcoming.
 [ledger-bls-announce]: https://www.ledger.com/first-ever-firmware-update-coming-to-the-ledger-nano-x
 [commit-proto]: https://github.com/tendermint/tendermint/blob/be7cb50bb3432ee652f88a443e8ee7b8ef7122bc/proto/tendermint/types/types.proto#L121
 [canonical-vote-proto]: https://github.com/tendermint/tendermint/blob/be7cb50bb3432ee652f88a443e8ee7b8ef7122bc/spec/core/encoding.md#L283
-[bls]: https://github.com/supranational/blst
+[blst]: https://github.com/supranational/blst
 [prysm-blst]: https://github.com/prysmaticlabs/prysm/blob/develop/go.mod#L75
 [gnark]: https://github.com/ConsenSys/gnark-crypto/
 [eth-2-adoption]: https://notes.ethereum.org/@GW1ZUbNKR5iRjjKYx6_dJQ/Skxf3tNcg_
