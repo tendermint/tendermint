@@ -113,19 +113,22 @@ func NewBlockPool(
 	start int64,
 	requestsCh chan<- BlockRequest,
 	errorsCh chan<- peerError,
+	witnessRequestCh chan<- HeaderRequest,
 ) *BlockPool {
 
 	bp := &BlockPool{
-		logger:     logger,
-		peers:      make(map[types.NodeID]*bpPeer),
-		requesters: make(map[int64]*bpRequester),
+		logger:            logger,
+		peers:             make(map[types.NodeID]*bpPeer),
+		requesters:        make(map[int64]*bpRequester),
+		witnessRequesters: make(map[int64]*witnessRequester),
 		// verificationRequesters: make(map[int64]*bpRequester),
-		height:       start,
-		startHeight:  start,
-		numPending:   0,
-		requestsCh:   requestsCh,
-		errorsCh:     errorsCh,
-		lastSyncRate: 0,
+		height:            start,
+		startHeight:       start,
+		numPending:        0,
+		requestsCh:        requestsCh,
+		errorsCh:          errorsCh,
+		witnessRequestsCh: witnessRequestCh,
+		lastSyncRate:      0,
 	}
 	bp.BaseService = *service.NewBaseService(logger, "BlockPool", bp)
 	return bp
@@ -293,6 +296,10 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 		pool.removePeer(peerID)
 	}
 	return peerID
+}
+
+func (pool *BlockPool) AddWitnessHeader(header *types.Header) {
+	pool.witnessRequesters[header.Height].header = header
 }
 
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
@@ -481,7 +488,7 @@ func (pool *BlockPool) makeNextRequester(ctx context.Context) {
 	witnessRequester := newWitnessRequester(pool.logger, pool, nextHeight)
 	witnessRequester.excludePeerID = request.peerID
 	pool.requesters[nextHeight] = request
-
+	pool.witnessRequesters[nextHeight] = witnessRequester
 	atomic.AddInt32(&pool.numPending, 1)
 
 	err := request.Start(ctx)

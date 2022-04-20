@@ -86,7 +86,8 @@ func TestBlockPoolBasic(t *testing.T) {
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
-	pool := NewBlockPool(log.NewNopLogger(), start, requestsCh, errorsCh)
+	witnessRequestCh := make(chan HeaderRequest, 1000)
+	pool := NewBlockPool(log.NewNopLogger(), start, requestsCh, errorsCh, witnessRequestCh)
 
 	if err := pool.Start(ctx); err != nil {
 		t.Error(err)
@@ -144,7 +145,8 @@ func TestBlockPoolTimeout(t *testing.T) {
 	peers := makePeers(10, start+1, 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
-	pool := NewBlockPool(logger, start, requestsCh, errorsCh)
+	witnessRequestCh := make(chan HeaderRequest, 1000)
+	pool := NewBlockPool(logger, start, requestsCh, errorsCh, witnessRequestCh)
 	err := pool.Start(ctx)
 	if err != nil {
 		t.Error(err)
@@ -206,8 +208,8 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 	}
 	requestsCh := make(chan BlockRequest)
 	errorsCh := make(chan peerError)
-
-	pool := NewBlockPool(log.NewNopLogger(), 1, requestsCh, errorsCh)
+	witnessRequestCh := make(chan HeaderRequest, 1000)
+	pool := NewBlockPool(log.NewNopLogger(), 1, requestsCh, errorsCh, witnessRequestCh)
 	err := pool.Start(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { cancel(); pool.Wait() })

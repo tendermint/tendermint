@@ -87,6 +87,7 @@ type Reactor struct {
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
+	witnessCh  <-chan HeaderRequest
 
 	metrics  *consensus.Metrics
 	eventBus *eventbus.EventBus
@@ -158,9 +159,11 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 	requestsCh := make(chan BlockRequest, maxTotalRequesters)
 	errorsCh := make(chan peerError, maxPeerErrBuffer) // NOTE: The capacity should be larger than the peer count.
-	r.pool = NewBlockPool(r.logger, startHeight, requestsCh, errorsCh)
+	witnessRequestCh := make(chan HeaderRequest, maxTotalRequesters)
+	r.pool = NewBlockPool(r.logger, startHeight, requestsCh, errorsCh, witnessRequestCh)
 	r.requestsCh = requestsCh
 	r.errorsCh = errorsCh
+	r.witnessCh = witnessRequestCh
 
 	if r.blockSync.IsSet() {
 		if err := r.pool.Start(ctx); err != nil {
@@ -183,6 +186,27 @@ func (r *Reactor) OnStop() {
 	if r.blockSync.IsSet() {
 		r.pool.Stop()
 	}
+}
+
+// respondToPeer loads a block and sends it to the requesting peer, if we have it.
+// Otherwise, we'll respond saying we do not have it.
+func (r *Reactor) sendHeaderToPeer(ctx context.Context, msg *bcproto.HeaderRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
+	block := r.store.LoadBlockProto(msg.Height)
+
+	if block != nil {
+		header := &block.Header
+
+		return blockSyncCh.Send(ctx, p2p.Envelope{
+			To:      peerID,
+			Message: &bcproto.HeaderResponse{Header: header},
+		})
+	}
+	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
+
+	return blockSyncCh.Send(ctx, p2p.Envelope{
+		To:      peerID,
+		Message: &bcproto.NoBlockResponse{Height: msg.Height},
+	})
 }
 
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
@@ -227,6 +251,16 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 	switch chID {
 	case BlockSyncChannel:
 		switch msg := envelope.Message.(type) {
+		case *bcproto.HeaderRequest:
+			return r.sendHeaderToPeer(ctx, msg, envelope.From, blockSyncCh)
+		case *bcproto.HeaderResponse:
+			header, err := types.HeaderFromProto(msg.Header)
+			if err != nil {
+				r.logger.Error("faled to convert header from proto", "err", err)
+				return err
+			}
+			r.pool.AddWitnessHeader(&header)
+
 		case *bcproto.BlockRequest:
 			return r.respondToPeer(ctx, msg, envelope.From, blockSyncCh)
 		case *bcproto.BlockResponse:
@@ -375,6 +409,18 @@ func (r *Reactor) requestRoutine(ctx context.Context, blockSyncCh *p2p.Channel) 
 		select {
 		case <-ctx.Done():
 			return
+		case wreq := <-r.witnessCh:
+			if err := blockSyncCh.Send(ctx, p2p.Envelope{
+				To:      wreq.PeerID,
+				Message: &bcproto.HeaderRequest{Height: wreq.Height},
+			}); err != nil {
+				if err := blockSyncCh.SendError(ctx, p2p.PeerError{
+					NodeID: wreq.PeerID,
+					Err:    err,
+				}); err != nil {
+					return
+				}
+			}
 		case request := <-r.requestsCh:
 			if err := blockSyncCh.Send(ctx, p2p.Envelope{
 				To:      request.PeerID,
@@ -403,6 +449,17 @@ func (r *Reactor) requestRoutine(ctx context.Context, blockSyncCh *p2p.Channel) 
 			}
 		}
 	}
+}
+func (r *Reactor) verifyWithWitnesses(newBlock *types.Block) error {
+	if r.pool.witnessRequesters[newBlock.Height] != nil {
+		witnessHeader := r.pool.witnessRequesters[newBlock.Height].header
+
+		if !bytes.Equal(witnessHeader.Hash(), newBlock.Hash()) {
+			r.logger.Error("hashes does not match with witness header")
+			return errors.New("header not matching the header provided by the witness")
+		}
+	}
+	return nil
 }
 
 // poolRoutine handles messages from the poolReactor telling the reactor what to
@@ -556,10 +613,18 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					)
 					return
 				}
-				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
+
 			}
-			r.lastTrustedBlock.block = newBlock
-			r.lastTrustedBlock.commit = verifyBlock.LastCommit
+			if err := r.verifyWithWitnesses(newBlock); err != nil {
+				return
+			}
+			if r.lastTrustedBlock == nil {
+				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
+			} else {
+				r.lastTrustedBlock.block = newBlock
+				r.lastTrustedBlock.commit = verifyBlock.LastCommit
+			}
+
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block

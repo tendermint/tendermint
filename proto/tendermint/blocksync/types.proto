@@ -4,6 +4,7 @@ package tendermint.blocksync;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/blocksync";
 
 import "tendermint/types/block.proto";
+  import "tendermint/types/types.proto";
 
 // BlockRequest requests a block for a specific height
 message BlockRequest {
@@ -19,6 +20,16 @@ message NoBlockResponse {
 // BlockResponse returns block to the requested
 message BlockResponse {
   tendermint.types.Block block = 1;
+}
+
+//Header requests requets the header from a specific heigth to validate
+// against witnesses
+message HeaderRequest {
+  int64 height = 1;
+}
+
+message HeaderResponse {
+  tendermint.types.Header header = 1;
 }
 
 // StatusRequest requests the status of a peer.
@@ -37,5 +48,7 @@ message Message {
     BlockResponse   block_response    = 3;
     StatusRequest   status_request    = 4;
     StatusResponse  status_response   = 5;
+    HeaderRequest header_request = 6;
+    HeaderResponse header_response = 7;
   }
 }
