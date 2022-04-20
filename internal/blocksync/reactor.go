@@ -453,7 +453,9 @@ func (r *Reactor) requestRoutine(ctx context.Context, blockSyncCh *p2p.Channel) 
 func (r *Reactor) verifyWithWitnesses(newBlock *types.Block) error {
 	if r.pool.witnessRequesters[newBlock.Height] != nil {
 		witnessHeader := r.pool.witnessRequesters[newBlock.Height].header
-
+		if witnessHeader == nil {
+			r.pool.witnessRequestsCh <- HeaderRequest{Height: newBlock.Height, PeerID: r.pool.witnessRequesters[newBlock.Height].peerID}
+		}
 		if !bytes.Equal(witnessHeader.Hash(), newBlock.Hash()) {
 			r.logger.Error("hashes does not match with witness header")
 			return errors.New("header not matching the header provided by the witness")
@@ -616,7 +618,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 
 			}
 			if err := r.verifyWithWitnesses(newBlock); err != nil {
-				return
+				r.logger.Debug("Witness verificatio nfailed")
 			}
 			if r.lastTrustedBlock == nil {
 				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}

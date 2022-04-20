@@ -257,6 +257,7 @@ func (pool *BlockPool) PopRequest() {
 	if r := pool.requesters[pool.height]; r != nil {
 		r.Stop()
 		delete(pool.requesters, pool.height)
+		delete(pool.witnessRequesters, pool.height)
 		pool.height++
 		pool.lastAdvance = time.Now()
 		// the lastSyncRate will be updated every 100 blocks, it uses the adaptive filter
@@ -299,7 +300,20 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 }
 
 func (pool *BlockPool) AddWitnessHeader(header *types.Header) {
-	pool.witnessRequesters[header.Height].header = header
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+	requester := pool.witnessRequesters[header.Height]
+
+	if requester == nil {
+		pool.logger.Error("peer sent us a block we didn't expect")
+		return
+	}
+	requester.SetBlock(header)
+	peer := pool.peers[requester.peerID]
+	if peer != nil {
+		peer.decrPending(header.ToProto().Size())
+	}
+
 }
 
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
@@ -441,7 +455,7 @@ func (pool *BlockPool) pickIncrAvailableWitness(height int64) *bpPeer {
 		if peer.numPending >= maxPendingRequestsPerPeer {
 			continue
 		}
-		if height < peer.base || height > peer.height || peer.id == pool.requesters[height].peerID {
+		if height < peer.base || height > peer.height || peer.id == pool.witnessRequesters[height].peerID {
 			continue
 		}
 		peer.incrPending()
@@ -653,6 +667,22 @@ func newWitnessRequester(logger log.Logger, pool *BlockPool, height int64) *witn
 	}
 	wreq.BaseService = *service.NewBaseService(logger, "witnessReqester", wreq)
 	return wreq
+}
+
+func (wreq *witnessRequester) SetBlock(header *types.Header) bool {
+	wreq.mtx.Lock()
+	if wreq.header != nil { //|| wreq.peerID != peerID {
+		wreq.mtx.Unlock()
+		return false
+	}
+	wreq.header = header
+	wreq.mtx.Unlock()
+
+	select {
+	case wreq.getHeaderCh <- struct{}{}:
+	default:
+	}
+	return true
 }
 
 func (wreq *witnessRequester) OnStart(ctx context.Context) error {
