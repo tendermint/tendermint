@@ -358,6 +358,14 @@ No further exploration of BLS should be undertaken without strong assurance of
 a well-tested library with continuing support for creating and verifying BLS
 signatures.
 
+At the moment, there is one candidate, `blst`, that appears to be the most
+mature and well vetted. While this library is undergoing continuing auditing
+and is supported by funds from the Ethereum foundation, adopting a new cryptographic
+library presents some serious risks. Namely, if the support for the library were
+to be discontinued, Tendermint may become saddle with the requirement of supporting
+a very complex piece of software or force a massive ecosystem-wide migration away
+from BLS signatures.
+
 #### Go Standard Library
 
 The Go Standard library has no implementation of BLS signatures.
