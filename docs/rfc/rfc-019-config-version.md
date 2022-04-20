@@ -72,10 +72,11 @@ While many of these changes are mentioned in the config section of the upgrade
 instructions, some are not mentioned at all, or are hidden in other parts of
 the doc. For instance, the v0.34 `pprof_laddr` change was documented only as an
 RPC flag change. (A savvy reader might realize that the flag `--rpc.pprof_laddr`
-implies a corresponding config section, that omits the related detail that
+implies a corresponding config section, but it omits the related detail that
 there was a top-level setting that's been renamed).  The lesson here is not
 that the docs are bad, but to point out that prose is not the most efficient
-format to convey detailed changes like this.
+format to convey detailed changes like this. The upgrading instructions are
+still valuable for the human reader to understand what to expect.
 
 ### Concrete Steps
 
@@ -96,7 +97,7 @@ version that made the file, as well as the version we're converting it to.
 > we can get some feedback from operators.
 
 For the experiment, we handled this by carefully searching the history of
-config format changes for shibboleths to bound the version: For exampole, the
+config format changes for shibboleths to bound the version: For example, the
 `[fastsync]` section was added in Tendermint v0.32 and renamed `[blocksync]` in
 Tendermint v0.35. So if we see a `[fastsync]` section, we have some confidence
 that the file was created by v0.32, v0.33, or v0.34.
@@ -109,15 +110,15 @@ as we might like.
 
 This is especially relevant for configuration files that may have already been
 manually upgraded across several versions by the time we are asked to update
-them again.  Another realted concern is that we'd like to make sure conversion
+them again.  Another related concern is that we'd like to make sure conversion
 is idempotent, so that it would be safe to rerun the tool over an
 already-converted file without breaking anything.
 
 ### Config Versioning
 
-One obvious tactic we could use for future versions is add a version marker to
+One obvious tactic we could use for future releases is add a version marker to
 the config file. This would give tools like `confix` (and the node itself) a
-way to calibrate its expectations. Rather than being a version for the file
+way to calibrate their expectations. Rather than being a version for the file
 itself, however, this version marker would indicate which version of Tendermint
 is needed to read the file.
 
@@ -143,13 +144,15 @@ conversion tool sets the file's `config-version` to reflect its compatibility.
 
 Upon seeing an up-to-date version marker, the conversion tool can simply exit
 with a diagnostic like "this file is already up-to-date", rather than sniffing
-the keyspace and potentially introducing errors. Besides avoiding potentially
-unsafe conversions, this would also serve as human-readable documentation that
-the file is up-to-date for a given version.
+the keyspace and potentially introducing errors. In addition, this would let a
+tool detect config files that are _newer_ than the one it understands, and
+issue a safe diagnostic rather than doing something wrong.  Plus, besides
+avoiding potentially unsafe conversions, this would also serve as
+human-readable documentation that the file is up-to-date for a given version.
 
-Adding a config version would not address the problem of how to convert older
-versions of Tendermint, but it would at least help us build more robust config
-tooling going forward.
+Adding a config version would not address the problem of how to convert files
+created by older versions of Tendermint, but it would at least help us build
+more robust config tooling going forward.
 
 ## Research Notes
 
@@ -158,7 +161,8 @@ removed turns out to be surprisingly tedious.  To solve this puzzle, we had to
 answer the following questions:
 
 1. What changes were made between v0.x and v0.y? This is further complicated by
-   cases where we have backported config changes into earlier releases.
+   cases where we have backported config changes into the middle of an earlier
+   release cycle (e.g., `psql-conn` from v0.35.x into v0.34.13).
 
 2. When during the development cycle were those changes made? This allows us to
    recognize features that were backported into a previous release.
@@ -167,9 +171,10 @@ answer the following questions:
    all during or across the release boundary?
 
 Each step of the [configuration update plan][plan] is commented with a link to
-one or more PRs where that change was made.
+one or more PRs where that change was made. The sections below discuss how we
+found these references.
 
-### Tracking Chnages Across Releases
+### Tracking Changes Across Releases
 
 To figure out what changed between two releases, we built a tool called
 [`condiff`][condiff], which performs a "keyspace" diff of two TOML documents.
