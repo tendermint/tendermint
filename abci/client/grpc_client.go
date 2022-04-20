@@ -52,6 +52,9 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 }
 
 func (cli *grpcClient) OnStart(ctx context.Context) error {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
 RETRY_LOOP:
 	for {
 		conn, err := grpc.Dial(cli.addr,
@@ -63,8 +66,13 @@ RETRY_LOOP:
 				return err
 			}
 			cli.logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
-			time.Sleep(time.Second * dialRetryIntervalSeconds)
-			continue RETRY_LOOP
+			timer.Reset(time.Second * dialRetryIntervalSeconds)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+				continue RETRY_LOOP
+			}
 		}
 
 		cli.logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)
@@ -82,7 +90,13 @@ RETRY_LOOP:
 			}
 
 			cli.logger.Error("Echo failed", "err", err)
-			time.Sleep(time.Second * echoRetryIntervalSeconds)
+			timer.Reset(time.Second * echoRetryIntervalSeconds)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+				continue ENSURE_CONNECTED
+			}
 		}
 
 		cli.client = client
