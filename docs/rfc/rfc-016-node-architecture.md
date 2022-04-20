@@ -68,7 +68,7 @@ This would give the components control to the information they want to expose an
 
 I'd like to aim to reach a state where we as a team have either an implicit or explicit rubric which can determine, in the event of some new need to communicate information, what tool it should use for doing this. In the case of inter node communication, this is obviously the p2p stack (with perhaps the exception of the light client). Metrics and logging also have clear usage patterns. RPC and the events system are less clear. The RPC is used for debugging data and fine tuned operator control as it is for general public querying and transaction submission. The RPC is also known to have been plumbed back into the application for historical queries. The events system, similarly, is used for consuming transaction events as it is for the testing of consensus state transitions.
 
-Principally, I think we should look to change our language away from what the actual transport is and more towards what it's being used for and to whom. We call it a peer to peer layer and not the underlying tcp connection. We should split RPC into an operator interface, a public interface and a bidirectional ABCI.
+Principally, I think we should look to change our language away from what the actual transport is and more towards what it's being used for and to whom. We call it a peer to peer layer and not the underlying tcp connection. In the same way, we should look to split RPC into an operator interface (RPC Internal), a public interface (RPC External) and a bidirectional ABCI.
 
 ### Seperation of consumers and suppliers
 
