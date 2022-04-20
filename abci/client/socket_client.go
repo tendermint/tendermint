@@ -64,6 +64,8 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 		err  error
 		conn net.Conn
 	)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	for {
 		conn, err = tmnet.Connect(cli.addr)
@@ -73,8 +75,15 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 			}
 			cli.logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
 				cli.addr, dialRetryIntervalSeconds), "err", err)
-			time.Sleep(time.Second * dialRetryIntervalSeconds)
-			continue
+
+			timer.Reset(time.Second * dialRetryIntervalSeconds)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+				continue
+			}
+
 		}
 		cli.conn = conn
 
@@ -90,11 +99,7 @@ func (cli *socketClient) OnStop() {
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
-
-	// this timeout is arbitrary.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	cli.drainQueue(ctx)
+	cli.drainQueue()
 }
 
 // Error returns an error if the client was stopped abruptly.
@@ -113,12 +118,6 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
-			if ctx.Err() != nil {
-				return
-			}
-
-			cli.willSendReq(reqres)
-
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
@@ -162,6 +161,11 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 func (cli *socketClient) willSendReq(reqres *requestAndResponse) {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
+
+	if !cli.IsRunning() {
+		return
+	}
+
 	cli.reqSent.PushBack(reqres)
 }
 
@@ -185,6 +189,47 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	cli.reqSent.Remove(next) // pop first item from linked list
 
 	return nil
+}
+
+//----------------------------------------
+
+func (cli *socketClient) doRequest(ctx context.Context, req *types.Request) (*types.Response, error) {
+	if !cli.IsRunning() {
+		return nil, errors.New("client has stopped")
+	}
+
+	reqres := makeReqRes(req)
+	cli.willSendReq(reqres)
+
+	select {
+	case cli.reqQueue <- reqres:
+	case <-ctx.Done():
+		return nil, fmt.Errorf("can't queue req: %w", ctx.Err())
+	}
+
+	select {
+	case <-reqres.signal:
+		if err := cli.Error(); err != nil {
+			return nil, err
+		}
+
+		return reqres.Response, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// drainQueue marks as complete and discards all remaining pending requests
+// from the queue.
+func (cli *socketClient) drainQueue() {
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
+
+	// mark all in-flight messages as resolved (they will get cli.Error())
+	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
+		reqres := req.Value.(*requestAndResponse)
+		reqres.markDone()
+	}
 }
 
 //----------------------------------------
@@ -315,58 +360,6 @@ func (cli *socketClient) FinalizeBlock(ctx context.Context, req types.RequestFin
 		return nil, err
 	}
 	return res.GetFinalizeBlock(), nil
-}
-
-//----------------------------------------
-
-func (cli *socketClient) doRequest(ctx context.Context, req *types.Request) (*types.Response, error) {
-	reqres := makeReqRes(req)
-
-	select {
-	case cli.reqQueue <- reqres:
-	case <-ctx.Done():
-		return nil, fmt.Errorf("can't queue req: %w", ctx.Err())
-	}
-
-	select {
-	case <-reqres.signal:
-		if err := cli.Error(); err != nil {
-			return nil, err
-		}
-
-		return reqres.Response, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-}
-
-// drainQueue marks as complete and discards all remaining pending requests
-// from the queue.
-func (cli *socketClient) drainQueue(ctx context.Context) {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-
-	// mark all in-flight messages as resolved (they will get cli.Error())
-	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
-		reqres := req.Value.(*requestAndResponse)
-		reqres.markDone()
-	}
-
-	// Mark all queued messages as resolved.
-	//
-	// TODO(creachadair): We can't simply range the channel, because it is never
-	// closed, and the writer continues to add work.
-	// See https://github.com/tendermint/tendermint/issues/6996.
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case reqres := <-cli.reqQueue:
-			reqres.markDone()
-		default:
-			return
-		}
-	}
 }
 
 //----------------------------------------
