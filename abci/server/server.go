@@ -23,7 +23,7 @@ func NewServer(logger log.Logger, protoAddr, transport string, app types.Applica
 	case "socket":
 		s = NewSocketServer(logger, protoAddr, app)
 	case "grpc":
-		s = NewGRPCServer(logger, protoAddr, types.NewGRPCApplication(app))
+		s = NewGRPCServer(logger, protoAddr, app)
 	default:
 		err = fmt.Errorf("unknown server type %s", transport)
 	}
