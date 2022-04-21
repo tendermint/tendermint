@@ -343,12 +343,12 @@ func TestProcessProposal(t *testing.T) {
 		ProposerAddress:    block1.ProposerAddress,
 	}
 
-	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	app.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 	acceptBlock, err := blockExec.ProcessProposal(ctx, block1, state)
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
-	app.AssertCalled(t, "ProcessProposal", expectedRpp)
+	app.AssertCalled(t, "ProcessProposal", ctx, expectedRpp)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -691,7 +691,7 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 			},
 		},
 	}
-	app.On("PrepareProposal", mock.Anything).Return(rpp)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(rpp)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -745,7 +745,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
 
 	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
 		TxRecords: trs,
 	})
 
@@ -804,7 +804,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	trs[1].Action = abci.TxRecord_ADDED
 
 	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
 		TxRecords: trs,
 	})
 
@@ -860,7 +860,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 
 	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
 		TxRecords: trs,
 	})
 
@@ -920,7 +920,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	trs := txsToTxRecords(types.Txs(txs))
 
 	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
 		TxRecords: trs,
 	})
 

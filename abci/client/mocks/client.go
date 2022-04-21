@@ -4,8 +4,10 @@ package mocks
 
 import (
 	context "context"
+	testing "testing"
 
 	mock "github.com/stretchr/testify/mock"
+
 	types "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -418,4 +420,13 @@ func (_m *Client) VerifyVoteExtension(_a0 context.Context, _a1 types.RequestVeri
 // Wait provides a mock function with given fields:
 func (_m *Client) Wait() {
 	_m.Called()
+}
+
+// NewClient creates a new instance of Client. It also registers a cleanup function to assert the mocks expectations.
+func NewClient(t testing.TB) *Client {
+	mock := &Client{}
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
 }
