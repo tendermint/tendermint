@@ -466,7 +466,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		app := kvstore.NewApplication()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(ctx, abci.RequestInitChain{Validators: vals})
 
 		pv := privVals[i]
 		blockDB := dbm.NewMemDB()

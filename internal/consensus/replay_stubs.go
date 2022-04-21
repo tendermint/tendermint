@@ -75,7 +75,7 @@ type mockProxyApp struct {
 	abciResponses *tmstate.ABCIResponses
 }
 
-func (mock *mockProxyApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+func (mock *mockProxyApp) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
 	r := mock.abciResponses.FinalizeBlock
 	mock.txCount++
 	if r == nil {
@@ -84,6 +84,6 @@ func (mock *mockProxyApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Resp
 	return *r
 }
 
-func (mock *mockProxyApp) Commit() abci.ResponseCommit {
+func (mock *mockProxyApp) Commit(context.Context) abci.ResponseCommit {
 	return abci.ResponseCommit{Data: mock.appHash}
 }

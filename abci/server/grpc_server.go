@@ -78,72 +78,72 @@ func (app *gRPCApplication) Flush(_ context.Context, req *types.RequestFlush) (*
 	return &types.ResponseFlush{}, nil
 }
 
-func (app *gRPCApplication) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
-	res := app.app.Info(*req)
+func (app *gRPCApplication) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
+	res := app.app.Info(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	res := app.app.CheckTx(*req)
+func (app *gRPCApplication) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	res := app.app.CheckTx(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) Query(_ context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {
-	res := app.app.Query(*req)
+func (app *gRPCApplication) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {
+	res := app.app.Query(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) Commit(_ context.Context, req *types.RequestCommit) (*types.ResponseCommit, error) {
-	res := app.app.Commit()
+func (app *gRPCApplication) Commit(ctx context.Context, req *types.RequestCommit) (*types.ResponseCommit, error) {
+	res := app.app.Commit(ctx)
 	return &res, nil
 }
 
-func (app *gRPCApplication) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
-	res := app.app.InitChain(*req)
+func (app *gRPCApplication) InitChain(ctx context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
+	res := app.app.InitChain(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) ListSnapshots(_ context.Context, req *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	res := app.app.ListSnapshots(*req)
+func (app *gRPCApplication) ListSnapshots(ctx context.Context, req *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	res := app.app.ListSnapshots(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) OfferSnapshot(_ context.Context, req *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	res := app.app.OfferSnapshot(*req)
+func (app *gRPCApplication) OfferSnapshot(ctx context.Context, req *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	res := app.app.OfferSnapshot(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) LoadSnapshotChunk(_ context.Context, req *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	res := app.app.LoadSnapshotChunk(*req)
+func (app *gRPCApplication) LoadSnapshotChunk(ctx context.Context, req *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	res := app.app.LoadSnapshotChunk(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) ApplySnapshotChunk(_ context.Context, req *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	res := app.app.ApplySnapshotChunk(*req)
+func (app *gRPCApplication) ApplySnapshotChunk(ctx context.Context, req *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	res := app.app.ApplySnapshotChunk(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) ExtendVote(_ context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	res := app.app.ExtendVote(*req)
+func (app *gRPCApplication) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	res := app.app.ExtendVote(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) VerifyVoteExtension(_ context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	res := app.app.VerifyVoteExtension(*req)
+func (app *gRPCApplication) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	res := app.app.VerifyVoteExtension(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) PrepareProposal(_ context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	res := app.app.PrepareProposal(*req)
+func (app *gRPCApplication) PrepareProposal(ctx context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	res := app.app.PrepareProposal(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	res := app.app.ProcessProposal(*req)
+func (app *gRPCApplication) ProcessProposal(ctx context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	res := app.app.ProcessProposal(ctx, *req)
 	return &res, nil
 }
 
-func (app *gRPCApplication) FinalizeBlock(_ context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	res := app.app.FinalizeBlock(*req)
+func (app *gRPCApplication) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+	res := app.app.FinalizeBlock(ctx, *req)
 	return &res, nil
 }

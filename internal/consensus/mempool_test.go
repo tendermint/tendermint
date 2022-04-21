@@ -199,10 +199,10 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resFinalize := app.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	resFinalize := app.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
 
-	resCommit := app.Commit()
+	resCommit := app.Commit(ctx)
 	assert.True(t, len(resCommit.Data) > 0)
 
 	emptyMempoolCh := make(chan struct{})
@@ -267,11 +267,11 @@ func NewCounterApplication() *CounterApplication {
 	return &CounterApplication{}
 }
 
-func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
+func (app *CounterApplication) Info(_ context.Context, req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}
 }
 
-func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+func (app *CounterApplication) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
 	respTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		txValue := txAsUint64(tx)
@@ -288,7 +288,7 @@ func (app *CounterApplication) FinalizeBlock(req abci.RequestFinalizeBlock) abci
 	return abci.ResponseFinalizeBlock{TxResults: respTxs}
 }
 
-func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *CounterApplication) CheckTx(_ context.Context, req abci.RequestCheckTx) abci.ResponseCheckTx {
 	txValue := txAsUint64(req.Tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return abci.ResponseCheckTx{
@@ -305,7 +305,7 @@ func txAsUint64(tx []byte) uint64 {
 	return binary.BigEndian.Uint64(tx8)
 }
 
-func (app *CounterApplication) Commit() abci.ResponseCommit {
+func (app *CounterApplication) Commit(context.Context) abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
 		return abci.ResponseCommit{}
@@ -315,8 +315,7 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 	return abci.ResponseCommit{Data: hash}
 }
 
-func (app *CounterApplication) PrepareProposal(
-	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+func (app *CounterApplication) PrepareProposal(_ context.Context, req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
 
 	trs := make([]*abci.TxRecord, 0, len(req.Txs))
 	var totalBytes int64
@@ -333,7 +332,6 @@ func (app *CounterApplication) PrepareProposal(
 	return abci.ResponsePrepareProposal{TxRecords: trs}
 }
 
-func (app *CounterApplication) ProcessProposal(
-	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+func (app *CounterApplication) ProcessProposal(_ context.Context, req abci.RequestProcessProposal) abci.ResponseProcessProposal {
 	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }

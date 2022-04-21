@@ -1017,7 +1017,7 @@ type badApp struct {
 	onlyLastHashIsWrong bool
 }
 
-func (app *badApp) Commit() abci.ResponseCommit {
+func (app *badApp) Commit(context.Context) abci.ResponseCommit {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
@@ -1275,7 +1275,7 @@ type initChainApp struct {
 	vals []abci.ValidatorUpdate
 }
 
-func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
+func (ica *initChainApp) InitChain(_ context.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	return abci.ResponseInitChain{
 		Validators: ica.vals,
 	}

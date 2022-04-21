@@ -25,19 +25,15 @@ var (
 )
 
 func (a ABCIApp) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
-	return &coretypes.ResultABCIInfo{Response: a.App.Info(proxy.RequestInfo)}, nil
+	return &coretypes.ResultABCIInfo{Response: a.App.Info(ctx, proxy.RequestInfo)}, nil
 }
 
 func (a ABCIApp) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
 	return a.ABCIQueryWithOptions(ctx, path, data, client.DefaultABCIQueryOptions)
 }
 
-func (a ABCIApp) ABCIQueryWithOptions(
-	ctx context.Context,
-	path string,
-	data bytes.HexBytes,
-	opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
-	q := a.App.Query(abci.RequestQuery{
+func (a ABCIApp) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+	q := a.App.Query(ctx, abci.RequestQuery{
 		Data:   data,
 		Path:   path,
 		Height: opts.Height,
@@ -51,21 +47,21 @@ func (a ABCIApp) ABCIQueryWithOptions(
 // TODO: Make it wait for a commit and set res.Height appropriately.
 func (a ABCIApp) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
 	res := coretypes.ResultBroadcastTxCommit{}
-	res.CheckTx = a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	res.CheckTx = a.App.CheckTx(ctx, abci.RequestCheckTx{Tx: tx})
 	if res.CheckTx.IsErr() {
 		return &res, nil
 	}
-	fb := a.App.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{tx}})
+	fb := a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	res.TxResult = *fb.TxResults[0]
 	res.Height = -1 // TODO
 	return &res, nil
 }
 
 func (a ABCIApp) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	c := a.App.CheckTx(ctx, abci.RequestCheckTx{Tx: tx})
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
+		go func() { a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
 	}
 	return &coretypes.ResultBroadcastTx{
 		Code:      c.Code,
@@ -77,10 +73,10 @@ func (a ABCIApp) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.
 }
 
 func (a ABCIApp) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	c := a.App.CheckTx(ctx, abci.RequestCheckTx{Tx: tx})
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.FinalizeBlock(abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
+		go func() { a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
 	}
 	return &coretypes.ResultBroadcastTx{
 		Code:      c.Code,
@@ -113,11 +109,7 @@ func (m ABCIMock) ABCIQuery(ctx context.Context, path string, data bytes.HexByte
 	return m.ABCIQueryWithOptions(ctx, path, data, client.DefaultABCIQueryOptions)
 }
 
-func (m ABCIMock) ABCIQueryWithOptions(
-	ctx context.Context,
-	path string,
-	data bytes.HexBytes,
-	opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	res, err := m.Query.GetResponse(QueryArgs{path, data, opts.Height, opts.Prove})
 	if err != nil {
 		return nil, err
@@ -185,11 +177,7 @@ func (r *ABCIRecorder) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo,
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(
-	ctx context.Context,
-	path string,
-	data bytes.HexBytes,
-) (*coretypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
 	return r.ABCIQueryWithOptions(ctx, path, data, client.DefaultABCIQueryOptions)
 }
 
