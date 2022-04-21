@@ -809,7 +809,7 @@ OUTER_LOOP:
 		rs := r.state.GetRoundState()
 		prs := ps.GetRoundState()
 
-		isValidator := r.isValidator(ps.ProTxHash)
+		isValidator := r.isValidator(ps.GetProTxHash())
 
 		switch logThrottle {
 		case 1: // first sleep

@@ -394,6 +394,14 @@ func (ps *PeerState) SetProTxHash(proTxHash types.ProTxHash) {
 	ps.ProTxHash = proTxHash.Copy()
 }
 
+// GetProTxHash returns a copy of peer's pro-tx-hash
+func (ps *PeerState) GetProTxHash() types.ProTxHash {
+	ps.mtx.RLock()
+	defer ps.mtx.RUnlock()
+
+	return ps.ProTxHash.Copy()
+}
+
 // SetHasVote sets the given vote as known by the peer
 func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	if vote == nil {
