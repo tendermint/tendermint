@@ -44,71 +44,57 @@ func (app *localClient) Echo(_ context.Context, msg string) (*types.ResponseEcho
 }
 
 func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	res := app.Application.Info(ctx, req)
-	return &res, nil
+	return app.Application.Info(ctx, req)
 }
 
 func (app *localClient) CheckTx(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	res := app.Application.CheckTx(ctx, req)
-	return &res, nil
+	return app.Application.CheckTx(ctx, req)
 }
 
 func (app *localClient) Query(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
-	res := app.Application.Query(ctx, req)
-	return &res, nil
+	return app.Application.Query(ctx, req)
 }
 
 func (app *localClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	res := app.Application.Commit(ctx)
-	return &res, nil
+	return app.Application.Commit(ctx)
 }
 
 func (app *localClient) InitChain(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	res := app.Application.InitChain(ctx, req)
-	return &res, nil
+	return app.Application.InitChain(ctx, req)
 }
 
 func (app *localClient) ListSnapshots(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	res := app.Application.ListSnapshots(ctx, req)
-	return &res, nil
+	return app.Application.ListSnapshots(ctx, req)
 }
 
 func (app *localClient) OfferSnapshot(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	res := app.Application.OfferSnapshot(ctx, req)
-	return &res, nil
+	return app.Application.OfferSnapshot(ctx, req)
 }
 
 func (app *localClient) LoadSnapshotChunk(ctx context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	res := app.Application.LoadSnapshotChunk(ctx, req)
-	return &res, nil
+	return app.Application.LoadSnapshotChunk(ctx, req)
 }
 
 func (app *localClient) ApplySnapshotChunk(ctx context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	res := app.Application.ApplySnapshotChunk(ctx, req)
-	return &res, nil
+	return app.Application.ApplySnapshotChunk(ctx, req)
 }
 
 func (app *localClient) PrepareProposal(ctx context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	res := app.Application.PrepareProposal(ctx, req)
-	return &res, nil
+	return app.Application.PrepareProposal(ctx, req)
 }
 
 func (app *localClient) ProcessProposal(ctx context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	res := app.Application.ProcessProposal(ctx, req)
-	return &res, nil
+	return app.Application.ProcessProposal(ctx, req)
 }
 
 func (app *localClient) ExtendVote(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	res := app.Application.ExtendVote(ctx, req)
-	return &res, nil
+	return app.Application.ExtendVote(ctx, req)
 }
 
 func (app *localClient) VerifyVoteExtension(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	res := app.Application.VerifyVoteExtension(ctx, req)
-	return &res, nil
+	return app.Application.VerifyVoteExtension(ctx, req)
 }
 
 func (app *localClient) FinalizeBlock(ctx context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	res := app.Application.FinalizeBlock(ctx, req)
-	return &res, nil
+	return app.Application.FinalizeBlock(ctx, req)
 }

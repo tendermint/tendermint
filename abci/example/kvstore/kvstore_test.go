@@ -25,35 +25,40 @@ const (
 
 func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
-	ar := app.FinalizeBlock(ctx, req)
+	ar, err := app.FinalizeBlock(ctx, req)
+	require.NoError(t, err)
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
 	// repeating tx doesn't raise error
-	ar = app.FinalizeBlock(ctx, req)
+	ar, err = app.FinalizeBlock(ctx, req)
+	require.NoError(t, err)
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
 	// commit
 	app.Commit(ctx)
 
-	info := app.Info(ctx, types.RequestInfo{})
+	info, err := app.Info(ctx, types.RequestInfo{})
+	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery := app.Query(ctx, types.RequestQuery{
+	resQuery, err := app.Query(ctx, types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
+	require.NoError(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery = app.Query(ctx, types.RequestQuery{
+	resQuery, err = app.Query(ctx, types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,
 	})
+	require.NoError(t, err)
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
@@ -103,7 +108,11 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	InitKVStore(ctx, kvstore)
 	height := int64(0)
 
-	resInfo := kvstore.Info(ctx, types.RequestInfo{})
+	resInfo, err := kvstore.Info(ctx, types.RequestInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -114,7 +123,10 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{Hash: hash, Height: height})
 	kvstore.Commit(ctx)
 
-	resInfo = kvstore.Info(ctx, types.RequestInfo{})
+	resInfo, err = kvstore.Info(ctx, types.RequestInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -191,11 +203,14 @@ func makeApplyBlock(ctx context.Context, t *testing.T, kvstore types.Application
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	resFinalizeBlock := kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{
+	resFinalizeBlock, err := kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{
 		Hash:   hash,
 		Height: height,
 		Txs:    txs,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	kvstore.Commit(ctx)
 

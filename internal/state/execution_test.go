@@ -329,7 +329,7 @@ func TestProcessProposal(t *testing.T) {
 	block1 := sf.MakeBlock(state, height, lastCommit)
 	block1.Txs = txs
 
-	expectedRpp := abci.RequestProcessProposal{
+	expectedRpp := &abci.RequestProcessProposal{
 		Txs:                 block1.Txs.ToSliceOfBytes(),
 		Hash:                block1.Hash(),
 		Height:              block1.Header.Height,
@@ -343,12 +343,12 @@ func TestProcessProposal(t *testing.T) {
 		ProposerAddress:    block1.ProposerAddress,
 	}
 
-	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 	acceptBlock, err := blockExec.ProcessProposal(ctx, block1, state)
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
-	app.AssertCalled(t, "ProcessProposal", expectedRpp)
+	app.AssertCalled(t, "ProcessProposal", expectedRpp, nil)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -711,8 +711,8 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 	pa, _ := state.Validators.GetByIndex(0)
 	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
-	require.Nil(t, block)
 	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
+	require.Nil(t, block)
 
 	mp.AssertExpectations(t)
 }
@@ -943,8 +943,8 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 
 	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
-	require.Nil(t, block)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
+	require.Nil(t, block, "")
 
 	mp.AssertExpectations(t)
 }

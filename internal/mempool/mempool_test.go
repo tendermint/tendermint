@@ -36,7 +36,7 @@ type testTx struct {
 	priority int64
 }
 
-func (app *application) CheckTx(_ context.Context, req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *application) CheckTx(_ context.Context, req abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	var (
 		priority int64
 		sender   string
@@ -47,29 +47,29 @@ func (app *application) CheckTx(_ context.Context, req abci.RequestCheckTx) abci
 	if len(parts) == 3 {
 		v, err := strconv.ParseInt(string(parts[2]), 10, 64)
 		if err != nil {
-			return abci.ResponseCheckTx{
+			return &abci.ResponseCheckTx{
 				Priority:  priority,
 				Code:      100,
 				GasWanted: 1,
-			}
+			}, nil
 		}
 
 		priority = v
 		sender = string(parts[0])
 	} else {
-		return abci.ResponseCheckTx{
+		return &abci.ResponseCheckTx{
 			Priority:  priority,
 			Code:      101,
 			GasWanted: 1,
-		}
+		}, nil
 	}
 
-	return abci.ResponseCheckTx{
+	return &abci.ResponseCheckTx{
 		Priority:  priority,
 		Sender:    sender,
 		Code:      code.CodeTypeOK,
 		GasWanted: 1,
-	}
+	}, nil
 }
 
 func setup(t testing.TB, app abciclient.Client, cacheSize int, options ...TxMempoolOption) *TxMempool {

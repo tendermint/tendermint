@@ -5,6 +5,8 @@ package mocks
 import (
 	mock "github.com/stretchr/testify/mock"
 
+	testing "testing"
+
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -207,4 +209,13 @@ func (_m *BlockStore) Size() int64 {
 	}
 
 	return r0
+}
+
+// NewBlockStore creates a new instance of BlockStore. It also registers a cleanup function to assert the mocks expectations.
+func NewBlockStore(t testing.TB) *BlockStore {
+	mock := &BlockStore{}
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
 }

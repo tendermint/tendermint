@@ -27,151 +27,151 @@ func NewBaseMock() BaseMock {
 
 // Info/Query Connection
 // Return application info
-func (m BaseMock) Info(ctx context.Context, input types.RequestInfo) (ret types.ResponseInfo) {
+func (m BaseMock) Info(ctx context.Context, input types.RequestInfo) (ret *types.ResponseInfo, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.Info(ctx, input)
+			ret, err = m.base.Info(ctx, input)
 		}
 	}()
-	ret = m.Application.Info(ctx, input)
-	return ret
+	ret, err = m.Application.Info(ctx, input)
+	return
 }
 
-func (m BaseMock) Query(ctx context.Context, input types.RequestQuery) (ret types.ResponseQuery) {
+func (m BaseMock) Query(ctx context.Context, input types.RequestQuery) (ret *types.ResponseQuery, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.Query(ctx, input)
+			ret, err = m.base.Query(ctx, input)
 		}
 	}()
-	ret = m.Application.Query(ctx, input)
-	return ret
+	ret, err = m.Application.Query(ctx, input)
+	return
 }
 
 // Mempool Connection
 // Validate a tx for the mempool
-func (m BaseMock) CheckTx(ctx context.Context, input types.RequestCheckTx) (ret types.ResponseCheckTx) {
+func (m BaseMock) CheckTx(ctx context.Context, input types.RequestCheckTx) (ret *types.ResponseCheckTx, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.CheckTx(ctx, input)
+			ret, err = m.base.CheckTx(ctx, input)
 		}
 	}()
-	ret = m.Application.CheckTx(ctx, input)
-	return ret
+	ret, err = m.Application.CheckTx(ctx, input)
+	return
 }
 
 // Consensus Connection
 // Initialize blockchain w validators/other info from TendermintCore
-func (m BaseMock) InitChain(ctx context.Context, input types.RequestInitChain) (ret types.ResponseInitChain) {
+func (m BaseMock) InitChain(ctx context.Context, input types.RequestInitChain) (ret *types.ResponseInitChain, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.InitChain(ctx, input)
+			ret, err = m.base.InitChain(ctx, input)
 		}
 	}()
-	ret = m.Application.InitChain(ctx, input)
-	return ret
+	ret, err = m.Application.InitChain(ctx, input)
+	return
 }
 
-func (m BaseMock) PrepareProposal(ctx context.Context, input types.RequestPrepareProposal) (ret types.ResponsePrepareProposal) {
+func (m BaseMock) PrepareProposal(ctx context.Context, input types.RequestPrepareProposal) (ret *types.ResponsePrepareProposal, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.PrepareProposal(ctx, input)
+			ret, err = m.base.PrepareProposal(ctx, input)
 		}
 	}()
-	ret = m.Application.PrepareProposal(ctx, input)
-	return ret
+	ret, err = m.Application.PrepareProposal(ctx, input)
+	return
 }
 
-func (m BaseMock) ProcessProposal(ctx context.Context, input types.RequestProcessProposal) (ret types.ResponseProcessProposal) {
+func (m BaseMock) ProcessProposal(ctx context.Context, input types.RequestProcessProposal) (ret *types.ResponseProcessProposal, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.ProcessProposal(ctx, input)
+			ret, err = m.base.ProcessProposal(ctx, input)
 		}
 	}()
-	ret = m.Application.ProcessProposal(ctx, input)
-	return ret
+	ret, err = m.Application.ProcessProposal(ctx, input)
+	return
 }
 
 // Commit the state and return the application Merkle root hash
-func (m BaseMock) Commit(ctx context.Context) (ret types.ResponseCommit) {
+func (m BaseMock) Commit(ctx context.Context) (ret *types.ResponseCommit, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.Commit(ctx)
+			ret, err = m.base.Commit(ctx)
 		}
 	}()
-	ret = m.Application.Commit(ctx)
-	return ret
+	ret, err = m.Application.Commit(ctx)
+	return
 }
 
 // Create application specific vote extension
-func (m BaseMock) ExtendVote(ctx context.Context, input types.RequestExtendVote) (ret types.ResponseExtendVote) {
+func (m BaseMock) ExtendVote(ctx context.Context, input types.RequestExtendVote) (ret *types.ResponseExtendVote, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.ExtendVote(ctx, input)
+			ret, err = m.base.ExtendVote(ctx, input)
 		}
 	}()
-	ret = m.Application.ExtendVote(ctx, input)
-	return ret
+	ret, err = m.Application.ExtendVote(ctx, input)
+	return
 }
 
 // Verify application's vote extension data
-func (m BaseMock) VerifyVoteExtension(ctx context.Context, input types.RequestVerifyVoteExtension) (ret types.ResponseVerifyVoteExtension) {
+func (m BaseMock) VerifyVoteExtension(ctx context.Context, input types.RequestVerifyVoteExtension) (ret *types.ResponseVerifyVoteExtension, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.VerifyVoteExtension(ctx, input)
+			ret, err = m.base.VerifyVoteExtension(ctx, input)
 		}
 	}()
-	ret = m.Application.VerifyVoteExtension(ctx, input)
-	return ret
+	ret, err = m.Application.VerifyVoteExtension(ctx, input)
+	return
 }
 
 // State Sync Connection
 // List available snapshots
-func (m BaseMock) ListSnapshots(ctx context.Context, input types.RequestListSnapshots) (ret types.ResponseListSnapshots) {
+func (m BaseMock) ListSnapshots(ctx context.Context, input types.RequestListSnapshots) (ret *types.ResponseListSnapshots, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.ListSnapshots(ctx, input)
+			ret, err = m.base.ListSnapshots(ctx, input)
 		}
 	}()
-	ret = m.Application.ListSnapshots(ctx, input)
-	return ret
+	ret, err = m.Application.ListSnapshots(ctx, input)
+	return
 }
 
-func (m BaseMock) OfferSnapshot(ctx context.Context, input types.RequestOfferSnapshot) (ret types.ResponseOfferSnapshot) {
+func (m BaseMock) OfferSnapshot(ctx context.Context, input types.RequestOfferSnapshot) (ret *types.ResponseOfferSnapshot, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.OfferSnapshot(ctx, input)
+			ret, err = m.base.OfferSnapshot(ctx, input)
 		}
 	}()
-	ret = m.Application.OfferSnapshot(ctx, input)
-	return ret
+	ret, err = m.Application.OfferSnapshot(ctx, input)
+	return
 }
 
-func (m BaseMock) LoadSnapshotChunk(ctx context.Context, input types.RequestLoadSnapshotChunk) (ret types.ResponseLoadSnapshotChunk) {
+func (m BaseMock) LoadSnapshotChunk(ctx context.Context, input types.RequestLoadSnapshotChunk) (ret *types.ResponseLoadSnapshotChunk, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.LoadSnapshotChunk(ctx, input)
+			ret, err = m.base.LoadSnapshotChunk(ctx, input)
 		}
 	}()
-	ret = m.Application.LoadSnapshotChunk(ctx, input)
-	return ret
+	ret, err = m.Application.LoadSnapshotChunk(ctx, input)
+	return
 }
 
-func (m BaseMock) ApplySnapshotChunk(ctx context.Context, input types.RequestApplySnapshotChunk) (ret types.ResponseApplySnapshotChunk) {
+func (m BaseMock) ApplySnapshotChunk(ctx context.Context, input types.RequestApplySnapshotChunk) (ret *types.ResponseApplySnapshotChunk, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.ApplySnapshotChunk(ctx, input)
+			ret, err = m.base.ApplySnapshotChunk(ctx, input)
 		}
 	}()
-	ret = m.Application.ApplySnapshotChunk(ctx, input)
-	return ret
+	ret, err = m.Application.ApplySnapshotChunk(ctx, input)
+	return
 }
 
-func (m BaseMock) FinalizeBlock(ctx context.Context, input types.RequestFinalizeBlock) (ret types.ResponseFinalizeBlock) {
+func (m BaseMock) FinalizeBlock(ctx context.Context, input types.RequestFinalizeBlock) (ret *types.ResponseFinalizeBlock, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			ret = m.base.FinalizeBlock(ctx, input)
+			ret, err = m.base.FinalizeBlock(ctx, input)
 		}
 	}()
-	ret = m.Application.FinalizeBlock(ctx, input)
-	return ret
+	ret, err = m.Application.FinalizeBlock(ctx, input)
+	return
 }
