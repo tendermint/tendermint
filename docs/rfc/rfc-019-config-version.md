@@ -159,11 +159,11 @@ more robust config tooling going forward.
 
 In light of the discussion so far, it is natural to examine why we make so many
 changes to the configuration file from one version to the next, and whether we
-could mitigate some friction by being more conservative about what we make
-configurable, what changes we make over time, and how we roll them out.
+could reduce friction by being more conservative about what we make
+configurable, what config changes we make over time, and how we roll them out.
 
 Some changes, like renaming everything from snake case to kebab case, are
-entirely gratuitous. We could safely agree not make those kinds of changes.
+entirely gratuitous. We could safely agree not to make those kinds of changes.
 Apart from that obvious case, however, many other configuration settings
 provide value to node operators in cases where there is no simple, universal
 setting that matches every application.
@@ -183,10 +183,10 @@ make changes to configuration settings:
   v0.36 and converted to consensus parameters, to be consistent across all
   nodes in the network.
 
-- **Migration & experimentation:** Introducing new features and updating
-  existing features can complicate migration for existing users of the
-  software. Temporary or "experimental" configuration settings can be a
-  valuable way to mitigate that friction.
+- **Migration & experimentation:** Introducing new features and updating old
+  features can complicate migration for existing users of the software.
+  Temporary or "experimental" configuration settings can be a valuable way to
+  mitigate that friction.
 
   For example, Tendermint v0.36 introduces a new RPC event subscription
   endpoint (see [ADR 075][adr075]) that will eventually replace the existing
@@ -203,26 +203,27 @@ make changes to configuration settings:
   For example, Tendermint v0.35 deprecated two alternate implementations of the
   blocksync protocol, one of which was deleted entirely (`v1`) and one of which
   was scheduled for removal (`v2`). The `blocksync.version` setting, which had
-  been added as a migration aid, became obsolete and needed to be udpated.
+  been added as a migration aid, became obsolete and needed to be updated.
 
-  Despite our best intentions, sometimes engineering designs do not work out,
-  and just as it's important to support migrations forward, we also need to
-  leave room to back out of changes we have reconsidered.
+  Despite our best intentions, sometimes engineering designs do not work out.
+  It's just as important to leave room to back out of changes we have since
+  reconsidered, as it is to support migrations forward onto new and improved
+  code.
 
 - **Clarity and legibility:** Besides configuring the software, another
-  important purpose of a config file is to document intent for the humans
-  involved in operating and maintaining the software. Operators need to see and
-  adjust what settings are in use, and developers need to know what options
-  were in place to help diagnose and fix bugs in the software. In this context,
-  the legibility of the config file as a _human_ artifact also matters.
+  important purpose of a config file is to document intent for the humans who
+  operate and maintain the software. Operators need adjust settings to keep the
+  node running, and developers need to know what options were in use when
+  something goes wrong so they can diagnose and fix bugs.  The legibility of a
+  config file as a _human_ artifact is also thus important.
 
   For example, Tendermint v0.35 moved settings related to validator private
   keys from the top-level section of the configuration file to their own
   designated `[priv-validator]` section. Although this change did not make any
-  difference to the meaning of those settings, it made the organziation of the
+  difference to the meaning of those settings, it made the organization of the
   file easier to understand, and allowed the names of the individual settings
   to be simplified (e.g., `priv-validator-key-file` became simply `key-file` in
-  the appropriate section.
+  the new section).
 
   Although such changes are "gratuitous" with respect to the software, there is
   often value in making things more legible for the humans. While there is no
@@ -231,11 +232,11 @@ make changes to configuration settings:
 
 Keeping these examples in mind, we can and should take reasonable steps to
 avoid churn in the configuration file across versions where we can. However, we
-should also acknowledge that part of the reason for _having_ a config file, is
-to allow us flexibility elsewhere in the design. On that basis, we should not
-attempt to be too dogmatic about config changes either. Unlike changes in the
-block protocol, for example, which affect every user of every network that
-adopts them, config changes are relatively self-contained.
+must also accept that part of the reason for _having_ a config file is to allow
+us flexibility elsewhere in the design.  On that basis, we should not attempt
+to be too dogmatic about config changes either. Unlike changes in the block
+protocol, for example, which affect every user of every network that adopts
+them, config changes are relatively self-contained.
 
 There are few guiding principles I think we can use to strike a sensible
 balance:
@@ -245,8 +246,8 @@ balance:
 
 2. **Prefer mechanical changes.** Whenever it is practical, change settings in
    a way that can be updated by a tool without operator judgement. This implies
-   finding safe, universal defaults, and not changing the default values of
-   existing settings.
+   finding safe, universal defaults for new settings, and not changing the
+   default values of existing settings.
 
    Even if that means we have to make multiple changes (e.g., add a new setting
    in the current version, deprecate the old one, and remove the old one in the
@@ -255,7 +256,7 @@ balance:
 3. **Clearly signal intent.** When adding temporary or experimental settings,
    they should be clearly named and documented as such. Use long names and
    suggestive prefixes (e.g., `experimental-*`) so that they stand out when
-   reading the file or printed in logs.
+   read in the config file or printed in logs.
 
    Relatedly, using temporary or experimental settings should cause the
    software to emit diagnostic logs at runtime. These log messages should be
@@ -279,7 +280,22 @@ balance:
    it without making too big a mess later. Even a little extra effort up front
    can sometimes save a lot.
 
-## Research Notes
+## References
+
+- [Tendermint `config` package][config-pkg]
+- [`confix` command-line tool][confix]
+- [`condiff` command-line tool][condiff]
+- [Configuration update plan][plan]
+- [ADR 075: RPC Event Subscription Interface][adr075]
+
+[config-pkg]: https://godoc.org/github.com/tendermint/tendermint/config
+[confix]: https://github.com/tendermint/tendermint/blob/master/scripts/confix
+[condiff]: https://github.com/tendermint/tendermint/blob/master/scripts/confix/condiff
+[plan]: https://github.com/tendermint/tendermint/blob/master/scripts/confix/plan.go
+[testdata]: https://github.com/tendermint/tendermint/blob/master/scripts/confix/testdata
+[adr075]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md
+
+## Appendix: Research Notes
 
 Discovering when various configuration settings were added, updated, and
 removed turns out to be surprisingly tedious.  To solve this puzzle, we had to
@@ -292,7 +308,7 @@ answer the following questions:
 2. When during the development cycle were those changes made? This allows us to
    recognize features that were backported into a previous release.
 
-3. What were the defaultvalues of the changed settings, and did they change at
+3. What were the default values of the changed settings, and did they change at
    all during or across the release boundary?
 
 Each step of the [configuration update plan][plan] is commented with a link to
@@ -372,26 +388,13 @@ git checkout master
 git bisect start
 git bisect bad                 # it's not present on tip of master.
 git bisect good v0.34.0-dev1   # it was present at the start of v0.34.
+```
 
-# Now repeat this until it gives ou a specific commit:
+```shell
+# Now repeat this until it gives you a specific commit:
 if git grep -q '\[fastsync\]' config ; then git bisect good ; else git bisect bad ; fi
 ```
 
 The above example finds where a config was removed: To find where a setting was
 added, do the same thing except reverse the sense of the test (`if ! git grep -q
 ...`).
-
-## References
-
-- [Tendermint `config` package][config-pkg]
-- [`confix` command-line tool][confix]
-- [`condiff` command-line tool][condiff]
-- [Configuration update plan][plan]
-- [ADR 075: RPC Event Subscription Interface][adr075]
-
-[config-pkg]: https://godoc.org/github.com/tendermint/tendermint/config
-[confix]: https://github.com/tendermint/tendermint/blob/master/scripts/confix
-[condiff]: https://github.com/tendermint/tendermint/blob/master/scripts/confix/condiff
-[plan]: https://github.com/tendermint/tendermint/blob/master/scripts/confix/plan.go
-[testdata]: https://github.com/tendermint/tendermint/blob/master/scripts/confix/testdata
-[adr075]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md
