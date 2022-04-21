@@ -70,7 +70,7 @@ type gRPCApplication struct {
 	app types.Application
 }
 
-func (app *gRPCApplication) Echo(ctx context.Context, req *types.RequestEcho) (*types.ResponseEcho, error) {
+func (app *gRPCApplication) Echo(_ context.Context, req *types.RequestEcho) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: req.Message}, nil
 }
 
