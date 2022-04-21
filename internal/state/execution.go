@@ -7,6 +7,7 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -291,34 +292,38 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(ctx, blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) (types.VoteExtension, error) {
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]byte, error) {
 	req := abci.RequestExtendVote{
-		Vote: vote.ToProto(),
+		Hash:   vote.BlockID.Hash,
+		Height: vote.Height,
 	}
 
 	resp, err := blockExec.appClient.ExtendVote(ctx, req)
 	if err != nil {
-		return types.VoteExtension{}, err
+		panic(fmt.Errorf("ExtendVote call failed: %w", err))
 	}
-	return types.VoteExtensionFromProto(resp.VoteExtension), nil
+	return resp.VoteExtension, nil
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
 	req := abci.RequestVerifyVoteExtension{
-		Vote: vote.ToProto(),
+		Hash:             vote.BlockID.Hash,
+		ValidatorAddress: vote.ValidatorAddress,
+		Height:           vote.Height,
+		VoteExtension:    vote.Extension,
 	}
 
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, req)
 	if err != nil {
-		return err
+		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
 	}
 
-	if resp.IsErr() {
+	if !resp.IsOK() {
 		return types.ErrVoteInvalidExtension
 	}
 
@@ -417,16 +422,39 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
+// extendedCommitInfo expects a CommitInfo struct along with all of the
+// original votes relating to that commit, including their vote extensions. The
+// order of votes does not matter.
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+	if len(c.Votes) != len(votes) {
+		panic(fmt.Sprintf("extendedCommitInfo: number of votes from commit differ from the number of votes supplied (%d != %d)", len(c.Votes), len(votes)))
+	}
+	votesByVal := make(map[string]*types.Vote)
+	for _, vote := range votes {
+		if vote != nil {
+			valAddr := vote.ValidatorAddress.String()
+			if _, ok := votesByVal[valAddr]; ok {
+				panic(fmt.Sprintf("extendedCommitInfo: found duplicate vote for validator with address %s", valAddr))
+			}
+			votesByVal[valAddr] = vote
+		}
+	}
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
+		var ext []byte
+		// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
+		if c.Votes[i].SignedLastBlock {
+			valAddr := crypto.Address(c.Votes[i].Validator.Address).String()
+			vote, ok := votesByVal[valAddr]
+			if !ok || vote == nil {
+				panic(fmt.Sprintf("extendedCommitInfo: validator with address %s signed last block, but could not find vote for it", valAddr))
+			}
+			ext = vote.Extension
+		}
 		vs[i] = abci.ExtendedVoteInfo{
 			Validator:       c.Votes[i].Validator,
 			SignedLastBlock: c.Votes[i].SignedLastBlock,
-			/*
-				TODO: Include vote extensions information when implementing vote extensions.
-				VoteExtension:   []byte{},
-			*/
+			VoteExtension:   ext,
 		}
 	}
 	return abci.ExtendedCommitInfo{
@@ -530,7 +558,6 @@ func (state State) Update(
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
 func fireEvents(
-	ctx context.Context,
 	logger log.Logger,
 	eventBus types.BlockEventPublisher,
 	block *types.Block,
@@ -538,7 +565,7 @@ func fireEvents(
 	finalizeBlockResponse *abci.ResponseFinalizeBlock,
 	validatorUpdates []*types.Validator,
 ) {
-	if err := eventBus.PublishEventNewBlock(ctx, types.EventDataNewBlock{
+	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:               block,
 		BlockID:             blockID,
 		ResultFinalizeBlock: *finalizeBlockResponse,
@@ -546,7 +573,7 @@ func fireEvents(
 		logger.Error("failed publishing new block", "err", err)
 	}
 
-	if err := eventBus.PublishEventNewBlockHeader(ctx, types.EventDataNewBlockHeader{
+	if err := eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
 		Header:              block.Header,
 		NumTxs:              int64(len(block.Txs)),
 		ResultFinalizeBlock: *finalizeBlockResponse,
@@ -556,7 +583,7 @@ func fireEvents(
 
 	if len(block.Evidence) != 0 {
 		for _, ev := range block.Evidence {
-			if err := eventBus.PublishEventNewEvidence(ctx, types.EventDataNewEvidence{
+			if err := eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
 				Evidence: ev,
 				Height:   block.Height,
 			}); err != nil {
@@ -572,7 +599,7 @@ func fireEvents(
 	}
 
 	for i, tx := range block.Data.Txs {
-		if err := eventBus.PublishEventTx(ctx, types.EventDataTx{
+		if err := eventBus.PublishEventTx(types.EventDataTx{
 			TxResult: abci.TxResult{
 				Height: block.Height,
 				Index:  uint32(i),
@@ -585,7 +612,7 @@ func fireEvents(
 	}
 
 	if len(finalizeBlockResponse.ValidatorUpdates) > 0 {
-		if err := eventBus.PublishEventValidatorSetUpdates(ctx,
+		if err := eventBus.PublishEventValidatorSetUpdates(
 			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
 			logger.Error("failed publishing event", "err", err)
 		}
@@ -644,7 +671,7 @@ func ExecCommitBlock(
 		}
 
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-		fireEvents(ctx, be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 	}
 
 	// Commit block, get hash back

@@ -25,7 +25,7 @@ func BenchmarkTxMempool_CheckTx(b *testing.B) {
 
 	// setup the cache and the mempool number for hitting GetEvictableTxs during the
 	// benchmark. 5000 is the current default mempool size in the TM config.
-	txmp := setup(ctx, b, client, 10000)
+	txmp := setup(b, client, 10000)
 	txmp.config.Size = 5000
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))

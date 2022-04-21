@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/gogo/protobuf/jsonpb"
-
-	types "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -156,15 +154,6 @@ var _ jsonRoundTripper = (*EventAttribute)(nil)
 
 // -----------------------------------------------
 // construct Result data
-
-func RespondExtendVote(appDataToSign, appDataSelfAuthenticating []byte) ResponseExtendVote {
-	return ResponseExtendVote{
-		VoteExtension: &types.VoteExtension{
-			AppDataToSign:             appDataToSign,
-			AppDataSelfAuthenticating: appDataSelfAuthenticating,
-		},
-	}
-}
 
 func RespondVerifyVoteExtension(ok bool) ResponseVerifyVoteExtension {
 	status := ResponseVerifyVoteExtension_REJECT

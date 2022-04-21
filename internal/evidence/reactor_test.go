@@ -46,7 +46,7 @@ type reactorTestSuite struct {
 	numStateStores   int
 }
 
-func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
+func setup(ctx context.Context, t *testing.T, stateStores []sm.Store) *reactorTestSuite {
 	t.Helper()
 
 	pID := make([]byte, 16)
@@ -245,7 +245,7 @@ func TestReactorMultiDisconnect(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height)
 	stateDB2 := initializeValidatorState(ctx, t, val, height)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 20)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -290,7 +290,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(ctx, t, val, height)
 	}
 
-	rts := setup(ctx, t, stateDBs, 0)
+	rts := setup(ctx, t, stateDBs)
 
 	rts.start(ctx, t)
 
@@ -348,7 +348,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height1)
 	stateDB2 := initializeValidatorState(ctx, t, val, height2)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 	rts.start(ctx, t)
 
 	primary := rts.nodes[0]
@@ -382,7 +382,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height)
 	stateDB2 := initializeValidatorState(ctx, t, val, height)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -423,7 +423,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height)
 	stateDB2 := initializeValidatorState(ctx, t, val, height)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 0)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -482,7 +482,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(ctx, t, val, height)
 	}
 
-	rts := setup(ctx, t, stateDBs, 0)
+	rts := setup(ctx, t, stateDBs)
 	rts.start(ctx, t)
 
 	evList := createEvidenceList(ctx, t, rts.pools[rts.network.RandomNode().NodeID], val, numEvidence)

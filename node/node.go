@@ -29,6 +29,7 @@ import (
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -168,15 +169,19 @@ func makeNode(
 			Metrics:    nodeMetrics.eventlog,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("initializing event log: %w", err)
+			return nil, combineCloseError(fmt.Errorf("initializing event log: %w", err), makeCloser(closers))
 		}
 	}
-
-	indexerService, eventSinks, err := createIndexerService(
-		cfg, dbProvider, eventBus, logger, genDoc.ChainID, nodeMetrics.indexer)
+	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, genDoc.ChainID)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	indexerService := indexer.NewService(indexer.ServiceArgs{
+		Sinks:    eventSinks,
+		EventBus: eventBus,
+		Logger:   logger.With("module", "txindex"),
+		Metrics:  nodeMetrics.indexer,
+	})
 
 	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
 	if err != nil {
@@ -260,11 +265,8 @@ func makeNode(
 	node.rpcEnv.EvidencePool = evPool
 	node.evPool = evPool
 
-	mpReactor, mp, err := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
+	mpReactor, mp := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
 		peerManager.Subscribe, node.router.OpenChannel, peerManager.GetHeight)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
 	node.rpcEnv.Mempool = mp
 	node.services = append(node.services, mpReactor)
 
@@ -292,16 +294,32 @@ func makeNode(
 	blockSync := !onlyValidatorIsUs(state, pubKey)
 	waitSync := stateSync || blockSync
 
-	csReactor, csState, err := createConsensusReactor(ctx,
-		cfg, stateStore, blockExec, blockStore, mp, evPool,
-		privValidator, nodeMetrics.consensus, waitSync, eventBus,
-		peerManager, node.router.OpenChannel, logger,
+	csState, err := consensus.NewState(logger.With("module", "consensus"),
+		cfg.Consensus,
+		stateStore,
+		blockExec,
+		blockStore,
+		mp,
+		evPool,
+		eventBus,
+		consensus.StateMetrics(nodeMetrics.consensus),
+		consensus.SkipStateStoreBootstrap,
 	)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
-	node.services = append(node.services, csReactor)
 	node.rpcEnv.ConsensusState = csState
+
+	csReactor := consensus.NewReactor(
+		logger,
+		csState,
+		node.router.OpenChannel,
+		peerManager.Subscribe,
+		eventBus,
+		waitSync,
+		nodeMetrics.consensus,
+	)
+	node.services = append(node.services, csReactor)
 	node.rpcEnv.ConsensusReactor = csReactor
 
 	// Create the blockchain reactor. Note, we do not start block sync if we're
@@ -370,6 +388,9 @@ func makeNode(
 	))
 
 	if cfg.Mode == config.ModeValidator {
+		if privValidator != nil {
+			csState.SetPrivValidator(ctx, privValidator)
+		}
 		node.rpcEnv.PubKey = pubKey
 	}
 
@@ -423,7 +444,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	// Start Internal Services
 
 	if n.config.RPC.PprofListenAddress != "" {
-		rpcCtx, rpcCancel := context.WithCancel(ctx)
+		signal := make(chan struct{})
 		srv := &http.Server{Addr: n.config.RPC.PprofListenAddress, Handler: nil}
 		go func() {
 			select {
@@ -431,7 +452,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 				sctx, scancel := context.WithTimeout(context.Background(), time.Second)
 				defer scancel()
 				_ = srv.Shutdown(sctx)
-			case <-rpcCtx.Done():
+			case <-signal:
 			}
 		}()
 
@@ -440,7 +461,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 			if err := srv.ListenAndServe(); err != nil {
 				n.logger.Error("pprof server error", "err", err)
-				rpcCancel()
+				close(signal)
 			}
 		}()
 	}
@@ -562,21 +583,21 @@ func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http
 		),
 	}
 
-	promCtx, promCancel := context.WithCancel(ctx)
+	signal := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
 			sctx, scancel := context.WithTimeout(context.Background(), time.Second)
 			defer scancel()
 			_ = srv.Shutdown(sctx)
-		case <-promCtx.Done():
+		case <-signal:
 		}
 	}()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
 			n.logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
-			promCancel()
+			close(signal)
 		}
 	}()
 

@@ -1,7 +1,10 @@
-package mempool
+//go:build gofuzz || go1.18
+
+package tests
 
 import (
 	"context"
+	"testing"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -33,11 +36,11 @@ func init() {
 	}
 }
 
-func Fuzz(data []byte) int {
-	err := getMp().CheckTx(context.Background(), data, nil, mempool.TxInfo{})
-	if err != nil {
-		return 0
-	}
-
-	return 1
+func FuzzMempool(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		err := getMp().CheckTx(context.Background(), data, nil, mempool.TxInfo{})
+		if err != nil {
+			panic(err)
+		}
+	})
 }
