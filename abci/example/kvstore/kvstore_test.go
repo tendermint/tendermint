@@ -260,8 +260,7 @@ func makeGRPCClientServer(
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 
-	gapp := types.NewGRPCApplication(app)
-	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, gapp)
+	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
 
 	if err := server.Start(ctx); err != nil {
 		cancel()
