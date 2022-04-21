@@ -53,7 +53,6 @@ func fuzz(data []byte) {
 		}
 		copy(dataRead[totalRead:], buf[:m])
 		totalRead += m
-		log.Printf("total read: %d", totalRead)
 	}
 
 	if !bytes.Equal(data, dataRead) {
