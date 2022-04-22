@@ -159,8 +159,7 @@ func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 }
 
 // Read requests from conn and deal with them
-func (s *SocketServer) handleRequests(ctx context.Context, closer func(error), conn io.Reader, responses chan<- *types.Response,
-) {
+func (s *SocketServer) handleRequests(ctx context.Context, closer func(error), conn io.Reader, responses chan<- *types.Response) {
 	var bufReader = bufio.NewReader(conn)
 
 	defer func() {
