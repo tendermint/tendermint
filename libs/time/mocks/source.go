@@ -29,9 +29,10 @@ func (_m *Source) Now() time.Time {
 	return r0
 }
 
-// NewSource creates a new instance of Source. It also registers a cleanup function to assert the mocks expectations.
+// NewSource creates a new instance of Source. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewSource(t testing.TB) *Source {
 	mock := &Source{}
+	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

@@ -338,9 +338,10 @@ func (_m *Application) VerifyVoteExtension(_a0 context.Context, _a1 types.Reques
 	return r0, r1
 }
 
-// NewApplication creates a new instance of Application. It also registers a cleanup function to assert the mocks expectations.
+// NewApplication creates a new instance of Application. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewApplication(t testing.TB) *Application {
 	mock := &Application{}
+	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 
