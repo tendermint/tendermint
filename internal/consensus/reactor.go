@@ -1421,7 +1421,10 @@ func (r *Reactor) processMsgCh(msgCh *p2p.Channel) {
 	defer msgCh.Close()
 	for {
 		select {
-		case envelope := <-msgCh.In:
+		case <-r.closeCh:
+			return
+		default:
+			envelope := <-msgCh.In
 			if err := r.handleMessage(msgCh.ID, envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", msgCh.ID, "envelope", envelope, "err", err)
 				msgCh.Error <- p2p.PeerError{
@@ -1429,8 +1432,6 @@ func (r *Reactor) processMsgCh(msgCh *p2p.Channel) {
 					Err:    err,
 				}
 			}
-		case <-r.closeCh:
-			return
 		}
 	}
 }
