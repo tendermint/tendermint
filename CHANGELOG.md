@@ -1,3 +1,189 @@
+## [0.8.0-dev.2] - 2022-04-22
+
+### Bug Fixes
+
+- Don't disconnect already disconnected validators
+- Cannot read properties of undefined
+
+### Documentation
+
+- Go tutorial fixed for 0.35.0 version (#7329) (#7330) (#7331)
+- Update go ws code snippets (#7486) (#7487)
+- Fixup the builtin tutorial  (#7488)
+- Go tutorial fixed for 0.35.0 version (#7329) (#7330) (#7331)
+- Update go ws code snippets (#7486) (#7487)
+
+### Features
+
+- Improve logging for better elasticsearch compatibility (#220)
+- InitChain can set initial core lock height (#222)
+- Add empty block on h-1 and h-2 apphash change (#241)
+- Inter-validator set communication (#187)
+- Add create_proof_block_range config option (#243)
+
+### Miscellaneous Tasks
+
+- Create only 1 proof block by default
+- Release script and initial changelog (#250)
+- [**breaking**] Bump ABCI version and update release.sh to change TMVersionDefault automatically (#253)
+- Update changelog and version to 0.7.0
+- Temporarily disable ARM build which is broken
+- Backport Tendermint 0.35.1 to Tenderdash 0.8 (#309)
+- Update CI e2e action workflow (#319)
+- Change dockerhub build target
+- Inspect context
+- Bump golang version
+- Remove debug
+- Use gha cache from docker
+- Revert dev changes
+- Remove obsolete cache step
+- If the tenderdash source code is not tracked by git then cloning "develop_0.1" branch as fallback scenario to build a project (#356)
+
+### Refactor
+
+- [**breaking**] Replace is-masternode config with mode=validator (#308)
+- Add MustPubKeyToProto helper function (#311)
+- Implementing LLMQ generator (#310)
+- Move bls CI code to a separate action and improve ARM build (#314)
+- Persistent kvstore abci (#313)
+- Improve statesync.backfill (#316)
+- Small improvement in test four add four minus one genesis validators (#318)
+
+### Testing
+
+- Fix validator conn executor test backport
+- Update mockery mocks
+- Fix test test_abci_cli
+
+### Backport
+
+- Add basic metrics to the indexer package. (#7250) (#7252)
+- Add basic metrics to the indexer package. (#7250) (#7252)
+
+### Build
+
+- Bump google.golang.org/grpc from 1.41.0 to 1.42.0 (#7218)
+- Bump github.com/lib/pq from 1.10.3 to 1.10.4 (#7260)
+- Bump github.com/tendermint/tm-db from 0.6.4 to 0.6.6 (#7285)
+- Bump github.com/adlio/schema from 1.1.14 to 1.1.15 (#7406)
+- Bump github.com/adlio/schema from 1.1.15 to 1.2.2 (#7422)
+- Bump github.com/spf13/viper from 1.9.0 to 1.10.0 (#7435)
+- Bump github.com/adlio/schema from 1.2.2 to 1.2.3 (#7436)
+- Bump google.golang.org/grpc from 1.42.0 to 1.43.0 (#7458)
+- Bump github.com/spf13/cobra from 1.2.1 to 1.3.0 (#7457)
+- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1 (#7467)
+- Bump github.com/spf13/viper from 1.10.0 to 1.10.1 (#7468)
+- Bump github.com/rs/cors from 1.8.0 to 1.8.2
+- Bump github.com/rs/cors from 1.8.0 to 1.8.2 (#7485)
+- Bump github.com/BurntSushi/toml from 0.4.1 to 1.0.0 (#7560)
+- Make sure to test packages with external tests (backport #7608) (#7635)
+- Bump github.com/prometheus/client_golang (#7637)
+- Bump github.com/prometheus/client_golang (#249)
+- Bump github.com/BurntSushi/toml from 0.4.1 to 1.0.0
+- Bump github.com/vektra/mockery/v2 from 2.9.4 to 2.10.0 (#7684)
+- Bump google.golang.org/grpc from 1.43.0 to 1.44.0 (#7693)
+- Bump github.com/golangci/golangci-lint (#7696)
+- Bump google.golang.org/grpc from 1.41.0 to 1.42.0 (#7218)
+- Bump github.com/lib/pq from 1.10.3 to 1.10.4
+- Bump github.com/tendermint/tm-db from 0.6.4 to 0.6.6 (#7285)
+- Bump github.com/spf13/viper from 1.9.0 to 1.10.0 (#7435)
+- Bump github.com/adlio/schema from 1.2.2 to 1.2.3 (#7436)
+- Bump github.com/spf13/cobra from 1.2.1 to 1.3.0 (#7457)
+- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1 (#7467)
+- Downgrade tm-db from v0.6.7 to v0.6.6
+- Use Go 1.18 to fix issue building curve25519-voi
+- Provide base branch to make as variable (#321)
+- Implement full release workflow in the release script (#332)
+
+### Ci
+
+- Move test execution to makefile (#7372) (#7374)
+- Cleanup build/test targets (backport #7393) (#7395)
+- Skip docker image builds during PRs (#7397) (#7398)
+- Move test execution to makefile (#7372) (#7374)
+- Update mergify for tenderdash 0.8
+- Cleanup build/test targets (backport #7393) (#7395)
+- Skip docker image builds during PRs (#7397) (#7398)
+- Fixes for arm builds
+
+### Cmd
+
+- Cosmetic changes for errors and print statements (#7377) (#7408)
+- Add integration test for rollback functionality (backport #7315) (#7369)
+- Cosmetic changes for errors and print statements (#7377) (#7408)
+- Add integration test for rollback functionality (backport #7315) (#7369)
+
+### Config
+
+- Add a Deprecation annotation to P2PConfig.Seeds. (#7496) (#7497)
+- Add a Deprecation annotation to P2PConfig.Seeds. (#7496) (#7497)
+
+### Consensus
+
+- Add some more checks to vote counting (#7253) (#7262)
+- Calculate prevote message delay metric (backport #7551) (#7618)
+- Check proposal non-nil in prevote message delay metric (#7625) (#7632)
+- Add some more checks to vote counting (#7253) (#7262)
+
+### E2e
+
+- Stabilize validator update form (#7340) (#7351)
+- Clarify apphash reporting (#7348) (#7352)
+- Generate keys for more stable load (#7344) (#7353)
+- App hash test cleanup (0.35 backport) (#7350)
+- Limit legacyp2p and statesyncp2p (#7361)
+- Use more simple strings for generated transactions (#7513) (#7514)
+- Constrain test parallelism and reporting (backport #7516) (#7517)
+- Make tx test more stable (backport #7523) (#7527)
+- Stabilize validator update form (#7340) (#7351)
+- Clarify apphash reporting (#7348) (#7352)
+- Generate keys for more stable load (#7344) (#7353)
+- App hash test cleanup (0.35 backport) (#7350)
+
+### Evidence
+
+- Remove source of non-determinism from test (#7266) (#7268)
+- Remove source of non-determinism from test (#7266) (#7268)
+
+### Internal/libs/protoio
+
+- Optimize MarshalDelimited by plain byteslice allocations+sync.Pool (#7325) (#7426)
+- Optimize MarshalDelimited by plain byteslice allocations+sync.Pool (#7325) (#7426)
+
+### Internal/proxy
+
+- Add initial set of abci metrics backport (#7342)
+- Add initial set of abci metrics backport (#7342)
+
+### Lint
+
+- Remove lll check (#7346) (#7357)
+- Remove lll check (#7346) (#7357)
+
+### P2p
+
+- Reduce peer score for dial failures (backport #7265) (#7271)
+- Always advertise self, to enable mutual address discovery (#7620)
+- Reduce peer score for dial failures (backport #7265) (#7271)
+
+### Pubsub
+
+- Report a non-nil error when shutting down. (#7310)
+- Report a non-nil error when shutting down. (#7310)
+
+### Rpc
+
+- Backport experimental buffer size control parameters from #7230 (tm v0.35.x) (#7276)
+- Implement header and header_by_hash queries (backport #7270) (#7367)
+- Check error code for broadcast_tx_commit (#7683) (#7688)
+- Backport experimental buffer size control parameters from #7230 (tm v0.35.x) (#7276)
+- Implement header and header_by_hash queries (backport #7270) (#7367)
+
+### Types
+
+- Fix path handling in node key tests (#7493) (#7502)
+- Fix path handling in node key tests (#7493) (#7502)
+
 ## [0.8.0-dev.1] - 2022-03-24
 
 ### Backport
