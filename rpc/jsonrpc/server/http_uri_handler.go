@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -57,12 +58,16 @@ func parseURLParams(ctx context.Context, rf *RPCFunc, req *http.Request) ([]refl
 		if !ok {
 			continue
 		}
-		if b, err := strconv.ParseBool(v); err == nil {
-			params[name] = b
-		} else if z, err := decodeInteger(v); err == nil {
+		if z, err := decodeInteger(v); err == nil {
 			params[name] = z
+		} else if b, err := strconv.ParseBool(v); err == nil {
+			params[name] = b
 		} else if lc := strings.ToLower(v); strings.HasPrefix(lc, "0x") {
-			params[name] = lc[2:] // hex bytes
+			data, err := hex.DecodeString(lc[2:])
+			if err != nil {
+				return nil, err
+			}
+			params[name] = string(data)
 		} else if isQuotedString(v) {
 			var dec string
 			if err := json.Unmarshal([]byte(v), &dec); err != nil {

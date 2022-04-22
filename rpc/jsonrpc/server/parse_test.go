@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 )
@@ -177,50 +178,55 @@ func TestParseJSONRPC(t *testing.T) {
 }
 
 func TestParseURI(t *testing.T) {
-	demo := func(ctx context.Context, height int, name string) error { return nil }
+	type args struct {
+		Height json.Number `json:"height"`
+		Name   string      `json:"name"`
+	}
+	demo := func(ctx context.Context, arg *args) error { return nil }
 	call := NewRPCFunc(demo, "height", "name")
 
 	cases := []struct {
-		raw    []string
+		raw    []interface{}
 		height int64
 		name   string
 		fail   bool
 	}{
 		// can parse numbers unquoted and strings quoted
-		{[]string{"7", `"flew"`}, 7, "flew", false},
-		{[]string{"22", `"john"`}, 22, "john", false},
-		{[]string{"-10", `"bob"`}, -10, "bob", false},
+		{[]interface{}{"7", `"flew"`}, 7, "flew", false},
+		{[]interface{}{"22", `"john"`}, 22, "john", false},
+		{[]interface{}{"-10", `"bob"`}, -10, "bob", false},
 		// can parse numbers quoted, too
-		{[]string{`"7"`, `"flew"`}, 7, "flew", false},
-		{[]string{`"-10"`, `"bob"`}, -10, "bob", false},
+		{[]interface{}{`"7"`, `"flew"`}, 7, "flew", false},
+		{[]interface{}{`"-10"`, `"bob"`}, -10, "bob", false},
 		// can parse strings hex-escaped, in either case
-		{[]string{`-9`, `0x626f62`}, -9, "bob", false},
-		{[]string{`-9`, `0X646F7567`}, -9, "doug", false},
+		{[]interface{}{`-9`, `0x626f62`}, -9, "bob", false},
+		{[]interface{}{`-9`, `0X646F7567`}, -9, "doug", false},
 		// can parse strings unquoted (as per OpenAPI docs)
-		{[]string{`0`, `hey you`}, 0, "hey you", false},
+		{[]interface{}{`0`, `hey you`}, 0, "hey you", false},
 		// fail for invalid numbers, strings, hex
-		{[]string{`"-xx"`, `bob`}, 0, "", true},  // bad number
-		{[]string{`"95""`, `"bob`}, 0, "", true}, // bad string
-		{[]string{`15`, `0xa`}, 0, "", true},     // bad hex
+		{[]interface{}{`"-xx"`, `bob`}, 0, "", true},  // bad number
+		{[]interface{}{`"95""`, `"bob`}, 0, "", true}, // bad string
+		{[]interface{}{`15`, `0xa`}, 0, "", true},     // bad hex
 	}
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
-		// data := []byte(tc.raw)
-		url := fmt.Sprintf(
-			"test.com/method?height=%v&name=%v",
-			tc.raw[0], tc.raw[1])
-		req, err := http.NewRequest("GET", url, nil)
-		assert.NoError(t, err)
-		vals, err := parseURLParams(context.Background(), call, req)
-		if tc.fail {
-			assert.Error(t, err, i)
-		} else {
-			assert.NoError(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 3, len(vals), i) {
-				assert.Equal(t, tc.height, vals[1].Int(), i)
-				assert.Equal(t, tc.name, vals[2].String(), i)
-			}
-		}
+		t.Run(i, func(t *testing.T) {
+			url := fmt.Sprintf("http://test.com/method?height=%v&name=%v", tc.raw...)
+			req, err := http.NewRequest("GET", url, nil)
+			require.NoError(t, err)
 
+			vals, err := parseURLParams(context.Background(), call, req)
+			if tc.fail {
+				require.Error(t, err, i)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, 2, len(vals)) // ctx, *args
+			arg := vals[1].Interface().(*args)
+			h, err := arg.Height.Int64()
+			require.NoError(t, err)
+			require.Equal(t, tc.height, h)
+			require.Equal(t, tc.name, arg.Name)
+		})
 	}
 }

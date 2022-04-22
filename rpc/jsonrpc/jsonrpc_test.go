@@ -34,16 +34,32 @@ const (
 	testVal = "acbd"
 )
 
+type RequestEcho struct {
+	Value string `json:"arg"`
+}
+
 type ResultEcho struct {
 	Value string `json:"value"`
+}
+
+type RequestEchoInt struct {
+	Value int `json:"arg"`
 }
 
 type ResultEchoInt struct {
 	Value int `json:"value"`
 }
 
+type RequestEchoBytes struct {
+	Value []byte `json:"arg"`
+}
+
 type ResultEchoBytes struct {
 	Value []byte `json:"value"`
+}
+
+type RequestEchoDataBytes struct {
+	Value tmbytes.HexBytes `json:"arg"`
 }
 
 type ResultEchoDataBytes struct {
@@ -59,24 +75,24 @@ var Routes = map[string]*server.RPCFunc{
 	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
 
-func EchoResult(ctx context.Context, v string) (*ResultEcho, error) {
-	return &ResultEcho{v}, nil
+func EchoResult(ctx context.Context, v *RequestEcho) (*ResultEcho, error) {
+	return &ResultEcho{v.Value}, nil
 }
 
-func EchoWSResult(ctx context.Context, v string) (*ResultEcho, error) {
-	return &ResultEcho{v}, nil
+func EchoWSResult(ctx context.Context, v *RequestEcho) (*ResultEcho, error) {
+	return &ResultEcho{v.Value}, nil
 }
 
-func EchoIntResult(ctx context.Context, v int) (*ResultEchoInt, error) {
-	return &ResultEchoInt{v}, nil
+func EchoIntResult(ctx context.Context, v *RequestEchoInt) (*ResultEchoInt, error) {
+	return &ResultEchoInt{v.Value}, nil
 }
 
-func EchoBytesResult(ctx context.Context, v []byte) (*ResultEchoBytes, error) {
-	return &ResultEchoBytes{v}, nil
+func EchoBytesResult(ctx context.Context, v *RequestEchoBytes) (*ResultEchoBytes, error) {
+	return &ResultEchoBytes{v.Value}, nil
 }
 
-func EchoDataBytesResult(ctx context.Context, v tmbytes.HexBytes) (*ResultEchoDataBytes, error) {
-	return &ResultEchoDataBytes{v}, nil
+func EchoDataBytesResult(ctx context.Context, v *RequestEchoDataBytes) (*ResultEchoDataBytes, error) {
+	return &ResultEchoDataBytes{v.Value}, nil
 }
 
 // launch unix and tcp servers
