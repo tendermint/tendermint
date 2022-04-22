@@ -83,7 +83,7 @@ func (a ABCIApp) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.
 
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
+		go func() { _, _ = a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
 	}
 	return &coretypes.ResultBroadcastTx{
 		Code:      c.Code,
@@ -102,7 +102,7 @@ func (a ABCIApp) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.R
 
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
+		go func() { _, _ = a.App.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{tx}}) }()
 	}
 	return &coretypes.ResultBroadcastTx{
 		Code:      c.Code,

@@ -1912,7 +1912,7 @@ func TestProcessProposalAccept(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			m := abcimocks.NewBaseMock()
+			m := abcimocks.NewApplication(t)
 			status := abci.ResponseProcessProposal_REJECT
 			if testCase.accept {
 				status = abci.ResponseProcessProposal_ACCEPT
@@ -1965,7 +1965,7 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			m := abcimocks.NewBaseMock()
+			m := abcimocks.NewApplication(t)
 			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{
 				Status: abci.ResponseProcessProposal_ACCEPT,
 			})
@@ -2026,7 +2026,7 @@ func TestExtendVoteCalled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := abcimocks.NewBaseMock()
+	m := abcimocks.NewApplication(t)
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
@@ -2102,7 +2102,7 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := abcimocks.NewBaseMock()
+	m := abcimocks.NewApplication(t)
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
@@ -2187,7 +2187,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 		[]byte("extension 3"),
 	}
 
-	m := abcimocks.NewBaseMock()
+	m := abcimocks.NewApplication(t)
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: voteExtensions[0],
 	})

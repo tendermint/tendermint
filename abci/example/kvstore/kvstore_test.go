@@ -35,7 +35,8 @@ func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
 	// commit
-	app.Commit(ctx)
+	_, err = app.Commit(ctx)
+	require.NoError(t, err)
 
 	info, err := app.Info(ctx, types.RequestInfo{})
 	require.NoError(t, err)
@@ -105,7 +106,9 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
-	InitKVStore(ctx, kvstore)
+	if err := InitKVStore(ctx, kvstore); err != nil {
+		t.Fatal(err)
+	}
 	height := int64(0)
 
 	resInfo, err := kvstore.Info(ctx, types.RequestInfo{})
@@ -120,8 +123,14 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{Hash: hash, Height: height})
-	kvstore.Commit(ctx)
+	if _, err := kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{Hash: hash, Height: height}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := kvstore.Commit(ctx); err != nil {
+		t.Fatal(err)
+
+	}
 
 	resInfo, err = kvstore.Info(ctx, types.RequestInfo{})
 	if err != nil {
@@ -145,9 +154,12 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// initialize with the first nInit
-	kvstore.InitChain(ctx, types.RequestInitChain{
+	_, err := kvstore.InitChain(ctx, types.RequestInitChain{
 		Validators: vals[:nInit],
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	vals1, vals2 := vals[:nInit], kvstore.Validators()
 	valsEqual(t, vals1, vals2)
@@ -212,7 +224,10 @@ func makeApplyBlock(ctx context.Context, t *testing.T, kvstore types.Application
 		t.Fatal(err)
 	}
 
-	kvstore.Commit(ctx)
+	_, err = kvstore.Commit(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	valsEqual(t, diff, resFinalizeBlock.ValidatorUpdates)
 
