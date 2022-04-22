@@ -191,22 +191,23 @@ func TestParseURI(t *testing.T) {
 		name   string
 		fail   bool
 	}{
-		// can parse numbers unquoted and strings quoted
+		// Can parse numbers unquoted and strings quoted
 		{[]interface{}{"7", `"flew"`}, 7, "flew", false},
 		{[]interface{}{"22", `"john"`}, 22, "john", false},
 		{[]interface{}{"-10", `"bob"`}, -10, "bob", false},
-		// can parse numbers quoted, too
+		// Can parse numbers quoted, too
 		{[]interface{}{`"7"`, `"flew"`}, 7, "flew", false},
 		{[]interface{}{`"-10"`, `"bob"`}, -10, "bob", false},
-		// can parse strings hex-escaped, in either case
-		{[]interface{}{`-9`, `0x626f62`}, -9, "bob", false},
-		{[]interface{}{`-9`, `0X646F7567`}, -9, "doug", false},
+		// Can parse byte strings hex-escaped, in either case
+		{[]interface{}{`-9`, `0x626f62`}, -9, "Ym9i", false},
+		{[]interface{}{`-9`, `0X646F7567`}, -9, "ZG91Zw==", false},
 		// can parse strings unquoted (as per OpenAPI docs)
 		{[]interface{}{`0`, `hey you`}, 0, "hey you", false},
 		// fail for invalid numbers, strings, hex
 		{[]interface{}{`"-xx"`, `bob`}, 0, "", true},  // bad number
 		{[]interface{}{`"95""`, `"bob`}, 0, "", true}, // bad string
 		{[]interface{}{`15`, `0xa`}, 0, "", true},     // bad hex
+		{[]interface{}{`15`, `0x`}, 0, "", true},      // bad hex
 	}
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)

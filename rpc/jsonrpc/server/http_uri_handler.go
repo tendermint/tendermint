@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -63,11 +62,10 @@ func parseURLParams(ctx context.Context, rf *RPCFunc, req *http.Request) ([]refl
 		} else if b, err := strconv.ParseBool(v); err == nil {
 			params[name] = b
 		} else if lc := strings.ToLower(v); strings.HasPrefix(lc, "0x") {
-			data, err := hex.DecodeString(lc[2:])
-			if err != nil {
-				return nil, err
+			if len(lc)%2 == 1 {
+				return nil, fmt.Errorf("invalid hex string %q", lc)
 			}
-			params[name] = string(data)
+			params[name] = lc[2:]
 		} else if isQuotedString(v) {
 			var dec string
 			if err := json.Unmarshal([]byte(v), &dec); err != nil {
