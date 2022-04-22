@@ -42,7 +42,7 @@ require (
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.7
-	github.com/vektra/mockery/v2 v2.11.0
+	github.com/vektra/mockery/v2 v2.12.0
 	gotest.tools v2.2.0+incompatible
 )
 
