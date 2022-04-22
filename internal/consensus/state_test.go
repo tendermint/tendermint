@@ -1918,7 +1918,7 @@ func TestProcessProposalAccept(t *testing.T) {
 				status = abci.ResponseProcessProposal_ACCEPT
 			}
 			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
-			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{}).Maybe()
 			cs1, _ := makeState(ctx, t, makeStateArgs{config: config, application: m})
 			height, round := cs1.Height, cs1.Round
 
