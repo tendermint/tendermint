@@ -329,7 +329,7 @@ func TestProcessProposal(t *testing.T) {
 	block1 := sf.MakeBlock(state, height, lastCommit)
 	block1.Txs = txs
 
-	expectedRpp := &abci.RequestProcessProposal{
+	expectedRpp := abci.RequestProcessProposal{
 		Txs:                 block1.Txs.ToSliceOfBytes(),
 		Hash:                block1.Hash(),
 		Height:              block1.Header.Height,
@@ -348,7 +348,7 @@ func TestProcessProposal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
-	app.AssertCalled(t, "ProcessProposal", ctx, expectedRpp, nil)
+	app.AssertCalled(t, "ProcessProposal", ctx, expectedRpp)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -622,7 +622,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, eventBus.Start(ctx))
 
 	app := abcimocks.NewApplication(t)
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{})
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -683,7 +683,7 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 	app := abcimocks.NewApplication(t)
 
 	// create an invalid ResponsePrepareProposal
-	rpp := abci.ResponsePrepareProposal{
+	rpp := &abci.ResponsePrepareProposal{
 		TxRecords: []*abci.TxRecord{
 			{
 				Action: abci.TxRecord_REMOVED,
@@ -691,7 +691,7 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 			},
 		},
 	}
-	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(rpp)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(rpp, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -745,9 +745,9 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
 
 	app := abcimocks.NewApplication(t)
-	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -804,9 +804,9 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	trs[1].Action = abci.TxRecord_ADDED
 
 	app := abcimocks.NewApplication(t)
-	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -860,9 +860,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 
 	app := abcimocks.NewApplication(t)
-	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -920,9 +920,9 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	trs := txsToTxRecords(types.Txs(txs))
 
 	app := abcimocks.NewApplication(t)
-	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
