@@ -1918,6 +1918,7 @@ func TestProcessProposalAccept(t *testing.T) {
 				status = abci.ResponseProcessProposal_ACCEPT
 			}
 			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 			cs1, _ := makeState(ctx, t, makeStateArgs{config: config, application: m})
 			height, round := cs1.Height, cs1.Round
 
@@ -1965,7 +1966,10 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			defer cancel()
 
 			m := abcimocks.NewBaseMock()
-			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{
+				Status: abci.ResponseProcessProposal_ACCEPT,
+			})
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 			m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(abci.ResponseVerifyVoteExtension{
 				Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 			})
@@ -2024,6 +2028,7 @@ func TestExtendVoteCalled(t *testing.T) {
 
 	m := abcimocks.NewBaseMock()
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: []byte("extension"),
 	})
@@ -2099,6 +2104,7 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 
 	m := abcimocks.NewBaseMock()
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: []byte("extension"),
 	})
@@ -2186,6 +2192,8 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 		VoteExtension: voteExtensions[0],
 	})
 	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{}).Once()
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}).Once()
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(abci.ResponseVerifyVoteExtension{Status: abci.ResponseVerifyVoteExtension_ACCEPT})
 
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
