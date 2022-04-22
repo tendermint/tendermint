@@ -159,11 +159,7 @@ func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 }
 
 // Read requests from conn and deal with them
-func (s *SocketServer) handleRequests(
-	ctx context.Context,
-	closer func(error),
-	conn io.Reader,
-	responses chan<- *types.Response,
+func (s *SocketServer) handleRequests(ctx context.Context, closer func(error), conn io.Reader, responses chan<- *types.Response,
 ) {
 	var bufReader = bufio.NewReader(conn)
 
@@ -184,7 +180,7 @@ func (s *SocketServer) handleRequests(
 			return
 		}
 
-		resp := s.processRequest(req)
+		resp := s.processRequest(ctx, req)
 		select {
 		case <-ctx.Done():
 			closer(ctx.Err())
@@ -194,40 +190,40 @@ func (s *SocketServer) handleRequests(
 	}
 }
 
-func (s *SocketServer) processRequest(req *types.Request) *types.Response {
+func (s *SocketServer) processRequest(ctx context.Context, req *types.Request) *types.Response {
 	switch r := req.Value.(type) {
 	case *types.Request_Echo:
 		return types.ToResponseEcho(r.Echo.Message)
 	case *types.Request_Flush:
 		return types.ToResponseFlush()
 	case *types.Request_Info:
-		return types.ToResponseInfo(s.app.Info(*r.Info))
+		return types.ToResponseInfo(s.app.Info(ctx, *r.Info))
 	case *types.Request_CheckTx:
-		return types.ToResponseCheckTx(s.app.CheckTx(*r.CheckTx))
+		return types.ToResponseCheckTx(s.app.CheckTx(ctx, *r.CheckTx))
 	case *types.Request_Commit:
-		return types.ToResponseCommit(s.app.Commit())
+		return types.ToResponseCommit(s.app.Commit(ctx))
 	case *types.Request_Query:
-		return types.ToResponseQuery(s.app.Query(*r.Query))
+		return types.ToResponseQuery(s.app.Query(ctx, *r.Query))
 	case *types.Request_InitChain:
-		return types.ToResponseInitChain(s.app.InitChain(*r.InitChain))
+		return types.ToResponseInitChain(s.app.InitChain(ctx, *r.InitChain))
 	case *types.Request_ListSnapshots:
-		return types.ToResponseListSnapshots(s.app.ListSnapshots(*r.ListSnapshots))
+		return types.ToResponseListSnapshots(s.app.ListSnapshots(ctx, *r.ListSnapshots))
 	case *types.Request_OfferSnapshot:
-		return types.ToResponseOfferSnapshot(s.app.OfferSnapshot(*r.OfferSnapshot))
+		return types.ToResponseOfferSnapshot(s.app.OfferSnapshot(ctx, *r.OfferSnapshot))
 	case *types.Request_PrepareProposal:
-		return types.ToResponsePrepareProposal(s.app.PrepareProposal(*r.PrepareProposal))
+		return types.ToResponsePrepareProposal(s.app.PrepareProposal(ctx, *r.PrepareProposal))
 	case *types.Request_ProcessProposal:
-		return types.ToResponseProcessProposal(s.app.ProcessProposal(*r.ProcessProposal))
+		return types.ToResponseProcessProposal(s.app.ProcessProposal(ctx, *r.ProcessProposal))
 	case *types.Request_LoadSnapshotChunk:
-		return types.ToResponseLoadSnapshotChunk(s.app.LoadSnapshotChunk(*r.LoadSnapshotChunk))
+		return types.ToResponseLoadSnapshotChunk(s.app.LoadSnapshotChunk(ctx, *r.LoadSnapshotChunk))
 	case *types.Request_ApplySnapshotChunk:
-		return types.ToResponseApplySnapshotChunk(s.app.ApplySnapshotChunk(*r.ApplySnapshotChunk))
+		return types.ToResponseApplySnapshotChunk(s.app.ApplySnapshotChunk(ctx, *r.ApplySnapshotChunk))
 	case *types.Request_ExtendVote:
-		return types.ToResponseExtendVote(s.app.ExtendVote(*r.ExtendVote))
+		return types.ToResponseExtendVote(s.app.ExtendVote(ctx, *r.ExtendVote))
 	case *types.Request_VerifyVoteExtension:
-		return types.ToResponseVerifyVoteExtension(s.app.VerifyVoteExtension(*r.VerifyVoteExtension))
+		return types.ToResponseVerifyVoteExtension(s.app.VerifyVoteExtension(ctx, *r.VerifyVoteExtension))
 	case *types.Request_FinalizeBlock:
-		return types.ToResponseFinalizeBlock(s.app.FinalizeBlock(*r.FinalizeBlock))
+		return types.ToResponseFinalizeBlock(s.app.FinalizeBlock(ctx, *r.FinalizeBlock))
 	default:
 		return types.ToResponseException("Unknown request")
 	}

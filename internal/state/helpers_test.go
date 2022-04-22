@@ -278,11 +278,11 @@ type testApp struct {
 
 var _ abci.Application = (*testApp)(nil)
 
-func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
+func (app *testApp) Info(_ context.Context, req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 	return abci.ResponseInfo{}
 }
 
-func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+func (app *testApp) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
 	app.CommitVotes = req.DecidedLastCommit.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
@@ -307,19 +307,19 @@ func (app *testApp) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFi
 	}
 }
 
-func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *testApp) CheckTx(_ context.Context, req abci.RequestCheckTx) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{}
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
+func (app *testApp) Commit(context.Context) abci.ResponseCommit {
 	return abci.ResponseCommit{RetainHeight: 1}
 }
 
-func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
+func (app *testApp) Query(_ context.Context, req abci.RequestQuery) (resQuery abci.ResponseQuery) {
 	return
 }
 
-func (app *testApp) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+func (app *testApp) ProcessProposal(_ context.Context, req abci.RequestProcessProposal) abci.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
 			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}

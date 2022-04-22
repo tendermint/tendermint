@@ -1,6 +1,8 @@
 package kvstore
 
 import (
+	"context"
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/types"
@@ -35,10 +37,10 @@ func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *Persisten
 	}
 }
 
-func (app *PersistentKVStoreApplication) OfferSnapshot(req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
+func (app *PersistentKVStoreApplication) OfferSnapshot(_ context.Context, req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
 	return types.ResponseOfferSnapshot{Result: types.ResponseOfferSnapshot_ABORT}
 }
 
-func (app *PersistentKVStoreApplication) ApplySnapshotChunk(req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
+func (app *PersistentKVStoreApplication) ApplySnapshotChunk(_ context.Context, req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
 }

@@ -118,9 +118,6 @@ func sendTxs(ctx context.Context, t *testing.T, cs *State) {
 
 // TestWALCrash uses crashing WAL to test we can recover from any WAL failure.
 func TestWALCrash(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	testCases := []struct {
 		name         string
 		initFn       func(dbm.DB, *State, context.Context)
@@ -139,6 +136,9 @@ func TestWALCrash(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			consensusReplayConfig, err := ResetConfig(t.TempDir(), tc.name)
 			require.NoError(t, err)
 			crashWALandCheckLiveness(ctx, t, consensusReplayConfig, tc.initFn, tc.heightToStop)
@@ -1017,7 +1017,7 @@ type badApp struct {
 	onlyLastHashIsWrong bool
 }
 
-func (app *badApp) Commit() abci.ResponseCommit {
+func (app *badApp) Commit(context.Context) abci.ResponseCommit {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
@@ -1275,7 +1275,7 @@ type initChainApp struct {
 	vals []abci.ValidatorUpdate
 }
 
-func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
+func (ica *initChainApp) InitChain(_ context.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	return abci.ResponseInitChain{
 		Validators: ica.vals,
 	}

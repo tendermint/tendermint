@@ -1917,7 +1917,8 @@ func TestProcessProposalAccept(t *testing.T) {
 			if testCase.accept {
 				status = abci.ResponseProcessProposal_ACCEPT
 			}
-			m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
 			cs1, _ := makeState(ctx, t, makeStateArgs{config: config, application: m})
 			height, round := cs1.Height, cs1.Round
 
@@ -1965,11 +1966,14 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			defer cancel()
 
 			m := abcimocks.NewBaseMock()
-			m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
-			m.On("VerifyVoteExtension", mock.Anything).Return(abci.ResponseVerifyVoteExtension{
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{
+				Status: abci.ResponseProcessProposal_ACCEPT,
+			})
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
+			m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(abci.ResponseVerifyVoteExtension{
 				Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 			})
-			m.On("FinalizeBlock", mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 			height, round := cs1.Height, cs1.Round
 
@@ -2007,9 +2011,9 @@ func TestFinalizeBlockCalled(t *testing.T) {
 			m.AssertExpectations(t)
 
 			if !testCase.expectCalled {
-				m.AssertNotCalled(t, "FinalizeBlock", mock.Anything)
+				m.AssertNotCalled(t, "FinalizeBlock", ctx, mock.Anything)
 			} else {
-				m.AssertCalled(t, "FinalizeBlock", mock.Anything)
+				m.AssertCalled(t, "FinalizeBlock", ctx, mock.Anything)
 			}
 		})
 	}
@@ -2023,14 +2027,15 @@ func TestExtendVoteCalled(t *testing.T) {
 	defer cancel()
 
 	m := abcimocks.NewBaseMock()
-	m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
-	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
+	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: []byte("extension"),
 	})
-	m.On("VerifyVoteExtension", mock.Anything).Return(abci.ResponseVerifyVoteExtension{
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 	})
-	m.On("FinalizeBlock", mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
+	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
 
@@ -2045,7 +2050,7 @@ func TestExtendVoteCalled(t *testing.T) {
 	ensureNewRound(t, newRoundCh, height, round)
 	ensureNewProposal(t, proposalCh, height, round)
 
-	m.AssertNotCalled(t, "ExtendVote", mock.Anything)
+	m.AssertNotCalled(t, "ExtendVote", mock.Anything, mock.Anything)
 
 	rs := cs1.GetRoundState()
 
@@ -2058,12 +2063,12 @@ func TestExtendVoteCalled(t *testing.T) {
 
 	ensurePrecommit(t, voteCh, height, round)
 
-	m.AssertCalled(t, "ExtendVote", abci.RequestExtendVote{
+	m.AssertCalled(t, "ExtendVote", ctx, abci.RequestExtendVote{
 		Height: height,
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+	m.AssertCalled(t, "VerifyVoteExtension", ctx, abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -2080,7 +2085,7 @@ func TestExtendVoteCalled(t *testing.T) {
 		pv, err := pv.GetPubKey(ctx)
 		require.NoError(t, err)
 		addr := pv.Address()
-		m.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+		m.AssertCalled(t, "VerifyVoteExtension", ctx, abci.RequestVerifyVoteExtension{
 			Hash:             blockID.Hash,
 			ValidatorAddress: addr,
 			Height:           height,
@@ -2098,14 +2103,15 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 	defer cancel()
 
 	m := abcimocks.NewBaseMock()
-	m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
-	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{})
+	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: []byte("extension"),
 	})
-	m.On("VerifyVoteExtension", mock.Anything).Return(abci.ResponseVerifyVoteExtension{
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 	})
-	m.On("FinalizeBlock", mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
+	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
 
@@ -2130,12 +2136,12 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 
 	ensurePrecommit(t, voteCh, height, round)
 
-	m.AssertCalled(t, "ExtendVote", abci.RequestExtendVote{
+	m.AssertCalled(t, "ExtendVote", mock.Anything, abci.RequestExtendVote{
 		Height: height,
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+	m.AssertCalled(t, "VerifyVoteExtension", mock.Anything, abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -2152,7 +2158,7 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 	require.NoError(t, err)
 	addr = pv.Address()
 
-	m.AssertNotCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+	m.AssertNotCalled(t, "VerifyVoteExtension", ctx, abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -2168,9 +2174,10 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 // is the proposer again and ensures that the mock application receives the set of
 // vote extensions from the previous consensus instance.
 func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
-	config := configSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	config := configSetup(t)
 
 	// create a list of vote extensions, one for each validator.
 	voteExtensions := [][]byte{
@@ -2181,10 +2188,12 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	}
 
 	m := abcimocks.NewBaseMock()
-	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
+	m.On("ExtendVote", mock.Anything, mock.Anything).Return(abci.ResponseExtendVote{
 		VoteExtension: voteExtensions[0],
 	})
-	m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}).Once()
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(abci.ResponsePrepareProposal{}).Once()
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}).Once()
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(abci.ResponseVerifyVoteExtension{Status: abci.ResponseVerifyVoteExtension_ACCEPT})
 
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
@@ -2228,7 +2237,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 
 	// capture the prepare proposal request.
 	rpp := abci.RequestPrepareProposal{}
-	m.On("PrepareProposal", mock.MatchedBy(func(r abci.RequestPrepareProposal) bool {
+	m.On("PrepareProposal", mock.Anything, mock.MatchedBy(func(r abci.RequestPrepareProposal) bool {
 		rpp = r
 		return true
 	})).Return(abci.ResponsePrepareProposal{})

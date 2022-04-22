@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -113,7 +114,7 @@ func NewApplication(cfg *Config) (*Application, error) {
 }
 
 // Info implements ABCI.
-func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
+func (app *Application) Info(_ context.Context, req abci.RequestInfo) abci.ResponseInfo {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -126,7 +127,7 @@ func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 }
 
 // Info implements ABCI.
-func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *Application) InitChain(_ context.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -153,7 +154,7 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 }
 
 // CheckTx implements ABCI.
-func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *Application) CheckTx(_ context.Context, req abci.RequestCheckTx) abci.ResponseCheckTx {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -168,7 +169,7 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 }
 
 // FinalizeBlock implements ABCI.
-func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
+func (app *Application) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlock) abci.ResponseFinalizeBlock {
 	var txs = make([]*abci.ExecTxResult, len(req.Txs))
 
 	app.mu.Lock()
@@ -211,7 +212,7 @@ func (app *Application) FinalizeBlock(req abci.RequestFinalizeBlock) abci.Respon
 }
 
 // Commit implements ABCI.
-func (app *Application) Commit() abci.ResponseCommit {
+func (app *Application) Commit(_ context.Context) abci.ResponseCommit {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -241,7 +242,7 @@ func (app *Application) Commit() abci.ResponseCommit {
 }
 
 // Query implements ABCI.
-func (app *Application) Query(req abci.RequestQuery) abci.ResponseQuery {
+func (app *Application) Query(_ context.Context, req abci.RequestQuery) abci.ResponseQuery {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -253,7 +254,7 @@ func (app *Application) Query(req abci.RequestQuery) abci.ResponseQuery {
 }
 
 // ListSnapshots implements ABCI.
-func (app *Application) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseListSnapshots {
+func (app *Application) ListSnapshots(_ context.Context, req abci.RequestListSnapshots) abci.ResponseListSnapshots {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -265,7 +266,7 @@ func (app *Application) ListSnapshots(req abci.RequestListSnapshots) abci.Respon
 }
 
 // LoadSnapshotChunk implements ABCI.
-func (app *Application) LoadSnapshotChunk(req abci.RequestLoadSnapshotChunk) abci.ResponseLoadSnapshotChunk {
+func (app *Application) LoadSnapshotChunk(_ context.Context, req abci.RequestLoadSnapshotChunk) abci.ResponseLoadSnapshotChunk {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -277,7 +278,7 @@ func (app *Application) LoadSnapshotChunk(req abci.RequestLoadSnapshotChunk) abc
 }
 
 // OfferSnapshot implements ABCI.
-func (app *Application) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
+func (app *Application) OfferSnapshot(_ context.Context, req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -290,7 +291,7 @@ func (app *Application) OfferSnapshot(req abci.RequestOfferSnapshot) abci.Respon
 }
 
 // ApplySnapshotChunk implements ABCI.
-func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
+func (app *Application) ApplySnapshotChunk(_ context.Context, req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -323,7 +324,7 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 // If adding a special vote extension-generated transaction would cause the
 // total number of transaction bytes to exceed `req.MaxTxBytes`, we will not
 // append our special vote extension transaction.
-func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+func (app *Application) PrepareProposal(_ context.Context, req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
 	var sum int64
 	var extCount int
 	for _, vote := range req.LocalLastCommit.Votes {
@@ -399,7 +400,7 @@ func (app *Application) PrepareProposal(req abci.RequestPrepareProposal) abci.Re
 
 // ProcessProposal implements part of the Application interface.
 // It accepts any proposal that does not contain a malformed transaction.
-func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+func (app *Application) ProcessProposal(_ context.Context, req abci.RequestProcessProposal) abci.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		k, v, err := parseTx(tx)
 		if err != nil {
@@ -425,7 +426,7 @@ func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.Re
 // a new transaction will be proposed that updates a special value in the
 // key/value store ("extensionSum") with the sum of all of the numbers collected
 // from the vote extensions.
-func (app *Application) ExtendVote(req abci.RequestExtendVote) abci.ResponseExtendVote {
+func (app *Application) ExtendVote(_ context.Context, req abci.RequestExtendVote) abci.ResponseExtendVote {
 	// We ignore any requests for vote extensions that don't match our expected
 	// next height.
 	if req.Height != int64(app.state.Height)+1 {
@@ -451,7 +452,7 @@ func (app *Application) ExtendVote(req abci.RequestExtendVote) abci.ResponseExte
 // VerifyVoteExtension simply validates vote extensions from other validators
 // without doing anything about them. In this case, it just makes sure that the
 // vote extension is a well-formed integer value.
-func (app *Application) VerifyVoteExtension(req abci.RequestVerifyVoteExtension) abci.ResponseVerifyVoteExtension {
+func (app *Application) VerifyVoteExtension(_ context.Context, req abci.RequestVerifyVoteExtension) abci.ResponseVerifyVoteExtension {
 	// We allow vote extensions to be optional
 	if len(req.VoteExtension) == 0 {
 		return abci.ResponseVerifyVoteExtension{

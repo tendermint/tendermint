@@ -3,7 +3,11 @@
 package mocks
 
 import (
+	context "context"
+	testing "testing"
+
 	mock "github.com/stretchr/testify/mock"
+
 	types "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -12,13 +16,13 @@ type Application struct {
 	mock.Mock
 }
 
-// ApplySnapshotChunk provides a mock function with given fields: _a0
-func (_m *Application) ApplySnapshotChunk(_a0 types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
-	ret := _m.Called(_a0)
+// ApplySnapshotChunk provides a mock function with given fields: _a0, _a1
+func (_m *Application) ApplySnapshotChunk(_a0 context.Context, _a1 types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseApplySnapshotChunk
-	if rf, ok := ret.Get(0).(func(types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseApplySnapshotChunk)
 	}
@@ -26,13 +30,13 @@ func (_m *Application) ApplySnapshotChunk(_a0 types.RequestApplySnapshotChunk) t
 	return r0
 }
 
-// CheckTx provides a mock function with given fields: _a0
-func (_m *Application) CheckTx(_a0 types.RequestCheckTx) types.ResponseCheckTx {
-	ret := _m.Called(_a0)
+// CheckTx provides a mock function with given fields: _a0, _a1
+func (_m *Application) CheckTx(_a0 context.Context, _a1 types.RequestCheckTx) types.ResponseCheckTx {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseCheckTx
-	if rf, ok := ret.Get(0).(func(types.RequestCheckTx) types.ResponseCheckTx); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestCheckTx) types.ResponseCheckTx); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseCheckTx)
 	}
@@ -40,13 +44,13 @@ func (_m *Application) CheckTx(_a0 types.RequestCheckTx) types.ResponseCheckTx {
 	return r0
 }
 
-// Commit provides a mock function with given fields:
-func (_m *Application) Commit() types.ResponseCommit {
-	ret := _m.Called()
+// Commit provides a mock function with given fields: _a0
+func (_m *Application) Commit(_a0 context.Context) types.ResponseCommit {
+	ret := _m.Called(_a0)
 
 	var r0 types.ResponseCommit
-	if rf, ok := ret.Get(0).(func() types.ResponseCommit); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) types.ResponseCommit); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(types.ResponseCommit)
 	}
@@ -54,13 +58,13 @@ func (_m *Application) Commit() types.ResponseCommit {
 	return r0
 }
 
-// ExtendVote provides a mock function with given fields: _a0
-func (_m *Application) ExtendVote(_a0 types.RequestExtendVote) types.ResponseExtendVote {
-	ret := _m.Called(_a0)
+// ExtendVote provides a mock function with given fields: _a0, _a1
+func (_m *Application) ExtendVote(_a0 context.Context, _a1 types.RequestExtendVote) types.ResponseExtendVote {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseExtendVote
-	if rf, ok := ret.Get(0).(func(types.RequestExtendVote) types.ResponseExtendVote); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestExtendVote) types.ResponseExtendVote); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseExtendVote)
 	}
@@ -68,13 +72,13 @@ func (_m *Application) ExtendVote(_a0 types.RequestExtendVote) types.ResponseExt
 	return r0
 }
 
-// FinalizeBlock provides a mock function with given fields: _a0
-func (_m *Application) FinalizeBlock(_a0 types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
-	ret := _m.Called(_a0)
+// FinalizeBlock provides a mock function with given fields: _a0, _a1
+func (_m *Application) FinalizeBlock(_a0 context.Context, _a1 types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseFinalizeBlock
-	if rf, ok := ret.Get(0).(func(types.RequestFinalizeBlock) types.ResponseFinalizeBlock); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestFinalizeBlock) types.ResponseFinalizeBlock); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseFinalizeBlock)
 	}
@@ -82,13 +86,13 @@ func (_m *Application) FinalizeBlock(_a0 types.RequestFinalizeBlock) types.Respo
 	return r0
 }
 
-// Info provides a mock function with given fields: _a0
-func (_m *Application) Info(_a0 types.RequestInfo) types.ResponseInfo {
-	ret := _m.Called(_a0)
+// Info provides a mock function with given fields: _a0, _a1
+func (_m *Application) Info(_a0 context.Context, _a1 types.RequestInfo) types.ResponseInfo {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseInfo
-	if rf, ok := ret.Get(0).(func(types.RequestInfo) types.ResponseInfo); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestInfo) types.ResponseInfo); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseInfo)
 	}
@@ -96,13 +100,13 @@ func (_m *Application) Info(_a0 types.RequestInfo) types.ResponseInfo {
 	return r0
 }
 
-// InitChain provides a mock function with given fields: _a0
-func (_m *Application) InitChain(_a0 types.RequestInitChain) types.ResponseInitChain {
-	ret := _m.Called(_a0)
+// InitChain provides a mock function with given fields: _a0, _a1
+func (_m *Application) InitChain(_a0 context.Context, _a1 types.RequestInitChain) types.ResponseInitChain {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseInitChain
-	if rf, ok := ret.Get(0).(func(types.RequestInitChain) types.ResponseInitChain); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestInitChain) types.ResponseInitChain); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseInitChain)
 	}
@@ -110,13 +114,13 @@ func (_m *Application) InitChain(_a0 types.RequestInitChain) types.ResponseInitC
 	return r0
 }
 
-// ListSnapshots provides a mock function with given fields: _a0
-func (_m *Application) ListSnapshots(_a0 types.RequestListSnapshots) types.ResponseListSnapshots {
-	ret := _m.Called(_a0)
+// ListSnapshots provides a mock function with given fields: _a0, _a1
+func (_m *Application) ListSnapshots(_a0 context.Context, _a1 types.RequestListSnapshots) types.ResponseListSnapshots {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseListSnapshots
-	if rf, ok := ret.Get(0).(func(types.RequestListSnapshots) types.ResponseListSnapshots); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestListSnapshots) types.ResponseListSnapshots); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseListSnapshots)
 	}
@@ -124,13 +128,13 @@ func (_m *Application) ListSnapshots(_a0 types.RequestListSnapshots) types.Respo
 	return r0
 }
 
-// LoadSnapshotChunk provides a mock function with given fields: _a0
-func (_m *Application) LoadSnapshotChunk(_a0 types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
-	ret := _m.Called(_a0)
+// LoadSnapshotChunk provides a mock function with given fields: _a0, _a1
+func (_m *Application) LoadSnapshotChunk(_a0 context.Context, _a1 types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseLoadSnapshotChunk
-	if rf, ok := ret.Get(0).(func(types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseLoadSnapshotChunk)
 	}
@@ -138,13 +142,13 @@ func (_m *Application) LoadSnapshotChunk(_a0 types.RequestLoadSnapshotChunk) typ
 	return r0
 }
 
-// OfferSnapshot provides a mock function with given fields: _a0
-func (_m *Application) OfferSnapshot(_a0 types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
-	ret := _m.Called(_a0)
+// OfferSnapshot provides a mock function with given fields: _a0, _a1
+func (_m *Application) OfferSnapshot(_a0 context.Context, _a1 types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseOfferSnapshot
-	if rf, ok := ret.Get(0).(func(types.RequestOfferSnapshot) types.ResponseOfferSnapshot); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestOfferSnapshot) types.ResponseOfferSnapshot); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseOfferSnapshot)
 	}
@@ -152,13 +156,13 @@ func (_m *Application) OfferSnapshot(_a0 types.RequestOfferSnapshot) types.Respo
 	return r0
 }
 
-// PrepareProposal provides a mock function with given fields: _a0
-func (_m *Application) PrepareProposal(_a0 types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	ret := _m.Called(_a0)
+// PrepareProposal provides a mock function with given fields: _a0, _a1
+func (_m *Application) PrepareProposal(_a0 context.Context, _a1 types.RequestPrepareProposal) types.ResponsePrepareProposal {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponsePrepareProposal
-	if rf, ok := ret.Get(0).(func(types.RequestPrepareProposal) types.ResponsePrepareProposal); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestPrepareProposal) types.ResponsePrepareProposal); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponsePrepareProposal)
 	}
@@ -166,13 +170,13 @@ func (_m *Application) PrepareProposal(_a0 types.RequestPrepareProposal) types.R
 	return r0
 }
 
-// ProcessProposal provides a mock function with given fields: _a0
-func (_m *Application) ProcessProposal(_a0 types.RequestProcessProposal) types.ResponseProcessProposal {
-	ret := _m.Called(_a0)
+// ProcessProposal provides a mock function with given fields: _a0, _a1
+func (_m *Application) ProcessProposal(_a0 context.Context, _a1 types.RequestProcessProposal) types.ResponseProcessProposal {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseProcessProposal
-	if rf, ok := ret.Get(0).(func(types.RequestProcessProposal) types.ResponseProcessProposal); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestProcessProposal) types.ResponseProcessProposal); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseProcessProposal)
 	}
@@ -180,13 +184,13 @@ func (_m *Application) ProcessProposal(_a0 types.RequestProcessProposal) types.R
 	return r0
 }
 
-// Query provides a mock function with given fields: _a0
-func (_m *Application) Query(_a0 types.RequestQuery) types.ResponseQuery {
-	ret := _m.Called(_a0)
+// Query provides a mock function with given fields: _a0, _a1
+func (_m *Application) Query(_a0 context.Context, _a1 types.RequestQuery) types.ResponseQuery {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseQuery
-	if rf, ok := ret.Get(0).(func(types.RequestQuery) types.ResponseQuery); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestQuery) types.ResponseQuery); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseQuery)
 	}
@@ -194,16 +198,25 @@ func (_m *Application) Query(_a0 types.RequestQuery) types.ResponseQuery {
 	return r0
 }
 
-// VerifyVoteExtension provides a mock function with given fields: _a0
-func (_m *Application) VerifyVoteExtension(_a0 types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
-	ret := _m.Called(_a0)
+// VerifyVoteExtension provides a mock function with given fields: _a0, _a1
+func (_m *Application) VerifyVoteExtension(_a0 context.Context, _a1 types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 types.ResponseVerifyVoteExtension
-	if rf, ok := ret.Get(0).(func(types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestVerifyVoteExtension) types.ResponseVerifyVoteExtension); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(types.ResponseVerifyVoteExtension)
 	}
 
 	return r0
+}
+
+// NewApplication creates a new instance of Application. It also registers a cleanup function to assert the mocks expectations.
+func NewApplication(t testing.TB) *Application {
+	mock := &Application{}
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
 }

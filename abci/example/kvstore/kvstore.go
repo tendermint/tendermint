@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -90,7 +91,7 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+func (app *Application) InitChain(_ context.Context, req types.RequestInitChain) types.ResponseInitChain {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -104,7 +105,7 @@ func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInit
 	return types.ResponseInitChain{}
 }
 
-func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
+func (app *Application) Info(_ context.Context, req types.RequestInfo) types.ResponseInfo {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 	return types.ResponseInfo{
@@ -166,7 +167,7 @@ func (app *Application) Close() error {
 	return app.state.db.Close()
 }
 
-func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+func (app *Application) FinalizeBlock(_ context.Context, req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -198,11 +199,11 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 	return types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}
 }
 
-func (*Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+func (*Application) CheckTx(_ context.Context, req types.RequestCheckTx) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
-func (app *Application) Commit() types.ResponseCommit {
+func (app *Application) Commit(_ context.Context) types.ResponseCommit {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -221,7 +222,7 @@ func (app *Application) Commit() types.ResponseCommit {
 }
 
 // Returns an associated value or nil if missing.
-func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+func (app *Application) Query(_ context.Context, reqQuery types.RequestQuery) types.ResponseQuery {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -280,7 +281,7 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	return resQuery
 }
 
-func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+func (app *Application) PrepareProposal(_ context.Context, req types.RequestPrepareProposal) types.ResponsePrepareProposal {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -289,7 +290,7 @@ func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.
 	}
 }
 
-func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
+func (*Application) ProcessProposal(_ context.Context, req types.RequestProcessProposal) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
 			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}

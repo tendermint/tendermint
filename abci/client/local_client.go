@@ -44,71 +44,71 @@ func (app *localClient) Echo(_ context.Context, msg string) (*types.ResponseEcho
 }
 
 func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	res := app.Application.Info(req)
+	res := app.Application.Info(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) CheckTx(_ context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	res := app.Application.CheckTx(req)
+func (app *localClient) CheckTx(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	res := app.Application.CheckTx(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) Query(_ context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
-	res := app.Application.Query(req)
+func (app *localClient) Query(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
+	res := app.Application.Query(ctx, req)
 	return &res, nil
 }
 
 func (app *localClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	res := app.Application.Commit()
+	res := app.Application.Commit(ctx)
 	return &res, nil
 }
 
-func (app *localClient) InitChain(_ context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	res := app.Application.InitChain(req)
+func (app *localClient) InitChain(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+	res := app.Application.InitChain(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) ListSnapshots(_ context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	res := app.Application.ListSnapshots(req)
+func (app *localClient) ListSnapshots(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	res := app.Application.ListSnapshots(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) OfferSnapshot(_ context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	res := app.Application.OfferSnapshot(req)
+func (app *localClient) OfferSnapshot(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	res := app.Application.OfferSnapshot(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) LoadSnapshotChunk(_ context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	res := app.Application.LoadSnapshotChunk(req)
+func (app *localClient) LoadSnapshotChunk(ctx context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	res := app.Application.LoadSnapshotChunk(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) ApplySnapshotChunk(_ context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	res := app.Application.ApplySnapshotChunk(req)
+func (app *localClient) ApplySnapshotChunk(ctx context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	res := app.Application.ApplySnapshotChunk(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) PrepareProposal(_ context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	res := app.Application.PrepareProposal(req)
+func (app *localClient) PrepareProposal(ctx context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	res := app.Application.PrepareProposal(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) ProcessProposal(_ context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	res := app.Application.ProcessProposal(req)
+func (app *localClient) ProcessProposal(ctx context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	res := app.Application.ProcessProposal(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) ExtendVote(_ context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	res := app.Application.ExtendVote(req)
+func (app *localClient) ExtendVote(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	res := app.Application.ExtendVote(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) VerifyVoteExtension(_ context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	res := app.Application.VerifyVoteExtension(req)
+func (app *localClient) VerifyVoteExtension(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	res := app.Application.VerifyVoteExtension(ctx, req)
 	return &res, nil
 }
 
-func (app *localClient) FinalizeBlock(_ context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	res := app.Application.FinalizeBlock(req)
+func (app *localClient) FinalizeBlock(ctx context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+	res := app.Application.FinalizeBlock(ctx, req)
 	return &res, nil
 }

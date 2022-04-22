@@ -23,23 +23,23 @@ const (
 	testValue = "def"
 )
 
-func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
+func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []byte, key, value string) {
 	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
-	ar := app.FinalizeBlock(req)
+	ar := app.FinalizeBlock(ctx, req)
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
 	// repeating tx doesn't raise error
-	ar = app.FinalizeBlock(req)
+	ar = app.FinalizeBlock(ctx, req)
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
 	// commit
-	app.Commit()
+	app.Commit(ctx)
 
-	info := app.Info(types.RequestInfo{})
+	info := app.Info(ctx, types.RequestInfo{})
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery := app.Query(types.RequestQuery{
+	resQuery := app.Query(ctx, types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -49,7 +49,7 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery = app.Query(types.RequestQuery{
+	resQuery = app.Query(ctx, types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,
@@ -61,18 +61,24 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 }
 
 func TestKVStoreKV(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	kvstore := NewApplication()
 	key := testKey
 	value := key
 	tx := []byte(key)
-	testKVStore(t, kvstore, tx, key, value)
+	testKVStore(ctx, t, kvstore, tx, key, value)
 
 	value = testValue
 	tx = []byte(key + "=" + value)
-	testKVStore(t, kvstore, tx, key, value)
+	testKVStore(ctx, t, kvstore, tx, key, value)
 }
 
 func TestPersistentKVStoreKV(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	dir := t.TempDir()
 	logger := log.NewNopLogger()
 
@@ -80,22 +86,24 @@ func TestPersistentKVStoreKV(t *testing.T) {
 	key := testKey
 	value := key
 	tx := []byte(key)
-	testKVStore(t, kvstore, tx, key, value)
+	testKVStore(ctx, t, kvstore, tx, key, value)
 
 	value = testValue
 	tx = []byte(key + "=" + value)
-	testKVStore(t, kvstore, tx, key, value)
+	testKVStore(ctx, t, kvstore, tx, key, value)
 }
 
 func TestPersistentKVStoreInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	dir := t.TempDir()
 	logger := log.NewNopLogger()
 
 	kvstore := NewPersistentKVStoreApplication(logger, dir)
-	InitKVStore(kvstore)
+	InitKVStore(ctx, kvstore)
 	height := int64(0)
 
-	resInfo := kvstore.Info(types.RequestInfo{})
+	resInfo := kvstore.Info(ctx, types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -103,10 +111,10 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	kvstore.FinalizeBlock(types.RequestFinalizeBlock{Hash: hash, Height: height})
-	kvstore.Commit()
+	kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{Hash: hash, Height: height})
+	kvstore.Commit(ctx)
 
-	resInfo = kvstore.Info(types.RequestInfo{})
+	resInfo = kvstore.Info(ctx, types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -115,6 +123,9 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValUpdates(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	kvstore := NewApplication()
 
 	// init with some validators
@@ -122,7 +133,7 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// initialize with the first nInit
-	kvstore.InitChain(types.RequestInitChain{
+	kvstore.InitChain(ctx, types.RequestInitChain{
 		Validators: vals[:nInit],
 	})
 
@@ -137,7 +148,7 @@ func TestValUpdates(t *testing.T) {
 	tx1 := MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 := MakeValSetChangeTx(v2.PubKey, v2.Power)
 
-	makeApplyBlock(t, kvstore, 1, diff, tx1, tx2)
+	makeApplyBlock(ctx, t, kvstore, 1, diff, tx1, tx2)
 
 	vals1, vals2 = vals[:nInit+2], kvstore.Validators()
 	valsEqual(t, vals1, vals2)
@@ -152,7 +163,7 @@ func TestValUpdates(t *testing.T) {
 	tx2 = MakeValSetChangeTx(v2.PubKey, v2.Power)
 	tx3 := MakeValSetChangeTx(v3.PubKey, v3.Power)
 
-	makeApplyBlock(t, kvstore, 2, diff, tx1, tx2, tx3)
+	makeApplyBlock(ctx, t, kvstore, 2, diff, tx1, tx2, tx3)
 
 	vals1 = append(vals[:nInit-2], vals[nInit+1]) // nolint: gocritic
 	vals2 = kvstore.Validators()
@@ -168,7 +179,7 @@ func TestValUpdates(t *testing.T) {
 	diff = []types.ValidatorUpdate{v1}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 
-	makeApplyBlock(t, kvstore, 3, diff, tx1)
+	makeApplyBlock(ctx, t, kvstore, 3, diff, tx1)
 
 	vals1 = append([]types.ValidatorUpdate{v1}, vals1[1:]...)
 	vals2 = kvstore.Validators()
@@ -176,22 +187,17 @@ func TestValUpdates(t *testing.T) {
 
 }
 
-func makeApplyBlock(
-	t *testing.T,
-	kvstore types.Application,
-	heightInt int,
-	diff []types.ValidatorUpdate,
-	txs ...[]byte) {
+func makeApplyBlock(ctx context.Context, t *testing.T, kvstore types.Application, heightInt int, diff []types.ValidatorUpdate, txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	resFinalizeBlock := kvstore.FinalizeBlock(types.RequestFinalizeBlock{
+	resFinalizeBlock := kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{
 		Hash:   hash,
 		Height: height,
 		Txs:    txs,
 	})
 
-	kvstore.Commit()
+	kvstore.Commit(ctx)
 
 	valsEqual(t, diff, resFinalizeBlock.ValidatorUpdates)
 

@@ -36,7 +36,7 @@ type testTx struct {
 	priority int64
 }
 
-func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *application) CheckTx(_ context.Context, req abci.RequestCheckTx) abci.ResponseCheckTx {
 	var (
 		priority int64
 		sender   string

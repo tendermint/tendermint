@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -730,9 +731,9 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 			msg.Data())
 
 		vote := voteEvent.Vote
-		require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
-		require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
-		require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 		if hash == nil {
 			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
 		} else {
@@ -820,7 +821,7 @@ func makeConsensusState(
 		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(ctx, abci.RequestInitChain{Validators: vals})
 
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
@@ -891,7 +892,7 @@ func randConsensusNetWithPeers(
 		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(ctx, abci.RequestInitChain{Validators: vals})
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(ctx, t, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
