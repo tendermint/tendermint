@@ -97,8 +97,8 @@ func run(configFile string) error {
 
 			dashCoreRPCClient, err = dashcore.NewRPCClient(
 				cfg.PrivValServer,
-				tmcfg.BaseConfig.PrivValidatorCoreRPCUsername,
-				tmcfg.BaseConfig.PrivValidatorCoreRPCPassword,
+				tmcfg.PrivValidator.CoreRPCUsername,
+				tmcfg.PrivValidator.CoreRPCPassword,
 				logger.With("module", dashcore.ModuleName),
 			)
 			if err != nil {

@@ -330,6 +330,8 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 			cs.privValidatorType = types.MockSignerClient
 		case *types.ErroringMockPV:
 			cs.privValidatorType = types.ErrorMockSignerClient
+		case *privval.DashCoreSignerClient:
+			cs.privValidatorType = types.DashCoreRPCClient
 		default:
 			cs.Logger.Error("unsupported priv validator type", "err",
 				fmt.Errorf("error privValidatorType %s", t))

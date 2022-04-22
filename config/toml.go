@@ -167,16 +167,13 @@ laddr = "{{ .PrivValidator.ListenAddr }}"
 
 # Local Dash Core Host to connect to
 # If this is set, the node follows a Dash Core PrivValidator process
-priv-validator-core-rpc-host = "{{ .BaseConfig.PrivValidatorCoreRPCHost }}"
+core-rpc-host = "{{ .PrivValidator.CoreRPCHost }}"
 
 # Local Dash Core RPC Username
-priv-validator-core-rpc-username = "{{ .BaseConfig.PrivValidatorCoreRPCUsername }}"
+core-rpc-username = "{{ .PrivValidator.CoreRPCUsername }}"
 
 # Local Dash Core RPC Password
-priv-validator-core-rpc-password = "{{ .BaseConfig.PrivValidatorCoreRPCPassword }}"
-
-# Path to the JSON file containing the private key to use for node authentication in the p2p protocol
-node-key-file = "{{ js .BaseConfig.NodeKey }}"
+core-rpc-password = "{{ .PrivValidator.CoreRPCPassword }}"
 
 # Path to the client certificate generated while creating needed files for secure connection.
 # If a remote validator address is provided but no certificate, the connection will be insecure

@@ -131,8 +131,9 @@ func (vc *ValidatorConnExecutor) OnStart() error {
 	}
 	err := vc.updateConnections()
 	if err != nil {
-		return err
+		vc.Logger.Error("Warning: ValidatorConnExecutor OnStart failed", "error", err)
 	}
+
 	go func() {
 		var err error
 		for err == nil {

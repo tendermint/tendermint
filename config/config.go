@@ -233,16 +233,6 @@ type BaseConfig struct { //nolint: maligned
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis-file"`
 
-	// RPC port for Tendermint to query for
-	// an external PrivValidator process
-	PrivValidatorCoreRPCHost string `mapstructure:"priv-validator-core-rpc-host"`
-
-	// RPC username for Dash Core
-	PrivValidatorCoreRPCUsername string `mapstructure:"priv-validator-core-rpc-username"`
-
-	// RPC password for Dash Core
-	PrivValidatorCoreRPCPassword string `mapstructure:"priv-validator-core-rpc-password"`
-
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node-key-file"`
 
@@ -259,40 +249,34 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:                      defaultGenesisJSONPath,
-		PrivValidatorCoreRPCHost:     "",
-		PrivValidatorCoreRPCUsername: "dashrpc",
-		PrivValidatorCoreRPCPassword: "rpcpassword",
-		NodeKey:                      defaultNodeKeyPath,
-		Mode:                         defaultMode,
-		Moniker:                      defaultMoniker,
-		ProxyApp:                     "tcp://127.0.0.1:26658",
-		ABCI:                         "socket",
-		LogLevel:                     DefaultLogLevel,
-		LogFormat:                    log.LogFormatPlain,
-		FilterPeers:                  false,
-		DBBackend:                    "goleveldb",
-		DBPath:                       "data",
+		Genesis:     defaultGenesisJSONPath,
+		NodeKey:     defaultNodeKeyPath,
+		Mode:        defaultMode,
+		Moniker:     defaultMoniker,
+		ProxyApp:    "tcp://127.0.0.1:26658",
+		ABCI:        "socket",
+		LogLevel:    DefaultLogLevel,
+		LogFormat:   log.LogFormatPlain,
+		FilterPeers: false,
+		DBBackend:   "goleveldb",
+		DBPath:      "data",
 	}
 }
 
 // SingleNodeBaseConfig returns a default base configuration for a Tendermint node
 func SingleNodeBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:                      defaultGenesisJSONPath,
-		PrivValidatorCoreRPCHost:     "",
-		PrivValidatorCoreRPCUsername: "",
-		PrivValidatorCoreRPCPassword: "",
-		NodeKey:                      defaultNodeKeyPath,
-		Mode:                         defaultMode,
-		Moniker:                      defaultMoniker,
-		ProxyApp:                     "tcp://127.0.0.1:26658",
-		ABCI:                         "socket",
-		LogLevel:                     DefaultLogLevel,
-		LogFormat:                    log.LogFormatPlain,
-		FilterPeers:                  false,
-		DBBackend:                    "goleveldb",
-		DBPath:                       "data",
+		Genesis:     defaultGenesisJSONPath,
+		NodeKey:     defaultNodeKeyPath,
+		Mode:        defaultMode,
+		Moniker:     defaultMoniker,
+		ProxyApp:    "tcp://127.0.0.1:26658",
+		ABCI:        "socket",
+		LogLevel:    DefaultLogLevel,
+		LogFormat:   log.LogFormatPlain,
+		FilterPeers: false,
+		DBBackend:   "goleveldb",
+		DBPath:      "data",
 	}
 }
 
@@ -303,7 +287,6 @@ func TestBaseConfig() BaseConfig {
 	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
 	cfg.DBBackend = "memdb"
-	cfg.PrivValidatorCoreRPCHost = ""
 	return cfg
 }
 
@@ -430,6 +413,16 @@ type PrivValidatorConfig struct {
 
 	// Path Root Certificate Authority used to sign both client and server certificates
 	RootCA string `mapstructure:"root-ca-file"`
+
+	// RPC port for Tendermint to query for
+	// an external PrivValidator process
+	CoreRPCHost string `mapstructure:"core-rpc-host"`
+
+	// RPC username for Dash Core
+	CoreRPCUsername string `mapstructure:"core-rpc-username"`
+
+	// RPC password for Dash Core
+	CoreRPCPassword string `mapstructure:"core-rpc-password"`
 }
 
 // DefaultBaseConfig returns a default private validator configuration
@@ -438,6 +431,10 @@ func DefaultPrivValidatorConfig() *PrivValidatorConfig {
 	return &PrivValidatorConfig{
 		Key:   defaultPrivValKeyPath,
 		State: defaultPrivValStatePath,
+
+		CoreRPCHost:     "",
+		CoreRPCUsername: "rpcuser",
+		CoreRPCPassword: "rpcpassword",
 	}
 }
 

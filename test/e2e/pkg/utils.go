@@ -96,9 +96,6 @@ func updateGenesisValidators(testnet *Testnet) initValidatorFunc {
 
 func updatePrivvalUpdateHeights(height int, quorumHash crypto.QuorumHash) initNodeFunc {
 	return func(node *Node) error {
-		if height == 0 {
-			return nil
-		}
 		if node.PrivvalUpdateHeights == nil {
 			node.PrivvalUpdateHeights = make(map[string]crypto.QuorumHash)
 		}

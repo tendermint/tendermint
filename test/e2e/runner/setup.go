@@ -331,7 +331,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.PrivValidator.State = PrivvalDummyStateFile
 
 	if node.PrivvalProtocol == e2e.ProtocolDashCore {
-		cfg.PrivValidatorCoreRPCHost = "127.0.0.1:19998"
+		cfg.PrivValidator.CoreRPCHost = "127.0.0.1:19998"
 	}
 
 	switch node.Mode {
