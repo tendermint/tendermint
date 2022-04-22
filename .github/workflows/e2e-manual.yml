@@ -4,6 +4,9 @@ name: e2e-manual
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   e2e-nightly-test:
     # Run parallel jobs for the listed testnet groups (must match the

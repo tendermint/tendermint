@@ -4,8 +4,13 @@ name: Janitor
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   cancel:
+    permissions:
+      actions: write  # for styfle/cancel-workflow-action to cancel/stop running workflows
     name: "Cancel Previous Runs"
     runs-on: ubuntu-latest
     timeout-minutes: 3

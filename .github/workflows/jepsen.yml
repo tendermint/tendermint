@@ -41,6 +41,9 @@ on:
         required: true
         default: 'https://github.com/tendermint/jepsen/releases/download/0.2.1/merkleeyes_0.1.7.tar.gz'
 
+permissions:
+  contents: read
+
 jobs:
   jepsen-test:
     runs-on: ubuntu-latest

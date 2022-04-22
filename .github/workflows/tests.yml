@@ -8,8 +8,14 @@ on:
       - master
       - release/**
 
+permissions:
+  contents: read
+
 jobs:
   tests:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for technote-space/get-diff-action to get git reference
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -38,6 +44,9 @@ jobs:
           path: ./build/${{ matrix.part }}.profile.out
 
   upload-coverage-report:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for technote-space/get-diff-action to get git reference
     runs-on: ubuntu-latest
     needs: tests
     steps:

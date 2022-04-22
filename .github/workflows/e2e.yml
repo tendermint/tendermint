@@ -9,8 +9,14 @@ on:
       - master
       - release/**
 
+permissions:
+  contents: read
+
 jobs:
   e2e-test:
+    permissions:
+      contents: read  # for actions/checkout to fetch code
+      pull-requests: read  # for technote-space/get-diff-action to get git reference
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
