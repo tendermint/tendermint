@@ -1,3 +1,80 @@
+## [0.8.0-dev.3] - 2022-04-22
+
+### Bug Fixes
+
+- Use thread-safely way to get pro-tx-hash from peer-state (#344)
+- Slightly modify a way of interacting with p2p channels in consensus reactor (#357)
+- Remove select block to don't block sending a witness response (#336)
+
+### Documentation
+
+- Fix broken markdown links (cherry-pick of #7847) (#7848)
+- Remove spec section from v0.35 docs (#7899)
+- Pin the RPC docs to v0.35 instead of master (backport #7909) (#7911)
+- Redirect master links to the latest release version (backport #7936) (#7954)
+- Fix cosmos theme version. (#7966)
+- Point docs/master to the same content as the latest release (backport #7980) (#7998)
+- Remove spec section from v0.35 docs (#7899)
+
+### Refactor
+
+- Consolidate redundant code (#322)
+
+### Abci
+
+- Revert buffer limit change (#7990)
+
+### Build
+
+- Bump github.com/prometheus/client_golang (#7731)
+- Bump github.com/gorilla/websocket from 1.4.2 to 1.5.0 (#7830)
+- Bump github.com/golangci/golangci-lint (#7853)
+
+### Ci
+
+- Fix super-linter configuration settings (backport #7708) (#7710)
+- Fix super-linter configuration settings (backport #7708) (#7710)
+
+### Consensus
+
+- Delay start of peer routines (backport of #7753) (#7760)
+- Refactor operations in consensus queryMaj23Routine (backport #7791) (#7793)
+- Additional timing metrics (backport #7849) (#7875)
+- Additional timing metrics (backport #7849) (#7875)
+
+### Light
+
+- Fix absence proof verification by light client (backport #7639) (#7716)
+- Remove legacy timeout scheme (backport #7776) (#7786)
+
+### Mempool
+
+- Return duplicate tx errors more consistently (backport #7714) (#7718)
+
+### P2p
+
+- Backport changes in ping/pong tolerances (#8009)
+- Retry failed connections slightly more aggressively (backport #8010) (#8012)
+- Plumb rudamentary service discovery to rectors and update statesync (backport #8030) (#8036)
+- Update shim to transfer information about peers (#8047)
+- Plumb rudamentary service discovery to rectors and update statesync (backport #8030) (#8036)
+- Update shim to transfer information about peers (#8047)
+
+### Proxy
+
+- Fix endblock metric (#7989)
+
+### Rpc
+
+- Fix layout of endpoint list (#7742) (#7744)
+
+### Statesync
+
+- Assert app version matches (backport #7856) (#7886)
+- Avoid compounding retry logic for fetching consensus parameters (backport #8032) (#8041)
+- Assert app version matches (backport #7856) (#7886)
+- Avoid compounding retry logic for fetching consensus parameters (backport #8032) (#8041)
+
 ## [0.8.0-dev.2] - 2022-04-22
 
 ### Bug Fixes
