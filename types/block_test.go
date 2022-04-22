@@ -887,7 +887,7 @@ func TestBlockIDEquals(t *testing.T) {
 	assert.True(t, blockID.Equals(blockIDDuplicate))
 	assert.False(t, blockID.Equals(blockIDDifferent))
 	assert.False(t, blockID.Equals(blockIDEmpty))
-	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
+	assert.True(t, blockIDEmpty.Equals(blockIDEmpty)) //nolint: gocritic
 	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
 }
 

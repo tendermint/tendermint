@@ -384,7 +384,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		default:
 		}
 	} else {
-		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", msgBytes)
+		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	}
 	return success
 }
@@ -396,7 +396,7 @@ func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 		return false
 	}
 
-	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", msgBytes)
+	// c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]

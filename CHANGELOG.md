@@ -319,6 +319,21 @@
 - Bump docker/login-action from 1.13.0 to 1.14.1
 - Bump golangci/golangci-lint-action from 2.5.2 to 3.1.0
 
+## [0.7.1] - 2022-04-13
+
+### Build
+
+- Implement full release workflow in the release script (#332) (#345)
+
+### Bug Fixes
+
+- Network stuck due to outdated proposal block (#327)
+- Don't process WAL logs for old rounds (#331)
+
+### Miscellaneous Tasks
+
+- Update changelog generation config
+
 ## [0.7.0] - 2022-01-24
 
 ### Miscellaneous Tasks
@@ -1681,7 +1696,7 @@
 - Only run when applicable (#4752)
 - Check git diff on each job (#4770)
 - Checkout code before git diff check (#4779)
-- Add paths 
+- Add paths
 - Bump the timeout for test_coverage (#4864)
 - Migrate localnet to github actions (#4878)
 - Add timeouts (#4912)
@@ -3451,7 +3466,7 @@
 ### Swagger
 
 - Update swagger port (#4498)
-- Remove duplicate blockID 
+- Remove duplicate blockID
 - Define version (#4952)
 - Update (#5257)
 
