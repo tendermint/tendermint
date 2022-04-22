@@ -1,8 +1,8 @@
 package consensus
 
 import (
+	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -15,6 +15,10 @@ import (
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+var (
+	errPeerClosed = errors.New("peer is closed")
 )
 
 // peerStateStats holds internal statistics for a peer.
@@ -44,8 +48,7 @@ type PeerState struct {
 	// ProTxHash is accessible only for the validator
 	ProTxHash types.ProTxHash
 
-	broadcastWG sync.WaitGroup
-	closer      *tmsync.Closer
+	closer *tmsync.Closer
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
@@ -389,6 +392,14 @@ func (ps *PeerState) SetProTxHash(proTxHash types.ProTxHash) {
 	defer ps.mtx.Unlock()
 
 	ps.ProTxHash = proTxHash.Copy()
+}
+
+// GetProTxHash returns a copy of peer's pro-tx-hash
+func (ps *PeerState) GetProTxHash() types.ProTxHash {
+	ps.mtx.RLock()
+	defer ps.mtx.RUnlock()
+
+	return ps.ProTxHash.Copy()
 }
 
 // SetHasVote sets the given vote as known by the peer

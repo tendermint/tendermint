@@ -469,10 +469,10 @@ func createPeerManager(
 		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    4,
 		MaxPeers:               1000,
-		MinRetryTime:           100 * time.Millisecond,
-		MaxRetryTime:           8 * time.Hour,
+		MinRetryTime:           250 * time.Millisecond,
+		MaxRetryTime:           30 * time.Minute,
 		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        3 * time.Second,
+		RetryTimeJitter:        5 * time.Second,
 		PrivatePeers:           privatePeerIDs,
 	}
 

@@ -21,6 +21,11 @@ import (
 
 const queueBufferDefault = 32
 
+var (
+	// ErrPeerChannelClosed is for when the send/receive an envelope but a peer was already disconnected
+	ErrPeerChannelClosed = errors.New("a peer channel is closed")
+)
+
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
 
@@ -64,9 +69,9 @@ type Channel struct {
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
 	Error chan<- PeerError // peer error reporting
 
+	mtx         sync.RWMutex
 	messageType proto.Message // the channel's message type, used for unmarshaling
 	closeCh     chan struct{}
-	closeOnce   sync.Once
 }
 
 // NewChannel creates a new channel. It is primarily for internal and test
@@ -88,15 +93,33 @@ func NewChannel(
 	}
 }
 
+// Send sends an envelope to a peer through a channel
+func (c *Channel) Send(e Envelope) error {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+	select {
+	case <-c.closeCh:
+		return ErrPeerChannelClosed
+	default:
+		c.Out <- e
+	}
+	return nil
+}
+
 // Close closes the channel. Future sends on Out and Error will panic. The In
 // channel remains open to avoid having to synchronize Router senders, which
 // should use Done() to detect channel closure instead.
 func (c *Channel) Close() {
-	c.closeOnce.Do(func() {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	select {
+	case <-c.closeCh:
+		return
+	default:
 		close(c.closeCh)
 		close(c.Out)
 		close(c.Error)
-	})
+	}
 }
 
 // Done returns a channel that's closed when Channel.Close() is called.
@@ -260,7 +283,7 @@ type Router struct {
 	peerMtx    sync.RWMutex
 	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
 	// the channels that the peer queue has open
-	peerChannels map[types.NodeID]channelIDs
+	peerChannels map[types.NodeID]ChannelIDSet
 	queueFactory func(int) queue
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
@@ -306,7 +329,7 @@ func NewRouter(
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[types.NodeID]queue{},
-		peerChannels:       make(map[types.NodeID]channelIDs),
+		peerChannels:       make(map[types.NodeID]ChannelIDSet),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
@@ -741,7 +764,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	go r.routePeer(address.NodeID, conn, toChannelIDs(peerInfo.Channels))
 }
 
-func (r *Router) getOrMakeQueue(peerID types.NodeID, channels channelIDs) queue {
+func (r *Router) getOrMakeQueue(peerID types.NodeID, channels ChannelIDSet) queue {
 	r.peerMtx.Lock()
 	defer r.peerMtx.Unlock()
 
@@ -853,9 +876,9 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // routePeer routes inbound and outbound messages between a peer and the reactor
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
-func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels channelIDs) {
+func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels ChannelIDSet) {
 	r.metrics.Peers.Add(1)
-	r.peerManager.Ready(peerID)
+	r.peerManager.Ready(peerID, channels)
 
 	sendQueue := r.getOrMakeQueue(peerID, channels)
 	defer func() {
@@ -1094,9 +1117,14 @@ func (r *Router) stopCtx() context.Context {
 	return ctx
 }
 
-type channelIDs map[ChannelID]struct{}
+type ChannelIDSet map[ChannelID]struct{}
 
-func toChannelIDs(bytes []byte) channelIDs {
+func (cs ChannelIDSet) Contains(id ChannelID) bool {
+	_, ok := cs[id]
+	return ok
+}
+
+func toChannelIDs(bytes []byte) ChannelIDSet {
 	c := make(map[ChannelID]struct{}, len(bytes))
 	for _, b := range bytes {
 		c[ChannelID(b)] = struct{}{}

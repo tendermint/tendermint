@@ -251,7 +251,9 @@ build-docs:
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
-	done < versions ;
+	done < versions ; \
+	mkdir -p ~/output/master ; \
+	cp -r .vuepress/dist/* ~/output/master/
 .PHONY: build-docs
 
 ###############################################################################

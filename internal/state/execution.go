@@ -189,11 +189,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlockChainLock(state State, block *types.Block) error {
-	err := validateBlockChainLock(blockExec.queryApp, state, block)
-	if err != nil {
-		return err
-	}
-	return err
+	return validateBlockChainLock(blockExec.queryApp, state, block)
 }
 
 // ValidateBlockTime validates the given block time against the given state.

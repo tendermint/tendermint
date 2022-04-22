@@ -116,13 +116,12 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 
 		for _, ps := range r.peers {
 			cs.Logger.Info("sending bad vote", "block", blockHash, "peer", ps.peerID)
-
-			r.voteCh.Out <- p2p.Envelope{
+			_ = r.voteCh.Send(p2p.Envelope{
 				To: ps.peerID,
 				Message: &tmcons.Vote{
 					Vote: precommit.ToProto(),
 				},
-			}
+			})
 		}
 	}()
 }

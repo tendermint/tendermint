@@ -197,6 +197,7 @@ func setup(
 
 	t.Cleanup(func() {
 		require.NoError(t, rts.reactor.Stop())
+		rts.reactor.Wait()
 		require.False(t, rts.reactor.IsRunning())
 	})
 
@@ -217,7 +218,7 @@ func TestReactor_Sync(t *testing.T) {
 
 	// app query returns valid state app hash
 	rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(&abci.ResponseInfo{
-		AppVersion:       9,
+		AppVersion:       0,
 		LastBlockHeight:  snapshotHeight,
 		LastBlockAppHash: chain[snapshotHeight+1].AppHash,
 	}, nil)
@@ -473,10 +474,22 @@ func TestReactor_BlockProviders(t *testing.T) {
 	rts.peerUpdateCh <- p2p.PeerUpdate{
 		NodeID: "aa",
 		Status: p2p.PeerStatusUp,
+		Channels: p2p.ChannelIDSet{
+			SnapshotChannel:   struct{}{},
+			ChunkChannel:      struct{}{},
+			LightBlockChannel: struct{}{},
+			ParamsChannel:     struct{}{},
+		},
 	}
 	rts.peerUpdateCh <- p2p.PeerUpdate{
 		NodeID: "bb",
 		Status: p2p.PeerStatusUp,
+		Channels: p2p.ChannelIDSet{
+			SnapshotChannel:   struct{}{},
+			ChunkChannel:      struct{}{},
+			LightBlockChannel: struct{}{},
+			ParamsChannel:     struct{}{},
+		},
 	}
 
 	closeCh := make(chan struct{})
@@ -522,6 +535,8 @@ func TestReactor_BlockProviders(t *testing.T) {
 }
 
 func TestReactor_StateProviderP2P(t *testing.T) {
+	t.Cleanup(leaktest.CheckTimeout(t, 1*time.Minute))
+
 	rts := setup(t, nil, nil, nil, 2)
 	// make syncer non nil else test won't think we are state syncing
 	rts.reactor.syncer = rts.syncer
@@ -566,7 +581,7 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 	require.NoError(t, err)
 	rts.reactor.syncer.stateProvider = rts.reactor.stateProvider
 
-	actx, cancel := context.WithTimeout(bctx, 10*time.Second)
+	actx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
 	appHash, err := rts.reactor.stateProvider.AppHash(actx, 5)
@@ -609,6 +624,12 @@ func TestReactor_Backfill(t *testing.T) {
 				rts.peerUpdateCh <- p2p.PeerUpdate{
 					NodeID: types.NodeID(peer),
 					Status: p2p.PeerStatusUp,
+					Channels: p2p.ChannelIDSet{
+						SnapshotChannel:   struct{}{},
+						ChunkChannel:      struct{}{},
+						LightBlockChannel: struct{}{},
+						ParamsChannel:     struct{}{},
+					},
 				}
 			}
 
@@ -815,6 +836,12 @@ func graduallyAddPeers(
 			peerUpdateCh <- p2p.PeerUpdate{
 				NodeID: factory.RandomNodeID(),
 				Status: p2p.PeerStatusUp,
+				Channels: p2p.ChannelIDSet{
+					SnapshotChannel:   struct{}{},
+					ChunkChannel:      struct{}{},
+					LightBlockChannel: struct{}{},
+					ParamsChannel:     struct{}{},
+				},
 			}
 		case <-closeCh:
 			return
