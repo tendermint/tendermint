@@ -400,21 +400,28 @@ func TestVoteProtobuf(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		msg     string
-		v1      *Vote
-		expPass bool
+		msg                 string
+		vote                *Vote
+		convertsOk          bool
+		passesValidateBasic bool
 	}{
-		{"success", vote, true},
-		{"fail vote validate basic", &Vote{}, false},
-		{"failure nil", nil, false},
+		{"success", vote, true, true},
+		{"fail vote validate basic", &Vote{}, true, false},
 	}
 	for _, tc := range testCases {
-		protoProposal := tc.v1.ToProto()
+		protoProposal := tc.vote.ToProto()
 
 		v, err := VoteFromProto(protoProposal)
-		if tc.expPass {
+		if tc.convertsOk {
 			require.NoError(t, err)
-			require.Equal(t, tc.v1, v, tc.msg)
+		} else {
+			require.Error(t, err)
+		}
+
+		err = v.ValidateBasic()
+		if tc.passesValidateBasic {
+			require.NoError(t, err)
+			require.Equal(t, tc.vote, v, tc.msg)
 		} else {
 			require.Error(t, err)
 		}

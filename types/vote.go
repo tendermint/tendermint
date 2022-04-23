@@ -61,11 +61,11 @@ type Vote struct {
 	ExtensionSignature []byte                `json:"extension_signature"`
 }
 
-func voteFromProto(pv *tmproto.Vote) (*Vote, error) {
-	if pv == nil {
-		return nil, errors.New("nil vote")
-	}
-
+// VoteFromProto attempts to convert the given serialization (Protobuf) type to
+// our Vote domain type. No validation is performed on the resulting vote -
+// this is left up to the caller to decide whether to call ValidateBasic or
+// ValidateWithExtension.
+func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	blockID, err := BlockIDFromProto(&pv.BlockID)
 	if err != nil {
 		return nil, err
@@ -83,29 +83,6 @@ func voteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		Extension:          pv.Extension,
 		ExtensionSignature: pv.ExtensionSignature,
 	}, nil
-}
-
-// VoteFromProto attempts to convert the given serialization (Protobuf) type to
-// our Vote domain type, performing basic validation with ValidateBasic. Note
-// that this performs no vote extension validation - to additionally validate
-// vote extensions, use VoteWithExtensionFromProto instead.
-func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
-	vote, err := voteFromProto(pv)
-	if err != nil {
-		return nil, err
-	}
-	return vote, vote.ValidateBasic()
-}
-
-// VoteWithExtensionFromProto attempts to convert the given serialization
-// (Protobuf) type to our Vote domain type, performing validation with
-// ValidateWithExtension.
-func VoteWithExtensionFromProto(pv *tmproto.Vote) (*Vote, error) {
-	vote, err := voteFromProto(pv)
-	if err != nil {
-		return nil, err
-	}
-	return vote, vote.ValidateWithExtension()
 }
 
 // CommitSig converts the Vote to a CommitSig.
