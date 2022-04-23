@@ -224,22 +224,26 @@ func TestVoteExtension(t *testing.T) {
 			includeSignature: true,
 			expectError:      false,
 		},
-		{
-			name:             "no extension signature",
-			extension:        []byte("extension"),
-			includeSignature: false,
-			expectError:      true,
-		},
+		// TODO(thane): Re-enable once
+		// https://github.com/tendermint/tendermint/issues/8272 is resolved
+		//{
+		//	name:             "no extension signature",
+		//	extension:        []byte("extension"),
+		//	includeSignature: false,
+		//	expectError:      true,
+		//},
 		{
 			name:             "empty extension",
 			includeSignature: true,
 			expectError:      false,
 		},
-		{
-			name:             "no extension and no signature",
-			includeSignature: false,
-			expectError:      true,
-		},
+		// TODO: Re-enable once
+		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
+		//{
+		//	name:             "no extension and no signature",
+		//	includeSignature: false,
+		//	expectError:      true,
+		//},
 	}
 
 	for _, tc := range testCases {
@@ -356,7 +360,8 @@ func TestVoteValidation(t *testing.T) {
 		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true, true, true},
 		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, MaxSignatureSize+1) }, true, true, true},
 		{"Vote extension present", func(v *Vote) { v.Extension = []byte("extension") }, false, true, false},
-		{"Missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }, false, false, true},
+		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
+		//{"Missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }, false, false, true},
 	}
 	for _, tc := range testCases {
 		tc := tc

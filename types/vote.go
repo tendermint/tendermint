@@ -232,15 +232,21 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 
 // VerifyWithExtension performs the same verification as Verify, but
 // additionally checks whether the vote extension signature corresponds to the
-// given chain ID and public key.
+// given chain ID and public key. We only verify vote extension signatures for
+// precommits.
 func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) error {
 	v, err := vote.verifyAndReturnProto(chainID, pubKey)
 	if err != nil {
 		return err
 	}
-	extSignBytes := VoteExtensionSignBytes(chainID, v)
-	if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
-		return ErrVoteInvalidSignature
+	// We only verify vote extension signatures for precommits.
+	if vote.Type == tmproto.PrecommitType {
+		extSignBytes := VoteExtensionSignBytes(chainID, v)
+		// TODO: Remove extension signature nil check to enforce vote extension
+		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
+		if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+			return ErrVoteInvalidSignature
+		}
 	}
 	return nil
 }
@@ -314,7 +320,12 @@ func (vote *Vote) ValidateWithExtension() error {
 
 	// We should always see vote extension signatures in precommits
 	if vote.Type == tmproto.PrecommitType && len(vote.ExtensionSignature) == 0 {
-		return errors.New("vote extension signature is missing")
+		// TODO(thane): Remove extension length check once
+		//              https://github.com/tendermint/tendermint/issues/8272 is
+		//              resolved.
+		if len(vote.Extension) > 0 {
+			return errors.New("vote extension signature is missing")
+		}
 	}
 
 	return nil
