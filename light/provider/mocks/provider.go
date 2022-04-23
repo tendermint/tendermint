@@ -68,9 +68,10 @@ func (_m *Provider) ReportEvidence(_a0 context.Context, _a1 types.Evidence) erro
 	return r0
 }
 
-// NewProvider creates a new instance of Provider. It also registers a cleanup function to assert the mocks expectations.
+// NewProvider creates a new instance of Provider. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewProvider(t testing.TB) *Provider {
 	mock := &Provider{}
+	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

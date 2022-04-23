@@ -798,9 +798,10 @@ func (_m *Client) Validators(ctx context.Context, height *int64, page *int, perP
 	return r0, r1
 }
 
-// NewClient creates a new instance of Client. It also registers a cleanup function to assert the mocks expectations.
+// NewClient creates a new instance of Client. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewClient(t testing.TB) *Client {
 	mock := &Client{}
+	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

@@ -74,9 +74,10 @@ func (_m *EvidencePool) Update(_a0 context.Context, _a1 state.State, _a2 types.E
 	_m.Called(_a0, _a1, _a2)
 }
 
-// NewEvidencePool creates a new instance of EvidencePool. It also registers a cleanup function to assert the mocks expectations.
+// NewEvidencePool creates a new instance of EvidencePool. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewEvidencePool(t testing.TB) *EvidencePool {
 	mock := &EvidencePool{}
+	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

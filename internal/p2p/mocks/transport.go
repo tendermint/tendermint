@@ -144,9 +144,10 @@ func (_m *Transport) String() string {
 	return r0
 }
 
-// NewTransport creates a new instance of Transport. It also registers a cleanup function to assert the mocks expectations.
+// NewTransport creates a new instance of Transport. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
 func NewTransport(t testing.TB) *Transport {
 	mock := &Transport{}
+	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

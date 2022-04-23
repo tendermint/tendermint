@@ -143,86 +143,86 @@ func ToResponseFlush() *Response {
 	}
 }
 
-func ToResponseInfo(res ResponseInfo) *Response {
+func ToResponseInfo(res *ResponseInfo) *Response {
 	return &Response{
-		Value: &Response_Info{&res},
+		Value: &Response_Info{res},
 	}
 }
 
-func ToResponseCheckTx(res ResponseCheckTx) *Response {
+func ToResponseCheckTx(res *ResponseCheckTx) *Response {
 	return &Response{
-		Value: &Response_CheckTx{&res},
+		Value: &Response_CheckTx{res},
 	}
 }
 
-func ToResponseCommit(res ResponseCommit) *Response {
+func ToResponseCommit(res *ResponseCommit) *Response {
 	return &Response{
-		Value: &Response_Commit{&res},
+		Value: &Response_Commit{res},
 	}
 }
 
-func ToResponseQuery(res ResponseQuery) *Response {
+func ToResponseQuery(res *ResponseQuery) *Response {
 	return &Response{
-		Value: &Response_Query{&res},
+		Value: &Response_Query{res},
 	}
 }
 
-func ToResponseInitChain(res ResponseInitChain) *Response {
+func ToResponseInitChain(res *ResponseInitChain) *Response {
 	return &Response{
-		Value: &Response_InitChain{&res},
+		Value: &Response_InitChain{res},
 	}
 }
 
-func ToResponseListSnapshots(res ResponseListSnapshots) *Response {
+func ToResponseListSnapshots(res *ResponseListSnapshots) *Response {
 	return &Response{
-		Value: &Response_ListSnapshots{&res},
+		Value: &Response_ListSnapshots{res},
 	}
 }
 
-func ToResponseOfferSnapshot(res ResponseOfferSnapshot) *Response {
+func ToResponseOfferSnapshot(res *ResponseOfferSnapshot) *Response {
 	return &Response{
-		Value: &Response_OfferSnapshot{&res},
+		Value: &Response_OfferSnapshot{res},
 	}
 }
 
-func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
+func ToResponseLoadSnapshotChunk(res *ResponseLoadSnapshotChunk) *Response {
 	return &Response{
-		Value: &Response_LoadSnapshotChunk{&res},
+		Value: &Response_LoadSnapshotChunk{res},
 	}
 }
 
-func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
+func ToResponseApplySnapshotChunk(res *ResponseApplySnapshotChunk) *Response {
 	return &Response{
-		Value: &Response_ApplySnapshotChunk{&res},
+		Value: &Response_ApplySnapshotChunk{res},
 	}
 }
 
-func ToResponseExtendVote(res ResponseExtendVote) *Response {
+func ToResponseExtendVote(res *ResponseExtendVote) *Response {
 	return &Response{
-		Value: &Response_ExtendVote{&res},
+		Value: &Response_ExtendVote{res},
 	}
 }
 
-func ToResponseVerifyVoteExtension(res ResponseVerifyVoteExtension) *Response {
+func ToResponseVerifyVoteExtension(res *ResponseVerifyVoteExtension) *Response {
 	return &Response{
-		Value: &Response_VerifyVoteExtension{&res},
+		Value: &Response_VerifyVoteExtension{res},
 	}
 }
 
-func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {
+func ToResponsePrepareProposal(res *ResponsePrepareProposal) *Response {
 	return &Response{
-		Value: &Response_PrepareProposal{&res},
+		Value: &Response_PrepareProposal{res},
 	}
 }
 
-func ToResponseProcessProposal(res ResponseProcessProposal) *Response {
+func ToResponseProcessProposal(res *ResponseProcessProposal) *Response {
 	return &Response{
-		Value: &Response_ProcessProposal{&res},
+		Value: &Response_ProcessProposal{res},
 	}
 }
 
-func ToResponseFinalizeBlock(res ResponseFinalizeBlock) *Response {
+func ToResponseFinalizeBlock(res *ResponseFinalizeBlock) *Response {
 	return &Response{
-		Value: &Response_FinalizeBlock{&res},
+		Value: &Response_FinalizeBlock{res},
 	}
 }
