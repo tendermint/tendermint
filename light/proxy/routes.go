@@ -19,13 +19,13 @@ func (p proxyService) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, 
 
 func (p proxyService) ABCIQuery(ctx context.Context, req *coretypes.RequestABCIQuery) (*coretypes.ResultABCIQuery, error) {
 	return p.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, rpcclient.ABCIQueryOptions{
-		Height: req.Height,
+		Height: int64(req.Height),
 		Prove:  req.Prove,
 	})
 }
 
 func (p proxyService) Block(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlock, error) {
-	return p.Client.Block(ctx, req.Height)
+	return p.Client.Block(ctx, (*int64)(req.Height))
 }
 
 func (p proxyService) BlockByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultBlock, error) {
@@ -33,15 +33,15 @@ func (p proxyService) BlockByHash(ctx context.Context, req *coretypes.RequestBlo
 }
 
 func (p proxyService) BlockResults(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlockResults, error) {
-	return p.Client.BlockResults(ctx, req.Height)
+	return p.Client.BlockResults(ctx, (*int64)(req.Height))
 }
 
 func (p proxyService) BlockSearch(ctx context.Context, req *coretypes.RequestBlockSearch) (*coretypes.ResultBlockSearch, error) {
-	return p.Client.BlockSearch(ctx, req.Query, req.Page, req.PerPage, req.OrderBy)
+	return p.Client.BlockSearch(ctx, req.Query, req.Page.IntPtr(), req.PerPage.IntPtr(), req.OrderBy)
 }
 
 func (p proxyService) BlockchainInfo(ctx context.Context, req *coretypes.RequestBlockchainInfo) (*coretypes.ResultBlockchainInfo, error) {
-	return p.Client.BlockchainInfo(ctx, req.MinHeight, req.MaxHeight)
+	return p.Client.BlockchainInfo(ctx, int64(req.MinHeight), int64(req.MaxHeight))
 }
 
 func (p proxyService) BroadcastEvidence(ctx context.Context, req *coretypes.RequestBroadcastEvidence) (*coretypes.ResultBroadcastEvidence, error) {
@@ -65,11 +65,11 @@ func (p proxyService) CheckTx(ctx context.Context, req *coretypes.RequestCheckTx
 }
 
 func (p proxyService) Commit(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultCommit, error) {
-	return p.Client.Commit(ctx, req.Height)
+	return p.Client.Commit(ctx, (*int64)(req.Height))
 }
 
 func (p proxyService) ConsensusParams(ctx context.Context, req *coretypes.RequestConsensusParams) (*coretypes.ResultConsensusParams, error) {
-	return p.Client.ConsensusParams(ctx, req.Height)
+	return p.Client.ConsensusParams(ctx, (*int64)(req.Height))
 }
 
 func (p proxyService) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error) {
@@ -93,7 +93,7 @@ func (p proxyService) GetConsensusState(ctx context.Context) (*coretypes.ResultC
 }
 
 func (p proxyService) Header(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultHeader, error) {
-	return p.Client.Header(ctx, req.Height)
+	return p.Client.Header(ctx, (*int64)(req.Height))
 }
 
 func (p proxyService) HeaderByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultHeader, error) {
@@ -129,11 +129,11 @@ func (p proxyService) Tx(ctx context.Context, req *coretypes.RequestTx) (*corety
 }
 
 func (p proxyService) TxSearch(ctx context.Context, req *coretypes.RequestTxSearch) (*coretypes.ResultTxSearch, error) {
-	return p.Client.TxSearch(ctx, req.Query, req.Prove, req.Page, req.PerPage, req.OrderBy)
+	return p.Client.TxSearch(ctx, req.Query, req.Prove, req.Page.IntPtr(), req.PerPage.IntPtr(), req.OrderBy)
 }
 
 func (p proxyService) UnconfirmedTxs(ctx context.Context, req *coretypes.RequestUnconfirmedTxs) (*coretypes.ResultUnconfirmedTxs, error) {
-	return p.Client.UnconfirmedTxs(ctx, req.Page, req.PerPage)
+	return p.Client.UnconfirmedTxs(ctx, req.Page.IntPtr(), req.PerPage.IntPtr())
 }
 
 func (p proxyService) Unsubscribe(ctx context.Context, req *coretypes.RequestUnsubscribe) (*coretypes.ResultUnsubscribe, error) {
@@ -145,5 +145,5 @@ func (p proxyService) UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsu
 }
 
 func (p proxyService) Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error) {
-	return p.Client.Validators(ctx, req.Height, req.Page, req.PerPage)
+	return p.Client.Validators(ctx, (*int64)(req.Height), req.Page.IntPtr(), req.PerPage.IntPtr())
 }
