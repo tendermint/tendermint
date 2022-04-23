@@ -339,52 +339,112 @@ func TestVoteString(t *testing.T) {
 	}
 }
 
-func TestVoteValidation(t *testing.T) {
+func signAndMalleateVote(ctx context.Context, t *testing.T, pv PrivValidator, chainID string, malleateVote func(*Vote), vote *Vote) {
+	t.Helper()
+
+	v := vote.ToProto()
+	require.NoError(t, pv.SignVote(ctx, chainID, v))
+	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
+	malleateVote(vote)
+}
+
+func TestValidVotes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	privVal := NewMockPV()
 
 	testCases := []struct {
-		testName                 string
-		malleateVote             func(*Vote)
-		expectBasicErr           bool
-		expectExtErrForPrevote   bool
-		expectExtErrForPrecommit bool
+		name         string
+		vote         *Vote
+		malleateVote func(*Vote)
 	}{
-		{"Good Vote", func(v *Vote) {}, false, false, false},
-		{"Negative Height", func(v *Vote) { v.Height = -1 }, true, true, true},
-		{"Negative Round", func(v *Vote) { v.Round = -1 }, true, true, true},
-		{"Invalid BlockID", func(v *Vote) {
-			v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}
-		}, true, true, true},
-		{"Invalid Address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }, true, true, true},
-		{"Invalid ValidatorIndex", func(v *Vote) { v.ValidatorIndex = -1 }, true, true, true},
-		{"Invalid Signature", func(v *Vote) { v.Signature = nil }, true, true, true},
-		{"Too big Signature", func(v *Vote) { v.Signature = make([]byte, MaxSignatureSize+1) }, true, true, true},
-		{"Vote extension present", func(v *Vote) { v.Extension = []byte("extension") }, false, true, false},
-		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
-		//{"Missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }, false, false, true},
+		{"good prevote", examplePrevote(t), func(v *Vote) {}},
+		{"good precommit without vote extension", examplePrecommit(t), func(v *Vote) { v.Extension = nil }},
+		{"good precommit with vote extension", examplePrecommit(t), func(v *Vote) { v.Extension = []byte("extension") }},
 	}
 	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+		signAndMalleateVote(ctx, t, privVal, "test_chain_id", tc.malleateVote, tc.vote)
+		require.NoError(t, tc.vote.ValidateBasic(), "ValidateBasic for %s", tc.name)
+		require.NoError(t, tc.vote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+	}
+}
 
-			votes := []*Vote{examplePrevote(t), examplePrecommit(t)}
-			for i, vote := range votes {
-				v := vote.ToProto()
-				require.NoError(t, privVal.SignVote(ctx, "test_chain_id", v))
-				vote.Signature = v.Signature
-				tc.malleateVote(vote)
-				// ValidateBasic errors should be consistent across prevotes and precommits
-				assert.Equal(t, tc.expectBasicErr, vote.ValidateBasic() != nil, "ValidateBasic had an unexpected result")
-				// ValidateWithExtension errors can vary depending on vote type
-				if i == 0 {
-					assert.Equal(t, tc.expectExtErrForPrevote, vote.ValidateWithExtension() != nil, "ValidateWithExtension had an unexpected result for prevote")
-				} else {
-					assert.Equal(t, tc.expectExtErrForPrecommit, vote.ValidateWithExtension() != nil, "ValidateWithExtension had an unexpected result for precommit")
-				}
-			}
-		})
+func TestInvalidVotes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	privVal := NewMockPV()
+
+	testCases := []struct {
+		name         string
+		malleateVote func(*Vote)
+	}{
+		{"negative height", func(v *Vote) { v.Height = -1 }},
+		{"negative round", func(v *Vote) { v.Round = -1 }},
+		{"invalid block ID", func(v *Vote) { v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}} }},
+		{"invalid address", func(v *Vote) { v.ValidatorAddress = make([]byte, 1) }},
+		{"invalid validator index", func(v *Vote) { v.ValidatorIndex = -1 }},
+		{"invalid signature", func(v *Vote) { v.Signature = nil }},
+		{"oversized signature", func(v *Vote) { v.Signature = make([]byte, MaxSignatureSize+1) }},
+	}
+	for _, tc := range testCases {
+		prevote := examplePrevote(t)
+		signAndMalleateVote(ctx, t, privVal, "test_chain_id", tc.malleateVote, prevote)
+		require.Error(t, prevote.ValidateBasic(), "ValidateBasic for %s in invalid prevote", tc.name)
+		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s in invalid prevote", tc.name)
+
+		precommit := examplePrecommit(t)
+		signAndMalleateVote(ctx, t, privVal, "test_chain_id", tc.malleateVote, precommit)
+		require.Error(t, precommit.ValidateBasic(), "ValidateBasic for %s in invalid precommit", tc.name)
+		require.Error(t, precommit.ValidateWithExtension(), "ValidateWithExtension for %s in invalid precommit", tc.name)
+	}
+}
+
+func TestInvalidPrevoteExtensions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	privVal := NewMockPV()
+
+	testCases := []struct {
+		name         string
+		malleateVote func(*Vote)
+	}{
+		{"vote extension present", func(v *Vote) { v.Extension = []byte("extension") }},
+		{"vote extension signature present", func(v *Vote) { v.ExtensionSignature = []byte("signature") }},
+	}
+	for _, tc := range testCases {
+		prevote := examplePrevote(t)
+		signAndMalleateVote(ctx, t, privVal, "test_chain_id", tc.malleateVote, prevote)
+		// We don't expect an error from ValidateBasic, because it doesn't
+		// handle vote extensions.
+		require.NoError(t, prevote.ValidateBasic(), "ValidateBasic for %s", tc.name)
+		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+	}
+}
+
+func TestInvalidPrecommitExtensions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	privVal := NewMockPV()
+
+	testCases := []struct {
+		name         string
+		malleateVote func(*Vote)
+	}{
+		{"vote extension present without signature", func(v *Vote) {
+			v.Extension = []byte("extension")
+			v.ExtensionSignature = nil
+		}},
+		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
+		//{"missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }},
+	}
+	for _, tc := range testCases {
+		precommit := examplePrecommit(t)
+		signAndMalleateVote(ctx, t, privVal, "test_chain_id", tc.malleateVote, precommit)
+		// We don't expect an error from ValidateBasic, because it doesn't
+		// handle vote extensions.
+		require.NoError(t, precommit.ValidateBasic(), "ValidateBasic for %s", tc.name)
+		require.Error(t, precommit.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
 	}
 }
 
