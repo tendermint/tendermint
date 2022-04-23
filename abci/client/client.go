@@ -17,7 +17,7 @@ const (
 
 //go:generate ../../scripts/mockery_generate.sh Client
 
-// Client defines an interface for an ABCI client
+// Client defines the interface for an ABCI client.
 //
 // NOTE these are client errors, eg. ABCI socket connectivity issues.
 // Application-related errors are reflected in response via ABCI error codes
