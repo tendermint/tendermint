@@ -146,8 +146,8 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, req *coretypes.Re
 // More: https://docs.tendermint.com/master/rpc/#/Info/unconfirmed_txs
 func (env *Environment) UnconfirmedTxs(ctx context.Context, req *coretypes.RequestUnconfirmedTxs) (*coretypes.ResultUnconfirmedTxs, error) {
 	totalCount := env.Mempool.Size()
-	perPage := env.validatePerPage(req.PerPage)
-	page, err := validatePage(req.Page, perPage, totalCount)
+	perPage := env.validatePerPage(req.PerPage.IntPtr())
+	page, err := validatePage(req.Page.IntPtr(), perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}

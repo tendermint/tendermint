@@ -27,8 +27,8 @@ func (env *Environment) Validators(ctx context.Context, req *coretypes.RequestVa
 	}
 
 	totalCount := len(validators.Validators)
-	perPage := env.validatePerPage(req.PerPage)
-	page, err := validatePage(req.Page, perPage, totalCount)
+	perPage := env.validatePerPage(req.PerPage.IntPtr())
+	page, err := validatePage(req.Page.IntPtr(), perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (env *Environment) GetConsensusState(ctx context.Context) (*coretypes.Resul
 func (env *Environment) ConsensusParams(ctx context.Context, req *coretypes.RequestConsensusParams) (*coretypes.ResultConsensusParams, error) {
 	// The latest consensus params that we know is the consensus params after
 	// the last block.
-	height, err := env.getHeight(env.latestUncommittedHeight(), req.Height)
+	height, err := env.getHeight(env.latestUncommittedHeight(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}

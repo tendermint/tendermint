@@ -94,9 +94,9 @@ func (env *Environment) TxSearch(ctx context.Context, req *coretypes.RequestTxSe
 
 			// paginate results
 			totalCount := len(results)
-			perPage := env.validatePerPage(req.PerPage)
+			perPage := env.validatePerPage(req.PerPage.IntPtr())
 
-			page, err := validatePage(req.Page, perPage, totalCount)
+			page, err := validatePage(req.Page.IntPtr(), perPage, totalCount)
 			if err != nil {
 				return nil, err
 			}

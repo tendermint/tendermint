@@ -27,8 +27,8 @@ func (env *Environment) BlockchainInfo(ctx context.Context, req *coretypes.Reque
 	minHeight, maxHeight, err := filterMinMax(
 		env.BlockStore.Base(),
 		env.BlockStore.Height(),
-		req.MinHeight,
-		req.MaxHeight,
+		int64(req.MinHeight),
+		int64(req.MaxHeight),
 		limit,
 	)
 	if err != nil {
@@ -88,7 +88,7 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 // If no height is provided, it will fetch the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block
 func (env *Environment) Block(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlock, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
+	height, err := env.getHeight(env.BlockStore.Height(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (env *Environment) BlockByHash(ctx context.Context, req *coretypes.RequestB
 // If no height is provided, it will fetch the latest header.
 // More: https://docs.tendermint.com/master/rpc/#/Info/header
 func (env *Environment) Header(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultHeader, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
+	height, err := env.getHeight(env.BlockStore.Height(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (env *Environment) HeaderByHash(ctx context.Context, req *coretypes.Request
 // If no height is provided, it will fetch the commit for the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/commit
 func (env *Environment) Commit(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultCommit, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
+	height, err := env.getHeight(env.BlockStore.Height(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (env *Environment) Commit(ctx context.Context, req *coretypes.RequestBlockI
 // Results are for the height of the block containing the txs.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_results
 func (env *Environment) BlockResults(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlockResults, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
+	height, err := env.getHeight(env.BlockStore.Height(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
@@ -244,9 +244,9 @@ func (env *Environment) BlockSearch(ctx context.Context, req *coretypes.RequestB
 
 	// paginate results
 	totalCount := len(results)
-	perPage := env.validatePerPage(req.PerPage)
+	perPage := env.validatePerPage(req.PerPage.IntPtr())
 
-	page, err := validatePage(req.Page, perPage, totalCount)
+	page, err := validatePage(req.Page.IntPtr(), perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
