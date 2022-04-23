@@ -408,7 +408,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 
 		// Vote extensions are non-deterministic, so it's possible that an
 		// application may have created a different extension. We therefore
-		// always re-sign the vote extension (if it's a precommit).
+		// always re-sign the vote extensions of precommits.
 		vote.ExtensionSignature = extSig
 
 		return nil
