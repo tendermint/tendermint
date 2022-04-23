@@ -373,9 +373,12 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 
 	signBytes := types.VoteSignBytes(chainID, vote)
 
+	// Vote extensions are non-deterministic, so it is possible that an
+	// application may have created a different extension. We therefore always
+	// re-sign the vote extensions of precommits. For prevotes, the extension
+	// signature will always be empty.
 	var extSig []byte
 	if vote.Type == tmproto.PrecommitType {
-		// We always sign the vote extension for precommits. See below for details.
 		extSignBytes := types.VoteExtensionSignBytes(chainID, vote)
 		extSig, err = pv.Key.PrivKey.Sign(extSignBytes)
 		if err != nil {
@@ -406,9 +409,6 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 			vote.Signature = lss.Signature
 		}
 
-		// Vote extensions are non-deterministic, so it's possible that an
-		// application may have created a different extension. We therefore
-		// always re-sign the vote extensions of precommits.
 		vote.ExtensionSignature = extSig
 
 		return nil
