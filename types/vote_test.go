@@ -367,9 +367,8 @@ func TestVoteValidation(t *testing.T) {
 			votes := []*Vote{examplePrevote(t), examplePrecommit(t)}
 			for i, vote := range votes {
 				v := vote.ToProto()
-				err := privVal.SignVote(ctx, "test_chain_id", v)
+				require.NoError(t, privVal.SignVote(ctx, "test_chain_id", v))
 				vote.Signature = v.Signature
-				require.NoError(t, err)
 				tc.malleateVote(vote)
 				// ValidateBasic errors should be consistent across prevotes and precommits
 				assert.Equal(t, tc.expectBasicErr, vote.ValidateBasic() != nil, "ValidateBasic had an unexpected result")
