@@ -25,8 +25,8 @@ func testMux() *http.ServeMux {
 		H json.Number `json:"h"`
 	}
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx context.Context, arg *testArgs) (string, error) { return "foo", nil }, "s", "i"),
-		"block": NewRPCFunc(func(ctx context.Context, arg *blockArgs) (string, error) { return "block", nil }, "height"),
+		"c":     NewRPCFunc(func(ctx context.Context, arg *testArgs) (string, error) { return "foo", nil }),
+		"block": NewRPCFunc(func(ctx context.Context, arg *blockArgs) (string, error) { return "block", nil }),
 	}
 	mux := http.NewServeMux()
 	logger := log.NewNopLogger()

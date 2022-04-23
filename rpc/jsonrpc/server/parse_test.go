@@ -140,7 +140,7 @@ func TestParseJSONRPC(t *testing.T) {
 		Name   string `json:"name"`
 	}
 	demo := func(ctx context.Context, _ *demoArgs) error { return nil }
-	call := NewRPCFunc(demo, "height", "name")
+	call := NewRPCFunc(demo)
 
 	cases := []struct {
 		raw    string
@@ -183,7 +183,7 @@ func TestParseURI(t *testing.T) {
 		Name   string      `json:"name"`
 	}
 	demo := func(ctx context.Context, arg *args) error { return nil }
-	call := NewRPCFunc(demo, "height", "name")
+	call := NewRPCFunc(demo)
 
 	cases := []struct {
 		raw    []interface{}

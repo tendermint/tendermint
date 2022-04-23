@@ -66,7 +66,7 @@ func (rf *RPCFunc) Call(ctx context.Context, args []reflect.Value) (interface{},
 //
 // for an arbitrary struct type T and type R. NewRPCFunc will panic if f does
 // not have one of these forms.
-func NewRPCFunc(f interface{}, argNames ...string) *RPCFunc {
+func NewRPCFunc(f interface{}) *RPCFunc {
 	rf, err := newRPCFunc(f)
 	if err != nil {
 		panic("invalid RPC function: " + err.Error())
@@ -76,8 +76,8 @@ func NewRPCFunc(f interface{}, argNames ...string) *RPCFunc {
 
 // NewWSRPCFunc behaves as NewRPCFunc, but marks the resulting function for use
 // via websocket.
-func NewWSRPCFunc(f interface{}, argNames ...string) *RPCFunc {
-	rf := NewRPCFunc(f, argNames...)
+func NewWSRPCFunc(f interface{}) *RPCFunc {
+	rf := NewRPCFunc(f)
 	rf.ws = true
 	return rf
 }

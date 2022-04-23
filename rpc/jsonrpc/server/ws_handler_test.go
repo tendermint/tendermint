@@ -50,7 +50,7 @@ func newWSServer(t *testing.T, logger log.Logger) *httptest.Server {
 		I json.Number `json:"i"`
 	}
 	funcMap := map[string]*RPCFunc{
-		"c": NewWSRPCFunc(func(context.Context, *args) (string, error) { return "foo", nil }, "s", "i"),
+		"c": NewWSRPCFunc(func(context.Context, *args) (string, error) { return "foo", nil }),
 	}
 	wm := NewWebsocketManager(logger, funcMap)
 

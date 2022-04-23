@@ -93,8 +93,8 @@ type RequestTxSearch struct {
 	Query   string
 	Prove   bool
 	Page    *int
-	PerPage *int
-	OrderBy string
+	PerPage *int   `json:"per_page"`
+	OrderBy string `json:"order_by"`
 }
 
 type requestTxSearchJSON struct {
@@ -121,8 +121,8 @@ func (r *RequestTxSearch) UnmarshalJSON(data []byte) error {
 type RequestBlockSearch struct {
 	Query   string
 	Page    *int
-	PerPage *int
-	OrderBy string
+	PerPage *int   `json:"per_page"`
+	OrderBy string `json:"order_by"`
 }
 
 type requestBlockSearchJSON struct {
@@ -147,7 +147,7 @@ func (r *RequestBlockSearch) UnmarshalJSON(data []byte) error {
 type RequestValidators struct {
 	Height  *int64
 	Page    *int
-	PerPage *int
+	PerPage *int `json:"per_page"`
 }
 
 type requestValidatorsJSON struct {
@@ -186,7 +186,12 @@ func (r *RequestConsensusParams) UnmarshalJSON(data []byte) error {
 
 type RequestUnconfirmedTxs struct {
 	Page    *int
-	PerPage *int
+	PerPage *int `json:"per_page"`
+}
+
+type requestUnconfirmedTxsJSON struct {
+	Page    *intString `json:"page"`
+	PerPage *intString `json:"per_page"`
 }
 
 func (r *RequestUnconfirmedTxs) UnmarshalJSON(data []byte) error {
@@ -197,11 +202,6 @@ func (r *RequestUnconfirmedTxs) UnmarshalJSON(data []byte) error {
 	r.Page = maybeIntPtr(tmp.Page)
 	r.PerPage = maybeIntPtr(tmp.PerPage)
 	return nil
-}
-
-type requestUnconfirmedTxsJSON struct {
-	Page    *intString `json:"page"`
-	PerPage *intString `json:"per_page"`
 }
 
 type RequestBroadcastTx struct {

@@ -28,47 +28,47 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 	out := RoutesMap{
 		// Event subscription. Note that subscribe, unsubscribe, and
 		// unsubscribe_all are only available via the websocket endpoint.
-		"events":          rpc.NewRPCFunc(svc.Events, "filter", "maxItems", "before", "after", "waitTime"),
-		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe, "query"),
-		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe, "query"),
+		"events":          rpc.NewRPCFunc(svc.Events),
+		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe),
+		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe),
 		"unsubscribe_all": rpc.NewWSRPCFunc(svc.UnsubscribeAll),
 
 		// info API
 		"health":               rpc.NewRPCFunc(svc.Health),
 		"status":               rpc.NewRPCFunc(svc.Status),
 		"net_info":             rpc.NewRPCFunc(svc.NetInfo),
-		"blockchain":           rpc.NewRPCFunc(svc.BlockchainInfo, "minHeight", "maxHeight"),
+		"blockchain":           rpc.NewRPCFunc(svc.BlockchainInfo),
 		"genesis":              rpc.NewRPCFunc(svc.Genesis),
-		"genesis_chunked":      rpc.NewRPCFunc(svc.GenesisChunked, "chunk"),
-		"header":               rpc.NewRPCFunc(svc.Header, "height"),
-		"header_by_hash":       rpc.NewRPCFunc(svc.HeaderByHash, "hash"),
-		"block":                rpc.NewRPCFunc(svc.Block, "height"),
-		"block_by_hash":        rpc.NewRPCFunc(svc.BlockByHash, "hash"),
-		"block_results":        rpc.NewRPCFunc(svc.BlockResults, "height"),
-		"commit":               rpc.NewRPCFunc(svc.Commit, "height"),
-		"check_tx":             rpc.NewRPCFunc(svc.CheckTx, "tx"),
-		"remove_tx":            rpc.NewRPCFunc(svc.RemoveTx, "txkey"),
-		"tx":                   rpc.NewRPCFunc(svc.Tx, "hash", "prove"),
-		"tx_search":            rpc.NewRPCFunc(svc.TxSearch, "query", "prove", "page", "per_page", "order_by"),
-		"block_search":         rpc.NewRPCFunc(svc.BlockSearch, "query", "page", "per_page", "order_by"),
-		"validators":           rpc.NewRPCFunc(svc.Validators, "height", "page", "per_page"),
+		"genesis_chunked":      rpc.NewRPCFunc(svc.GenesisChunked),
+		"header":               rpc.NewRPCFunc(svc.Header),
+		"header_by_hash":       rpc.NewRPCFunc(svc.HeaderByHash),
+		"block":                rpc.NewRPCFunc(svc.Block),
+		"block_by_hash":        rpc.NewRPCFunc(svc.BlockByHash),
+		"block_results":        rpc.NewRPCFunc(svc.BlockResults),
+		"commit":               rpc.NewRPCFunc(svc.Commit),
+		"check_tx":             rpc.NewRPCFunc(svc.CheckTx),
+		"remove_tx":            rpc.NewRPCFunc(svc.RemoveTx),
+		"tx":                   rpc.NewRPCFunc(svc.Tx),
+		"tx_search":            rpc.NewRPCFunc(svc.TxSearch),
+		"block_search":         rpc.NewRPCFunc(svc.BlockSearch),
+		"validators":           rpc.NewRPCFunc(svc.Validators),
 		"dump_consensus_state": rpc.NewRPCFunc(svc.DumpConsensusState),
 		"consensus_state":      rpc.NewRPCFunc(svc.GetConsensusState),
-		"consensus_params":     rpc.NewRPCFunc(svc.ConsensusParams, "height"),
-		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs, "page", "per_page"),
+		"consensus_params":     rpc.NewRPCFunc(svc.ConsensusParams),
+		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs),
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(svc.NumUnconfirmedTxs),
 
 		// tx broadcast API
-		"broadcast_tx_commit": rpc.NewRPCFunc(svc.BroadcastTxCommit, "tx"),
-		"broadcast_tx_sync":   rpc.NewRPCFunc(svc.BroadcastTxSync, "tx"),
-		"broadcast_tx_async":  rpc.NewRPCFunc(svc.BroadcastTxAsync, "tx"),
+		"broadcast_tx_commit": rpc.NewRPCFunc(svc.BroadcastTxCommit),
+		"broadcast_tx_sync":   rpc.NewRPCFunc(svc.BroadcastTxSync),
+		"broadcast_tx_async":  rpc.NewRPCFunc(svc.BroadcastTxAsync),
 
 		// abci API
-		"abci_query": rpc.NewRPCFunc(svc.ABCIQuery, "path", "data", "height", "prove"),
+		"abci_query": rpc.NewRPCFunc(svc.ABCIQuery),
 		"abci_info":  rpc.NewRPCFunc(svc.ABCIInfo),
 
 		// evidence API
-		"broadcast_evidence": rpc.NewRPCFunc(svc.BroadcastEvidence, "evidence"),
+		"broadcast_evidence": rpc.NewRPCFunc(svc.BroadcastEvidence),
 	}
 	if u, ok := svc.(RPCUnsafe); ok && opts.Unsafe {
 		out["unsafe_flush_mempool"] = rpc.NewRPCFunc(u.UnsafeFlushMempool)
