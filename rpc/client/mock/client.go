@@ -92,7 +92,7 @@ func (c Client) ABCIQueryWithOptions(
 	data bytes.HexBytes,
 	opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	return c.env.ABCIQuery(ctx, &coretypes.RequestABCIQuery{
-		Path: path, Data: data, Height: opts.Height, Prove: opts.Prove,
+		Path: path, Data: data, Height: coretypes.Int64(opts.Height), Prove: opts.Prove,
 	})
 }
 
@@ -125,7 +125,7 @@ func (c Client) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpCo
 }
 
 func (c Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
-	return c.env.ConsensusParams(ctx, &coretypes.RequestConsensusParams{Height: height})
+	return c.env.ConsensusParams(ctx, &coretypes.RequestConsensusParams{Height: (*coretypes.Int64)(height)})
 }
 
 func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
@@ -133,7 +133,10 @@ func (c Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 }
 
 func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-	return c.env.BlockchainInfo(ctx, &coretypes.RequestBlockchainInfo{MinHeight: minHeight, MaxHeight: maxHeight})
+	return c.env.BlockchainInfo(ctx, &coretypes.RequestBlockchainInfo{
+		MinHeight: coretypes.Int64(minHeight),
+		MaxHeight: coretypes.Int64(maxHeight),
+	})
 }
 
 func (c Client) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
@@ -141,7 +144,7 @@ func (c Client) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
 }
 
 func (c Client) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
-	return c.env.Block(ctx, &coretypes.RequestBlockInfo{Height: height})
+	return c.env.Block(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
 func (c Client) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
@@ -149,12 +152,14 @@ func (c Client) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretype
 }
 
 func (c Client) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
-	return c.env.Commit(ctx, &coretypes.RequestBlockInfo{Height: height})
+	return c.env.Commit(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
 func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
 	return c.env.Validators(ctx, &coretypes.RequestValidators{
-		Height: height, Page: page, PerPage: perPage,
+		Height:  (*coretypes.Int64)(height),
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
 	})
 }
 

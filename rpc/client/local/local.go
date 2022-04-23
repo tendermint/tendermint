@@ -79,7 +79,7 @@ func (c *Local) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes)
 
 func (c *Local) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	return c.env.ABCIQuery(ctx, &coretypes.RequestABCIQuery{
-		Path: path, Data: data, Height: opts.Height, Prove: opts.Prove,
+		Path: path, Data: data, Height: coretypes.Int64(opts.Height), Prove: opts.Prove,
 	})
 }
 
@@ -96,7 +96,10 @@ func (c *Local) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.Re
 }
 
 func (c *Local) UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	return c.env.UnconfirmedTxs(ctx, &coretypes.RequestUnconfirmedTxs{Page: page, PerPage: perPage})
+	return c.env.UnconfirmedTxs(ctx, &coretypes.RequestUnconfirmedTxs{
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
+	})
 }
 
 func (c *Local) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
@@ -124,7 +127,7 @@ func (c *Local) ConsensusState(ctx context.Context) (*coretypes.ResultConsensusS
 }
 
 func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
-	return c.env.ConsensusParams(ctx, &coretypes.RequestConsensusParams{Height: height})
+	return c.env.ConsensusParams(ctx, &coretypes.RequestConsensusParams{Height: (*coretypes.Int64)(height)})
 }
 
 func (c *Local) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
@@ -136,7 +139,10 @@ func (c *Local) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
 }
 
 func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-	return c.env.BlockchainInfo(ctx, &coretypes.RequestBlockchainInfo{MinHeight: minHeight, MaxHeight: maxHeight})
+	return c.env.BlockchainInfo(ctx, &coretypes.RequestBlockchainInfo{
+		MinHeight: coretypes.Int64(minHeight),
+		MaxHeight: coretypes.Int64(maxHeight),
+	})
 }
 
 func (c *Local) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
@@ -144,11 +150,11 @@ func (c *Local) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
 }
 
 func (c *Local) GenesisChunked(ctx context.Context, id uint) (*coretypes.ResultGenesisChunk, error) {
-	return c.env.GenesisChunked(ctx, &coretypes.RequestGenesisChunked{Chunk: int64(id)})
+	return c.env.GenesisChunked(ctx, &coretypes.RequestGenesisChunked{Chunk: coretypes.Int64(id)})
 }
 
 func (c *Local) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
-	return c.env.Block(ctx, &coretypes.RequestBlockInfo{Height: height})
+	return c.env.Block(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
 func (c *Local) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
@@ -156,11 +162,11 @@ func (c *Local) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretype
 }
 
 func (c *Local) BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error) {
-	return c.env.BlockResults(ctx, &coretypes.RequestBlockInfo{Height: height})
+	return c.env.BlockResults(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
 func (c *Local) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
-	return c.env.Header(ctx, &coretypes.RequestBlockInfo{Height: height})
+	return c.env.Header(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
 func (c *Local) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
@@ -168,11 +174,15 @@ func (c *Local) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretyp
 }
 
 func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
-	return c.env.Commit(ctx, &coretypes.RequestBlockInfo{Height: height})
+	return c.env.Commit(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
 func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
-	return c.env.Validators(ctx, &coretypes.RequestValidators{Height: height, Page: page, PerPage: perPage})
+	return c.env.Validators(ctx, &coretypes.RequestValidators{
+		Height:  (*coretypes.Int64)(height),
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
+	})
 }
 
 func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
@@ -181,13 +191,20 @@ func (c *Local) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coret
 
 func (c *Local) TxSearch(ctx context.Context, queryString string, prove bool, page, perPage *int, orderBy string) (*coretypes.ResultTxSearch, error) {
 	return c.env.TxSearch(ctx, &coretypes.RequestTxSearch{
-		Query: queryString, Prove: prove, Page: page, PerPage: perPage, OrderBy: orderBy,
+		Query:   queryString,
+		Prove:   prove,
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
+		OrderBy: orderBy,
 	})
 }
 
 func (c *Local) BlockSearch(ctx context.Context, queryString string, page, perPage *int, orderBy string) (*coretypes.ResultBlockSearch, error) {
 	return c.env.BlockSearch(ctx, &coretypes.RequestBlockSearch{
-		Query: queryString, Page: page, PerPage: perPage, OrderBy: orderBy,
+		Query:   queryString,
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
+		OrderBy: orderBy,
 	})
 }
 

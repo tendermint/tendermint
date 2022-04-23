@@ -16,7 +16,7 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
 func (env *Environment) Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error) {
 	// The latest validator that we know is the NextValidator of the last block.
-	height, err := env.getHeight(env.latestUncommittedHeight(), req.Height)
+	height, err := env.getHeight(env.latestUncommittedHeight(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
