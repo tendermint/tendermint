@@ -19,57 +19,16 @@ type RequestUnsubscribe struct {
 }
 
 type RequestBlockchainInfo struct {
-	MinHeight int64
-	MaxHeight int64
-}
-
-type requestBlockchainInfoJSON struct {
-	MinHeight intString `json:"minHeight"`
-	MaxHeight intString `json:"maxHeight"`
-}
-
-func (r *RequestBlockchainInfo) UnmarshalJSON(data []byte) error {
-	var tmp requestBlockchainInfoJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.MinHeight = int64(tmp.MinHeight)
-	r.MaxHeight = int64(tmp.MaxHeight)
-	return nil
+	MinHeight Int64 `json:"minHeight"`
+	MaxHeight Int64 `json:"maxHeight"`
 }
 
 type RequestGenesisChunked struct {
-	Chunk int64
-}
-
-type requestGenesisChunkedJSON struct {
-	Chunk intString `json:"chunk"`
-}
-
-func (r *RequestGenesisChunked) UnmarshalJSON(data []byte) error {
-	var tmp requestGenesisChunkedJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Chunk = int64(tmp.Chunk)
-	return nil
+	Chunk Int64 `json:"chunk"`
 }
 
 type RequestBlockInfo struct {
-	Height *int64
-}
-
-type requestBlockInfoJSON struct {
-	Height *intString `json:"height"`
-}
-
-func (r *RequestBlockInfo) UnmarshalJSON(data []byte) error {
-	var tmp requestBlockInfoJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Height = (*int64)(tmp.Height)
-	return nil
+	Height *Int64 `json:"height"`
 }
 
 type RequestBlockByHash struct {
@@ -90,118 +49,33 @@ type RequestTx struct {
 }
 
 type RequestTxSearch struct {
-	Query   string
-	Prove   bool
-	Page    *int
-	PerPage *int   `json:"per_page"`
+	Query   string `json:"query"`
+	Prove   bool   `json:"prove"`
+	Page    *Int64 `json:"page"`
+	PerPage *Int64 `json:"per_page"`
 	OrderBy string `json:"order_by"`
-}
-
-type requestTxSearchJSON struct {
-	Query   string     `json:"query"`
-	Prove   bool       `json:"prove"`
-	Page    *intString `json:"page"`
-	PerPage *intString `json:"per_page"`
-	OrderBy string     `json:"order_by"`
-}
-
-func (r *RequestTxSearch) UnmarshalJSON(data []byte) error {
-	var tmp requestTxSearchJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Query = tmp.Query
-	r.Prove = tmp.Prove
-	r.Page = maybeIntPtr(tmp.Page)
-	r.PerPage = maybeIntPtr(tmp.PerPage)
-	r.OrderBy = tmp.OrderBy
-	return nil
 }
 
 type RequestBlockSearch struct {
-	Query   string
-	Page    *int
-	PerPage *int   `json:"per_page"`
+	Query   string `json:"query"`
+	Page    *Int64 `json:"page"`
+	PerPage *Int64 `json:"per_page"`
 	OrderBy string `json:"order_by"`
 }
 
-type requestBlockSearchJSON struct {
-	Query   string     `json:"query"`
-	Page    *intString `json:"page"`
-	PerPage *intString `json:"per_page"`
-	OrderBy string     `json:"order_by"`
-}
-
-func (r *RequestBlockSearch) UnmarshalJSON(data []byte) error {
-	var tmp requestBlockSearchJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Query = tmp.Query
-	r.Page = maybeIntPtr(tmp.Page)
-	r.PerPage = maybeIntPtr(tmp.PerPage)
-	r.OrderBy = tmp.OrderBy
-	return nil
-}
-
 type RequestValidators struct {
-	Height  *int64
-	Page    *int
-	PerPage *int `json:"per_page"`
-}
-
-type requestValidatorsJSON struct {
-	Height  *intString `json:"height"`
-	Page    *intString `json:"page"`
-	PerPage *intString `json:"per_page"`
-}
-
-func (r *RequestValidators) UnmarshalJSON(data []byte) error {
-	var tmp requestValidatorsJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Height = (*int64)(tmp.Height)
-	r.Page = maybeIntPtr(tmp.Page)
-	r.PerPage = maybeIntPtr(tmp.PerPage)
-	return nil
+	Height  *Int64 `json:"height"`
+	Page    *Int64 `json:"page"`
+	PerPage *Int64 `json:"per_page"`
 }
 
 type RequestConsensusParams struct {
-	Height *int64
-}
-
-type requestConsensusParamsJSON struct {
-	Height *intString `json:"height"`
-}
-
-func (r *RequestConsensusParams) UnmarshalJSON(data []byte) error {
-	var tmp requestConsensusParamsJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Height = (*int64)(tmp.Height)
-	return nil
+	Height *Int64 `json:"height"`
 }
 
 type RequestUnconfirmedTxs struct {
-	Page    *int
-	PerPage *int `json:"per_page"`
-}
-
-type requestUnconfirmedTxsJSON struct {
-	Page    *intString `json:"page"`
-	PerPage *intString `json:"per_page"`
-}
-
-func (r *RequestUnconfirmedTxs) UnmarshalJSON(data []byte) error {
-	var tmp requestUnconfirmedTxsJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Page = maybeIntPtr(tmp.Page)
-	r.PerPage = maybeIntPtr(tmp.PerPage)
-	return nil
+	Page    *Int64 `json:"page"`
+	PerPage *Int64 `json:"per_page"`
 }
 
 type RequestBroadcastTx struct {
@@ -209,29 +83,10 @@ type RequestBroadcastTx struct {
 }
 
 type RequestABCIQuery struct {
-	Path   string
-	Data   bytes.HexBytes
-	Height int64
-	Prove  bool
-}
-
-type requestABCIQueryJSON struct {
 	Path   string         `json:"path"`
 	Data   bytes.HexBytes `json:"data"`
-	Height intString      `json:"height"`
+	Height Int64          `json:"height"`
 	Prove  bool           `json:"prove"`
-}
-
-func (r *RequestABCIQuery) UnmarshalJSON(data []byte) error {
-	var tmp requestABCIQueryJSON
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-	r.Path = tmp.Path
-	r.Data = tmp.Data
-	r.Height = int64(tmp.Height)
-	r.Prove = tmp.Prove
-	return nil
 }
 
 type RequestBroadcastEvidence struct {
@@ -289,11 +144,11 @@ type EventFilter struct {
 	Query string `json:"query"`
 }
 
-// int64String is a wrapper for int64 that encodes to JSON as a string and can
-// be decoded from either a string or a number value.
-type intString int64
+// Int64 is a wrapper for int64 that encodes to JSON as a string and can be
+// decoded from either a string or a number value.
+type Int64 int64
 
-func (z *intString) UnmarshalJSON(data []byte) error {
+func (z *Int64) UnmarshalJSON(data []byte) error {
 	var s string
 	if len(data) != 0 && data[0] == '"' {
 		if err := json.Unmarshal(data, &s); err != nil {
@@ -306,18 +161,28 @@ func (z *intString) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	*z = intString(v)
+	*z = Int64(v)
 	return nil
 }
 
-func (z intString) MarshalJSON() ([]byte, error) {
+func (z Int64) MarshalJSON() ([]byte, error) {
 	return []byte(strconv.FormatInt(int64(z), 10)), nil
 }
 
-func maybeIntPtr(p *intString) *int {
-	if p == nil {
+// IntPtr returns a pointer to the value of *z as an int, or nil if z == nil.
+func (z *Int64) IntPtr() *int {
+	if z == nil {
 		return nil
 	}
-	z := int(*p)
+	v := int(*z)
+	return &v
+}
+
+// Int64Ptr returns an *Int64 that points to the same value as v, or nil.
+func Int64Ptr(v *int) *Int64 {
+	if v == nil {
+		return nil
+	}
+	z := Int64(*v)
 	return &z
 }
