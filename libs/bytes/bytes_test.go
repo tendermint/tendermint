@@ -61,7 +61,7 @@ func TestJSONMarshal(t *testing.T) {
 				t.Fatal(err)
 			}
 			assert.Equal(t, ts2.B1, tc.input)
-			assert.Equal(t, ts2.B2, HexBytes(tc.input))
+			assert.Equal(t, string(ts2.B2), string(tc.input))
 		})
 	}
 }
