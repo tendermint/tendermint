@@ -329,7 +329,7 @@ func TestProcessProposal(t *testing.T) {
 	block1 := sf.MakeBlock(state, height, lastCommit)
 	block1.Txs = txs
 
-	expectedRpp := abci.RequestProcessProposal{
+	expectedRpp := &abci.RequestProcessProposal{
 		Txs:                 block1.Txs.ToSliceOfBytes(),
 		Hash:                block1.Hash(),
 		Height:              block1.Header.Height,
