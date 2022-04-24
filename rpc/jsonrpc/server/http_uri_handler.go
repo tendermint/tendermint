@@ -1,13 +1,11 @@
 package server
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -25,7 +23,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		ctx := rpctypes.WithCallInfo(req.Context(), &rpctypes.CallInfo{
 			HTTPRequest: req,
 		})
-		args, err := parseURLParams(ctx, rpcFunc, req)
+		args, err := parseURLParams(rpcFunc.argNames, req)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusBadRequest)
@@ -42,7 +40,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	}
 }
 
-func parseURLParams(ctx context.Context, rf *RPCFunc, req *http.Request) ([]reflect.Value, error) {
+func parseURLParams(argNames []string, req *http.Request) ([]byte, error) {
 	if err := req.ParseForm(); err != nil {
 		return nil, fmt.Errorf("invalid HTTP request: %w", err)
 	}
@@ -54,7 +52,7 @@ func parseURLParams(ctx context.Context, rf *RPCFunc, req *http.Request) ([]refl
 	}
 
 	params := make(map[string]interface{})
-	for _, name := range rf.argNames {
+	for _, name := range argNames {
 		v, ok := getArg(name)
 		if !ok {
 			continue
@@ -81,11 +79,7 @@ func parseURLParams(ctx context.Context, rf *RPCFunc, req *http.Request) ([]refl
 			params[name] = v
 		}
 	}
-	bits, err := json.Marshal(params)
-	if err != nil {
-		return nil, err
-	}
-	return parseParams(ctx, rf, bits)
+	return json.Marshal(params)
 }
 
 // isQuotedString reports whether s is enclosed in double quotes.

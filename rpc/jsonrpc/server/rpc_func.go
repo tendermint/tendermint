@@ -1,13 +1,17 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // RegisterRPCFuncs adds a route to mux for each non-websocket function in the
@@ -37,7 +41,11 @@ type RPCFunc struct {
 
 // Call invokes rf with the given arguments.
 // MJF :: fix context plumbing.
-func (rf *RPCFunc) Call(ctx context.Context, args []reflect.Value) (interface{}, error) {
+func (rf *RPCFunc) Call(ctx context.Context, params []byte) (interface{}, error) {
+	args, err := rf.parseParams(ctx, params)
+	if err != nil {
+		return nil, err
+	}
 	returns := rf.f.Call(args)
 
 	// Case 1: There is no non-error result type.
@@ -54,6 +62,57 @@ func (rf *RPCFunc) Call(ctx context.Context, args []reflect.Value) (interface{},
 		return nil, oerr.(error)
 	}
 	return returns[0].Interface(), nil
+}
+
+// parseParams parses the JSON parameters of rpcReq into the arguments of rf,
+// returning the corresponding argument values or an error.
+func (rf *RPCFunc) parseParams(ctx context.Context, paramData []byte) ([]reflect.Value, error) {
+	// If fn does not accept parameters, there is no decoding to do, but verify
+	// that no parameters were passed.
+	if rf.param == nil {
+		// TODO(creachadair): Reject non-empty parameters maybe.
+		return []reflect.Value{reflect.ValueOf(ctx)}, nil
+	}
+	bits, err := rf.adjustParams(paramData)
+	if err != nil {
+		return nil, &rpctypes.RPCError{
+			Code:    int(rpctypes.CodeInvalidParams),
+			Message: rpctypes.CodeInvalidParams.String(),
+			Data:    err.Error(),
+		}
+	}
+	arg := reflect.New(rf.param)
+	if err := json.Unmarshal(bits, arg.Interface()); err != nil {
+		return nil, &rpctypes.RPCError{
+			Code:    int(rpctypes.CodeInvalidParams),
+			Message: rpctypes.CodeInvalidParams.String(),
+			Data:    err.Error(),
+		}
+	}
+	return []reflect.Value{reflect.ValueOf(ctx), arg}, nil
+}
+
+// adjustParams checks whether data is encoded as a JSON array, and if so
+// adjusts the values to match the corresponding parameter names.
+func (rf *RPCFunc) adjustParams(data []byte) (json.RawMessage, error) {
+	base := bytes.TrimSpace(data)
+	if bytes.HasPrefix(base, []byte("[")) {
+		var args []json.RawMessage
+		if err := json.Unmarshal(base, &args); err != nil {
+			return nil, err
+		} else if len(args) != len(rf.argNames) {
+			return nil, fmt.Errorf("got %d arguments, want %d", len(args), len(rf.argNames))
+		}
+		m := make(map[string]json.RawMessage)
+		for i, arg := range args {
+			m[rf.argNames[i]] = arg
+		}
+		return json.Marshal(m)
+	} else if bytes.HasPrefix(base, []byte("{")) || bytes.Equal(base, []byte("null")) {
+		return base, nil
+	}
+	return nil, errors.New("parameters must be an object or an array")
+
 }
 
 // NewRPCFunc constructs an RPCFunc for f, which must be a function whose type

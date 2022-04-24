@@ -2,14 +2,11 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -69,18 +66,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				RPCRequest:  &req,
 				HTTPRequest: hreq,
 			})
-			args, err := parseParams(ctx, rpcFunc, req.Params)
+			result, err := rpcFunc.Call(ctx, req.Params)
 			if err != nil {
-				responses = append(responses,
-					req.MakeErrorf(rpctypes.CodeInvalidParams, "converting JSON parameters: %v", err))
-				continue
-			}
-
-			result, err := rpcFunc.Call(ctx, args)
-			if err == nil {
-				responses = append(responses, req.MakeResponse(result))
-			} else {
 				responses = append(responses, req.MakeError(err))
+			} else {
+				responses = append(responses, req.MakeResponse(result))
 			}
 		}
 
@@ -120,49 +110,6 @@ func parseRequests(data []byte) ([]rpctypes.RPCRequest, error) {
 		return nil, err
 	}
 	return reqs, nil
-}
-
-// parseParams parses the JSON parameters of rpcReq into the arguments of fn,
-// returning the corresponding argument values or an error.
-func parseParams(ctx context.Context, fn *RPCFunc, paramData []byte) ([]reflect.Value, error) {
-	// If fn does not accept parameters, there is no decoding to do, but verify
-	// that no parameters were passed.
-	if fn.param == nil {
-		// TODO(creachadair): Reject non-empty parameters maybe.
-		return []reflect.Value{reflect.ValueOf(ctx)}, nil
-	}
-	bits, err := adjustParams(fn, paramData)
-	if err != nil {
-		return nil, err
-	}
-	arg := reflect.New(fn.param)
-	if err := json.Unmarshal(bits, arg.Interface()); err != nil {
-		return nil, err
-	}
-	return []reflect.Value{reflect.ValueOf(ctx), arg}, nil
-}
-
-// adjustParams checks whether data is encoded as a JSON array, and if so
-// adjusts the values to match the corresponding parameter names.
-func adjustParams(fn *RPCFunc, data []byte) (json.RawMessage, error) {
-	base := bytes.TrimSpace(data)
-	if bytes.HasPrefix(base, []byte("[")) {
-		var args []json.RawMessage
-		if err := json.Unmarshal(base, &args); err != nil {
-			return nil, err
-		} else if len(args) != len(fn.argNames) {
-			return nil, fmt.Errorf("got %d arguments, want %d", len(args), len(fn.argNames))
-		}
-		m := make(map[string]json.RawMessage)
-		for i, arg := range args {
-			m[fn.argNames[i]] = arg
-		}
-		return json.Marshal(m)
-	} else if bytes.HasPrefix(base, []byte("{")) || bytes.Equal(base, []byte("null")) {
-		return base, nil
-	}
-	return nil, errors.New("parameters must be an object or an array")
-
 }
 
 // writes a list of available rpc endpoints as an html page

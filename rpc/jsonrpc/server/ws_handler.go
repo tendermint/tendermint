@@ -331,17 +331,8 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 				RPCRequest: &request,
 				WSConn:     wsc,
 			})
-			args, err := parseParams(fctx, rpcFunc, request.Params)
-			if err != nil {
-				if err := wsc.WriteRPCResponse(writeCtx, request.MakeErrorf(rpctypes.CodeInvalidParams,
-					"converting JSON parameters: %v", err)); err != nil {
-					wsc.Logger.Error("error writing RPC response", "err", err)
-				}
-				continue
-			}
-
 			var resp rpctypes.RPCResponse
-			result, err := rpcFunc.Call(ctx, args)
+			result, err := rpcFunc.Call(fctx, request.Params)
 			if err == nil {
 				resp = request.MakeResponse(result)
 			} else {
