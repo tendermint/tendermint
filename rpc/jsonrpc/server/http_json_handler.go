@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	stdlog "log"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -126,98 +126,46 @@ func parseRequests(data []byte) ([]rpctypes.RPCRequest, error) {
 // parseParams parses the JSON parameters of rpcReq into the arguments of fn,
 // returning the corresponding argument values or an error.
 func parseParams(ctx context.Context, fn *RPCFunc, paramData []byte) ([]reflect.Value, error) {
-	params, err := parseJSONParams(fn, paramData)
+	// If fn does not accept parameters, there is no decoding to do, but verify
+	// that no parameters were passed.
+	if fn.param == nil {
+		if len(paramData) != 0 && !bytes.Equal(paramData, []byte("null")) {
+			return nil, errors.New("method does not take parameters")
+		}
+		return []reflect.Value{reflect.ValueOf(ctx)}, nil
+	}
+	bits, err := adjustParams(fn, paramData)
 	if err != nil {
 		return nil, err
 	}
-
-	args := make([]reflect.Value, 1+len(params))
-	args[0] = reflect.ValueOf(ctx)
-	for i, param := range params {
-		ptype := fn.args[i+1]
-		if len(param) == 0 {
-			args[i+1] = reflect.Zero(ptype)
-			continue
-		}
-
-		var pval reflect.Value
-		isPtr := ptype.Kind() == reflect.Ptr
-		if isPtr {
-			pval = reflect.New(ptype.Elem())
-		} else {
-			pval = reflect.New(ptype)
-		}
-		baseType := pval.Type().Elem()
-
-		if isIntType(baseType) && isStringValue(param) {
-			var z int64String
-			if err := json.Unmarshal(param, &z); err != nil {
-				return nil, fmt.Errorf("decoding string %q: %w", fn.argNames[i], err)
-			}
-			pval.Elem().Set(reflect.ValueOf(z).Convert(baseType))
-		} else if err := json.Unmarshal(param, pval.Interface()); err != nil {
-			return nil, fmt.Errorf("decoding %q: %w", fn.argNames[i], err)
-		}
-
-		if isPtr {
-			args[i+1] = pval
-		} else {
-			args[i+1] = pval.Elem()
-		}
+	arg := reflect.New(fn.param)
+	if err := json.Unmarshal(bits, arg.Interface()); err != nil {
+		stdlog.Printf("MJF :: unmarshal bits=%#q err=%v", string(bits), err)
+		return nil, err
 	}
-	return args, nil
+	return []reflect.Value{reflect.ValueOf(ctx), arg}, nil
 }
 
-// parseJSONParams parses data and returns a slice of JSON values matching the
-// positional parameters of fn. It reports an error if data is not "null" and
-// does not encode an object or an array, or if the number of array parameters
-// does not match the argument list of fn (excluding the context).
-func parseJSONParams(fn *RPCFunc, data []byte) ([]json.RawMessage, error) {
+// adjustParams checks whether data is encoded as a JSON array, and if so
+// adjusts the values to match the corresponding parameter names.
+func adjustParams(fn *RPCFunc, data []byte) (json.RawMessage, error) {
 	base := bytes.TrimSpace(data)
-	if bytes.HasPrefix(base, []byte("{")) {
-		var m map[string]json.RawMessage
-		if err := json.Unmarshal(base, &m); err != nil {
-			return nil, fmt.Errorf("decoding parameter object: %w", err)
+	if bytes.HasPrefix(base, []byte("[")) {
+		var args []json.RawMessage
+		if err := json.Unmarshal(base, &args); err != nil {
+			return nil, err
+		} else if len(args) != len(fn.argNames) {
+			return nil, fmt.Errorf("got %d arguments, want %d", len(args), len(fn.argNames))
 		}
-		out := make([]json.RawMessage, len(fn.argNames))
-		for i, name := range fn.argNames {
-			if p, ok := m[name]; ok {
-				out[i] = p
-			}
+		m := make(map[string]json.RawMessage)
+		for i, arg := range args {
+			m[fn.argNames[i]] = arg
 		}
-		return out, nil
-
-	} else if bytes.HasPrefix(base, []byte("[")) {
-		var m []json.RawMessage
-		if err := json.Unmarshal(base, &m); err != nil {
-			return nil, fmt.Errorf("decoding parameter array: %w", err)
-		}
-		if len(m) != len(fn.argNames) {
-			return nil, fmt.Errorf("got %d parameters, want %d", len(m), len(fn.argNames))
-		}
-		return m, nil
-
-	} else if bytes.Equal(base, []byte("null")) {
-		return make([]json.RawMessage, len(fn.argNames)), nil
+		return json.Marshal(m)
+	} else if !bytes.HasPrefix(base, []byte("{")) {
+		return nil, errors.New("parameters must be an object or an array")
 	}
-
-	return nil, errors.New("parameters must be an object or an array")
-}
-
-// isStringValue reports whether data is a JSON string value.
-func isStringValue(data json.RawMessage) bool {
-	return len(data) != 0 && data[0] == '"'
-}
-
-type int64String int64
-
-func (z *int64String) UnmarshalText(data []byte) error {
-	v, err := strconv.ParseInt(string(data), 10, 64)
-	if err != nil {
-		return err
-	}
-	*z = int64String(v)
-	return nil
+	return base, nil
 }
 
 // writes a list of available rpc endpoints as an html page
