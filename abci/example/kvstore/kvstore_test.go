@@ -24,7 +24,7 @@ const (
 )
 
 func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []byte, key, value string) {
-	req := types.RequestFinalizeBlock{Txs: [][]byte{tx}}
+	req := &types.RequestFinalizeBlock{Txs: [][]byte{tx}}
 	ar, err := app.FinalizeBlock(ctx, req)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(ar.TxResults))
@@ -38,12 +38,12 @@ func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []
 	_, err = app.Commit(ctx)
 	require.NoError(t, err)
 
-	info, err := app.Info(ctx, types.RequestInfo{})
+	info, err := app.Info(ctx, &types.RequestInfo{})
 	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery, err := app.Query(ctx, types.RequestQuery{
+	resQuery, err := app.Query(ctx, &types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -54,7 +54,7 @@ func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery, err = app.Query(ctx, types.RequestQuery{
+	resQuery, err = app.Query(ctx, &types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,
@@ -111,7 +111,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	}
 	height := int64(0)
 
-	resInfo, err := kvstore.Info(ctx, types.RequestInfo{})
+	resInfo, err := kvstore.Info(ctx, &types.RequestInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	if _, err := kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{Hash: hash, Height: height}); err != nil {
+	if _, err := kvstore.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Hash: hash, Height: height}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -132,7 +132,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 	}
 
-	resInfo, err = kvstore.Info(ctx, types.RequestInfo{})
+	resInfo, err = kvstore.Info(ctx, &types.RequestInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// initialize with the first nInit
-	_, err := kvstore.InitChain(ctx, types.RequestInitChain{
+	_, err := kvstore.InitChain(ctx, &types.RequestInitChain{
 		Validators: vals[:nInit],
 	})
 	if err != nil {
@@ -215,7 +215,7 @@ func makeApplyBlock(ctx context.Context, t *testing.T, kvstore types.Application
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	resFinalizeBlock, err := kvstore.FinalizeBlock(ctx, types.RequestFinalizeBlock{
+	resFinalizeBlock, err := kvstore.FinalizeBlock(ctx, &types.RequestFinalizeBlock{
 		Hash:   hash,
 		Height: height,
 		Txs:    txs,
@@ -350,12 +350,12 @@ func runClientTests(ctx context.Context, t *testing.T, client abciclient.Client)
 }
 
 func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []byte, key, value string) {
-	ar, err := app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
+	ar, err := app.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
 	// repeating FinalizeBlock doesn't raise error
-	ar, err = app.FinalizeBlock(ctx, types.RequestFinalizeBlock{Txs: [][]byte{tx}})
+	ar, err = app.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: [][]byte{tx}})
 	require.NoError(t, err)
 	require.Equal(t, 1, len(ar.TxResults))
 	require.False(t, ar.TxResults[0].IsErr())
@@ -363,12 +363,12 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []b
 	_, err = app.Commit(ctx)
 	require.NoError(t, err)
 
-	info, err := app.Info(ctx, types.RequestInfo{})
+	info, err := app.Info(ctx, &types.RequestInfo{})
 	require.NoError(t, err)
 	require.NotZero(t, info.LastBlockHeight)
 
 	// make sure query is fine
-	resQuery, err := app.Query(ctx, types.RequestQuery{
+	resQuery, err := app.Query(ctx, &types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -379,7 +379,7 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, tx []b
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
 
 	// make sure proof is fine
-	resQuery, err = app.Query(ctx, types.RequestQuery{
+	resQuery, err = app.Query(ctx, &types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,

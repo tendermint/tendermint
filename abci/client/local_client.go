@@ -43,15 +43,15 @@ func (app *localClient) Echo(_ context.Context, msg string) (*types.ResponseEcho
 	return &types.ResponseEcho{Message: msg}, nil
 }
 
-func (app *localClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *localClient) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	return app.Application.Info(ctx, req)
 }
 
-func (app *localClient) CheckTx(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (app *localClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	return app.Application.CheckTx(ctx, req)
 }
 
-func (app *localClient) Query(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
+func (app *localClient) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {
 	return app.Application.Query(ctx, req)
 }
 
@@ -59,42 +59,42 @@ func (app *localClient) Commit(ctx context.Context) (*types.ResponseCommit, erro
 	return app.Application.Commit(ctx)
 }
 
-func (app *localClient) InitChain(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (app *localClient) InitChain(ctx context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	return app.Application.InitChain(ctx, req)
 }
 
-func (app *localClient) ListSnapshots(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+func (app *localClient) ListSnapshots(ctx context.Context, req *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	return app.Application.ListSnapshots(ctx, req)
 }
 
-func (app *localClient) OfferSnapshot(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+func (app *localClient) OfferSnapshot(ctx context.Context, req *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
 	return app.Application.OfferSnapshot(ctx, req)
 }
 
-func (app *localClient) LoadSnapshotChunk(ctx context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+func (app *localClient) LoadSnapshotChunk(ctx context.Context, req *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	return app.Application.LoadSnapshotChunk(ctx, req)
 }
 
-func (app *localClient) ApplySnapshotChunk(ctx context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+func (app *localClient) ApplySnapshotChunk(ctx context.Context, req *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	return app.Application.ApplySnapshotChunk(ctx, req)
 }
 
-func (app *localClient) PrepareProposal(ctx context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+func (app *localClient) PrepareProposal(ctx context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	return app.Application.PrepareProposal(ctx, req)
 }
 
-func (app *localClient) ProcessProposal(ctx context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+func (app *localClient) ProcessProposal(ctx context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	return app.Application.ProcessProposal(ctx, req)
 }
 
-func (app *localClient) ExtendVote(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+func (app *localClient) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 	return app.Application.ExtendVote(ctx, req)
 }
 
-func (app *localClient) VerifyVoteExtension(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+func (app *localClient) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
 	return app.Application.VerifyVoteExtension(ctx, req)
 }
 
-func (app *localClient) FinalizeBlock(ctx context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+func (app *localClient) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	return app.Application.FinalizeBlock(ctx, req)
 }

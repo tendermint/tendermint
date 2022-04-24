@@ -278,11 +278,11 @@ type testApp struct {
 
 var _ abci.Application = (*testApp)(nil)
 
-func (app *testApp) Info(_ context.Context, req abci.RequestInfo) (*abci.ResponseInfo, error) {
+func (app *testApp) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
 	return &abci.ResponseInfo{}, nil
 }
 
-func (app *testApp) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.CommitVotes = req.DecidedLastCommit.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
@@ -307,7 +307,7 @@ func (app *testApp) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlo
 	}, nil
 }
 
-func (app *testApp) CheckTx(_ context.Context, req abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+func (app *testApp) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	return &abci.ResponseCheckTx{}, nil
 }
 
@@ -315,11 +315,11 @@ func (app *testApp) Commit(context.Context) (*abci.ResponseCommit, error) {
 	return &abci.ResponseCommit{RetainHeight: 1}, nil
 }
 
-func (app *testApp) Query(_ context.Context, req abci.RequestQuery) (*abci.ResponseQuery, error) {
+func (app *testApp) Query(_ context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
 	return &abci.ResponseQuery{}, nil
 }
 
-func (app *testApp) ProcessProposal(_ context.Context, req abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
+func (app *testApp) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
 			return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}, nil

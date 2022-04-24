@@ -128,15 +128,15 @@ func (cli *grpcClient) Echo(ctx context.Context, msg string) (*types.ResponseEch
 	return cli.client.Echo(ctx, types.ToRequestEcho(msg).GetEcho(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) Info(ctx context.Context, params types.RequestInfo) (*types.ResponseInfo, error) {
+func (cli *grpcClient) Info(ctx context.Context, params *types.RequestInfo) (*types.ResponseInfo, error) {
 	return cli.client.Info(ctx, types.ToRequestInfo(params).GetInfo(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) CheckTx(ctx context.Context, params types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (cli *grpcClient) CheckTx(ctx context.Context, params *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	return cli.client.CheckTx(ctx, types.ToRequestCheckTx(params).GetCheckTx(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) Query(ctx context.Context, params types.RequestQuery) (*types.ResponseQuery, error) {
+func (cli *grpcClient) Query(ctx context.Context, params *types.RequestQuery) (*types.ResponseQuery, error) {
 	return cli.client.Query(ctx, types.ToRequestQuery(params).GetQuery(), grpc.WaitForReady(true))
 }
 
@@ -144,42 +144,42 @@ func (cli *grpcClient) Commit(ctx context.Context) (*types.ResponseCommit, error
 	return cli.client.Commit(ctx, types.ToRequestCommit().GetCommit(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) InitChain(ctx context.Context, params types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (cli *grpcClient) InitChain(ctx context.Context, params *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	return cli.client.InitChain(ctx, types.ToRequestInitChain(params).GetInitChain(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) ListSnapshots(ctx context.Context, params types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+func (cli *grpcClient) ListSnapshots(ctx context.Context, params *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	return cli.client.ListSnapshots(ctx, types.ToRequestListSnapshots(params).GetListSnapshots(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) OfferSnapshot(ctx context.Context, params types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+func (cli *grpcClient) OfferSnapshot(ctx context.Context, params *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
 	return cli.client.OfferSnapshot(ctx, types.ToRequestOfferSnapshot(params).GetOfferSnapshot(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) LoadSnapshotChunk(ctx context.Context, params types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+func (cli *grpcClient) LoadSnapshotChunk(ctx context.Context, params *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	return cli.client.LoadSnapshotChunk(ctx, types.ToRequestLoadSnapshotChunk(params).GetLoadSnapshotChunk(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) ApplySnapshotChunk(ctx context.Context, params types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+func (cli *grpcClient) ApplySnapshotChunk(ctx context.Context, params *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	return cli.client.ApplySnapshotChunk(ctx, types.ToRequestApplySnapshotChunk(params).GetApplySnapshotChunk(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) PrepareProposal(ctx context.Context, params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+func (cli *grpcClient) PrepareProposal(ctx context.Context, params *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	return cli.client.PrepareProposal(ctx, types.ToRequestPrepareProposal(params).GetPrepareProposal(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) ProcessProposal(ctx context.Context, params types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+func (cli *grpcClient) ProcessProposal(ctx context.Context, params *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	return cli.client.ProcessProposal(ctx, types.ToRequestProcessProposal(params).GetProcessProposal(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) ExtendVote(ctx context.Context, params types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+func (cli *grpcClient) ExtendVote(ctx context.Context, params *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 	return cli.client.ExtendVote(ctx, types.ToRequestExtendVote(params).GetExtendVote(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) VerifyVoteExtension(ctx context.Context, params types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+func (cli *grpcClient) VerifyVoteExtension(ctx context.Context, params *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
 	return cli.client.VerifyVoteExtension(ctx, types.ToRequestVerifyVoteExtension(params).GetVerifyVoteExtension(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) FinalizeBlock(ctx context.Context, params types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+func (cli *grpcClient) FinalizeBlock(ctx context.Context, params *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	return cli.client.FinalizeBlock(ctx, types.ToRequestFinalizeBlock(params).GetFinalizeBlock(), grpc.WaitForReady(true))
 }

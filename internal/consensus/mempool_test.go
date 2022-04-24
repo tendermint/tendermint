@@ -199,7 +199,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resFinalize, err := app.FinalizeBlock(ctx, abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	resFinalize, err := app.FinalizeBlock(ctx, &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
 	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
 
@@ -269,11 +269,11 @@ func NewCounterApplication() *CounterApplication {
 	return &CounterApplication{}
 }
 
-func (app *CounterApplication) Info(_ context.Context, req abci.RequestInfo) (*abci.ResponseInfo, error) {
+func (app *CounterApplication) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
 	return &abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}, nil
 }
 
-func (app *CounterApplication) FinalizeBlock(_ context.Context, req abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	respTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		txValue := txAsUint64(tx)
@@ -290,7 +290,7 @@ func (app *CounterApplication) FinalizeBlock(_ context.Context, req abci.Request
 	return &abci.ResponseFinalizeBlock{TxResults: respTxs}, nil
 }
 
-func (app *CounterApplication) CheckTx(_ context.Context, req abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+func (app *CounterApplication) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	txValue := txAsUint64(req.Tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return &abci.ResponseCheckTx{
@@ -318,7 +318,7 @@ func (app *CounterApplication) Commit(context.Context) (*abci.ResponseCommit, er
 	return &abci.ResponseCommit{Data: hash}, nil
 }
 
-func (app *CounterApplication) PrepareProposal(_ context.Context, req abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
+func (app *CounterApplication) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
 	trs := make([]*abci.TxRecord, 0, len(req.Txs))
 	var totalBytes int64
 	for _, tx := range req.Txs {
@@ -334,6 +334,6 @@ func (app *CounterApplication) PrepareProposal(_ context.Context, req abci.Reque
 	return &abci.ResponsePrepareProposal{TxRecords: trs}, nil
 }
 
-func (app *CounterApplication) ProcessProposal(_ context.Context, req abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
+func (app *CounterApplication) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
 	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
 }
