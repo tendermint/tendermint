@@ -17,9 +17,16 @@ import (
 )
 
 func testMux() *http.ServeMux {
+	type cargs struct {
+		S string `json:"s"`
+		I int    `json:"i,string"`
+	}
+	type blockargs struct {
+		H int `json:"h,string"`
+	}
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s", "i"),
-		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height"),
+		"c":     NewRPCFunc(func(ctx context.Context, arg *cargs) (string, error) { return "foo", nil }, "s", "i"),
+		"block": NewRPCFunc(func(ctx context.Context, arg *blockargs) (string, error) { return "block", nil }, "height"),
 	}
 	mux := http.NewServeMux()
 	logger := log.NewNopLogger()

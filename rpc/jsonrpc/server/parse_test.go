@@ -134,7 +134,11 @@ func TestParseJSONArray(t *testing.T) {
 }
 
 func TestParseJSONRPC(t *testing.T) {
-	demo := func(ctx context.Context, height int, name string) error { return nil }
+	type demoArgs struct {
+		Height int    `json:"height,string"`
+		Name   string `json:"name"`
+	}
+	demo := func(ctx context.Context, _ *demoArgs) error { return nil }
 	call := NewRPCFunc(demo, "height", "name")
 
 	cases := []struct {
@@ -161,9 +165,11 @@ func TestParseJSONRPC(t *testing.T) {
 			assert.Error(t, err, i)
 		} else {
 			assert.NoError(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 3, len(vals), i) { // ctx, height, name
-				assert.Equal(t, tc.height, vals[1].Int(), i)
-				assert.Equal(t, tc.name, vals[2].String(), i)
+			assert.Equal(t, 2, len(vals), i)
+			p, ok := vals[1].Interface().(*demoArgs)
+			if assert.True(t, ok) {
+				assert.Equal(t, tc.height, int64(p.Height), i)
+				assert.Equal(t, tc.name, p.Name, i)
 			}
 		}
 

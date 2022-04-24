@@ -17,8 +17,12 @@ import (
 )
 
 func FuzzRPCJSONRPCServer(f *testing.F) {
+	type args struct {
+		S string `json:"s"`
+		I int    `json:"i"`
+	}
 	var rpcFuncMap = map[string]*rpcserver.RPCFunc{
-		"c": rpcserver.NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) {
+		"c": rpcserver.NewRPCFunc(func(context.Context, *args) (string, error) {
 			return "foo", nil
 		}, "s", "i"),
 	}
