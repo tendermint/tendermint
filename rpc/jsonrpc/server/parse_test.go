@@ -3,13 +3,11 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 )
@@ -140,7 +138,7 @@ func TestParseJSONRPC(t *testing.T) {
 		Name   string `json:"name"`
 	}
 	demo := func(ctx context.Context, _ *demoArgs) error { return nil }
-	call := NewRPCFunc(demo)
+	rfunc := NewRPCFunc(demo)
 
 	cases := []struct {
 		raw    string
@@ -161,7 +159,7 @@ func TestParseJSONRPC(t *testing.T) {
 	ctx := context.Background()
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
-		vals, err := parseParams(ctx, call, []byte(tc.raw))
+		vals, err := rfunc.parseParams(ctx, []byte(tc.raw))
 		if tc.fail {
 			assert.Error(t, err, i)
 		} else {
@@ -178,56 +176,147 @@ func TestParseJSONRPC(t *testing.T) {
 }
 
 func TestParseURI(t *testing.T) {
-	type args struct {
-		Height json.Number `json:"height"`
-		Name   string      `json:"name"`
-	}
-	demo := func(ctx context.Context, arg *args) error { return nil }
-	call := NewRPCFunc(demo)
+	// URI parameter parsing happens in two phases:
+	//
+	// Phase 1 swizzles the query parameters into JSON.  The result of this
+	// phase must be valid JSON, but may fail the second stage.
+	//
+	// Phase 2 decodes the JSON to obtain the actual arguments. A failure at
+	// this stage means the JSON is not compatible with the target.
 
-	cases := []struct {
-		raw    []interface{}
-		height int64
-		name   string
-		fail   bool
-	}{
-		// Can parse numbers unquoted and strings quoted
-		{[]interface{}{"7", `"flew"`}, 7, "flew", false},
-		{[]interface{}{"22", `"john"`}, 22, "john", false},
-		{[]interface{}{"-10", `"bob"`}, -10, "bob", false},
-		// Can parse numbers quoted, too
-		{[]interface{}{`"7"`, `"flew"`}, 7, "flew", false},
-		{[]interface{}{`"-10"`, `"bob"`}, -10, "bob", false},
-		// Can parse byte strings hex-escaped, in either case
-		{[]interface{}{`-9`, `0x626f62`}, -9, "Ym9i", false},
-		{[]interface{}{`-9`, `0X646F7567`}, -9, "ZG91Zw==", false},
-		// can parse strings unquoted (as per OpenAPI docs)
-		{[]interface{}{`0`, `hey you`}, 0, "hey you", false},
-		// fail for invalid numbers, strings, hex
-		{[]interface{}{`"-xx"`, `bob`}, 0, "", true},  // bad number
-		{[]interface{}{`"95""`, `"bob`}, 0, "", true}, // bad string
-		{[]interface{}{`15`, `0xa`}, 0, "", true},     // bad hex
-		{[]interface{}{`15`, `0x`}, 0, "", true},      // bad hex
-	}
-	for idx, tc := range cases {
-		i := strconv.Itoa(idx)
-		t.Run(i, func(t *testing.T) {
-			url := fmt.Sprintf("http://test.com/method?height=%v&name=%v", tc.raw...)
-			req, err := http.NewRequest("GET", url, nil)
-			require.NoError(t, err)
+	t.Run("Swizzle", func(t *testing.T) {
+		tests := []struct {
+			name string
+			url  string
+			args []string
+			want string
+			fail bool
+		}{
+			{
+				name: "quoted numbers and strings",
+				url:  `http://localhost?num="7"&str="flew"&neg="-10"`,
+				args: []string{"neg", "num", "str", "other"},
+				want: `{"neg":-10,"num":7,"str":"flew"}`,
+			},
+			{
+				name: "unquoted numbers and strings",
+				url:  `http://localhost?num1=7&str1=cabbage&num2=-199&str2=hey+you`,
+				args: []string{"num1", "num2", "str1", "str2", "other"},
+				want: `{"num1":7,"num2":-199,"str1":"cabbage","str2":"hey you"}`,
+			},
+			{
+				name: "byte strings in hex",
+				url:  `http://localhost?lower=0x626f62&upper=0X646F7567`,
+				args: []string{"upper", "lower", "other"},
+				want: `{"lower":"Ym9i","upper":"ZG91Zw=="}`,
+			},
+			{
+				name: "invalid hex odd length",
+				url:  `http://localhost?bad=0xa`,
+				args: []string{"bad", "superbad"},
+				fail: true,
+			},
+			{
+				name: "invalid hex empty",
+				url:  `http://localhost?bad=0x`,
+				args: []string{"bad"},
+				fail: true,
+			},
+			{
+				name: "invalid quoted string",
+				url:  `http://localhost?bad="double""`,
+				args: []string{"bad"},
+				fail: true,
+			},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				hreq, err := http.NewRequest("GET", test.url, nil)
+				if err != nil {
+					t.Fatalf("NewRequest for %q: %v", test.url, err)
+				}
 
-			vals, err := parseURLParams(context.Background(), call, req)
-			if tc.fail {
-				require.Error(t, err, i)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, 2, len(vals)) // ctx, *args
-			arg := vals[1].Interface().(*args)
-			h, err := arg.Height.Int64()
-			require.NoError(t, err)
-			require.Equal(t, tc.height, h)
-			require.Equal(t, tc.name, arg.Name)
+				bits, err := parseURLParams(test.args, hreq)
+				if err != nil && !test.fail {
+					t.Fatalf("Parse %q: unexpected error: %v", test.url, err)
+				} else if err == nil && test.fail {
+					t.Fatalf("Parse %q: got %#q, wanted error", test.url, string(bits))
+				}
+				if got := string(bits); got != test.want {
+					t.Errorf("Parse %q: got %#q, want %#q", test.url, got, test.want)
+				}
+			})
+		}
+	})
+
+	t.Run("Decode", func(t *testing.T) {
+		type argValue struct {
+			Height json.Number `json:"height"`
+			Name   string      `json:"name"`
+			Flag   bool        `json:"flag"`
+		}
+
+		echo := NewRPCFunc(func(_ context.Context, arg *argValue) (*argValue, error) {
+			return arg, nil
 		})
-	}
+
+		tests := []struct {
+			name string
+			url  string
+			fail string
+			want interface{}
+		}{
+			{
+				name: "valid all args",
+				url:  `http://localhost?height=235&flag=true&name="bogart"`,
+				want: &argValue{
+					Height: "235",
+					Flag:   true,
+					Name:   "bogart",
+				},
+			},
+			{
+				name: "valid partial args",
+				url:  `http://localhost?height="1987"&name=free+willy`,
+				want: &argValue{
+					Height: "1987",
+					Name:   "free willy",
+				},
+			},
+			{
+				name: "invalid quoted number",
+				url:  `http://localhost?height="-xx"`,
+				fail: "invalid number literal",
+			},
+			{
+				name: "invalid unquoted number",
+				url:  `http://localhost?height=25*q`,
+				fail: "invalid number literal",
+			},
+			{
+				name: "invalid boolean",
+				url:  `http://localhost?flag="garbage"`,
+				fail: "flag of type bool",
+			},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				hreq, err := http.NewRequest("GET", test.url, nil)
+				if err != nil {
+					t.Fatalf("NewRequest for %q: %v", test.url, err)
+				}
+				bits, err := parseURLParams(echo.argNames, hreq)
+				if err != nil {
+					t.Fatalf("Parse %#q: unexpected error: %v", test.url, err)
+				}
+				rsp, err := echo.Call(context.Background(), bits)
+				if test.want != nil {
+					assert.Equal(t, test.want, rsp)
+				}
+				if test.fail != "" {
+					assert.ErrorContains(t, err, test.fail)
+				}
+			})
+		}
+	})
 }
