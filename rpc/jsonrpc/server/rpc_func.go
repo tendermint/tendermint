@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -28,27 +28,25 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 
 // RPCFunc contains the introspected type information for a function.
 type RPCFunc struct {
-	f        reflect.Value  // underlying rpc function
-	args     []reflect.Type // type of each function arg
-	returns  []reflect.Type // type of each return arg
-	argNames []string       // name of each argument
-	ws       bool           // websocket only
+	f        reflect.Value // underlying rpc function
+	param    reflect.Type  // the parameter struct, or nil
+	result   reflect.Type  // the non-error result type, or nil
+	argNames []string      // name of each argument (for display)
+	ws       bool          // websocket only
 }
 
 // NewRPCFunc constructs an RPCFunc for f, which must be a function whose type
 // signature matches one of these schemes:
 //
-//     func(context.Context, T1, T2, ...) error
-//     func(context.Context, T1, T2, ...) (R, error)
+//     func(context.Context) error
+//     func(context.Context) (R, error)
+//     func(context.Context, *T) error
+//     func(context.Context, *T) (R, error)
 //
-// for arbitrary types T_i and R. The number of argNames must exactly match the
-// number of non-context arguments to f. Otherwise, NewRPCFunc panics.
-//
-// The parameter names given are used to map JSON object keys to the
-// corresonding parameter of the function. The names do not need to match the
-// declared names, but must match what the client sends in a request.
+// for an arbitrary struct type T and type R. NewRPCFunc will panic if f does
+// not have one of these forms.
 func NewRPCFunc(f interface{}, argNames ...string) *RPCFunc {
-	rf, err := newRPCFunc(f, argNames)
+	rf, err := newRPCFunc(f)
 	if err != nil {
 		panic("invalid RPC function: " + err.Error())
 	}
@@ -69,7 +67,7 @@ var (
 )
 
 // newRPCFunc constructs an RPCFunc for f. See the comment at NewRPCFunc.
-func newRPCFunc(f interface{}, argNames []string) (*RPCFunc, error) {
+func newRPCFunc(f interface{}) (*RPCFunc, error) {
 	if f == nil {
 		return nil, errors.New("nil function")
 	}
@@ -80,49 +78,55 @@ func newRPCFunc(f interface{}, argNames []string) (*RPCFunc, error) {
 		return nil, errors.New("not a function")
 	}
 
+	var ptype reflect.Type
 	ft := fv.Type()
-	if np := ft.NumIn(); np == 0 {
+	if np := ft.NumIn(); np == 0 || np > 2 {
 		return nil, errors.New("wrong number of parameters")
 	} else if ft.In(0) != ctxType {
 		return nil, errors.New("first parameter is not context.Context")
-	} else if np-1 != len(argNames) {
-		return nil, fmt.Errorf("have %d names for %d parameters", len(argNames), np-1)
+	} else if np == 2 {
+		ptype = ft.In(1)
+		if ptype.Kind() != reflect.Ptr {
+			return nil, errors.New("parameter type is not a pointer")
+		}
+		ptype = ptype.Elem()
+		if ptype.Kind() != reflect.Struct {
+			return nil, errors.New("parameter type is not a struct")
+		}
 	}
 
+	var rtype reflect.Type
 	if no := ft.NumOut(); no < 1 || no > 2 {
 		return nil, errors.New("wrong number of results")
 	} else if ft.Out(no-1) != errType {
 		return nil, errors.New("last result is not error")
+	} else if no == 2 {
+		rtype = ft.Out(0)
 	}
 
-	args := make([]reflect.Type, ft.NumIn())
-	for i := 0; i < ft.NumIn(); i++ {
-		args[i] = ft.In(i)
+	var argNames []string
+	if ptype != nil {
+		for i := 0; i < ptype.NumField(); i++ {
+			field := ptype.Field(i)
+			if tag := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]; tag != "" && tag != "-" {
+				argNames = append(argNames, tag)
+			} else if tag == "-" {
+				// If the tag is "-" the field should explicitly be ignored, even
+				// if it is otherwise eligible.
+			} else if field.IsExported() && !field.Anonymous {
+				argNames = append(argNames, adjustFieldName(field.Name))
+			}
+		}
 	}
-	outs := make([]reflect.Type, ft.NumOut())
-	for i := 0; i < ft.NumOut(); i++ {
-		outs[i] = ft.Out(i)
-	}
+
 	return &RPCFunc{
 		f:        fv,
-		args:     args,
-		returns:  outs,
+		param:    ptype,
+		result:   rtype,
 		argNames: argNames,
 	}, nil
 }
 
-//-------------------------------------------------------------
-
-// NOTE: assume returns is result struct and error. If error is not nil, return it
-func unreflectResult(returns []reflect.Value) (interface{}, error) {
-	errV := returns[1]
-	if err, ok := errV.Interface().(error); ok && err != nil {
-		return nil, err
-	}
-	rv := returns[0]
-	// the result is a registered interface,
-	// we need a pointer to it so we can marshal with type byte
-	rvp := reflect.New(rv.Type())
-	rvp.Elem().Set(rv)
-	return rvp.Interface(), nil
+func adjustFieldName(name string) string {
+	return strings.ToLower(name[:1]) + name[1:]
 }
