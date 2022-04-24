@@ -194,7 +194,11 @@ func newRPCFunc(f interface{}) (*RPCFunc, error) {
 				// If the tag is "-" the field should explicitly be ignored, even
 				// if it is otherwise eligible.
 			} else if field.IsExported() && !field.Anonymous {
-				argNames = append(argNames, adjustFieldName(field.Name))
+				// Examples: Name → name, MaxEffort → maxEffort.
+				// Note that this is an aesthetic choice; the standard decoder will
+				// match without regard to case anyway.
+				name := strings.ToLower(field.Name[:1]) + field.Name[1:]
+				argNames = append(argNames, name)
 			}
 		}
 	}
@@ -205,8 +209,4 @@ func newRPCFunc(f interface{}) (*RPCFunc, error) {
 		result:   rtype,
 		argNames: argNames,
 	}, nil
-}
-
-func adjustFieldName(name string) string {
-	return strings.ToLower(name[:1]) + name[1:]
 }
