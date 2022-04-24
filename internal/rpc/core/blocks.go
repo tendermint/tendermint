@@ -7,7 +7,6 @@ import (
 
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
@@ -23,17 +22,15 @@ import (
 // order (highest first).
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/blockchain
-func (env *Environment) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-
-	const limit int64 = 20
-
-	var err error
-	minHeight, maxHeight, err = filterMinMax(
+func (env *Environment) BlockchainInfo(ctx context.Context, req *coretypes.RequestBlockchainInfo) (*coretypes.ResultBlockchainInfo, error) {
+	const limit = 20
+	minHeight, maxHeight, err := filterMinMax(
 		env.BlockStore.Base(),
 		env.BlockStore.Height(),
-		minHeight,
-		maxHeight,
-		limit)
+		req.MinHeight,
+		req.MaxHeight,
+		limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +87,8 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 // Block gets block at a given height.
 // If no height is provided, it will fetch the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block
-func (env *Environment) Block(ctx context.Context, heightPtr *int64) (*coretypes.ResultBlock, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
+func (env *Environment) Block(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlock, error) {
+	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -107,12 +104,8 @@ func (env *Environment) Block(ctx context.Context, heightPtr *int64) (*coretypes
 
 // BlockByHash gets block by hash.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_by_hash
-func (env *Environment) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
-	// N.B. The hash parameter is HexBytes so that the reflective parameter
-	// decoding logic in the HTTP service will correctly translate from JSON.
-	// See https://github.com/tendermint/tendermint/issues/6802 for context.
-
-	block := env.BlockStore.LoadBlockByHash(hash)
+func (env *Environment) BlockByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultBlock, error) {
+	block := env.BlockStore.LoadBlockByHash(req.Hash)
 	if block == nil {
 		return &coretypes.ResultBlock{BlockID: types.BlockID{}, Block: nil}, nil
 	}
@@ -124,8 +117,8 @@ func (env *Environment) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*
 // Header gets block header at a given height.
 // If no height is provided, it will fetch the latest header.
 // More: https://docs.tendermint.com/master/rpc/#/Info/header
-func (env *Environment) Header(ctx context.Context, heightPtr *int64) (*coretypes.ResultHeader, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
+func (env *Environment) Header(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultHeader, error) {
+	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -140,12 +133,8 @@ func (env *Environment) Header(ctx context.Context, heightPtr *int64) (*coretype
 
 // HeaderByHash gets header by hash.
 // More: https://docs.tendermint.com/master/rpc/#/Info/header_by_hash
-func (env *Environment) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
-	// N.B. The hash parameter is HexBytes so that the reflective parameter
-	// decoding logic in the HTTP service will correctly translate from JSON.
-	// See https://github.com/tendermint/tendermint/issues/6802 for context.
-
-	blockMeta := env.BlockStore.LoadBlockMetaByHash(hash)
+func (env *Environment) HeaderByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultHeader, error) {
+	blockMeta := env.BlockStore.LoadBlockMetaByHash(req.Hash)
 	if blockMeta == nil {
 		return &coretypes.ResultHeader{}, nil
 	}
@@ -156,8 +145,8 @@ func (env *Environment) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (
 // Commit gets block commit at a given height.
 // If no height is provided, it will fetch the commit for the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/commit
-func (env *Environment) Commit(ctx context.Context, heightPtr *int64) (*coretypes.ResultCommit, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
+func (env *Environment) Commit(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultCommit, error) {
+	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +181,8 @@ func (env *Environment) Commit(ctx context.Context, heightPtr *int64) (*coretype
 //
 // Results are for the height of the block containing the txs.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_results
-func (env *Environment) BlockResults(ctx context.Context, heightPtr *int64) (*coretypes.ResultBlockResults, error) {
-	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
+func (env *Environment) BlockResults(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlockResults, error) {
+	height, err := env.getHeight(env.BlockStore.Height(), req.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -218,20 +207,13 @@ func (env *Environment) BlockResults(ctx context.Context, heightPtr *int64) (*co
 	}, nil
 }
 
-// BlockSearch searches for a paginated set of blocks matching the provided
-// query.
-func (env *Environment) BlockSearch(
-	ctx context.Context,
-	query string,
-	pagePtr, perPagePtr *int,
-	orderBy string,
-) (*coretypes.ResultBlockSearch, error) {
-
+// BlockSearch searches for a paginated set of blocks matching the provided query.
+func (env *Environment) BlockSearch(ctx context.Context, req *coretypes.RequestBlockSearch) (*coretypes.ResultBlockSearch, error) {
 	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return nil, fmt.Errorf("block searching is disabled due to no kvEventSink")
 	}
 
-	q, err := tmquery.New(query)
+	q, err := tmquery.New(req.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +231,7 @@ func (env *Environment) BlockSearch(
 	}
 
 	// sort results (must be done before pagination)
-	switch orderBy {
+	switch req.OrderBy {
 	case "desc", "":
 		sort.Slice(results, func(i, j int) bool { return results[i] > results[j] })
 
@@ -262,9 +244,9 @@ func (env *Environment) BlockSearch(
 
 	// paginate results
 	totalCount := len(results)
-	perPage := env.validatePerPage(perPagePtr)
+	perPage := env.validatePerPage(req.PerPage)
 
-	page, err := validatePage(pagePtr, perPage, totalCount)
+	page, err := validatePage(req.Page, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}

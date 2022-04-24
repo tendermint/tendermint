@@ -8,7 +8,6 @@ import (
 
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	"github.com/tendermint/tendermint/types"
@@ -18,32 +17,27 @@ import (
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx
-func (env *Environment) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
+func (env *Environment) Tx(ctx context.Context, req *coretypes.RequestTx) (*coretypes.ResultTx, error) {
 	// if index is disabled, return error
-
-	// N.B. The hash parameter is HexBytes so that the reflective parameter
-	// decoding logic in the HTTP service will correctly translate from JSON.
-	// See https://github.com/tendermint/tendermint/issues/6802 for context.
-
 	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return nil, errors.New("transaction querying is disabled due to no kvEventSink")
 	}
 
 	for _, sink := range env.EventSinks {
 		if sink.Type() == indexer.KV {
-			r, err := sink.GetTxByHash(hash)
+			r, err := sink.GetTxByHash(req.Hash)
 			if r == nil {
-				return nil, fmt.Errorf("tx (%X) not found, err: %w", hash, err)
+				return nil, fmt.Errorf("tx (%X) not found, err: %w", req.Hash, err)
 			}
 
 			var proof types.TxProof
-			if prove {
+			if req.Prove {
 				block := env.BlockStore.LoadBlock(r.Height)
 				proof = block.Data.Txs.Proof(int(r.Index))
 			}
 
 			return &coretypes.ResultTx{
-				Hash:     hash,
+				Hash:     req.Hash,
 				Height:   r.Height,
 				Index:    r.Index,
 				TxResult: r.Result,
@@ -59,21 +53,14 @@ func (env *Environment) Tx(ctx context.Context, hash bytes.HexBytes, prove bool)
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
 // More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
-func (env *Environment) TxSearch(
-	ctx context.Context,
-	query string,
-	prove bool,
-	pagePtr, perPagePtr *int,
-	orderBy string,
-) (*coretypes.ResultTxSearch, error) {
-
+func (env *Environment) TxSearch(ctx context.Context, req *coretypes.RequestTxSearch) (*coretypes.ResultTxSearch, error) {
 	if !indexer.KVSinkEnabled(env.EventSinks) {
 		return nil, fmt.Errorf("transaction searching is disabled due to no kvEventSink")
-	} else if len(query) > maxQueryLength {
+	} else if len(req.Query) > maxQueryLength {
 		return nil, errors.New("maximum query length exceeded")
 	}
 
-	q, err := tmquery.New(query)
+	q, err := tmquery.New(req.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +73,7 @@ func (env *Environment) TxSearch(
 			}
 
 			// sort results (must be done before pagination)
-			switch orderBy {
+			switch req.OrderBy {
 			case "desc", "":
 				sort.Slice(results, func(i, j int) bool {
 					if results[i].Height == results[j].Height {
@@ -107,9 +94,9 @@ func (env *Environment) TxSearch(
 
 			// paginate results
 			totalCount := len(results)
-			perPage := env.validatePerPage(perPagePtr)
+			perPage := env.validatePerPage(req.PerPage)
 
-			page, err := validatePage(pagePtr, perPage, totalCount)
+			page, err := validatePage(req.Page, perPage, totalCount)
 			if err != nil {
 				return nil, err
 			}
@@ -122,7 +109,7 @@ func (env *Environment) TxSearch(
 				r := results[i]
 
 				var proof types.TxProof
-				if prove {
+				if req.Prove {
 					block := env.BlockStore.LoadBlock(r.Height)
 					proof = block.Data.Txs.Proof(int(r.Index))
 				}

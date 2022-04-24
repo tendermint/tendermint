@@ -12,7 +12,6 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -21,23 +20,23 @@ import (
 // BroadcastTxAsync returns right away, with no response. Does not wait for
 // CheckTx nor DeliverTx results.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
-func (env *Environment) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-	err := env.Mempool.CheckTx(ctx, tx, nil, mempool.TxInfo{})
+func (env *Environment) BroadcastTxAsync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
+	err := env.Mempool.CheckTx(ctx, req.Tx, nil, mempool.TxInfo{})
 	if err != nil {
 		return nil, err
 	}
 
-	return &coretypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
+	return &coretypes.ResultBroadcastTx{Hash: req.Tx.Hash()}, nil
 }
 
 // BroadcastTxSync returns with the response from CheckTx. Does not wait for
 // DeliverTx result.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
-func (env *Environment) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
+func (env *Environment) BroadcastTxSync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.ResponseCheckTx, 1)
 	err := env.Mempool.CheckTx(
 		ctx,
-		tx,
+		req.Tx,
 		func(res *abci.ResponseCheckTx) {
 			select {
 			case <-ctx.Done():
@@ -60,19 +59,18 @@ func (env *Environment) BroadcastTxSync(ctx context.Context, tx types.Tx) (*core
 			Log:          r.Log,
 			Codespace:    r.Codespace,
 			MempoolError: r.MempoolError,
-			Hash:         tx.Hash(),
+			Hash:         req.Tx.Hash(),
 		}, nil
 	}
-
 }
 
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_commit
-func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
+func (env *Environment) BroadcastTxCommit(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTxCommit, error) {
 	resCh := make(chan *abci.ResponseCheckTx, 1)
 	err := env.Mempool.CheckTx(
 		ctx,
-		tx,
+		req.Tx,
 		func(res *abci.ResponseCheckTx) {
 			select {
 			case <-ctx.Done():
@@ -92,14 +90,14 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 		if r.Code != abci.CodeTypeOK {
 			return &coretypes.ResultBroadcastTxCommit{
 				CheckTx: *r,
-				Hash:    tx.Hash(),
+				Hash:    req.Tx.Hash(),
 			}, fmt.Errorf("transaction encountered error (%s)", r.MempoolError)
 		}
 
 		if !indexer.KVSinkEnabled(env.EventSinks) {
 			return &coretypes.ResultBroadcastTxCommit{
 					CheckTx: *r,
-					Hash:    tx.Hash(),
+					Hash:    req.Tx.Hash(),
 				},
 				errors.New("cannot confirm transaction because kvEventSink is not enabled")
 		}
@@ -118,11 +116,14 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 					"err", err)
 				return &coretypes.ResultBroadcastTxCommit{
 						CheckTx: *r,
-						Hash:    tx.Hash(),
+						Hash:    req.Tx.Hash(),
 					}, fmt.Errorf("timeout waiting for commit of tx %s (%s)",
-						tx.Hash(), time.Since(startAt))
+						req.Tx.Hash(), time.Since(startAt))
 			case <-timer.C:
-				txres, err := env.Tx(ctx, tx.Hash(), false)
+				txres, err := env.Tx(ctx, &coretypes.RequestTx{
+					Hash:  req.Tx.Hash(),
+					Prove: false,
+				})
 				if err != nil {
 					jitter := 100*time.Millisecond + time.Duration(rand.Int63n(int64(time.Second))) // nolint: gosec
 					backoff := 100 * time.Duration(count) * time.Millisecond
@@ -133,7 +134,7 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 				return &coretypes.ResultBroadcastTxCommit{
 					CheckTx:  *r,
 					TxResult: txres.TxResult,
-					Hash:     tx.Hash(),
+					Hash:     req.Tx.Hash(),
 					Height:   txres.Height,
 				}, nil
 			}
@@ -143,10 +144,10 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 
 // UnconfirmedTxs gets unconfirmed transactions from the mempool in order of priority
 // More: https://docs.tendermint.com/master/rpc/#/Info/unconfirmed_txs
-func (env *Environment) UnconfirmedTxs(ctx context.Context, pagePtr, perPagePtr *int) (*coretypes.ResultUnconfirmedTxs, error) {
+func (env *Environment) UnconfirmedTxs(ctx context.Context, req *coretypes.RequestUnconfirmedTxs) (*coretypes.ResultUnconfirmedTxs, error) {
 	totalCount := env.Mempool.Size()
-	perPage := env.validatePerPage(perPagePtr)
-	page, err := validatePage(pagePtr, perPage, totalCount)
+	perPage := env.validatePerPage(req.PerPage)
+	page, err := validatePage(req.Page, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +161,8 @@ func (env *Environment) UnconfirmedTxs(ctx context.Context, pagePtr, perPagePtr 
 		Count:      len(result),
 		Total:      totalCount,
 		TotalBytes: env.Mempool.SizeBytes(),
-		Txs:        result}, nil
+		Txs:        result,
+	}, nil
 }
 
 // NumUnconfirmedTxs gets number of unconfirmed transactions.
@@ -175,14 +177,14 @@ func (env *Environment) NumUnconfirmedTxs(ctx context.Context) (*coretypes.Resul
 // CheckTx checks the transaction without executing it. The transaction won't
 // be added to the mempool either.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/check_tx
-func (env *Environment) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
-	res, err := env.ProxyApp.CheckTx(ctx, &abci.RequestCheckTx{Tx: tx})
+func (env *Environment) CheckTx(ctx context.Context, req *coretypes.RequestCheckTx) (*coretypes.ResultCheckTx, error) {
+	res, err := env.ProxyApp.CheckTx(ctx, &abci.RequestCheckTx{Tx: req.Tx})
 	if err != nil {
 		return nil, err
 	}
 	return &coretypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (env *Environment) RemoveTx(ctx context.Context, txkey types.TxKey) error {
-	return env.Mempool.RemoveTxByKey(txkey)
+func (env *Environment) RemoveTx(ctx context.Context, req *coretypes.RequestRemoveTx) error {
+	return env.Mempool.RemoveTxByKey(req.TxKey)
 }

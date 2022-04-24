@@ -14,10 +14,9 @@ import (
 // for the validators in the set as used in computing their Merkle root.
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
-func (env *Environment) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*coretypes.ResultValidators, error) {
-
+func (env *Environment) Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error) {
 	// The latest validator that we know is the NextValidator of the last block.
-	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
+	height, err := env.getHeight(env.latestUncommittedHeight(), req.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -28,8 +27,8 @@ func (env *Environment) Validators(ctx context.Context, heightPtr *int64, pagePt
 	}
 
 	totalCount := len(validators.Validators)
-	perPage := env.validatePerPage(perPagePtr)
-	page, err := validatePage(pagePtr, perPage, totalCount)
+	perPage := env.validatePerPage(req.PerPage)
+	page, err := validatePage(req.Page, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +41,8 @@ func (env *Environment) Validators(ctx context.Context, heightPtr *int64, pagePt
 		BlockHeight: height,
 		Validators:  v,
 		Count:       len(v),
-		Total:       totalCount}, nil
+		Total:       totalCount,
+	}, nil
 }
 
 // DumpConsensusState dumps consensus state.
@@ -99,11 +99,10 @@ func (env *Environment) GetConsensusState(ctx context.Context) (*coretypes.Resul
 // ConsensusParams gets the consensus parameters at the given block height.
 // If no height is provided, it will fetch the latest consensus params.
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
-func (env *Environment) ConsensusParams(ctx context.Context, heightPtr *int64) (*coretypes.ResultConsensusParams, error) {
-
-	// The latest consensus params that we know is the consensus params after the
-	// last block.
-	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
+func (env *Environment) ConsensusParams(ctx context.Context, req *coretypes.RequestConsensusParams) (*coretypes.ResultConsensusParams, error) {
+	// The latest consensus params that we know is the consensus params after
+	// the last block.
+	height, err := env.getHeight(env.latestUncommittedHeight(), req.Height)
 	if err != nil {
 		return nil, err
 	}

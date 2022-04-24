@@ -109,7 +109,9 @@ func TestBlockResults(t *testing.T) {
 
 	ctx := context.Background()
 	for _, tc := range testCases {
-		res, err := env.BlockResults(ctx, &tc.height)
+		res, err := env.BlockResults(ctx, &coretypes.RequestBlockInfo{
+			Height: tc.height,
+		})
 		if tc.wantErr {
 			assert.Error(t, err)
 		} else {
