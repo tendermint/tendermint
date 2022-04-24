@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.3.0
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
@@ -46,13 +45,28 @@ require (
 require (
 	github.com/creachadair/atomicfile v0.2.5
 	github.com/creachadair/taskgroup v0.3.2
+	github.com/go-pkgz/jrpc v0.2.0
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.8
 	github.com/vektra/mockery/v2 v2.12.1
 	gotest.tools v2.2.0+incompatible
 )
 
-require github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
+require (
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
+	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
+	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
+	github.com/dashevo/dashd-go/btcutil v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	github.com/didip/tollbooth/v6 v6.0.1 // indirect
+	github.com/didip/tollbooth_chi v0.0.0-20200524181329-8b84cd7183d9 // indirect
+	github.com/go-chi/chi v4.1.1+incompatible // indirect
+	github.com/go-chi/render v1.0.1 // indirect
+	github.com/go-pkgz/expirable-cache v0.0.3 // indirect
+	github.com/go-pkgz/rest v1.5.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
+	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
+)
 
 require (
 	4d63.com/gochecknoglobals v0.1.0 // indirect
@@ -62,7 +76,6 @@ require (
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/OpenPeeDeeP/depguard v1.1.0 // indirect
 	github.com/alexkohler/prealloc v1.0.0 // indirect
@@ -80,7 +93,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/charithe/durationcheck v0.0.9 // indirect
 	github.com/chavacava/garif v0.0.0-20210405164556-e8a0a408d6af // indirect
-	github.com/containerd/continuity v0.2.1 // indirect
 	github.com/creachadair/tomledit v0.0.19
 	github.com/daixiang0/gci v0.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -128,7 +140,7 @@ require (
 	github.com/gostaticanalysis/forcetypeassert v0.1.0 // indirect
 	github.com/gostaticanalysis/nilerr v0.1.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect

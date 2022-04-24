@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -63,7 +62,7 @@ type VoteSet struct {
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
 
-	mtx           tmsync.Mutex
+	mtx           sync.Mutex
 	votesBitArray *bits.BitArray
 	votes         []*Vote                // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
@@ -72,8 +71,8 @@ type VoteSet struct {
 	peerMaj23s    map[string]BlockID     // Maj23 for each peer
 
 	// dash fields
-	thresholdBlockSig []byte                 // If a 2/3 majority is seen, recover the block sig
-	thresholdStateSig []byte                 // If a 2/3 majority is seen, recover the state sig
+	thresholdBlockSig []byte // If a 2/3 majority is seen, recover the block sig
+	thresholdStateSig []byte // If a 2/3 majority is seen, recover the state sig
 }
 
 // NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -213,7 +212,13 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Check signature.
 
 	signID, stateSignID, err := vote.VerifyWithExtension(
-		voteSet.chainID, voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, val.PubKey, val.ProTxHash, voteSet.stateID)
+		voteSet.chainID,
+		voteSet.valSet.QuorumType,
+		voteSet.valSet.QuorumHash,
+		val.PubKey,
+		val.ProTxHash,
+		voteSet.stateID,
+	)
 	if err != nil {
 		return false, ErrInvalidVoteSignature(
 			fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",

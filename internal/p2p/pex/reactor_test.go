@@ -438,10 +438,11 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 	t.Helper()
 
 	for i := 0; i < nodes; i++ {
-		node := r.network.MakeNode(ctx, t, nil, p2ptest.NodeOptions{
+		nodeCtx := p2ptest.WithLoggerAttrs(ctx, "validator", i)
+		node := r.network.MakeNode(nodeCtx, t, nil, p2ptest.NodeOptions{
 			MaxPeers:     r.opts.MaxPeers,
 			MaxConnected: r.opts.MaxConnected,
-		}, r.logger.With("validator", i))
+		})
 		r.network.Nodes[node.NodeID] = node
 		nodeID := node.NodeID
 		r.pexChannels[nodeID] = node.MakeChannelNoCleanup(ctx, t, pex.ChannelDescriptor())

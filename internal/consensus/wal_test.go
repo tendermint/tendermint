@@ -16,7 +16,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/libs/autofile"
 	"github.com/tendermint/tendermint/libs/log"
@@ -162,10 +161,10 @@ func TestWALWriteCommit(t *testing.T) {
 	// Prepare and write commit msg
 	stateID := tmtypes.RandStateID()
 	blockID := tmtypes.BlockID{
-		Hash: crypto.CRandBytes(tmhash.Size),
+		Hash: crypto.CRandBytes(crypto.HashSize),
 		PartSetHeader: tmtypes.PartSetHeader{
 			Total: 0,
-			Hash:  crypto.CRandBytes(tmhash.Size)},
+			Hash:  crypto.CRandBytes(crypto.HashSize)},
 	}
 	msg := &CommitMessage{
 		Commit: &tmtypes.Commit{

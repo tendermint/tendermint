@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -387,7 +389,7 @@ func makeSeedNodeInfo(
 		},
 		NodeID:  nodeKey.ID,
 		Network: genDoc.ChainID,
-		Version:  version.TMCoreSemVer,
+		Version: version.TMCoreSemVer,
 		Channels: []byte{
 			pex.PexChannel,
 		},
@@ -409,6 +411,7 @@ func makeSeedNodeInfo(
 func createAndStartPrivValidatorSocketClient(
 	ctx context.Context,
 	listenAddr, chainID string,
+	quorumHash crypto.QuorumHash,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
@@ -423,7 +426,7 @@ func createAndStartPrivValidatorSocketClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(ctx)
+	_, err = pvsc.GetPubKey(ctx, quorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -442,6 +445,7 @@ func createAndStartPrivValidatorGRPCClient(
 	ctx context.Context,
 	cfg *config.Config,
 	chainID string,
+	quorumHash crypto.QuorumHash,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pvsc, err := tmgrpc.DialRemoteSigner(
@@ -456,7 +460,7 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(ctx)
+	_, err = pvsc.GetPubKey(ctx, quorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -483,7 +487,7 @@ func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, 
 		// then start them later.
 		switch protocol {
 		case "grpc":
-			privValidator, err := createAndStartPrivValidatorGRPCClient(ctx, conf, genDoc.ChainID, logger)
+			privValidator, err := createAndStartPrivValidatorGRPCClient(ctx, conf, genDoc.ChainID, genDoc.QuorumHash, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
@@ -493,6 +497,7 @@ func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, 
 				ctx,
 				conf.PrivValidator.ListenAddr,
 				genDoc.ChainID,
+				genDoc.QuorumHash,
 				logger,
 			)
 			if err != nil {
@@ -504,4 +509,26 @@ func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, 
 	}
 
 	return defaultPV, nil
+}
+
+func createAndStartPrivValidatorRPCClient(
+	defaultQuorumType btcjson.LLMQType,
+	dashCoreRPCClient dashcore.Client,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, defaultQuorumType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
+	}
+
+	// try to ping Core from private validator first time to make sure connection works
+	err = pvsc.Ping()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"can't ping core server when starting private validator rpc client: %w",
+			err,
+		)
+	}
+
+	return pvsc, nil
 }

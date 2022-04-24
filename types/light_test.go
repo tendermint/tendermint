@@ -18,7 +18,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 
 	header := MakeRandHeader()
 	stateID := RandStateID()
-	commit := randCommit(ctx, t, stateID, time.Now())
+	commit := randCommit(ctx, t, stateID)
 	vals, _ := RandValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
@@ -43,7 +43,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 		{"valid light block", sh, vals, false},
 		{"hashes don't match", sh, vals2, true},
 		{"invalid validator set", sh, vals3, true},
-		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit(ctx, t, stateID, time.Now())}, vals, true},
+		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit(ctx, t, stateID)}, vals, true},
 	}
 
 	for _, tc := range testCases {
@@ -65,7 +65,7 @@ func TestLightBlockProtobuf(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	header := MakeRandHeader()
-	commit := randCommit(ctx, t, RandStateID(), time.Now())
+	commit := randCommit(ctx, t, RandStateID())
 	vals, _ := RandValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
@@ -121,7 +121,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	commit := randCommit(ctx, t, RandStateID(), time.Now())
+	commit := randCommit(ctx, t, RandStateID())
 
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
@@ -177,6 +177,8 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 }
 
 func TestLightBlock_StateID(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	tests := []struct {
 		name        string
@@ -186,19 +188,19 @@ func TestLightBlock_StateID(t *testing.T) {
 	}{
 		{
 			"State ID OK",
-			randCommit(StateID{12, []byte("12345678901234567890123456789012")}),
+			randCommit(ctx, t, StateID{12, []byte("12345678901234567890123456789012")}),
 			StateID{12, []byte("12345678901234567890123456789012")},
 			false,
 		},
 		{
 			"Short app hash",
-			randCommit(StateID{12, []byte("12345678901234567890")}),
+			randCommit(ctx, t, StateID{12, []byte("12345678901234567890")}),
 			StateID{12, []byte("12345678901234567890")},
 			false,
 		},
 		{
 			"Nil app hash",
-			randCommit(StateID{12, nil}),
+			randCommit(ctx, t, StateID{12, nil}),
 			StateID{12, []byte{}},
 			false,
 		},

@@ -71,8 +71,8 @@ type ResultBlockResults struct {
 	TotalGasUsed          int64                    `json:"total_gas_used,string"`
 	FinalizeBlockEvents   []abci.Event             `json:"finalize_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate   `json:"validator_updates"`
-	ValidatorSetUpdate    *abci.ValidatorSetUpdate  `json:"validator_set_updates"`
-	ConsensusParamUpdates *types.ConsensusParams    `json:"consensus_param_updates"`
+	ValidatorSetUpdate    *abci.ValidatorSetUpdate `json:"validator_set_updates"`
+	ConsensusParamUpdates *types.ConsensusParams   `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with
@@ -128,17 +128,13 @@ type ValidatorInfo struct {
 }
 
 type validatorInfoJSON struct {
-	ProTxHash   json.RawMessage `json:"pro_tx_hash"`
-	VotingPower int64           `json:"voting_power,string"`
+	ProTxHash   crypto.ProTxHash `json:"pro_tx_hash"`
+	VotingPower int64            `json:"voting_power,string"`
 }
 
 func (v ValidatorInfo) MarshalJSON() ([]byte, error) {
-	proTxHash, err := jsontypes.Marshal(v.ProTxHash)
-	if err != nil {
-		return nil, err
-	}
 	return json.Marshal(validatorInfoJSON{
-		ProTxHash: proTxHash, VotingPower: v.VotingPower,
+		ProTxHash: v.ProTxHash, VotingPower: v.VotingPower,
 	})
 }
 

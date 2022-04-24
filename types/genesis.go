@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/jsontypes"
@@ -38,7 +40,7 @@ type genesisValidatorJSON struct {
 	PubKey    json.RawMessage  `json:"pub_key"`
 	Power     int64            `json:"power"`
 	Name      string           `json:"name"`
-	ProTxHash json.RawMessage `json:"pro_tx_hash"`
+	ProTxHash crypto.ProTxHash `json:"pro_tx_hash"`
 }
 
 func (g GenesisValidator) MarshalJSON() ([]byte, error) {
@@ -46,12 +48,8 @@ func (g GenesisValidator) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	proTxHash, err := jsontypes.Marshal(g.ProTxHash)
-	if err != nil {
-		return nil, err
-	}
 	return json.Marshal(genesisValidatorJSON{
-		ProTxHash: proTxHash, PubKey: pk, Power: g.Power, Name: g.Name,
+		ProTxHash: g.ProTxHash, PubKey: pk, Power: g.Power, Name: g.Name,
 	})
 }
 

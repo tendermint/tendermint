@@ -210,7 +210,7 @@ func startSeedNode(ctx context.Context) error {
 
 	tmcfg.Mode = config.ModeSeed
 
-	n, err := node.New(ctx, tmcfg, nodeLogger, nil, nil, dashCoreRPCClient)
+	n, err := node.New(ctx, tmcfg, nodeLogger, nil, nil, nil)
 	if err != nil {
 		return err
 	}

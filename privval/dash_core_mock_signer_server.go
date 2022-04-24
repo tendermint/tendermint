@@ -2,8 +2,8 @@ package privval
 
 import (
 	"github.com/go-pkgz/jrpc"
-	"github.com/tendermint/tendermint/crypto"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
 

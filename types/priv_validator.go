@@ -256,12 +256,10 @@ func (pv *MockPV) SignVote(
 	}
 
 	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
-	extSignBytes := VoteExtensionSignBytes(useChainID, vote)
+	extSignID := VoteExtensionSignBytes(useChainID, vote)
 
-	var privKey crypto.PrivKey
-	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
-		privKey = quorumKeys.PrivKey
-	} else {
+	privKey, err := pv.GetPrivateKey(ctx, quorumHash)
+	if err != nil {
 		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
 	}
 
@@ -287,7 +285,7 @@ func (pv *MockPV) SignVote(
 	var extSig []byte
 	// We only sign vote extensions for precommits
 	if vote.Type == tmproto.PrecommitType {
-		extSig, err = pv.PrivKey.SignDigest(extSignBytes)
+		extSig, err = privKey.SignDigest(extSignID)
 		if err != nil {
 			return err
 		}

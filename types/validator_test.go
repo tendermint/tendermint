@@ -50,11 +50,6 @@ func TestValidatorValidateBasic(t *testing.T) {
 	pubKey, err := priv.GetPubKey(context.Background(), quorumHash)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey(ctx)
 	testCases := []struct {
 		val *Validator
 		err bool

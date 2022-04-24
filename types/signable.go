@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 )
 

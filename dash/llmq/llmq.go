@@ -1,6 +1,7 @@
 package llmq
 
 import (
+	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -91,7 +92,7 @@ func Generate(proTxHashes []crypto.ProTxHash, opts ...optionFunc) (*Data, error)
 	conf := llmqConfig{
 		proTxHashes: bls12381.ReverseProTxHashes(proTxHashes),
 		threshold:   len(proTxHashes)*2/3 + 1,
-		seedReader:  crypto.CReader(),
+		seedReader:  cryptorand.Reader,
 	}
 	for _, opt := range opts {
 		opt(&conf)

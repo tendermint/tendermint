@@ -2,18 +2,21 @@ package types
 
 import (
 	"bytes"
-	"errors"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/rs/zerolog"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -146,7 +149,7 @@ func VoteExtensionSignBytes(chainID string, vote *tmproto.Vote) []byte {
 func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	blockSignBytes := VoteBlockSignBytes(chainID, vote)
 
-	blockMessageHash := crypto.Sha256(blockSignBytes)
+	blockMessageHash := sha256.Sum256(blockSignBytes)
 
 	blockRequestID := VoteBlockRequestIDProto(vote)
 
@@ -154,7 +157,7 @@ func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQ
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(blockRequestID),
-		tmbytes.Reverse(blockMessageHash),
+		tmbytes.Reverse(blockMessageHash[:]),
 	)
 
 	return blockSignID
@@ -206,41 +209,44 @@ func (vote *Vote) String() string {
 	)
 }
 
-func (vote *Vote) verifyAndReturnProto(chainID string, pubKey crypto.PubKey) (*tmproto.Vote, error) {
-	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
-		return nil, ErrVoteInvalidValidatorAddress
-	}
-	v := vote.ToProto()
-	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
-		return nil, ErrVoteInvalidSignature
-	}
-	return v, nil
-}
-
 // VerifyWithExtension performs the same verification as Verify, but
 // additionally checks whether the vote extension signature corresponds to the
 // given chain ID and public key. We only verify vote extension signatures for
 // precommits.
-func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) error {
-	v, err := vote.verifyAndReturnProto(chainID, pubKey)
+func (vote *Vote) VerifyWithExtension(
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	pubKey crypto.PubKey,
+	proTxHash ProTxHash,
+	stateID StateID,
+) ([]byte, []byte, error) {
+	v := vote.ToProto()
+	signID, stateSignID, err := vote.Verify(chainID, quorumType, quorumHash, pubKey, proTxHash, stateID)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	// We only verify vote extension signatures for precommits.
 	if vote.Type == tmproto.PrecommitType {
 		extSignBytes := VoteExtensionSignBytes(chainID, v)
+		extSignDigest := sha256.Sum256(extSignBytes)
 		// TODO: Remove extension signature nil check to enforce vote extension
 		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
-			return ErrVoteInvalidSignature
+		if vote.ExtensionSignature != nil && !pubKey.VerifySignatureDigest(extSignDigest[:], vote.ExtensionSignature) {
+			return nil, nil, ErrVoteInvalidSignature
 		}
 	}
-	return nil
+	return signID, stateSignID, nil
 }
 
 func (vote *Vote) Verify(
-	chainID string, quorumType btcjson.LLMQType, quorumHash []byte,
-	pubKey crypto.PubKey, proTxHash crypto.ProTxHash, stateID StateID) ([]byte, []byte, error) {
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash []byte,
+	pubKey crypto.PubKey,
+	proTxHash crypto.ProTxHash,
+	stateID StateID,
+) ([]byte, []byte, error) {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return nil, nil, ErrVoteInvalidValidatorProTxHash
 	}
@@ -250,7 +256,7 @@ func (vote *Vote) Verify(
 	v := vote.ToProto()
 	voteBlockSignBytes := VoteBlockSignBytes(chainID, v)
 
-	blockMessageHash := crypto.Sha256(voteBlockSignBytes)
+	blockMessageHash := sha256.Sum256(voteBlockSignBytes)
 
 	blockRequestID := VoteBlockRequestID(vote)
 
@@ -258,7 +264,7 @@ func (vote *Vote) Verify(
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(blockRequestID),
-		tmbytes.Reverse(blockMessageHash),
+		tmbytes.Reverse(blockMessageHash[:]),
 	)
 
 	// fmt.Printf("block vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
@@ -274,7 +280,7 @@ func (vote *Vote) Verify(
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
 		voteStateSignBytes := stateID.SignBytes(chainID)
-		stateMessageHash := crypto.Sha256(voteStateSignBytes)
+		stateMessageHash := sha256.Sum256(voteStateSignBytes)
 
 		stateRequestID := stateID.SignRequestID()
 
@@ -282,7 +288,7 @@ func (vote *Vote) Verify(
 			quorumType,
 			tmbytes.Reverse(quorumHash),
 			tmbytes.Reverse(stateRequestID),
-			tmbytes.Reverse(stateMessageHash))
+			tmbytes.Reverse(stateMessageHash[:]))
 
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
@@ -380,8 +386,8 @@ func (vote *Vote) ValidateWithExtension() error {
 		if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
 			return errors.New("vote extension signature is missing")
 		}
-		if len(vote.ExtensionSignature) > MaxSignatureSize {
-			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
+		if len(vote.ExtensionSignature) > SignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", SignatureSize)
 		}
 	}
 
@@ -420,7 +426,7 @@ func (vote *Vote) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("state_signature", vote.StateSignature.ShortString())
 	e.Str("val_proTxHash", vote.ValidatorProTxHash.ShortString())
 	e.Int32("val_index", vote.ValidatorIndex)
-	e.Bool("nil", vote.BlockID.IsZero())
+	e.Bool("nil", vote.BlockID.IsNil())
 }
 
 func (vote *Vote) HasVoteMessage() *tmcons.HasVote {
@@ -458,7 +464,8 @@ func VoteBlockRequestID(vote *Vote) []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
@@ -471,5 +478,6 @@ func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }

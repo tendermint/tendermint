@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -73,7 +73,7 @@ func makeVoteHR(
 	proTxHash, err := privVal.GetProTxHash(ctx)
 	require.NoError(t, err)
 
-	randBytes := tmrand.Bytes(tmhash.Size)
+	randBytes := tmrand.Bytes(crypto.HashSize)
 
 	vote := &types.Vote{
 		ValidatorProTxHash: proTxHash,

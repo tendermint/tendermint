@@ -9,24 +9,16 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"time"
-
-	"github.com/tendermint/tendermint/libs/log"
+	"sync"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
-	"github.com/tendermint/tendermint/crypto/bls12381"
-
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/jsontypes"
-	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/tempfile"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -75,16 +67,11 @@ type filePVKeyJSON struct {
 }
 
 func (pvKey FilePVKey) MarshalJSON() ([]byte, error) {
-	pubk, err := jsontypes.Marshal(pvKey.PubKey)
-	if err != nil {
-		return nil, err
-	}
-	privk, err := jsontypes.Marshal(pvKey.PrivKey)
-	if err != nil {
-		return nil, err
-	}
 	return json.Marshal(filePVKeyJSON{
-		Address: pvKey.Address, PubKey: pubk, PrivKey: privk,
+		PrivateKeys:          pvKey.PrivateKeys,
+		UpdateHeights:        pvKey.UpdateHeights,
+		FirstHeightOfQuorums: pvKey.FirstHeightOfQuorums,
+		ProTxHash:            pvKey.ProTxHash,
 	})
 }
 
@@ -93,13 +80,10 @@ func (pvKey *FilePVKey) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &key); err != nil {
 		return err
 	}
-	if err := jsontypes.Unmarshal(key.PubKey, &pvKey.PubKey); err != nil {
-		return fmt.Errorf("decoding PubKey: %w", err)
-	}
-	if err := jsontypes.Unmarshal(key.PrivKey, &pvKey.PrivKey); err != nil {
-		return fmt.Errorf("decoding PrivKey: %w", err)
-	}
-	pvKey.Address = key.Address
+	pvKey.PrivateKeys = key.PrivateKeys
+	pvKey.UpdateHeights = key.UpdateHeights
+	pvKey.FirstHeightOfQuorums = key.FirstHeightOfQuorums
+	pvKey.ProTxHash = key.ProTxHash
 	return nil
 }
 
@@ -143,8 +127,10 @@ func (lss *FilePVLastSignState) reset() {
 	lss.Height = 0
 	lss.Round = 0
 	lss.Step = 0
-	lss.Signature = nil
-	lss.SignBytes = nil
+	lss.BlockSignature = nil
+	lss.BlockSignBytes = nil
+	lss.StateSignature = nil
+	lss.StateSignBytes = nil
 }
 
 // checkHRS checks the given height, round, step (HRS) against that of the
@@ -217,7 +203,7 @@ func (lss *FilePVLastSignState) Save() error {
 type FilePV struct {
 	Key           FilePVKey
 	LastSignState FilePVLastSignState
-	mtx           tmsync.RWMutex
+	mtx           sync.RWMutex
 }
 
 // FilePVOption ...
@@ -386,7 +372,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, err
 	}
 	// verify proTxHash is 32 bytes if it exists
 	if pvKey.ProTxHash != nil && len(pvKey.ProTxHash) != crypto.ProTxHashSize {
-		tmos.Exit(fmt.Sprintf("loadFilePV proTxHash must be 32 bytes in key file path %s", keyFilePath))
+		return nil, fmt.Errorf("loadFilePV proTxHash must be 32 bytes in key file path %s", keyFilePath)
 	}
 
 	pvKey.filePath = keyFilePath
@@ -576,7 +562,7 @@ func (pv *FilePV) SignVote(
 	pv.mtx.RLock()
 	defer pv.mtx.RUnlock()
 
-	if err := pv.signVote(chainID, quorumType, quorumHash, vote, stateID); err != nil {
+	if err := pv.signVote(ctx, chainID, quorumType, quorumHash, vote, stateID); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
 	return nil
@@ -594,7 +580,7 @@ func (pv *FilePV) SignProposal(
 	pv.mtx.RLock()
 	defer pv.mtx.RUnlock()
 
-	signID, err := pv.signProposal(chainID, quorumType, quorumHash, proposal)
+	signID, err := pv.signProposal(ctx, chainID, quorumType, quorumHash, proposal)
 	if err != nil {
 		return signID, fmt.Errorf("error signing proposal: %v", err)
 	}
@@ -614,7 +600,7 @@ func (pv *FilePV) Save() error {
 
 // Reset resets all fields in the FilePV.
 // NOTE: Unsafe!
-func (pv *FilePV) Reset() {
+func (pv *FilePV) Reset() error {
 	pv.mtx.Lock()
 	// TODO move commented code into pv.LastSignState.reset()
 	//var blockSig []byte
@@ -672,6 +658,7 @@ func (pv *FilePV) UpdatePrivateKey(
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (pv *FilePV) signVote(
+	ctx context.Context,
 	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
@@ -712,7 +699,11 @@ func (pv *FilePV) signVote(
 	var extSig []byte
 	if vote.Type == tmproto.PrecommitType {
 		extSignBytes := types.VoteExtensionSignBytes(chainID, vote)
-		extSig, err = pv.Key.PrivKey.Sign(extSignBytes)
+		privKey, err := pv.getPrivateKey(ctx, quorumHash)
+		if err != nil {
+			return err
+		}
+		extSig, err = privKey.Sign(extSignBytes)
 		if err != nil {
 			return err
 		}
@@ -726,28 +717,13 @@ func (pv *FilePV) signVote(
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-
 		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) && bytes.Equal(stateSignBytes, lss.StateSignBytes) {
 			vote.BlockSignature = lss.BlockSignature
 			vote.StateSignature = lss.StateSignature
 		} else {
-			// Compares the canonicalized votes (i.e. without vote extensions
-			// or vote extension signatures).
-			timestamp, ok, err := checkVotesOnlyDifferByTimestamp(lss.BlockSignBytes, blockSignBytes)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return errors.New("conflicting data")
-			}
-
-			vote.Timestamp = timestamp
-			vote.BlockSignature = sigBlock
-			vote.StateSignature = sigState
+			return errors.New("conflicting data")
 		}
-
 		vote.ExtensionSignature = extSig
-
 		return nil
 	}
 
@@ -790,6 +766,7 @@ func (pv *FilePV) signVote(
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (pv *FilePV) signProposal(
+	ctx context.Context,
 	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
@@ -812,18 +789,14 @@ func (pv *FilePV) signProposal(
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
 	if sameHRS {
-		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) {
-			proposal.Signature = lss.BlockSignBytes
-		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(lss.BlockSignBytes, blockSignBytes); ok {
-			proposal.Timestamp = timestamp
-			proposal.Signature = lss.BlockSignBytes
-		} else {
-			err = fmt.Errorf("conflicting data")
+		if !bytes.Equal(blockSignBytes, lss.BlockSignBytes) {
+			return nil, errors.New("conflicting data")
 		}
+		proposal.Signature = lss.BlockSignBytes
 		return blockSignID, err
 	}
 
-	privKey, err := pv.getPrivateKey(context.TODO(), quorumHash)
+	privKey, err := pv.getPrivateKey(ctx, quorumHash)
 	if err != nil {
 		return blockSignID, err
 	}
@@ -861,28 +834,4 @@ func (pv *FilePV) saveSigned(
 	pv.LastSignState.StateSignature = stateSig
 	pv.LastSignState.StateSignBytes = stateSignBytes
 	pv.LastSignState.Save()
-}
-
-//-----------------------------------------------------------------------------------------
-
-// Returns the timestamp from the lastSignBytes.
-// Returns true if the only difference in the votes is their timestamp.
-// Performs these checks on the canonical votes (excluding the vote extension
-// and vote extension signatures).
-func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool, error) {
-	var lastVote, newVote tmproto.CanonicalVote
-	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastVote); err != nil {
-		return time.Time{}, false, fmt.Errorf("LastSignBytes cannot be unmarshalled into vote: %w", err)
-	}
-	if err := protoio.UnmarshalDelimited(newSignBytes, &newVote); err != nil {
-		return time.Time{}, false, fmt.Errorf("signBytes cannot be unmarshalled into vote: %w", err)
-	}
-
-	lastTime := lastVote.Timestamp
-	// set the times to the same value and check equality
-	now := tmtime.Now()
-	lastVote.Timestamp = now
-	newVote.Timestamp = now
-
-	return lastTime, proto.Equal(&newVote, &lastVote), nil
 }

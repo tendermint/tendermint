@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"net/http"
 	"strings"
@@ -18,8 +19,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/mempool"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/log"
@@ -200,6 +199,8 @@ func TestClientMethodCalls(t *testing.T) {
 
 	// for evidence tests
 	pv, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+	require.NoError(t, err)
+	quorumHash, err := pv.GetFirstQuorumHash(ctx)
 	require.NoError(t, err)
 
 	for i, c := range GetClients(t, n, conf) {
@@ -525,7 +526,7 @@ func TestClientMethodCalls(t *testing.T) {
 					evidenceHeight := int64(1)
 					block, _ := c.Block(ctx, &evidenceHeight)
 					ts := block.Block.Time
-					correct, fakes := makeEvidences(t, pv, chainID, ts)
+					correct, fakes := makeEvidences(t, pv, chainID, btcjson.LLMQType_5_60, quorumHash, ts)
 
 					result, err := c.BroadcastEvidence(ctx, correct)
 					require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
@@ -536,9 +537,7 @@ func TestClientMethodCalls(t *testing.T) {
 					err = client.WaitForHeight(ctx, c, status.SyncInfo.LatestBlockHeight+2, nil)
 					require.NoError(t, err)
 
-					ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
-					rawpub := ed25519pub.Bytes()
-					result2, err := c.ABCIQuery(ctx, "/val", rawpub)
+					result2, err := c.ABCIQuery(ctx, "/val", pv.Key.ProTxHash)
 					require.NoError(t, err)
 					qres := result2.Response
 					require.True(t, qres.IsOK())
@@ -547,10 +546,7 @@ func TestClientMethodCalls(t *testing.T) {
 					err = abci.ReadMessage(bytes.NewReader(qres.Value), &v)
 					require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
-					pk, err := encoding.PubKeyFromProto(v.PubKey)
-					require.NoError(t, err)
-
-					require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
+					require.EqualValues(t, pv.Key.ProTxHash, v.ProTxHash, "Stored PubKey not equal with expected, value %v", string(qres.Value))
 					require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 					for _, fake := range fakes {

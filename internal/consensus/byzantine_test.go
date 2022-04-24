@@ -47,7 +47,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 
-	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, 1)
+	genDoc, privVals := factory.RandGenesisDoc(config, nValidators, 1, factory.ConsensusParams())
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -67,7 +67,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 			app := kvstore.NewApplication()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
-			_, err = app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: vals})
+			_, err = app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: &vals})
 			require.NoError(t, err)
 
 			blockDB := dbm.NewMemDB()
@@ -95,8 +95,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			evpool := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
 
 			// Make State
-			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
-			cs, err := NewState(logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool,
+				blockStore, eventBus, sm.NopMetrics())
+			cs, err := NewState(logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool,
+				eventBus)
 			require.NoError(t, err)
 			// set private validator
 			pv := privVals[i]
@@ -204,7 +206,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			lazyNodeState.state,
 			commit,
 			proposerProTxHash,
-			lazyNodeState.LastCommit.GetVotes(),
 			0,
 		)
 		require.NoError(t, err)
@@ -228,7 +229,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			block.Header.Time,
 		)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(
+		if _, err := lazyNodeState.privValidator.SignProposal(
 			ctx,
 			lazyNodeState.state.ChainID,
 			lazyNodeState.state.Validators.QuorumType,

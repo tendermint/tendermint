@@ -70,8 +70,8 @@ func TestValidateBlockHeader(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nextChainLock,
 	)
+	blockExec.SetNextCoreChainLock(nextChainLock)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 
 	// some bad values
@@ -136,16 +136,15 @@ func TestValidateBlockHeader(t *testing.T) {
 			Invalid blocks don't pass
 		*/
 		for _, tc := range testCases {
-			block, err := statefactory.MakeBlock(
+			block := statefactory.MakeBlock(t,
 				state,
 				height,
 				lastCommit,
 				nextChainLock,
 				0,
 			)
-			require.NoError(t, err, tc.name)
 			tc.malleateBlock(block)
-			err = blockExec.ValidateBlock(ctx, state, block)
+			err := blockExec.ValidateBlock(ctx, state, block)
 			t.Logf("%s: %v", tc.name, err)
 			require.Error(t, err, tc.name)
 		}
@@ -158,10 +157,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	}
 
 	nextHeight := validationTestsStopHeight
-	block, err := statefactory.MakeBlock(state, nextHeight, lastCommit, nextChainLock, 0)
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(t, state, nextHeight, lastCommit, nextChainLock, 0)
 	state.InitialHeight = nextHeight + 1
-	err = blockExec.ValidateBlock(ctx, state, block)
+	err := blockExec.ValidateBlock(ctx, state, block)
 	require.Error(t, err, "expected an error when state is ahead of block")
 	assert.Contains(t, err.Error(), "lower than initial height")
 }
@@ -186,7 +184,6 @@ func TestValidateBlockCommit(t *testing.T) {
 		Signature:       tmrand.Bytes(96),
 	}
 
-	stateStore := sm.NewStore(stateDB)
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
 	mp.On("Unlock").Return()
@@ -209,8 +206,8 @@ func TestValidateBlockCommit(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nextChainLock,
 	)
+	blockExec.SetNextCoreChainLock(nextChainLock)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)
 	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
@@ -251,8 +248,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.BlockSignature,
 				wrongHeightVote.StateSignature,
 			)
-			block := statefactory.MakeBlock(state, height, wrongHeightCommit, nil
-			0)
+			block := statefactory.MakeBlock(t, state, height, wrongHeightCommit, nil, 0)
 			err = blockExec.ValidateBlock(ctx, state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
 			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
@@ -260,7 +256,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			/*
 				Test that the threshold block signatures are good
 			*/
-			block = statefactory.MakeBlock(state, height, wrongVoteMessageSignedCommit)
+			block = statefactory.MakeBlock(t, state, height, wrongVoteMessageSignedCommit, nil, 0)
 			err = blockExec.ValidateBlock(ctx, state, block)
 			require.True(
 				t,
@@ -397,7 +393,6 @@ func TestValidateBlockEvidence(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
 		nil, nil)

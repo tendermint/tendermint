@@ -8,7 +8,6 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
@@ -18,7 +17,7 @@ const (
 	HashSize = sha256.Size
 
 	// AddressSize is the size of a pubkey address.
-	AddressSize        = tmhash.TruncatedSize
+	AddressSize        = 20
 	DefaultHashSize    = 32
 	LargeAppHashSize   = DefaultHashSize
 	SmallAppHashSize   = 20
@@ -50,8 +49,23 @@ type ProTxHash = tmbytes.HexBytes
 
 type QuorumHash = tmbytes.HexBytes
 
+// AddressHash computes a truncated SHA-256 hash of bz for use as
+// a peer address.
+//
+// See: https://docs.tendermint.com/master/spec/core/data_structures.html#address
+func AddressHash(bz []byte) Address {
+	h := sha256.Sum256(bz)
+	return Address(h[:AddressSize])
+}
+
+// Checksum returns the SHA256 of the bz.
+func Checksum(bz []byte) []byte {
+	h := sha256.Sum256(bz)
+	return h[:]
+}
+
 func ProTxHashFromSeedBytes(bz []byte) ProTxHash {
-	return tmhash.Sum(bz)
+	return Checksum(bz)
 }
 
 func RandProTxHash() ProTxHash {
@@ -114,7 +128,6 @@ type Validator interface {
 }
 
 type PubKey interface {
-	HexStringer
 	Address() Address
 	Bytes() []byte
 	VerifySignature(msg []byte, sig []byte) bool
@@ -126,6 +139,8 @@ type PubKey interface {
 
 	// Implementations must support tagged encoding in JSON.
 	jsontypes.Tagged
+	fmt.Stringer
+	HexStringer
 }
 
 type PrivKey interface {

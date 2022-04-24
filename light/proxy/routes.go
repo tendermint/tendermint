@@ -145,5 +145,5 @@ func (p proxyService) UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsu
 }
 
 func (p proxyService) Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error) {
-	return p.Client.Validators(ctx, (*int64)(req.Height), req.Page.IntPtr(), req.PerPage.IntPtr())
+	return p.Client.Validators(ctx, (*int64)(req.Height), req.Page.IntPtr(), req.PerPage.IntPtr(), req.RequestQuorumInfo)
 }

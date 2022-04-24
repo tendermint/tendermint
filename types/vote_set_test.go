@@ -96,7 +96,7 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 		proTxHash, err := privValidators[1].GetProTxHash(ctx)
 		require.NoError(t, err)
 		vote := withValidator(voteProto, proTxHash, 1)
-		added, err := signAddVote(ctx,privValidators[1], withHeight(vote, height+1), voteSet)
+		added, err := signAddVote(ctx, privValidators[1], withHeight(vote, height+1), voteSet)
 		if added || err == nil {
 			t.Errorf("expected VoteSet.Add to fail, wrong height")
 		}
@@ -107,7 +107,7 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 		proTxHash, err := privValidators[2].GetProTxHash(ctx)
 		require.NoError(t, err)
 		vote := withValidator(voteProto, proTxHash, 2)
-		added, err := signAddVote(ctx,privValidators[2], withRound(vote, round+1), voteSet)
+		added, err := signAddVote(ctx, privValidators[2], withRound(vote, round+1), voteSet)
 		if added || err == nil {
 			t.Errorf("expected VoteSet.Add to fail, wrong round")
 		}
@@ -164,7 +164,7 @@ func TestVoteSet_AddVote_StateID(t *testing.T) {
 			assert.Nil(t, voteSet.GetByProTxHash(val0ProTxHash))
 			assert.False(t, voteSet.BitArray().GetIndex(0))
 			majorityBlockID, ok := voteSet.TwoThirdsMajority()
-			assert.False(t, ok || !majorityBlockID.IsZero(), "there should be no 2/3 majority")
+			assert.False(t, ok || !majorityBlockID.IsNil(), "there should be no 2/3 majority")
 			blockID := randBlockID()
 			vote1 := &Vote{
 				ValidatorProTxHash: val0ProTxHash,
@@ -174,7 +174,7 @@ func TestVoteSet_AddVote_StateID(t *testing.T) {
 				Type:               tmproto.PrevoteType,
 				BlockID:            blockID,
 			}
-			_, err = signAddVote(val0, vote1, voteSet)
+			_, err = signAddVote(ctx, val0, vote1, voteSet)
 			require.NoError(t, err)
 
 			vote2 := &Vote{
@@ -185,7 +185,7 @@ func TestVoteSet_AddVote_StateID(t *testing.T) {
 				Type:               tmproto.PrevoteType,
 				BlockID:            blockID,
 			}
-			_, err = signAddVoteForStateID(val1, vote2, voteSet, tc.wrongStateID)
+			_, err = signAddVoteForStateID(ctx, val1, vote2, voteSet, tc.wrongStateID)
 			if tc.shouldFail {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "invalid state signature")
@@ -196,7 +196,7 @@ func TestVoteSet_AddVote_StateID(t *testing.T) {
 			assert.NotNil(t, voteSet.GetByProTxHash(val0ProTxHash))
 			assert.True(t, voteSet.BitArray().GetIndex(0))
 			majorityBlockID, ok = voteSet.TwoThirdsMajority()
-			assert.False(t, ok || !majorityBlockID.IsZero(), "there should be no 2/3 majority")
+			assert.False(t, ok || !majorityBlockID.IsNil(), "there should be no 2/3 majority")
 		})
 	}
 }
@@ -244,7 +244,7 @@ func TestVoteSet_2_3Majority(t *testing.T) {
 		proTxHash, err := privValidators[7].GetProTxHash(ctx)
 		require.NoError(t, err)
 		vote := withValidator(voteProto, proTxHash, 7)
-		_, err = signAddVote(ctx., privValidators[7], vote, voteSet)
+		_, err = signAddVote(ctx, privValidators[7], vote, voteSet)
 		require.NoError(t, err)
 		blockID, ok = voteSet.TwoThirdsMajority()
 		assert.True(t, ok || blockID.IsNil(), "there should be 2/3 majority for nil")
@@ -330,7 +330,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 		_, err = signAddVote(ctx, privValidators[69], withBlockHash(vote, tmrand.Bytes(32)), voteSet)
 		require.NoError(t, err)
 		blockID, ok = voteSet.TwoThirdsMajority()
-		assert.False(t, ok || !blockID.IsZero(),
+		assert.False(t, ok || !blockID.IsNil(),
 			"there should be no 2/3 majority: last vote added had different CoreBlockHash")
 	}
 
@@ -650,7 +650,7 @@ func castVote(
 	require.NoError(t, err)
 
 	majorityBlock, twoThirdsMajority := voteSet.TwoThirdsMajority()
-	assert.EqualValues(t, twoThirdsMajority, !majorityBlock.IsZero())
+	assert.EqualValues(t, twoThirdsMajority, !majorityBlock.IsNil())
 	return twoThirdsMajority, voteSet.HasTwoThirdsAny()
 }
 

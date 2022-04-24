@@ -421,7 +421,7 @@ func TestEventBusPublish(t *testing.T) {
 	require.NoError(t, eventBus.PublishEventPolka(types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventRelock(types.EventDataRoundState{}))
 	require.NoError(t, eventBus.PublishEventLock(types.EventDataRoundState{}))
-	require.NoError(t, eventBus.PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdates{}))
+	require.NoError(t, eventBus.PublishEventValidatorSetUpdates(types.EventDataValidatorSetUpdate{}))
 	require.NoError(t, eventBus.PublishEventBlockSyncStatus(types.EventDataBlockSyncStatus{}))
 	require.NoError(t, eventBus.PublishEventStateSyncStatus(types.EventDataStateSyncStatus{}))
 

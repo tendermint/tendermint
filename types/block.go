@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -61,8 +62,12 @@ func (b *Block) StateID() StateID {
 }
 
 // BlockID returns a block ID of this block
-func (b *Block) BlockID() BlockID {
-	return BlockID{Hash: b.Hash(), PartSetHeader: b.MakePartSet(BlockPartSizeBytes).Header()}
+func (b *Block) BlockID() (BlockID, error) {
+	parSet, err := b.MakePartSet(BlockPartSizeBytes)
+	if err != nil {
+		return BlockID{}, err
+	}
+	return BlockID{Hash: b.Hash(), PartSetHeader: parSet.Header()}, nil
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -715,7 +720,8 @@ func (commit *Commit) VoteBlockRequestID() []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 // CanonicalVoteVerifySignBytes returns the bytes of the Canonical Vote that is threshold signed.

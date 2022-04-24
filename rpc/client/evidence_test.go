@@ -66,7 +66,6 @@ func makeEvidences(
 		Height:             1,
 		Round:              0,
 		Type:               tmproto.PrevoteType,
-		Timestamp:          timestamp,
 		BlockID: types.BlockID{
 			Hash: crypto.Checksum(tmrand.Bytes(crypto.HashSize)),
 			PartSetHeader: types.PartSetHeader{

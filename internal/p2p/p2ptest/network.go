@@ -1,6 +1,7 @@
 package p2ptest
 
 import (
+	"bytes"
 	"context"
 	"math/rand"
 	"testing"
@@ -30,9 +31,10 @@ type Network struct {
 // NetworkOptions is an argument structure to parameterize the
 // MakeNetwork function.
 type NetworkOptions struct {
-	NumNodes   int
-	BufferSize int
-	NodeOpts   NodeOptions
+	NumNodes    int
+	BufferSize  int
+	NodeOpts    NodeOptions
+	ProTxHashes []crypto.ProTxHash
 }
 
 type NodeOptions struct {
@@ -58,7 +60,11 @@ func MakeNetwork(ctx context.Context, t *testing.T, opts NetworkOptions) *Networ
 	}
 
 	for i := 0; i < opts.NumNodes; i++ {
-		node := network.MakeNode(ctx, t, opts.NodeOpts)
+		var proTxHash crypto.ProTxHash
+		if i < len(opts.ProTxHashes) {
+			proTxHash = opts.ProTxHashes[i]
+		}
+		node := network.MakeNode(ctx, t, proTxHash, opts.NodeOpts)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -138,6 +144,17 @@ func (n *Network) NodeIDs() []types.NodeID {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// NodeByProTxHash returns a node with the given proTxHash or `nil` if not found.
+func (n *Network) NodeByProTxHash(proTxHash types.ProTxHash) *Node {
+	for _, node := range n.Nodes {
+		if bytes.Equal(node.NodeInfo.ProTxHash, proTxHash) {
+			return node
+		}
+	}
+
+	return nil
 }
 
 // MakeChannels makes a channel on all nodes and returns them, automatically
@@ -235,7 +252,7 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) *Node {
+func (n *Network) MakeNode(ctx context.Context, t *testing.T, proTxHash crypto.ProTxHash, opts NodeOptions) *Node {
 	ctx, cancel := context.WithCancel(ctx)
 
 	privKey := ed25519.GenPrivKey()
@@ -244,6 +261,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		NodeID:     nodeID,
 		ListenAddr: "0.0.0.0:0", // FIXME: We have to fake this for now.
 		Moniker:    string(nodeID),
+		ProTxHash:  proTxHash.Copy(),
 	}
 
 	transport := n.memoryNetwork.CreateTransport(nodeID)
@@ -261,7 +279,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		n.logger,
+		n.logger.With(deriveLoggerAttrsFromCtx(ctx)),
 		p2p.NopMetrics(),
 		privKey,
 		peerManager,
@@ -352,4 +370,16 @@ func MakeChannelDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
 		SendQueueCapacity:   10,
 		RecvMessageCapacity: 10,
 	}
+}
+
+func WithLoggerAttrs(ctx context.Context, attrs ...interface{}) context.Context {
+	return context.WithValue(ctx, "logger_attrs", attrs)
+}
+
+func deriveLoggerAttrsFromCtx(ctx context.Context) []interface{} {
+	attrs, ok := ctx.Value("logger_key_vals").([]interface{})
+	if ok {
+		return []interface{}{}
+	}
+	return attrs
 }

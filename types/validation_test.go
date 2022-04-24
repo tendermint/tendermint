@@ -27,7 +27,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		chainID = "Lalande21185"
 	)
 
-	vote := examplePrecommit()
+	vote := examplePrecommit(t)
 	vote.ValidatorProTxHash = proTxHash
 	v := vote.ToProto()
 
@@ -112,7 +112,7 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	defer cancel()
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h, 0, tmproto.PrecommitType, 4, stateID)
-	commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals, time.Now())
+	commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals)
 	require.NoError(t, err)
 
 	// malleate threshold sigs signature

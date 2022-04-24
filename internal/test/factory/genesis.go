@@ -2,7 +2,6 @@ package factory
 
 import (
 	"sort"
-	"time"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"

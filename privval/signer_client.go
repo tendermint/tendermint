@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -122,7 +121,7 @@ func (sc *SignerClient) GetPubKey(ctx context.Context, quorumHash crypto.QuorumH
 }
 
 func (sc *SignerClient) GetProTxHash(ctx context.Context) (crypto.ProTxHash, error) {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.ProTxHashRequest{ChainId: sc.chainID}))
+	response, err := sc.endpoint.SendRequest(ctx, mustWrapMsg(&privvalproto.ProTxHashRequest{ChainId: sc.chainID}))
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -151,7 +150,7 @@ func (sc *SignerClient) GetThresholdPublicKey(ctx context.Context, quorumHash cr
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	response, err := sc.endpoint.SendRequest(
+	response, err := sc.endpoint.SendRequest(ctx,
 		mustWrapMsg(&privvalproto.ThresholdPubKeyRequest{ChainId: sc.chainID, QuorumHash: quorumHash}),
 	)
 	if err != nil {

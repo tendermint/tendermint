@@ -7,7 +7,6 @@ import (
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -145,14 +144,6 @@ func (is *Service) OnStop() {
 type ServiceArgs struct {
 	Sinks    []EventSink
 	EventBus *eventbus.EventBus
-	Metrics  *Metrics
-	Logger   log.Logger
-}
-
-// ServiceArgs are arguments for constructing a new indexer service.
-type ServiceArgs struct {
-	Sinks    []EventSink
-	EventBus *types.EventBus
 	Metrics  *Metrics
 	Logger   log.Logger
 }

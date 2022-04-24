@@ -30,10 +30,12 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 var (
-	chainID = "execution_chain"
+	chainID             = "execution_chain"
+	testPartSize uint32 = 65536
 )
 
 func TestApplyBlock(t *testing.T) {
@@ -57,6 +59,17 @@ func TestApplyBlock(t *testing.T) {
 	app.ValidatorSetUpdate = state.Validators.ABCIEquivalentValidatorUpdates()
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
@@ -66,10 +79,9 @@ func TestApplyBlock(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
 	)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit), nil, 0)
+	block := sf.MakeBlock(t, state, 1, new(types.Commit), nil, 0)
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -132,12 +144,12 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			eventBus := eventbus.NewDefault(logger)
 			require.NoError(t, eventBus.Start(ctx))
 
-			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mp, evpool, blockStore, eventBus, sm.NopMetrics(), nil)
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mp, evpool, blockStore, eventBus, sm.NopMetrics())
 			proposerProTxHash := state.NextValidators.Validators[0].GetProTxHash(ctx)
 			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, nodeProTxHash, 1, new(types.Commit), proposerProTxHash, blockExec, privVals)
 
 			// block for height 2
-			block := sf.MakeBlock(state, 2, lastCommit, nil, 1)
+			block := sf.MakeBlock(t, state, 2, lastCommit, nil, 1)
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -230,9 +242,9 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp, mp, evpool, blockStore, eventBus, sm.NopMetrics(), nil)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp, mp, evpool, blockStore, eventBus, sm.NopMetrics())
 
-	block := sf.MakeBlock(state, 1, new(types.Commit), nil, 1)
+	block := sf.MakeBlock(t, state, 1, new(types.Commit), nil, 1)
 	block.Evidence = ev
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	bps, err := block.MakePartSet(testPartSize)
@@ -278,7 +290,7 @@ func TestProcessProposal(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	block0 := sf.MakeBlock(state, height-1, new(types.Commit))
+	block0 := sf.MakeBlock(t, state, height-1, new(types.Commit), nil, 0)
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
@@ -302,7 +314,7 @@ func TestProcessProposal(t *testing.T) {
 	}
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
-	block1 := sf.MakeBlock(state, height, lastCommit)
+	block1 := sf.MakeBlock(t, state, height, lastCommit, nil, 0)
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{
@@ -538,7 +550,6 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
 	)
 
 	updatesSub, err := eventBus.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
@@ -547,7 +558,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit), nil, 0)
+	block := sf.MakeBlock(t, state, 1, new(types.Commit), nil, 0)
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -635,10 +646,9 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
 	)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit), nil, 0)
+	block := sf.MakeBlock(t, state, 1, new(types.Commit), nil, 0)
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}

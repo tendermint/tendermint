@@ -14,10 +14,10 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -41,7 +41,7 @@ func getTestProposal(t testing.TB) *Proposal {
 
 func TestProposalSignable(t *testing.T) {
 	chainID := "test_chain_id"
-	signBytes := ProposalSignBytes(chainID, getTestProposal(t).ToProto())
+	signBytes := ProposalBlockSignBytes(chainID, getTestProposal(t).ToProto())
 	pb := CanonicalizeProposal(chainID, getTestProposal(t).ToProto())
 
 	expected, err := protoio.MarshalDelimited(&pb)
@@ -63,19 +63,19 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	quorumHash := crypto.RandQuorumHash()
 	privVal := NewMockPVForQuorum(quorumHash)
-	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
+	pubKey, err := privVal.GetPubKey(ctx, quorumHash)
 	require.NoError(t, err)
 
 	prop := NewProposal(
 		4, 1, 2, 2,
-		BlockID{tmrand.Bytes(tmhash.HashSize), PartSetHeader{777, tmrand.Bytes(tmhash.HashSize)}},
+		BlockID{tmrand.Bytes(crypto.HashSize), PartSetHeader{777, tmrand.Bytes(crypto.HashSize)}},
 		tmtime.Now(),
 	)
 	p := prop.ToProto()
 	signID := ProposalBlockSignID("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
-	_, err = privVal.SignProposal(context.Background(), "test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
+	_, err = privVal.SignProposal(ctx, "test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
 	require.NoError(t, err)
 	prop.Signature = p.Signature
 

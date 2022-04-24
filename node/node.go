@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/internal/blocksync"
 	"net"
 	"net/http"
 	"strconv"
@@ -13,20 +12,20 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/cors"
-
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	dashquorum "github.com/tendermint/tendermint/dash/quorum"
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/eventlog"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
+	"github.com/tendermint/tendermint/internal/p2p/pex"
 	"github.com/tendermint/tendermint/internal/proxy"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -35,7 +34,9 @@ import (
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 
@@ -190,12 +191,12 @@ func makeNode(
 		Metrics:  nodeMetrics.indexer,
 	})
 
+	var proTxHash crypto.ProTxHash
 	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
 
-	var proTxHash crypto.ProTxHash
 	switch {
 	case cfg.PrivValidator.CoreRPCHost != "":
 		logger.Info(
@@ -252,7 +253,7 @@ func makeNode(
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(cfg, genDoc.ChainID, genDoc.QuorumHash, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(ctx, cfg, genDoc.ChainID, genDoc.QuorumHash, logger)
 			if err != nil {
 				return nil, combineCloseError(
 					fmt.Errorf("error with private validator grpc client: %w", err),
@@ -313,22 +314,6 @@ func makeNode(
 		// This is used for light client verification only
 		dashCoreRPCClient = dashcore.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
 	}
-
-	//if cfg.Mode == config.ModeValidator {
-	//	pubKey, err = privValidator.GetPubKey(ctx)
-	//	if err != nil {
-	//		return nil, combineCloseError(fmt.Errorf("can't get pubkey: %w", err),
-	//			makeCloser(closers))
-	//
-	//	}
-	//	if pubKey == nil {
-	//		return nil, combineCloseError(
-	//			errors.New("could not retrieve public key from private validator"),
-	//			makeCloser(closers))
-	//	}
-	//	// This is used for light client verification only
-	//	dashCoreRPCClient = dashcore.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
-	//}
 
 	weAreOnlyValidator := onlyValidatorIsUs(state, proTxHash)
 
@@ -434,8 +419,8 @@ func makeNode(
 		blockStore,
 		eventBus,
 		nodeMetrics.state,
-		nextCoreChainLock,
 	)
+	blockExec.SetNextCoreChainLock(nextCoreChainLock)
 
 	// Determine whether we should attempt state sync.
 	stateSync := cfg.StateSync.Enable && !weAreOnlyValidator
@@ -457,10 +442,10 @@ func makeNode(
 		mp,
 		evPool,
 		eventBus,
-		0, // TODO put a correct version
 		consensus.StateMetrics(nodeMetrics.consensus),
 		consensus.SkipStateStoreBootstrap,
 	)
+
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
@@ -541,16 +526,16 @@ func makeNode(
 
 			return nil
 		},
-		false, // TODO pass a correct value
-		dashCoreRPCClient,
 		stateSync,
+		dashCoreRPCClient,
+		csState,
 	))
 
 	if cfg.Mode == config.ModeValidator {
 		if privValidator != nil {
 			csState.SetPrivValidator(ctx, privValidator)
 		}
-		node.rpcEnv.PubKey = pubKey
+		node.rpcEnv.ProTxHash = proTxHash
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -587,11 +572,12 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		n.stateStore, n.initialState, n.blockStore, n.rpcEnv.EventBus, n.genesisDoc,
 		proTxHash, n.config.Consensus.AppHashSize,
 	)
-	// TODO: populate a consensus state with "proposedVersion"
 	proposedVersion, err := handshaker.Handshake(ctx, n.rpcEnv.ProxyApp)
 	if err != nil {
 		return err
 	}
+	cs := n.rpcEnv.ConsensusReactor.GetConsensusState()
+	cs.SetProposedAppVersion(proposedVersion)
 
 	// Reload the state. It will have the Version.Consensus.App set by the
 	// Handshake, and may have other modifications as well (ie. depending on
@@ -601,11 +587,11 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		return fmt.Errorf("cannot load state: %w", err)
 	}
 
-	logNodeStartupInfo(state, proTxHash, n.logger, n.logger, n.config.Mode)
+	logNodeStartupInfo(state, proTxHash, n.logger, n.config.Mode)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	n.nodeInfo, err = makeNodeInfo(n.config, n.nodeKey, n.eventSinks, n.genesisDoc, state.Version.Consensus)
+	n.nodeInfo, err = makeNodeInfo(n.config, n.nodeKey, proTxHash, n.eventSinks, n.genesisDoc, state.Version.Consensus)
 	if err != nil {
 		return err
 	}
@@ -928,84 +914,4 @@ func DefaultDashCoreRPCClient(cfg *config.Config, logger log.Logger) (dashcore.C
 		cfg.PrivValidator.CoreRPCPassword,
 		logger,
 	)
-}
-
-func createAndStartPrivValidatorSocketClient(
-	ctx context.Context,
-	listenAddr,
-	chainID string,
-	quorumHash crypto.QuorumHash,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-
-	pve, err := privval.NewSignerListener(listenAddr, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	pvsc, err := privval.NewSignerClient(ctx, pve, chainID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(context.TODO(), quorumHash)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-
-	const (
-		retries = 50 // 50 * 100ms = 5s total
-		timeout = 100 * time.Millisecond
-	)
-	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
-
-	return pvscWithRetries, nil
-}
-
-func createAndStartPrivValidatorRPCClient(
-	defaultQuorumType btcjson.LLMQType,
-	dashCoreRPCClient dashcore.Client,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-	pvsc, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, defaultQuorumType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to ping Core from private validator first time to make sure connection works
-	err = pvsc.Ping()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"can't ping core server when starting private validator rpc client: %w",
-			err,
-		)
-	}
-
-	return pvsc, nil
-}
-
-func createAndStartPrivValidatorGRPCClient(
-	cfg *config.Config,
-	chainID string,
-	quorumHash crypto.QuorumHash,
-	logger log.Logger,
-) (types.PrivValidator, error) {
-	pvsc, err := tmgrpc.DialRemoteSigner(
-		cfg.PrivValidator,
-		chainID,
-		logger,
-		cfg.Instrumentation.Prometheus,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start private validator: %w", err)
-	}
-
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey(context.TODO(), quorumHash)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-
-	return pvsc, nil
 }

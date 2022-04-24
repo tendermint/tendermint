@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"time"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -14,7 +13,7 @@ import (
 func RandStateID() StateID {
 	return StateID{
 		Height:      rand.Int63(), // nolint:gosec
-		LastAppHash: tmrand.Bytes(tmhash.Size),
+		LastAppHash: tmrand.Bytes(crypto.HashSize),
 	}
 }
 
@@ -26,7 +25,6 @@ func makeCommit(
 	round int32,
 	voteSet *VoteSet,
 	validators []PrivValidator,
-	now time.Time,
 ) (*Commit, error) {
 
 	// all sign

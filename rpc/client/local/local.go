@@ -114,10 +114,6 @@ func (c *Local) RemoveTx(ctx context.Context, txKey types.TxKey) error {
 	return c.env.Mempool.RemoveTxByKey(txKey)
 }
 
-func (c *Local) RemoveTx(ctx context.Context, txKey types.TxKey) error {
-	return c.env.Mempool.RemoveTxByKey(txKey)
-}
-
 func (c *Local) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
 	return c.env.NetInfo(ctx)
 }
@@ -181,12 +177,12 @@ func (c *Local) Commit(ctx context.Context, height *int64) (*coretypes.ResultCom
 	return c.env.Commit(ctx, &coretypes.RequestBlockInfo{Height: (*coretypes.Int64)(height)})
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error) {
 	return c.env.Validators(ctx, &coretypes.RequestValidators{
-		Height:  (*coretypes.Int64)(height),
-		Page:    coretypes.Int64Ptr(page),
-		PerPage: coretypes.Int64Ptr(perPage),
-		RequestQuorumInfo: coretypes.Int64Ptr(requestQuorumInfo),
+		Height:            (*coretypes.Int64)(height),
+		Page:              coretypes.Int64Ptr(page),
+		PerPage:           coretypes.Int64Ptr(perPage),
+		RequestQuorumInfo: requestQuorumInfo,
 	})
 }
 

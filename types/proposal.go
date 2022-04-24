@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -190,7 +191,7 @@ func ProposalBlockSignID(
 	chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
 ) []byte {
 	signBytes := ProposalBlockSignBytes(chainID, p)
-	proposalMessageHash := crypto.Sha256(signBytes)
+	proposalMessageHash := sha256.Sum256(signBytes)
 
 	proposalRequestID := ProposalRequestIDProto(p)
 
@@ -198,7 +199,7 @@ func ProposalBlockSignID(
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(proposalRequestID),
-		tmbytes.Reverse(proposalMessageHash),
+		tmbytes.Reverse(proposalMessageHash[:]),
 	)
 
 	return signID
@@ -214,7 +215,8 @@ func ProposalRequestID(p *Proposal) []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 func ProposalRequestIDProto(p *tmproto.Proposal) []byte {
@@ -227,7 +229,8 @@ func ProposalRequestIDProto(p *tmproto.Proposal) []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 // ToProto converts Proposal to protobuf

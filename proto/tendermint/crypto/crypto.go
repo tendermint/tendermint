@@ -5,3 +5,4 @@ package crypto
 func (*PublicKey) TypeTag() string           { return "tendermint.crypto.PublicKey" }
 func (*PublicKey_Ed25519) TypeTag() string   { return "tendermint.crypto.PublicKey_Ed25519" }
 func (*PublicKey_Secp256K1) TypeTag() string { return "tendermint.crypto.PublicKey_Secp256K1" }
+func (*PublicKey_Bls12381) TypeTag() string  { return "tendermint.crypto.PublicKey_Bls12381" }

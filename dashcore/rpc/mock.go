@@ -47,12 +47,13 @@ func (mc *MockClient) QuorumInfo(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 ) (*btcjson.QuorumInfoResult, error) {
+	ctx := context.Background()
 	var members []btcjson.QuorumMember
-	proTxHash, err := mc.localPV.GetProTxHash(context.Background())
+	proTxHash, err := mc.localPV.GetProTxHash(ctx)
 	if err != nil {
 		panic(err)
 	}
-	pk, err := mc.localPV.GetPubKey(context.Background(), quorumHash)
+	pk, err := mc.localPV.GetPubKey(ctx, quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -64,11 +65,11 @@ func (mc *MockClient) QuorumInfo(
 			PubKeyShare:    pk.HexString(),
 		})
 	}
-	tpk, err := mc.localPV.GetThresholdPublicKey(context.Background(), quorumHash)
+	tpk, err := mc.localPV.GetThresholdPublicKey(ctx, quorumHash)
 	if err != nil {
 		panic(err)
 	}
-	height, err := mc.localPV.GetHeight(context.Background(), quorumHash)
+	height, err := mc.localPV.GetHeight(ctx, quorumHash)
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +83,8 @@ func (mc *MockClient) QuorumInfo(
 }
 
 func (mc *MockClient) MasternodeStatus() (*btcjson.MasternodeStatusResult, error) {
-	proTxHash, err := mc.localPV.GetProTxHash(context.Background())
+	ctx := context.Background()
+	proTxHash, err := mc.localPV.GetProTxHash(ctx)
 	if err != nil {
 		panic(err)
 	}

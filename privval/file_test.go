@@ -2,6 +2,7 @@ package privval
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -15,7 +16,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	tmjson "github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -30,18 +31,18 @@ func TestGenLoadValidator(t *testing.T) {
 	privVal.LastSignState.Height = height
 	require.NoError(t, privVal.Save())
 	proTxHash, err := privVal.GetProTxHash(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	publicKey, err := privVal.GetFirstPubKey(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	privVal, err = LoadFilePV(tempKeyFileName, tempStateFileName)
-	assert.NoError(err)
+	require.NoError(t, err)
 	proTxHash2, err := privVal.GetProTxHash(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	publicKey2, err := privVal.GetFirstPubKey(ctx)
-	assert.NoError(err)
-	assert.Equal(proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
-	assert.Equal(publicKey, publicKey2, "expected privval public keys to be the same")
-	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
+	require.NoError(t, err)
+	require.Equal(t, proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
+	require.Equal(t, publicKey, publicKey2, "expected privval public keys to be the same")
+	require.Equal(t, height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
 func TestResetValidator(t *testing.T) {
@@ -64,7 +65,7 @@ func TestResetValidator(t *testing.T) {
 
 	stateID := types.RandStateID().WithHeight(height - 1)
 
-	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, blockID, stateID)
+	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, blockID, nil)
 	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vote.ToProto(), stateID, nil)
 	assert.NoError(t, err, "expected no error signing vote")
 
@@ -95,19 +96,19 @@ func TestLoadOrGenValidator(t *testing.T) {
 	}
 
 	privVal, err := LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
-	assert.NoError(err)
+	require.NoError(t, err)
 	proTxHash, err := privVal.GetProTxHash(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	publicKey, err := privVal.GetFirstPubKey(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	privVal, err = LoadOrGenFilePV(tempKeyFilePath, tempStateFilePath)
 	require.NoError(t, err)
 	proTxHash2, err := privVal.GetProTxHash(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	publicKey2, err := privVal.GetFirstPubKey(ctx)
-	assert.NoError(err)
-	assert.Equal(proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
-	assert.Equal(publicKey, publicKey2, "expected privval public keys to be the same")
+	require.NoError(t, err)
+	require.Equal(t, proTxHash, proTxHash2, "expected privval proTxHashes to be the same")
+	require.Equal(t, publicKey, publicKey2, "expected privval public keys to be the same")
 }
 
 func TestUnmarshalValidatorState(t *testing.T) {
@@ -168,7 +169,7 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 }`, quorumHash, pubB64, privB64, pubB64, proTxHash)
 
 	val := FilePVKey{}
-	err := tmjson.Unmarshal([]byte(serialized), &val)
+	err := json.Unmarshal([]byte(serialized), &val)
 	require.NoError(t, err)
 
 	// make sure the values match
@@ -176,16 +177,16 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 	assert.Len(t, val.PrivateKeys, 1)
 	for quorumHashString, quorumKeys := range val.PrivateKeys {
 		quorumHash2, err := hex.DecodeString(quorumHashString)
-		assert.NoError(err)
-		assert.EqualValues(t, quorumHash, quorumHash2)
-		assert.EqualValues(t, pubKey, quorumKeys.PubKey)
-		assert.EqualValues(t, privKey, quorumKeys.PrivKey)
-		assert.EqualValues(t, pubKey, quorumKeys.ThresholdPublicKey)
+		require.NoError(t, err)
+		require.EqualValues(t, quorumHash, quorumHash2)
+		require.EqualValues(t, pubKey, quorumKeys.PubKey)
+		require.EqualValues(t, privKey, quorumKeys.PrivKey)
+		require.EqualValues(t, pubKey, quorumKeys.ThresholdPublicKey)
 	}
 	// export it and make sure it is the same
-	out, err := tmjson.Marshal(val)
-	require.Nil(err, "%+v", err)
-	assert.JSONEq(serialized, string(out))
+	out, err := json.Marshal(val)
+	require.Nil(t, err, "%+v", err)
+	assert.JSONEq(t, serialized, string(out))
 }
 
 func TestSignVote(t *testing.T) {
@@ -208,25 +209,25 @@ func TestSignVote(t *testing.T) {
 	stateID := types.RandStateID().WithHeight(height - 1)
 
 	// sign a vote for first time
-	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block1, stateID)
+	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block1, nil)
 	v := vote.ToProto()
 
 	quorumHash, err := privVal.GetFirstQuorumHash(ctx)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote(context.Background(), "mychainid", 0, quorumHash, v, stateID, nil)
-	assert.NoError(err, "expected no error on signing same vote")
+	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, v, stateID, nil)
+	assert.NoError(t, err, "expected no error on signing same vote")
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(privVal.Key.ProTxHash, 0, height, round-1, voteType, block1, stateID),   // round regression
-		newVote(privVal.Key.ProTxHash, 0, height-1, round, voteType, block1, stateID),   // height regression
-		newVote(privVal.Key.ProTxHash, 0, height-2, round+4, voteType, block1, stateID), // height regression and different round
-		newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block2, stateID),     // different block
+		newVote(privVal.Key.ProTxHash, 0, height, round-1, voteType, block1, nil),   // round regression
+		newVote(privVal.Key.ProTxHash, 0, height-1, round, voteType, block1, nil),   // height regression
+		newVote(privVal.Key.ProTxHash, 0, height-2, round+4, voteType, block1, nil), // height regression and different round
+		newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block2, nil),     // different block
 	}
 
 	for _, c := range cases {
@@ -239,9 +240,9 @@ func TestSignVote(t *testing.T) {
 	stateSignature := vote.StateSignature
 
 	err = privVal.SignVote(ctx, "mychainid", 0, crypto.QuorumHash{}, v, stateID, nil)
-	assert.NoError(err)
-	assert.Equal(blockSignature, vote.BlockSignature)
-	assert.Equal(stateSignature, vote.StateSignature)
+	assert.NoError(t, err)
+	assert.Equal(t, blockSignature, vote.BlockSignature)
+	assert.Equal(t, stateSignature, vote.StateSignature)
 }
 
 func TestSignProposal(t *testing.T) {
@@ -260,18 +261,18 @@ func TestSignProposal(t *testing.T) {
 	height, round := int64(10), int32(1)
 
 	quorumHash, err := privVal.GetFirstQuorumHash(ctx)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	// sign a proposal for first time
 	proposal := newProposal(height, 1, round, block1)
 	pbp := proposal.ToProto()
 
 	_, err = privVal.SignProposal(ctx, "mychainid", 0, quorumHash, pbp)
-	assert.NoError(err, "expected no error signing proposal")
+	assert.NoError(t, err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
 	_, err = privVal.SignProposal(ctx, "mychainid", 0, quorumHash, pbp)
-	assert.NoError(err, "expected no error on signing same proposal")
+	assert.NoError(t, err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
 	cases := []*types.Proposal{
@@ -284,7 +285,7 @@ func TestSignProposal(t *testing.T) {
 
 	for _, c := range cases {
 		_, err = privVal.SignProposal(ctx, "mychainid", 0, crypto.QuorumHash{}, c.ToProto())
-		assert.Error(err, "expected error on signing conflicting proposal")
+		assert.Error(t, err, "expected error on signing conflicting proposal")
 	}
 }
 
@@ -335,9 +336,15 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	privVal, _, _ := newTestFilePV(t)
-	pubKey, err := privVal.GetPubKey(ctx)
-	assert.NoError(t, err)
+	proTxHash, err := privVal.GetProTxHash(ctx)
+	require.NoError(t, err)
+	quorumHash, err := privVal.GetFirstQuorumHash(ctx)
+	require.NoError(t, err)
+	pubKey, err := privVal.GetPubKey(ctx, quorumHash)
+	require.NoError(t, err)
 
 	block := types.BlockID{
 		Hash:          tmrand.Bytes(crypto.HashSize),
@@ -346,17 +353,19 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrecommitType
-
+	stateID := types.RandStateID().WithHeight(height - 1)
+	ext := []byte("extension")
 	// We initially sign this vote without an extension
-	vote1 := newVote(privVal.Key.Address, 0, height, round, voteType, block, nil)
+	vote1 := newVote(proTxHash, 0, height, round, voteType, block, ext)
 	vpb1 := vote1.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", vpb1)
+	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vpb1, stateID, logger)
 	assert.NoError(t, err, "expected no error signing vote")
 	assert.NotNil(t, vpb1.ExtensionSignature)
 
 	vesb1 := types.VoteExtensionSignBytes("mychainid", vpb1)
-	assert.True(t, pubKey.VerifySignature(vesb1, vpb1.ExtensionSignature))
+	vesb1Digest := sha256.Sum256(vesb1)
+	assert.True(t, pubKey.VerifySignature(vesb1Digest[:], vpb1.ExtensionSignature))
 
 	// We duplicate this vote precisely, including its timestamp, but change
 	// its extension
@@ -364,7 +373,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	vote2.Extension = []byte("new extension")
 	vpb2 := vote2.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", vpb2)
+	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vpb2, stateID, logger)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated vote extension")
 
 	// We need to ensure that a valid new extension signature has been created
@@ -375,21 +384,17 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	assert.True(t, pubKey.VerifySignature(vesb2, vpb2.ExtensionSignature))
 	assert.False(t, pubKey.VerifySignature(vesb1, vpb2.ExtensionSignature))
 
-	// We now manipulate the timestamp of the vote with the extension, as per
-	// TestDifferByTimestamp
-	expectedTimestamp := vpb2.Timestamp
-
-	vpb2.Timestamp = vpb2.Timestamp.Add(time.Millisecond)
-	vpb2.Signature = nil
+	vpb2.BlockSignature = nil
+	vpb2.StateSignature = nil
 	vpb2.ExtensionSignature = nil
 
-	err = privVal.SignVote(ctx, "mychainid", vpb2)
+	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vpb2, stateID, logger)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated timestamp and vote extension")
-	assert.Equal(t, expectedTimestamp, vpb2.Timestamp)
 
 	vesb3 := types.VoteExtensionSignBytes("mychainid", vpb2)
-	assert.True(t, pubKey.VerifySignature(vesb3, vpb2.ExtensionSignature))
-	assert.False(t, pubKey.VerifySignature(vesb1, vpb2.ExtensionSignature))
+	vesb3Digest := sha256.Sum256(vesb3)
+	assert.True(t, pubKey.VerifySignature(vesb3Digest[:], vpb2.ExtensionSignature))
+	assert.False(t, pubKey.VerifySignature(vesb1Digest[:], vpb2.ExtensionSignature))
 }
 
 func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,

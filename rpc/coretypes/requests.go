@@ -67,6 +67,8 @@ type RequestValidators struct {
 	Height  *Int64 `json:"height"`
 	Page    *Int64 `json:"page"`
 	PerPage *Int64 `json:"per_page"`
+
+	RequestQuorumInfo *bool `json:"request_quorum_info"`
 }
 
 type RequestConsensusParams struct {

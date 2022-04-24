@@ -9,7 +9,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/proxy"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
@@ -208,7 +207,7 @@ func validateBlockTime(allowedTimeWindow time.Duration, state State, block *type
 	return nil
 }
 
-func validateBlockChainLock(proxyAppQueryConn proxy.AppConnQuery, state State, block *types.Block) error {
+func validateBlockChainLock(ctx context.Context, client abci.Application, state State, block *types.Block) error {
 	if block.CoreChainLock != nil {
 		// If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
 		if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
@@ -230,14 +229,14 @@ func validateBlockChainLock(proxyAppQueryConn proxy.AppConnQuery, state State, b
 			panic(err)
 		}
 
-		verifySignatureQueryRequest := abci.RequestQuery{
+		verifySignatureQueryRequest := &abci.RequestQuery{
 			Data: coreChainLocksBytes,
 			Path: "/verify-chainlock",
 		}
 
 		// We need to query our abci application to make sure the chain lock signature is valid
 
-		checkQuorumSignatureResponse, err := proxyAppQueryConn.QuerySync(context.Background(), verifySignatureQueryRequest)
+		checkQuorumSignatureResponse, err := client.Query(ctx, verifySignatureQueryRequest)
 		if err != nil {
 			return err
 		}

@@ -272,6 +272,8 @@ type CommitMessage struct {
 	Commit *types.Commit
 }
 
+func (*CommitMessage) TypeTag() string { return "tendermint/Commit" }
+
 // ValidateBasic performs basic validation.
 func (m *CommitMessage) ValidateBasic() error {
 	return m.Commit.ValidateBasic()
@@ -282,6 +284,8 @@ type HasCommitMessage struct {
 	Height int64
 	Round  int32
 }
+
+func (*HasCommitMessage) TypeTag() string { return "tendermint/HasCommit" }
 
 // ValidateBasic performs basic validation.
 func (m *HasCommitMessage) ValidateBasic() error {

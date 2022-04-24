@@ -21,6 +21,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash/llmq"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
@@ -450,7 +451,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, n, 1)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, n, 1, factory.ConsensusParams())
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -505,10 +506,10 @@ func TestReactorWithEvidence(t *testing.T) {
 		eventBus := eventbus.NewDefault(log.NewNopLogger().With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, nil, sm.NopMetrics())
+		blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
 
 		cs, err := NewState(logger.With("validator", i, "module", "consensus"),
-			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus, 0)
+			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
 		require.NoError(t, err)
 		cs.SetPrivValidator(ctx, pv)
 
@@ -670,7 +671,6 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	defer cancel()
 
 	cfg := configSetup(t)
-	cfg.Consensus.TimeoutPropose = 2 * time.Second
 
 	nPeers := 4
 	nVals := 2
@@ -722,7 +722,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	wg.Wait()
 
-	blocksSubs := []types.Subscription{}
+	blocksSubs := []eventbus.Subscription{}
 	for _, sub := range rts.subs {
 		blocksSubs = append(blocksSubs, sub)
 	}

@@ -12,7 +12,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
@@ -225,7 +224,7 @@ func NewP2PStateProvider(
 	initialHeight int64,
 	trustHeight int64,
 	providers []lightprovider.Provider,
-	paramsSendCh chan<- p2p.Envelope,
+	paramsSendCh *p2p.Channel,
 	logger log.Logger,
 	dashCoreClient dashcore.Client,
 ) (StateProvider, error) {

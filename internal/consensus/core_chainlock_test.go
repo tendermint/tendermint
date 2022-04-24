@@ -12,8 +12,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/example/counter"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/libs/log"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -22,9 +26,11 @@ func TestValidProposalChainLocks(t *testing.T) {
 		nVals  = 4
 		nPeers = nVals
 	)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	conf := configSetup(t)
-	states, _, _, cleanup := randConsensusNetWithPeers(
+	states, _, _, cleanup := randConsensusNetWithPeers(ctx, t,
 		conf,
 		nVals,
 		nPeers,
@@ -35,16 +41,16 @@ func TestValidProposalChainLocks(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	for i := 0; i < nVals; i++ {
-		ticker := NewTimeoutTicker()
-		ticker.SetLogger(states[i].Logger)
+		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
-	rts := setupReactor(t, nVals, states, 40)
+	rts := setupReactor(ctx, t, nVals, states, 40)
 
 	for i := 0; i < 3; i++ {
-		timeoutWaitGroup(t, rts.subs, states, func(sub types.Subscription) {
-			msg := <-sub.Out()
+		timeoutWaitGroup(t, rts.subs, states, func(sub eventbus.Subscription) {
+			msg, err := sub.Next(ctx)
+			require.NoError(t, err)
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			state := states[0].GetState()
@@ -60,9 +66,11 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 		nVals  = 4
 		nPeers = nVals
 	)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	conf := configSetup(t)
-	states, _, _, cleanup := randConsensusNetWithPeers(
+	states, _, _, cleanup := randConsensusNetWithPeers(ctx, t,
 		conf,
 		nVals,
 		nPeers,
@@ -73,8 +81,7 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	for i := 0; i < nVals; i++ {
-		ticker := NewTimeoutTicker()
-		ticker.SetLogger(states[i].Logger)
+		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
@@ -83,17 +90,18 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	byzProposer := states[byzProposerID]
 
 	// update the decide proposal to propose the incorrect height
-	byzProposer.decideProposal = func(j int32) func(int64, int32) {
-		return func(height int64, round int32) {
-			invalidProposeCoreChainLockFunc(height, round, states[j])
+	byzProposer.decideProposal = func(j int32) func(context.Context, int64, int32) {
+		return func(_ context.Context, height int64, round int32) {
+			invalidProposeCoreChainLockFunc(ctx, height, round, states[j])
 		}
 	}(int32(0))
 
-	rts := setupReactor(t, nVals, states, 40)
+	rts := setupReactor(ctx, t, nVals, states, 40)
 
 	for i := 0; i < 3; i++ {
-		timeoutWaitGroup(t, rts.subs, states, func(sub types.Subscription) {
-			msg := <-sub.Out()
+		timeoutWaitGroup(t, rts.subs, states, func(sub eventbus.Subscription) {
+			msg, err := sub.Next(ctx)
+			require.NoError(t, err)
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			state := states[0].GetState()
@@ -109,9 +117,11 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 		nVals  = 4
 		nPeers = nVals
 	)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	conf := configSetup(t)
-	states, _, _, cleanup := randConsensusNetWithPeers(
+	states, _, _, cleanup := randConsensusNetWithPeers(ctx, t,
 		conf,
 		nVals,
 		nPeers,
@@ -122,16 +132,16 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	for i := 0; i < nVals; i++ {
-		ticker := NewTimeoutTicker()
-		ticker.SetLogger(states[i].Logger)
+		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
-	rts := setupReactor(t, nVals, states, 100)
+	rts := setupReactor(ctx, t, nVals, states, 100)
 
 	for i := 0; i < 10; i++ {
-		timeoutWaitGroup(t, rts.subs, states, func(sub types.Subscription) {
-			msg := <-sub.Out()
+		timeoutWaitGroup(t, rts.subs, states, func(sub eventbus.Subscription) {
+			msg, err := sub.Next(ctx)
+			require.NoError(t, err)
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			state := states[0].GetState()
@@ -146,14 +156,14 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 	}
 }
 
-func newCounterWithCoreChainLocks(_ string) abci.Application {
+func newCounterWithCoreChainLocks(logger log.Logger, _ string) abci.Application {
 	counterApp := counter.NewApplication(true)
 	counterApp.HasCoreChainLocks = true
 	counterApp.CurrentCoreChainLockHeight = 1
 	return counterApp
 }
 
-func newCounterWithBackwardsCoreChainLocks(_ string) abci.Application {
+func newCounterWithBackwardsCoreChainLocks(logger log.Logger, _ string) abci.Application {
 	counterApp := counter.NewApplication(true)
 	counterApp.HasCoreChainLocks = true
 	counterApp.CurrentCoreChainLockHeight = 100
@@ -161,17 +171,17 @@ func newCounterWithBackwardsCoreChainLocks(_ string) abci.Application {
 	return counterApp
 }
 
-func setupReactor(t *testing.T, n int, states []*State, size int) *reactorTestSuite {
+func setupReactor(ctx context.Context, t *testing.T, n int, states []*State, size int) *reactorTestSuite {
 	t.Helper()
-	rts := setup(t, n, states, size)
+	rts := setup(ctx, t, n, states, size)
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 	return rts
 }
 
-func invalidProposeCoreChainLockFunc(height int64, round int32, cs *State) {
+func invalidProposeCoreChainLockFunc(ctx context.Context, height int64, round int32, cs *State) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
@@ -186,7 +196,10 @@ func invalidProposeCoreChainLockFunc(height int64, round int32, cs *State) {
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
-		block, blockParts = cs.createProposalBlock()
+		block, err := cs.createProposalBlock(ctx)
+		if err != nil {
+			return
+		}
 		if block == nil {
 			return
 		}
@@ -195,13 +208,13 @@ func invalidProposeCoreChainLockFunc(height int64, round int32, cs *State) {
 	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
 	// and the privValidator will refuse to sign anything.
 	if err := cs.wal.FlushAndSync(); err != nil {
-		cs.Logger.Error("Error flushing to disk")
+		cs.logger.Error("Error flushing to disk")
 	}
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	// It is byzantine because it is not updating the LastCoreChainLockedBlockHeight
-	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID, tmtime.Now())
 	p := proposal.ToProto()
 	_, err := cs.privValidator.SignProposal(
 		context.Background(),
@@ -214,29 +227,29 @@ func invalidProposeCoreChainLockFunc(height int64, round int32, cs *State) {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
-		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+		cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()})
 		for i := 0; i < int(blockParts.Total()); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
+			cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, "", tmtime.Now()})
 		}
-		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+		cs.logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+		cs.logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
 	} else if !cs.replayMode {
-		cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
+		cs.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 	}
 }
 
 func timeoutWaitGroup(
 	t *testing.T,
-	subs map[types.NodeID]types.Subscription,
+	subs map[types.NodeID]eventbus.Subscription,
 	states []*State,
-	f func(types.Subscription),
+	f func(eventbus.Subscription),
 ) {
 	var wg sync.WaitGroup
 	wg.Add(len(subs))
 
 	for _, sub := range subs {
-		go func(sub types.Subscription) {
+		go func(sub eventbus.Subscription) {
 			f(sub)
 			wg.Done()
 		}(sub)

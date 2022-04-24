@@ -5,11 +5,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
+	"testing"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -97,7 +95,7 @@ func makeValidCommit(
 	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
-		vote, err := factory.MakeVote(ctx, privVals[val.ProTxHash.String()], vals, chainID, int32(i), height, 0, 2, blockID, stateID, time.Now())
+		vote, err := factory.MakeVote(ctx, privVals[val.ProTxHash.String()], vals, chainID, int32(i), height, 0, 2, blockID, stateID)
 		require.NoError(t, err)
 		blockSigs = append(blockSigs, vote.BlockSignature)
 		stateSigs = append(stateSigs, vote.StateSignature)
@@ -145,8 +143,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	state sm.State,
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
-
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block := sf.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	abciResponses := &tmstate.ABCIResponses{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
@@ -155,11 +152,17 @@ func makeHeaderPartsResponsesValPubKeyChange(
 		require.NoError(t, err)
 		pbPk, err := encoding.PubKeyToProto(pubkey)
 		require.NoError(t, err)
+		thresholdPubKey, err := encoding.PubKeyToProto(state.NextValidators.ThresholdPublicKey)
+		require.NoError(t, err)
 
 		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				{PubKey: vPbPk, Power: 0},
-				{PubKey: pbPk, Power: 10},
+			ValidatorSetUpdate: &abci.ValidatorSetUpdate{
+				ValidatorUpdates: []abci.ValidatorUpdate{
+					{PubKey: &vPbPk, Power: 0},
+					{PubKey: &pbPk, Power: types.DefaultDashVotingPower},
+				},
+				ThresholdPublicKey: thresholdPubKey,
+				QuorumHash:         state.NextValidators.QuorumHash,
 			},
 		}
 	}
@@ -174,7 +177,7 @@ func makeHeaderPartsResponsesValPowerChange(
 ) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block := sf.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 
 	abciResponses := &tmstate.ABCIResponses{}
 
@@ -184,10 +187,16 @@ func makeHeaderPartsResponsesValPowerChange(
 	if val.VotingPower != power {
 		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
 		require.NoError(t, err)
+		thresholdPubKey, err := encoding.PubKeyToProto(state.NextValidators.ThresholdPublicKey)
+		require.NoError(t, err)
 
 		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				{PubKey: vPbPk, Power: power},
+			ValidatorSetUpdate: &abci.ValidatorSetUpdate{
+				ValidatorUpdates: []abci.ValidatorUpdate{
+					{PubKey: &vPbPk, Power: power},
+				},
+				ThresholdPublicKey: thresholdPubKey,
+				QuorumHash:         state.NextValidators.QuorumHash,
 			},
 		}
 	}
@@ -202,7 +211,7 @@ func makeHeaderPartsResponsesParams(
 ) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block := sf.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		FinalizeBlock: &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams},

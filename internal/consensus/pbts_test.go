@@ -118,14 +118,14 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	cs := newState(ctx, t, log.NewNopLogger(), state, privVals[0], kvstore.NewApplication())
 	vss := make([]*validatorStub, validators)
 	for i := 0; i < validators; i++ {
-		vss[i] = newValidatorStub(privVals[i], int32(i))
+		vss[i] = newValidatorStub(privVals[i], int32(i), 0)
 	}
 	incrementHeight(vss[1:]...)
 
 	for _, vs := range vss {
 		vs.clock = clock
 	}
-	pubKey, err := vss[0].PrivValidator.GetPubKey(ctx)
+	pubKey, err := vss[0].PrivValidator.GetPubKey(ctx, state.Validators.QuorumHash)
 	require.NoError(t, err)
 
 	eventCh := timestampedCollector(ctx, t, cs.eventBus)
@@ -212,11 +212,11 @@ func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer
 
 	k, err := proposer.GetPubKey(ctx)
 	require.NoError(t, err)
-	b.Header.ProposerAddress = k.Address()
+	b.Header.ProposerProTxHash = k.Address()
 	ps, err := b.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	bid := types.BlockID{Hash: b.Hash(), PartSetHeader: ps.Header()}
-	prop := types.NewProposal(p.currentHeight, 0, -1, bid, proposedTime)
+	prop := types.NewProposal(p.currentHeight, 0, 0, -1, bid, proposedTime)
 	tp := prop.ToProto()
 
 	if err := proposer.SignProposal(ctx, p.observedState.state.ChainID, tp); err != nil {

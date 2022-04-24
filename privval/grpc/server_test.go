@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -60,7 +59,7 @@ func TestGetPubKey(t *testing.T) {
 
 func TestSignVote(t *testing.T) {
 
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 	proTxHash := crypto.RandProTxHash()
 
 	testCases := []struct {
@@ -131,7 +130,7 @@ func TestSignVote(t *testing.T) {
 			} else {
 				pbVote := tc.want.ToProto()
 				require.NoError(t, tc.pv.SignVote(ctx, ChainID, btcjson.LLMQType_5_60, quorumHash,
-					pbVote, types.StateID{}, log.TestingLogger()))
+					pbVote, types.StateID{}, log.NewTestingLogger(t)))
 
 				assert.Equal(t, pbVote.BlockSignature, resp.Vote.BlockSignature)
 			}
@@ -142,7 +141,7 @@ func TestSignVote(t *testing.T) {
 func TestSignProposal(t *testing.T) {
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.HashSize)
+	hash := tmrand.Bytes(crypto.HashSize)
 	quorumHash := crypto.RandQuorumHash()
 
 	testCases := []struct {

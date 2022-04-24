@@ -70,6 +70,12 @@ type ValidatorSet struct {
 	totalVotingPower int64
 }
 
+type ValidatorSetUpdate struct {
+	Validators         []*Validator
+	ThresholdPublicKey crypto.PubKey
+	QuorumHash         crypto.QuorumHash
+}
+
 // NewValidatorSet initializes a ValidatorSet by copying over the values from
 // `valz`, a list of Validators. If valz is nil or empty, the new ValidatorSet
 // will have an empty list of Validators.

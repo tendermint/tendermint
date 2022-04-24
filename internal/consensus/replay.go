@@ -413,7 +413,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			// If we received non-zero initial core height, we set it here
-			if res.InitialCoreHeight > 0 && res.InitialCoreHeight != req.InitialCoreHeight {
+			if res.InitialCoreHeight > 0 && res.InitialCoreHeight != res.InitialCoreHeight {
 				state.LastCoreChainLockedBlockHeight = res.InitialCoreHeight
 				h.initialState.LastCoreChainLockedBlockHeight = res.InitialCoreHeight
 			}
@@ -574,7 +574,7 @@ func (h *Handshaker) replayBlocks(
 		if i == finalBlock && !mutateState {
 			// We emit events for the index services at the final block due to the sync issue when
 			// the node shutdown during the block committing status.
-			blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus, sm.NopMetrics(), nil)
+			blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus, sm.NopMetrics())
 			appHash, err = sm.ExecCommitBlock(ctx,
 				blockExec, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
@@ -627,8 +627,8 @@ func (h *Handshaker) replayBlock(
 		h.store,
 		h.eventBus,
 		sm.NopMetrics(),
-		sm.BlockExecutorWithAppHashSize(h.appHashSize),
 	)
+	blockExec.SetAppHashSize(h.appHashSize)
 
 	var err error
 	state, err = blockExec.ApplyBlock(ctx, state, h.nodeProTxHash, meta.BlockID, block)

@@ -13,7 +13,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -37,7 +36,7 @@ func TestEvidenceListProtoBuf(t *testing.T) {
 	defer cancel()
 
 	const chainID = "mychain"
-	ev, err := NewMockDuplicateVoteEvidence(ctx, math.MaxInt64, time.Now(), chainID)
+	ev, err := NewMockDuplicateVoteEvidence(ctx, math.MaxInt64, time.Now(), chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	require.NoError(t, err)
 	data := EvidenceList{ev}
 	testCases := []struct {
@@ -266,7 +265,7 @@ func TestEvidenceVectors(t *testing.T) {
 	const chainID = "mychain"
 	stateID := StateID{
 		Height:      100,
-		LastAppHash: make([]byte, tmhash.Size),
+		LastAppHash: make([]byte, crypto.HashSize),
 	}
 	v := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, quorumType, quorumHash, blockID, stateID)
 	v2 := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, quorumType, quorumHash, blockID2, stateID)

@@ -14,6 +14,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -189,7 +191,6 @@ func TestSignerVote(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
-			ts := time.Now()
 			hash := tmrand.Bytes(crypto.HashSize)
 			valProTxHash := tmrand.Bytes(crypto.DefaultHashSize)
 			want := &types.Vote{
@@ -197,7 +198,6 @@ func TestSignerVote(t *testing.T) {
 				Height:             1,
 				Round:              2,
 				BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-				Timestamp:          ts,
 				ValidatorProTxHash: valProTxHash,
 				ValidatorIndex:     1,
 			}
@@ -207,7 +207,6 @@ func TestSignerVote(t *testing.T) {
 				Height:             1,
 				Round:              2,
 				BlockID:            types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-				Timestamp:          ts,
 				ValidatorProTxHash: valProTxHash,
 				ValidatorIndex:     1,
 			}
@@ -292,7 +291,6 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tc.closer()
 
-			ts := time.Now()
 			hash := tmrand.Bytes(crypto.HashSize)
 			valProTxHash := tmrand.Bytes(crypto.DefaultHashSize)
 			want := &types.Vote{

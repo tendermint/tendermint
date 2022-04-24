@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/dash/quorum"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
@@ -366,7 +365,6 @@ func TestCreateProposalBlock(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
 	)
 
 	proposedAppVersion := uint64(1)
@@ -450,7 +448,6 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
@@ -535,8 +532,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		&coreChainLock,
 	)
+	blockExec.SetNextCoreChainLock(&coreChainLock)
 
 	blockID := types.BlockID{
 		Hash: crypto.Checksum([]byte("blockID_hash")),
@@ -554,7 +551,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	stateID := types.StateID{
 		Height:      math.MaxInt64 - 1,
-		LastAppHash: tmhash.Sum([]byte("app_hash")),
+		LastAppHash: crypto.Checksum([]byte("app_hash")),
 	}
 
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)

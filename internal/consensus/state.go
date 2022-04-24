@@ -9,9 +9,10 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/debug"
-	"sort"
 	"sync"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -210,7 +211,6 @@ func NewState(
 	txNotifier txNotifier,
 	evpool evidencePool,
 	eventBus *eventbus.EventBus,
-	proposedAppVersion uint64,
 	options ...StateOption,
 ) (*State, error) {
 	cs := &State{
@@ -231,8 +231,6 @@ func NewState(
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
 		onStopCh:         make(chan *cstypes.RoundState),
-
-		proposedAppVersion: proposedAppVersion,
 	}
 
 	// set function defaults (may be overwritten before calling Start)
@@ -256,6 +254,10 @@ func NewState(
 	}
 
 	return cs, nil
+}
+
+func (cs *State) SetProposedAppVersion(ver uint64) {
+	cs.proposedAppVersion = ver
 }
 
 func (cs *State) updateStateFromStore() error {
@@ -354,7 +356,7 @@ func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator)
 	defer cs.mtx.Unlock()
 
 	if priv == nil {
-		cs.Logger.Error("attempting to set private validator to nil")
+		cs.logger.Error("attempting to set private validator to nil")
 	}
 
 	cs.privValidator = priv
@@ -382,7 +384,7 @@ func (cs *State) SetPrivValidator(ctx context.Context, priv types.PrivValidator)
 	}
 
 	if err := cs.updatePrivValidatorProTxHash(ctx); err != nil {
-		cs.Logger.Error("failed to get private validator protxhash", "err", err)
+		cs.logger.Error("failed to get private validator protxhash", "err", err)
 	}
 }
 
@@ -837,9 +839,7 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit) {
 		height = state.InitialHeight
 	}
 
-	if cs.Logger != nil {
-		cs.Logger.Debug("updating state height", "newHeight", height)
-	}
+	cs.logger.Debug("updating state height", "newHeight", height)
 
 	// RoundState fields
 	cs.updateHeight(height)
@@ -857,10 +857,8 @@ func (cs *State) updateToState(state sm.State, commit *types.Commit) {
 	}
 
 	if cs.Validators == nil || !bytes.Equal(cs.Validators.QuorumHash, validators.QuorumHash) {
-		if cs.Logger != nil {
-			cs.Logger.Info("Updating validators", "from", cs.Validators.BasicInfoString(),
-				"to", validators.BasicInfoString())
-		}
+		cs.logger.Info("Updating validators", "from", cs.Validators.BasicInfoString(),
+			"to", validators.BasicInfoString())
 	}
 
 	stateID := state.StateID()
@@ -1010,7 +1008,7 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 
 			// if the timeout is relevant to the rs
 			// go to the next step
-			cs.handleTimeout(ctx, ti, cs.RoundState)
+			cs.handleTimeout(ctx, ti, *rs)
 
 		case <-ctx.Done():
 			onExit(cs)
@@ -1039,7 +1037,7 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo, fromReplay bool) {
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err = cs.addProposalBlockPart(msg, peerID, fromReplay)
+		added, err = cs.addProposalBlockPart(ctx, msg, peerID, fromReplay)
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
@@ -1077,7 +1075,7 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo, fromReplay bool) {
 			err = nil
 		}
 
-		cs.Logger.Debug(
+		cs.logger.Debug(
 			"received block part",
 			"height", cs.Height,
 			"round", cs.Round,
@@ -1113,7 +1111,7 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo, fromReplay bool) {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
-		cs.Logger.Debug(
+		cs.logger.Debug(
 			"received vote",
 			"height", cs.Height,
 			"cs_round", cs.Round,
@@ -1126,11 +1124,11 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo, fromReplay bool) {
 	case *CommitMessage:
 		// attempt to add the commit and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		added, err = cs.tryAddCommit(msg.Commit, peerID)
+		added, err = cs.tryAddCommit(ctx, msg.Commit, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
-		cs.Logger.Debug(
+		cs.logger.Debug(
 			"received commit",
 			"height", cs.Height,
 			"cs_round", cs.Round,
@@ -1317,7 +1315,7 @@ func (cs *State) enterNewRound(ctx context.Context, height int64, round int32) {
 	} else if !cs.config.DontAutoPropose {
 		// DontAutoPropose should always be false, except for
 		// specific tests where proposals are created manually
-		cs.enterPropose(height, round)
+		cs.enterPropose(ctx, height, round)
 	}
 }
 
@@ -1338,7 +1336,7 @@ func (cs *State) needProofBlock(height int64) bool {
 				panic(fmt.Sprintf("needProofBlock (height=%d): last block meta for height %d not found", height, blockHeight))
 			}
 			if !bytes.Equal(cs.state.AppHash, blockMeta.Header.AppHash) {
-				cs.Logger.Debug(
+				cs.logger.Debug(
 					"needProofBlock: proof block needed",
 					"height", height,
 					"modified_height", blockHeight,
@@ -1370,7 +1368,7 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 
 	// If this validator is the proposer of this round, and the previous block time is later than
 	// our local clock time, wait to propose until our local clock time has passed the block time.
-	if cs.privValidatorPubKey != nil && cs.isProposer(cs.privValidatorPubKey.Address()) {
+	if cs.privValidatorProTxHash != nil && cs.isProposer(cs.privValidatorProTxHash) {
 		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
 		if proposerWaitTime > 0 {
 			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
@@ -1441,7 +1439,7 @@ func (cs *State) checkValidBlock() bool {
 		return false
 	}
 	if err := cs.blockExec.ValidateBlockTime(cs.config.ProposedBlockTimeWindow, cs.state, cs.ValidBlock); err != nil {
-		cs.Logger.Debug(
+		cs.logger.Debug(
 			"proposal block is outdated",
 			"height", cs.Height,
 			"round", cs.Round,
@@ -1486,8 +1484,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	}
 
 	// Make proposal
-	propBlockID := block.BlockID()
-	propBlockID.PartSetHeader = blockParts.Header()
+	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposedChainLockHeight := cs.state.LastCoreChainLockedBlockHeight
 	if cs.blockExec.NextCoreChainLock != nil && cs.blockExec.NextCoreChainLock.CoreBlockHeight > proposedChainLockHeight {
 		proposedChainLockHeight = cs.blockExec.NextCoreChainLock.CoreBlockHeight
@@ -1499,7 +1496,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 
 	proTxHash, err := cs.privValidator.GetProTxHash(context.Background())
 	if err != nil {
-		cs.Logger.Error(
+		cs.logger.Error(
 			"propose step; failed signing proposal; couldn't get proTxHash",
 			"height", height,
 			"round", round,
@@ -1509,7 +1506,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	}
 	pubKey, err := cs.privValidator.GetPubKey(context.Background(), quorumHash)
 	if err != nil {
-		cs.Logger.Error(
+		cs.logger.Error(
 			"propose step; failed signing proposal; couldn't get pubKey",
 			"height", height,
 			"round", round,
@@ -1518,7 +1515,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		return
 	}
 	messageBytes := types.ProposalBlockSignBytes(cs.state.ChainID, p)
-	cs.Logger.Debug(
+	cs.logger.Debug(
 		"signing proposal",
 		"height", proposal.Height,
 		"round", proposal.Round,
@@ -1778,7 +1775,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	}
 
 	// Validate proposal block
-	err = cs.blockExec.ValidateBlockChainLock(cs.state, cs.ProposalBlock)
+	err = cs.blockExec.ValidateBlockChainLock(ctx, cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("enterPrevote: ProposalBlock chain lock is invalid", "err", err)
@@ -2095,8 +2092,6 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		return
 	}
 
-	cs.calculatePrevoteMessageDelayMetrics()
-
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
@@ -2128,12 +2123,12 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 		// but may differ from the LastPrecommits included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
 		seenCommit := precommits.MakeCommit()
-		cs.applyCommit(seenCommit, logger)
+		cs.applyCommit(ctx, seenCommit, logger)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
 		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
 		// Todo: do we need this?
-		cs.applyCommit(nil, logger)
+		cs.applyCommit(ctx, nil, logger)
 	}
 }
 
@@ -2151,7 +2146,7 @@ func (cs *State) tryAddCommit(ctx context.Context, commit *types.Commit, peerID 
 	if commit.Height == rs.Height && commit.Round > rs.Round {
 		cs.logger.Debug("Commit received for a later round", "height", commit.Height, "our round",
 			rs.Round, "commit round", commit.Round)
-		verified, err := cs.verifyCommit(commit, peerID, true)
+		verified, err := cs.verifyCommit(ctx, commit, peerID, true)
 		if err != nil {
 			return false, err
 		}
@@ -2167,7 +2162,7 @@ func (cs *State) tryAddCommit(ctx context.Context, commit *types.Commit, peerID 
 	}
 
 	// First lets verify that the commit is what we are expecting
-	verified, err := cs.verifyCommit(commit, peerID, false)
+	verified, err := cs.verifyCommit(ctx, commit, peerID, false)
 	if !verified || err != nil {
 		return verified, err
 	}
@@ -2187,7 +2182,7 @@ func (cs *State) tryAddCommit(ctx context.Context, commit *types.Commit, peerID 
 	return added, nil
 }
 
-func (cs *State) verifyCommit(commit *types.Commit, peerID types.NodeID, ignoreProposalBlock bool) (verified bool, err error) {
+func (cs *State) verifyCommit(ctx context.Context, commit *types.Commit, peerID types.NodeID, ignoreProposalBlock bool) (verified bool, err error) {
 	// Lets first do some basic commit validation before more complicated commit verification
 	if err := commit.ValidateBasic(); err != nil {
 		return false, fmt.Errorf("error validating commit: %v", err)
@@ -2199,11 +2194,11 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID types.NodeID, ignoreP
 	// A commit for the previous height?
 	// These come in while we wait timeoutCommit
 	if commit.Height+1 == stateHeight {
-		cs.Logger.Debug("old commit ignored", "commit", commit)
+		cs.logger.Debug("old commit ignored", "commit", commit)
 		return false, nil
 	}
 
-	cs.Logger.Debug(
+	cs.logger.Debug(
 		"verifying commit from remote",
 		"commit_height", commit.Height,
 		"cs_height", cs.Height,
@@ -2282,7 +2277,7 @@ func (cs *State) verifyCommit(commit *types.Commit, peerID types.NodeID, ignoreP
 		return false, fmt.Errorf("cannot finalize commit; proposal block does not hash to commit hash")
 	}
 
-	if err := cs.blockExec.ValidateBlock(cs.state, block); err != nil {
+	if err := cs.blockExec.ValidateBlock(ctx, cs.state, block); err != nil {
 		return false, fmt.Errorf("+2/3 committed an invalid block: %w", err)
 	}
 	return true, nil
@@ -2298,14 +2293,17 @@ func (cs *State) addCommit(ctx context.Context, commit *types.Commit) (added boo
 	cs.newStep()
 
 	// The commit is all good, let's apply it to the state
-	cs.applyCommit(commit, cs.logger)
+	cs.applyCommit(ctx, commit, cs.logger)
 
 	// This will relay the commit to peers
 	if err := cs.PublishCommitEvent(commit); err != nil {
 		return added, err
 	}
 
-	if cs.config.SkipTimeoutCommit {
+	if cs.bypassCommitTimeout() {
+
+	}
+	if cs.bypassCommitTimeout() {
 		cs.enterNewRound(ctx, cs.Height, 0)
 	}
 
@@ -2322,7 +2320,7 @@ func (cs *State) PublishCommitEvent(commit *types.Commit) error {
 	return nil
 }
 
-func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
+func (cs *State) applyCommit(ctx context.Context, commit *types.Commit, logger log.Logger) {
 	logger.Info("applying commit", "commit", commit)
 
 	var height int64
@@ -2384,7 +2382,7 @@ func (cs *State) applyCommit(commit *types.Commit, logger log.Logger) {
 	cs.updateToState(stateCopy, commit)
 
 	// Private validator might have changed it's key pair => refetch pubkey.
-	if err := cs.updatePrivValidatorPubKey(ctx); err != nil {
+	if err := cs.updatePrivValidatorProTxHash(ctx); err != nil {
 		logger.Error("failed to get private validator pubkey", "err", err)
 	}
 
@@ -2641,7 +2639,7 @@ func (cs *State) addProposalBlockPart(
 			prevotes := cs.Votes.Prevotes(cs.Round)
 			blockID, hasThreshold := prevotes.TwoThirdsMajority()
 
-			if hasThreshold && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+			if hasThreshold && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.logger.Debug(
 						"updating valid block to new proposal block",
@@ -2726,7 +2724,7 @@ func (cs *State) handleCompleteProposal(ctx context.Context, height int64) {
 		if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
 			cs.enterPrecommit(ctx, height, cs.Round)
 		}
-	} else if cs.Step == cstypes.RoundStepCommit {
+	} else if cs.Step == cstypes.RoundStepApplyCommit {
 		// If we're waiting on the proposal block...
 		cs.tryFinalizeCommit(ctx, height)
 	}
@@ -2826,7 +2824,7 @@ func (cs *State) addVote(
 		cs.evsw.FireEvent(types.EventVoteValue, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
-		if cs.config.SkipTimeoutCommit && cs.LastPrecommits.HasAll() {
+		if cs.bypassCommitTimeout() && cs.LastPrecommits.HasAll() {
 			// go straight to new round (skip timeout commit)
 			// cs.scheduleTimeout(time.Duration(0), cs.Height, 0, cstypes.RoundStepNewHeight)
 			cs.enterNewRound(ctx, cs.Height, 0)
@@ -3103,56 +3101,6 @@ func (cs *State) updatePrivValidatorProTxHash(ctx context.Context) error {
 	}
 	cs.privValidatorProTxHash = proTxHash
 	return nil
-}
-
-// look back to check existence of the node's consensus votes before joining consensus
-func (cs *State) checkDoubleSigningRisk(height int64) error {
-	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
-		valAddr := cs.privValidatorPubKey.Address()
-		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
-		if doubleSignCheckHeight > height {
-			doubleSignCheckHeight = height
-		}
-
-		for i := int64(1); i < doubleSignCheckHeight; i++ {
-			lastCommit := cs.LoadCommit(height - i)
-			if lastCommit != nil {
-				for sigIdx, s := range lastCommit.Signatures {
-					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {
-						cs.logger.Info("found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
-						return ErrSignatureFoundInPastBlocks
-					}
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (cs *State) calculatePrevoteMessageDelayMetrics() {
-	if cs.Proposal == nil {
-		return
-	}
-	ps := cs.Votes.Prevotes(cs.Round)
-	pl := ps.List()
-
-	sort.Slice(pl, func(i, j int) bool {
-		return pl[i].Timestamp.Before(pl[j].Timestamp)
-	})
-
-	var votingPowerSeen int64
-	for _, v := range pl {
-		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
-		votingPowerSeen += val.VotingPower
-		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
-			cs.metrics.QuorumPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
-			break
-		}
-	}
-	if ps.HasAll() {
-		cs.metrics.FullPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
-	}
 }
 
 //---------------------------------------------------------

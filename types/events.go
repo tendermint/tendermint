@@ -8,8 +8,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
 // Reserved event types (alphabetically sorted).
@@ -115,9 +113,8 @@ func init() {
 	jsontypes.MustRegister(EventDataRoundState{})
 	jsontypes.MustRegister(EventDataStateSyncStatus{})
 	jsontypes.MustRegister(EventDataTx{})
-	jsontypes.MustRegister(EventDataValidatorSetUpdates{})
 	jsontypes.MustRegister(EventDataVote{})
-	jsontypes.MustRegister(EventDataValidatorSetUpdates{})
+	jsontypes.MustRegister(EventDataValidatorSetUpdate{})
 	jsontypes.MustRegister(EventDataEvidenceValidated{})
 	jsontypes.MustRegister(EventDataString(""))
 }
@@ -233,14 +230,14 @@ type EventDataString string
 // TypeTag implements the required method of jsontypes.Tagged.
 func (EventDataString) TypeTag() string { return "tendermint/event/ProposalString" }
 
-type EventDataValidatorSetUpdates struct {
+type EventDataValidatorSetUpdate struct {
 	ValidatorSetUpdates []*Validator      `json:"validator_updates"`
 	ThresholdPublicKey  crypto.PubKey     `json:"threshold_public_key"`
 	QuorumHash          crypto.QuorumHash `json:"quorum_hash"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.
-func (EventDataValidatorSetUpdates) TypeTag() string { return "tendermint/event/ValidatorSetUpdates" }
+func (EventDataValidatorSetUpdate) TypeTag() string { return "tendermint/event/ValidatorSetUpdates" }
 
 // EventDataBlockSyncStatus shows the fastsync status and the
 // height when the node state sync mechanism changes.
@@ -303,7 +300,6 @@ var (
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
 	EventQueryTx                  = QueryForEvent(EventTxValue)
-	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdateValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)

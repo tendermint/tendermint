@@ -160,7 +160,7 @@ func (c Client) Validators(ctx context.Context, height *int64, page, perPage *in
 		Height:            (*coretypes.Int64)(height),
 		Page:              coretypes.Int64Ptr(page),
 		PerPage:           coretypes.Int64Ptr(perPage),
-		RequestQuorumInfo: coretypes.Int64Ptr(requestQuorumInfo),
+		RequestQuorumInfo: requestQuorumInfo,
 	})
 }
 

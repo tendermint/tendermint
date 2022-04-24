@@ -133,8 +133,8 @@ message RequestPrepareProposal {
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
-  // address of the public key of the validator proposing the block.
-  bytes proposer_address = 8;
+
+  bytes proposer_pro_tx_hash = 8;
 }
 
 message RequestProcessProposal {
@@ -146,8 +146,8 @@ message RequestProcessProposal {
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
-  // address of the public key of the original proposer of the block.
-  bytes proposer_address = 8;
+
+  bytes proposer_pro_tx_hash = 8;
 }
 
 // Extends a vote with application-side injection
@@ -158,10 +158,10 @@ message RequestExtendVote {
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
-  bytes hash              = 1;
-  bytes validator_address = 2;
-  int64 height            = 3;
-  bytes vote_extension    = 4;
+  bytes hash                  = 1;
+  bytes validator_pro_tx_hash = 2;
+  int64 height                = 3;
+  bytes vote_extension        = 4;
 }
 
 message RequestFinalizeBlock {
@@ -173,8 +173,8 @@ message RequestFinalizeBlock {
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
-  // proposer_address is the address of the public key of the original proposer of the block.
-  bytes proposer_address = 8;
+
+  bytes proposer_pro_tx_hash = 8;
 }
 
 //----------------------------------------
@@ -375,10 +375,12 @@ message ResponseFinalizeBlock {
   repeated Event events = 1
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   repeated ExecTxResult            tx_results              = 2;
-  repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
   bytes                            app_hash                = 5;
   int64                            retain_height           = 6;
+
+  tendermint.types.CoreChainLock next_core_chain_lock_update = 100;
+  ValidatorSetUpdate             validator_set_update        = 101 [(gogoproto.nullable) = true];
 }
 
 //----------------------------------------

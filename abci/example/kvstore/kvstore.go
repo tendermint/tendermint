@@ -94,8 +94,7 @@ func NewApplication() *Application {
 func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
-
-	for _, v := range req.Validators {
+	for _, v := range req.ValidatorSet.ValidatorUpdates {
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("error updating validators", "r", r)
@@ -380,6 +379,7 @@ func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
 
 // add, update, or remove a validator
 func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxResult {
+
 	pubkey, err := encoding.PubKeyFromProto(v.PubKey)
 	if err != nil {
 		panic(fmt.Errorf("can't decode public key: %w", err))

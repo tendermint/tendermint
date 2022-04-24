@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io"
 	mrand "math/rand"
 	"testing"
@@ -88,9 +89,8 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 		blockStore,
 		eventBus,
 		sm.NopMetrics(),
-		nil,
-		sm.BlockExecutorWithAppHashSize(cfg.Consensus.AppHashSize),
 	)
+	blockExec.SetAppHashSize(cfg.Consensus.AppHashSize)
 	consensusState, err := NewState(
 		logger,
 		cfg.Consensus,

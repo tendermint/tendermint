@@ -2,19 +2,17 @@ package types
 
 import (
 	"context"
-	"github.com/tendermint/tendermint/libs/log"
-	"strings"
-	"testing"
-
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
+	"strings"
+	"testing"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -274,29 +272,33 @@ func TestVoteExtension(t *testing.T) {
 		//},
 	}
 
+	logger := log.NewTestingLogger(t)
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			height, round := int64(1), int32(0)
-			privVal := NewMockPV()
-			pk, err := privVal.GetPubKey(ctx)
+			quorumHash := crypto.RandQuorumHash()
+			privVal := NewMockPVForQuorum(quorumHash)
+			proTxHash, err := privVal.GetProTxHash(ctx)
 			require.NoError(t, err)
 			blk := Block{}
-			ps, err := blk.MakePartSet(BlockPartSizeBytes)
+			blockID, err := blk.BlockID()
 			require.NoError(t, err)
+			stateID := RandStateID().WithHeight(height - 1)
 			vote := &Vote{
-				ValidatorAddress: pk.Address(),
-				ValidatorIndex:   0,
-				Height:           height,
-				Round:            round,
-				Timestamp:        tmtime.Now(),
-				Type:             tmproto.PrecommitType,
-				BlockID:          BlockID{blk.Hash(), ps.Header()},
+				ValidatorProTxHash: proTxHash,
+				ValidatorIndex:     0,
+				Height:             height,
+				Round:              round,
+				Type:               tmproto.PrecommitType,
+				BlockID:            blockID,
 			}
 
 			v := vote.ToProto()
-			err = privVal.SignVote(ctx, "test_chain_id", v)
+			err = privVal.SignVote(ctx, "test_chain_id", btcjson.LLMQType_5_60, quorumHash, v, stateID, logger)
 			require.NoError(t, err)
-			vote.Signature = v.Signature
+			vote.BlockSignature = v.BlockSignature
+			vote.StateSignature = v.StateSignature
 			if tc.includeSignature {
 				vote.ExtensionSignature = v.ExtensionSignature
 			}
@@ -565,8 +567,9 @@ func getSampleCommit(ctx context.Context, t testing.TB) *Commit {
 	t.Helper()
 
 	lastID := makeBlockIDRandom()
+	stateID := RandStateID().WithHeight(1)
 	voteSet, _, vals := randVoteSet(ctx, t, 2, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, 2, 1, voteSet, vals, time.Now())
+	commit, err := makeCommit(ctx, lastID, stateID, 2, 1, voteSet, vals)
 
 	require.NoError(t, err)
 

@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/dash/llmq"
@@ -114,8 +113,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	state.LastBlockHeight++
 
 	// Build mock responses.
-	block, err := statefactory.MakeBlock(state, 2, new(types.Commit), nil, 0)
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(t, state, 2, new(types.Commit), nil, 0)
 
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ExecTxResult, 2)
@@ -129,7 +127,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	require.NoError(t, err)
 
 	vu := types.TM2PB.NewValidatorUpdate(pubKey, 100, crypto.RandProTxHash(), types.RandValidatorAddress().String())
-	abciResponses.FinalizeBlock.ValidatorSetUpdate = abci.ValidatorSetUpdate{
+	abciResponses.FinalizeBlock.ValidatorSetUpdate = &abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{vu},
 		ThresholdPublicKey: abciPubKey,
 	}
@@ -281,26 +279,22 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	// with the right validator set for each height.
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
-	var (
-		validatorUpdates []*types.Validator
-		thresholdPublicKeyUpdate crypto.PubKey
-		quorumHash crypto.QuorumHash
-	)
+
 	testCases := make([]crypto.PubKey, highestHeight-1)
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next pubkey.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
 		}
-		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(t, state, types.DefaultDashVotingPower)
-		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+		header, _, blockID, responses := makeHeaderPartsResponsesValPowerChange(t, state, types.DefaultDashVotingPower)
+		validatorUpdates, thresholdPubKey, quorumHash, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(responses.FinalizeBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 		rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
 		require.NoError(t, err)
 		// Any node pro tx hash should do
 		firstNodeProTxHash, _ := state.Validators.GetByIndex(0)
 		h := merkle.HashFromByteSlices(rs)
-		state, err = state.Update(firstNodeProTxHash, blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
+		state, err = state.Update(firstNodeProTxHash, blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates, thresholdPubKey, quorumHash)
 		require.NoError(t, err)
 		err = stateStore.Save(state)
 		require.NoError(t, err)
@@ -464,7 +458,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// NewValidatorSet calls IncrementProposerPriority but uses on a copy of val1
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
-	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block := statefactory.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	blockID := block.BlockID()
 	fb := &abci.ResponseFinalizeBlock{
 		ValidatorSetUpdate: nil,
@@ -600,7 +594,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// we only have one validator:
 	assert.Equal(t, val1ProTxHash, state.Validators.Proposer.ProTxHash)
 
-	block := statefactory.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block := statefactory.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	blockID := block.BlockID()
 	// no updates:
 	fb := &abci.ResponseFinalizeBlock{
@@ -973,8 +967,7 @@ func TestStateMakeBlock(t *testing.T) {
 	stateVersion := state.Version.Consensus
 	var height int64 = 2
 	state.LastBlockHeight = height - 1
-	block, err := statefactory.MakeBlock(state, height, new(types.Commit), nil, 0)
-	require.NoError(t, err)
+	block := statefactory.MakeBlock(t, state, height, new(types.Commit), nil, 0)
 
 	// test we set some fields
 	assert.Equal(t, stateVersion, block.Version)
@@ -1116,8 +1109,7 @@ func blockExecutorFunc(t *testing.T, firstProTxHash crypto.ProTxHash) func(prevS
 		validatorUpdates, thresholdPubKey, quorumHash, err :=
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(resp.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
-		block, err := statefactory.MakeBlock(prevState, prevState.LastBlockHeight+1, new(types.Commit), nil, 0)
-		require.NoError(t, err)
+		block := statefactory.MakeBlock(t, prevState, prevState.LastBlockHeight+1, new(types.Commit), nil, 0)
 		state, err = sm.UpdateState(state, firstProTxHash, block.BlockID(), &block.Header, resp,
 			validatorUpdates, thresholdPubKey, quorumHash)
 		require.NoError(t, err)

@@ -19,12 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/dash/llmq"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -33,7 +35,6 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -177,7 +178,7 @@ func signVote(
 	if voteType == tmproto.PrecommitType {
 		ext = []byte("extension")
 	}
-	v, err := vs.signVote(ctx, voteType, chainID, blockID, ext)
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, ext)
 	require.NoError(t, err, "failed to sign vote")
 
 	vs.lastVote = v
@@ -213,28 +214,6 @@ func incrementRound(vss ...*validatorStub) {
 	for _, vs := range vss {
 		vs.Round++
 	}
-}
-
-type ValidatorStubsByPower []*validatorStub
-
-func (vss ValidatorStubsByPower) Len() int {
-	return len(vss)
-}
-
-func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetProTxHash(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	vssj, err := vss[j].GetProTxHash(context.Background())
-	if err != nil {
-		panic(err)
-	}
-
-	if vss[i].VotingPower == vss[j].VotingPower {
-		return bytes.Compare(vssi.Bytes(), vssj.Bytes()) == -1
-	}
-	return vss[i].VotingPower > vss[j].VotingPower
 }
 
 func sortVValidatorStubsByPower(ctx context.Context, t *testing.T, vss []*validatorStub) []*validatorStub {
@@ -301,7 +280,7 @@ func decideProposal(
 	proTxHash, _ := vs.GetProTxHash(ctx)
 	pubKey, _ := vs.GetPubKey(ctx, validatorsAtProposalHeight.QuorumHash)
 
-	signID, err := vs.SignProposal(ctx, chainID,quorumType, quorumHash, p)
+	signID, err := vs.SignProposal(ctx, chainID, quorumType, quorumHash, p)
 	require.NoError(t, err)
 
 	cs1.logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
@@ -358,7 +337,7 @@ func validatePrevote(
 	}
 }
 
-func validateLastPrecommit(ctx context.Context, t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
+func validateLastCommit(ctx context.Context, t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	t.Helper()
 
 	commit := cs.LastCommit
@@ -408,14 +387,14 @@ func validatePrecommit(
 	}
 }
 
-func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, addr []byte) <-chan tmpubsub.Message {
+func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, proTxHash []byte) <-chan tmpubsub.Message {
 	t.Helper()
 
 	ch := make(chan tmpubsub.Message, 1)
 	if err := cs.eventBus.Observe(ctx, func(msg tmpubsub.Message) error {
 		vote := msg.Data().(types.EventDataVote)
 		// we only fire for our own votes
-		if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
+		if bytes.Equal(proTxHash, vote.Vote.ValidatorProTxHash) {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -540,7 +519,6 @@ func newStateWithConfigAndBlockStore(
 		mempool,
 		evpool,
 		eventBus,
-		0,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -831,7 +809,7 @@ func makeConsensusState(
 	t.Helper()
 	tempDir := t.TempDir()
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1, factory.ConsensusParams())
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -889,7 +867,7 @@ func randConsensusNetWithPeers(
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
 	t.Helper()
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1, factory.ConsensusParams())
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()
@@ -916,7 +894,7 @@ func randConsensusNetWithPeers(
 			tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 			require.NoError(t, err)
 
-			privVal, err = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
+			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 			require.NoError(t, err)
 
 			// These validator might not have the public keys, for testing purposes let's assume they don't
@@ -970,17 +948,16 @@ func makeGenesisState(ctx context.Context, t *testing.T, cfg *config.Config, arg
 	if args.Validators == 0 {
 		args.Power = 4
 	}
-	valSet, privValidators := types.RandValidatorSet(args.Validators)
 	if args.Params == nil {
 		args.Params = types.DefaultConsensusParams()
 	}
 	if args.Time.IsZero() {
 		args.Time = time.Now()
 	}
-	genDoc := factory.GenesisDoc(cfg, args.Time, valSet.Validators, args.Params)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, args.Validators, 1, args.Params)
 	s0, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
-	return s0, privValidators
+	return s0, privVals
 }
 
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {

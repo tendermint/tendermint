@@ -187,10 +187,14 @@ func (b *EventBus) PublishEventLock(data types.EventDataRoundState) error {
 	return b.Publish(types.EventLockValue, data)
 }
 
-func (b *EventBus) PublishEventValidatorSetUpdates(data types.EventDataValidatorSetUpdates) error {
-	return b.Publish(types.EventValidatorSetUpdatesValue, data)
+func (b *EventBus) PublishEventValidatorSetUpdates(data types.EventDataValidatorSetUpdate) error {
+	return b.Publish(types.EventValidatorSetUpdateValue, data)
 }
 
 func (b *EventBus) PublishEventEvidenceValidated(evidence types.EventDataEvidenceValidated) error {
 	return b.Publish(types.EventEvidenceValidatedValue, evidence)
+}
+
+func (b *EventBus) PublishEventCommit(data types.EventDataCommit) error {
+	return b.Publish(types.EventCommitValue, data)
 }

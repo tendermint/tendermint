@@ -413,31 +413,6 @@ func (c *baseRPCClient) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (
 	return result, nil
 }
 
-func (c *baseRPCClient) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
-	result := new(coretypes.ResultHeader)
-	params := make(map[string]interface{})
-	if height != nil {
-		params["height"] = height
-	}
-	_, err := c.caller.Call(ctx, "header", params, result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (c *baseRPCClient) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
-	result := new(coretypes.ResultHeader)
-	params := map[string]interface{}{
-		"hash": hash,
-	}
-	_, err := c.caller.Call(ctx, "header_by_hash", params, result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func (c *baseRPCClient) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	result := new(coretypes.ResultCommit)
 	if err := c.caller.Call(ctx, "commit", &coretypes.RequestBlockInfo{
@@ -502,7 +477,7 @@ func (c *baseRPCClient) Validators(
 		Height:            (*coretypes.Int64)(height),
 		Page:              coretypes.Int64Ptr(page),
 		PerPage:           coretypes.Int64Ptr(perPage),
-		RequestQuorumInfo: coretypes.Int64Ptr(requestQuorumInfo),
+		RequestQuorumInfo: requestQuorumInfo,
 	}, result); err != nil {
 		return nil, err
 	}

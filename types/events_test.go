@@ -18,7 +18,7 @@ var (
 	_ EventData = EventDataRoundState{}
 	_ EventData = EventDataStateSyncStatus{}
 	_ EventData = EventDataTx{}
-	_ EventData = EventDataValidatorSetUpdates{}
+	_ EventData = EventDataValidatorSetUpdate{}
 	_ EventData = EventDataVote{}
 	_ EventData = EventDataString("")
 )

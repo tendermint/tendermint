@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -22,7 +23,7 @@ var (
 	ErrPeerStateInvalidStartTime = errors.New("peer state invalid startTime")
 	ErrPeerStateSetNilVote       = errors.New("peer state set a nil vote")
 	ErrPeerStateInvalidVoteIndex = errors.New("peer sent a vote with an invalid vote index")
-	errPeerClosed = errors.New("peer is closed")
+	errPeerClosed                = errors.New("peer is closed")
 )
 
 // peerStateStats holds internal statistics for a peer.

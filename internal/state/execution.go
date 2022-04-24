@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -43,15 +44,17 @@ type BlockExecutor struct {
 	// and update both with block results after commit.
 	mempool mempool.Mempool
 	evpool  EvidencePool
-	// the next core chain lock that we can propose
-	NextCoreChainLock *types.CoreChainLock
 
 	logger  log.Logger
 	metrics *Metrics
 
 	appHashSize int
+
 	// cache the verification results over a single height
 	cache map[string]struct{}
+
+	// the next core chain lock that we can propose
+	NextCoreChainLock *types.CoreChainLock
 }
 
 // NewBlockExecutor returns a new BlockExecutor with the passed-in EventBus.
@@ -64,7 +67,6 @@ func NewBlockExecutor(
 	blockStore BlockStore,
 	eventBus *eventbus.EventBus,
 	metrics *Metrics,
-	nextCoreChainLock *types.CoreChainLock,
 ) *BlockExecutor {
 	return &BlockExecutor{
 		eventBus:   eventBus,
@@ -106,8 +108,19 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	// Fetch a limited amount of valid txs
 	maxDataBytes := types.MaxDataBytes(maxBytes, crypto.BLS12381, evSize, state.Validators.Size())
 
+	nextCoreChainLock := blockExec.NextCoreChainLock
+	if nextCoreChainLock != nil &&
+		nextCoreChainLock.CoreBlockHeight <= state.LastCoreChainLockedBlockHeight {
+		nextCoreChainLock = nil
+	}
+
+	// Pass proposed app version only if it's higher than current network app version
+	if proposedAppVersion <= state.Version.Consensus.App {
+		proposedAppVersion = 0
+	}
+
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
-	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+	block := state.MakeBlock(height, nextCoreChainLock, txs, commit, evidence, proposerProTxHash, proposedAppVersion)
 
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.appClient.PrepareProposal(
@@ -115,12 +128,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
+			LocalLastCommit:     extendedCommitInfo(localLastCommit, nil),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
 			NextValidatorsHash:  block.NextValidatorsHash,
-			ProposerAddress:     block.ProposerAddress,
+			ProposerProTxHash:   block.ProposerProTxHash,
 		},
 	)
 	if err != nil {
@@ -146,18 +159,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		}
 	}
 	itxs := txrSet.IncludedTxs()
-
-	nextCoreChainLock := blockExec.NextCoreChainLock
-
-	if nextCoreChainLock != nil &&
-		nextCoreChainLock.CoreBlockHeight <= state.LastCoreChainLockedBlockHeight {
-		nextCoreChainLock = nil
-	}
-
-	// Pass proposed app version only if it's higher than current network app version
-	if proposedAppVersion <= state.Version.Consensus.App {
-		proposedAppVersion = 0
-	}
 
 	return state.MakeBlock(
 		height,
@@ -223,8 +224,8 @@ func (blockExec *BlockExecutor) ValidateBlock(ctx context.Context, state State, 
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlockChainLock(state State, block *types.Block) error {
-	return validateBlockChainLock(blockExec.queryApp, state, block)
+func (blockExec *BlockExecutor) ValidateBlockChainLock(ctx context.Context, state State, block *types.Block) error {
+	return validateBlockChainLock(ctx, blockExec.appClient, state, block)
 }
 
 // ValidateBlockTime validates the given block time against the given state.
@@ -320,7 +321,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, fmt.Errorf("marshaling TxResults: %w", err)
 	}
 	h := merkle.HashFromByteSlices(rs)
-	state, err = state.Update(blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validators)
+	state, err = state.Update(proTxHash, blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validators, thresholdPublicKey, quorumHash)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -332,7 +333,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update evpool with the latest state.
-	blockExec.evpool.Update(ctx, state, block.Evidence.Evidence)
+	blockExec.evpool.Update(ctx, state, block.Evidence)
 
 	// Update the next core chain lock that we can propose
 	blockExec.NextCoreChainLock = nextCoreChainLock
@@ -376,10 +377,10 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, &abci.RequestVerifyVoteExtension{
-		Hash:             vote.BlockID.Hash,
-		ValidatorAddress: vote.ValidatorAddress,
-		Height:           vote.Height,
-		VoteExtension:    vote.Extension,
+		Hash:               vote.BlockID.Hash,
+		Height:             vote.Height,
+		ValidatorProTxHash: vote.ValidatorProTxHash,
+		VoteExtension:      vote.Extension,
 	})
 	if err != nil {
 		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
@@ -458,35 +459,6 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 		// return an empty value.
 		return abci.CommitInfo{}
 	}
-
-	lastValSet, err := store.LoadValidators(block.Height - 1)
-	if err != nil {
-		panic(err)
-	}
-
-	var (
-		commitSize = block.LastCommit.Size()
-		valSetLen  = len(lastValSet.Validators)
-	)
-
-	// ensure that the size of the validator set in the last commit matches
-	// the size of the validator set in the state store.
-	if commitSize != valSetLen {
-		panic(fmt.Sprintf(
-			"commit size (%d) doesn't match validator set length (%d) at height %d\n\n%v\n\n%v",
-			commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators,
-		))
-	}
-
-	votes := make([]abci.VoteInfo, block.LastCommit.Size())
-	for i, val := range lastValSet.Validators {
-		commitSig := block.LastCommit.Signatures[i]
-		votes[i] = abci.VoteInfo{
-			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: !commitSig.Absent(),
-		}
-	}
-
 	return abci.CommitInfo{
 		Round:          block.LastCommit.Round,
 		QuorumHash:     block.LastCommit.QuorumHash,
@@ -548,12 +520,12 @@ func validateValidatorSetUpdate(
 		abciValidatorSetUpdate.ThresholdPublicKey.Sum == nil {
 		return fmt.Errorf("received validator updates without a threshold public key")
 	}
-	return validateValidatorUpdates(abciValidatorSetUpdate.ValidatorUpdates, params)
+	return validateValidatorUpdates(abciValidatorSetUpdate, params)
 }
 
-func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
+func validateValidatorUpdates(abciValSetUpdate *abci.ValidatorSetUpdate,
 	params types.ValidatorParams) error {
-	for _, valUpdate := range abciUpdates {
+	for _, valUpdate := range abciValSetUpdate.ValidatorUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
 		} else if valUpdate.GetPower() == 0 {
@@ -686,6 +658,16 @@ func (state State) Update(
 	}, nil
 }
 
+// SetNextCoreChainLock ...
+func (blockExec *BlockExecutor) SetNextCoreChainLock(coreChainLock *types.CoreChainLock) {
+	blockExec.NextCoreChainLock = coreChainLock
+}
+
+// SetAppHashSize ...
+func (blockExec *BlockExecutor) SetAppHashSize(size int) {
+	blockExec.appHashSize = size
+}
+
 // Fire NewBlock, NewBlockHeader.
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
@@ -795,15 +777,11 @@ func ExecCommitBlock(
 			logger.Error("validating validator updates", "err", err)
 			return nil, err
 		}
-		validatorUpdates, err := types.PB2TM.ValidatorUpdates(finalizeBlockResponse.ValidatorUpdates)
-		if err != nil {
-			logger.Error("converting validator updates to native types", "err", err)
-			return nil, err
-		}
 
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err :=
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(finalizeBlockResponse.ValidatorSetUpdate)
 		if err != nil {
+			logger.Error("converting validator updates to native types", "err", err)
 			return nil, err
 		}
 
@@ -819,7 +797,7 @@ func ExecCommitBlock(
 		}
 
 		blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
-		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorSetUpdate)
 	}
 
 	// Commit block, get hash back

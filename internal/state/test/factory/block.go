@@ -3,12 +3,8 @@ package factory
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
-
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -47,12 +43,11 @@ func MakeBlocks(ctx context.Context, t *testing.T, n int, state *sm.State, privV
 	return blocks
 }
 
-func MakeBlock(state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock, proposedAppVersion uint64) (*types.Block, error) {
+func MakeBlock(t require.TestingT, state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock, proposedAppVersion uint64) *types.Block {
 	if state.LastBlockHeight != (height - 1) {
-		return nil, fmt.Errorf("requested height %d should be 1 more than last block height %d",
-			height, state.LastBlockHeight)
+		t.Errorf("requested height %d should be 1 more than last block height %d", height, state.LastBlockHeight)
 	}
-	block, _ :=  state.MakeBlock(
+	return state.MakeBlock(
 		height,
 		coreChainLock,
 		factory.MakeNTxs(state.LastBlockHeight, 10),
@@ -61,7 +56,6 @@ func MakeBlock(state sm.State, height int64, c *types.Commit, coreChainLock *typ
 		state.Validators.GetProposer().ProTxHash,
 		proposedAppVersion,
 	)
-	return block, nil
 }
 
 func makeBlockAndPartSet(
@@ -75,7 +69,8 @@ func makeBlockAndPartSet(
 ) (*types.Block, *types.PartSet) {
 	t.Helper()
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, state.StateID(), state.LastValidators.QuorumHash,
+		nil, nil)
 	if height > 1 {
 		vote, err := factory.MakeVote(
 			ctx,
@@ -85,13 +80,13 @@ func makeBlockAndPartSet(
 			1, lastBlock.Header.Height, 0, 2,
 			lastBlockMeta.BlockID,
 			state.LastStateID,
-			time.Now())
+		)
 		require.NoError(t, err)
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
 			lastBlockMeta.BlockID, state.StateID(), state.LastValidators.QuorumHash, vote.BlockSignature, vote.StateSignature)
 	}
 
-	block := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	block := state.MakeBlock(height, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
