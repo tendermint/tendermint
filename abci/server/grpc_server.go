@@ -44,7 +44,7 @@ func (s *GRPCServer) OnStart(ctx context.Context) error {
 	}
 
 	s.server = grpc.NewServer()
-	types.RegisterABCIApplicationServer(s.server, &gRPCApplication{app: s.app})
+	types.RegisterABCIApplicationServer(s.server, &gRPCApplication{Application: s.app})
 
 	s.logger.Info("Listening", "proto", s.proto, "addr", s.addr)
 	go func() {
@@ -67,7 +67,7 @@ func (s *GRPCServer) OnStop() { s.server.Stop() }
 
 // gRPCApplication is a gRPC shim for Application
 type gRPCApplication struct {
-	app types.Application
+	types.Application
 }
 
 func (app *gRPCApplication) Echo(_ context.Context, req *types.RequestEcho) (*types.ResponseEcho, error) {
@@ -78,58 +78,6 @@ func (app *gRPCApplication) Flush(_ context.Context, req *types.RequestFlush) (*
 	return &types.ResponseFlush{}, nil
 }
 
-func (app *gRPCApplication) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
-	return app.app.Info(ctx, *req)
-}
-
-func (app *gRPCApplication) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	return app.app.CheckTx(ctx, *req)
-}
-
-func (app *gRPCApplication) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {
-	return app.app.Query(ctx, *req)
-}
-
 func (app *gRPCApplication) Commit(ctx context.Context, req *types.RequestCommit) (*types.ResponseCommit, error) {
-	return app.app.Commit(ctx)
-}
-
-func (app *gRPCApplication) InitChain(ctx context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
-	return app.app.InitChain(ctx, *req)
-}
-
-func (app *gRPCApplication) ListSnapshots(ctx context.Context, req *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	return app.app.ListSnapshots(ctx, *req)
-}
-
-func (app *gRPCApplication) OfferSnapshot(ctx context.Context, req *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	return app.app.OfferSnapshot(ctx, *req)
-}
-
-func (app *gRPCApplication) LoadSnapshotChunk(ctx context.Context, req *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	return app.app.LoadSnapshotChunk(ctx, *req)
-}
-
-func (app *gRPCApplication) ApplySnapshotChunk(ctx context.Context, req *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	return app.app.ApplySnapshotChunk(ctx, *req)
-}
-
-func (app *gRPCApplication) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	return app.app.ExtendVote(ctx, *req)
-}
-
-func (app *gRPCApplication) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	return app.app.VerifyVoteExtension(ctx, *req)
-}
-
-func (app *gRPCApplication) PrepareProposal(ctx context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	return app.app.PrepareProposal(ctx, *req)
-}
-
-func (app *gRPCApplication) ProcessProposal(ctx context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	return app.app.ProcessProposal(ctx, *req)
-}
-
-func (app *gRPCApplication) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	return app.app.FinalizeBlock(ctx, *req)
+	return app.Application.Commit(ctx)
 }

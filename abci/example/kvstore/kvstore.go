@@ -91,7 +91,7 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) InitChain(_ context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -105,7 +105,7 @@ func (app *Application) InitChain(_ context.Context, req types.RequestInitChain)
 	return &types.ResponseInitChain{}, nil
 }
 
-func (app *Application) Info(_ context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 	return &types.ResponseInfo{
@@ -167,7 +167,7 @@ func (app *Application) Close() error {
 	return app.state.db.Close()
 }
 
-func (app *Application) FinalizeBlock(_ context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -199,7 +199,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req types.RequestFinali
 	return &types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}, nil
 }
 
-func (*Application) CheckTx(_ context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (*Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	return &types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}, nil
 }
 
@@ -222,7 +222,7 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 }
 
 // Returns an associated value or nil if missing.
-func (app *Application) Query(_ context.Context, reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
+func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (*types.ResponseQuery, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -281,7 +281,7 @@ func (app *Application) Query(_ context.Context, reqQuery types.RequestQuery) (*
 	return &resQuery, nil
 }
 
-func (app *Application) PrepareProposal(_ context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -290,7 +290,7 @@ func (app *Application) PrepareProposal(_ context.Context, req types.RequestPrep
 	}, nil
 }
 
-func (*Application) ProcessProposal(_ context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+func (*Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
 			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil

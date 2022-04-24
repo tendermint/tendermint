@@ -39,15 +39,15 @@ func ToRequestFlush() *Request {
 	}
 }
 
-func ToRequestInfo(req RequestInfo) *Request {
+func ToRequestInfo(req *RequestInfo) *Request {
 	return &Request{
-		Value: &Request_Info{&req},
+		Value: &Request_Info{req},
 	}
 }
 
-func ToRequestCheckTx(req RequestCheckTx) *Request {
+func ToRequestCheckTx(req *RequestCheckTx) *Request {
 	return &Request{
-		Value: &Request_CheckTx{&req},
+		Value: &Request_CheckTx{req},
 	}
 }
 
@@ -57,69 +57,69 @@ func ToRequestCommit() *Request {
 	}
 }
 
-func ToRequestQuery(req RequestQuery) *Request {
+func ToRequestQuery(req *RequestQuery) *Request {
 	return &Request{
-		Value: &Request_Query{&req},
+		Value: &Request_Query{req},
 	}
 }
 
-func ToRequestInitChain(req RequestInitChain) *Request {
+func ToRequestInitChain(req *RequestInitChain) *Request {
 	return &Request{
-		Value: &Request_InitChain{&req},
+		Value: &Request_InitChain{req},
 	}
 }
 
-func ToRequestListSnapshots(req RequestListSnapshots) *Request {
+func ToRequestListSnapshots(req *RequestListSnapshots) *Request {
 	return &Request{
-		Value: &Request_ListSnapshots{&req},
+		Value: &Request_ListSnapshots{req},
 	}
 }
 
-func ToRequestOfferSnapshot(req RequestOfferSnapshot) *Request {
+func ToRequestOfferSnapshot(req *RequestOfferSnapshot) *Request {
 	return &Request{
-		Value: &Request_OfferSnapshot{&req},
+		Value: &Request_OfferSnapshot{req},
 	}
 }
 
-func ToRequestLoadSnapshotChunk(req RequestLoadSnapshotChunk) *Request {
+func ToRequestLoadSnapshotChunk(req *RequestLoadSnapshotChunk) *Request {
 	return &Request{
-		Value: &Request_LoadSnapshotChunk{&req},
+		Value: &Request_LoadSnapshotChunk{req},
 	}
 }
 
-func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
+func ToRequestApplySnapshotChunk(req *RequestApplySnapshotChunk) *Request {
 	return &Request{
-		Value: &Request_ApplySnapshotChunk{&req},
+		Value: &Request_ApplySnapshotChunk{req},
 	}
 }
 
-func ToRequestExtendVote(req RequestExtendVote) *Request {
+func ToRequestExtendVote(req *RequestExtendVote) *Request {
 	return &Request{
-		Value: &Request_ExtendVote{&req},
+		Value: &Request_ExtendVote{req},
 	}
 }
 
-func ToRequestVerifyVoteExtension(req RequestVerifyVoteExtension) *Request {
+func ToRequestVerifyVoteExtension(req *RequestVerifyVoteExtension) *Request {
 	return &Request{
-		Value: &Request_VerifyVoteExtension{&req},
+		Value: &Request_VerifyVoteExtension{req},
 	}
 }
 
-func ToRequestPrepareProposal(req RequestPrepareProposal) *Request {
+func ToRequestPrepareProposal(req *RequestPrepareProposal) *Request {
 	return &Request{
-		Value: &Request_PrepareProposal{&req},
+		Value: &Request_PrepareProposal{req},
 	}
 }
 
-func ToRequestProcessProposal(req RequestProcessProposal) *Request {
+func ToRequestProcessProposal(req *RequestProcessProposal) *Request {
 	return &Request{
-		Value: &Request_ProcessProposal{&req},
+		Value: &Request_ProcessProposal{req},
 	}
 }
 
-func ToRequestFinalizeBlock(req RequestFinalizeBlock) *Request {
+func ToRequestFinalizeBlock(req *RequestFinalizeBlock) *Request {
 	return &Request{
-		Value: &Request_FinalizeBlock{&req},
+		Value: &Request_FinalizeBlock{req},
 	}
 }
 

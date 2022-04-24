@@ -201,14 +201,14 @@ func (s *SocketServer) processRequest(ctx context.Context, req *types.Request) (
 	case *types.Request_Flush:
 		return types.ToResponseFlush(), nil
 	case *types.Request_Info:
-		res, err := s.app.Info(ctx, *r.Info)
+		res, err := s.app.Info(ctx, r.Info)
 		if err != nil {
 			return nil, err
 		}
 
 		return types.ToResponseInfo(res), nil
 	case *types.Request_CheckTx:
-		res, err := s.app.CheckTx(ctx, *r.CheckTx)
+		res, err := s.app.CheckTx(ctx, r.CheckTx)
 		if err != nil {
 			return nil, err
 		}
@@ -220,67 +220,67 @@ func (s *SocketServer) processRequest(ctx context.Context, req *types.Request) (
 		}
 		return types.ToResponseCommit(res), nil
 	case *types.Request_Query:
-		res, err := s.app.Query(ctx, *r.Query)
+		res, err := s.app.Query(ctx, r.Query)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseQuery(res), nil
 	case *types.Request_InitChain:
-		res, err := s.app.InitChain(ctx, *r.InitChain)
+		res, err := s.app.InitChain(ctx, r.InitChain)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseInitChain(res), nil
 	case *types.Request_ListSnapshots:
-		res, err := s.app.ListSnapshots(ctx, *r.ListSnapshots)
+		res, err := s.app.ListSnapshots(ctx, r.ListSnapshots)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseListSnapshots(res), nil
 	case *types.Request_OfferSnapshot:
-		res, err := s.app.OfferSnapshot(ctx, *r.OfferSnapshot)
+		res, err := s.app.OfferSnapshot(ctx, r.OfferSnapshot)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseOfferSnapshot(res), nil
 	case *types.Request_PrepareProposal:
-		res, err := s.app.PrepareProposal(ctx, *r.PrepareProposal)
+		res, err := s.app.PrepareProposal(ctx, r.PrepareProposal)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponsePrepareProposal(res), nil
 	case *types.Request_ProcessProposal:
-		res, err := s.app.ProcessProposal(ctx, *r.ProcessProposal)
+		res, err := s.app.ProcessProposal(ctx, r.ProcessProposal)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseProcessProposal(res), nil
 	case *types.Request_LoadSnapshotChunk:
-		res, err := s.app.LoadSnapshotChunk(ctx, *r.LoadSnapshotChunk)
+		res, err := s.app.LoadSnapshotChunk(ctx, r.LoadSnapshotChunk)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseLoadSnapshotChunk(res), nil
 	case *types.Request_ApplySnapshotChunk:
-		res, err := s.app.ApplySnapshotChunk(ctx, *r.ApplySnapshotChunk)
+		res, err := s.app.ApplySnapshotChunk(ctx, r.ApplySnapshotChunk)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseApplySnapshotChunk(res), nil
 	case *types.Request_ExtendVote:
-		res, err := s.app.ExtendVote(ctx, *r.ExtendVote)
+		res, err := s.app.ExtendVote(ctx, r.ExtendVote)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseExtendVote(res), nil
 	case *types.Request_VerifyVoteExtension:
-		res, err := s.app.VerifyVoteExtension(ctx, *r.VerifyVoteExtension)
+		res, err := s.app.VerifyVoteExtension(ctx, r.VerifyVoteExtension)
 		if err != nil {
 			return nil, err
 		}
 		return types.ToResponseVerifyVoteExtension(res), nil
 	case *types.Request_FinalizeBlock:
-		res, err := s.app.FinalizeBlock(ctx, *r.FinalizeBlock)
+		res, err := s.app.FinalizeBlock(ctx, r.FinalizeBlock)
 		if err != nil {
 			return nil, err
 		}

@@ -77,7 +77,7 @@ func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Ap
 	require.NoError(t, err)
 
 	// Construct request
-	rfb := types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
+	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		rfb.Txs[counter] = []byte("test")
 	}

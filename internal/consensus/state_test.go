@@ -2067,12 +2067,12 @@ func TestExtendVoteCalled(t *testing.T) {
 
 	ensurePrecommit(t, voteCh, height, round)
 
-	m.AssertCalled(t, "ExtendVote", ctx, abci.RequestExtendVote{
+	m.AssertCalled(t, "ExtendVote", ctx, &abci.RequestExtendVote{
 		Height: height,
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", ctx, abci.RequestVerifyVoteExtension{
+	m.AssertCalled(t, "VerifyVoteExtension", ctx, &abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -2088,7 +2088,7 @@ func TestExtendVoteCalled(t *testing.T) {
 		pv, err := pv.GetPubKey(ctx)
 		require.NoError(t, err)
 		addr := pv.Address()
-		m.AssertCalled(t, "VerifyVoteExtension", ctx, abci.RequestVerifyVoteExtension{
+		m.AssertCalled(t, "VerifyVoteExtension", ctx, &abci.RequestVerifyVoteExtension{
 			Hash:             blockID.Hash,
 			ValidatorAddress: addr,
 			Height:           height,
@@ -2139,12 +2139,12 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 
 	ensurePrecommit(t, voteCh, height, round)
 
-	m.AssertCalled(t, "ExtendVote", mock.Anything, abci.RequestExtendVote{
+	m.AssertCalled(t, "ExtendVote", mock.Anything, &abci.RequestExtendVote{
 		Height: height,
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", mock.Anything, abci.RequestVerifyVoteExtension{
+	m.AssertCalled(t, "VerifyVoteExtension", mock.Anything, &abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -2162,7 +2162,7 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 	require.NoError(t, err)
 	addr = pv.Address()
 
-	m.AssertNotCalled(t, "VerifyVoteExtension", ctx, abci.RequestVerifyVoteExtension{
+	m.AssertNotCalled(t, "VerifyVoteExtension", ctx, &abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -2199,8 +2199,8 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 
 	// capture the prepare proposal request.
-	rpp := abci.RequestPrepareProposal{}
-	m.On("PrepareProposal", mock.Anything, mock.MatchedBy(func(r abci.RequestPrepareProposal) bool {
+	rpp := &abci.RequestPrepareProposal{}
+	m.On("PrepareProposal", mock.Anything, mock.MatchedBy(func(r *abci.RequestPrepareProposal) bool {
 		rpp = r
 		return true
 	})).Return(&abci.ResponsePrepareProposal{}, nil)

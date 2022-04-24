@@ -176,7 +176,7 @@ func (env *Environment) NumUnconfirmedTxs(ctx context.Context) (*coretypes.Resul
 // be added to the mempool either.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/check_tx
 func (env *Environment) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
-	res, err := env.ProxyApp.CheckTx(ctx, abci.RequestCheckTx{Tx: tx})
+	res, err := env.ProxyApp.CheckTx(ctx, &abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
 	}
