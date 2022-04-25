@@ -39,9 +39,10 @@ type RPCFunc struct {
 	ws       bool          // websocket only
 }
 
-// Call invokes rf with the given arguments.
-// MJF :: fix context plumbing.
-func (rf *RPCFunc) Call(ctx context.Context, params []byte) (interface{}, error) {
+// Call parses the given JSON parameters and calls the function wrapped by rf
+// with the resulting argument value. It reports an error if parameter parsing
+// fails, otherwise it returns the result from the wrapped function.
+func (rf *RPCFunc) Call(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	args, err := rf.parseParams(ctx, params)
 	if err != nil {
 		return nil, err
@@ -64,16 +65,17 @@ func (rf *RPCFunc) Call(ctx context.Context, params []byte) (interface{}, error)
 	return returns[0].Interface(), nil
 }
 
-// parseParams parses the JSON parameters of rpcReq into the arguments of rf,
-// returning the corresponding argument values or an error.
-func (rf *RPCFunc) parseParams(ctx context.Context, paramData []byte) ([]reflect.Value, error) {
-	// If fn does not accept parameters, there is no decoding to do, but verify
+// parseParams parses the parameters of a JSON-RPC request and returns the
+// corresponding argument values. On success, the first argument value will be
+// the value of ctx.
+func (rf *RPCFunc) parseParams(ctx context.Context, params json.RawMessage) ([]reflect.Value, error) {
+	// If rf does not accept parameters, there is no decoding to do, but verify
 	// that no parameters were passed.
 	if rf.param == nil {
 		// TODO(creachadair): Reject non-empty parameters maybe.
 		return []reflect.Value{reflect.ValueOf(ctx)}, nil
 	}
-	bits, err := rf.adjustParams(paramData)
+	bits, err := rf.adjustParams(params)
 	if err != nil {
 		return nil, &rpctypes.RPCError{
 			Code:    int(rpctypes.CodeInvalidParams),
