@@ -400,7 +400,7 @@ func TestInvalidVotes(t *testing.T) {
 	}
 }
 
-func TestInvalidPrevoteExtensions(t *testing.T) {
+func TestInvalidPrevotes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	privVal := NewMockPV()
@@ -415,9 +415,7 @@ func TestInvalidPrevoteExtensions(t *testing.T) {
 	for _, tc := range testCases {
 		prevote := examplePrevote(t)
 		signAndMalleateVote(ctx, t, privVal, "test_chain_id", tc.malleateVote, prevote)
-		// We don't expect an error from ValidateBasic, because it doesn't
-		// handle vote extensions.
-		require.NoError(t, prevote.ValidateBasic(), "ValidateBasic for %s", tc.name)
+		require.Error(t, prevote.ValidateBasic(), "ValidateBasic for %s", tc.name)
 		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
 	}
 }

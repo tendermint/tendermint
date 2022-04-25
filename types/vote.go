@@ -273,6 +273,16 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
+	// We should only ever see vote extensions in precommits.
+	if vote.Type != tmproto.PrecommitType {
+		if len(vote.Extension) > 0 {
+			return errors.New("unexpected vote extension in prevote")
+		}
+		if len(vote.ExtensionSignature) > 0 {
+			return errors.New("unexpected vote extension signature in prevote")
+		}
+	}
+
 	return nil
 }
 
@@ -282,17 +292,6 @@ func (vote *Vote) ValidateBasic() error {
 func (vote *Vote) ValidateWithExtension() error {
 	if err := vote.ValidateBasic(); err != nil {
 		return err
-	}
-
-	// We should never see a vote extension or vote extension signature in a
-	// prevote
-	if vote.Type == tmproto.PrevoteType {
-		if len(vote.Extension) > 0 {
-			return errors.New("unexpected vote extension in prevote")
-		}
-		if len(vote.ExtensionSignature) > 0 {
-			return errors.New("unexpected vote extension signature in prevote")
-		}
 	}
 
 	// We should always see vote extension signatures in precommits
