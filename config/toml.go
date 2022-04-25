@@ -12,8 +12,8 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
-// DefaultDirPerm is the default permissions used when creating directories.
-const DefaultDirPerm = 0700
+// defaultDirPerm is the default permissions used when creating directories.
+const defaultDirPerm = 0700
 
 var configTemplate *template.Template
 
@@ -32,13 +32,13 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(rootDir, defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
 }
@@ -566,10 +566,10 @@ func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, er
 		return nil, err
 	}
 	// ensure config and data subdirs are created
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), defaultDirPerm); err != nil {
 		return nil, err
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), defaultDirPerm); err != nil {
 		return nil, err
 	}
 
@@ -612,7 +612,7 @@ func writeFile(filePath string, contents []byte, mode os.FileMode) error {
 	return nil
 }
 
-var testGenesisFmt = `{
+const testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
   "initial_height": "1",
@@ -659,7 +659,7 @@ var testGenesisFmt = `{
   "app_hash": ""
 }`
 
-var testPrivValidatorKey = `{
+const testPrivValidatorKey = `{
   "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
     "type": "tendermint/PubKeyEd25519",
@@ -671,7 +671,7 @@ var testPrivValidatorKey = `{
   }
 }`
 
-var testPrivValidatorState = `{
+const testPrivValidatorState = `{
   "height": "0",
   "round": 0,
   "step": 0
