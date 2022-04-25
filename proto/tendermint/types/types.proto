@@ -9,7 +9,7 @@ import "tendermint/crypto/proof.proto";
 import "tendermint/version/types.proto";
 import "tendermint/types/validator.proto";
 
-// BlockIdFlag indicates which BlcokID the signature is for
+// BlockIdFlag indicates which BlockID the signature is for
 enum BlockIDFlag {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
@@ -119,7 +119,7 @@ message Vote {
   // messages.
   bytes extension = 9;
   // Vote extension signature by the validator if they participated in
-  // consensus for the associated block.
+  // consensus for the associated block. Only valid for precommit messages.
   bytes extension_signature = 10;
 }
 
