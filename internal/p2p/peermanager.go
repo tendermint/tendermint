@@ -42,7 +42,8 @@ const (
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
+	PeerScorePersistent       PeerScore = math.MaxUint8 // persistent peers
+	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -827,6 +828,11 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	return addresses
 }
 
+// PeerEventSubscriber describes the type of the subscription method, to assist
+// in isolating reactors specific construction and lifecycle from the
+// peer manager.
+type PeerEventSubscriber func(context.Context) *PeerUpdates
+
 // Subscribe subscribes to peer updates. The caller must consume the peer
 // updates in a timely fashion and close the subscription when done, otherwise
 // the PeerManager will halt.
@@ -1283,6 +1289,9 @@ func (p *peerInfo) Score() PeerScore {
 	}
 
 	score := p.MutableScore
+	if score > int64(MaxPeerScoreNotPersistent) {
+		score = int64(MaxPeerScoreNotPersistent)
+	}
 
 	for _, addr := range p.AddressInfo {
 		// DialFailures is reset when dials succeed, so this
@@ -1292,10 +1301,6 @@ func (p *peerInfo) Score() PeerScore {
 
 	if score <= 0 {
 		return 0
-	}
-
-	if score >= math.MaxUint8 {
-		return PeerScore(math.MaxUint8)
 	}
 
 	return PeerScore(score)

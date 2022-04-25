@@ -44,7 +44,6 @@ waiting on NextWait() (since it's just a read operation).
 type CElement struct {
 	mtx        sync.RWMutex
 	prev       *CElement
-	prevWaitCh chan struct{}
 	next       *CElement
 	nextWaitCh chan struct{}
 	removed    bool
@@ -70,33 +69,6 @@ func (e *CElement) NextWait() *CElement {
 		// e.next doesn't necessarily exist here.
 		// That's why we need to continue a for-loop.
 	}
-}
-
-// Blocking implementation of Prev().
-// May return nil iff CElement was head and got removed.
-func (e *CElement) PrevWait() *CElement {
-	for {
-		e.mtx.RLock()
-		prev := e.prev
-		removed := e.removed
-		signal := e.prevWaitCh
-		e.mtx.RUnlock()
-
-		if prev != nil || removed {
-			return prev
-		}
-
-		<-signal
-	}
-}
-
-// PrevWaitChan can be used to wait until Prev becomes not nil. Once it does,
-// channel will be closed.
-func (e *CElement) PrevWaitChan() <-chan struct{} {
-	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.prevWaitCh
 }
 
 // NextWaitChan can be used to wait until Next becomes not nil. Once it does,
@@ -131,7 +103,7 @@ func (e *CElement) Removed() bool {
 	return isRemoved
 }
 
-func (e *CElement) DetachNext() {
+func (e *CElement) detachNext() {
 	e.mtx.Lock()
 	if !e.removed {
 		e.mtx.Unlock()
@@ -153,7 +125,7 @@ func (e *CElement) DetachPrev() {
 
 // NOTE: This function needs to be safe for
 // concurrent goroutines waiting on nextWg.
-func (e *CElement) SetNext(newNext *CElement) {
+func (e *CElement) setNext(newNext *CElement) {
 	e.mtx.Lock()
 
 	oldNext := e.next
@@ -174,30 +146,20 @@ func (e *CElement) SetNext(newNext *CElement) {
 
 // NOTE: This function needs to be safe for
 // concurrent goroutines waiting on prevWg
-func (e *CElement) SetPrev(newPrev *CElement) {
+func (e *CElement) setPrev(newPrev *CElement) {
 	e.mtx.Lock()
 	defer e.mtx.Unlock()
 
-	oldPrev := e.prev
 	e.prev = newPrev
-	if oldPrev != nil && newPrev == nil {
-		e.prevWaitCh = make(chan struct{})
-	}
-	if oldPrev == nil && newPrev != nil {
-		close(e.prevWaitCh)
-	}
 }
 
-func (e *CElement) SetRemoved() {
+func (e *CElement) setRemoved() {
 	e.mtx.Lock()
 	defer e.mtx.Unlock()
 
 	e.removed = true
 
-	// This wakes up anyone waiting in either direction.
-	if e.prev == nil {
-		close(e.prevWaitCh)
-	}
+	// This wakes up anyone waiting.
 	if e.next == nil {
 		close(e.nextWaitCh)
 	}
@@ -211,7 +173,6 @@ func (e *CElement) SetRemoved() {
 // Panics if length grows beyond the max.
 type CList struct {
 	mtx    sync.RWMutex
-	wg     *sync.WaitGroup
 	waitCh chan struct{}
 	head   *CElement // first element
 	tail   *CElement // last element
@@ -250,7 +211,7 @@ func (l *CList) Front() *CElement {
 	return head
 }
 
-func (l *CList) FrontWait() *CElement {
+func (l *CList) frontWait() *CElement {
 	// Loop until the head is non-nil else wait and try again
 	for {
 		l.mtx.RLock()
@@ -273,22 +234,6 @@ func (l *CList) Back() *CElement {
 	return back
 }
 
-func (l *CList) BackWait() *CElement {
-	for {
-		l.mtx.RLock()
-		tail := l.tail
-		wg := l.wg
-		l.mtx.RUnlock()
-
-		if tail != nil {
-			return tail
-		}
-		wg.Wait()
-		// l.tail doesn't necessarily exist here.
-		// That's why we need to continue a for-loop.
-	}
-}
-
 // WaitChan can be used to wait until Front or Back becomes not nil. Once it
 // does, channel will be closed.
 func (l *CList) WaitChan() <-chan struct{} {
@@ -305,7 +250,6 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	// Construct a new element
 	e := &CElement{
 		prev:       nil,
-		prevWaitCh: make(chan struct{}),
 		next:       nil,
 		nextWaitCh: make(chan struct{}),
 		removed:    false,
@@ -326,8 +270,8 @@ func (l *CList) PushBack(v interface{}) *CElement {
 		l.head = e
 		l.tail = e
 	} else {
-		e.SetPrev(l.tail) // We must init e first.
-		l.tail.SetNext(e) // This will make e accessible.
+		e.setPrev(l.tail) // We must init e first.
+		l.tail.setNext(e) // This will make e accessible.
 		l.tail = e        // Update the list.
 	}
 	l.mtx.Unlock()
@@ -365,16 +309,16 @@ func (l *CList) Remove(e *CElement) interface{} {
 	if prev == nil {
 		l.head = next
 	} else {
-		prev.SetNext(next)
+		prev.setNext(next)
 	}
 	if next == nil {
 		l.tail = prev
 	} else {
-		next.SetPrev(prev)
+		next.setPrev(prev)
 	}
 
 	// Set .Done() on e, otherwise waiters will wait forever.
-	e.SetRemoved()
+	e.setRemoved()
 
 	return e.Value
 }

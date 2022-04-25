@@ -13,35 +13,11 @@ replication engine. When run within the same process, Tendermint will call the A
 application methods directly as Go method calls.
 
 When Tendermint and the ABCI application are run as separate processes, Tendermint
-opens four connections to the application for ABCI methods. The connections each
-handle a subset of the ABCI method calls. These subsets are defined as follows:
+opens maintains a connection over either a native socket protocol or
+gRPC.
 
-#### **Consensus** connection
-
-* Driven by a consensus protocol and is responsible for block execution.
-* Handles the `InitChain`, `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit` method
-calls.
-
-#### **Mempool** connection
-
-* For validating new transactions, before they're shared or included in a block.
-* Handles the `CheckTx` calls.
-
-#### **Info** connection
-
-* For initialization and for queries from the user.
-* Handles the `Info` and `Query` calls.
-
-#### **Snapshot** connection
-
-* For serving and restoring [state sync snapshots](apps.md#state-sync).
-* Handles the `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` calls.
-
-Additionally, there is a `Flush` method that is called on every connection,
-and an `Echo` method that is just for debugging.
-
-More details on managing state across connections can be found in the section on
-[ABCI Applications](apps.md).
+More details on managing state across connections can be found in the
+section on [ABCI Applications](apps.md).
 
 ## Errors
 
@@ -54,13 +30,17 @@ These methods also return a `Codespace` string to Tendermint. This field is
 used to disambiguate `Code` values returned by different domains of the
 application. The `Codespace` is a namespace for the `Code`.
 
-The `Echo`, `Info`, `InitChain`, `BeginBlock`, `EndBlock`, `Commit` methods
-do not return errors. An error in any of these methods represents a critical
-issue that Tendermint has no reasonable way to handle. If there is an error in one
-of these methods, the application must crash to ensure that the error is safely
-handled by an operator.
+The handling of non-zero response codes by Tendermint is described
+below. 
 
-The handling of non-zero response codes by Tendermint is described below
+Applications should always terminate if they encounter an issue in a
+method where continuing would corrupt their own state, or for which
+tendermint should not continue.
+
+In the Go implementation these methods take a context and may return
+an error. The context exists so that applications can terminate
+gracefully during shutdown, and the error return value makes it
+possible for applications to singal transient errors to Tendermint.
 
 ### CheckTx
 

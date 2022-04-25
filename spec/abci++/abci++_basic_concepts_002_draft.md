@@ -65,8 +65,8 @@ ignore the invalid part of the prepared proposal at block execution time.
 The data, called _vote extension_, will also be made available to the
 application in the next height, along with the vote it is extending, in the rounds
 where the local process is the proposer.
-The Application may also choose not to include any vote extension.
-Tendermint calls it when is about to send a non-`nil` precommit message. 
+If the Application does not have vote extension information to provide, it returns a 0-length byte array as its vote extension.
+Tendermint calls `ExtendVote` when is about to send a non-`nil` precommit message. 
 
 * [**VerifyVoteExtension:**](./abci++_methods_002_draft.md#verifyvoteextension) It allows validators to validate the vote extension data attached to a precommit message. If the validation fails, the precommit message will be deemed invalid and ignored
 by Tendermint. This has a negative impact on Tendermint's liveness, i.e., if vote extensions repeatedly cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should be used with special care.
@@ -214,7 +214,7 @@ transactions and compute the same results.
 
 Some Applications may choose to execute the blocks that are about to be proposed
 (via `PrepareProposal`), or those that the Application is asked to validate
-(via `Processproposal`). However, the state changes caused by processing those
+(via `ProcessProposal`). However, the state changes caused by processing those
 proposed blocks must never replace the previous state until `FinalizeBlock` confirms
 the block decided.
 

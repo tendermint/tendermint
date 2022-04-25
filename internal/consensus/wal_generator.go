@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -26,18 +25,17 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// WALGenerateNBlocks generates a consensus WAL. It does this by spinning up a
-// stripped down version of node (proxy app, event bus, consensus state) with a
-// persistent kvstore application and special consensus wal instance
-// (byteBufferWAL) and waits until numBlocks are created.
+// WALGenerateNBlocks generates a consensus WAL. It does this by
+// spinning up a stripped down version of node (proxy app, event bus,
+// consensus state) with a kvstore application and special consensus
+// wal instance (byteBufferWAL) and waits until numBlocks are created.
 // If the node fails to produce given numBlocks, it fails the test.
 func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr io.Writer, numBlocks int) {
 	t.Helper()
 
 	cfg := getConfig(t)
 
-	app := kvstore.NewPersistentKVStoreApplication(logger, filepath.Join(cfg.DBDir(), "wal_generator"))
-	t.Cleanup(func() { require.NoError(t, app.Close()) })
+	app := kvstore.NewApplication()
 
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
 
@@ -82,8 +80,8 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp, mempool, evpool, blockStore, eventBus)
-	consensusState, err := NewState(ctx, logger, cfg.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
+	blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
+	consensusState, err := NewState(logger, cfg.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
 	if err != nil {
 		t.Fatal(err)
 	}

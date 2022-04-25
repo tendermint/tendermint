@@ -47,7 +47,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	g := createTestGroupWithHeadSizeLimit(ctx, t, logger, 1000*1000)
 
@@ -116,7 +116,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 }
 
 func TestRotateFile(t *testing.T) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -181,7 +181,7 @@ func TestRotateFile(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -209,7 +209,7 @@ func TestWrite(t *testing.T) {
 // test that Read reads the required amount of bytes from all the files in the
 // group and returns no error if n == size of the given slice.
 func TestGroupReaderRead(t *testing.T) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -247,7 +247,7 @@ func TestGroupReaderRead(t *testing.T) {
 // test that Read returns an error if number of bytes read < size of
 // the given slice. Subsequent call should return 0, io.EOF.
 func TestGroupReaderRead2(t *testing.T) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -287,7 +287,7 @@ func TestGroupReaderRead2(t *testing.T) {
 }
 
 func TestMinIndex(t *testing.T) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -300,7 +300,7 @@ func TestMinIndex(t *testing.T) {
 }
 
 func TestMaxIndex(t *testing.T) {
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

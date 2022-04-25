@@ -7,10 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
-
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
@@ -19,17 +17,11 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
+	evsw := NewEventSwitch()
 
 	messages := make(chan EventData)
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
-		func(ctx context.Context, data EventData) error {
-			// test there's no deadlock if we remove the listener inside a callback
-			evsw.RemoveListener("listener")
+		func(data EventData) error {
 			select {
 			case messages <- data:
 				return nil
@@ -37,7 +29,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 				return ctx.Err()
 			}
 		}))
-	go evsw.FireEvent(ctx, "event", "data")
+	go evsw.FireEvent("event", "data")
 	received := <-messages
 	if received != "data" {
 		t.Errorf("message received does not match: %v", received)
@@ -50,18 +42,14 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
+	evsw := NewEventSwitch()
 
 	doneSum := make(chan uint64)
 	doneSending := make(chan uint64)
 	numbers := make(chan uint64, 4)
 	// subscribe one listener for one event
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -88,11 +76,9 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
+	t.Cleanup(leaktest.Check(t))
 
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
+	evsw := NewEventSwitch()
 
 	doneSum := make(chan uint64)
 	doneSending1 := make(chan uint64)
@@ -101,7 +87,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	numbers := make(chan uint64, 4)
 	// subscribe one listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -110,7 +96,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -119,7 +105,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers <- data.(uint64):
 				return nil
@@ -152,11 +138,9 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewTestingLogger(t)
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
+	t.Cleanup(leaktest.Check(t))
 
-	t.Cleanup(evsw.Wait)
+	evsw := NewEventSwitch()
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
@@ -167,7 +151,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -176,7 +160,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -185,7 +169,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -194,7 +178,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -203,7 +187,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -234,171 +218,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	}
 }
 
-func TestAddAndRemoveListenerConcurrency(t *testing.T) {
-	var (
-		stopInputEvent = false
-		roundCount     = 2000
-	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
-
-	done1 := make(chan struct{})
-	done2 := make(chan struct{})
-
-	// Must be executed concurrently to uncover the data race.
-	// 1. RemoveListener
-	go func() {
-		defer close(done1)
-		for i := 0; i < roundCount; i++ {
-			evsw.RemoveListener("listener")
-		}
-	}()
-
-	// 2. AddListenerForEvent
-	go func() {
-		defer close(done2)
-		for i := 0; i < roundCount; i++ {
-			index := i
-			// we explicitly ignore errors here, since the listener will sometimes be removed
-			// (that's what we're testing)
-			_ = evsw.AddListenerForEvent("listener", fmt.Sprintf("event%d", index),
-				func(ctx context.Context, data EventData) error {
-					t.Errorf("should not run callback for %d.\n", index)
-					stopInputEvent = true
-					return nil
-				})
-		}
-	}()
-
-	<-done1
-	<-done2
-
-	evsw.RemoveListener("listener") // remove the last listener
-
-	for i := 0; i < roundCount && !stopInputEvent; i++ {
-		evsw.FireEvent(ctx, fmt.Sprintf("event%d", i), uint64(1001))
-	}
-}
-
-// TestAddAndRemoveListener sets up an EventSwitch, subscribes a listener to
-// two events, fires a thousand integers for the first event, then unsubscribes
-// the listener and fires a thousand integers for the second event.
-func TestAddAndRemoveListener(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	logger := log.NewTestingLogger(t)
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
-
-	doneSum1 := make(chan uint64)
-	doneSum2 := make(chan uint64)
-	doneSending1 := make(chan uint64)
-	doneSending2 := make(chan uint64)
-	numbers1 := make(chan uint64, 4)
-	numbers2 := make(chan uint64, 4)
-	// subscribe two listener to three events
-	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(ctx context.Context, data EventData) error {
-			select {
-			case numbers1 <- data.(uint64):
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}))
-	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(ctx context.Context, data EventData) error {
-			select {
-			case numbers2 <- data.(uint64):
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}))
-	// collect received events for event1
-	go sumReceivedNumbers(numbers1, doneSum1)
-	// collect received events for event2
-	go sumReceivedNumbers(numbers2, doneSum2)
-	// go fire events
-	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
-	checkSumEvent1 := <-doneSending1
-	// after sending all event1, unsubscribe for all events
-	evsw.RemoveListener("listener")
-	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
-	checkSumEvent2 := <-doneSending2
-	close(numbers1)
-	close(numbers2)
-	eventSum1 := <-doneSum1
-	eventSum2 := <-doneSum2
-	if checkSumEvent1 != eventSum1 ||
-		// correct value asserted by preceding tests, suffices to be non-zero
-		checkSumEvent2 == uint64(0) ||
-		eventSum2 != uint64(0) {
-		t.Errorf("not all messages sent were received or unsubscription did not register.\n")
-	}
-}
-
-// TestRemoveListener does basic tests on adding and removing
-func TestRemoveListener(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	logger := log.NewTestingLogger(t)
-
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
-
-	count := 10
-	sum1, sum2 := 0, 0
-	// add some listeners and make sure they work
-	require.NoError(t, evsw.AddListenerForEvent("listener", "event1",
-		func(ctx context.Context, data EventData) error {
-			sum1++
-			return nil
-		}))
-	require.NoError(t, evsw.AddListenerForEvent("listener", "event2",
-		func(ctx context.Context, data EventData) error {
-			sum2++
-			return nil
-		}))
-
-	for i := 0; i < count; i++ {
-		evsw.FireEvent(ctx, "event1", true)
-		evsw.FireEvent(ctx, "event2", true)
-	}
-	assert.Equal(t, count, sum1)
-	assert.Equal(t, count, sum2)
-
-	// remove one by event and make sure it is gone
-	evsw.RemoveListenerForEvent("event2", "listener")
-	for i := 0; i < count; i++ {
-		evsw.FireEvent(ctx, "event1", true)
-		evsw.FireEvent(ctx, "event2", true)
-	}
-	assert.Equal(t, count*2, sum1)
-	assert.Equal(t, count, sum2)
-
-	// remove the listener entirely and make sure both gone
-	evsw.RemoveListener("listener")
-	for i := 0; i < count; i++ {
-		evsw.FireEvent(ctx, "event1", true)
-		evsw.FireEvent(ctx, "event2", true)
-	}
-	assert.Equal(t, count*2, sum1)
-	assert.Equal(t, count, sum2)
-}
-
-// TestAddAndRemoveListenersAsync sets up an EventSwitch, subscribes two
+// TestManagerLiistenersAsync sets up an EventSwitch, subscribes two
 // listeners to three events, and fires a thousand integers for each event.
 // These two listeners serve as the baseline validation while other listeners
 // are randomly subscribed and unsubscribed.
@@ -408,14 +228,11 @@ func TestRemoveListener(t *testing.T) {
 // at that point subscribed to.
 // NOTE: it is important to run this test with race conditions tracking on,
 // `go test -race`, to examine for possible race conditions.
-func TestRemoveListenersAsync(t *testing.T) {
+func TestManageListenersAsync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.NewTestingLogger(t)
 
-	evsw := NewEventSwitch(logger)
-	require.NoError(t, evsw.Start(ctx))
-	t.Cleanup(evsw.Wait)
+	evsw := NewEventSwitch()
 
 	doneSum1 := make(chan uint64)
 	doneSum2 := make(chan uint64)
@@ -426,7 +243,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 	numbers2 := make(chan uint64, 4)
 	// subscribe two listener to three events
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -435,7 +252,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -444,7 +261,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener1", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers1 <- data.(uint64):
 				return nil
@@ -453,7 +270,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event1",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -462,7 +279,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event2",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -471,7 +288,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 			}
 		}))
 	require.NoError(t, evsw.AddListenerForEvent("listener2", "event3",
-		func(ctx context.Context, data EventData) error {
+		func(data EventData) error {
 			select {
 			case numbers2 <- data.(uint64):
 				return nil
@@ -491,21 +308,12 @@ func TestRemoveListenersAsync(t *testing.T) {
 			eventNumber := r1.Intn(3) + 1
 			go evsw.AddListenerForEvent(fmt.Sprintf("listener%v", listenerNumber), //nolint:errcheck // ignore for tests
 				fmt.Sprintf("event%v", eventNumber),
-				func(context.Context, EventData) error { return nil })
-		}
-	}
-	removeListenersStress := func() {
-		r2 := rand.New(rand.NewSource(time.Now().Unix()))
-		r2.Seed(time.Now().UnixNano())
-		for k := uint16(0); k < 80; k++ {
-			listenerNumber := r2.Intn(100) + 3
-			go evsw.RemoveListener(fmt.Sprintf("listener%v", listenerNumber))
+				func(EventData) error { return nil })
 		}
 	}
 	addListenersStress()
 	// go fire events
 	go fireEvents(ctx, evsw, "event1", doneSending1, uint64(1))
-	removeListenersStress()
 	go fireEvents(ctx, evsw, "event2", doneSending2, uint64(1001))
 	go fireEvents(ctx, evsw, "event3", doneSending3, uint64(2001))
 	checkSumEvent1 := <-doneSending1
@@ -555,7 +363,7 @@ func fireEvents(ctx context.Context, evsw Fireable, event string, doneChan chan 
 			break
 		}
 
-		evsw.FireEvent(ctx, event, i)
+		evsw.FireEvent(event, i)
 		sentSum += i
 	}
 

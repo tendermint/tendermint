@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 func peerStateSetup(h, r, v int) *PeerState {
-	ps := NewPeerState(log.TestingLogger(), "testPeerState")
+	ps := NewPeerState(log.NewNopLogger(), "testPeerState")
 	ps.PRS.Height = int64(h)
 	ps.PRS.Round = int32(r)
 	ps.ensureVoteBitArrays(int64(h), v)

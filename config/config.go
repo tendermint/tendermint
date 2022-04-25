@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -143,6 +144,10 @@ func (cfg *Config) ValidateBasic() error {
 		return fmt.Errorf("error in [instrumentation] section: %w", err)
 	}
 	return nil
+}
+
+func (cfg *Config) DeprecatedFieldWarning() error {
+	return cfg.Consensus.DeprecatedFieldWarning()
 }
 
 //-----------------------------------------------------------------------------
@@ -956,27 +961,6 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal-file"`
 	walFile string // overrides WalPath if set
 
-	// TODO: remove timeout configs, these should be global not local
-	// How long we wait for a proposal block before prevoting nil
-	TimeoutPropose time.Duration `mapstructure:"timeout-propose"`
-	// How much timeout-propose increases with each round
-	TimeoutProposeDelta time.Duration `mapstructure:"timeout-propose-delta"`
-	// How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
-	TimeoutPrevote time.Duration `mapstructure:"timeout-prevote"`
-	// How much the timeout-prevote increases with each round
-	TimeoutPrevoteDelta time.Duration `mapstructure:"timeout-prevote-delta"`
-	// How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
-	TimeoutPrecommit time.Duration `mapstructure:"timeout-precommit"`
-	// How much the timeout-precommit increases with each round
-	TimeoutPrecommitDelta time.Duration `mapstructure:"timeout-precommit-delta"`
-	// How long we wait after committing a block, before starting on the new
-	// height (this gives us a chance to receive some more precommits, even
-	// though we already have +2/3).
-	TimeoutCommit time.Duration `mapstructure:"timeout-commit"`
-
-	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
-	SkipTimeoutCommit bool `mapstructure:"skip-timeout-commit"`
-
 	// EmptyBlocks mode and possible interval between empty blocks
 	CreateEmptyBlocks         bool          `mapstructure:"create-empty-blocks"`
 	CreateEmptyBlocksInterval time.Duration `mapstructure:"create-empty-blocks-interval"`
@@ -986,20 +970,59 @@ type ConsensusConfig struct {
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer-query-maj23-sleep-duration"`
 
 	DoubleSignCheckHeight int64 `mapstructure:"double-sign-check-height"`
+
+	// TODO: The following fields are all temporary overrides that should exist only
+	// for the duration of the v0.36 release. The below fields should be completely
+	// removed in the v0.37 release of Tendermint.
+	// See: https://github.com/tendermint/tendermint/issues/8188
+
+	// UnsafeProposeTimeoutOverride provides an unsafe override of the Propose
+	// timeout consensus parameter. It configures how long the consensus engine
+	// will wait to receive a proposal block before prevoting nil.
+	UnsafeProposeTimeoutOverride time.Duration `mapstructure:"unsafe-propose-timeout-override"`
+	// UnsafeProposeTimeoutDeltaOverride provides an unsafe override of the
+	// ProposeDelta timeout consensus parameter. It configures how much the
+	// propose timeout increases with each round.
+	UnsafeProposeTimeoutDeltaOverride time.Duration `mapstructure:"unsafe-propose-timeout-delta-override"`
+	// UnsafeVoteTimeoutOverride provides an unsafe override of the Vote timeout
+	// consensus parameter. It configures how long the consensus engine will wait
+	// to gather additional votes after receiving +2/3 votes in a round.
+	UnsafeVoteTimeoutOverride time.Duration `mapstructure:"unsafe-vote-timeout-override"`
+	// UnsafeVoteTimeoutDeltaOverride provides an unsafe override of the VoteDelta
+	// timeout consensus parameter. It configures how much the vote timeout
+	// increases with each round.
+	UnsafeVoteTimeoutDeltaOverride time.Duration `mapstructure:"unsafe-vote-timeout-delta-override"`
+	// UnsafeCommitTimeoutOverride provides an unsafe override of the Commit timeout
+	// consensus parameter. It configures how long the consensus engine will wait
+	// after receiving +2/3 precommits before beginning the next height.
+	UnsafeCommitTimeoutOverride time.Duration `mapstructure:"unsafe-commit-timeout-override"`
+
+	// UnsafeBypassCommitTimeoutOverride provides an unsafe override of the
+	// BypassCommitTimeout consensus parameter. It configures if the consensus
+	// engine will wait for the full Commit timeout before proceeding to the next height.
+	// If it is set to true, the consensus engine will proceed to the next height
+	// as soon as the node has gathered votes from all of the validators on the network.
+	UnsafeBypassCommitTimeoutOverride *bool `mapstructure:"unsafe-bypass-commit-timeout-override"`
+
+	// Deprecated timeout parameters. These parameters are present in this struct
+	// so that they can be parsed so that validation can check if they have erroneously
+	// been included and provide a helpful error message.
+	// These fields should be completely removed in v0.37.
+	// See: https://github.com/tendermint/tendermint/issues/8188
+	DeprecatedTimeoutPropose        *interface{} `mapstructure:"timeout-propose"`
+	DeprecatedTimeoutProposeDelta   *interface{} `mapstructure:"timeout-propose-delta"`
+	DeprecatedTimeoutPrevote        *interface{} `mapstructure:"timeout-prevote"`
+	DeprecatedTimeoutPrevoteDelta   *interface{} `mapstructure:"timeout-prevote-delta"`
+	DeprecatedTimeoutPrecommit      *interface{} `mapstructure:"timeout-precommit"`
+	DeprecatedTimeoutPrecommitDelta *interface{} `mapstructure:"timeout-precommit-delta"`
+	DeprecatedTimeoutCommit         *interface{} `mapstructure:"timeout-commit"`
+	DeprecatedSkipTimeoutCommit     *interface{} `mapstructure:"skip-timeout-commit"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
 		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
-		TimeoutPropose:              3000 * time.Millisecond,
-		TimeoutProposeDelta:         500 * time.Millisecond,
-		TimeoutPrevote:              1000 * time.Millisecond,
-		TimeoutPrevoteDelta:         500 * time.Millisecond,
-		TimeoutPrecommit:            1000 * time.Millisecond,
-		TimeoutPrecommitDelta:       500 * time.Millisecond,
-		TimeoutCommit:               1000 * time.Millisecond,
-		SkipTimeoutCommit:           false,
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
@@ -1011,14 +1034,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	cfg := DefaultConsensusConfig()
-	cfg.TimeoutPropose = 40 * time.Millisecond
-	cfg.TimeoutProposeDelta = 1 * time.Millisecond
-	cfg.TimeoutPrevote = 10 * time.Millisecond
-	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
-	cfg.TimeoutPrecommit = 10 * time.Millisecond
-	cfg.TimeoutPrecommitDelta = 1 * time.Millisecond
-	cfg.TimeoutCommit = 10 * time.Millisecond
-	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
 	cfg.DoubleSignCheckHeight = int64(0)
@@ -1028,33 +1043,6 @@ func TestConsensusConfig() *ConsensusConfig {
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
 func (cfg *ConsensusConfig) WaitForTxs() bool {
 	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
-}
-
-// Propose returns the amount of time to wait for a proposal
-func (cfg *ConsensusConfig) Propose(round int32) time.Duration {
-	return time.Duration(
-		cfg.TimeoutPropose.Nanoseconds()+cfg.TimeoutProposeDelta.Nanoseconds()*int64(round),
-	) * time.Nanosecond
-}
-
-// Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (cfg *ConsensusConfig) Prevote(round int32) time.Duration {
-	return time.Duration(
-		cfg.TimeoutPrevote.Nanoseconds()+cfg.TimeoutPrevoteDelta.Nanoseconds()*int64(round),
-	) * time.Nanosecond
-}
-
-// Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (cfg *ConsensusConfig) Precommit(round int32) time.Duration {
-	return time.Duration(
-		cfg.TimeoutPrecommit.Nanoseconds()+cfg.TimeoutPrecommitDelta.Nanoseconds()*int64(round),
-	) * time.Nanosecond
-}
-
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits
-// for a single block (ie. a commit).
-func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
-	return t.Add(cfg.TimeoutCommit)
 }
 
 // WalFile returns the full path to the write-ahead log file
@@ -1073,26 +1061,20 @@ func (cfg *ConsensusConfig) SetWalFile(walFile string) {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg *ConsensusConfig) ValidateBasic() error {
-	if cfg.TimeoutPropose < 0 {
-		return errors.New("timeout-propose can't be negative")
+	if cfg.UnsafeProposeTimeoutOverride < 0 {
+		return errors.New("unsafe-propose-timeout-override can't be negative")
 	}
-	if cfg.TimeoutProposeDelta < 0 {
-		return errors.New("timeout-propose-delta can't be negative")
+	if cfg.UnsafeProposeTimeoutDeltaOverride < 0 {
+		return errors.New("unsafe-propose-timeout-delta-override can't be negative")
 	}
-	if cfg.TimeoutPrevote < 0 {
-		return errors.New("timeout-prevote can't be negative")
+	if cfg.UnsafeVoteTimeoutOverride < 0 {
+		return errors.New("unsafe-vote-timeout-override can't be negative")
 	}
-	if cfg.TimeoutPrevoteDelta < 0 {
-		return errors.New("timeout-prevote-delta can't be negative")
+	if cfg.UnsafeVoteTimeoutDeltaOverride < 0 {
+		return errors.New("unsafe-vote-timeout-delta-override can't be negative")
 	}
-	if cfg.TimeoutPrecommit < 0 {
-		return errors.New("timeout-precommit can't be negative")
-	}
-	if cfg.TimeoutPrecommitDelta < 0 {
-		return errors.New("timeout-precommit-delta can't be negative")
-	}
-	if cfg.TimeoutCommit < 0 {
-		return errors.New("timeout-commit can't be negative")
+	if cfg.UnsafeCommitTimeoutOverride < 0 {
+		return errors.New("unsafe-commit-timeout-override can't be negative")
 	}
 	if cfg.CreateEmptyBlocksInterval < 0 {
 		return errors.New("create-empty-blocks-interval can't be negative")
@@ -1105,6 +1087,44 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.DoubleSignCheckHeight < 0 {
 		return errors.New("double-sign-check-height can't be negative")
+	}
+	return nil
+}
+
+func (cfg *ConsensusConfig) DeprecatedFieldWarning() error {
+	var fields []string
+	if cfg.DeprecatedSkipTimeoutCommit != nil {
+		fields = append(fields, "skip-timeout-commit")
+	}
+	if cfg.DeprecatedTimeoutPropose != nil {
+		fields = append(fields, "timeout-propose")
+	}
+	if cfg.DeprecatedTimeoutProposeDelta != nil {
+		fields = append(fields, "timeout-propose-delta")
+	}
+	if cfg.DeprecatedTimeoutPrevote != nil {
+		fields = append(fields, "timeout-prevote")
+	}
+	if cfg.DeprecatedTimeoutPrevoteDelta != nil {
+		fields = append(fields, "timeout-prevote-delta")
+	}
+	if cfg.DeprecatedTimeoutPrecommit != nil {
+		fields = append(fields, "timeout-precommit")
+	}
+	if cfg.DeprecatedTimeoutPrecommitDelta != nil {
+		fields = append(fields, "timeout-precommit-delta")
+	}
+	if cfg.DeprecatedTimeoutCommit != nil {
+		fields = append(fields, "timeout-commit")
+	}
+	if cfg.DeprecatedSkipTimeoutCommit != nil {
+		fields = append(fields, "skip-timeout-commit")
+	}
+	if len(fields) != 0 {
+		return fmt.Errorf("the following deprecated fields were set in the "+
+			"configuration file: %s. These fields were removed in v0.36. Timeout "+
+			"configuration has been moved to the ConsensusParams. For more information see "+
+			"https://tinyurl.com/adr074", strings.Join(fields, ", "))
 	}
 	return nil
 }
@@ -1125,9 +1145,8 @@ type TxIndexConfig struct {
 	// If list contains `null`, meaning no indexer service will be used.
 	//
 	// Options:
-	//   1) "null" - no indexer services.
-	//   2) "kv" (default) - the simplest possible indexer,
-	//      backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   1) "null" (default) - no indexer services.
+	//   2) "kv" - a simple indexer backed by key-value storage (see DBBackend)
 	//   3) "psql" - the indexer services backed by PostgreSQL.
 	Indexer []string `mapstructure:"indexer"`
 
@@ -1138,14 +1157,12 @@ type TxIndexConfig struct {
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
-	return &TxIndexConfig{
-		Indexer: []string{"kv"},
-	}
+	return &TxIndexConfig{Indexer: []string{"null"}}
 }
 
 // TestTxIndexConfig returns a default configuration for the transaction indexer.
 func TestTxIndexConfig() *TxIndexConfig {
-	return DefaultTxIndexConfig()
+	return &TxIndexConfig{Indexer: []string{"kv"}}
 }
 
 //-----------------------------------------------------------------------------

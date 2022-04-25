@@ -16,7 +16,7 @@ func TestExample(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := newTestServer(ctx, t, log.TestingLogger())
+	s := newTestServer(ctx, t, log.NewNopLogger())
 
 	sub := newTestSub(t).must(s.SubscribeWithArgs(ctx, pubsub.SubscribeArgs{
 		ClientID: "example-client",
@@ -29,6 +29,6 @@ func TestExample(t *testing.T) {
 			Attributes: []abci.EventAttribute{{Key: "name", Value: "John"}},
 		},
 	}
-	require.NoError(t, s.PublishWithEvents(ctx, pubstring("Tombstone"), events))
+	require.NoError(t, s.PublishWithEvents(pubstring("Tombstone"), events))
 	sub.mustReceive(ctx, pubstring("Tombstone"))
 }

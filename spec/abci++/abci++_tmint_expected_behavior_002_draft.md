@@ -202,11 +202,17 @@ to undergo any changes in their implementation.
 
 As for the new methods:
 
-* `PrepareProposal` should set `ResponsePrepareProposal.modified_tx` to _false_ and return.
-* `ProcessProposal` should set `ResponseProcessProposal.accept` to _true_ and return.
-* `ExtendVote` should set `ResponseExtendVote.extension` to an empty byte array and return.
-* `VerifyVoteExtension` should set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is an empty byte array
+* `PrepareProposal` must create a list of [TxRecord](./abci++_methods_002_draft.md#txrecord) each containing a
+  transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must be set to `UNMODIFIED`
+  for all [TxRecord](./abci++_methods_002_draft.md#txrecord) elements in the list.
+  The Application must check whether the size of all transactions exceeds the byte limit
+  (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the end of the list
+  until the total byte size is at or below the limit.
+* `ProcessProposal` must set `ResponseProcessProposal.accept` to _true_ and return.
+* `ExtendVote` is to set `ResponseExtendVote.extension` to an empty byte array and return.
+* `VerifyVoteExtension` must set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is an empty byte array
   and _false_ otherwise, then return.
-* `FinalizeBlock` should coalesce the implementation of methods `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit`.
-  The logic extracted from `DeliverTx` should be wrappped by a loop that will execute as many times as
-  transactions exist in `RequestFinalizeBlock.tx`.
+* `FinalizeBlock` is to coalesce the implementation of methods `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit`.
+  Legacy applications looking to reuse old code that implemented `DeliverTx` should wrap the legacy
+  `DeliverTx` logic in a loop that executes one transaction iteration per
+  transaction in `RequestFinalizeBlock.tx`.

@@ -1,6 +1,8 @@
 syntax = "proto3";
 package tendermint.statesync;
 
+option go_package = "github.com/tendermint/tendermint/proto/tendermint/statesync";
+
 import "gogoproto/gogo.proto";
 import "tendermint/types/types.proto";
 import "tendermint/types/params.proto";

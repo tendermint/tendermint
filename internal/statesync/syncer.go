@@ -10,7 +10,6 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -70,31 +69,6 @@ type syncer struct {
 	avgChunkTime             int64
 	lastSyncedSnapshotHeight int64
 	processingSnapshot       *snapshot
-}
-
-// newSyncer creates a new syncer.
-func newSyncer(
-	cfg config.StateSyncConfig,
-	logger log.Logger,
-	conn abciclient.Client,
-	stateProvider StateProvider,
-	snapshotCh *p2p.Channel,
-	chunkCh *p2p.Channel,
-	tempDir string,
-	metrics *Metrics,
-) *syncer {
-	return &syncer{
-		logger:        logger,
-		stateProvider: stateProvider,
-		conn:          conn,
-		snapshots:     newSnapshotPool(),
-		snapshotCh:    snapshotCh,
-		chunkCh:       chunkCh,
-		tempDir:       tempDir,
-		fetchers:      cfg.Fetchers,
-		retryTimeout:  cfg.ChunkRequestTimeout,
-		metrics:       metrics,
-	}
 }
 
 // AddChunk adds a chunk to the chunk queue, if any. It returns false if the chunk has already
@@ -363,7 +337,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", snapshot.Hash)
-	resp, err := s.conn.OfferSnapshot(ctx, abci.RequestOfferSnapshot{
+	resp, err := s.conn.OfferSnapshot(ctx, &abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
 			Format:   snapshot.Format,
@@ -405,7 +379,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time
 			return fmt.Errorf("failed to fetch chunk: %w", err)
 		}
 
-		resp, err := s.conn.ApplySnapshotChunk(ctx, abci.RequestApplySnapshotChunk{
+		resp, err := s.conn.ApplySnapshotChunk(ctx, &abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
 			Chunk:  chunk.Chunk,
 			Sender: string(chunk.Sender),
@@ -545,7 +519,7 @@ func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uin
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version
 func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot, appVersion uint64) error {
-	resp, err := s.conn.Info(ctx, proxy.RequestInfo)
+	resp, err := s.conn.Info(ctx, &proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

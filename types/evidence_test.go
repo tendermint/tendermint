@@ -295,7 +295,14 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 
 func makeVote(
 	ctx context.Context,
-	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
+	t *testing.T,
+	val PrivValidator,
+	chainID string,
+	valIndex int32,
+	height int64,
+	round int32,
+	step int,
+	blockID BlockID,
 	time time.Time,
 ) *Vote {
 	pubKey, err := val.GetPubKey(ctx)

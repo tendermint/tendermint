@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/test/factory"
-	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
@@ -46,7 +45,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		commitSigs)
 }
 
-func makeStateAndBlockStore(dir string, logger log.Logger) (sm.State, *BlockStore, cleanupFunc, error) {
+func makeStateAndBlockStore(dir string) (sm.State, *BlockStore, cleanupFunc, error) {
 	cfg, err := config.ResetTestRoot(dir, "blockchain_reactor_test")
 	if err != nil {
 		return sm.State{}, nil, nil, err
@@ -81,16 +80,13 @@ func TestMain(m *testing.M) {
 	}
 	var cleanup cleanupFunc
 
-	state, _, cleanup, err = makeStateAndBlockStore(dir, log.NewNopLogger())
+	state, _, cleanup, err = makeStateAndBlockStore(dir)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	block, err = factory.MakeBlock(state, 1, new(types.Commit))
+	block = factory.MakeBlock(state, 1, new(types.Commit))
 
-	if err != nil {
-		stdlog.Fatal(err)
-	}
 	partSet, err = block.MakePartSet(2)
 	if err != nil {
 		stdlog.Fatal(err)
@@ -106,7 +102,7 @@ func TestMain(m *testing.M) {
 
 // TODO: This test should be simplified ...
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir(), log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
 	defer cleanup()
 	require.NoError(t, err)
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
@@ -121,8 +117,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
-	require.NoError(t, err)
+	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 	validPartSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())
@@ -326,8 +321,7 @@ func TestLoadBaseMeta(t *testing.T) {
 	bs := NewBlockStore(dbm.NewMemDB())
 
 	for h := int64(1); h <= 10; h++ {
-		block, err := factory.MakeBlock(state, h, new(types.Commit))
-		require.NoError(t, err)
+		block := factory.MakeBlock(state, h, new(types.Commit))
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
@@ -394,8 +388,7 @@ func TestPruneBlocks(t *testing.T) {
 
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
-		block, err := factory.MakeBlock(state, h, new(types.Commit))
-		require.NoError(t, err)
+		block := factory.MakeBlock(state, h, new(types.Commit))
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
@@ -498,12 +491,11 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir(), log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
 	defer cleanup()
 	require.NoError(t, err)
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
-	require.NoError(t, err)
+	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
@@ -545,8 +537,7 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	// are persisted.
 	for h := int64(3); h <= 5; h++ {
 		blockCommit := makeTestCommit(h-1, tmtime.Now())
-		block, err := factory.MakeBlock(state, h, blockCommit)
-		require.NoError(t, err)
+		block := factory.MakeBlock(state, h, blockCommit)
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())

@@ -86,7 +86,6 @@ type BlockPool struct {
 
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
-	exitedCh   chan struct{}
 
 	startHeight               int64
 	lastHundredBlockTimeStamp time.Time
@@ -109,7 +108,6 @@ func NewBlockPool(
 		height:       start,
 		startHeight:  start,
 		numPending:   0,
-		exitedCh:     make(chan struct{}),
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 		lastSyncRate: 0,
@@ -124,11 +122,6 @@ func (pool *BlockPool) OnStart(ctx context.Context) error {
 	pool.lastAdvance = time.Now()
 	pool.lastHundredBlockTimeStamp = pool.lastAdvance
 	go pool.makeRequestersRoutine(ctx)
-
-	go func() {
-		defer close(pool.exitedCh)
-		pool.Wait()
-	}()
 
 	return nil
 }
@@ -637,12 +630,6 @@ func (bpr *bpRequester) redo(peerID types.NodeID) {
 // Responsible for making more requests as necessary
 // Returns only when a block is found (e.g. AddBlock() is called)
 func (bpr *bpRequester) requestRoutine(ctx context.Context) {
-	bprPoolDone := make(chan struct{})
-	go func() {
-		defer close(bprPoolDone)
-		bpr.pool.Wait()
-	}()
-
 OUTER_LOOP:
 	for {
 		// Pick a peer to send request to.
@@ -669,9 +656,6 @@ OUTER_LOOP:
 		for {
 			select {
 			case <-ctx.Done():
-				return
-			case <-bpr.pool.exitedCh:
-				bpr.Stop()
 				return
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {

@@ -6,24 +6,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// TestingLogger was a legacy constructor that wrote logging output to
-// standardoutput when in verbose mode, and no-op'ed test logs
-// otherwise. Now it always no-ops, but if you need to see logs from
-// tests, you can replace this call with `NewTestingLogger`
-// constructor.
-func TestingLogger() Logger {
-	return NewNopLogger()
-}
-
-type testingWriter struct {
-	t testing.TB
-}
-
-func (tw testingWriter) Write(in []byte) (int, error) {
-	tw.t.Log(string(in))
-	return len(in), nil
-}
-
 // NewTestingLogger converts a testing.T into a logging interface to
 // make test failures and verbose provide better feedback associated
 // with test failures. This logging instance is safe for use from
@@ -57,4 +39,13 @@ func NewTestingLoggerWithLevel(t testing.TB, level string) Logger {
 	return defaultLogger{
 		Logger: zerolog.New(newSyncWriter(testingWriter{t})).Level(logLevel),
 	}
+}
+
+type testingWriter struct {
+	t testing.TB
+}
+
+func (tw testingWriter) Write(in []byte) (int, error) {
+	tw.t.Log(string(in))
+	return len(in), nil
 }

@@ -159,12 +159,7 @@ func (s *SocketServer) acceptConnectionsRoutine(ctx context.Context) {
 }
 
 // Read requests from conn and deal with them
-func (s *SocketServer) handleRequests(
-	ctx context.Context,
-	closer func(error),
-	conn io.Reader,
-	responses chan<- *types.Response,
-) {
+func (s *SocketServer) handleRequests(ctx context.Context, closer func(error), conn io.Reader, responses chan<- *types.Response) {
 	var bufReader = bufio.NewReader(conn)
 
 	defer func() {
@@ -184,7 +179,12 @@ func (s *SocketServer) handleRequests(
 			return
 		}
 
-		resp := s.processRequest(req)
+		resp, err := s.processRequest(ctx, req)
+		if err != nil {
+			closer(err)
+			return
+		}
+
 		select {
 		case <-ctx.Done():
 			closer(ctx.Err())
@@ -194,42 +194,99 @@ func (s *SocketServer) handleRequests(
 	}
 }
 
-func (s *SocketServer) processRequest(req *types.Request) *types.Response {
+func (s *SocketServer) processRequest(ctx context.Context, req *types.Request) (*types.Response, error) {
 	switch r := req.Value.(type) {
 	case *types.Request_Echo:
-		return types.ToResponseEcho(r.Echo.Message)
+		return types.ToResponseEcho(r.Echo.Message), nil
 	case *types.Request_Flush:
-		return types.ToResponseFlush()
+		return types.ToResponseFlush(), nil
 	case *types.Request_Info:
-		return types.ToResponseInfo(s.app.Info(*r.Info))
+		res, err := s.app.Info(ctx, r.Info)
+		if err != nil {
+			return nil, err
+		}
+
+		return types.ToResponseInfo(res), nil
 	case *types.Request_CheckTx:
-		return types.ToResponseCheckTx(s.app.CheckTx(*r.CheckTx))
+		res, err := s.app.CheckTx(ctx, r.CheckTx)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseCheckTx(res), nil
 	case *types.Request_Commit:
-		return types.ToResponseCommit(s.app.Commit())
+		res, err := s.app.Commit(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseCommit(res), nil
 	case *types.Request_Query:
-		return types.ToResponseQuery(s.app.Query(*r.Query))
+		res, err := s.app.Query(ctx, r.Query)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseQuery(res), nil
 	case *types.Request_InitChain:
-		return types.ToResponseInitChain(s.app.InitChain(*r.InitChain))
+		res, err := s.app.InitChain(ctx, r.InitChain)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseInitChain(res), nil
 	case *types.Request_ListSnapshots:
-		return types.ToResponseListSnapshots(s.app.ListSnapshots(*r.ListSnapshots))
+		res, err := s.app.ListSnapshots(ctx, r.ListSnapshots)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseListSnapshots(res), nil
 	case *types.Request_OfferSnapshot:
-		return types.ToResponseOfferSnapshot(s.app.OfferSnapshot(*r.OfferSnapshot))
+		res, err := s.app.OfferSnapshot(ctx, r.OfferSnapshot)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseOfferSnapshot(res), nil
 	case *types.Request_PrepareProposal:
-		return types.ToResponsePrepareProposal(s.app.PrepareProposal(*r.PrepareProposal))
+		res, err := s.app.PrepareProposal(ctx, r.PrepareProposal)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponsePrepareProposal(res), nil
 	case *types.Request_ProcessProposal:
-		return types.ToResponseProcessProposal(s.app.ProcessProposal(*r.ProcessProposal))
+		res, err := s.app.ProcessProposal(ctx, r.ProcessProposal)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseProcessProposal(res), nil
 	case *types.Request_LoadSnapshotChunk:
-		return types.ToResponseLoadSnapshotChunk(s.app.LoadSnapshotChunk(*r.LoadSnapshotChunk))
+		res, err := s.app.LoadSnapshotChunk(ctx, r.LoadSnapshotChunk)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseLoadSnapshotChunk(res), nil
 	case *types.Request_ApplySnapshotChunk:
-		return types.ToResponseApplySnapshotChunk(s.app.ApplySnapshotChunk(*r.ApplySnapshotChunk))
+		res, err := s.app.ApplySnapshotChunk(ctx, r.ApplySnapshotChunk)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseApplySnapshotChunk(res), nil
 	case *types.Request_ExtendVote:
-		return types.ToResponseExtendVote(s.app.ExtendVote(*r.ExtendVote))
+		res, err := s.app.ExtendVote(ctx, r.ExtendVote)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseExtendVote(res), nil
 	case *types.Request_VerifyVoteExtension:
-		return types.ToResponseVerifyVoteExtension(s.app.VerifyVoteExtension(*r.VerifyVoteExtension))
+		res, err := s.app.VerifyVoteExtension(ctx, r.VerifyVoteExtension)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseVerifyVoteExtension(res), nil
 	case *types.Request_FinalizeBlock:
-		return types.ToResponseFinalizeBlock(s.app.FinalizeBlock(*r.FinalizeBlock))
+		res, err := s.app.FinalizeBlock(ctx, r.FinalizeBlock)
+		if err != nil {
+			return nil, err
+		}
+		return types.ToResponseFinalizeBlock(res), nil
 	default:
-		return types.ToResponseException("Unknown request")
+		return types.ToResponseException("Unknown request"), errors.New("unknown request type")
 	}
 }
 

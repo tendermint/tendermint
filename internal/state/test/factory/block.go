@@ -42,19 +42,14 @@ func MakeBlocks(ctx context.Context, t *testing.T, n int, state *sm.State, privV
 	return blocks
 }
 
-func MakeBlock(state sm.State, height int64, c *types.Commit) (*types.Block, error) {
-	block, _, err := state.MakeBlock(
+func MakeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
+	return state.MakeBlock(
 		height,
-		factory.MakeTenTxs(state.LastBlockHeight),
+		factory.MakeNTxs(state.LastBlockHeight, 10),
 		c,
 		nil,
 		state.Validators.GetProposer().Address,
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	return block, nil
 }
 
 func makeBlockAndPartSet(
@@ -82,7 +77,8 @@ func makeBlockAndPartSet(
 			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 	}
 
-	block, partSet, err := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	block := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	return block, partSet
