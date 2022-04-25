@@ -72,24 +72,18 @@ func (rf *RPCFunc) parseParams(ctx context.Context, params json.RawMessage) ([]r
 	// If rf does not accept parameters, there is no decoding to do, but verify
 	// that no parameters were passed.
 	if rf.param == nil {
-		// TODO(creachadair): Reject non-empty parameters maybe.
+		if !isNullOrEmpty(params) {
+			return nil, invalidParamsError("no parameters accepted for this method")
+		}
 		return []reflect.Value{reflect.ValueOf(ctx)}, nil
 	}
 	bits, err := rf.adjustParams(params)
 	if err != nil {
-		return nil, &rpctypes.RPCError{
-			Code:    int(rpctypes.CodeInvalidParams),
-			Message: rpctypes.CodeInvalidParams.String(),
-			Data:    err.Error(),
-		}
+		return nil, invalidParamsError(err.Error())
 	}
 	arg := reflect.New(rf.param)
 	if err := json.Unmarshal(bits, arg.Interface()); err != nil {
-		return nil, &rpctypes.RPCError{
-			Code:    int(rpctypes.CodeInvalidParams),
-			Message: rpctypes.CodeInvalidParams.String(),
-			Data:    err.Error(),
-		}
+		return nil, invalidParamsError(err.Error())
 	}
 	return []reflect.Value{reflect.ValueOf(ctx), arg}, nil
 }
@@ -211,4 +205,23 @@ func newRPCFunc(f interface{}) (*RPCFunc, error) {
 		result:   rtype,
 		argNames: argNames,
 	}, nil
+}
+
+// invalidParamsError returns an RPC invalid parameters error with the given
+// detail message.
+func invalidParamsError(msg string, args ...interface{}) error {
+	return &rpctypes.RPCError{
+		Code:    int(rpctypes.CodeInvalidParams),
+		Message: rpctypes.CodeInvalidParams.String(),
+		Data:    fmt.Sprintf(msg, args...),
+	}
+}
+
+// isNullOrEmpty reports whether params is either itself empty or represents an
+// empty parameter (null, empty object, or empty array).
+func isNullOrEmpty(params json.RawMessage) bool {
+	return len(params) == 0 ||
+		bytes.Equal(params, []byte("null")) ||
+		bytes.Equal(params, []byte("{}")) ||
+		bytes.Equal(params, []byte("[]"))
 }
