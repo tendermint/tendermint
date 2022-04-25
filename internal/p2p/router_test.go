@@ -26,6 +26,34 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+func TestRouterConstruction(t *testing.T) {
+	opts := p2p.RouterOptions{UseLibP2P: true}
+	if err := opts.Validate(); err != nil {
+		t.Fatalf("options should validate: %v", err)
+	}
+	logger := log.NewNopLogger()
+	metrics := p2p.NopMetrics()
+
+	router, err := p2p.NewRouter(
+		logger,
+		metrics,
+		nil, // privkey
+		nil, // peermanager
+		func() *types.NodeInfo { return &types.NodeInfo{} },
+		[]p2p.Transport{},
+		[]p2p.Endpoint{},
+		opts,
+	)
+	if err == nil {
+		t.Error("support for libp2p does not exist, and should prevent the router from being constructed")
+	} else if err.Error() != "libp2p is not supported" {
+		t.Errorf("incorrect error: %q", err.Error())
+	}
+	if router != nil {
+		t.Error("router was constructed when it should not have been")
+	}
+}
+
 func echoReactor(ctx context.Context, channel *p2p.Channel) {
 	iter := channel.Receive(ctx)
 	for iter.Next(ctx) {
