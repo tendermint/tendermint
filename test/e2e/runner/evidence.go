@@ -63,7 +63,6 @@ func InjectEvidence(ctx context.Context, logger log.Logger, r *rand.Rand, testne
 	if err != nil {
 		return err
 	}
-
 	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators)
 	if err != nil {
 		return err

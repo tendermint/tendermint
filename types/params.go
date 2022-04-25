@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/sr25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -328,8 +328,6 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 // This allows the ConsensusParams to evolve more without breaking the block
 // protocol. No need for a Merkle tree here, just a small struct to hash.
 func (params ConsensusParams) HashConsensusParams() []byte {
-	hasher := tmhash.New()
-
 	hp := tmproto.HashedParams{
 		BlockMaxBytes: params.Block.MaxBytes,
 		BlockMaxGas:   params.Block.MaxGas,
@@ -339,6 +337,8 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 	if err != nil {
 		panic(err)
 	}
+
+	hasher := sha256.New()
 
 	_, err = hasher.Write(bz)
 	if err != nil {
