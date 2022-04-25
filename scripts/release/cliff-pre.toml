@@ -54,7 +54,7 @@ tag_pattern = 'v0.[0-9].[0-9]*'
 # skip_tags = "v0.1.0-beta.1"
 # regex for ignoring tags
 # While skip_tags drop commits from the changelog, ignore_tags include ignored commits into the next tag.
-ignore_tags = '[0-9]+\.[0-9]+\.[0-9]+-[a-z]+\.?[0-9]+'
+ignore_tags = ''
 # sort the tags topologically
 topo_order = true
 # sort the commits inside sections by oldest/newest order
