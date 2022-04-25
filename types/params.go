@@ -338,13 +338,9 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 		panic(err)
 	}
 
-	hasher := sha256.New()
+	sum := sha256.Sum256(bz)
 
-	_, err = hasher.Write(bz)
-	if err != nil {
-		panic(err)
-	}
-	return hasher.Sum(nil)
+	return sum[:]
 }
 
 func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
