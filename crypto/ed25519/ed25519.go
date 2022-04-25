@@ -2,6 +2,8 @@ package ed25519
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -124,7 +126,7 @@ func (privKey PrivKey) Type() string {
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
 func GenPrivKey() PrivKey {
-	return genPrivKey(crypto.CReader())
+	return genPrivKey(rand.Reader)
 }
 
 // genPrivKey generates a new ed25519 private key using the provided reader.
@@ -142,9 +144,8 @@ func genPrivKey(rand io.Reader) PrivKey {
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
-	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
-
-	return PrivKey(ed25519.NewKeyFromSeed(seed))
+	seed := sha256.Sum256(secret)
+	return PrivKey(ed25519.NewKeyFromSeed(seed[:]))
 }
 
 //-------------------------------------
@@ -229,5 +230,5 @@ func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 }
 
 func (b *BatchVerifier) Verify() (bool, []bool) {
-	return b.BatchVerifier.Verify(crypto.CReader())
+	return b.BatchVerifier.Verify(rand.Reader)
 }
