@@ -716,6 +716,7 @@ func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.Gene
 func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
 		QueueType: conf.P2P.QueueType,
+		UseLibP2P: conf.P2P.UseLibP2P,
 	}
 
 	if conf.FilterPeers && appClient != nil {

@@ -72,6 +72,10 @@ type RouterOptions struct {
 	// are used to dial peers. This defaults to the value of
 	// runtime.NumCPU.
 	NumConcurrentDials func() int
+
+	// UseLibP2P toggles the use of the new networking layer
+	// within the router.
+	UseLibP2P bool
 }
 
 const (
@@ -189,6 +193,10 @@ func NewRouter(
 
 	if err := options.Validate(); err != nil {
 		return nil, err
+	}
+
+	if options.UseLibP2P {
+		return nil, errors.New("libp2p is not supported")
 	}
 
 	router := &Router{
