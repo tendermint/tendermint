@@ -678,7 +678,7 @@ type P2PConfig struct { //nolint: maligned
 	// UseLibP2P switches to using the new networking layer based
 	// on libp2p. This option is unlikely to persist into a
 	// release of tendermint, but will ease the transition.
-	UseLibP2P bool `mapstructure:"use-lib-p2p"`
+	UseLibP2P bool `mapstructure:"experimental-use-lib-p2p"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
