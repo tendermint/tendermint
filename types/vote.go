@@ -276,10 +276,10 @@ func (vote *Vote) ValidateBasic() error {
 	// We should only ever see vote extensions in precommits.
 	if vote.Type != tmproto.PrecommitType {
 		if len(vote.Extension) > 0 {
-			return errors.New("unexpected vote extension in prevote")
+			return errors.New("unexpected vote extension")
 		}
 		if len(vote.ExtensionSignature) > 0 {
-			return errors.New("unexpected vote extension signature in prevote")
+			return errors.New("unexpected vote extension signature")
 		}
 	}
 
