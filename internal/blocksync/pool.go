@@ -103,10 +103,9 @@ func NewBlockPool(
 ) *BlockPool {
 
 	bp := &BlockPool{
-		logger:     logger,
-		peers:      make(map[types.NodeID]*bpPeer),
-		requesters: make(map[int64]*bpRequester),
-		// verificationRequesters: make(map[int64]*bpRequester),
+		logger:       logger,
+		peers:        make(map[types.NodeID]*bpPeer),
+		requesters:   make(map[int64]*bpRequester),
 		height:       start,
 		startHeight:  start,
 		numPending:   0,
@@ -260,10 +259,6 @@ func (pool *BlockPool) PopRequest() {
 	} else {
 		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
-	// if r := pool.verificationRequesters[pool.height]; r != nil {
-	// 	r.Stop()
-	// 	delete(pool.verificationRequesters, pool.height)
-	// }
 }
 
 // RedoRequest invalidates the block at pool.height,
@@ -376,12 +371,6 @@ func (pool *BlockPool) removePeer(peerID types.NodeID) {
 		}
 
 	}
-	// for _, requester := range pool.verificationRequesters {
-	// 	if requester.getPeerID() == peerID {
-	// 		requester.redo(peerID)
-	// 	}
-	// }
-
 	peer, ok := pool.peers[peerID]
 	if ok {
 		if peer.timeout != nil {
