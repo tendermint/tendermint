@@ -24,23 +24,28 @@ have the following properties that we think make good on-boarding projects:
   more isolated area of the code.
 
 - provide exposure to different areas of the codebase, so new team members
-  will have reason to explore the code base and gain experience with more than
-  one area of the system.
+  will have reason to explore the code base, build relationships with people
+  on the team, and gain experience with more than one area of the system.
 
-- be of moderate size, striking a healthy balance between trivial or mechanical
-  changes (which provide little insight) and large intractable changes that require
-  deeper insight than is available during onboarding to address well. A good size
-  project should have natural touchpoints or check-ins.
+- be of moderate size, striking a healthy balance between trivial or
+  mechanical changes (which provide little insight) and large intractable
+  changes that require deeper insight than is available during onboarding to
+  address well. A good size project should have natural touchpoints or
+  check-ins.
   
 Projects
 --------
 
-Before diving into one of these projects, definitely check in with your
-on-boarding buddy to make sure that these issues are still relevant, if
-there's any context or known pitfalls, and to confirm a high level approach or
-design (if relevant.) These descriptions that follow provide some basic
-background and attempt to describe the user stories and the potential impact
-of these project.
+Before diving into one of these projects, have a conversation about the
+project or aspects of Tendermint that you're excited to work on with your
+onboarding buddy. This will help make sure that these issues are still
+relevant, help you get any context, underatnding known pitfalls, and to
+confirm a high level approach or design (if relevant.) On-boarding buddies
+should be prepared to do some design work or at 
+
+These descriptions that
+follow provide some basic background and attempt to describe the user stories
+and the potential impact of these project.
 
 E2E Test Systems
 ~~~~~~~~~~~~~~~~
