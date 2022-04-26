@@ -107,8 +107,8 @@ tests to manage processes using k8s. There are a few "local" k8s frameworks
 model, but hopefully, we could use this new implementation with other k8s
 systems for more flexible distribute test orchestration. 
 
-Improve Operationalize of ``run-multiple.sh``
-+++++++++++++++++++++++++++++++++++++++++++++
+Improve Operationalize Experience of ``run-multiple.sh``
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The e2e test runner currently runs a single test, and in most cases we manage
 the test cases using a shell script that ensure cleanup of entire test
@@ -163,8 +163,8 @@ exposure to lots of different areas of the codebase as well as insight into
 how different areas of the codebase interact with eachother, as well as
 experience with the test suites and infrastructure. 
 
-Implement ABCI an Application
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Implement more Expressive ABCI Applications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Tendermint maintains two very simple ABCI applications (a KV application used
 for basic testing, and slightly more advanced test application used in the
@@ -176,8 +176,8 @@ This is more of an exploratory project, but could include providing common
 interfaces on top of Tendermint consensus for other well known protocols or
 tools (e.g. ``etcd``) or a DNS server or some other tool.
 
-Pauseable Reactors
-~~~~~~~~~~~~~~~~~~
+Self-Regulating Reactors
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Currently reactors (the internal processes that are responsible for the higher
 level behavior of Tendermint) can be started and stopped, but have no
