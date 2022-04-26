@@ -2,7 +2,6 @@
 package events
 
 import (
-	"context"
 	"sync"
 )
 
@@ -20,7 +19,7 @@ type Eventable interface {
 //
 // FireEvent fires an event with the given name and data.
 type Fireable interface {
-	FireEvent(ctx context.Context, eventValue string, data EventData)
+	FireEvent(eventValue string, data EventData)
 }
 
 // EventSwitch is the interface for synchronous pubsub, where listeners
@@ -62,7 +61,7 @@ func (evsw *eventSwitch) AddListenerForEvent(listenerID, eventValue string, cb E
 	return nil
 }
 
-func (evsw *eventSwitch) FireEvent(ctx context.Context, event string, data EventData) {
+func (evsw *eventSwitch) FireEvent(event string, data EventData) {
 	// Get the eventCell
 	evsw.mtx.RLock()
 	eventCell := evsw.eventCells[event]
@@ -73,12 +72,12 @@ func (evsw *eventSwitch) FireEvent(ctx context.Context, event string, data Event
 	}
 
 	// Fire event for all listeners in eventCell
-	eventCell.fireEvent(ctx, data)
+	eventCell.fireEvent(data)
 }
 
 //-----------------------------------------------------------------------------
 
-type EventCallback func(ctx context.Context, data EventData) error
+type EventCallback func(data EventData) error
 
 // eventCell handles keeping track of listener callbacks for a given event.
 type eventCell struct {
@@ -98,7 +97,7 @@ func (cell *eventCell) addListener(listenerID string, cb EventCallback) {
 	cell.listeners[listenerID] = cb
 }
 
-func (cell *eventCell) fireEvent(ctx context.Context, data EventData) {
+func (cell *eventCell) fireEvent(data EventData) {
 	cell.mtx.RLock()
 	eventCallbacks := make([]EventCallback, 0, len(cell.listeners))
 	for _, cb := range cell.listeners {
@@ -107,7 +106,7 @@ func (cell *eventCell) fireEvent(ctx context.Context, data EventData) {
 	cell.mtx.RUnlock()
 
 	for _, cb := range eventCallbacks {
-		if err := cb(ctx, data); err != nil {
+		if err := cb(data); err != nil {
 			// should we log or abort here?
 			continue
 		}

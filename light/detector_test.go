@@ -35,7 +35,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID, latestHeight, valSize, 2, bTime)
+	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, latestHeight, valSize, 2, bTime)
 
 	forgedKeys := chainKeys[divergenceHeight-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
 	forgedVals := forgedKeys.ToValidators(2, 0)
@@ -153,7 +153,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				// validators don't change in this network (however we still use a map just for convenience)
 				primaryValidators = make(map[int64]*types.ValidatorSet, testCase.latestHeight)
 			)
-			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID,
+			witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t,
 				testCase.latestHeight+1, valSize, 2, bTime)
 			for height := int64(1); height <= testCase.latestHeight; height++ {
 				if height < testCase.divergenceHeight {
@@ -250,7 +250,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	defer cancel()
 	logger := log.NewNopLogger()
 
-	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, chainID, latestHeight, valSize, 2, bTime)
+	witnessHeaders, witnessValidators, chainKeys := genLightBlocksWithKeys(t, latestHeight, valSize, 2, bTime)
 	for _, unusedHeader := range []int64{3, 5, 6, 8} {
 		delete(witnessHeaders, unusedHeader)
 	}
@@ -401,13 +401,13 @@ func TestClientDivergentTraces1(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	headers, vals, _ := genLightBlocksWithKeys(t, chainID, 1, 5, 2, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(t, 1, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(headers, vals)
 	mockPrimary.On("ID").Return("mockPrimary")
 
 	firstBlock, err := mockPrimary.LightBlock(ctx, 1)
 	require.NoError(t, err)
-	headers, vals, _ = genLightBlocksWithKeys(t, chainID, 1, 5, 2, bTime)
+	headers, vals, _ = genLightBlocksWithKeys(t, 1, 5, 2, bTime)
 	mockWitness := mockNodeFromHeadersAndVals(headers, vals)
 	mockWitness.On("ID").Return("mockWitness")
 
@@ -439,7 +439,7 @@ func TestClientDivergentTraces2(t *testing.T) {
 	defer cancel()
 	logger := log.NewNopLogger()
 
-	headers, vals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
+	headers, vals, _ := genLightBlocksWithKeys(t, 2, 5, 2, bTime)
 	mockPrimaryNode := mockNodeFromHeadersAndVals(headers, vals)
 	mockPrimaryNode.On("ID").Return("mockPrimaryNode")
 
@@ -485,7 +485,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	//
-	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
+	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, 2, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
 	mockPrimary.On("ID").Return("mockPrimary")
 
@@ -495,7 +495,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 	firstBlock, err := mockPrimary.LightBlock(ctx, 1)
 	require.NoError(t, err)
 
-	mockHeaders, mockVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
+	mockHeaders, mockVals, _ := genLightBlocksWithKeys(t, 2, 5, 2, bTime)
 	mockHeaders[1] = primaryHeaders[1]
 	mockVals[1] = primaryVals[1]
 	mockWitness := mockNodeFromHeadersAndVals(mockHeaders, mockVals)
@@ -530,7 +530,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	//
-	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
+	primaryHeaders, primaryVals, _ := genLightBlocksWithKeys(t, 2, 5, 2, bTime)
 	mockPrimary := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)
 	mockPrimary.On("ID").Return("mockPrimary")
 
@@ -540,7 +540,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 	firstBlock, err := mockPrimary.LightBlock(ctx, 1)
 	require.NoError(t, err)
 
-	witnessHeaders, witnessVals, _ := genLightBlocksWithKeys(t, chainID, 2, 5, 2, bTime)
+	witnessHeaders, witnessVals, _ := genLightBlocksWithKeys(t, 2, 5, 2, bTime)
 	primaryHeaders[2] = witnessHeaders[2]
 	primaryVals[2] = witnessVals[2]
 	mockWitness := mockNodeFromHeadersAndVals(primaryHeaders, primaryVals)

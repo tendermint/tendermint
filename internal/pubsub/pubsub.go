@@ -287,16 +287,16 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 }
 
 // Publish publishes the given message. An error will be returned to the caller
-// if the context is canceled.
-func (s *Server) Publish(ctx context.Context, msg types.EventData) error {
-	return s.publish(ctx, msg, []abci.Event{})
+// if the pubsub server has shut down.
+func (s *Server) Publish(msg types.EventData) error {
+	return s.publish(msg, []abci.Event{})
 }
 
 // PublishWithEvents publishes the given message with the set of events. The set
 // is matched with clients queries. If there is a match, the message is sent to
 // the client.
-func (s *Server) PublishWithEvents(ctx context.Context, msg types.EventData, events []abci.Event) error {
-	return s.publish(ctx, msg, events)
+func (s *Server) PublishWithEvents(msg types.EventData, events []abci.Event) error {
+	return s.publish(msg, events)
 }
 
 // OnStop implements part of the Service interface. It is a no-op.
@@ -309,15 +309,13 @@ func (s *Server) Wait() { <-s.exited; s.BaseService.Wait() }
 // OnStart implements Service.OnStart by starting the server.
 func (s *Server) OnStart(ctx context.Context) error { s.run(ctx); return nil }
 
-func (s *Server) publish(ctx context.Context, data types.EventData, events []abci.Event) error {
+func (s *Server) publish(data types.EventData, events []abci.Event) error {
 	s.pubs.RLock()
 	defer s.pubs.RUnlock()
 
 	select {
 	case <-s.done:
 		return ErrServerStopped
-	case <-ctx.Done():
-		return ctx.Err()
 	case s.queue <- item{
 		Data:   data,
 		Events: events,

@@ -32,17 +32,17 @@ require (
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	google.golang.org/grpc v1.45.0
+	google.golang.org/grpc v1.46.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	pgregory.net/rapid v0.4.7
 )
 
 require (
-	github.com/creachadair/atomicfile v0.2.4
+	github.com/creachadair/atomicfile v0.2.5
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.7
-	github.com/vektra/mockery/v2 v2.10.6
+	github.com/vektra/mockery/v2 v2.12.0
 	gotest.tools v2.2.0+incompatible
 )
 
@@ -75,7 +75,7 @@ require (
 	github.com/charithe/durationcheck v0.0.9 // indirect
 	github.com/chavacava/garif v0.0.0-20210405164556-e8a0a408d6af // indirect
 	github.com/containerd/continuity v0.2.1 // indirect
-	github.com/creachadair/tomledit v0.0.16
+	github.com/creachadair/tomledit v0.0.18
 	github.com/daixiang0/gci v0.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect

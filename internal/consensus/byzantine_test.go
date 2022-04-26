@@ -68,7 +68,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 			app := kvstore.NewApplication()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
-			app.InitChain(abci.RequestInitChain{Validators: vals})
+			_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+			require.NoError(t, err)
 
 			blockDB := dbm.NewMemDB()
 			blockStore := store.NewBlockStore(blockDB)
@@ -96,7 +97,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			// Make State
 			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
-			cs, err := NewState(ctx, logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
+			cs, err := NewState(logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool, eventBus)
 			require.NoError(t, err)
 			// set private validator
 			pv := privVals[i]
@@ -203,7 +204,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
 
 		block, err := lazyNodeState.blockExec.CreateProposalBlock(
-			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr, nil)
+			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr, lazyNodeState.LastCommit.GetVotes())
 		require.NoError(t, err)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)

@@ -90,11 +90,17 @@ func (pv MockPV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vot
 	}
 
 	signBytes := VoteSignBytes(useChainID, vote)
+	extSignBytes := VoteExtensionSignBytes(useChainID, vote)
 	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
 	}
 	vote.Signature = sig
+	extSig, err := pv.PrivKey.Sign(extSignBytes)
+	if err != nil {
+		return err
+	}
+	vote.ExtensionSignature = extSig
 	return nil
 }
 

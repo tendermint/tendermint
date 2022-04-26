@@ -88,6 +88,7 @@ func makeVoteHR(
 	require.NoError(t, err, "Error signing vote")
 
 	vote.Signature = v.Signature
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote
 }

@@ -207,19 +207,11 @@ func (c *baseRPCClient) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo
 	return result, nil
 }
 
-func (c *baseRPCClient) ABCIQuery(
-	ctx context.Context,
-	path string,
-	data bytes.HexBytes,
-) (*coretypes.ResultABCIQuery, error) {
+func (c *baseRPCClient) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*coretypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
-func (c *baseRPCClient) ABCIQueryWithOptions(
-	ctx context.Context,
-	path string,
-	data bytes.HexBytes,
-	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+func (c *baseRPCClient) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	result := new(coretypes.ResultABCIQuery)
 	if err := c.caller.Call(ctx, "abci_query", abciQueryArgs{
 		Path:   path,
@@ -232,10 +224,7 @@ func (c *baseRPCClient) ABCIQueryWithOptions(
 	return result, nil
 }
 
-func (c *baseRPCClient) BroadcastTxCommit(
-	ctx context.Context,
-	tx types.Tx,
-) (*coretypes.ResultBroadcastTxCommit, error) {
+func (c *baseRPCClient) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
 	result := new(coretypes.ResultBroadcastTxCommit)
 	if err := c.caller.Call(ctx, "broadcast_tx_commit", txArgs{Tx: tx}, result); err != nil {
 		return nil, err
@@ -243,25 +232,15 @@ func (c *baseRPCClient) BroadcastTxCommit(
 	return result, nil
 }
 
-func (c *baseRPCClient) BroadcastTxAsync(
-	ctx context.Context,
-	tx types.Tx,
-) (*coretypes.ResultBroadcastTx, error) {
+func (c *baseRPCClient) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	return c.broadcastTX(ctx, "broadcast_tx_async", tx)
 }
 
-func (c *baseRPCClient) BroadcastTxSync(
-	ctx context.Context,
-	tx types.Tx,
-) (*coretypes.ResultBroadcastTx, error) {
+func (c *baseRPCClient) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	return c.broadcastTX(ctx, "broadcast_tx_sync", tx)
 }
 
-func (c *baseRPCClient) broadcastTX(
-	ctx context.Context,
-	route string,
-	tx types.Tx,
-) (*coretypes.ResultBroadcastTx, error) {
+func (c *baseRPCClient) broadcastTX(ctx context.Context, route string, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	result := new(coretypes.ResultBroadcastTx)
 	if err := c.caller.Call(ctx, route, txArgs{Tx: tx}, result); err != nil {
 		return nil, err
@@ -269,11 +248,7 @@ func (c *baseRPCClient) broadcastTX(
 	return result, nil
 }
 
-func (c *baseRPCClient) UnconfirmedTxs(
-	ctx context.Context,
-	page *int,
-	perPage *int,
-) (*coretypes.ResultUnconfirmedTxs, error) {
+func (c *baseRPCClient) UnconfirmedTxs(ctx context.Context, page *int, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
 	result := new(coretypes.ResultUnconfirmedTxs)
 
 	if err := c.caller.Call(ctx, "unconfirmed_txs", unconfirmedArgs{Page: page, PerPage: perPage}, result); err != nil {
@@ -329,10 +304,7 @@ func (c *baseRPCClient) ConsensusState(ctx context.Context) (*coretypes.ResultCo
 	return result, nil
 }
 
-func (c *baseRPCClient) ConsensusParams(
-	ctx context.Context,
-	height *int64,
-) (*coretypes.ResultConsensusParams, error) {
+func (c *baseRPCClient) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
 	result := new(coretypes.ResultConsensusParams)
 	if err := c.caller.Call(ctx, "consensus_params", heightArgs{Height: height}, result); err != nil {
 		return nil, err
@@ -356,11 +328,7 @@ func (c *baseRPCClient) Health(ctx context.Context) (*coretypes.ResultHealth, er
 	return result, nil
 }
 
-func (c *baseRPCClient) BlockchainInfo(
-	ctx context.Context,
-	minHeight,
-	maxHeight int64,
-) (*coretypes.ResultBlockchainInfo, error) {
+func (c *baseRPCClient) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	result := new(coretypes.ResultBlockchainInfo)
 	if err := c.caller.Call(ctx, "blockchain", blockchainInfoArgs{
 		MinHeight: minHeight,
@@ -403,10 +371,7 @@ func (c *baseRPCClient) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*
 	return result, nil
 }
 
-func (c *baseRPCClient) BlockResults(
-	ctx context.Context,
-	height *int64,
-) (*coretypes.ResultBlockResults, error) {
+func (c *baseRPCClient) BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error) {
 	result := new(coretypes.ResultBlockResults)
 	if err := c.caller.Call(ctx, "block_results", heightArgs{Height: height}, result); err != nil {
 		return nil, err
@@ -446,14 +411,7 @@ func (c *baseRPCClient) Tx(ctx context.Context, hash bytes.HexBytes, prove bool)
 	return result, nil
 }
 
-func (c *baseRPCClient) TxSearch(
-	ctx context.Context,
-	query string,
-	prove bool,
-	page,
-	perPage *int,
-	orderBy string,
-) (*coretypes.ResultTxSearch, error) {
+func (c *baseRPCClient) TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (*coretypes.ResultTxSearch, error) {
 	result := new(coretypes.ResultTxSearch)
 	if err := c.caller.Call(ctx, "tx_search", searchArgs{
 		Query:   query,
@@ -468,12 +426,7 @@ func (c *baseRPCClient) TxSearch(
 	return result, nil
 }
 
-func (c *baseRPCClient) BlockSearch(
-	ctx context.Context,
-	query string,
-	page, perPage *int,
-	orderBy string,
-) (*coretypes.ResultBlockSearch, error) {
+func (c *baseRPCClient) BlockSearch(ctx context.Context, query string, page, perPage *int, orderBy string) (*coretypes.ResultBlockSearch, error) {
 	result := new(coretypes.ResultBlockSearch)
 	if err := c.caller.Call(ctx, "block_search", searchArgs{
 		Query:   query,
@@ -487,12 +440,7 @@ func (c *baseRPCClient) BlockSearch(
 	return result, nil
 }
 
-func (c *baseRPCClient) Validators(
-	ctx context.Context,
-	height *int64,
-	page,
-	perPage *int,
-) (*coretypes.ResultValidators, error) {
+func (c *baseRPCClient) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
 	result := new(coretypes.ResultValidators)
 	if err := c.caller.Call(ctx, "validators", validatorArgs{
 		Height:  height,
@@ -504,10 +452,7 @@ func (c *baseRPCClient) Validators(
 	return result, nil
 }
 
-func (c *baseRPCClient) BroadcastEvidence(
-	ctx context.Context,
-	ev types.Evidence,
-) (*coretypes.ResultBroadcastEvidence, error) {
+func (c *baseRPCClient) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
 	result := new(coretypes.ResultBroadcastEvidence)
 	if err := c.caller.Call(ctx, "broadcast_evidence", evidenceArgs{
 		Evidence: coretypes.Evidence{Value: ev},

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
@@ -45,9 +46,11 @@ func TestApp_Hash(t *testing.T) {
 	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
+
 		info, err := client.ABCIInfo(ctx)
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
+
 		// In next-block execution, the app hash is stored in the next block
 		blockHeight := info.Response.LastBlockHeight + 1
 
@@ -60,7 +63,6 @@ func TestApp_Hash(t *testing.T) {
 
 		block, err := client.Block(ctx, &blockHeight)
 		require.NoError(t, err)
-
 		require.Equal(t, blockHeight, block.Block.Height)
 		require.Equal(t,
 			fmt.Sprintf("%x", info.Response.LastBlockAppHash),
@@ -184,4 +186,19 @@ func TestApp_Tx(t *testing.T) {
 
 	}
 
+}
+
+func TestApp_VoteExtensions(t *testing.T) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+		client, err := node.Client()
+		require.NoError(t, err)
+
+		// This special value should have been created by way of vote extensions
+		resp, err := client.ABCIQuery(ctx, "", []byte("extensionSum"))
+		require.NoError(t, err)
+
+		extSum, err := strconv.Atoi(string(resp.Response.Value))
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, extSum, 0)
+	})
 }

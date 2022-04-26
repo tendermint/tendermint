@@ -210,7 +210,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 	// leak the goroutine when stopping the reactor.
 	go r.peerStatsRoutine(ctx, peerUpdates)
 
-	r.subscribeToBroadcastEvents(chBundle.state)
+	r.subscribeToBroadcastEvents(ctx, chBundle.state)
 
 	if !r.WaitSync() {
 		if err := r.state.Start(ctx); err != nil {
@@ -260,7 +260,7 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
-	r.state.updateToState(ctx, state)
+	r.state.updateToState(state)
 	if err := r.state.Start(ctx); err != nil {
 		panic(fmt.Sprintf(`failed to start consensus state: %v
 
@@ -284,7 +284,7 @@ conR:
 	}
 
 	d := types.EventDataBlockSyncStatus{Complete: true, Height: state.LastBlockHeight}
-	if err := r.eventBus.PublishEventBlockSyncStatus(ctx, d); err != nil {
+	if err := r.eventBus.PublishEventBlockSyncStatus(d); err != nil {
 		r.logger.Error("failed to emit the blocksync complete event", "err", err)
 	}
 }
@@ -344,13 +344,13 @@ func (r *Reactor) broadcastHasVoteMessage(ctx context.Context, vote *types.Vote,
 // subscribeToBroadcastEvents subscribes for new round steps and votes using the
 // internal pubsub defined in the consensus state to broadcast them to peers
 // upon receiving.
-func (r *Reactor) subscribeToBroadcastEvents(stateCh *p2p.Channel) {
+func (r *Reactor) subscribeToBroadcastEvents(ctx context.Context, stateCh *p2p.Channel) {
 	onStopCh := r.state.getOnStopCh()
 
 	err := r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventNewRoundStepValue,
-		func(ctx context.Context, data tmevents.EventData) error {
+		func(data tmevents.EventData) error {
 			if err := r.broadcastNewRoundStepMessage(ctx, data.(*cstypes.RoundState), stateCh); err != nil {
 				return err
 			}
@@ -371,7 +371,7 @@ func (r *Reactor) subscribeToBroadcastEvents(stateCh *p2p.Channel) {
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventValidBlockValue,
-		func(ctx context.Context, data tmevents.EventData) error {
+		func(data tmevents.EventData) error {
 			return r.broadcastNewValidBlockMessage(ctx, data.(*cstypes.RoundState), stateCh)
 		},
 	)
@@ -382,7 +382,7 @@ func (r *Reactor) subscribeToBroadcastEvents(stateCh *p2p.Channel) {
 	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventVoteValue,
-		func(ctx context.Context, data tmevents.EventData) error {
+		func(data tmevents.EventData) error {
 			return r.broadcastHasVoteMessage(ctx, data.(*types.Vote), stateCh)
 		},
 	)

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -112,7 +113,8 @@ func (vs *validatorStub) signVote(
 	ctx context.Context,
 	voteType tmproto.SignedMsgType,
 	chainID string,
-	blockID types.BlockID) (*types.Vote, error) {
+	blockID types.BlockID,
+	voteExtension []byte) (*types.Vote, error) {
 
 	pubKey, err := vs.PrivValidator.GetPubKey(ctx)
 	if err != nil {
@@ -120,28 +122,30 @@ func (vs *validatorStub) signVote(
 	}
 
 	vote := &types.Vote{
-		ValidatorIndex:   vs.Index,
-		ValidatorAddress: pubKey.Address(),
+		Type:             voteType,
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        vs.clock.Now(),
-		Type:             voteType,
 		BlockID:          blockID,
-		VoteExtension:    types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(pubKey.Address())),
+		Timestamp:        vs.clock.Now(),
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   vs.Index,
+		Extension:        voteExtension,
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
+	if err = vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
-	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
 		v.Signature = vs.lastVote.Signature
 		v.Timestamp = vs.lastVote.Timestamp
+		v.ExtensionSignature = vs.lastVote.ExtensionSignature
 	}
 
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote, err
 }
@@ -155,12 +159,8 @@ func signVote(
 	chainID string,
 	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(ctx, voteType, chainID, blockID)
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, []byte("extension"))
 	require.NoError(t, err, "failed to sign vote")
-
-	// TODO: remove hardcoded vote extension.
-	// currently set for abci/examples/kvstore/persistent_kvstore.go
-	v.VoteExtension = types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(v.ValidatorAddress))
 
 	vs.lastVote = v
 
@@ -351,18 +351,19 @@ func validatePrecommit(
 		require.True(t, bytes.Equal(vote.BlockID.Hash, votedBlockHash), "Expected precommit to be for proposal block")
 	}
 
+	rs := cs.GetRoundState()
 	if lockedBlockHash == nil {
-		require.False(t, cs.LockedRound != lockRound || cs.LockedBlock != nil,
+		require.False(t, rs.LockedRound != lockRound || rs.LockedBlock != nil,
 			"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
 			lockRound,
-			cs.LockedRound,
-			cs.LockedBlock)
+			rs.LockedRound,
+			rs.LockedBlock)
 	} else {
-		require.False(t, cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash),
+		require.False(t, rs.LockedRound != lockRound || !bytes.Equal(rs.LockedBlock.Hash(), lockedBlockHash),
 			"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
 			lockRound,
-			cs.LockedRound,
-			cs.LockedBlock.Hash(),
+			rs.LockedRound,
+			rs.LockedBlock.Hash(),
 			lockedBlockHash)
 	}
 }
@@ -491,8 +492,7 @@ func newStateWithConfigAndBlockStore(
 	require.NoError(t, eventBus.Start(ctx))
 
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
-	cs, err := NewState(ctx,
-		logger.With("module", "consensus"),
+	cs, err := NewState(logger.With("module", "consensus"),
 		thisConfig.Consensus,
 		stateStore,
 		blockExec,
@@ -731,10 +731,9 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 			msg.Data())
 
 		vote := voteEvent.Vote
-		require.Equal(t, height, vote.Height)
-		require.Equal(t, round, vote.Round)
-
-		require.Equal(t, voteType, vote.Type)
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 		if hash == nil {
 			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
 		} else {
@@ -742,6 +741,7 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 		}
 	}
 }
+
 func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, voteType tmproto.SignedMsgType) {
 	t.Helper()
 	msg := ensureMessageBeforeTimeout(t, voteCh, ensureTimeout)
@@ -750,10 +750,9 @@ func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, roun
 		msg.Data())
 
 	vote := voteEvent.Vote
-	require.Equal(t, height, vote.Height)
-	require.Equal(t, round, vote.Round)
-
-	require.Equal(t, voteType, vote.Type)
+	require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+	require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+	require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 }
 
 func ensureNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
@@ -822,7 +821,8 @@ func makeConsensusState(
 		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
@@ -893,7 +893,8 @@ func randConsensusNetWithPeers(
 		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(ctx, t, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
@@ -987,5 +988,6 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 		v1.Height == v2.GetHeight() &&
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorAddress.Bytes(), v2.GetValidatorAddress()) &&
-		v1.ValidatorIndex == v2.GetValidatorIndex()
+		v1.ValidatorIndex == v2.GetValidatorIndex() &&
+		bytes.Equal(v1.Extension, v2.Extension)
 }

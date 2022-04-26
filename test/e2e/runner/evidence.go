@@ -63,7 +63,6 @@ func InjectEvidence(ctx context.Context, logger log.Logger, r *rand.Rand, testne
 	if err != nil {
 		return err
 	}
-
 	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators)
 	if err != nil {
 		return err
@@ -289,8 +288,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 	}
 }
 
-func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet,
-) ([]types.PrivValidator, *types.ValidatorSet, error) {
+func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet) ([]types.PrivValidator, *types.ValidatorSet, error) {
 	newVal, newPrivVal, err := factory.Validator(ctx, 10)
 	if err != nil {
 		return nil, nil, err

@@ -36,7 +36,7 @@ type testTx struct {
 	priority int64
 }
 
-func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	var (
 		priority int64
 		sender   string
@@ -47,32 +47,32 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	if len(parts) == 3 {
 		v, err := strconv.ParseInt(string(parts[2]), 10, 64)
 		if err != nil {
-			return abci.ResponseCheckTx{
+			return &abci.ResponseCheckTx{
 				Priority:  priority,
 				Code:      100,
 				GasWanted: 1,
-			}
+			}, nil
 		}
 
 		priority = v
 		sender = string(parts[0])
 	} else {
-		return abci.ResponseCheckTx{
+		return &abci.ResponseCheckTx{
 			Priority:  priority,
 			Code:      101,
 			GasWanted: 1,
-		}
+		}, nil
 	}
 
-	return abci.ResponseCheckTx{
+	return &abci.ResponseCheckTx{
 		Priority:  priority,
 		Sender:    sender,
 		Code:      code.CodeTypeOK,
 		GasWanted: 1,
-	}
+	}, nil
 }
 
-func setup(ctx context.Context, t testing.TB, app abciclient.Client, cacheSize int, options ...TxMempoolOption) *TxMempool {
+func setup(t testing.TB, app abciclient.Client, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
 	logger := log.NewNopLogger()
@@ -131,7 +131,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 0)
+	txmp := setup(t, client, 0)
 	txmp.EnableTxsAvailable()
 
 	ensureNoTxFire := func() {
@@ -194,7 +194,7 @@ func TestTxMempool_Size(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 0)
+	txmp := setup(t, client, 0)
 	txs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -227,7 +227,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 0)
+	txmp := setup(t, client, 0)
 	txs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(txs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -261,7 +261,7 @@ func TestTxMempool_ReapMaxBytesMaxGas(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 0)
+	txmp := setup(t, client, 0)
 	tTxs := checkTxs(ctx, t, txmp, 100, 0) // all txs request 1 gas unit
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -320,7 +320,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 0)
+	txmp := setup(t, client, 0)
 	tTxs := checkTxs(ctx, t, txmp, 100, 0)
 	require.Equal(t, len(tTxs), txmp.Size())
 	require.Equal(t, int64(5690), txmp.SizeBytes())
@@ -377,7 +377,7 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(client.Wait)
-	txmp := setup(ctx, t, client, 0)
+	txmp := setup(t, client, 0)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tx := make([]byte, txmp.config.MaxTxBytes+1)
@@ -403,7 +403,7 @@ func TestTxMempool_CheckTxSamePeer(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 100)
+	txmp := setup(t, client, 100)
 	peerID := uint16(1)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -427,7 +427,7 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 100)
+	txmp := setup(t, client, 100)
 	peerID := uint16(1)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -458,7 +458,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 100)
+	txmp := setup(t, client, 100)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	checkTxDone := make(chan struct{})
 
@@ -531,7 +531,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 	t.Cleanup(client.Wait)
 
-	txmp := setup(ctx, t, client, 500)
+	txmp := setup(t, client, 500)
 	txmp.height = 100
 	txmp.config.TTLNumBlocks = 10
 
@@ -612,7 +612,7 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 			postCheckFn := func(_ types.Tx, _ *abci.ResponseCheckTx) error {
 				return testCase.err
 			}
-			txmp := setup(ctx, t, client, 0, WithPostCheck(postCheckFn))
+			txmp := setup(t, client, 0, WithPostCheck(postCheckFn))
 			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 			tx := make([]byte, txmp.config.MaxTxBytes-1)
 			_, err := rng.Read(tx)

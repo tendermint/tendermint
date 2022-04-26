@@ -277,7 +277,7 @@ func TestProcessProposal(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := abcimocks.NewBaseMock()
+	app := abcimocks.NewApplication(t)
 	logger := log.NewNopLogger()
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -329,7 +329,7 @@ func TestProcessProposal(t *testing.T) {
 	block1 := sf.MakeBlock(state, height, lastCommit)
 	block1.Txs = txs
 
-	expectedRpp := abci.RequestProcessProposal{
+	expectedRpp := &abci.RequestProcessProposal{
 		Txs:                 block1.Txs.ToSliceOfBytes(),
 		Hash:                block1.Hash(),
 		Height:              block1.Header.Height,
@@ -343,12 +343,12 @@ func TestProcessProposal(t *testing.T) {
 		ProposerAddress:    block1.ProposerAddress,
 	}
 
-	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	app.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 	acceptBlock, err := blockExec.ProcessProposal(ctx, block1, state)
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
-	app.AssertCalled(t, "ProcessProposal", expectedRpp)
+	app.AssertCalled(t, "ProcessProposal", ctx, expectedRpp)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -621,8 +621,8 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{})
+	app := abcimocks.NewApplication(t)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err := proxyApp.Start(ctx)
@@ -654,8 +654,8 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 }
 
@@ -680,10 +680,10 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
 
-	app := abcimocks.NewBaseMock()
+	app := abcimocks.NewApplication(t)
 
 	// create an invalid ResponsePrepareProposal
-	rpp := abci.ResponsePrepareProposal{
+	rpp := &abci.ResponsePrepareProposal{
 		TxRecords: []*abci.TxRecord{
 			{
 				Action: abci.TxRecord_REMOVED,
@@ -691,7 +691,7 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 			},
 		},
 	}
-	app.On("PrepareProposal", mock.Anything).Return(rpp)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(rpp, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -709,10 +709,10 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
-	require.Nil(t, block)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
+	require.Nil(t, block)
 
 	mp.AssertExpectations(t)
 }
@@ -744,10 +744,10 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	trs[1].Action = abci.TxRecord_REMOVED
 	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app := abcimocks.NewApplication(t)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -765,8 +765,8 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
 
@@ -803,10 +803,10 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	trs[0].Action = abci.TxRecord_ADDED
 	trs[1].Action = abci.TxRecord_ADDED
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app := abcimocks.NewApplication(t)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -824,8 +824,8 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 
 	require.Equal(t, txs[0], block.Data.Txs[0])
@@ -859,10 +859,10 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	trs = trs[2:]
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app := abcimocks.NewApplication(t)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -880,8 +880,8 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, types.Tx(trs[i].Tx), tx)
@@ -919,10 +919,10 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 
 	trs := txsToTxRecords(types.Txs(txs))
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app := abcimocks.NewApplication(t)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		TxRecords: trs,
-	})
+	}, nil)
 
 	cc := abciclient.NewLocalClient(logger, app)
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
@@ -940,11 +940,11 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
-	require.Nil(t, block)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
+	require.Nil(t, block, "")
 
 	mp.AssertExpectations(t)
 }
@@ -992,9 +992,9 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
 
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "an injected error")
 

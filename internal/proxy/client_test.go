@@ -30,7 +30,7 @@ import (
 type appConnTestI interface {
 	Echo(context.Context, string) (*types.ResponseEcho, error)
 	Flush(context.Context) error
-	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+	Info(context.Context, *types.RequestInfo) (*types.ResponseInfo, error)
 }
 
 type appConnTest struct {
@@ -49,7 +49,7 @@ func (app *appConnTest) Flush(ctx context.Context) error {
 	return app.appConn.Flush(ctx)
 }
 
-func (app *appConnTest) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *appConnTest) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	return app.appConn.Info(ctx, req)
 }
 
@@ -164,7 +164,7 @@ func TestInfo(t *testing.T) {
 	proxy := newAppConnTest(client)
 	t.Log("Connected")
 
-	resInfo, err := proxy.Info(ctx, RequestInfo)
+	resInfo, err := proxy.Info(ctx, &RequestInfo)
 	require.NoError(t, err)
 
 	if resInfo.Data != "{\"size\":0}" {
