@@ -1373,7 +1373,7 @@ func checkScResults(t *testing.T, wantErr bool, err error, wantEvent Event, even
 		return
 	}
 	if !assert.IsType(t, wantEvent, event) {
-		t.Log(fmt.Sprintf("Wrong type received, got: %v", event))
+		t.Logf("Wrong type received, got: %v", event)
 	}
 	switch wantEvent := wantEvent.(type) {
 	case scPeerError:
