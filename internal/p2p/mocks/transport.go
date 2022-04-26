@@ -84,17 +84,15 @@ func (_m *Transport) Dial(_a0 context.Context, _a1 p2p.Endpoint) (p2p.Connection
 	return r0, r1
 }
 
-// Endpoints provides a mock function with given fields:
-func (_m *Transport) Endpoints() []p2p.Endpoint {
+// Endpoint provides a mock function with given fields:
+func (_m *Transport) Endpoint() p2p.Endpoint {
 	ret := _m.Called()
 
-	var r0 []p2p.Endpoint
-	if rf, ok := ret.Get(0).(func() []p2p.Endpoint); ok {
+	var r0 p2p.Endpoint
+	if rf, ok := ret.Get(0).(func() p2p.Endpoint); ok {
 		r0 = rf()
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]p2p.Endpoint)
-		}
+		r0 = ret.Get(0).(p2p.Endpoint)
 	}
 
 	return r0

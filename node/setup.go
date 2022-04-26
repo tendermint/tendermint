@@ -310,8 +310,8 @@ func createRouter(
 		nodeKey.PrivKey,
 		peerManager,
 		nodeInfoProducer,
-		[]p2p.Transport{transport},
-		[]p2p.Endpoint{ep},
+		transport,
+		ep,
 		getRouterConfig(cfg, appClient),
 	)
 }

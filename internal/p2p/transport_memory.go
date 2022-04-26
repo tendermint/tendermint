@@ -129,19 +129,19 @@ func (t *MemoryTransport) Protocols() []Protocol {
 }
 
 // Endpoints implements Transport.
-func (t *MemoryTransport) Endpoints() []Endpoint {
+func (t *MemoryTransport) Endpoint() Endpoint {
 	if n := t.network.GetTransport(t.nodeID); n == nil {
-		return []Endpoint{}
+		return Endpoint{}
 	}
 
-	return []Endpoint{{
+	return Endpoint{
 		Protocol: MemoryProtocol,
 		Path:     string(t.nodeID),
 		// An arbitrary IP and port is used in order for the pex
 		// reactor to be able to send addresses to one another.
 		IP:   net.IPv4zero,
 		Port: 0,
-	}}
+	}
 }
 
 // Accept implements Transport.

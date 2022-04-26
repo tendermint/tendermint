@@ -78,14 +78,14 @@ func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
 }
 
-// Endpoints implements Transport.
-func (m *MConnTransport) Endpoints() []Endpoint {
+// Endpoint implements Transport.
+func (m *MConnTransport) Endpoint() Endpoint {
 	if m.listener == nil {
-		return []Endpoint{}
+		return Endpoint{}
 	}
 	select {
 	case <-m.doneCh:
-		return []Endpoint{}
+		return Endpoint{}
 	default:
 	}
 
@@ -96,7 +96,7 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 		endpoint.IP = addr.IP
 		endpoint.Port = uint16(addr.Port)
 	}
-	return []Endpoint{endpoint}
+	return endpoint
 }
 
 // Listen asynchronously listens for inbound connections on the given endpoint.

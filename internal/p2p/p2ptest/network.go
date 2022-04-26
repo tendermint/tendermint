@@ -247,7 +247,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	}
 
 	transport := n.memoryNetwork.CreateTransport(nodeID)
-	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
+	require.NotZero(t, transport.Endpoint(), "transport not listening an endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MinRetryTime:    10 * time.Millisecond,
@@ -264,8 +264,8 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		privKey,
 		peerManager,
 		func() *types.NodeInfo { return &nodeInfo },
-		[]p2p.Transport{transport},
-		transport.Endpoints(),
+		transport,
+		transport.Endpoint(),
 		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
 	)
 
@@ -284,7 +284,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	return &Node{
 		NodeID:      nodeID,
 		NodeInfo:    nodeInfo,
-		NodeAddress: transport.Endpoints()[0].NodeAddress(nodeID),
+		NodeAddress: transport.Endpoint().NodeAddress(nodeID),
 		PrivKey:     privKey,
 		Router:      router,
 		PeerManager: peerManager,

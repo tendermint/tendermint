@@ -34,7 +34,7 @@ type Transport interface {
 	//
 	// How to listen is transport-dependent, e.g. MConnTransport uses Listen() while
 	// MemoryTransport starts listening via MemoryNetwork.CreateTransport().
-	Endpoints() []Endpoint
+	Endpoint() Endpoint
 
 	// Accept waits for the next inbound connection on a listening endpoint, blocking
 	// until either a connection is available or the transport is closed. On closure,

@@ -87,9 +87,8 @@ func TestTransport_DialEndpoints(t *testing.T) {
 
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
-		endpoints := a.Endpoints()
-		require.NotEmpty(t, endpoints)
-		endpoint := endpoints[0]
+		endpoint := a.Endpoint()
+		require.NotZero(t, endpoint)
 
 		// Spawn a goroutine to simply accept any connections until closed.
 		go func() {
@@ -167,10 +166,10 @@ func TestTransport_Dial(t *testing.T) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
-		require.NotEmpty(t, a.Endpoints())
-		require.NotEmpty(t, b.Endpoints())
-		aEndpoint := a.Endpoints()[0]
-		bEndpoint := b.Endpoints()[0]
+		aEndpoint := a.Endpoint()
+		bEndpoint := b.Endpoint()
+		require.NotZero(t, aEndpoint)
+		require.NotZero(t, bEndpoint)
 
 		// Context cancellation should error. We can't test timeouts since we'd
 		// need a non-responsive endpoint.
@@ -210,12 +209,12 @@ func TestTransport_Endpoints(t *testing.T) {
 		b := makeTransport(t)
 
 		// Both transports return valid and different endpoints.
-		aEndpoints := a.Endpoints()
-		bEndpoints := b.Endpoints()
-		require.NotEmpty(t, aEndpoints)
-		require.NotEmpty(t, bEndpoints)
-		require.NotEqual(t, aEndpoints, bEndpoints)
-		for _, endpoint := range append(aEndpoints, bEndpoints...) {
+		aEndpoint := a.Endpoint()
+		bEndpoint := b.Endpoint()
+		require.NotZero(t, aEndpoint)
+		require.NotZero(t, bEndpoint)
+		require.NotEqual(t, aEndpoint, bEndpoint)
+		for _, endpoint := range []p2p.Endpoint{aEndpoint, bEndpoint} {
 			err := endpoint.Validate()
 			require.NoError(t, err, "invalid endpoint %q", endpoint)
 		}
@@ -223,8 +222,8 @@ func TestTransport_Endpoints(t *testing.T) {
 		// When closed, the transport should no longer return any endpoints.
 		err := a.Close()
 		require.NoError(t, err)
-		require.Empty(t, a.Endpoints())
-		require.NotEmpty(t, b.Endpoints())
+		require.Zero(t, a.Endpoint())
+		require.NotZero(t, b.Endpoint())
 	})
 }
 
@@ -235,13 +234,11 @@ func TestTransport_Protocols(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		protocols := a.Protocols()
-		endpoints := a.Endpoints()
+		endpoint := a.Endpoint()
 		require.NotEmpty(t, protocols)
-		require.NotEmpty(t, endpoints)
+		require.NotZero(t, endpoint)
 
-		for _, endpoint := range endpoints {
-			require.Contains(t, protocols, endpoint.Protocol)
-		}
+		require.Contains(t, protocols, endpoint.Protocol)
 	})
 }
 
@@ -595,8 +592,8 @@ func TestEndpoint_Validate(t *testing.T) {
 func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
 	t.Helper()
 
-	endpoints := b.Endpoints()
-	require.NotEmpty(t, endpoints, "peer not listening on any endpoints")
+	endpoint := b.Endpoint()
+	require.NotZero(t, endpoint, "peer not listening on any endpoints")
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
@@ -609,7 +606,7 @@ func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Conn
 		acceptCh <- conn
 	}()
 
-	dialConn, err := a.Dial(ctx, endpoints[0])
+	dialConn, err := a.Dial(ctx, endpoint)
 	require.NoError(t, err)
 
 	acceptConn := <-acceptCh

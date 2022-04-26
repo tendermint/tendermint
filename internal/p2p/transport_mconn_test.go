@@ -78,8 +78,8 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 		IP:       net.IPv4(127, 0, 0, 1),
 	})
 	require.NoError(t, err)
-	require.NotEmpty(t, transport.Endpoints())
-	endpoint := transport.Endpoints()[0]
+	endpoint := transport.Endpoint()
+	require.NotZero(t, endpoint)
 
 	// Start a goroutine to just accept any connections.
 	acceptCh := make(chan p2p.Connection, 10)
@@ -160,7 +160,7 @@ func TestMConnTransport_Listen(t *testing.T) {
 			)
 
 			// Transport should not listen on any endpoints yet.
-			require.Empty(t, transport.Endpoints())
+			require.Zero(t, transport.Endpoint())
 
 			// Start listening, and check any expected errors.
 			err := transport.Listen(tc.endpoint)
@@ -171,9 +171,8 @@ func TestMConnTransport_Listen(t *testing.T) {
 			require.NoError(t, err)
 
 			// Check the endpoint.
-			endpoints := transport.Endpoints()
-			require.Len(t, endpoints, 1)
-			endpoint := endpoints[0]
+			endpoint := transport.Endpoint()
+			require.NotZero(t, endpoint)
 
 			require.Equal(t, p2p.MConnProtocol, endpoint.Protocol)
 			if tc.endpoint.IP.IsUnspecified() {
