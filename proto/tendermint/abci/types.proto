@@ -3,8 +3,6 @@ package tendermint.abci;
 
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
-// For more information on gogo.proto, see:
-// https://github.com/gogo/protobuf/blob/master/extensions.md
 import "tendermint/crypto/proof.proto";
 import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
@@ -354,7 +352,6 @@ message ResponseExtendVote {
   bytes vote_extension = 1;
 }
 
-
 message ResponseVerifyVoteExtension {
   VerifyStatus status = 1;
 
@@ -383,6 +380,9 @@ message CommitInfo {
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
+// ExtendedCommitInfo is similar to CommitInfo except that it is only used in
+// the PrepareProposal request such that Tendermint can provide vote extensions
+// to the application.
 message ExtendedCommitInfo {
   // The round at which the block proposer decided in the previous height.
   int32 round = 1;
@@ -475,7 +475,6 @@ message ExtendedVoteInfo {
   // Non-deterministic extension provided by the sending validator's application.
   bytes vote_extension = 3;
 }
-
 
 enum MisbehaviorType {
   UNKNOWN             = 0;

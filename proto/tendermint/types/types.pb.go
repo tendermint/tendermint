@@ -29,7 +29,7 @@ var _ = time.Kitchen
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-// BlockIdFlag indicates which BlcokID the signature is for
+// BlockIdFlag indicates which BlockID the signature is for
 type BlockIDFlag int32
 
 const (
@@ -480,7 +480,7 @@ type Vote struct {
 	// messages.
 	Extension []byte `protobuf:"bytes,9,opt,name=extension,proto3" json:"extension,omitempty"`
 	// Vote extension signature by the validator if they participated in
-	// consensus for the associated block.
+	// consensus for the associated block. Only valid for precommit messages.
 	ExtensionSignature []byte `protobuf:"bytes,10,opt,name=extension_signature,json=extensionSignature,proto3" json:"extension_signature,omitempty"`
 }
 
