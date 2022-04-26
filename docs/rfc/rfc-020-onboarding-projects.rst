@@ -24,12 +24,13 @@ have the following properties that we think make good on-boarding projects:
   more isolated area of the code.
 
 - provide exposure to different areas of the codebase, so new team members
-  will have reason to explore the code base and gain expeirence with more than
+  will have reason to explore the code base and gain experience with more than
   one area of the system.
 
-- be of moderate size, thereby avoiding making small trivial or mechanical changes
-  while also avoiding large intractable changes without natural touchpoints or
-  check-ins.
+- be of moderate size, striking a healthy balance between trivial or mechanical
+  changes (which provide little insight) and large intractable changes that require
+  deeper insight than is available during onboarding to address well. A good size
+  project should have natural touchpoints or check-ins.
   
 Projects
 --------
@@ -51,7 +52,7 @@ high level protection against making changes that could break Tendermint in
 otherwise difficult to detect ways. 
 
 Working on the E2E system is a good place to get introduced to the Tendermint
-codebase, particularly for developers who are newer to Golang, as the E2E
+codebase, particularly for developers who are newer to Go, as the E2E
 system (generator, runner, etc.) is distinct from the rest of Tendermint and
 comparatively quite small, so it may be easier to begin making changes in this
 area. At the same time, because the E2E system exercises *all* of Tendermint,
@@ -62,7 +63,7 @@ Configurable E2E Workloads
 ++++++++++++++++++++++++++
 
 All E2E tests use the same workload (e.g. generated transactions, submitted to
-different nodes in the network,) which is emperically tuned to provide a
+different nodes in the network,) which has been tuned empirically to provide a
 gentle but consistent parallel load that all E2E tests can pass. Ideally, the
 workload generator could be configurable to have different shapes of work
 (bursty, different transaction sizes, weighted to different nodes, etc.) and
