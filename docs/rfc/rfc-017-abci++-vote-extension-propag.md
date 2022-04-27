@@ -31,7 +31,7 @@ worded abstracting away from implementation details, whilst subsections
 [Feasibility of the Proposed Solutions](#feasibility-of-the-proposed-solutions) and
 [Current Limitations and Possible Implementations](#current-limitations-and-possible-implementations)
 analize the viability of one of the proposed solutions in the context of Tendermint's architecture
-based on reactors. Finally, [Formalization Work](#formalization-work) brifely discusses the work
+based on reactors. Finally, [Formalization Work](#formalization-work) briefly discusses the work
 still needed demonstrate the correctness of the chosen solution.
 
 The high level subsections are aimed at readers who are familiar with consensus algorithms, in
