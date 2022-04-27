@@ -62,11 +62,11 @@ func (_m *Transport) Close() error {
 }
 
 // Dial provides a mock function with given fields: _a0, _a1
-func (_m *Transport) Dial(_a0 context.Context, _a1 p2p.Endpoint) (p2p.Connection, error) {
+func (_m *Transport) Dial(_a0 context.Context, _a1 *p2p.Endpoint) (p2p.Connection, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 p2p.Connection
-	if rf, ok := ret.Get(0).(func(context.Context, p2p.Endpoint) p2p.Connection); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *p2p.Endpoint) p2p.Connection); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
@@ -75,7 +75,7 @@ func (_m *Transport) Dial(_a0 context.Context, _a1 p2p.Endpoint) (p2p.Connection
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, p2p.Endpoint) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *p2p.Endpoint) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -85,25 +85,34 @@ func (_m *Transport) Dial(_a0 context.Context, _a1 p2p.Endpoint) (p2p.Connection
 }
 
 // Endpoint provides a mock function with given fields:
-func (_m *Transport) Endpoint() p2p.Endpoint {
+func (_m *Transport) Endpoint() (*p2p.Endpoint, error) {
 	ret := _m.Called()
 
-	var r0 p2p.Endpoint
-	if rf, ok := ret.Get(0).(func() p2p.Endpoint); ok {
+	var r0 *p2p.Endpoint
+	if rf, ok := ret.Get(0).(func() *p2p.Endpoint); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(p2p.Endpoint)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*p2p.Endpoint)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Listen provides a mock function with given fields: _a0
-func (_m *Transport) Listen(_a0 p2p.Endpoint) error {
+func (_m *Transport) Listen(_a0 *p2p.Endpoint) error {
 	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(p2p.Endpoint) error); ok {
+	if rf, ok := ret.Get(0).(func(*p2p.Endpoint) error); ok {
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)

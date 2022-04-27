@@ -87,8 +87,9 @@ func TestTransport_DialEndpoints(t *testing.T) {
 
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
-		endpoint := a.Endpoint()
-		require.NotZero(t, endpoint)
+		endpoint, err := a.Endpoint()
+		require.NoError(t, err)
+		require.NotNil(t, endpoint)
 
 		// Spawn a goroutine to simply accept any connections until closed.
 		go func() {
@@ -107,19 +108,19 @@ func TestTransport_DialEndpoints(t *testing.T) {
 		require.NoError(t, conn.Close())
 
 		// Dialing empty endpoint should error.
-		_, err = a.Dial(ctx, p2p.Endpoint{})
+		_, err = a.Dial(ctx, &p2p.Endpoint{})
 		require.Error(t, err)
 
 		// Dialing without protocol should error.
-		noProtocol := endpoint
+		noProtocol := *endpoint
 		noProtocol.Protocol = ""
-		_, err = a.Dial(ctx, noProtocol)
+		_, err = a.Dial(ctx, &noProtocol)
 		require.Error(t, err)
 
 		// Dialing with invalid protocol should error.
-		fooProtocol := endpoint
+		fooProtocol := *endpoint
 		fooProtocol.Protocol = "foo"
-		_, err = a.Dial(ctx, fooProtocol)
+		_, err = a.Dial(ctx, &fooProtocol)
 		require.Error(t, err)
 
 		// Tests for networked endpoints (with IP).
@@ -128,11 +129,12 @@ func TestTransport_DialEndpoints(t *testing.T) {
 				tc := tc
 				t.Run(tc.ip.String(), func(t *testing.T) {
 					e := endpoint
+					require.NotNil(t, e)
 					e.IP = tc.ip
 					conn, err := a.Dial(ctx, e)
 					if tc.ok {
-						require.NoError(t, conn.Close())
 						require.NoError(t, err)
+						require.NoError(t, conn.Close())
 					} else {
 						require.Error(t, err, "endpoint=%s", e)
 					}
@@ -166,16 +168,18 @@ func TestTransport_Dial(t *testing.T) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
-		aEndpoint := a.Endpoint()
-		bEndpoint := b.Endpoint()
-		require.NotZero(t, aEndpoint)
-		require.NotZero(t, bEndpoint)
+		aEndpoint, err := a.Endpoint()
+		require.NoError(t, err)
+		require.NotNil(t, aEndpoint)
+		bEndpoint, err := b.Endpoint()
+		require.NoError(t, err)
+		require.NotNil(t, bEndpoint)
 
 		// Context cancellation should error. We can't test timeouts since we'd
 		// need a non-responsive endpoint.
 		cancelCtx, cancel := context.WithCancel(ctx)
 		cancel()
-		_, err := a.Dial(cancelCtx, bEndpoint)
+		_, err = a.Dial(cancelCtx, bEndpoint)
 		require.Error(t, err)
 
 		// Unavailable endpoint should error.
@@ -209,21 +213,26 @@ func TestTransport_Endpoints(t *testing.T) {
 		b := makeTransport(t)
 
 		// Both transports return valid and different endpoints.
-		aEndpoint := a.Endpoint()
-		bEndpoint := b.Endpoint()
-		require.NotZero(t, aEndpoint)
-		require.NotZero(t, bEndpoint)
+		aEndpoint, err := a.Endpoint()
+		require.NoError(t, err)
+		require.NotNil(t, aEndpoint)
+		bEndpoint, err := b.Endpoint()
+		require.NoError(t, err)
+		require.NotNil(t, bEndpoint)
 		require.NotEqual(t, aEndpoint, bEndpoint)
-		for _, endpoint := range []p2p.Endpoint{aEndpoint, bEndpoint} {
+		for _, endpoint := range []*p2p.Endpoint{aEndpoint, bEndpoint} {
 			err := endpoint.Validate()
 			require.NoError(t, err, "invalid endpoint %q", endpoint)
 		}
 
 		// When closed, the transport should no longer return any endpoints.
-		err := a.Close()
+		require.NoError(t, a.Close())
+		aEndpoint, err = a.Endpoint()
+		require.Error(t, err)
+		require.Nil(t, aEndpoint)
+		bEndpoint, err = b.Endpoint()
 		require.NoError(t, err)
-		require.Zero(t, a.Endpoint())
-		require.NotZero(t, b.Endpoint())
+		require.NotNil(t, bEndpoint)
 	})
 }
 
@@ -234,9 +243,10 @@ func TestTransport_Protocols(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		protocols := a.Protocols()
-		endpoint := a.Endpoint()
+		endpoint, err := a.Endpoint()
+		require.NoError(t, err)
 		require.NotEmpty(t, protocols)
-		require.NotZero(t, endpoint)
+		require.NotNil(t, endpoint)
 
 		require.Contains(t, protocols, endpoint.Protocol)
 	})
@@ -592,8 +602,9 @@ func TestEndpoint_Validate(t *testing.T) {
 func dialAccept(ctx context.Context, t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
 	t.Helper()
 
-	endpoint := b.Endpoint()
-	require.NotZero(t, endpoint, "peer not listening on any endpoints")
+	endpoint, err := b.Endpoint()
+	require.NoError(t, err)
+	require.NotNil(t, endpoint, "peer not listening on any endpoints")
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()

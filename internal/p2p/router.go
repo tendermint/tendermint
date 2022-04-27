@@ -154,7 +154,7 @@ type Router struct {
 	peerManager *PeerManager
 	chDescs     []*ChannelDescriptor
 	transport   Transport
-	endpoint    Endpoint
+	endpoint    *Endpoint
 	connTracker connectionTracker
 
 	peerMtx    sync.RWMutex
@@ -182,7 +182,7 @@ func NewRouter(
 	peerManager *PeerManager,
 	nodeInfoProducer func() *types.NodeInfo,
 	transport Transport,
-	endpoint Endpoint,
+	endpoint *Endpoint,
 	options RouterOptions,
 ) (*Router, error) {
 
