@@ -1,14 +1,14 @@
 # stage 1 Generate Tendermint Binary
-FROM golang:1.17-alpine as builder
+FROM golang:1.18-alpine as builder
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add make git
+    apk --no-cache add make git gccgo gcc
 COPY / /tendermint
 WORKDIR /tendermint
 RUN make build-linux
 
 # stage 2
-FROM golang:1.17-alpine
+FROM golang:1.18-alpine
 LABEL maintainer="hello@tendermint.com"
 
 # Tendermint will be looking for the genesis file in /tendermint/config/genesis.json
@@ -25,7 +25,7 @@ ENV TMHOME /tendermint
 # could execute bash commands.
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add curl jq bash && \
+    apk --no-cache add curl jq bash gccgo gcc && \
     addgroup tmuser && \
     adduser -S -G tmuser tmuser -h "$TMHOME"
 
