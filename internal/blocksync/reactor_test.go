@@ -282,14 +282,6 @@ func TestReactor_SyncTime(t *testing.T) {
 	require.Eventually(
 		t,
 		func() bool {
-			height0, x, y := rts.reactors[rts.nodes[0]].pool.GetStatus()
-			height1, x1, y1 := rts.reactors[rts.nodes[1]].pool.GetStatus()
-			height2, x2, y2 := rts.reactors[rts.nodes[2]].pool.GetStatus()
-			height3, x3, y3 := rts.reactors[rts.nodes[3]].pool.GetStatus()
-
-			t.Logf("bla %d %d %d %d", height0, height1, height2, height3)
-			t.Logf("bla %d %d %d %d", x1, x2, x3, x)
-			t.Logf("bla %d %d %d %d", y1, y2, y3, y)
 			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
 				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001 &&
 				rts.reactors[rts.nodes[2]].GetRemainingSyncTime() > time.Nanosecond &&
