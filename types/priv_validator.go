@@ -104,6 +104,8 @@ func (pv MockPV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vot
 		if err != nil {
 			return err
 		}
+	} else if len(vote.Extension) > 0 {
+		return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
 	}
 	vote.ExtensionSignature = extSig
 	return nil

@@ -384,6 +384,8 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 		if err != nil {
 			return err
 		}
+	} else if len(vote.Extension) > 0 {
+		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
 	}
 
 	// We might crash before writing to the wal,
