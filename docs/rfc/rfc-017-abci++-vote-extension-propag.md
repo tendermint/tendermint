@@ -64,7 +64,7 @@ node can omit a vote extension while still providing/forwarding/sending the corr
 The validator set at height *h* is denoted *valset<sub>h</sub>*. A *commit* for height *h* consists of more
 than *2n<sub>h</sub>/3* precommit votes voting for a block *b*, where *n<sub>h</sub>* denotes the size of
 *valset<sub>h</sub>*. A commit does not contain `nil` precommit votes, and all votes in it refer to the
-same block. An *extended commit* is a *commit* where every precommit vote is attached its vote extension.
+same block. An *extended commit* is a *commit* where every precommit vote has attached its respective vote extension.
 
 > TODO: [From Daniel] Node statesyncs to *h*, but latest height is *h+1*. What then?
 >
