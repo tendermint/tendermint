@@ -488,17 +488,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	n.rpcEnv.NodeInfo = n.nodeInfo
-	// Start the RPC server before the P2P server
-	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" {
-		var err error
-		n.rpcListeners, err = n.rpcEnv.StartService(ctx, n.config)
-		if err != nil {
-			return err
-		}
-	}
-
 	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
 		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
 	}
@@ -512,6 +501,17 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	for _, reactor := range n.services {
 		if err := reactor.Start(ctx); err != nil {
 			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
+		}
+	}
+
+	n.rpcEnv.NodeInfo = n.nodeInfo
+	// Start the RPC server before the P2P server
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		var err error
+		n.rpcListeners, err = n.rpcEnv.StartService(ctx, n.config)
+		if err != nil {
+			return err
 		}
 	}
 
