@@ -337,6 +337,25 @@ to proceed more quickly, since all signatures are over identical data and
 can therefore be checked using an aggregated public key instead of one at a
 time, public key by public key.
 
+### Summing Zero Attacks
+
+[Summing zero attacks][summing-zero-paper] are attacks that rely on using the '0' point of an
+elliptic curve. For BLS signatures, if the point 0 is chosen as the private
+key, then the 0 point will also always be the public key and all signatures
+produced by the key will also be the 0 point. This is easy enough to
+detect when verifying each signature individually.
+
+However, because BLS signature aggregation creates an aggregated signature and
+an aggregated public key, a set of colluding signers can create a pair or set
+of signatures that aggregate to 0. The signatures that sum zero along with the
+summed public key of the colluding signers will verify any message. This would
+allow the colluding signers to sign any block or message with the same signature.
+This would be reasonably easy to detect and create evidence for because, in
+all other cases, the same signature should not verify more than message. It's
+not exactly clear how such an attack would advantage the colluding validators
+because the normal mechanisms of evidence gathering would still detect the
+double signing, regardless of the signatures on both blocks being identical.
+
 ### Backwards Compatibility
 
 Backwards compatibility is an important consideration for signature verification.
@@ -428,3 +447,4 @@ development appears to be active so formal verification may be forthcoming.
 [gnark]: https://github.com/ConsenSys/gnark-crypto/
 [eth-2-adoption]: https://notes.ethereum.org/@GW1ZUbNKR5iRjjKYx6_dJQ/Skxf3tNcg_
 [bls-weil-pairing]: https://www.iacr.org/archive/asiacrypt2001/22480516.pdf
+[summing-zero-paper]: https://eprint.iacr.org/2021/323.pdf
