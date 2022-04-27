@@ -311,7 +311,7 @@ func createRouter(
 		peerManager,
 		nodeInfoProducer,
 		transport,
-		&ep,
+		ep,
 		getRouterConfig(cfg, appClient),
 	)
 }
