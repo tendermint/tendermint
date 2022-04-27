@@ -2,7 +2,7 @@
 # We use Arch instead of Debian, so that we can have up to date dependencies.
 FROM faddat/archlinux
 
-RUN pacman -Syyu --noconfirm rocksdb leveldb go gccgo base-devel git make
+RUN pacman -Syyu --noconfirm rocksdb leveldb go base-devel git make
 
 
 
