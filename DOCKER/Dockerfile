@@ -1,8 +1,8 @@
 # stage 1 Generate Tendermint Binary
-FROM golang:1.18-alpine as builder
+FROM golang:1.17-alpine as builder
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add make git gccgo gcc
+    apk --no-cache add make git
 COPY / /tendermint
 WORKDIR /tendermint
 RUN make build-linux
