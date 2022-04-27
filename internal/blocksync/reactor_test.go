@@ -262,6 +262,8 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(ctx, rts.nodes[0])
 }
 
+//@jmalicevic ToDO Add tests that support syncing from nodes that are at different heights
+// rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0, 0, 0})
 func TestReactor_SyncTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -274,8 +276,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(101)
 
-	// rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
-	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0, 0, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0})
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(ctx, t)
 
@@ -283,11 +284,7 @@ func TestReactor_SyncTime(t *testing.T) {
 		t,
 		func() bool {
 			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
-				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001 &&
-				rts.reactors[rts.nodes[2]].GetRemainingSyncTime() > time.Nanosecond &&
-				rts.reactors[rts.nodes[2]].pool.getLastSyncRate() > 0.001 &&
-				rts.reactors[rts.nodes[3]].GetRemainingSyncTime() > time.Nanosecond &&
-				rts.reactors[rts.nodes[3]].pool.getLastSyncRate() > 0.001
+				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001
 		},
 		10*time.Second,
 		10*time.Millisecond,
