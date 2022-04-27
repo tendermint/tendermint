@@ -438,6 +438,7 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 		}},
 		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
 		//{"missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }},
+		{"oversized vote extension signature", func(v *Vote) { v.ExtensionSignature = make([]byte, MaxSignatureSize+1) }},
 	}
 	for _, tc := range testCases {
 		precommit := examplePrecommit(t)

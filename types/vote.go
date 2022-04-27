@@ -295,12 +295,15 @@ func (vote *Vote) ValidateWithExtension() error {
 	}
 
 	// We should always see vote extension signatures in precommits
-	if vote.Type == tmproto.PrecommitType && len(vote.ExtensionSignature) == 0 {
+	if vote.Type == tmproto.PrecommitType {
 		// TODO(thane): Remove extension length check once
 		//              https://github.com/tendermint/tendermint/issues/8272 is
 		//              resolved.
-		if len(vote.Extension) > 0 {
+		if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
 			return errors.New("vote extension signature is missing")
+		}
+		if len(vote.ExtensionSignature) > MaxSignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
 	}
 
