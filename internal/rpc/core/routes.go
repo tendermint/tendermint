@@ -2,13 +2,9 @@ package core
 
 import (
 	"context"
-	"time"
 
-	"github.com/tendermint/tendermint/internal/eventlog/cursor"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpc "github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
@@ -32,47 +28,47 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 	out := RoutesMap{
 		// Event subscription. Note that subscribe, unsubscribe, and
 		// unsubscribe_all are only available via the websocket endpoint.
-		"events":          rpc.NewRPCFunc(svc.Events, "filter", "maxItems", "before", "after", "waitTime"),
-		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe, "query"),
-		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe, "query"),
+		"events":          rpc.NewRPCFunc(svc.Events),
+		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe),
+		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe),
 		"unsubscribe_all": rpc.NewWSRPCFunc(svc.UnsubscribeAll),
 
 		// info API
 		"health":               rpc.NewRPCFunc(svc.Health),
 		"status":               rpc.NewRPCFunc(svc.Status),
 		"net_info":             rpc.NewRPCFunc(svc.NetInfo),
-		"blockchain":           rpc.NewRPCFunc(svc.BlockchainInfo, "minHeight", "maxHeight"),
+		"blockchain":           rpc.NewRPCFunc(svc.BlockchainInfo),
 		"genesis":              rpc.NewRPCFunc(svc.Genesis),
-		"genesis_chunked":      rpc.NewRPCFunc(svc.GenesisChunked, "chunk"),
-		"header":               rpc.NewRPCFunc(svc.Header, "height"),
-		"header_by_hash":       rpc.NewRPCFunc(svc.HeaderByHash, "hash"),
-		"block":                rpc.NewRPCFunc(svc.Block, "height"),
-		"block_by_hash":        rpc.NewRPCFunc(svc.BlockByHash, "hash"),
-		"block_results":        rpc.NewRPCFunc(svc.BlockResults, "height"),
-		"commit":               rpc.NewRPCFunc(svc.Commit, "height"),
-		"check_tx":             rpc.NewRPCFunc(svc.CheckTx, "tx"),
-		"remove_tx":            rpc.NewRPCFunc(svc.RemoveTx, "txkey"),
-		"tx":                   rpc.NewRPCFunc(svc.Tx, "hash", "prove"),
-		"tx_search":            rpc.NewRPCFunc(svc.TxSearch, "query", "prove", "page", "per_page", "order_by"),
-		"block_search":         rpc.NewRPCFunc(svc.BlockSearch, "query", "page", "per_page", "order_by"),
-		"validators":           rpc.NewRPCFunc(svc.Validators, "height", "page", "per_page"),
+		"genesis_chunked":      rpc.NewRPCFunc(svc.GenesisChunked),
+		"header":               rpc.NewRPCFunc(svc.Header),
+		"header_by_hash":       rpc.NewRPCFunc(svc.HeaderByHash),
+		"block":                rpc.NewRPCFunc(svc.Block),
+		"block_by_hash":        rpc.NewRPCFunc(svc.BlockByHash),
+		"block_results":        rpc.NewRPCFunc(svc.BlockResults),
+		"commit":               rpc.NewRPCFunc(svc.Commit),
+		"check_tx":             rpc.NewRPCFunc(svc.CheckTx),
+		"remove_tx":            rpc.NewRPCFunc(svc.RemoveTx),
+		"tx":                   rpc.NewRPCFunc(svc.Tx),
+		"tx_search":            rpc.NewRPCFunc(svc.TxSearch),
+		"block_search":         rpc.NewRPCFunc(svc.BlockSearch),
+		"validators":           rpc.NewRPCFunc(svc.Validators),
 		"dump_consensus_state": rpc.NewRPCFunc(svc.DumpConsensusState),
 		"consensus_state":      rpc.NewRPCFunc(svc.GetConsensusState),
-		"consensus_params":     rpc.NewRPCFunc(svc.ConsensusParams, "height"),
-		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs, "page", "per_page"),
+		"consensus_params":     rpc.NewRPCFunc(svc.ConsensusParams),
+		"unconfirmed_txs":      rpc.NewRPCFunc(svc.UnconfirmedTxs),
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(svc.NumUnconfirmedTxs),
 
 		// tx broadcast API
-		"broadcast_tx_commit": rpc.NewRPCFunc(svc.BroadcastTxCommit, "tx"),
-		"broadcast_tx_sync":   rpc.NewRPCFunc(svc.BroadcastTxSync, "tx"),
-		"broadcast_tx_async":  rpc.NewRPCFunc(svc.BroadcastTxAsync, "tx"),
+		"broadcast_tx_commit": rpc.NewRPCFunc(svc.BroadcastTxCommit),
+		"broadcast_tx_sync":   rpc.NewRPCFunc(svc.BroadcastTxSync),
+		"broadcast_tx_async":  rpc.NewRPCFunc(svc.BroadcastTxAsync),
 
 		// abci API
-		"abci_query": rpc.NewRPCFunc(svc.ABCIQuery, "path", "data", "height", "prove"),
+		"abci_query": rpc.NewRPCFunc(svc.ABCIQuery),
 		"abci_info":  rpc.NewRPCFunc(svc.ABCIInfo),
 
 		// evidence API
-		"broadcast_evidence": rpc.NewRPCFunc(svc.BroadcastEvidence, "evidence"),
+		"broadcast_evidence": rpc.NewRPCFunc(svc.BroadcastEvidence),
 	}
 	if u, ok := svc.(RPCUnsafe); ok && opts.Unsafe {
 		out["unsafe_flush_mempool"] = rpc.NewRPCFunc(u.UnsafeFlushMempool)
@@ -84,38 +80,38 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 // implementation, for use in constructing a routing table.
 type RPCService interface {
 	ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error)
-	ABCIQuery(ctx context.Context, path string, data bytes.HexBytes, height int64, prove bool) (*coretypes.ResultABCIQuery, error)
-	Block(ctx context.Context, heightPtr *int64) (*coretypes.ResultBlock, error)
-	BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error)
-	BlockResults(ctx context.Context, heightPtr *int64) (*coretypes.ResultBlockResults, error)
-	BlockSearch(ctx context.Context, query string, pagePtr, perPagePtr *int, orderBy string) (*coretypes.ResultBlockSearch, error)
-	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error)
-	BroadcastEvidence(ctx context.Context, ev coretypes.Evidence) (*coretypes.ResultBroadcastEvidence, error)
-	BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error)
-	BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error)
-	BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error)
-	CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error)
-	Commit(ctx context.Context, heightPtr *int64) (*coretypes.ResultCommit, error)
-	ConsensusParams(ctx context.Context, heightPtr *int64) (*coretypes.ResultConsensusParams, error)
+	ABCIQuery(ctx context.Context, req *coretypes.RequestABCIQuery) (*coretypes.ResultABCIQuery, error)
+	Block(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlock, error)
+	BlockByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultBlock, error)
+	BlockResults(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlockResults, error)
+	BlockSearch(ctx context.Context, req *coretypes.RequestBlockSearch) (*coretypes.ResultBlockSearch, error)
+	BlockchainInfo(ctx context.Context, req *coretypes.RequestBlockchainInfo) (*coretypes.ResultBlockchainInfo, error)
+	BroadcastEvidence(ctx context.Context, req *coretypes.RequestBroadcastEvidence) (*coretypes.ResultBroadcastEvidence, error)
+	BroadcastTxAsync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error)
+	BroadcastTxCommit(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTxCommit, error)
+	BroadcastTxSync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error)
+	CheckTx(ctx context.Context, req *coretypes.RequestCheckTx) (*coretypes.ResultCheckTx, error)
+	Commit(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultCommit, error)
+	ConsensusParams(ctx context.Context, req *coretypes.RequestConsensusParams) (*coretypes.ResultConsensusParams, error)
 	DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error)
-	Events(ctx context.Context, filter *coretypes.EventFilter, maxItems int, before, after cursor.Cursor, waitTime time.Duration) (*coretypes.ResultEvents, error)
+	Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error)
 	Genesis(ctx context.Context) (*coretypes.ResultGenesis, error)
-	GenesisChunked(ctx context.Context, chunk uint) (*coretypes.ResultGenesisChunk, error)
+	GenesisChunked(ctx context.Context, req *coretypes.RequestGenesisChunked) (*coretypes.ResultGenesisChunk, error)
 	GetConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error)
-	Header(ctx context.Context, heightPtr *int64) (*coretypes.ResultHeader, error)
-	HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error)
+	Header(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultHeader, error)
+	HeaderByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultHeader, error)
 	Health(ctx context.Context) (*coretypes.ResultHealth, error)
 	NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error)
 	NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error)
-	RemoveTx(ctx context.Context, txkey types.TxKey) error
+	RemoveTx(ctx context.Context, req *coretypes.RequestRemoveTx) error
 	Status(ctx context.Context) (*coretypes.ResultStatus, error)
-	Subscribe(ctx context.Context, query string) (*coretypes.ResultSubscribe, error)
-	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error)
-	TxSearch(ctx context.Context, query string, prove bool, pagePtr, perPagePtr *int, orderBy string) (*coretypes.ResultTxSearch, error)
-	UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error)
-	Unsubscribe(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error)
+	Subscribe(ctx context.Context, req *coretypes.RequestSubscribe) (*coretypes.ResultSubscribe, error)
+	Tx(ctx context.Context, req *coretypes.RequestTx) (*coretypes.ResultTx, error)
+	TxSearch(ctx context.Context, req *coretypes.RequestTxSearch) (*coretypes.ResultTxSearch, error)
+	UnconfirmedTxs(ctx context.Context, req *coretypes.RequestUnconfirmedTxs) (*coretypes.ResultUnconfirmedTxs, error)
+	Unsubscribe(ctx context.Context, req *coretypes.RequestUnsubscribe) (*coretypes.ResultUnsubscribe, error)
 	UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsubscribe, error)
-	Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*coretypes.ResultValidators, error)
+	Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error)
 }
 
 // RPCUnsafe defines the set of "unsafe" methods that may optionally be
