@@ -205,16 +205,6 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
-func (pool *BlockPool) PeekBlock() (first *types.Block) {
-	pool.mtx.RLock()
-	defer pool.mtx.RUnlock()
-
-	if r := pool.requesters[pool.height]; r != nil {
-		first = r.getBlock()
-	}
-	return
-}
-
 // PeekTwoBlocks returns blocks at pool.height and pool.height+1.
 // We need to see the second block's Commit to validate the first block.
 // So we peek two blocks at a time.

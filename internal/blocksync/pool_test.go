@@ -110,8 +110,8 @@ func TestBlockPoolBasic(t *testing.T) {
 			if !pool.IsRunning() {
 				return
 			}
-			first := pool.PeekBlock()
-			if first != nil {
+			first, second := pool.PeekTwoBlocks()
+			if first != nil && second != nil {
 				pool.PopRequest()
 			} else {
 				time.Sleep(1 * time.Second)
@@ -164,8 +164,8 @@ func TestBlockPoolTimeout(t *testing.T) {
 			if !pool.IsRunning() {
 				return
 			}
-			first := pool.PeekBlock()
-			if first != nil {
+			first, second := pool.PeekTwoBlocks()
+			if first != nil && second != nil {
 				pool.PopRequest()
 			} else {
 				time.Sleep(1 * time.Second)
