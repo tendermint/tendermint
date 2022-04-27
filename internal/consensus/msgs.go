@@ -223,7 +223,9 @@ func (*VoteMessage) TypeTag() string { return "tendermint/Vote" }
 // ValidateBasic checks whether the vote within the message is well-formed.
 func (m *VoteMessage) ValidateBasic() error {
 	// Here we validate votes with vote extensions, since we require vote
-	// extensions to be sent in vote messages during consensus.
+	// extensions to be sent in precommit messages during consensus. Prevote
+	// messages should never have vote extensions, and this is also validated
+	// here.
 	return m.Vote.ValidateWithExtension()
 }
 
