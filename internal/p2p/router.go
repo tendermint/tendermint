@@ -713,7 +713,7 @@ func (r *Router) handshakePeer(
 		return peerInfo, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
-	if err := r.nodeInfoProducer().CompatibleWith(peerInfo); err != nil {
+	if err := nodeInfo.CompatibleWith(peerInfo); err != nil {
 		return peerInfo, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
@@ -911,11 +911,6 @@ func (r *Router) evictPeers(ctx context.Context) {
 	}
 }
 
-// NodeInfo returns a copy of the current NodeInfo. Used for testing.
-func (r *Router) NodeInfo() types.NodeInfo {
-	return r.nodeInfoProducer().Copy()
-}
-
 func (r *Router) setupQueueFactory(ctx context.Context) error {
 	qf, err := r.createQueueFactory(ctx)
 	if err != nil {
@@ -935,14 +930,6 @@ func (r *Router) OnStart(ctx context.Context) error {
 	if err := r.transport.Listen(r.endpoint); err != nil {
 		return err
 	}
-
-	nodeInfo := r.nodeInfoProducer()
-	r.logger.Info(
-		"starting router",
-		"node_id", nodeInfo.NodeID,
-		"channels", nodeInfo.Channels,
-		"listen_addr", nodeInfo.ListenAddr,
-	)
 
 	go r.dialPeers(ctx)
 	go r.evictPeers(ctx)
