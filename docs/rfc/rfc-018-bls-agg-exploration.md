@@ -297,6 +297,16 @@ either first implement 'commit-time' signature aggregation, or implement both
 'vote-time' signature aggregation while also updating the block creation and
 verification protocols to allow for aggregated signatures.
 
+### Updating IBC clients
+
+In order for IBC clients to function, they must be able to perform light-client
+verification of blocks on counterparty chains. Because BLS signatures are not
+currently part of light-clients, chains that transmit messages over IBC
+cannot update to using BLS signatures without their counterparties first
+being upgraded to parse and verify BLS. If chains upgrade without their
+counterparties first updating, they will lose the ability to interoperate with
+non-updated chains.
+
 ### Rogue key attack prevention
 
 Generating an aggregated signature requires guarding against what is called
