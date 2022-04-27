@@ -1,10 +1,10 @@
 # We need to build in a Linux environment to support C libraries, e.g. RocksDB.
-# We use Debian instead of Alpine, so that we can use binary database packages
-# instead of spending time compiling them.
-FROM golang:1.17
+# We use Arch instead of Debian, so that we can have up to date dependencies.
+FROM faddat/archlinux
 
-RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
-RUN apt-get -qq install -y libleveldb-dev librocksdb-dev >/dev/null
+RUN pacman -Syyu --noconfirm rocksdb leveldb go gccgo base-devel git make
+
+
 
 # Set up build directory /src/tendermint
 ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb
