@@ -48,7 +48,7 @@ func setup(
 	ctx context.Context,
 	t *testing.T,
 	genDoc *types.GenesisDoc,
-	privVal types.PrivValidator,
+	privValArray []types.PrivValidator,
 	maxBlockHeights []int64,
 ) *reactorTestSuite {
 	t.Helper()
@@ -77,7 +77,7 @@ func setup(
 
 	i := 0
 	for nodeID := range rts.network.Nodes {
-		rts.addNode(ctx, t, nodeID, genDoc, privVal, maxBlockHeights[i])
+		rts.addNode(ctx, t, nodeID, genDoc, privValArray, maxBlockHeights[i])
 		i++
 	}
 
@@ -102,7 +102,7 @@ func (rts *reactorTestSuite) addNode(
 	t *testing.T,
 	nodeID types.NodeID,
 	genDoc *types.GenesisDoc,
-	privVal types.PrivValidator,
+	privValArray []types.PrivValidator,
 	maxBlockHeight int64,
 ) {
 	t.Helper()
@@ -154,21 +154,28 @@ func (rts *reactorTestSuite) addNode(
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
-			vote, err := factory.MakeVote(
-				ctx,
-				privVal,
-				lastBlock.Header.ChainID, 0,
-				lastBlock.Header.Height, 0, 2,
-				lastBlockMeta.BlockID,
-				time.Now(),
-			)
-			require.NoError(t, err)
+			commitSigs := make([]types.CommitSig, len(privValArray))
+			votes := make([]types.Vote, len(privValArray))
+			for i, val := range privValArray {
+				vote, err := factory.MakeVote(
+					ctx,
+					val,
+					lastBlock.Header.ChainID, 0,
+					lastBlock.Header.Height, 0, 2,
+					lastBlockMeta.BlockID,
+					time.Now(),
+				)
+				require.NoError(t, err)
+				votes[i] = *vote
+				commitSigs[i] = vote.CommitSig()
+			}
 			lastCommit = types.NewCommit(
-				vote.Height,
-				vote.Round,
+				votes[0].Height,
+				votes[0].Round,
 				lastBlockMeta.BlockID,
-				[]types.CommitSig{vote.CommitSig()},
+				commitSigs,
 			)
+
 		}
 
 		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
@@ -227,7 +234,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(64)
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0})
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -263,19 +270,32 @@ func TestReactor_SyncTime(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
+	valSet, privVals := factory.ValidatorSet(ctx, t, 4, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(101)
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
+	// rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0, 0, 0})
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(ctx, t)
 
 	require.Eventually(
 		t,
 		func() bool {
+			height0, x, y := rts.reactors[rts.nodes[0]].pool.GetStatus()
+			height1, x1, y1 := rts.reactors[rts.nodes[1]].pool.GetStatus()
+			height2, x2, y2 := rts.reactors[rts.nodes[2]].pool.GetStatus()
+			height3, x3, y3 := rts.reactors[rts.nodes[3]].pool.GetStatus()
+
+			t.Logf("bla %d %d %d %d", height0, height1, height2, height3)
+			t.Logf("bla %d %d %d %d", x1, x2, x3, x)
+			t.Logf("bla %d %d %d %d", y1, y2, y3, y)
 			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
-				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001
+				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001 &&
+				rts.reactors[rts.nodes[2]].GetRemainingSyncTime() > time.Nanosecond &&
+				rts.reactors[rts.nodes[2]].pool.getLastSyncRate() > 0.001 &&
+				rts.reactors[rts.nodes[3]].GetRemainingSyncTime() > time.Nanosecond &&
+				rts.reactors[rts.nodes[3]].pool.getLastSyncRate() > 0.001
 		},
 		10*time.Second,
 		10*time.Millisecond,
@@ -295,7 +315,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(65)
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0})
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -347,7 +367,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0, 0, 0, 0})
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -385,7 +405,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),
 	})
-	rts.addNode(ctx, t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
+	rts.addNode(ctx, t, newNode.NodeID, otherGenDoc, otherPrivVals, maxBlockHeight)
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout
 	rts.reactors[newNode.NodeID].pool.SetPeerRange("00ff", 10, 10)
