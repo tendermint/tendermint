@@ -213,10 +213,10 @@ func (c *baseRPCClient) ABCIQuery(ctx context.Context, path string, data bytes.H
 
 func (c *baseRPCClient) ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
 	result := new(coretypes.ResultABCIQuery)
-	if err := c.caller.Call(ctx, "abci_query", abciQueryArgs{
+	if err := c.caller.Call(ctx, "abci_query", &coretypes.RequestABCIQuery{
 		Path:   path,
 		Data:   data,
-		Height: opts.Height,
+		Height: coretypes.Int64(opts.Height),
 		Prove:  opts.Prove,
 	}, result); err != nil {
 		return nil, err
@@ -226,7 +226,9 @@ func (c *baseRPCClient) ABCIQueryWithOptions(ctx context.Context, path string, d
 
 func (c *baseRPCClient) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
 	result := new(coretypes.ResultBroadcastTxCommit)
-	if err := c.caller.Call(ctx, "broadcast_tx_commit", txArgs{Tx: tx}, result); err != nil {
+	if err := c.caller.Call(ctx, "broadcast_tx_commit", &coretypes.RequestBroadcastTx{
+		Tx: tx,
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -242,7 +244,7 @@ func (c *baseRPCClient) BroadcastTxSync(ctx context.Context, tx types.Tx) (*core
 
 func (c *baseRPCClient) broadcastTX(ctx context.Context, route string, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	result := new(coretypes.ResultBroadcastTx)
-	if err := c.caller.Call(ctx, route, txArgs{Tx: tx}, result); err != nil {
+	if err := c.caller.Call(ctx, route, &coretypes.RequestBroadcastTx{Tx: tx}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -251,7 +253,10 @@ func (c *baseRPCClient) broadcastTX(ctx context.Context, route string, tx types.
 func (c *baseRPCClient) UnconfirmedTxs(ctx context.Context, page *int, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
 	result := new(coretypes.ResultUnconfirmedTxs)
 
-	if err := c.caller.Call(ctx, "unconfirmed_txs", unconfirmedArgs{Page: page, PerPage: perPage}, result); err != nil {
+	if err := c.caller.Call(ctx, "unconfirmed_txs", &coretypes.RequestUnconfirmedTxs{
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -267,14 +272,14 @@ func (c *baseRPCClient) NumUnconfirmedTxs(ctx context.Context) (*coretypes.Resul
 
 func (c *baseRPCClient) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.ResultCheckTx, error) {
 	result := new(coretypes.ResultCheckTx)
-	if err := c.caller.Call(ctx, "check_tx", txArgs{Tx: tx}, result); err != nil {
+	if err := c.caller.Call(ctx, "check_tx", &coretypes.RequestCheckTx{Tx: tx}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
 func (c *baseRPCClient) RemoveTx(ctx context.Context, txKey types.TxKey) error {
-	if err := c.caller.Call(ctx, "remove_tx", txKeyArgs{TxKey: txKey[:]}, nil); err != nil {
+	if err := c.caller.Call(ctx, "remove_tx", &coretypes.RequestRemoveTx{TxKey: txKey}, nil); err != nil {
 		return err
 	}
 	return nil
@@ -306,7 +311,9 @@ func (c *baseRPCClient) ConsensusState(ctx context.Context) (*coretypes.ResultCo
 
 func (c *baseRPCClient) ConsensusParams(ctx context.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
 	result := new(coretypes.ResultConsensusParams)
-	if err := c.caller.Call(ctx, "consensus_params", heightArgs{Height: height}, result); err != nil {
+	if err := c.caller.Call(ctx, "consensus_params", &coretypes.RequestConsensusParams{
+		Height: (*coretypes.Int64)(height),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -330,9 +337,9 @@ func (c *baseRPCClient) Health(ctx context.Context) (*coretypes.ResultHealth, er
 
 func (c *baseRPCClient) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
 	result := new(coretypes.ResultBlockchainInfo)
-	if err := c.caller.Call(ctx, "blockchain", blockchainInfoArgs{
-		MinHeight: minHeight,
-		MaxHeight: maxHeight,
+	if err := c.caller.Call(ctx, "blockchain", &coretypes.RequestBlockchainInfo{
+		MinHeight: coretypes.Int64(minHeight),
+		MaxHeight: coretypes.Int64(maxHeight),
 	}, result); err != nil {
 		return nil, err
 	}
@@ -349,7 +356,9 @@ func (c *baseRPCClient) Genesis(ctx context.Context) (*coretypes.ResultGenesis, 
 
 func (c *baseRPCClient) GenesisChunked(ctx context.Context, id uint) (*coretypes.ResultGenesisChunk, error) {
 	result := new(coretypes.ResultGenesisChunk)
-	if err := c.caller.Call(ctx, "genesis_chunked", genesisChunkArgs{Chunk: id}, result); err != nil {
+	if err := c.caller.Call(ctx, "genesis_chunked", &coretypes.RequestGenesisChunked{
+		Chunk: coretypes.Int64(id),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -357,7 +366,9 @@ func (c *baseRPCClient) GenesisChunked(ctx context.Context, id uint) (*coretypes
 
 func (c *baseRPCClient) Block(ctx context.Context, height *int64) (*coretypes.ResultBlock, error) {
 	result := new(coretypes.ResultBlock)
-	if err := c.caller.Call(ctx, "block", heightArgs{Height: height}, result); err != nil {
+	if err := c.caller.Call(ctx, "block", &coretypes.RequestBlockInfo{
+		Height: (*coretypes.Int64)(height),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -365,7 +376,7 @@ func (c *baseRPCClient) Block(ctx context.Context, height *int64) (*coretypes.Re
 
 func (c *baseRPCClient) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultBlock, error) {
 	result := new(coretypes.ResultBlock)
-	if err := c.caller.Call(ctx, "block_by_hash", hashArgs{Hash: hash}, result); err != nil {
+	if err := c.caller.Call(ctx, "block_by_hash", &coretypes.RequestBlockByHash{Hash: hash}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -373,7 +384,9 @@ func (c *baseRPCClient) BlockByHash(ctx context.Context, hash bytes.HexBytes) (*
 
 func (c *baseRPCClient) BlockResults(ctx context.Context, height *int64) (*coretypes.ResultBlockResults, error) {
 	result := new(coretypes.ResultBlockResults)
-	if err := c.caller.Call(ctx, "block_results", heightArgs{Height: height}, result); err != nil {
+	if err := c.caller.Call(ctx, "block_results", &coretypes.RequestBlockInfo{
+		Height: (*coretypes.Int64)(height),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -381,7 +394,9 @@ func (c *baseRPCClient) BlockResults(ctx context.Context, height *int64) (*coret
 
 func (c *baseRPCClient) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
 	result := new(coretypes.ResultHeader)
-	if err := c.caller.Call(ctx, "header", heightArgs{Height: height}, result); err != nil {
+	if err := c.caller.Call(ctx, "header", &coretypes.RequestBlockInfo{
+		Height: (*coretypes.Int64)(height),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -389,7 +404,9 @@ func (c *baseRPCClient) Header(ctx context.Context, height *int64) (*coretypes.R
 
 func (c *baseRPCClient) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error) {
 	result := new(coretypes.ResultHeader)
-	if err := c.caller.Call(ctx, "header_by_hash", hashArgs{Hash: hash}, result); err != nil {
+	if err := c.caller.Call(ctx, "header_by_hash", &coretypes.RequestBlockByHash{
+		Hash: hash,
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -397,7 +414,9 @@ func (c *baseRPCClient) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (
 
 func (c *baseRPCClient) Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error) {
 	result := new(coretypes.ResultCommit)
-	if err := c.caller.Call(ctx, "commit", heightArgs{Height: height}, result); err != nil {
+	if err := c.caller.Call(ctx, "commit", &coretypes.RequestBlockInfo{
+		Height: (*coretypes.Int64)(height),
+	}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -405,7 +424,7 @@ func (c *baseRPCClient) Commit(ctx context.Context, height *int64) (*coretypes.R
 
 func (c *baseRPCClient) Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error) {
 	result := new(coretypes.ResultTx)
-	if err := c.caller.Call(ctx, "tx", hashArgs{Hash: hash, Prove: prove}, result); err != nil {
+	if err := c.caller.Call(ctx, "tx", &coretypes.RequestTx{Hash: hash, Prove: prove}, result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -413,12 +432,12 @@ func (c *baseRPCClient) Tx(ctx context.Context, hash bytes.HexBytes, prove bool)
 
 func (c *baseRPCClient) TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (*coretypes.ResultTxSearch, error) {
 	result := new(coretypes.ResultTxSearch)
-	if err := c.caller.Call(ctx, "tx_search", searchArgs{
+	if err := c.caller.Call(ctx, "tx_search", &coretypes.RequestTxSearch{
 		Query:   query,
 		Prove:   prove,
 		OrderBy: orderBy,
-		Page:    page,
-		PerPage: perPage,
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
 	}, result); err != nil {
 		return nil, err
 	}
@@ -428,11 +447,11 @@ func (c *baseRPCClient) TxSearch(ctx context.Context, query string, prove bool, 
 
 func (c *baseRPCClient) BlockSearch(ctx context.Context, query string, page, perPage *int, orderBy string) (*coretypes.ResultBlockSearch, error) {
 	result := new(coretypes.ResultBlockSearch)
-	if err := c.caller.Call(ctx, "block_search", searchArgs{
+	if err := c.caller.Call(ctx, "block_search", &coretypes.RequestBlockSearch{
 		Query:   query,
 		OrderBy: orderBy,
-		Page:    page,
-		PerPage: perPage,
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
 	}, result); err != nil {
 		return nil, err
 	}
@@ -442,10 +461,10 @@ func (c *baseRPCClient) BlockSearch(ctx context.Context, query string, page, per
 
 func (c *baseRPCClient) Validators(ctx context.Context, height *int64, page, perPage *int) (*coretypes.ResultValidators, error) {
 	result := new(coretypes.ResultValidators)
-	if err := c.caller.Call(ctx, "validators", validatorArgs{
-		Height:  height,
-		Page:    page,
-		PerPage: perPage,
+	if err := c.caller.Call(ctx, "validators", &coretypes.RequestValidators{
+		Height:  (*coretypes.Int64)(height),
+		Page:    coretypes.Int64Ptr(page),
+		PerPage: coretypes.Int64Ptr(perPage),
 	}, result); err != nil {
 		return nil, err
 	}
@@ -454,8 +473,8 @@ func (c *baseRPCClient) Validators(ctx context.Context, height *int64, page, per
 
 func (c *baseRPCClient) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
 	result := new(coretypes.ResultBroadcastEvidence)
-	if err := c.caller.Call(ctx, "broadcast_evidence", evidenceArgs{
-		Evidence: coretypes.Evidence{Value: ev},
+	if err := c.caller.Call(ctx, "broadcast_evidence", &coretypes.RequestBroadcastEvidence{
+		Evidence: ev,
 	}, result); err != nil {
 		return nil, err
 	}

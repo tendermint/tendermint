@@ -44,7 +44,7 @@ func (env *Environment) Genesis(ctx context.Context) (*coretypes.ResultGenesis, 
 	return &coretypes.ResultGenesis{Genesis: env.GenDoc}, nil
 }
 
-func (env *Environment) GenesisChunked(ctx context.Context, chunk uint) (*coretypes.ResultGenesisChunk, error) {
+func (env *Environment) GenesisChunked(ctx context.Context, req *coretypes.RequestGenesisChunked) (*coretypes.ResultGenesisChunk, error) {
 	if env.genChunks == nil {
 		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
 	}
@@ -53,7 +53,7 @@ func (env *Environment) GenesisChunked(ctx context.Context, chunk uint) (*corety
 		return nil, fmt.Errorf("service configuration error, there are no chunks")
 	}
 
-	id := int(chunk)
+	id := int(req.Chunk)
 
 	if id > len(env.genChunks)-1 {
 		return nil, fmt.Errorf("there are %d chunks, %d is invalid", len(env.genChunks)-1, id)
