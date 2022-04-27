@@ -64,7 +64,8 @@ node can omit a vote extension while still providing/forwarding/sending the corr
 The validator set at height *h* is denoted *valset<sub>h</sub>*. A *commit* for height *h* consists of more
 than *2n<sub>h</sub>/3* precommit votes voting for a block *b*, where *n<sub>h</sub>* denotes the size of
 *valset<sub>h</sub>*. A commit does not contain `nil` precommit votes, and all votes in it refer to the
-same block. An *extended commit* is a *commit* where every precommit vote has attached its respective vote extension.
+same block. An *extended commit* is a *commit* where every precommit vote has its respective vote extension
+attached.
 
 > TODO: [From Daniel] Node statesyncs to *h*, but latest height is *h+1*. What then?
 >
@@ -346,21 +347,21 @@ These are the solutions proposed in discussions leading up to this RFC.
     Let us consider the following scenario:
 
     - all validators in *valset<sub>h</sub>* send out precommit messages, with vote extensions,
-      for height *h*, round 1, roughly at the same time,
+      for height *h*, round 0, roughly at the same time,
     - all those precommit messages contain non-`nil` precommit votes, which vote for block *b*
     - all validators in *valset<sub>h</sub>* then wait until they gather enough precommit
-      messages for height *h*, round 1, in order to decide in height *h*,
-    - all precommit messages sent in height *h*, round 1, and all messages sent in
-      height *h*, round *r > 1* get delayed indefinitely,
+      messages for height *h*, round 0, in order to decide in height *h*,
+    - all precommit messages sent in height *h*, round 0, and all messages sent in
+      height *h*, round *r > 0* get delayed indefinitely,
     - an intermediate (malicious) full node *m* manages to receive block *b*, and gather more than
-      *2n<sub>h</sub>/3* precommit messages for height *h*, round 1,
+      *2n<sub>h</sub>/3* precommit messages for height *h*, round 0,
     - one way or another, the solution should have a mechanism for a full node to tell another full
       node it is late; this mechanism should somehow include a message type containing － at the very
       least － the decided block and a commit (not necessarily an extended commit) for *h*;
       let us call this message type *catch-up message*,
-    - node *m* uses the gathered precommit messages to build a commit for height *h*, round 1,
+    - node *m* uses the gathered precommit messages to build a commit for height *h*, round 0,
     - in order to convince them they are late, node *m* sends all full nodes a catch-up message with
-      block *b*, and the commit for height *h*, round 1,
+      block *b*, and the commit for height *h*, round 0,
     - all full nodes receive the *catch-up* message from *m*, decide on height *h*, and proceed to
       height *h+1*.
 
