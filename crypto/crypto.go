@@ -1,14 +1,18 @@
 package crypto
 
 import (
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"crypto/sha256"
+
 	"github.com/tendermint/tendermint/internal/jsontypes"
 	"github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
+	HashSize      = sha256.Size
+	HashBlockSize = sha256.BlockSize
+
 	// AddressSize is the size of a pubkey address.
-	AddressSize = tmhash.TruncatedSize
+	AddressSize = 20
 )
 
 // An address is a []byte, but hex-encoded even in JSON.
@@ -17,7 +21,14 @@ const (
 type Address = bytes.HexBytes
 
 func AddressHash(bz []byte) Address {
-	return Address(tmhash.SumTruncated(bz))
+	h := sha256.Sum256(bz)
+	return Address(h[:AddressSize])
+}
+
+// Checksum returns the SHA256 of the bz.
+func Checksum(bz []byte) []byte {
+	h := sha256.Sum256(bz)
+	return h[:]
 }
 
 type PubKey interface {

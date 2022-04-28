@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -180,14 +179,14 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 		Height:             10,
 		Time:               defaultEvidenceTime,
 		LastBlockID:        blockID,
-		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
+		LastCommitHash:     crypto.CRandBytes(crypto.HashSize),
+		DataHash:           crypto.CRandBytes(crypto.HashSize),
 		ValidatorsHash:     state.Validators.Hash(),
 		NextValidatorsHash: state.Validators.Hash(),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+		ConsensusHash:      crypto.CRandBytes(crypto.HashSize),
+		AppHash:            crypto.CRandBytes(crypto.HashSize),
+		LastResultsHash:    crypto.CRandBytes(crypto.HashSize),
+		EvidenceHash:       crypto.CRandBytes(crypto.HashSize),
 		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
 	}
 
@@ -1003,8 +1002,8 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
-		h   = make([]byte, tmhash.Size)
-		psH = make([]byte, tmhash.Size)
+		h   = make([]byte, crypto.HashSize)
+		psH = make([]byte, crypto.HashSize)
 	)
 	copy(h, hash)
 	copy(psH, partSetHash)

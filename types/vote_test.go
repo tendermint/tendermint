@@ -11,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -38,10 +37,10 @@ func exampleVote(tb testing.TB, t byte) *Vote {
 		Round:     2,
 		Timestamp: stamp,
 		BlockID: BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
+			Hash: crypto.Checksum([]byte("blockID_hash")),
 			PartSetHeader: PartSetHeader{
 				Total: 1000000,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+				Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 			},
 		},
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
