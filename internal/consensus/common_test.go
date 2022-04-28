@@ -159,7 +159,11 @@ func signVote(
 	chainID string,
 	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(ctx, voteType, chainID, blockID, []byte("extension"))
+	var ext []byte
+	if voteType == tmproto.PrecommitType {
+		ext = []byte("extension")
+	}
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, ext)
 	require.NoError(t, err, "failed to sign vote")
 
 	vs.lastVote = v
