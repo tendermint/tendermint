@@ -11,25 +11,25 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+func getDefaultRouterOptions() RouterOptions {
+	return RouterOptions{
+		LegacyTransport:  &MemoryTransport{},
+		LegacyEndpoint:   &Endpoint{},
+		NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
+	}
+}
 func TestRouter_ConstructQueueFactory(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	getOpts := func() RouterOptions {
-		return RouterOptions{
-			LegacyTransport:  &MemoryTransport{},
-			LegacyEndpoint:   &Endpoint{},
-			NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
-		}
-	}
 	t.Run("ValidateOptionsPopulatesDefaultQueue", func(t *testing.T) {
-		opts := getOpts()
+		opts := getDefaultRouterOptions()
 		require.NoError(t, opts.Validate())
 		require.Equal(t, "fifo", opts.QueueType)
 	})
 	t.Run("Default", func(t *testing.T) {
 		require.Zero(t, os.Getenv("TM_P2P_QUEUE"))
-		opts := getOpts()
+		opts := getDefaultRouterOptions()
 		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
@@ -38,7 +38,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.True(t, ok)
 	})
 	t.Run("Fifo", func(t *testing.T) {
-		opts := getOpts()
+		opts := getDefaultRouterOptions()
 		opts.QueueType = queueTypeFifo
 		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.True(t, ok)
 	})
 	t.Run("Priority", func(t *testing.T) {
-		opts := getOpts()
+		opts := getDefaultRouterOptions()
 		opts.QueueType = queueTypePriority
 		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		defer q.close()
 	})
 	t.Run("NonExistant", func(t *testing.T) {
-		opts := getOpts()
+		opts := getDefaultRouterOptions()
 		opts.QueueType = "fast"
 		_, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.Error(t, err)
