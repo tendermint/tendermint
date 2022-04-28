@@ -411,7 +411,7 @@ initial audit by NCC group, a firm I'd never heard of.
 #### Gnark-Crypto
 
 [Gnark-Crypto][gnark] is a Go-native implementation of elliptic-curve pairing-based
-cryptography. It is completely not auditing and listed as an 'as-is' although
+cryptography. It is not audited and is documented as 'as-is', although
 development appears to be active so formal verification may be forthcoming.
 
 ## Open Questions
