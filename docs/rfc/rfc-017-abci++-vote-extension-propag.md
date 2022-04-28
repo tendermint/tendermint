@@ -349,10 +349,10 @@ These are the solutions proposed in discussions leading up to this RFC.
     - all validators in *valset<sub>h</sub>* send out precommit messages, with vote extensions,
       for height *h*, round 0, roughly at the same time,
     - all those precommit messages contain non-`nil` precommit votes, which vote for block *b*
-    - all validators in *valset<sub>h</sub>* then wait until they gather enough precommit
-      messages for height *h*, round 0, in order to decide in height *h*,
-    - all precommit messages sent in height *h*, round 0, and all messages sent in
-      height *h*, round *r > 0* get delayed indefinitely,
+    - all those precommit messages sent in height *h*, round 0, and all messages sent in
+      height *h*, round *r > 0* get delayed indefinitely, so,
+    - all validators in *valset<sub>h</sub>* keep waiting for enough precommit
+      messages for height *h*, round 0, needed for deciding in height *h*
     - an intermediate (malicious) full node *m* manages to receive block *b*, and gather more than
       *2n<sub>h</sub>/3* precommit messages for height *h*, round 0,
     - one way or another, the solution should have a mechanism for a full node to tell another full
