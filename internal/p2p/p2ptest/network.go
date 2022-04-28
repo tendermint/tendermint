@@ -265,10 +265,12 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		p2p.NopMetrics(),
 		privKey,
 		peerManager,
-		func() *types.NodeInfo { return &nodeInfo },
-		transport,
-		ep,
-		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
+		p2p.RouterOptions{
+			NodeInfoProducer: func() *types.NodeInfo { return &nodeInfo },
+			DialSleep:        func(_ context.Context) {},
+			LegacyTransport:  transport,
+			LegacyEndpoint:   ep,
+		},
 	)
 
 	require.NoError(t, err)

@@ -73,9 +73,16 @@ type RouterOptions struct {
 	// runtime.NumCPU.
 	NumConcurrentDials func() int
 
+	// NodeInfoProducer returns a reference to the current
+	// NodeInfo object for use in adding channels.
+	NodeInfoProducer func() *types.NodeInfo
+
 	// UseLibP2P toggles the use of the new networking layer
 	// within the router.
 	UseLibP2P bool
+
+	LegacyTransport Transport
+	LegacyEndpoint  *Endpoint
 }
 
 const (
@@ -92,6 +99,26 @@ func (o *RouterOptions) Validate() error {
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
+	}
+
+	if o.NodeInfoProducer == nil {
+		return errors.New("must specify a NodeInfoProducer")
+	}
+
+	if o.UseLibP2P {
+		if o.LegacyTransport != nil {
+			return errors.New("when using libp2p you must not specify legacy components (transport)")
+		}
+		if o.LegacyEndpoint != nil {
+			return errors.New("when using libp2p you must not specify legacy components (endpoint)")
+		}
+	} else {
+		if o.LegacyTransport == nil {
+			return errors.New("when using legacy p2p you must specify a transport")
+		}
+		if o.LegacyEndpoint == nil {
+			return errors.New("when using legacy p2p you must specify an endpoint")
+		}
 	}
 
 	switch {
@@ -179,39 +206,29 @@ type Router struct {
 // NewRouter creates a new Router. The given Transports must already be
 // listening on appropriate interfaces, and will be closed by the Router when it
 // stops.
-func NewRouter(
-	logger log.Logger,
-	metrics *Metrics,
-	privKey crypto.PrivKey,
-	peerManager *PeerManager,
-	nodeInfoProducer func() *types.NodeInfo,
-	transport Transport,
-	endpoint *Endpoint,
-	options RouterOptions,
-) (*Router, error) {
-
-	if err := options.Validate(); err != nil {
+func NewRouter(logger log.Logger, metrics *Metrics, key crypto.PrivKey, pm *PeerManager, opts RouterOptions) (*Router, error) {
+	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
 
-	if options.UseLibP2P {
+	if opts.UseLibP2P {
 		return nil, errors.New("libp2p is not supported")
 	}
 
 	router := &Router{
 		logger:           logger,
 		metrics:          metrics,
-		privKey:          privKey,
-		nodeInfoProducer: nodeInfoProducer,
+		privKey:          key,
+		nodeInfoProducer: opts.NodeInfoProducer,
 		connTracker: newConnTracker(
-			options.MaxIncomingConnectionAttempts,
-			options.IncomingConnectionWindow,
+			opts.MaxIncomingConnectionAttempts,
+			opts.IncomingConnectionWindow,
 		),
 		chDescs:         make([]*ChannelDescriptor, 0),
-		transport:       transport,
-		endpoint:        endpoint,
-		peerManager:     peerManager,
-		options:         options,
+		transport:       opts.LegacyTransport,
+		endpoint:        opts.LegacyEndpoint,
+		peerManager:     pm,
+		options:         opts,
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
 		peerQueues:      map[types.NodeID]queue{},

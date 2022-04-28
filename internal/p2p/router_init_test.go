@@ -11,19 +11,26 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+func getDefaultRouterOptions() RouterOptions {
+	return RouterOptions{
+		LegacyTransport:  &MemoryTransport{},
+		LegacyEndpoint:   &Endpoint{},
+		NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
+	}
+}
 func TestRouter_ConstructQueueFactory(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	t.Run("ValidateOptionsPopulatesDefaultQueue", func(t *testing.T) {
-		opts := RouterOptions{}
+		opts := getDefaultRouterOptions()
 		require.NoError(t, opts.Validate())
 		require.Equal(t, "fifo", opts.QueueType)
 	})
 	t.Run("Default", func(t *testing.T) {
 		require.Zero(t, os.Getenv("TM_P2P_QUEUE"))
-		opts := RouterOptions{}
-		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, func() *types.NodeInfo { return &types.NodeInfo{} }, nil, nil, opts)
+		opts := getDefaultRouterOptions()
+		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
 
@@ -31,8 +38,9 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.True(t, ok)
 	})
 	t.Run("Fifo", func(t *testing.T) {
-		opts := RouterOptions{QueueType: queueTypeFifo}
-		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, func() *types.NodeInfo { return &types.NodeInfo{} }, nil, nil, opts)
+		opts := getDefaultRouterOptions()
+		opts.QueueType = queueTypeFifo
+		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
 
@@ -40,8 +48,9 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.True(t, ok)
 	})
 	t.Run("Priority", func(t *testing.T) {
-		opts := RouterOptions{QueueType: queueTypePriority}
-		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, func() *types.NodeInfo { return &types.NodeInfo{} }, nil, nil, opts)
+		opts := getDefaultRouterOptions()
+		opts.QueueType = queueTypePriority
+		r, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
 
@@ -50,8 +59,9 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		defer q.close()
 	})
 	t.Run("NonExistant", func(t *testing.T) {
-		opts := RouterOptions{QueueType: "fast"}
-		_, err := NewRouter(log.NewNopLogger(), nil, nil, nil, func() *types.NodeInfo { return &types.NodeInfo{} }, nil, nil, opts)
+		opts := getDefaultRouterOptions()
+		opts.QueueType = "fast"
+		_, err := NewRouter(log.NewNopLogger(), nil, nil, nil, opts)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "fast")
 	})

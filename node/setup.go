@@ -304,15 +304,16 @@ func createRouter(
 		return nil, err
 	}
 
+	opts := getRouterConfig(cfg, appClient)
+	opts.LegacyEndpoint = ep
+	opts.LegacyTransport = transport
+	opts.NodeInfoProducer = nodeInfoProducer
 	return p2p.NewRouter(
 		p2pLogger,
 		p2pMetrics,
 		nodeKey.PrivKey,
 		peerManager,
-		nodeInfoProducer,
-		transport,
-		ep,
-		getRouterConfig(cfg, appClient),
+		opts,
 	)
 }
 
