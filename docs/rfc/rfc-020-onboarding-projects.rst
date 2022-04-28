@@ -76,14 +76,14 @@ even perhaps further parameterized within a basic shape, which would make it
 possible to use our existing test infrastructure to answer different questions
 about the performance or capability of the system.
 
-The work would involve adding a new paramater to the E2E test manifest, and
+The work would involve adding a new parameter to the E2E test manifest, and
 creating an option (e.g. "legacy") for the current load generation model,
 extract configurations options for the current load generation, and then
 prototype implementations of alternate load generation, and also run some
 preliminary using the tools.
 
-Byzantine E2E Worklads
-++++++++++++++++++++++
+Byzantine E2E Workloads
++++++++++++++++++++++++
 
 There are two main kinds of integration tests in Tendermint: the E2E test
 framework, and then a collection of integration tests that masquerade as
