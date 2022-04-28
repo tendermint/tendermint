@@ -452,7 +452,7 @@ for v0.37). So it is best if this RFC does not try to delve into that problem, b
 its outcomes are compatible with that effort (TODO: check this paragraph with Callum/Jasmina).
 
 In subsection [Cases to Address](#cases-to-address), we concluded that we can focus on
-solving case (h) in theortical terms.
+solving case (h) in theoretical terms.
 However, as the current Tendermint version does not yet support switching back to blocksync once a
 node has switched to consensus, we need to split case (h) into two cases. When a full node needs to
 catch up...
