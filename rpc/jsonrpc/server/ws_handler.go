@@ -331,22 +331,8 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 				RPCRequest: &request,
 				WSConn:     wsc,
 			})
-			args, err := parseParams(fctx, rpcFunc, request.Params)
-			if err != nil {
-				if err := wsc.WriteRPCResponse(writeCtx, request.MakeErrorf(rpctypes.CodeInvalidParams,
-					"converting JSON parameters: %v", err)); err != nil {
-					wsc.Logger.Error("error writing RPC response", "err", err)
-				}
-				continue
-			}
-
-			returns := rpcFunc.f.Call(args)
-
-			// TODO: Need to encode args/returns to string if we want to log them
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
-
 			var resp rpctypes.RPCResponse
-			result, err := unreflectResult(returns)
+			result, err := rpcFunc.Call(fctx, request.Params)
 			if err == nil {
 				resp = request.MakeResponse(result)
 			} else {
