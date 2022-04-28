@@ -27,7 +27,12 @@ import (
 )
 
 func TestRouterConstruction(t *testing.T) {
-	opts := p2p.RouterOptions{UseLibP2P: true}
+	opts := p2p.RouterOptions{
+		UseLibP2P:        true,
+		LegacyEndpoint:   &p2p.Endpoint{},
+		LegacyTransport:  &p2p.MemoryTransport{},
+		NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
+	}
 	if err := opts.Validate(); err != nil {
 		t.Fatalf("options should validate: %v", err)
 	}
@@ -39,9 +44,6 @@ func TestRouterConstruction(t *testing.T) {
 		metrics,
 		nil, // privkey
 		nil, // peermanager
-		func() *types.NodeInfo { return &types.NodeInfo{} },
-		[]p2p.Transport{},
-		[]p2p.Endpoint{},
 		opts,
 	)
 	if err == nil {
@@ -140,10 +142,11 @@ func TestRouter_Channel_Basic(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		testnet.RandomNode().Transport,
-		&p2p.Endpoint{},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			LegacyTransport:  testnet.RandomNode().Transport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+		},
 	)
 	require.NoError(t, err)
 
@@ -439,10 +442,11 @@ func TestRouter_AcceptPeers(t *testing.T) {
 				p2p.NopMetrics(),
 				selfKey,
 				peerManager,
-				func() *types.NodeInfo { return &selfInfo },
-				mockTransport,
-				nil,
-				p2p.RouterOptions{},
+				p2p.RouterOptions{
+					LegacyTransport:  mockTransport,
+					LegacyEndpoint:   &p2p.Endpoint{},
+					NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+				},
 			)
 			require.NoError(t, err)
 			require.NoError(t, router.Start(ctx))
@@ -493,10 +497,11 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+		},
 	)
 	require.NoError(t, err)
 
@@ -530,10 +535,11 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+		},
 	)
 	require.NoError(t, err)
 
@@ -581,10 +587,11 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+		},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start(ctx))
@@ -684,10 +691,11 @@ func TestRouter_DialPeers(t *testing.T) {
 				p2p.NopMetrics(),
 				selfKey,
 				peerManager,
-				func() *types.NodeInfo { return &selfInfo },
-				mockTransport,
-				nil,
-				p2p.RouterOptions{},
+				p2p.RouterOptions{
+					NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+					LegacyTransport:  mockTransport,
+					LegacyEndpoint:   &p2p.Endpoint{},
+				},
 			)
 			require.NoError(t, err)
 			require.NoError(t, router.Start(ctx))
@@ -769,11 +777,11 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
 		p2p.RouterOptions{
-			DialSleep: func(_ context.Context) {},
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+			DialSleep:        func(_ context.Context) {},
 			NumConcurrentDials: func() int {
 				ncpu := runtime.NumCPU()
 				if ncpu <= 3 {
@@ -843,10 +851,11 @@ func TestRouter_EvictPeers(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+		},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start(ctx))
@@ -905,10 +914,11 @@ func TestRouter_ChannelCompatability(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+		},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start(ctx))
@@ -960,10 +970,11 @@ func TestRouter_DontSendOnInvalidChannel(t *testing.T) {
 		p2p.NopMetrics(),
 		selfKey,
 		peerManager,
-		func() *types.NodeInfo { return &selfInfo },
-		mockTransport,
-		nil,
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			NodeInfoProducer: func() *types.NodeInfo { return &selfInfo },
+			LegacyTransport:  mockTransport,
+			LegacyEndpoint:   &p2p.Endpoint{},
+		},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start(ctx))
