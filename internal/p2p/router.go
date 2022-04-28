@@ -102,22 +102,22 @@ func (o *RouterOptions) Validate() error {
 	}
 
 	if o.NodeInfoProducer == nil {
-		return errors.New("must specifiy a NodeInfoProducer")
+		return errors.New("must specify a NodeInfoProducer")
 	}
 
 	if o.UseLibP2P {
-		if o.LegacyTransport == nil {
-			return errors.New("when using legacy p2p you must specify a transport")
-		}
-		if o.LegacyEndpoint == nil {
-			return errors.New("when using legacy p2p you must specify an endpoint")
-		}
-	} else {
 		if o.LegacyTransport != nil {
 			return errors.New("when using libp2p you must not specify legacy components (transport)")
 		}
 		if o.LegacyEndpoint == nil {
 			return errors.New("when using libp2p you must not specify legacy components (endpoint)")
+		}
+	} else {
+		if o.LegacyTransport == nil {
+			return errors.New("when using legacy p2p you must specify a transport")
+		}
+		if o.LegacyEndpoint == nil {
+			return errors.New("when using legacy p2p you must specify an endpoint")
 		}
 	}
 
