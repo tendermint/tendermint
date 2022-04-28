@@ -23,7 +23,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		ctx := rpctypes.WithCallInfo(req.Context(), &rpctypes.CallInfo{
 			HTTPRequest: req,
 		})
-		args, err := parseURLParams(rpcFunc.argNames, req)
+		args, err := parseURLParams(rpcFunc.args, req)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusBadRequest)
@@ -40,7 +40,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	}
 }
 
-func parseURLParams(argNames []string, req *http.Request) ([]byte, error) {
+func parseURLParams(args []argInfo, req *http.Request) ([]byte, error) {
 	if err := req.ParseForm(); err != nil {
 		return nil, fmt.Errorf("invalid HTTP request: %w", err)
 	}
@@ -52,15 +52,15 @@ func parseURLParams(argNames []string, req *http.Request) ([]byte, error) {
 	}
 
 	params := make(map[string]interface{})
-	for _, name := range argNames {
-		v, ok := getArg(name)
+	for _, arg := range args {
+		v, ok := getArg(arg.name)
 		if !ok {
 			continue
 		}
 		if z, err := decodeInteger(v); err == nil {
-			params[name] = z
+			params[arg.name] = z
 		} else if b, err := strconv.ParseBool(v); err == nil {
-			params[name] = b
+			params[arg.name] = b
 		} else if lc := strings.ToLower(v); strings.HasPrefix(lc, "0x") {
 			dec, err := hex.DecodeString(lc[2:])
 			if err != nil {
@@ -68,15 +68,23 @@ func parseURLParams(argNames []string, req *http.Request) ([]byte, error) {
 			} else if len(dec) == 0 {
 				return nil, errors.New("invalid empty hex string")
 			}
-			params[name] = dec
+			if arg.isBinary {
+				params[arg.name] = dec
+			} else {
+				params[arg.name] = string(dec)
+			}
 		} else if isQuotedString(v) {
 			var dec string
 			if err := json.Unmarshal([]byte(v), &dec); err != nil {
 				return nil, fmt.Errorf("invalid quoted string: %w", err)
 			}
-			params[name] = dec
+			if arg.isBinary {
+				params[arg.name] = []byte(dec)
+			} else {
+				params[arg.name] = dec
+			}
 		} else {
-			params[name] = v
+			params[arg.name] = v
 		}
 	}
 	return json.Marshal(params)
