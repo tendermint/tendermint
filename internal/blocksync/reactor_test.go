@@ -200,7 +200,7 @@ func (rts *reactorTestSuite) addMultipleNodes(
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		for idx, _ := range nodeIDs {
+		for idx := range nodeIDs {
 
 			if blockHeight <= maxBlockHeightPerNode[idx] {
 				lastState, err := stateStores[idx].Load()
@@ -425,7 +425,7 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 		t,
 		func() bool {
 			matching := true
-			for idx, _ := range rts.nodes {
+			for idx := range rts.nodes {
 				if idx == 0 {
 					continue
 				}
