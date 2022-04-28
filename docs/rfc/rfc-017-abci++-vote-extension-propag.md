@@ -413,7 +413,7 @@ These are the solutions proposed in discussions leading up to this RFC.
       *h' + 1* where it is the proposer.
 
     This mechanism, together with the invariant it uses, ensures that the node cannot be attacked by
-    being fed a block without extensions to make it beleive it is late, in a similar way as explained
+    being fed a block without extensions to make it believe it is late, in a similar way as explained
     for Solution 2.
 
 ### Feasibility of the Proposed Solutions
