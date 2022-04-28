@@ -27,33 +27,64 @@ import (
 )
 
 func TestRouterConstruction(t *testing.T) {
-	opts := p2p.RouterOptions{
-		UseLibP2P:        true,
-		LegacyEndpoint:   &p2p.Endpoint{},
-		LegacyTransport:  &p2p.MemoryTransport{},
-		NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
-	}
-	if err := opts.Validate(); err != nil {
-		t.Fatalf("options should validate: %v", err)
-	}
-	logger := log.NewNopLogger()
-	metrics := p2p.NopMetrics()
+	t.Run("Legacy", func(t *testing.T) {
+		opts := p2p.RouterOptions{
+			UseLibP2P:        false,
+			LegacyEndpoint:   &p2p.Endpoint{},
+			LegacyTransport:  &p2p.MemoryTransport{},
+			NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
+		}
+		if err := opts.Validate(); err != nil {
+			t.Fatalf("options should validate: %v", err)
+		}
 
-	router, err := p2p.NewRouter(
-		logger,
-		metrics,
-		nil, // privkey
-		nil, // peermanager
-		opts,
-	)
-	if err == nil {
-		t.Error("support for libp2p does not exist, and should prevent the router from being constructed")
-	} else if err.Error() != "libp2p is not supported" {
-		t.Errorf("incorrect error: %q", err.Error())
-	}
-	if router != nil {
-		t.Error("router was constructed when it should not have been")
-	}
+		logger := log.NewNopLogger()
+		metrics := p2p.NopMetrics()
+
+		router, err := p2p.NewRouter(
+			logger,
+			metrics,
+			nil, // privkey
+			nil, // peermanager
+			opts,
+		)
+		if err != nil {
+			t.Fatal("problem constructing legacy router", err)
+		}
+		if router == nil {
+			t.Error("router was not constructed when it should not have been")
+		}
+	})
+	t.Run("LibP2P", func(t *testing.T) {
+		opts := p2p.RouterOptions{
+			UseLibP2P:        true,
+			LegacyEndpoint:   nil,
+			LegacyTransport:  nil,
+			NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
+		}
+		if err := opts.Validate(); err != nil {
+			t.Fatalf("options should validate: %v", err)
+		}
+
+		logger := log.NewNopLogger()
+		metrics := p2p.NopMetrics()
+
+		router, err := p2p.NewRouter(
+			logger,
+			metrics,
+			nil, // privkey
+			nil, // peermanager
+			opts,
+		)
+		if err == nil {
+			t.Error("support for libp2p does not exist, and should prevent the router from being constructed")
+		} else if err.Error() != "libp2p is not supported" {
+			t.Errorf("incorrect error: %q", err.Error())
+		}
+		if router != nil {
+			t.Error("router was constructed and should not have have been")
+		}
+	})
 }
 
 func echoReactor(ctx context.Context, channel *p2p.Channel) {

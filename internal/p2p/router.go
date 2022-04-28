@@ -109,7 +109,7 @@ func (o *RouterOptions) Validate() error {
 		if o.LegacyTransport != nil {
 			return errors.New("when using libp2p you must not specify legacy components (transport)")
 		}
-		if o.LegacyEndpoint == nil {
+		if o.LegacyEndpoint != nil {
 			return errors.New("when using libp2p you must not specify legacy components (endpoint)")
 		}
 	} else {
