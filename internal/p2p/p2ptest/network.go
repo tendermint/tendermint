@@ -306,7 +306,6 @@ func (n *Node) MakeChannel(
 	ctx, cancel := context.WithCancel(ctx)
 	channel, err := n.Router.OpenChannel(ctx, chDesc)
 	require.NoError(t, err)
-	require.Contains(t, n.Router.NodeInfo().Channels, byte(chDesc.ID))
 	t.Cleanup(func() {
 		RequireEmpty(ctx, t, channel)
 		cancel()

@@ -156,7 +156,6 @@ func TestRouter_Channel_Basic(t *testing.T) {
 
 	channel, err := router.OpenChannel(chctx, chDesc)
 	require.NoError(t, err)
-	require.Contains(t, router.NodeInfo().Channels, byte(chDesc.ID))
 	require.NotNil(t, channel)
 
 	// Opening the same channel again should fail.
@@ -166,9 +165,7 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	// Opening a different channel should work.
 	chDesc2 := &p2p.ChannelDescriptor{ID: 2, MessageType: &p2ptest.Message{}}
 	_, err = router.OpenChannel(ctx, chDesc2)
-
 	require.NoError(t, err)
-	require.Contains(t, router.NodeInfo().Channels, byte(chDesc2.ID))
 
 	// Closing the channel, then opening it again should be fine.
 	chcancel()
