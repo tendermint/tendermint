@@ -347,7 +347,7 @@ detect when verifying each signature individually.
 
 However, because BLS signature aggregation creates an aggregated signature and
 an aggregated public key, a set of colluding signers can create a pair or set
-of signatures that aggregate to 0. The signatures that sum zero along with the
+of signatures that are non-zero but which aggregate ("sum") to 0. The signatures that sum zero along with the
 summed public key of the colluding signers will verify any message. This would
 allow the colluding signers to sign any block or message with the same signature.
 This would be reasonably easy to detect and create evidence for because, in
