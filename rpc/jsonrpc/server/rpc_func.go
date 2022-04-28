@@ -39,6 +39,10 @@ type RPCFunc struct {
 	ws     bool          // websocket only
 }
 
+// argInfo records the name of a field, along with a bit to tell whether the
+// value of the field requires binary data, having underlying type []byte.  The
+// flag is needed when decoding URL parameters, where we permit quoted strings
+// to be passed for either argument type.
 type argInfo struct {
 	name     string
 	isBinary bool // value wants binary data
