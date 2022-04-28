@@ -132,7 +132,12 @@ func (vs *validatorStub) signVote(
 
 // Sign vote for type/hash/header
 func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(voteType, hash, header, []byte("extension"))
+	var ext []byte
+	if voteType == tmproto.PrecommitType {
+		ext = []byte("extension")
+	}
+	v, err := vs.signVote(voteType, hash, header, ext)
+
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}

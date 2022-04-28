@@ -164,14 +164,28 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, errors.New("nil duplicate vote evidence")
 	}
 
-	vA, err := VoteFromProto(pb.VoteA)
-	if err != nil {
-		return nil, err
+	var vA *Vote
+	if pb.VoteA != nil {
+		var err error
+		vA, err = VoteFromProto(pb.VoteA)
+		if err != nil {
+			return nil, err
+		}
+		if err = vA.ValidateBasic(); err != nil {
+			return nil, err
+		}
 	}
 
-	vB, err := VoteFromProto(pb.VoteB)
-	if err != nil {
-		return nil, err
+	var vB *Vote
+	if pb.VoteB != nil {
+		var err error
+		vB, err = VoteFromProto(pb.VoteB)
+		if err != nil {
+			return nil, err
+		}
+		if err = vB.ValidateBasic(); err != nil {
+			return nil, err
+		}
 	}
 
 	dve := &DuplicateVoteEvidence{
