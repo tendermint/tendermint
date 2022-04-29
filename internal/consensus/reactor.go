@@ -1266,7 +1266,7 @@ func (r *Reactor) handleVoteSetBitsMessage(ctx context.Context, envelope *p2p.En
 // the p2p channel.
 //
 // NOTE: We block on consensus state for proposals, block parts, and votes.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope, chans channelBundle) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, chans channelBundle) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -1293,9 +1293,9 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 		return err
 	}
 
-	r.logger.Debug("received message", "ch_id", chID, "message", msgI, "peer", envelope.From)
+	r.logger.Debug("received message", "ch_id", envelope.ChannelID, "message", msgI, "peer", envelope.From)
 
-	switch chID {
+	switch envelope.ChannelID {
 	case StateChannel:
 		err = r.handleStateMessage(ctx, envelope, msgI, chans.votSet)
 	case DataChannel:
@@ -1305,10 +1305,10 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 	case VoteSetBitsChannel:
 		err = r.handleVoteSetBitsMessage(ctx, envelope, msgI)
 	default:
-		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", envelope.ChannelID, envelope)
 	}
 
-	return err
+	return
 }
 
 // processStateCh initiates a blocking process where we listen for and handle
@@ -1320,8 +1320,8 @@ func (r *Reactor) processStateCh(ctx context.Context, chans channelBundle) {
 	iter := chans.state.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(ctx, chans.state.ID, envelope, chans); err != nil {
-			r.logger.Error("failed to process message", "ch_id", chans.state.ID, "envelope", envelope, "err", err)
+		if err := r.handleMessage(ctx, envelope, chans); err != nil {
+			r.logger.Error("failed to process message", "ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
 			if serr := chans.state.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
 				Err:    err,
@@ -1341,8 +1341,8 @@ func (r *Reactor) processDataCh(ctx context.Context, chans channelBundle) {
 	iter := chans.data.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(ctx, chans.data.ID, envelope, chans); err != nil {
-			r.logger.Error("failed to process message", "ch_id", chans.data.ID, "envelope", envelope, "err", err)
+		if err := r.handleMessage(ctx, envelope, chans); err != nil {
+			r.logger.Error("failed to process message", "ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
 			if serr := chans.data.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
 				Err:    err,
@@ -1362,8 +1362,8 @@ func (r *Reactor) processVoteCh(ctx context.Context, chans channelBundle) {
 	iter := chans.vote.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(ctx, chans.vote.ID, envelope, chans); err != nil {
-			r.logger.Error("failed to process message", "ch_id", chans.vote.ID, "envelope", envelope, "err", err)
+		if err := r.handleMessage(ctx, envelope, chans); err != nil {
+			r.logger.Error("failed to process message", "ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
 			if serr := chans.vote.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
 				Err:    err,
@@ -1384,12 +1384,12 @@ func (r *Reactor) processVoteSetBitsCh(ctx context.Context, chans channelBundle)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
 
-		if err := r.handleMessage(ctx, chans.votSet.ID, envelope, chans); err != nil {
+		if err := r.handleMessage(ctx, envelope, chans); err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return
 			}
 
-			r.logger.Error("failed to process message", "ch_id", chans.votSet.ID, "envelope", envelope, "err", err)
+			r.logger.Error("failed to process message", "ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
 			if serr := chans.votSet.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
 				Err:    err,
