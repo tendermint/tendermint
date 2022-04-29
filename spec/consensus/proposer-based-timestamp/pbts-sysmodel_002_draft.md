@@ -333,7 +333,7 @@ This condition is trivially observed if a correct proposer `p` sets `v.time` to 
 reads from its clock when starting round `r` and proposing `v`.
 A `PROPOSAL` message sent by `p` at local time `v.time` should not be received
 by any correct process before its local clock reads `v.time - PRECISION`, so
-that condition 2. of [PBTS-TIMELY.0] is observed.
+that condition 2 of [PBTS-TIMELY.0] is observed.
 
 The second condition establishes that every correct process should start round
 `v.round` at a local time that allows `v.time` to still be considered timely,
