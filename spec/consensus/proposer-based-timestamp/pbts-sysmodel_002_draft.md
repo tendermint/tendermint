@@ -277,7 +277,7 @@ In this section we present invariants that need be observed for ensuring that
 PBTS is both safe and live.
 
 In addition to the variables and system parameters already defined, we use
-`beginRound(p,r)` to represent the time the process `p` reads from its clock
+beginRound(p,r)` as the value of process `p`'s local clock 
 when it starts round `r` of consensus.
 
 ### Safety
