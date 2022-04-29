@@ -12,8 +12,8 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -113,7 +113,7 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return tmhash.Sum(dve.Bytes())
+	return crypto.Checksum(dve.Bytes())
 }
 
 // Height returns the height of the infraction
@@ -374,10 +374,10 @@ func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *He
 func (l *LightClientAttackEvidence) Hash() []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, l.CommonHeight)
-	bz := make([]byte, tmhash.Size+n)
-	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
-	copy(bz[tmhash.Size:], buf)
-	return tmhash.Sum(bz)
+	bz := make([]byte, crypto.HashSize+n)
+	copy(bz[:crypto.HashSize-1], l.ConflictingBlock.Hash().Bytes())
+	copy(bz[crypto.HashSize:], buf)
+	return crypto.Checksum(bz)
 }
 
 // Height returns the last height at which the primary provider and witness provider had the same header.
@@ -843,10 +843,10 @@ func makeMockVote(height int64, round, index int32, addr Address,
 
 func randBlockID() BlockID {
 	return BlockID{
-		Hash: tmrand.Bytes(tmhash.Size),
+		Hash: tmrand.Bytes(crypto.HashSize),
 		PartSetHeader: PartSetHeader{
 			Total: 1,
-			Hash:  tmrand.Bytes(tmhash.Size),
+			Hash:  tmrand.Bytes(crypto.HashSize),
 		},
 	}
 }

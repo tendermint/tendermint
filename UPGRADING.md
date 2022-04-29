@@ -145,6 +145,27 @@ subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
 - `tendermint reset unsafe-all`: A summation of the other three commands. This will delete
   the entire `data` directory which may include application data as well.
 
+### Go API Changes
+
+#### `crypto` Package Cleanup
+
+The `github.com/tendermint/tendermint/crypto/tmhash` package was removed
+to improve clarity. Users are encouraged to use the standard library
+`crypto/sha256` package directly. However, as a convenience, some constants
+and one function have moved to the Tendermint `crypto` package:
+
+- The `crypto.Checksum` function returns the sha256 checksum of a
+  byteslice. This is a wrapper around `sha256.Sum265` from the
+  standard libary, but provided as a function to ease type
+  requirements (the library function returns a `[32]byte` rather than
+  a `[]byte`).
+- `tmhash.TruncatedSize` is now `crypto.AddressSize` which was
+  previously an alias for the same value.
+- `tmhash.Size` and `tmhash.BlockSize` are now `crypto.HashSize` and
+  `crypto.HashSize`.
+- `tmhash.SumTruncated` is now available via `crypto.AddressHash` or by
+  `crypto.Checksum(<...>)[:crypto.AddressSize]`
+
 ## v0.35
 
 ### ABCI Changes
@@ -259,11 +280,13 @@ the full RPC interface provided as direct function calls. Import the
 the node service as in the following:
 
 ```go
-    node := node.NewDefault() //construct the node object
-    // start and set up the node service
+logger := log.NewNopLogger()
 
-    client := local.New(node.(local.NodeService))
-    // use client object to interact with the node
+// Construct and start up a node with default settings.
+node := node.NewDefault(logger)
+
+// Construct a local (in-memory) RPC client to the node.
+client := local.New(logger, node.(local.NodeService))
 ```
 
 ### gRPC Support

@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -86,7 +85,7 @@ func TestSignerClient_SignVote(t *testing.T) {
 	require.NoError(t, err)
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 	valAddr := tmrand.Bytes(crypto.AddressSize)
 
 	want := &types.Vote{
@@ -141,7 +140,7 @@ func TestSignerClient_SignProposal(t *testing.T) {
 	require.NoError(t, err)
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 
 	have := &types.Proposal{
 		Type:      tmproto.ProposalType,
