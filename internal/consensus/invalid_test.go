@@ -107,7 +107,7 @@ func invalidDoPrevoteFunc(
 	round int32,
 	cs *State,
 	r *Reactor,
-	voteCh *p2p.Channel,
+	voteCh p2p.Channel,
 	pv types.PrivValidator,
 ) {
 	// routine to:
