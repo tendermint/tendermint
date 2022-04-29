@@ -92,7 +92,7 @@ There exists a system parameter `MSGDELAY` for end-to-end delays of proposal mes
 such for any two correct processes `p` and `q`:
 
 - If `p` sends a proposal message `m` at real time `t` and `q` receives `m` at
-  real time `t'`, then `t <= t' <= t' + MSGDELAY`.
+  real time `t'`, then `t <= t' <= t + MSGDELAY`.
 
 Notice that, as a system parameter, `MSGDELAY` should be observed for any
 proposal message broadcast by correct processes: it is a *worst-case* parameter.
