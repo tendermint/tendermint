@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	HashSize      = sha256.Size
+	// HashSize is the size in bytes of an AddressHash.
+	HashSize = sha256.Size
 	HashBlockSize = sha256.BlockSize
 
 	// AddressSize is the size of a pubkey address.
@@ -20,6 +21,10 @@ const (
 // Use an alias so Unmarshal methods (with ptr receivers) are available too.
 type Address = bytes.HexBytes
 
+// AddressHash computes a truncated SHA-256 hash of bz for use as
+// a peer address.
+//
+// See: https://docs.tendermint.com/master/spec/core/data_structures.html#address
 func AddressHash(bz []byte) Address {
 	h := sha256.Sum256(bz)
 	return Address(h[:AddressSize])
