@@ -134,15 +134,27 @@ func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
 		_, numPending, lenRequesters := pool.GetStatus()
 		switch {
 		case numPending >= maxPendingRequests:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
+			timer := time.NewTimer(requestIntervalMS * time.Millisecond)
+			defer timer.Stop()
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+			}
 			// check for timed out peers
 			pool.removeTimedoutPeers()
+
 		case lenRequesters >= maxTotalRequesters:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
+			timer := time.NewTimer(requestIntervalMS * time.Millisecond)
+			defer timer.Stop()
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+			}
 			// check for timed out peers
 			pool.removeTimedoutPeers()
+
 		default:
 			// request for more blocks.
 			pool.makeNextRequester(ctx)
@@ -637,7 +649,14 @@ OUTER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				time.Sleep(requestIntervalMS * time.Millisecond)
+				timer := time.NewTimer(requestIntervalMS * time.Millisecond)
+				defer timer.Stop()
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-timer.C:
+				}
 				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP
