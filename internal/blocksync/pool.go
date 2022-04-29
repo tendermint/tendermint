@@ -130,11 +130,7 @@ func (*BlockPool) OnStop() {}
 
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
-	for {
-		if !pool.IsRunning() {
-			break
-		}
-
+	for pool.IsRunning() {
 		_, numPending, lenRequesters := pool.GetStatus()
 		switch {
 		case numPending >= maxPendingRequests:
