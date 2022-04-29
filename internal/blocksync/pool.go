@@ -200,9 +200,12 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
-// PeekTwoBlocks returns blocks at pool.height and pool.height+1.
-// We need to see the second block's Commit to validate the first block.
-// So we peek two blocks at a time.
+// PeekTwoBlocks returns blocks at pool.height and pool.height+1. We need to
+// see the second block's Commit to validate the first block. So we peek two
+// blocks at a time. We return an extended commit, containing vote extensions
+// and their associated signatures, as this is critical to consensus in ABCI++
+// as we switch from block sync to consensus mode.
+//
 // The caller will verify the commit.
 func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block, firstExtCommit *types.ExtendedCommit) {
 	pool.mtx.RLock()
