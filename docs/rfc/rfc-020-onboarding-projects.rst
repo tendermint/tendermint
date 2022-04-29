@@ -32,7 +32,7 @@ have the following properties that we think make good on-boarding projects:
   changes that require deeper insight than is available during onboarding to
   address well. A good size project should have natural touchpoints or
   check-ins.
-  
+
 Projects
 --------
 
@@ -41,11 +41,10 @@ project or aspects of Tendermint that you're excited to work on with your
 onboarding buddy. This will help make sure that these issues are still
 relevant, help you get any context, underatnding known pitfalls, and to
 confirm a high level approach or design (if relevant.) On-boarding buddies
-should be prepared to do some design work or at 
+should be prepared to do some design work before someone joins the team.
 
-These descriptions that
-follow provide some basic background and attempt to describe the user stories
-and the potential impact of these project.
+The descriptions that follow provide some basic background and attempt to
+describe the user stories and the potential impact of these project.
 
 E2E Test Systems
 ~~~~~~~~~~~~~~~~
@@ -54,7 +53,7 @@ Tendermint's E2E framework makes it possible to run small test networks with
 different Tendermint configurations, and make sure that the system works. The
 tests run Tendermint in a separate binary, and the system provides some very
 high level protection against making changes that could break Tendermint in
-otherwise difficult to detect ways. 
+otherwise difficult to detect ways.
 
 Working on the E2E system is a good place to get introduced to the Tendermint
 codebase, particularly for developers who are newer to Go, as the E2E
@@ -62,7 +61,7 @@ system (generator, runner, etc.) is distinct from the rest of Tendermint and
 comparatively quite small, so it may be easier to begin making changes in this
 area. At the same time, because the E2E system exercises *all* of Tendermint,
 work in this area is a good way to get introduced to various components of the
-system. 
+system.
 
 Configurable E2E Workloads
 ++++++++++++++++++++++++++
@@ -95,7 +94,7 @@ One solution to this, would be to modify the E2E ABCI application to allow it
 to inject byzantine behavior, and then have this be a configurable aspect of
 a test network to be able to provoke Byzantine behavior in a "real" system and
 then observe that evidence is constructed. This would make it possible to
-remove the legacy tests entirely once the new tests have proven themselves. 
+remove the legacy tests entirely once the new tests have proven themselves.
 
 Abstract Orchestration Framework
 ++++++++++++++++++++++++++++++++
@@ -103,14 +102,14 @@ Abstract Orchestration Framework
 The orchestration of e2e test processes is presently done using docker
 compose, which works well, but has proven a bit limiting as all processes need
 to run on a single machine, and the log aggregation functions are confusing at
-best. 
+best.
 
 This project would replace the current orchestration with something more
 generic, potentially maintaining the current system, but also allowing the e2e
 tests to manage processes using k8s. There are a few "local" k8s frameworks
 (e.g. kind and k3s,) which might be able to be useful for our current testing
 model, but hopefully, we could use this new implementation with other k8s
-systems for more flexible distribute test orchestration. 
+systems for more flexible distribute test orchestration.
 
 Improve Operationalize Experience of ``run-multiple.sh``
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -120,7 +119,7 @@ the test cases using a shell script that ensure cleanup of entire test
 suites. This is a bit difficult to maintain and makes reproduction of test
 cases more awkward than it should be. The e2e ``runner`` itself should provide
 equivalent functionality to ``run-multiple.sh``: ensure cleanup of test cases,
-collect and process output, and be able to manage entire suites of cases. 
+collect and process output, and be able to manage entire suites of cases.
 
 It might also be useful to implement an e2e test orchestrator that runs all
 tendermint instances in a single process, using "real" networks for faster
@@ -128,20 +127,20 @@ feedback and iteration during development.
 
 In addition to being a bit easier to maintain, having a more capable runner
 implementation would make it easier to collect data from test runs, improve
-debugability and reporting. 
+debugability and reporting.
 
 Fan-Out For CI E2E Tests
 ++++++++++++++++++++++++
 
 While there are some parallelism in the execution of e2e tests, each e2e test
 job must build a tendermint e2e image, which takes about 5 minutes of CPU time
-per-task, which given the size of each of the runs. 
+per-task, which given the size of each of the runs.
 
 We'd like to be able to reduce the amount of overhead per-e2e tests while
-keeping the cycle time for working with the run a lot of different e2e
-configurations,and also have. While this is in some ways an impossible
-tradeoff, the percentage of overhead at the moment is large enough that we can
-make some material progress with a moderate amount of time. 
+keeping the cycle time for working with the tests very low, while also
+maintaining a reasonable level of test coverage.  This is an impossible
+tradeoff, in some ways, and the percentage of overhead at the moment is large
+enough that we can make some material progress with a moderate amount of time.
 
 Most of this work has to do with modifying github actions configuration and
 e2e artifact (docker) building to reduce redundant work. Eventually, when we
@@ -166,7 +165,7 @@ covers some of the background and approach.
 While the changes are in this project are relatively rote, this will provide
 exposure to lots of different areas of the codebase as well as insight into
 how different areas of the codebase interact with eachother, as well as
-experience with the test suites and infrastructure. 
+experience with the test suites and infrastructure.
 
 Implement more Expressive ABCI Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -175,7 +174,7 @@ Tendermint maintains two very simple ABCI applications (a KV application used
 for basic testing, and slightly more advanced test application used in the
 end-to-end tests). Writing an application would provide a new engineer with
 useful experiences using Tendermint that mirrors the expierence of downstream
-users. 
+users.
 
 This is more of an exploratory project, but could include providing common
 interfaces on top of Tendermint consensus for other well known protocols or
@@ -235,7 +234,7 @@ Logging Metrics
 In some systems, the logging system itself can provide some interesting
 insights for operators: having metrics that track the number of messages at
 different levels as well as the total number of messages, can act as a canary
-for the system as a whole. 
+for the system as a whole.
 
 This should be achievable by adding an interceptor layer within the logging
 package itself that can add metrics to the existing system.
