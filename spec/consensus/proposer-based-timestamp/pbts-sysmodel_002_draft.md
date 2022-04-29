@@ -329,7 +329,7 @@ then the proposal `(v, v.time, r)` is accepted by every correct process provided
 - `max{p is correct : beginRound(p,r)} <= v.time + MSGDELAY + PRECISION <= min{p is correct : beginRound(p,r+1)}`
 
 The first condition establishes a range of safe proposal times `v.time` for round `r`.
-It is trivially observed if a correct proposer `p` sets `v.time` to the time it
+This condition is trivially observed if a correct proposer `p` sets `v.time` to the time it
 reads from its clock when starting round `r` and proposing `v`.
 A `PROPOSAL` message sent by `p` at local time `v.time` should not be received
 by any correct process before its local clock reads `v.time - PRECISION`, so
