@@ -9,7 +9,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -222,5 +221,5 @@ func mockNodeFromHeadersAndVals(headers map[int64]*types.SignedHeader,
 }
 
 func hash(s string) []byte {
-	return tmhash.Sum([]byte(s))
+	return crypto.Checksum([]byte(s))
 }

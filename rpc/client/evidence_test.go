@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -54,16 +54,16 @@ func makeEvidences(
 		Type:             tmproto.PrevoteType,
 		Timestamp:        timestamp,
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
+			Hash: crypto.Checksum(tmrand.Bytes(crypto.HashSize)),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000,
-				Hash:  tmhash.Sum([]byte("partset")),
+				Hash:  crypto.Checksum([]byte("partset")),
 			},
 		},
 	}
 
 	vote2 := vote
-	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
+	vote2.BlockID.Hash = crypto.Checksum([]byte("blockhash2"))
 	correct = newEvidence(t, val, &vote, &vote2, chainID, timestamp)
 
 	fakes = make([]*types.DuplicateVoteEvidence, 0)

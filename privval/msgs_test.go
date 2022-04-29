@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -25,7 +24,7 @@ func exampleVote() *types.Vote {
 		Type:             tmproto.PrecommitType,
 		Height:           3,
 		Round:            2,
-		BlockID:          types.BlockID{Hash: tmhash.Sum([]byte("blockID_hash")), PartSetHeader: types.PartSetHeader{Total: 1000000, Hash: tmhash.Sum([]byte("blockID_part_set_header_hash"))}},
+		BlockID:          types.BlockID{Hash: crypto.Checksum([]byte("blockID_hash")), PartSetHeader: types.PartSetHeader{Total: 1000000, Hash: crypto.Checksum([]byte("blockID_part_set_header_hash"))}},
 		Timestamp:        stamp,
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
@@ -43,10 +42,10 @@ func exampleProposal() *types.Proposal {
 		POLRound:  2,
 		Signature: []byte("it's a signature"),
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
+			Hash: crypto.Checksum([]byte("blockID_hash")),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000000,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+				Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 			},
 		},
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -57,7 +56,7 @@ func TestGetPubKey(t *testing.T) {
 func TestSignVote(t *testing.T) {
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 	valAddr := tmrand.Bytes(crypto.AddressSize)
 
 	testCases := []struct {
@@ -133,7 +132,7 @@ func TestSignVote(t *testing.T) {
 func TestSignProposal(t *testing.T) {
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 
 	testCases := []struct {
 		name       string
