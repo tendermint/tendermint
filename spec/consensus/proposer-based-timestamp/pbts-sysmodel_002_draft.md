@@ -148,7 +148,7 @@ whether a process accepts or reject a proposal time.
 For this reason, the Time-Validity property refers to the previous evaluation
 of the `timely` predicate, detailed in the following section.
 
-## Timely proposals
+## Protocol Analysis - Timely proposals
 
 For PBTS, a `proposal` is a tuple `(v, v.time, v.round)`, where:
 
