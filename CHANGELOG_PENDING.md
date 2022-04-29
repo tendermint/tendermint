@@ -47,6 +47,7 @@ Special thanks to external contributors on this release:
   - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychoish)
   - [abci/client] \#7607 Simplify client interface (removes most "async" methods). (@creachadair)
   - [libs/json] \#7673 Remove the libs/json (tmjson) library. (@creachadair)
+  - [crypto] \#8412 \#8432 Remove `crypto/tmhash` package in favor of  small functions in `crypto` package and cleanup of unused functions. (@tychoish)
 
 - Blockchain Protocol
 
