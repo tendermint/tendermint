@@ -10,7 +10,6 @@ import (
 const (
 	// HashSize is the size in bytes of an AddressHash.
 	HashSize = sha256.Size
-	HashBlockSize = sha256.BlockSize
 
 	// AddressSize is the size of a pubkey address.
 	AddressSize = 20
