@@ -14,6 +14,8 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -61,6 +63,8 @@ func TestRouterConstruction(t *testing.T) {
 			LegacyEndpoint:   nil,
 			LegacyTransport:  nil,
 			NodeInfoProducer: func() *types.NodeInfo { return &types.NodeInfo{} },
+			NetworkHost:      &basichost.BasicHost{},
+			NetworkPubSub:    &pubsub.PubSub{},
 		}
 		if err := opts.Validate(); err != nil {
 			t.Fatalf("options should validate: %v", err)
@@ -78,7 +82,7 @@ func TestRouterConstruction(t *testing.T) {
 		)
 		if err == nil {
 			t.Error("support for libp2p does not exist, and should prevent the router from being constructed")
-		} else if err.Error() != "libp2p is not supported" {
+		} else if err.Error() != "libp2p is not (yet) supported" {
 			t.Errorf("incorrect error: %q", err.Error())
 		}
 		if router != nil {
