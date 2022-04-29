@@ -135,9 +135,9 @@ func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
 		switch {
 		case numPending >= maxPendingRequests:
 			timer := time.NewTimer(requestIntervalMS * time.Millisecond)
-			defer timer.Stop()
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 				return
 			case <-timer.C:
 			}
@@ -146,9 +146,9 @@ func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
 
 		case lenRequesters >= maxTotalRequesters:
 			timer := time.NewTimer(requestIntervalMS * time.Millisecond)
-			defer timer.Stop()
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 				return
 			case <-timer.C:
 			}
@@ -650,9 +650,9 @@ OUTER_LOOP:
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
 				timer := time.NewTimer(requestIntervalMS * time.Millisecond)
-				defer timer.Stop()
 				select {
 				case <-ctx.Done():
+					timer.Stop()
 					return
 
 				case <-timer.C:
