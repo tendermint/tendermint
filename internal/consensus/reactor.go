@@ -1284,11 +1284,12 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, cha
 	// and because a large part of the core business logic depends on these
 	// domain types opposed to simply working with the Proto types.
 	protoMsg := new(tmcons.Message)
-	if err := protoMsg.Wrap(envelope.Message); err != nil {
+	if err = protoMsg.Wrap(envelope.Message); err != nil {
 		return err
 	}
 
-	msgI, err := MsgFromProto(protoMsg)
+	var msgI Message
+	msgI, err = MsgFromProto(protoMsg)
 	if err != nil {
 		return err
 	}
@@ -1308,7 +1309,7 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, cha
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", envelope.ChannelID, envelope)
 	}
 
-	return
+	return err
 }
 
 // processStateCh initiates a blocking process where we listen for and handle
