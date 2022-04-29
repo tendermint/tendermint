@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/libp2p/go-libp2p-core/host"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -83,6 +85,9 @@ type RouterOptions struct {
 
 	LegacyTransport Transport
 	LegacyEndpoint  *Endpoint
+
+	NetworkHost   host.Host
+	NetworkPubSub *pubsub.PubSub
 }
 
 const (
@@ -112,12 +117,24 @@ func (o *RouterOptions) Validate() error {
 		if o.LegacyEndpoint != nil {
 			return errors.New("when using libp2p you must not specify legacy components (endpoint)")
 		}
+		if o.NetworkHost == nil {
+			return errors.New("when using libp2p you must specify network components (host)")
+		}
+		if o.NetworkPubSub == nil {
+			return errors.New("when using libp2p you must specify network components (pubsub)")
+		}
 	} else {
 		if o.LegacyTransport == nil {
 			return errors.New("when using legacy p2p you must specify a transport")
 		}
 		if o.LegacyEndpoint == nil {
 			return errors.New("when using legacy p2p you must specify an endpoint")
+		}
+		if o.NetworkHost != nil {
+			return errors.New("when using legacy p2p you must not specify libp2p components (host)")
+		}
+		if o.NetworkPubSub != nil {
+			return errors.New("when using legacy p2p you must not specify libp2p components (pubsub)")
 		}
 	}
 
@@ -177,30 +194,38 @@ func (o *RouterOptions) Validate() error {
 // quality of service.
 type Router struct {
 	*service.BaseService
-	logger log.Logger
+	logger  log.Logger
+	metrics *Metrics
 
-	metrics     *Metrics
-	options     RouterOptions
-	privKey     crypto.PrivKey
-	peerManager *PeerManager
-	chDescs     []*ChannelDescriptor
-	transport   Transport
-	endpoint    *Endpoint
-	connTracker connectionTracker
+	options RouterOptions
+	privKey crypto.PrivKey
+	chDescs []*ChannelDescriptor
 
-	peerMtx    sync.RWMutex
-	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
-	// the channels that the peer queue has open
-	peerChannels     map[types.NodeID]ChannelIDSet
-	queueFactory     func(int) queue
 	nodeInfoProducer func() *types.NodeInfo
 
-	// FIXME: We don't strictly need to use a mutex for this if we seal the
-	// channels on router start. This depends on whether we want to allow
-	// dynamic channels in the future.
-	channelMtx      sync.RWMutex
-	channelQueues   map[ChannelID]queue // inbound messages from all peers to a single channel
-	channelMessages map[ChannelID]proto.Message
+	legacy struct {
+		peerManager *PeerManager
+		transport   Transport
+		endpoint    *Endpoint
+		connTracker connectionTracker
+		peerMtx     sync.RWMutex
+		peerQueues  map[types.NodeID]queue // outbound messages per peer for all channels
+		// the channels that the peer queue has open
+		peerChannels map[types.NodeID]ChannelIDSet
+		queueFactory func(int) queue
+
+		// FIXME: We don't strictly need to use a mutex for this if we seal the
+		// channels on router start. This depends on whether we want to allow
+		// dynamic channels in the future.
+		channelMtx      sync.RWMutex
+		channelQueues   map[ChannelID]queue // inbound messages from all peers to a single channel
+		channelMessages map[ChannelID]proto.Message
+	}
+
+	network struct {
+		host host.Host // network handle for ourselves
+		ps   *pubsub.PubSub
+	}
 }
 
 // NewRouter creates a new Router. The given Transports must already be
@@ -211,33 +236,38 @@ func NewRouter(logger log.Logger, metrics *Metrics, key crypto.PrivKey, pm *Peer
 		return nil, err
 	}
 
-	if opts.UseLibP2P {
-		return nil, errors.New("libp2p is not supported")
-	}
-
 	router := &Router{
 		logger:           logger,
 		metrics:          metrics,
 		privKey:          key,
 		nodeInfoProducer: opts.NodeInfoProducer,
-		connTracker: newConnTracker(
-			opts.MaxIncomingConnectionAttempts,
-			opts.IncomingConnectionWindow,
-		),
-		chDescs:         make([]*ChannelDescriptor, 0),
-		transport:       opts.LegacyTransport,
-		endpoint:        opts.LegacyEndpoint,
-		peerManager:     pm,
-		options:         opts,
-		channelQueues:   map[ChannelID]queue{},
-		channelMessages: map[ChannelID]proto.Message{},
-		peerQueues:      map[types.NodeID]queue{},
-		peerChannels:    make(map[types.NodeID]ChannelIDSet),
+		options:          opts,
+		chDescs:          make([]*ChannelDescriptor, 0),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
-	return router, nil
+	switch {
+	case opts.UseLibP2P:
+		router.network.host = opts.NetworkHost
+		router.options.NetworkPubSub = opts.NetworkPubSub
+
+		return nil, errors.New("libp2p is not (yet) supported")
+	default:
+		router.legacy.connTracker = newConnTracker(
+			opts.MaxIncomingConnectionAttempts,
+			opts.IncomingConnectionWindow,
+		)
+		router.legacy.transport = opts.LegacyTransport
+		router.legacy.endpoint = opts.LegacyEndpoint
+		router.legacy.peerManager = pm
+		router.legacy.channelQueues = map[ChannelID]queue{}
+		router.legacy.channelMessages = map[ChannelID]proto.Message{}
+		router.legacy.peerQueues = map[types.NodeID]queue{}
+		router.legacy.peerChannels = make(map[types.NodeID]ChannelIDSet)
+
+		return router, nil
+	}
 }
 
 func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error) {
@@ -273,18 +303,18 @@ type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*Channel, error) {
-	r.channelMtx.Lock()
-	defer r.channelMtx.Unlock()
+	r.legacy.channelMtx.Lock()
+	defer r.legacy.channelMtx.Unlock()
 
 	id := chDesc.ID
-	if _, ok := r.channelQueues[id]; ok {
+	if _, ok := r.legacy.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
 	r.chDescs = append(r.chDescs, chDesc)
 
 	messageType := chDesc.MessageType
 
-	queue := r.queueFactory(chDesc.RecvBufferCapacity)
+	queue := r.legacy.queueFactory(chDesc.RecvBufferCapacity)
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
 	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
@@ -295,20 +325,20 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 		wrapper = w
 	}
 
-	r.channelQueues[id] = queue
-	r.channelMessages[id] = messageType
+	r.legacy.channelQueues[id] = queue
+	r.legacy.channelMessages[id] = messageType
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfoProducer().AddChannel(uint16(chDesc.ID))
 
-	r.transport.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
+	r.legacy.transport.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
 
 	go func() {
 		defer func() {
-			r.channelMtx.Lock()
-			delete(r.channelQueues, id)
-			delete(r.channelMessages, id)
-			r.channelMtx.Unlock()
+			r.legacy.channelMtx.Lock()
+			delete(r.legacy.channelQueues, id)
+			delete(r.legacy.channelMessages, id)
+			r.legacy.channelMtx.Unlock()
 			queue.close()
 		}()
 
@@ -355,11 +385,11 @@ func (r *Router) routeChannel(
 			// collect peer queues to pass the message via
 			var queues []queue
 			if envelope.Broadcast {
-				r.peerMtx.RLock()
+				r.legacy.peerMtx.RLock()
 
-				queues = make([]queue, 0, len(r.peerQueues))
-				for nodeID, q := range r.peerQueues {
-					peerChs := r.peerChannels[nodeID]
+				queues = make([]queue, 0, len(r.legacy.peerQueues))
+				for nodeID, q := range r.legacy.peerQueues {
+					peerChs := r.legacy.peerChannels[nodeID]
 
 					// check whether the peer is receiving on that channel
 					if _, ok := peerChs[chID]; ok {
@@ -367,19 +397,19 @@ func (r *Router) routeChannel(
 					}
 				}
 
-				r.peerMtx.RUnlock()
+				r.legacy.peerMtx.RUnlock()
 			} else {
-				r.peerMtx.RLock()
+				r.legacy.peerMtx.RLock()
 
-				q, ok := r.peerQueues[envelope.To]
+				q, ok := r.legacy.peerQueues[envelope.To]
 				contains := false
 				if ok {
-					peerChs := r.peerChannels[envelope.To]
+					peerChs := r.legacy.peerChannels[envelope.To]
 
 					// check whether the peer is receiving on that channel
 					_, contains = peerChs[chID]
 				}
-				r.peerMtx.RUnlock()
+				r.legacy.peerMtx.RUnlock()
 
 				if !ok {
 					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
@@ -420,7 +450,7 @@ func (r *Router) routeChannel(
 
 			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
 
-			r.peerManager.Errored(peerError.NodeID, peerError.Err)
+			r.legacy.peerManager.Errored(peerError.NodeID, peerError.Err)
 		case <-ctx.Done():
 			return
 		}
@@ -491,7 +521,7 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 		}
 
 		incomingIP := conn.RemoteEndpoint().IP
-		if err := r.connTracker.AddConn(incomingIP); err != nil {
+		if err := r.legacy.connTracker.AddConn(incomingIP); err != nil {
 			closeErr := conn.Close()
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
@@ -510,7 +540,7 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 
 func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	defer conn.Close()
-	defer r.connTracker.RemoveConn(conn.RemoteEndpoint().IP)
+	defer r.legacy.connTracker.RemoveConn(conn.RemoteEndpoint().IP)
 
 	re := conn.RemoteEndpoint()
 	incomingIP := re.IP
@@ -548,7 +578,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 		return
 	}
 
-	if err := r.runWithPeerMutex(func() error { return r.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
+	if err := r.runWithPeerMutex(func() error { return r.legacy.peerManager.Accepted(peerInfo.NodeID) }); err != nil {
 		r.logger.Error("failed to accept connection",
 			"op", "incoming/accepted", "peer", peerInfo.NodeID, "err", err)
 		return
@@ -586,7 +616,7 @@ func (r *Router) dialPeers(ctx context.Context) {
 
 LOOP:
 	for {
-		address, err := r.peerManager.DialNext(ctx)
+		address, err := r.legacy.peerManager.DialNext(ctx)
 		switch {
 		case errors.Is(err, context.Canceled):
 			break LOOP
@@ -619,7 +649,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	case err != nil:
 		r.logger.Error("failed to dial peer", "peer", address, "err", err)
-		if err = r.peerManager.DialFailed(ctx, address); err != nil {
+		if err = r.legacy.peerManager.DialFailed(ctx, address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 		}
 		return
@@ -632,14 +662,14 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 		return
 	case err != nil:
 		r.logger.Error("failed to handshake with peer", "peer", address, "err", err)
-		if err = r.peerManager.DialFailed(ctx, address); err != nil {
+		if err = r.legacy.peerManager.DialFailed(ctx, address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 		}
 		conn.Close()
 		return
 	}
 
-	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
+	if err := r.runWithPeerMutex(func() error { return r.legacy.peerManager.Dialed(address) }); err != nil {
 		r.logger.Error("failed to dial peer",
 			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 		conn.Close()
@@ -651,16 +681,16 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 }
 
 func (r *Router) getOrMakeQueue(peerID types.NodeID, channels ChannelIDSet) queue {
-	r.peerMtx.Lock()
-	defer r.peerMtx.Unlock()
+	r.legacy.peerMtx.Lock()
+	defer r.legacy.peerMtx.Unlock()
 
-	if peerQueue, ok := r.peerQueues[peerID]; ok {
+	if peerQueue, ok := r.legacy.peerQueues[peerID]; ok {
 		return peerQueue
 	}
 
-	peerQueue := r.queueFactory(queueBufferDefault)
-	r.peerQueues[peerID] = peerQueue
-	r.peerChannels[peerID] = channels
+	peerQueue := r.legacy.queueFactory(queueBufferDefault)
+	r.legacy.peerQueues[peerID] = peerQueue
+	r.legacy.peerChannels[peerID] = channels
 	return peerQueue
 }
 
@@ -697,7 +727,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
 		// on a private address on this endpoint, but a peer on the public
 		// Internet can't and needs a different public address.
-		conn, err := r.transport.Dial(dialCtx, endpoint)
+		conn, err := r.legacy.transport.Dial(dialCtx, endpoint)
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
 		} else {
@@ -749,8 +779,8 @@ func (r *Router) handshakePeer(
 }
 
 func (r *Router) runWithPeerMutex(fn func() error) error {
-	r.peerMtx.Lock()
-	defer r.peerMtx.Unlock()
+	r.legacy.peerMtx.Lock()
+	defer r.legacy.peerMtx.Unlock()
 	return fn()
 }
 
@@ -759,18 +789,18 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connection, channels ChannelIDSet) {
 	r.metrics.Peers.Add(1)
-	r.peerManager.Ready(ctx, peerID, channels)
+	r.legacy.peerManager.Ready(ctx, peerID, channels)
 
 	sendQueue := r.getOrMakeQueue(peerID, channels)
 	defer func() {
-		r.peerMtx.Lock()
-		delete(r.peerQueues, peerID)
-		delete(r.peerChannels, peerID)
-		r.peerMtx.Unlock()
+		r.legacy.peerMtx.Lock()
+		delete(r.legacy.peerQueues, peerID)
+		delete(r.legacy.peerChannels, peerID)
+		r.legacy.peerMtx.Unlock()
 
 		sendQueue.close()
 
-		r.peerManager.Disconnected(ctx, peerID)
+		r.legacy.peerManager.Disconnected(ctx, peerID)
 		r.metrics.Peers.Add(-1)
 	}()
 
@@ -833,10 +863,10 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 			return err
 		}
 
-		r.channelMtx.RLock()
-		queue, ok := r.channelQueues[chID]
-		messageType := r.channelMessages[chID]
-		r.channelMtx.RUnlock()
+		r.legacy.channelMtx.RLock()
+		queue, ok := r.legacy.channelQueues[chID]
+		messageType := r.legacy.channelMessages[chID]
+		r.legacy.channelMtx.RUnlock()
 
 		if !ok {
 			r.logger.Debug("dropping message for unknown channel", "peer", peerID, "channel", chID)
@@ -914,7 +944,7 @@ func (r *Router) sendPeer(ctx context.Context, peerID types.NodeID, conn Connect
 // evictPeers evicts connected peers as requested by the peer manager.
 func (r *Router) evictPeers(ctx context.Context) {
 	for {
-		peerID, err := r.peerManager.EvictNext(ctx)
+		peerID, err := r.legacy.peerManager.EvictNext(ctx)
 
 		switch {
 		case errors.Is(err, context.Canceled):
@@ -926,9 +956,9 @@ func (r *Router) evictPeers(ctx context.Context) {
 
 		r.logger.Info("evicting peer", "peer", peerID)
 
-		r.peerMtx.RLock()
-		queue, ok := r.peerQueues[peerID]
-		r.peerMtx.RUnlock()
+		r.legacy.peerMtx.RLock()
+		queue, ok := r.legacy.peerQueues[peerID]
+		r.legacy.peerMtx.RUnlock()
 
 		if ok {
 			queue.close()
@@ -942,7 +972,7 @@ func (r *Router) setupQueueFactory(ctx context.Context) error {
 		return err
 	}
 
-	r.queueFactory = qf
+	r.legacy.queueFactory = qf
 	return nil
 }
 
@@ -952,13 +982,13 @@ func (r *Router) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	if err := r.transport.Listen(r.endpoint); err != nil {
+	if err := r.legacy.transport.Listen(r.legacy.endpoint); err != nil {
 		return err
 	}
 
 	go r.dialPeers(ctx)
 	go r.evictPeers(ctx)
-	go r.acceptPeers(ctx, r.transport)
+	go r.acceptPeers(ctx, r.legacy.transport)
 
 	return nil
 }
@@ -971,24 +1001,24 @@ func (r *Router) OnStart(ctx context.Context) error {
 // sender's responsibility.
 func (r *Router) OnStop() {
 	// Close transport listeners (unblocks Accept calls).
-	if err := r.transport.Close(); err != nil {
+	if err := r.legacy.transport.Close(); err != nil {
 		r.logger.Error("failed to close transport", "err", err)
 	}
 
 	// Collect all remaining queues, and wait for them to close.
 	queues := []queue{}
 
-	r.channelMtx.RLock()
-	for _, q := range r.channelQueues {
+	r.legacy.channelMtx.RLock()
+	for _, q := range r.legacy.channelQueues {
 		queues = append(queues, q)
 	}
-	r.channelMtx.RUnlock()
+	r.legacy.channelMtx.RUnlock()
 
-	r.peerMtx.RLock()
-	for _, q := range r.peerQueues {
+	r.legacy.peerMtx.RLock()
+	for _, q := range r.legacy.peerQueues {
 		queues = append(queues, q)
 	}
-	r.peerMtx.RUnlock()
+	r.legacy.peerMtx.RUnlock()
 
 	for _, q := range queues {
 		q.close()

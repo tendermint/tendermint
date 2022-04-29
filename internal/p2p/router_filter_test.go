@@ -19,8 +19,7 @@ func TestConnectionFiltering(t *testing.T) {
 
 	filterByIPCount := 0
 	router := &Router{
-		logger:      logger,
-		connTracker: newConnTracker(1, time.Second),
+		logger: logger,
 		options: RouterOptions{
 			FilterPeerByIP: func(ctx context.Context, ip net.IP, port uint16) error {
 				filterByIPCount++
@@ -28,6 +27,8 @@ func TestConnectionFiltering(t *testing.T) {
 			},
 		},
 	}
+	router.legacy.connTracker = newConnTracker(1, time.Second)
+
 	require.Equal(t, 0, filterByIPCount)
 	router.openConnection(ctx, &MemoryConnection{logger: logger, closeFn: func() {}})
 	require.Equal(t, 1, filterByIPCount)

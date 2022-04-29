@@ -34,7 +34,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
 
-		_, ok := r.queueFactory(1).(*fifoQueue)
+		_, ok := r.legacy.queueFactory(1).(*fifoQueue)
 		require.True(t, ok)
 	})
 	t.Run("Fifo", func(t *testing.T) {
@@ -44,7 +44,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
 
-		_, ok := r.queueFactory(1).(*fifoQueue)
+		_, ok := r.legacy.queueFactory(1).(*fifoQueue)
 		require.True(t, ok)
 	})
 	t.Run("Priority", func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, r.setupQueueFactory(ctx))
 
-		q, ok := r.queueFactory(1).(*pqScheduler)
+		q, ok := r.legacy.queueFactory(1).(*pqScheduler)
 		require.True(t, ok)
 		defer q.close()
 	})
