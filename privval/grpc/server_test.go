@@ -37,7 +37,7 @@ func TestGetPubKey(t *testing.T) {
 			defer cancel()
 			logger := log.NewTestingLogger(t)
 
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
 			resp, err := s.GetPubKey(ctx, req)
@@ -112,7 +112,7 @@ func TestSignVote(t *testing.T) {
 			defer cancel()
 			logger := log.NewTestingLogger(t)
 
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.SignVoteRequest{ChainId: ChainID, Vote: tc.have.ToProto()}
 			resp, err := s.SignVote(ctx, req)
@@ -183,7 +183,7 @@ func TestSignProposal(t *testing.T) {
 			defer cancel()
 			logger := log.NewTestingLogger(t)
 
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
 			resp, err := s.SignProposal(ctx, req)
