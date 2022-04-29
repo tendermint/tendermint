@@ -32,11 +32,20 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 
 // RPCFunc contains the introspected type information for a function.
 type RPCFunc struct {
-	f        reflect.Value // underlying rpc function
-	param    reflect.Type  // the parameter struct, or nil
-	result   reflect.Type  // the non-error result type, or nil
-	argNames []string      // name of each argument (for display)
-	ws       bool          // websocket only
+	f      reflect.Value // underlying rpc function
+	param  reflect.Type  // the parameter struct, or nil
+	result reflect.Type  // the non-error result type, or nil
+	args   []argInfo     // names and type information (for URL decoding)
+	ws     bool          // websocket only
+}
+
+// argInfo records the name of a field, along with a bit to tell whether the
+// value of the field requires binary data, having underlying type []byte.  The
+// flag is needed when decoding URL parameters, where we permit quoted strings
+// to be passed for either argument type.
+type argInfo struct {
+	name     string
+	isBinary bool // value wants binary data
 }
 
 // Call parses the given JSON parameters and calls the function wrapped by rf
@@ -96,12 +105,12 @@ func (rf *RPCFunc) adjustParams(data []byte) (json.RawMessage, error) {
 		var args []json.RawMessage
 		if err := json.Unmarshal(base, &args); err != nil {
 			return nil, err
-		} else if len(args) != len(rf.argNames) {
-			return nil, fmt.Errorf("got %d arguments, want %d", len(args), len(rf.argNames))
+		} else if len(args) != len(rf.args) {
+			return nil, fmt.Errorf("got %d arguments, want %d", len(args), len(rf.args))
 		}
 		m := make(map[string]json.RawMessage)
 		for i, arg := range args {
-			m[rf.argNames[i]] = arg
+			m[rf.args[i].name] = arg
 		}
 		return json.Marshal(m)
 	} else if bytes.HasPrefix(base, []byte("{")) || bytes.Equal(base, []byte("null")) {
@@ -180,12 +189,15 @@ func newRPCFunc(f interface{}) (*RPCFunc, error) {
 		rtype = ft.Out(0)
 	}
 
-	var argNames []string
+	var args []argInfo
 	if ptype != nil {
 		for i := 0; i < ptype.NumField(); i++ {
 			field := ptype.Field(i)
 			if tag := strings.SplitN(field.Tag.Get("json"), ",", 2)[0]; tag != "" && tag != "-" {
-				argNames = append(argNames, tag)
+				args = append(args, argInfo{
+					name:     tag,
+					isBinary: isByteArray(field.Type),
+				})
 			} else if tag == "-" {
 				// If the tag is "-" the field should explicitly be ignored, even
 				// if it is otherwise eligible.
@@ -194,16 +206,19 @@ func newRPCFunc(f interface{}) (*RPCFunc, error) {
 				// Note that this is an aesthetic choice; the standard decoder will
 				// match without regard to case anyway.
 				name := strings.ToLower(field.Name[:1]) + field.Name[1:]
-				argNames = append(argNames, name)
+				args = append(args, argInfo{
+					name:     name,
+					isBinary: isByteArray(field.Type),
+				})
 			}
 		}
 	}
 
 	return &RPCFunc{
-		f:        fv,
-		param:    ptype,
-		result:   rtype,
-		argNames: argNames,
+		f:      fv,
+		param:  ptype,
+		result: rtype,
+		args:   args,
 	}, nil
 }
 
@@ -224,4 +239,9 @@ func isNullOrEmpty(params json.RawMessage) bool {
 		bytes.Equal(params, []byte("null")) ||
 		bytes.Equal(params, []byte("{}")) ||
 		bytes.Equal(params, []byte("[]"))
+}
+
+// isByteArray reports whether t is (equivalent to) []byte.
+func isByteArray(t reflect.Type) bool {
+	return t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8
 }

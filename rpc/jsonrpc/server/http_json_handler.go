@@ -118,17 +118,15 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	noArgs := make(map[string]string)
 	for name, rf := range funcMap {
 		base := fmt.Sprintf("//%s/%s", r.Host, name)
-		// N.B. Check argNames, not args, since the type list includes the type
-		// of the leading context argument.
-		if len(rf.argNames) == 0 {
+		if len(rf.args) == 0 {
 			noArgs[name] = base
-		} else {
-			query := append([]string(nil), rf.argNames...)
-			for i, arg := range query {
-				query[i] = arg + "=_"
-			}
-			hasArgs[name] = base + "?" + strings.Join(query, "&")
+			continue
 		}
+		var query []string
+		for _, arg := range rf.args {
+			query = append(query, arg.name+"=_")
+		}
+		hasArgs[name] = base + "?" + strings.Join(query, "&")
 	}
 	w.Header().Set("Content-Type", "text/html")
 	_ = listOfEndpoints.Execute(w, map[string]map[string]string{
