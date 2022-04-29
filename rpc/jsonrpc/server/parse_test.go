@@ -188,44 +188,50 @@ func TestParseURI(t *testing.T) {
 		tests := []struct {
 			name string
 			url  string
-			args []string
+			args []argInfo
 			want string
 			fail bool
 		}{
 			{
 				name: "quoted numbers and strings",
 				url:  `http://localhost?num="7"&str="flew"&neg="-10"`,
-				args: []string{"neg", "num", "str", "other"},
+				args: []argInfo{{name: "neg"}, {name: "num"}, {name: "str"}, {name: "other"}},
 				want: `{"neg":-10,"num":7,"str":"flew"}`,
 			},
 			{
 				name: "unquoted numbers and strings",
 				url:  `http://localhost?num1=7&str1=cabbage&num2=-199&str2=hey+you`,
-				args: []string{"num1", "num2", "str1", "str2", "other"},
+				args: []argInfo{{name: "num1"}, {name: "num2"}, {name: "str1"}, {name: "str2"}, {name: "other"}},
 				want: `{"num1":7,"num2":-199,"str1":"cabbage","str2":"hey you"}`,
 			},
 			{
-				name: "byte strings in hex",
+				name: "quoted byte strings",
+				url:  `http://localhost?left="Fahrvergnügen"&right="Applesauce"`,
+				args: []argInfo{{name: "left", isBinary: true}, {name: "right", isBinary: false}},
+				want: `{"left":"RmFocnZlcmduw7xnZW4=","right":"Applesauce"}`,
+			},
+			{
+				name: "hexadecimal byte strings",
 				url:  `http://localhost?lower=0x626f62&upper=0X646F7567`,
-				args: []string{"upper", "lower", "other"},
-				want: `{"lower":"Ym9i","upper":"ZG91Zw=="}`,
+				args: []argInfo{{name: "upper", isBinary: true}, {name: "lower", isBinary: false}, {name: "other"}},
+				want: `{"lower":"bob","upper":"ZG91Zw=="}`,
 			},
 			{
 				name: "invalid hex odd length",
 				url:  `http://localhost?bad=0xa`,
-				args: []string{"bad", "superbad"},
+				args: []argInfo{{name: "bad"}, {name: "superbad"}},
 				fail: true,
 			},
 			{
 				name: "invalid hex empty",
 				url:  `http://localhost?bad=0x`,
-				args: []string{"bad"},
+				args: []argInfo{{name: "bad"}},
 				fail: true,
 			},
 			{
 				name: "invalid quoted string",
 				url:  `http://localhost?bad="double""`,
-				args: []string{"bad"},
+				args: []argInfo{{name: "bad"}},
 				fail: true,
 			},
 		}
@@ -305,7 +311,7 @@ func TestParseURI(t *testing.T) {
 				if err != nil {
 					t.Fatalf("NewRequest for %q: %v", test.url, err)
 				}
-				bits, err := parseURLParams(echo.argNames, hreq)
+				bits, err := parseURLParams(echo.args, hreq)
 				if err != nil {
 					t.Fatalf("Parse %#q: unexpected error: %v", test.url, err)
 				}
