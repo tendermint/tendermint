@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -667,7 +667,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 
 func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testPart := new(types.Part)
-	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
+	testPart.Proof.LeafHash = crypto.Checksum([]byte("leaf"))
 	testCases := []struct {
 		testName      string
 		messageHeight int64

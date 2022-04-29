@@ -4,13 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 func TestCanonicalizeBlockID(t *testing.T) {
-	randhash := tmrand.Bytes(tmhash.Size)
+	randhash := tmrand.Bytes(crypto.HashSize)
 	block1 := tmproto.BlockID{Hash: randhash,
 		PartSetHeader: tmproto.PartSetHeader{Total: 5, Hash: randhash}}
 	block2 := tmproto.BlockID{Hash: randhash,
