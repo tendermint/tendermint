@@ -6,7 +6,7 @@
    - [Synchronized clocks](#synchronized-clocks)
    - [Message delays](#message-delays)
  - [Problem Statement](#problem-statement)
- - [Timely Proposals](#timely-proposals)
+ - [Protocol Analysis - Timely Proposals](#protocol-analysis---timely-proposals)
     - [Timely Proof-of-Locks](#timely-proof-of-locks)
     - [Derived Proof-of-Locks](#derived-proof-of-locks)
  - [Temporal Analysis](#temporal-analysis)
