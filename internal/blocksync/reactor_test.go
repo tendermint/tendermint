@@ -403,8 +403,11 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	rts.network.Nodes[rts.nodes[1]].PeerManager.Disconnected(ctx, rts.nodes[0])
 }
 
-//@jmalicevic ToDO Add tests that support syncing from nodes that are at different heights
-// rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0, 0, 0})
+//@jmalicevic ToDO
+// a) Add tests that verify whether faulty peer is properly detected
+// 1. block at H + 1 is faulty
+// 2. block at H + 2 is faulty (the validator set does not match)
+// b) Add test to verify we replace a peer with a new one if we detect misbehaviour
 func TestReactor_NonGenesisSync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
