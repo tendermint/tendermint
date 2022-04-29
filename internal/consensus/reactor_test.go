@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
 	"testing"
@@ -776,8 +777,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	nPeers := 7
-	nVals := 4
+	nPeers := 4
+	nVals := 2
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
 		t,
@@ -870,60 +871,27 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// it includes the commit for block 4, which should have the updated validator set
 	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
-	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
+	for i := 2; i <= 32; i *= 2 {
+		useState := rand.Intn(nVals)
+		t.Log(useState)
+		updateValidatorPubKey1, err := states[useState].privValidator.GetPubKey(ctx)
+		require.NoError(t, err)
 
-	updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
-	require.NoError(t, err)
+		updatePubKey1ABCI, err := encoding.PubKeyToProto(updateValidatorPubKey1)
+		require.NoError(t, err)
 
-	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	previousTotalVotingPower := states[nVals].GetRoundState().LastValidators.TotalVotingPower()
+		previousTotalVotingPower := states[useState].GetRoundState().LastValidators.TotalVotingPower()
+		updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, int64(i))
 
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
-	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
-	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
+		waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
+		waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, updateValidatorTx1)
+		waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
+		waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
 
-	require.NotEqualf(
-		t, states[nVals].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
-		"expected voting power to change (before: %d, after: %d)",
-		previousTotalVotingPower, states[nVals].GetRoundState().LastValidators.TotalVotingPower(),
-	)
-
-	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
-
-	newVal2ABCI, err := encoding.PubKeyToProto(newValidatorPubKey2)
-	require.NoError(t, err)
-
-	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-
-	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(ctx)
-	require.NoError(t, err)
-
-	newVal3ABCI, err := encoding.PubKeyToProto(newValidatorPubKey3)
-	require.NoError(t, err)
-
-	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, newValidatorTx2, newValidatorTx3)
-	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, newValidatorTx2, newValidatorTx3)
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
-
-	activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
-	activeVals[string(newValidatorPubKey3.Address())] = struct{}{}
-
-	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
-
-	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, removeValidatorTx2, removeValidatorTx3)
-	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, removeValidatorTx2, removeValidatorTx3)
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
-
-	delete(activeVals, string(newValidatorPubKey2.Address()))
-	delete(activeVals, string(newValidatorPubKey3.Address()))
-
-	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, activeVals, blocksSubs, states)
+		require.NotEqualf(
+			t, states[useState].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
+			"expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower, states[useState].GetRoundState().LastValidators.TotalVotingPower(),
+		)
+	}
 }
