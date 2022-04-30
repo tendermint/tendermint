@@ -136,20 +136,19 @@ func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
 
 	for pool.IsRunning() {
 		_, numPending, lenRequesters := pool.GetStatus()
-		switch {
-		case numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters:
+		if numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters {
 			timer.Reset(requestInterval)
 			select {
 			case <-ctx.Done():
 				return
 			case <-timer.C:
-				pool.removeTimedoutPeers()
 			}
-
-		default:
-			// request for more blocks.
-			pool.makeNextRequester(ctx)
+			pool.removeTimedoutPeers()
+			continue
 		}
+
+		// request for more blocks.
+		pool.makeNextRequester(ctx)
 	}
 }
 
