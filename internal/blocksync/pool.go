@@ -130,19 +130,17 @@ func (*BlockPool) OnStop() {}
 
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
-	timer := time.NewTimer(0)
-	<-timer.C
-	defer timer.Stop()
-
 	for pool.IsRunning() {
+		if ctx.Err() != nil {
+			return
+		}
+
 		_, numPending, lenRequesters := pool.GetStatus()
 		if numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters {
-			timer.Reset(requestInterval)
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-			}
+			// This is preferable to using a timer because the request interval
+			// is so small. Larger request intervals may necessitate using a
+			// timer/ticker.
+			time.Sleep(requestInterval)
 			pool.removeTimedoutPeers()
 			continue
 		}
@@ -628,10 +626,6 @@ func (bpr *bpRequester) redo(peerID types.NodeID) {
 // Responsible for making more requests as necessary
 // Returns only when a block is found (e.g. AddBlock() is called)
 func (bpr *bpRequester) requestRoutine(ctx context.Context) {
-	timer := time.NewTimer(0)
-	<-timer.C
-	defer timer.Stop()
-
 OUTER_LOOP:
 	for {
 		// Pick a peer to send request to.
@@ -641,15 +635,17 @@ OUTER_LOOP:
 			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
 				return
 			}
+			if ctx.Err() != nil {
+				return
+			}
+
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				timer.Reset(requestInterval)
-				select {
-				case <-ctx.Done():
-					return
-				case <-timer.C:
-					continue PICK_PEER_LOOP
-				}
+				// This is preferable to using a timer because the request
+				// interval is so small. Larger request intervals may
+				// necessitate using a timer/ticker.
+				time.Sleep(requestInterval)
+				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP
 		}
