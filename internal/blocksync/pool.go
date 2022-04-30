@@ -647,9 +647,7 @@ OUTER_LOOP:
 				timer.Reset(requestInterval)
 				select {
 				case <-ctx.Done():
-					timer.Stop()
 					return
-
 				case <-timer.C:
 					continue PICK_PEER_LOOP
 				}
