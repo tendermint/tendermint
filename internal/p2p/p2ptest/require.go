@@ -15,7 +15,7 @@ import (
 )
 
 // RequireEmpty requires that the given channel is empty.
-func RequireEmpty(ctx context.Context, t *testing.T, channels ...*p2p.Channel) {
+func RequireEmpty(ctx context.Context, t *testing.T, channels ...p2p.Channel) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
@@ -32,7 +32,7 @@ func RequireEmpty(ctx context.Context, t *testing.T, channels ...*p2p.Channel) {
 }
 
 // RequireReceive requires that the given envelope is received on the channel.
-func RequireReceive(ctx context.Context, t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
+func RequireReceive(ctx context.Context, t *testing.T, channel p2p.Channel, expect p2p.Envelope) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -54,7 +54,7 @@ func RequireReceive(ctx context.Context, t *testing.T, channel *p2p.Channel, exp
 
 // RequireReceiveUnordered requires that the given envelopes are all received on
 // the channel, ignoring order.
-func RequireReceiveUnordered(ctx context.Context, t *testing.T, channel *p2p.Channel, expect []*p2p.Envelope) {
+func RequireReceiveUnordered(ctx context.Context, t *testing.T, channel p2p.Channel, expect []*p2p.Envelope) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
@@ -75,7 +75,7 @@ func RequireReceiveUnordered(ctx context.Context, t *testing.T, channel *p2p.Cha
 }
 
 // RequireSend requires that the given envelope is sent on the channel.
-func RequireSend(ctx context.Context, t *testing.T, channel *p2p.Channel, envelope p2p.Envelope) {
+func RequireSend(ctx context.Context, t *testing.T, channel p2p.Channel, envelope p2p.Envelope) {
 	tctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
@@ -93,7 +93,7 @@ func RequireSend(ctx context.Context, t *testing.T, channel *p2p.Channel, envelo
 func RequireSendReceive(
 	ctx context.Context,
 	t *testing.T,
-	channel *p2p.Channel,
+	channel p2p.Channel,
 	peerID types.NodeID,
 	send proto.Message,
 	receive proto.Message,
@@ -116,7 +116,7 @@ func RequireNoUpdates(ctx context.Context, t *testing.T, peerUpdates *p2p.PeerUp
 }
 
 // RequireError requires that the given peer error is submitted for a peer.
-func RequireError(ctx context.Context, t *testing.T, channel *p2p.Channel, peerError p2p.PeerError) {
+func RequireError(ctx context.Context, t *testing.T, channel p2p.Channel, peerError p2p.PeerError) {
 	tctx, tcancel := context.WithTimeout(ctx, time.Second)
 	defer tcancel()
 

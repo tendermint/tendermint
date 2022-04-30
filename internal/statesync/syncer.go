@@ -56,8 +56,8 @@ type syncer struct {
 	stateProvider StateProvider
 	conn          abciclient.Client
 	snapshots     *snapshotPool
-	snapshotCh    *p2p.Channel
-	chunkCh       *p2p.Channel
+	snapshotCh    p2p.Channel
+	chunkCh       p2p.Channel
 	tempDir       string
 	fetchers      int32
 	retryTimeout  time.Duration

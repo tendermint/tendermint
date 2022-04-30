@@ -91,7 +91,7 @@ func TestRouterConstruction(t *testing.T) {
 	})
 }
 
-func echoReactor(ctx context.Context, channel *p2p.Channel) {
+func echoReactor(ctx context.Context, channel p2p.Channel) {
 	iter := channel.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()

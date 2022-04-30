@@ -294,7 +294,7 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 // ChannelCreator allows routers to construct their own channels,
 // either by receiving a reference to Router.OpenChannel or using some
 // kind shim for testing purposes.
-type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
+type ChannelCreator func(context.Context, *ChannelDescriptor) (Channel, error)
 
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
@@ -302,7 +302,7 @@ type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*Channel, error) {
+func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Channel, error) {
 	r.legacy.channelMtx.Lock()
 	defer r.legacy.channelMtx.Unlock()
 
@@ -317,11 +317,10 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	queue := r.legacy.queueFactory(chDesc.RecvBufferCapacity)
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
-	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
-	channel.name = chDesc.Name
+	channel := NewChannel(chDesc.ID, chDesc.Name, chDesc.MessageType, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
-	if w, ok := messageType.(Wrapper); ok {
+	if w, ok := chDesc.MessageType.(Wrapper); ok {
 		wrapper = w
 	}
 
@@ -342,7 +341,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 			queue.close()
 		}()
 
-		r.routeChannel(ctx, id, outCh, errCh, wrapper)
+		r.routeChannel(ctx, chDesc.ID, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil
