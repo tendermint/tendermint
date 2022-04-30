@@ -28,7 +28,7 @@ eg, L = latency = 0.1s
 */
 
 const (
-	requestIntervalMS         = 2
+	requestInterval           = 2 * time.Millisecond
 	maxTotalRequesters        = 600
 	maxPeerErrBuffer          = 1000
 	maxPendingRequests        = maxTotalRequesters
@@ -138,7 +138,7 @@ func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
 		_, numPending, lenRequesters := pool.GetStatus()
 		switch {
 		case numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters:
-			timer.Reset(requestIntervalMS * time.Millisecond)
+			timer.Reset(requestInterval)
 			select {
 			case <-ctx.Done():
 				return
@@ -644,7 +644,7 @@ OUTER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				timer.Reset(requestIntervalMS * time.Millisecond)
+				timer.Reset(requestInterval)
 				select {
 				case <-ctx.Done():
 					timer.Stop()
