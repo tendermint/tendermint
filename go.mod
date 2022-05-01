@@ -9,9 +9,8 @@ require (
 	github.com/adlio/schema v1.2.3
 	github.com/btcsuite/btcd v0.22.0-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
+	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
-	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.0
@@ -33,9 +32,10 @@ require (
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.10.0
-	github.com/stretchr/testify v1.7.0
-	github.com/tendermint/tm-db v0.6.6
+	github.com/stretchr/testify v1.7.1
+	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
+	github.com/tendermint/tm-db v0.6.8-0.20220425212429-d24d5c7ee87a
 	golang.org/x/crypto v0.0.0-20210915214749-c084706c2272
 	golang.org/x/net v0.0.0-20211208012354-db4efeb81f4b
-	google.golang.org/grpc v1.42.0
+	google.golang.org/grpc v1.46.0
 )
