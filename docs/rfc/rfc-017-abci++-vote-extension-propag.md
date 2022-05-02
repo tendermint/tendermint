@@ -241,8 +241,7 @@ We now briefly describe the current catch-up mechanisms in the reactors concerne
 
 #### Statesync
 
-Full nodes optionally run statesync just after starting, when they start from scratch
-(TODO: folks, please keep me honest here... do we also run statsync when we recover?).
+Full nodes optionally run statesync just after starting, when they start from scratch.
 If statesync succeeds, an Application snapshot is installed, and Tendermint jumps from height 0 directly
 to the height the Application snapshop represents, without applying the block of any previous height.
 Some light blocks are received and stored in the block store for running light-client verification of
