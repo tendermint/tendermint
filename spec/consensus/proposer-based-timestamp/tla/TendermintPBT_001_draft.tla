@@ -518,9 +518,9 @@ AgreementOnValue ==
     \A p, q \in Corr:
         /\ decision[p] /= NilDecision
         /\ decision[q] /= NilDecision
-        => \E v \in ValidValues, t1 \in Timestamps, t2 \in Timestamps, r1 \in Rounds, r2 \in Rounds : 
-            /\ decision[p] = Decision(v, t1, r1)
-            /\ decision[q] = Decision(v, t2, r2)
+        => \E v \in ValidValues, t \in Timestamps, r1 \in Rounds, r2 \in Rounds :
+            /\ decision[p] = Decision(v, t, r1)
+            /\ decision[q] = Decision(v, t, r2)
 
 \* [PBTS-INV-TIME-AGR.0]
 AgreementOnTime ==
