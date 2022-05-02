@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtimemocks "github.com/tendermint/tendermint/libs/time/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -105,8 +106,8 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		// height 4 therefore occurs 2*blockTimeIota after height 2.
 		tc.height4ProposedBlockOffset = tc.height2ProposalTimeDeliveryOffset + 2*blockTimeIota
 	}
-	cfg.Consensus.TimeoutPropose = tc.timeoutPropose
-	consensusParams := types.DefaultConsensusParams()
+	consensusParams := factory.ConsensusParams()
+	consensusParams.Timeout.Propose = tc.timeoutPropose
 	consensusParams.Synchrony = tc.synchronyParams
 
 	state, privVals := makeGenesisState(ctx, t, cfg, genesisStateArgs{
@@ -114,7 +115,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		Time:       tc.genesisTime,
 		Validators: validators,
 	})
-	cs := newState(ctx, t, log.TestingLogger(), state, privVals[0], kvstore.NewApplication())
+	cs := newState(ctx, t, log.NewNopLogger(), state, privVals[0], kvstore.NewApplication())
 	vss := make([]*validatorStub, validators)
 	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -203,7 +204,7 @@ func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer
 
 	ensureNewRound(t, p.roundCh, p.currentHeight, p.currentRound)
 
-	b, _, err := p.observedState.createProposalBlock(ctx)
+	b, err := p.observedState.createProposalBlock(ctx)
 	require.NoError(t, err)
 	b.Height = p.currentHeight
 	b.Header.Height = p.currentHeight

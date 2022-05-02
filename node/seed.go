@@ -29,7 +29,6 @@ type seedNodeImpl struct {
 	// network
 	peerManager *p2p.PeerManager
 	router      *p2p.Router
-	nodeInfo    types.NodeInfo
 	nodeKey     types.NodeKey // our node privkey
 	isListening bool
 
@@ -40,12 +39,11 @@ type seedNodeImpl struct {
 
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
 func makeSeedNode(
-	ctx context.Context,
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeKey types.NodeKey,
 	genesisDocProvider genesisDocProvider,
-	logger log.Logger,
 ) (service.Service, error) {
 	if !cfg.P2P.PexReactor {
 		return nil, errors.New("cannot run seed nodes with PEX disabled")
@@ -76,17 +74,11 @@ func makeSeedNode(
 			closer)
 	}
 
-	router, err := createRouter(ctx, logger, p2pMetrics, nodeInfo, nodeKey,
-		peerManager, cfg, nil)
+	router, err := createRouter(logger, p2pMetrics, func() *types.NodeInfo { return &nodeInfo }, nodeKey, peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
 			closer)
-	}
-
-	pexReactor, err := pex.NewReactor(ctx, logger, peerManager, router.OpenChannel, peerManager.Subscribe(ctx))
-	if err != nil {
-		return nil, combineCloseError(err, closer)
 	}
 
 	node := &seedNodeImpl{
@@ -94,14 +86,13 @@ func makeSeedNode(
 		logger:     logger,
 		genesisDoc: genDoc,
 
-		nodeInfo:    nodeInfo,
 		nodeKey:     nodeKey,
 		peerManager: peerManager,
 		router:      router,
 
 		shutdownOps: closer,
 
-		pexReactor: pexReactor,
+		pexReactor: pex.NewReactor(logger, peerManager, router.OpenChannel, peerManager.Subscribe),
 	}
 	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
 

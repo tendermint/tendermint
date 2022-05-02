@@ -53,7 +53,7 @@ func TestGRPC(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	t.Log("### Testing GRPC")
-	testGRPCSync(ctx, t, logger, types.NewGRPCApplication(types.NewBaseApplication()))
+	testGRPCSync(ctx, t, logger, types.NewBaseApplication())
 }
 
 func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Application) {
@@ -77,7 +77,7 @@ func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Ap
 	require.NoError(t, err)
 
 	// Construct request
-	rfb := types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
+	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		rfb.Txs[counter] = []byte("test")
 	}
@@ -101,7 +101,7 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app types.ABCIApplicationServer) {
+func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app types.Application) {
 	t.Helper()
 	numDeliverTxs := 680000
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))

@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -90,7 +91,7 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -101,19 +102,19 @@ func (app *Application) InitChain(req types.RequestInitChain) types.ResponseInit
 			panic("problem updating validators")
 		}
 	}
-	return types.ResponseInitChain{}
+	return &types.ResponseInitChain{}, nil
 }
 
-func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
+func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
-	return types.ResponseInfo{
+	return &types.ResponseInfo{
 		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
 		Version:          version.ABCIVersion,
 		AppVersion:       ProtocolVersion,
 		LastBlockHeight:  app.state.Height,
 		LastBlockAppHash: app.state.AppHash,
-	}
+	}, nil
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
@@ -166,7 +167,7 @@ func (app *Application) Close() error {
 	return app.state.db.Close()
 }
 
-func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.ResponseFinalizeBlock {
+func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -175,7 +176,7 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 
 	// Punish validators who committed equivocation.
 	for _, ev := range req.ByzantineValidators {
-		if ev.Type == types.EvidenceType_DUPLICATE_VOTE {
+		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
 			addr := string(ev.Validator.Address)
 			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
 				app.updateValidator(types.ValidatorUpdate{
@@ -195,14 +196,14 @@ func (app *Application) FinalizeBlock(req types.RequestFinalizeBlock) types.Resp
 		respTxs[i] = app.handleTx(tx)
 	}
 
-	return types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}
+	return &types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}, nil
 }
 
-func (*Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
+func (*Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	return &types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}, nil
 }
 
-func (app *Application) Commit() types.ResponseCommit {
+func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -213,15 +214,15 @@ func (app *Application) Commit() types.ResponseCommit {
 	app.state.Height++
 	saveState(app.state)
 
-	resp := types.ResponseCommit{Data: appHash}
+	resp := &types.ResponseCommit{Data: appHash}
 	if app.RetainBlocks > 0 && app.state.Height >= app.RetainBlocks {
 		resp.RetainHeight = app.state.Height - app.RetainBlocks + 1
 	}
-	return resp
+	return resp, nil
 }
 
 // Returns an associated value or nil if missing.
-func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (*types.ResponseQuery, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
@@ -232,10 +233,10 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 			panic(err)
 		}
 
-		return types.ResponseQuery{
+		return &types.ResponseQuery{
 			Key:   reqQuery.Data,
 			Value: value,
-		}
+		}, nil
 	}
 
 	if reqQuery.Prove {
@@ -257,7 +258,7 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 			resQuery.Log = "exists"
 		}
 
-		return resQuery
+		return &resQuery, nil
 	}
 
 	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
@@ -277,23 +278,25 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 		resQuery.Log = "exists"
 	}
 
-	return resQuery
+	return &resQuery, nil
 }
 
-func (app *Application) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	return types.ResponsePrepareProposal{BlockData: app.substPrepareTx(req.BlockData)}
+	return &types.ResponsePrepareProposal{
+		TxRecords: app.substPrepareTx(req.Txs, req.MaxTxBytes),
+	}, nil
 }
 
-func (*Application) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
+func (*Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
-			return types.ResponseProcessProposal{Accept: false}
+			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 		}
 	}
-	return types.ResponseProcessProposal{Accept: true}
+	return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}, nil
 }
 
 //---------------------------------------------
@@ -420,7 +423,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxRe
 const PreparePrefix = "prepare"
 
 func isPrepareTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), PreparePrefix)
+	return bytes.HasPrefix(tx, []byte(PreparePrefix))
 }
 
 // execPrepareTx is noop. tx data is considered as placeholder
@@ -430,16 +433,34 @@ func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
 	return &types.ExecTxResult{}
 }
 
-// substPrepareTx subst all the preparetx in the blockdata
-// to null string(could be any arbitrary string).
-func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
-	// TODO: this mechanism will change with the current spec of PrepareProposal
-	// We now have a special type for marking a tx as changed
-	for i, tx := range blockData {
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with the prefix stripped.
+// It marks all of the original transactions as 'REMOVED' so that
+// Tendermint will remove them from its mempool.
+func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*types.TxRecord {
+	trs := make([]*types.TxRecord, 0, len(blockData))
+	var removed []*types.TxRecord
+	var totalBytes int64
+	for _, tx := range blockData {
+		txMod := tx
+		action := types.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
-			blockData[i] = make([]byte, len(tx))
+			removed = append(removed, &types.TxRecord{
+				Tx:     tx,
+				Action: types.TxRecord_REMOVED,
+			})
+			txMod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
+			action = types.TxRecord_ADDED
 		}
+		totalBytes += int64(len(txMod))
+		if totalBytes > maxTxBytes {
+			break
+		}
+		trs = append(trs, &types.TxRecord{
+			Tx:     txMod,
+			Action: action,
+		})
 	}
 
-	return blockData
+	return append(trs, removed...)
 }

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -23,13 +23,13 @@ import (
 // Evidence represents any provable malicious activity by a validator.
 // Verification logic for each evidence is part of the evidence module.
 type Evidence interface {
-	ABCI() []abci.Evidence // forms individual evidence to be sent to the application
-	Bytes() []byte         // bytes which comprise the evidence
-	Hash() []byte          // hash of the evidence
-	Height() int64         // height of the infraction
-	String() string        // string format of the evidence
-	Time() time.Time       // time of the infraction
-	ValidateBasic() error  // basic consistency check
+	ABCI() []abci.Misbehavior // forms individual evidence to be sent to the application
+	Bytes() []byte            // bytes which comprise the evidence
+	Hash() []byte             // hash of the evidence
+	Height() int64            // height of the infraction
+	String() string           // string format of the evidence
+	Time() time.Time          // time of the infraction
+	ValidateBasic() error     // basic consistency check
 
 	// Implementations must support tagged encoding in JSON.
 	jsontypes.Tagged
@@ -87,9 +87,9 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 }
 
 // ABCI returns the application relevant representation of the evidence
-func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
-	return []abci.Evidence{{
-		Type: abci.EvidenceType_DUPLICATE_VOTE,
+func (dve *DuplicateVoteEvidence) ABCI() []abci.Misbehavior {
+	return []abci.Misbehavior{{
+		Type: abci.MisbehaviorType_DUPLICATE_VOTE,
 		Validator: abci.Validator{
 			Address: dve.VoteA.ValidatorAddress,
 			Power:   dve.ValidatorPower,
@@ -113,7 +113,7 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return tmhash.Sum(dve.Bytes())
+	return crypto.Checksum(dve.Bytes())
 }
 
 // Height returns the height of the infraction
@@ -211,14 +211,28 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, errors.New("nil duplicate vote evidence")
 	}
 
-	vA, err := VoteFromProto(pb.VoteA)
-	if err != nil {
-		return nil, err
+	var vA *Vote
+	if pb.VoteA != nil {
+		var err error
+		vA, err = VoteFromProto(pb.VoteA)
+		if err != nil {
+			return nil, err
+		}
+		if err = vA.ValidateBasic(); err != nil {
+			return nil, err
+		}
 	}
 
-	vB, err := VoteFromProto(pb.VoteB)
-	if err != nil {
-		return nil, err
+	var vB *Vote
+	if pb.VoteB != nil {
+		var err error
+		vB, err = VoteFromProto(pb.VoteB)
+		if err != nil {
+			return nil, err
+		}
+		if err = vB.ValidateBasic(); err != nil {
+			return nil, err
+		}
 	}
 
 	dve := &DuplicateVoteEvidence{
@@ -257,12 +271,12 @@ func (*LightClientAttackEvidence) TypeTag() string { return "tendermint/LightCli
 
 var _ Evidence = &LightClientAttackEvidence{}
 
-// ABCI forms an array of abci evidence for each byzantine validator
-func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
-	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
+// ABCI forms an array of abci.Misbehavior for each byzantine validator
+func (l *LightClientAttackEvidence) ABCI() []abci.Misbehavior {
+	abciEv := make([]abci.Misbehavior, len(l.ByzantineValidators))
 	for idx, val := range l.ByzantineValidators {
-		abciEv[idx] = abci.Evidence{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+		abciEv[idx] = abci.Misbehavior{
+			Type:             abci.MisbehaviorType_LIGHT_CLIENT_ATTACK,
 			Validator:        TM2PB.Validator(val),
 			Height:           l.Height(),
 			Time:             l.Timestamp,
@@ -360,10 +374,10 @@ func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *He
 func (l *LightClientAttackEvidence) Hash() []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, l.CommonHeight)
-	bz := make([]byte, tmhash.Size+n)
-	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
-	copy(bz[tmhash.Size:], buf)
-	return tmhash.Sum(bz)
+	bz := make([]byte, crypto.HashSize+n)
+	copy(bz[:crypto.HashSize-1], l.ConflictingBlock.Hash().Bytes())
+	copy(bz[crypto.HashSize:], buf)
+	return crypto.Checksum(bz)
 }
 
 // Height returns the last height at which the primary provider and witness provider had the same header.
@@ -683,8 +697,8 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 
 // ToABCI converts the evidence list to a slice of the ABCI protobuf messages
 // for use when communicating the evidence to an application.
-func (evl EvidenceList) ToABCI() []abci.Evidence {
-	var el []abci.Evidence
+func (evl EvidenceList) ToABCI() []abci.Misbehavior {
+	var el []abci.Misbehavior
 	for _, e := range evl {
 		el = append(el, e.ABCI()...)
 	}
@@ -829,10 +843,10 @@ func makeMockVote(height int64, round, index int32, addr Address,
 
 func randBlockID() BlockID {
 	return BlockID{
-		Hash: tmrand.Bytes(tmhash.Size),
+		Hash: tmrand.Bytes(crypto.HashSize),
 		PartSetHeader: PartSetHeader{
 			Total: 1,
-			Hash:  tmrand.Bytes(tmhash.Size),
+			Hash:  tmrand.Bytes(crypto.HashSize),
 		},
 	}
 }

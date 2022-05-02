@@ -85,6 +85,7 @@ Note the context/background should be written in the present tense.
 - [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
+- [ADR-081: Protocol Buffers Management](./adr-081-protobuf-mgmt.md)
 
 ### Deprecated
 
@@ -103,12 +104,17 @@ None
 - [ADR-013: Symmetric-Crypto](./adr-013-symmetric-crypto.md)
 - [ADR-022: ABCI-Errors](./adr-022-abci-errors.md)
 - [ADR-030: Consensus-Refactor](./adr-030-consensus-refactor.md)
+- [ADR-036: Empty Blocks via ABCI](./adr-036-empty-blocks-abci.md)
 - [ADR-037: Deliver-Block](./adr-037-deliver-block.md)
 - [ADR-038: Non-Zero-Start-Height](./adr-038-non-zero-start-height.md)
+- [ADR-040: Blockchain Reactor Refactor](./adr-040-blockchain-reactor-refactor.md)
 - [ADR-041: Proposer-Selection-via-ABCI](./adr-041-proposer-selection-via-abci.md)
+- [ADR-042: State Sync Design](./adr-042-state-sync.md)
 - [ADR-045: ABCI-Evidence](./adr-045-abci-evidence.md)
+- [ADR-050: Improved Trusted Peering](./adr-050-improved-trusted-peering.md)
 - [ADR-057: RPC](./adr-057-RPC.md)
+- [ADR-064: Batch Verification](./adr-064-batch-verification.md)
 - [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
-- [ADR-071: Proposer-Based Timestamps](adr-071-proposer-based-timestamps.md)
+- [ADR-071: Proposer-Based Timestamps](./adr-071-proposer-based-timestamps.md)
+- [ADR-073: Adopt LibP2P](./adr-073-libp2p.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
-

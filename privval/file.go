@@ -117,6 +117,14 @@ type FilePVLastSignState struct {
 	filePath string
 }
 
+func (lss *FilePVLastSignState) reset() {
+	lss.Height = 0
+	lss.Round = 0
+	lss.Step = 0
+	lss.Signature = nil
+	lss.SignBytes = nil
+}
+
 // checkHRS checks the given height, round, step (HRS) against that of the
 // FilePVLastSignState. It returns an error if the arguments constitute a regression,
 // or if they match but the SignBytes are empty.
@@ -328,12 +336,7 @@ func (pv *FilePV) Save() error {
 // Reset resets all fields in the FilePV.
 // NOTE: Unsafe!
 func (pv *FilePV) Reset() error {
-	var sig []byte
-	pv.LastSignState.Height = 0
-	pv.LastSignState.Round = 0
-	pv.LastSignState.Step = 0
-	pv.LastSignState.Signature = sig
-	pv.LastSignState.SignBytes = nil
+	pv.LastSignState.reset()
 	return pv.Save()
 }
 
@@ -370,6 +373,21 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 
 	signBytes := types.VoteSignBytes(chainID, vote)
 
+	// Vote extensions are non-deterministic, so it is possible that an
+	// application may have created a different extension. We therefore always
+	// re-sign the vote extensions of precommits. For prevotes, the extension
+	// signature will always be empty.
+	var extSig []byte
+	if vote.Type == tmproto.PrecommitType {
+		extSignBytes := types.VoteExtensionSignBytes(chainID, vote)
+		extSig, err = pv.Key.PrivKey.Sign(extSignBytes)
+		if err != nil {
+			return err
+		}
+	} else if len(vote.Extension) > 0 {
+		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
+	}
+
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
@@ -379,6 +397,8 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 		if bytes.Equal(signBytes, lss.SignBytes) {
 			vote.Signature = lss.Signature
 		} else {
+			// Compares the canonicalized votes (i.e. without vote extensions
+			// or vote extension signatures).
 			timestamp, ok, err := checkVotesOnlyDifferByTimestamp(lss.SignBytes, signBytes)
 			if err != nil {
 				return err
@@ -390,6 +410,9 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 			vote.Timestamp = timestamp
 			vote.Signature = lss.Signature
 		}
+
+		vote.ExtensionSignature = extSig
+
 		return nil
 	}
 
@@ -402,6 +425,8 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 		return err
 	}
 	vote.Signature = sig
+	vote.ExtensionSignature = extSig
+
 	return nil
 }
 
@@ -453,8 +478,10 @@ func (pv *FilePV) saveSigned(height int64, round int32, step int8, signBytes []b
 
 //-----------------------------------------------------------------------------------------
 
-// returns the timestamp from the lastSignBytes.
-// returns true if the only difference in the votes is their timestamp.
+// Returns the timestamp from the lastSignBytes.
+// Returns true if the only difference in the votes is their timestamp.
+// Performs these checks on the canonical votes (excluding the vote extension
+// and vote extension signatures).
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool, error) {
 	var lastVote, newVote tmproto.CanonicalVote
 	if err := protoio.UnmarshalDelimited(lastSignBytes, &lastVote); err != nil {

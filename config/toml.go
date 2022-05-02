@@ -12,8 +12,8 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
-// DefaultDirPerm is the default permissions used when creating directories.
-const DefaultDirPerm = 0700
+// defaultDirPerm is the default permissions used when creating directories.
+const defaultDirPerm = 0700
 
 var configTemplate *template.Template
 
@@ -32,13 +32,13 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(rootDir, defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
 }
@@ -450,31 +450,11 @@ fetchers = "{{ .StateSync.Fetchers }}"
 
 wal-file = "{{ js .Consensus.WalPath }}"
 
-# How long we wait for a proposal block before prevoting nil
-timeout-propose = "{{ .Consensus.TimeoutPropose }}"
-# How much timeout-propose increases with each round
-timeout-propose-delta = "{{ .Consensus.TimeoutProposeDelta }}"
-# How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
-timeout-prevote = "{{ .Consensus.TimeoutPrevote }}"
-# How much the timeout-prevote increases with each round
-timeout-prevote-delta = "{{ .Consensus.TimeoutPrevoteDelta }}"
-# How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
-timeout-precommit = "{{ .Consensus.TimeoutPrecommit }}"
-# How much the timeout-precommit increases with each round
-timeout-precommit-delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
-# How long we wait after committing a block, before starting on the new
-# height (this gives us a chance to receive some more precommits, even
-# though we already have +2/3).
-timeout-commit = "{{ .Consensus.TimeoutCommit }}"
-
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
 # When non-zero, the node will panic upon restart
 # if the same consensus key was used to sign {double-sign-check-height} last blocks.
 # So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
 double-sign-check-height = {{ .Consensus.DoubleSignCheckHeight }}
-
-# Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
-skip-timeout-commit = {{ .Consensus.SkipTimeoutCommit }}
 
 # EmptyBlocks mode and possible interval between empty blocks
 create-empty-blocks = {{ .Consensus.CreateEmptyBlocks }}
@@ -483,6 +463,50 @@ create-empty-blocks-interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 # Reactor sleep duration parameters
 peer-gossip-sleep-duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
+
+### Unsafe Timeout Overrides ###
+
+# These fields provide temporary overrides for the Timeout consensus parameters.
+# Use of these parameters is strongly discouraged. Using these parameters may have serious
+# liveness implications for the validator and for the chain.
+#
+# These fields will be removed from the configuration file in the v0.37 release of Tendermint.
+# For additional information, see ADR-74:
+# https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-074-timeout-params.md
+
+# This field provides an unsafe override of the Propose timeout consensus parameter.
+# This field configures how long the consensus engine will wait for a proposal block before prevoting nil.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-propose-timeout-override = {{ .Consensus.UnsafeProposeTimeoutOverride }}
+
+# This field provides an unsafe override of the ProposeDelta timeout consensus parameter.
+# This field configures how much the propose timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-propose-timeout-delta-override = {{ .Consensus.UnsafeProposeTimeoutDeltaOverride }}
+
+# This field provides an unsafe override of the Vote timeout consensus parameter.
+# This field configures how long the consensus engine will wait after
+# receiving +2/3 votes in a round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-vote-timeout-override = {{ .Consensus.UnsafeVoteTimeoutOverride }}
+
+# This field provides an unsafe override of the VoteDelta timeout consensus parameter.
+# This field configures how much the vote timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-vote-timeout-delta-override = {{ .Consensus.UnsafeVoteTimeoutDeltaOverride }}
+
+# This field provides an unsafe override of the Commit timeout consensus parameter.
+# This field configures how long the consensus engine will wait after receiving
+# +2/3 precommits before beginning the next height.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-commit-timeout-override = {{ .Consensus.UnsafeCommitTimeoutOverride }}
+
+# This field provides an unsafe override of the BypassCommitTimeout consensus parameter.
+# This field configures if the consensus engine will wait for the full Commit timeout
+# before proceeding to the next height.
+# If this field is set to true, the consensus engine will proceed to the next height
+# as soon as the node has gathered votes from all of the validators on the network.
+# unsafe-bypass-commit-timeout-override =
 
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
@@ -496,8 +520,8 @@ peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # to decide which txs to index based on configuration set in the application.
 #
 # Options:
-#   1) "null"
-#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null" (default) - no indexer services.
+#   2) "kv" - a simple indexer backed by key-value storage (see DBBackend)
 #   3) "psql" - the indexer services backed by PostgreSQL.
 # When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = [{{ range $i, $e := .TxIndex.Indexer }}{{if $i}}, {{end}}{{ printf "%q" $e}}{{end}}]
@@ -542,10 +566,10 @@ func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, er
 		return nil, err
 	}
 	// ensure config and data subdirs are created
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), defaultDirPerm); err != nil {
 		return nil, err
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), defaultDirPerm); err != nil {
 		return nil, err
 	}
 
@@ -588,7 +612,7 @@ func writeFile(filePath string, contents []byte, mode os.FileMode) error {
 	return nil
 }
 
-var testGenesisFmt = `{
+const testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
   "initial_height": "1",
@@ -601,6 +625,14 @@ var testGenesisFmt = `{
 		"synchrony": {
 			"message_delay": "500000000",
 			"precision": "10000000"
+		},
+		"timeout": {
+			"propose": "30000000",
+			"propose_delta": "50000",
+			"vote": "30000000",
+			"vote_delta": "50000",
+			"commit": "10000000",
+			"bypass_timeout_commit": true
 		},
 		"evidence": {
 			"max_age_num_blocks": "100000",
@@ -627,7 +659,7 @@ var testGenesisFmt = `{
   "app_hash": ""
 }`
 
-var testPrivValidatorKey = `{
+const testPrivValidatorKey = `{
   "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
     "type": "tendermint/PubKeyEd25519",
@@ -639,7 +671,7 @@ var testPrivValidatorKey = `{
   }
 }`
 
-var testPrivValidatorState = `{
+const testPrivValidatorState = `{
   "height": "0",
   "round": 0,
   "step": 0

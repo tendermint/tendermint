@@ -69,11 +69,6 @@ type Group struct {
 	minIndex           int // Includes head
 	maxIndex           int // Includes head, where Head will move to
 
-	// close this when the processTicks routine is done.
-	// this ensures we can cleanup the dir after calling Stop
-	// and the routine won't be trying to access it anymore
-	doneProcessTicks chan struct{}
-
 	// TODO: When we start deleting files, we need to start tracking GroupReaders
 	// and their dependencies.
 }
@@ -101,7 +96,6 @@ func OpenGroup(ctx context.Context, logger log.Logger, headPath string, groupOpt
 		groupCheckDuration: defaultGroupCheckDuration,
 		minIndex:           0,
 		maxIndex:           0,
-		doneProcessTicks:   make(chan struct{}),
 	}
 
 	for _, option := range groupOptions {
@@ -152,13 +146,6 @@ func (g *Group) OnStop() {
 	if err := g.FlushAndSync(); err != nil {
 		g.logger.Error("error flushing to disk", "err", err)
 	}
-}
-
-// Wait blocks until all internal goroutines are finished. Supposed to be
-// called after Stop.
-func (g *Group) Wait() {
-	// wait for processTicks routine to finish
-	<-g.doneProcessTicks
 }
 
 // Close closes the head file. The group must be stopped by this moment.
@@ -241,8 +228,6 @@ func (g *Group) FlushAndSync() error {
 }
 
 func (g *Group) processTicks(ctx context.Context) {
-	defer close(g.doneProcessTicks)
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -318,7 +303,8 @@ func (g *Group) checkTotalSizeLimit(ctx context.Context) {
 	}
 }
 
-// rotateFile causes group to close the current head and assign it some index.
+// rotateFile causes group to close the current head and assign it
+// some index. Panics if it encounters an error.
 func (g *Group) rotateFile(ctx context.Context) {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()

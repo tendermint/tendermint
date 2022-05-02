@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
@@ -63,7 +62,6 @@ func InjectEvidence(ctx context.Context, logger log.Logger, r *rand.Rand, testne
 	if err != nil {
 		return err
 	}
-
 	valSet, err := types.ValidatorSetFromExistingValidators(valRes.Validators)
 	if err != nil {
 		return err
@@ -257,26 +255,26 @@ func makeHeaderRandom(chainID string, height int64) *types.Header {
 		Height:             height,
 		Time:               time.Now(),
 		LastBlockID:        makeBlockID([]byte("headerhash"), 1000, []byte("partshash")),
-		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
-		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+		LastCommitHash:     crypto.CRandBytes(crypto.HashSize),
+		DataHash:           crypto.CRandBytes(crypto.HashSize),
+		ValidatorsHash:     crypto.CRandBytes(crypto.HashSize),
+		NextValidatorsHash: crypto.CRandBytes(crypto.HashSize),
+		ConsensusHash:      crypto.CRandBytes(crypto.HashSize),
+		AppHash:            crypto.CRandBytes(crypto.HashSize),
+		LastResultsHash:    crypto.CRandBytes(crypto.HashSize),
+		EvidenceHash:       crypto.CRandBytes(crypto.HashSize),
 		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
 	}
 }
 
 func makeRandomBlockID() types.BlockID {
-	return makeBlockID(crypto.CRandBytes(tmhash.Size), 100, crypto.CRandBytes(tmhash.Size))
+	return makeBlockID(crypto.CRandBytes(crypto.HashSize), 100, crypto.CRandBytes(crypto.HashSize))
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
-		h   = make([]byte, tmhash.Size)
-		psH = make([]byte, tmhash.Size)
+		h   = make([]byte, crypto.HashSize)
+		psH = make([]byte, crypto.HashSize)
 	)
 	copy(h, hash)
 	copy(psH, partSetHash)
@@ -289,8 +287,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 	}
 }
 
-func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet,
-) ([]types.PrivValidator, *types.ValidatorSet, error) {
+func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet) ([]types.PrivValidator, *types.ValidatorSet, error) {
 	newVal, newPrivVal, err := factory.Validator(ctx, 10)
 	if err != nil {
 		return nil, nil, err

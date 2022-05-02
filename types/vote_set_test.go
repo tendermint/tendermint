@@ -127,6 +127,7 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 			t.Errorf("expected VoteSet.Add to fail, wrong type")
 		}
 	}
+
 }
 
 func TestVoteSet_2_3Majority(t *testing.T) {
@@ -493,7 +494,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 
 	// Ensure that Commit is good.
 	if err := commit.ValidateBasic(); err != nil {
-		t.Errorf("error in Commit.ValidateBasic(): %w", err)
+		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
 }
 
@@ -509,7 +510,6 @@ func randVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
-
 	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 

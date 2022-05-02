@@ -185,7 +185,8 @@ func TestABCIApp(t *testing.T) {
 	// commit
 	// TODO: This may not be necessary in the future
 	if res.Height == -1 {
-		m.App.Commit()
+		_, err := m.App.Commit(ctx)
+		require.NoError(t, err)
 	}
 
 	// check the key

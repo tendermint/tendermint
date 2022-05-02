@@ -103,13 +103,16 @@ func TestMinPollTime(t *testing.T) {
 	// wait time and reports no events.
 	ctx := context.Background()
 	filter := &coretypes.EventFilter{Query: `tm.event = 'good'`}
-	var zero cursor.Cursor
 
 	t.Run("NoneMatch", func(t *testing.T) {
 		start := time.Now()
 
 		// Request a very short delay, and affirm we got the server's minimum.
-		rsp, err := s.env.Events(ctx, filter, 1, zero, zero, 10*time.Millisecond)
+		rsp, err := s.env.Events(ctx, &coretypes.RequestEvents{
+			Filter:   filter,
+			MaxItems: 1,
+			WaitTime: 10 * time.Millisecond,
+		})
 		if err != nil {
 			t.Fatalf("Events failed: %v", err)
 		} else if elapsed := time.Since(start); elapsed < time.Second {
@@ -128,7 +131,11 @@ func TestMinPollTime(t *testing.T) {
 		// Request a long-ish delay and affirm we don't block for it.
 		// Check for this by ensuring we return sooner than the minimum delay,
 		// since we don't know the exact timing.
-		rsp, err := s.env.Events(ctx, filter, 1, zero, zero, 10*time.Second)
+		rsp, err := s.env.Events(ctx, &coretypes.RequestEvents{
+			Filter:   filter,
+			MaxItems: 1,
+			WaitTime: 10 * time.Second,
+		})
 		if err != nil {
 			t.Fatalf("Events failed: %v", err)
 		} else if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
@@ -263,12 +270,5 @@ func (s *streamTester) advance(d time.Duration) { s.clock += int64(d) }
 // environment as if it were a local RPC client.  This works because the Events
 // method only requires the event log, the other fields are unused.
 func (s *streamTester) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
-	var before, after cursor.Cursor
-	if err := before.UnmarshalText([]byte(req.Before)); err != nil {
-		return nil, err
-	}
-	if err := after.UnmarshalText([]byte(req.After)); err != nil {
-		return nil, err
-	}
-	return s.env.Events(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
+	return s.env.Events(ctx, req)
 }

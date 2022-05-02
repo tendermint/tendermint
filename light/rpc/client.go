@@ -51,7 +51,6 @@ type Client struct {
 	keyPathFn KeyPathFunc
 
 	closers []func()
-	quitCh  chan struct{}
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -92,10 +91,9 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 // NewClient returns a new client.
 func NewClient(logger log.Logger, next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
-		next:   next,
-		lc:     lc,
-		prt:    merkle.DefaultProofRuntime(),
-		quitCh: make(chan struct{}),
+		next: next,
+		lc:   lc,
+		prt:  merkle.DefaultProofRuntime(),
 	}
 	c.BaseService = *service.NewBaseService(logger, "Client", c)
 	for _, o := range opts {
@@ -111,10 +109,6 @@ func (c *Client) OnStart(ctx context.Context) error {
 		return err
 	}
 	c.closers = append(c.closers, ncancel)
-	go func() {
-		defer close(c.quitCh)
-		c.Wait()
-	}()
 
 	return nil
 }
@@ -458,16 +452,17 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 		return nil, err
 	}
 
-	// Build a Merkle tree of proto-encoded FinalizeBlock tx results and get a hash.
-	results := types.NewResults(res.TxsResults)
-
 	// Build a Merkle tree out of the slice.
-	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash()})
+	rs, err := abci.MarshalTxResults(res.TxsResults)
+	if err != nil {
+		return nil, err
+	}
+	mh := merkle.HashFromByteSlices(append([][]byte{bbeBytes}, rs...))
 
 	// Verify block results.
-	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {
+	if !bytes.Equal(mh, trustedBlock.LastResultsHash) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
-			rH, trustedBlock.LastResultsHash)
+			mh, trustedBlock.LastResultsHash)
 	}
 
 	return res, nil

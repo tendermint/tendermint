@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -69,6 +70,9 @@ func configSetup(t *testing.T) *config.Config {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
 
+	walDir := filepath.Dir(cfg.Consensus.WalFile())
+	ensureDir(t, walDir, 0700)
+
 	return cfg
 }
 
@@ -109,7 +113,8 @@ func (vs *validatorStub) signVote(
 	ctx context.Context,
 	voteType tmproto.SignedMsgType,
 	chainID string,
-	blockID types.BlockID) (*types.Vote, error) {
+	blockID types.BlockID,
+	voteExtension []byte) (*types.Vote, error) {
 
 	pubKey, err := vs.PrivValidator.GetPubKey(ctx)
 	if err != nil {
@@ -117,28 +122,30 @@ func (vs *validatorStub) signVote(
 	}
 
 	vote := &types.Vote{
-		ValidatorIndex:   vs.Index,
-		ValidatorAddress: pubKey.Address(),
+		Type:             voteType,
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        vs.clock.Now(),
-		Type:             voteType,
 		BlockID:          blockID,
-		VoteExtension:    types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(pubKey.Address())),
+		Timestamp:        vs.clock.Now(),
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   vs.Index,
+		Extension:        voteExtension,
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
+	if err = vs.PrivValidator.SignVote(ctx, chainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
-	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
 		v.Signature = vs.lastVote.Signature
 		v.Timestamp = vs.lastVote.Timestamp
+		v.ExtensionSignature = vs.lastVote.ExtensionSignature
 	}
 
 	vote.Signature = v.Signature
 	vote.Timestamp = v.Timestamp
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote, err
 }
@@ -152,12 +159,12 @@ func signVote(
 	chainID string,
 	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(ctx, voteType, chainID, blockID)
+	var ext []byte
+	if voteType == tmproto.PrecommitType {
+		ext = []byte("extension")
+	}
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, ext)
 	require.NoError(t, err, "failed to sign vote")
-
-	// TODO: remove hardcoded vote extension.
-	// currently set for abci/examples/kvstore/persistent_kvstore.go
-	v.VoteExtension = types.VoteExtensionFromProto(kvstore.ConstructVoteExtension(v.ValidatorAddress))
 
 	vs.lastVote = v
 
@@ -239,7 +246,9 @@ func decideProposal(
 	t.Helper()
 
 	cs1.mtx.Lock()
-	block, blockParts, err := cs1.createProposalBlock(ctx)
+	block, err := cs1.createProposalBlock(ctx)
+	require.NoError(t, err)
+	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
@@ -346,18 +355,19 @@ func validatePrecommit(
 		require.True(t, bytes.Equal(vote.BlockID.Hash, votedBlockHash), "Expected precommit to be for proposal block")
 	}
 
+	rs := cs.GetRoundState()
 	if lockedBlockHash == nil {
-		require.False(t, cs.LockedRound != lockRound || cs.LockedBlock != nil,
+		require.False(t, rs.LockedRound != lockRound || rs.LockedBlock != nil,
 			"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
 			lockRound,
-			cs.LockedRound,
-			cs.LockedBlock)
+			rs.LockedRound,
+			rs.LockedBlock)
 	} else {
-		require.False(t, cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash),
+		require.False(t, rs.LockedRound != lockRound || !bytes.Equal(rs.LockedBlock.Hash(), lockedBlockHash),
 			"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
 			lockRound,
-			cs.LockedRound,
-			cs.LockedBlock.Hash(),
+			rs.LockedRound,
+			rs.LockedBlock.Hash(),
 			lockedBlockHash)
 	}
 }
@@ -482,15 +492,18 @@ func newStateWithConfigAndBlockStore(
 	stateStore := sm.NewStore(stateDB)
 	require.NoError(t, stateStore.Save(state))
 
-	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore)
-	cs, err := NewState(ctx,
-		logger.With("module", "consensus"),
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
+	require.NoError(t, eventBus.Start(ctx))
+
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
+	cs, err := NewState(logger.With("module", "consensus"),
 		thisConfig.Consensus,
 		stateStore,
 		blockExec,
 		blockStore,
 		mempool,
 		evpool,
+		eventBus,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -498,10 +511,6 @@ func newStateWithConfigAndBlockStore(
 
 	cs.SetPrivValidator(ctx, pv)
 
-	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	require.NoError(t, eventBus.Start(ctx))
-
-	cs.SetEventBus(eventBus)
 	return cs
 }
 
@@ -543,6 +552,7 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	}
 
 	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
+		Params:     factory.ConsensusParams(),
 		Validators: validators,
 	})
 
@@ -725,10 +735,9 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 			msg.Data())
 
 		vote := voteEvent.Vote
-		require.Equal(t, height, vote.Height)
-		require.Equal(t, round, vote.Round)
-
-		require.Equal(t, voteType, vote.Type)
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 		if hash == nil {
 			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
 		} else {
@@ -736,6 +745,7 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 		}
 	}
 }
+
 func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, voteType tmproto.SignedMsgType) {
 	t.Helper()
 	msg := ensureMessageBeforeTimeout(t, voteCh, ensureTimeout)
@@ -744,10 +754,9 @@ func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, roun
 		msg.Data())
 
 	vote := voteEvent.Vote
-	require.Equal(t, height, vote.Height)
-	require.Equal(t, round, vote.Round)
-
-	require.Equal(t, voteType, vote.Type)
+	require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+	require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+	require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 }
 
 func ensureNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
@@ -772,7 +781,7 @@ func ensureMessageBeforeTimeout(t *testing.T, ch <-chan tmpubsub.Message, to tim
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func consensusLogger() log.Logger {
-	return log.TestingLogger().With("module", "consensus")
+	return log.NewNopLogger().With("module", "consensus")
 }
 
 func makeConsensusState(
@@ -785,9 +794,10 @@ func makeConsensusState(
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
 	t.Helper()
+	tempDir := t.TempDir()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -799,7 +809,7 @@ func makeConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(tempDir, fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -808,13 +818,15 @@ func makeConsensusState(
 			opt(thisConfig)
 		}
 
-		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		walDir := filepath.Dir(thisConfig.Consensus.WalFile())
+		ensureDir(t, walDir, 0700)
 
 		app := kvstore.NewApplication()
 		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
@@ -845,7 +857,7 @@ func randConsensusNetWithPeers(
 	t.Helper()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, testMinPower)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, nil)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()
@@ -878,11 +890,15 @@ func randConsensusNetWithPeers(
 
 		app := appFunc(logger, filepath.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
-			// simulate handshake, receive app version. If don't do this, replay test will fail
+		switch app.(type) {
+		// simulate handshake, receive app version. If don't do this, replay test will fail
+		case *kvstore.PersistentKVStoreApplication:
+			state.Version.Consensus.App = kvstore.ProtocolVersion
+		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(ctx, t, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)
@@ -966,10 +982,6 @@ func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
 }
 
-func newPersistentKVStore(logger log.Logger, dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(logger, dbDir)
-}
-
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 	if v1 == nil || v2 == nil {
 		return false
@@ -980,5 +992,6 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 		v1.Height == v2.GetHeight() &&
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorAddress.Bytes(), v2.GetValidatorAddress()) &&
-		v1.ValidatorIndex == v2.GetValidatorIndex()
+		v1.ValidatorIndex == v2.GetValidatorIndex() &&
+		bytes.Equal(v1.Extension, v2.Extension)
 }

@@ -20,12 +20,12 @@ import (
 func init() {
 	testTransports["mconn"] = func(t *testing.T) p2p.Transport {
 		transport := p2p.NewMConnTransport(
-			log.TestingLogger(),
+			log.NewNopLogger(),
 			conn.DefaultMConnConfig(),
 			[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 			p2p.MConnTransportOptions{},
 		)
-		err := transport.Listen(p2p.Endpoint{
+		err := transport.Listen(&p2p.Endpoint{
 			Protocol: p2p.MConnProtocol,
 			IP:       net.IPv4(127, 0, 0, 1),
 			Port:     0, // assign a random port
@@ -40,7 +40,7 @@ func init() {
 
 func TestMConnTransport_AcceptBeforeListen(t *testing.T) {
 	transport := p2p.NewMConnTransport(
-		log.TestingLogger(),
+		log.NewNopLogger(),
 		conn.DefaultMConnConfig(),
 		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
@@ -63,7 +63,7 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 	defer cancel()
 
 	transport := p2p.NewMConnTransport(
-		log.TestingLogger(),
+		log.NewNopLogger(),
 		conn.DefaultMConnConfig(),
 		[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 		p2p.MConnTransportOptions{
@@ -73,13 +73,14 @@ func TestMConnTransport_AcceptMaxAcceptedConnections(t *testing.T) {
 	t.Cleanup(func() {
 		_ = transport.Close()
 	})
-	err := transport.Listen(p2p.Endpoint{
+	err := transport.Listen(&p2p.Endpoint{
 		Protocol: p2p.MConnProtocol,
 		IP:       net.IPv4(127, 0, 0, 1),
 	})
 	require.NoError(t, err)
-	require.NotEmpty(t, transport.Endpoints())
-	endpoint := transport.Endpoints()[0]
+	endpoint, err := transport.Endpoint()
+	require.NoError(t, err)
+	require.NotNil(t, endpoint)
 
 	// Start a goroutine to just accept any connections.
 	acceptCh := make(chan p2p.Connection, 10)
@@ -132,20 +133,20 @@ func TestMConnTransport_Listen(t *testing.T) {
 	defer cancel()
 
 	testcases := []struct {
-		endpoint p2p.Endpoint
+		endpoint *p2p.Endpoint
 		ok       bool
 	}{
 		// Valid v4 and v6 addresses, with mconn and tcp protocols.
-		{p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv4zero}, true},
-		{p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv4(127, 0, 0, 1)}, true},
-		{p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv6zero}, true},
-		{p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv6loopback}, true},
-		{p2p.Endpoint{Protocol: p2p.TCPProtocol, IP: net.IPv4zero}, true},
+		{&p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv4zero}, true},
+		{&p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv4(127, 0, 0, 1)}, true},
+		{&p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv6zero}, true},
+		{&p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv6loopback}, true},
+		{&p2p.Endpoint{Protocol: p2p.TCPProtocol, IP: net.IPv4zero}, true},
 
 		// Invalid endpoints.
-		{p2p.Endpoint{}, false},
-		{p2p.Endpoint{Protocol: p2p.MConnProtocol, Path: "foo"}, false},
-		{p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv4zero, Path: "foo"}, false},
+		{&p2p.Endpoint{}, false},
+		{&p2p.Endpoint{Protocol: p2p.MConnProtocol, Path: "foo"}, false},
+		{&p2p.Endpoint{Protocol: p2p.MConnProtocol, IP: net.IPv4zero, Path: "foo"}, false},
 	}
 	for _, tc := range testcases {
 		tc := tc
@@ -153,17 +154,19 @@ func TestMConnTransport_Listen(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
 
 			transport := p2p.NewMConnTransport(
-				log.TestingLogger(),
+				log.NewNopLogger(),
 				conn.DefaultMConnConfig(),
 				[]*p2p.ChannelDescriptor{{ID: chID, Priority: 1}},
 				p2p.MConnTransportOptions{},
 			)
 
 			// Transport should not listen on any endpoints yet.
-			require.Empty(t, transport.Endpoints())
+			endpoint, err := transport.Endpoint()
+			require.Error(t, err)
+			require.Nil(t, endpoint)
 
 			// Start listening, and check any expected errors.
-			err := transport.Listen(tc.endpoint)
+			err = transport.Listen(tc.endpoint)
 			if !tc.ok {
 				require.Error(t, err)
 				return
@@ -171,9 +174,9 @@ func TestMConnTransport_Listen(t *testing.T) {
 			require.NoError(t, err)
 
 			// Check the endpoint.
-			endpoints := transport.Endpoints()
-			require.Len(t, endpoints, 1)
-			endpoint := endpoints[0]
+			endpoint, err = transport.Endpoint()
+			require.NoError(t, err)
+			require.NotNil(t, endpoint)
 
 			require.Equal(t, p2p.MConnProtocol, endpoint.Protocol)
 			if tc.endpoint.IP.IsUnspecified() {

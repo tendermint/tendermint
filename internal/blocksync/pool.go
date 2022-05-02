@@ -28,7 +28,7 @@ eg, L = latency = 0.1s
 */
 
 const (
-	requestIntervalMS         = 2
+	requestInterval           = 2 * time.Millisecond
 	maxTotalRequesters        = 600
 	maxPeerErrBuffer          = 1000
 	maxPendingRequests        = maxTotalRequesters
@@ -86,7 +86,6 @@ type BlockPool struct {
 
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
-	exitedCh   chan struct{}
 
 	startHeight               int64
 	lastHundredBlockTimeStamp time.Time
@@ -109,7 +108,6 @@ func NewBlockPool(
 		height:       start,
 		startHeight:  start,
 		numPending:   0,
-		exitedCh:     make(chan struct{}),
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 		lastSyncRate: 0,
@@ -125,11 +123,6 @@ func (pool *BlockPool) OnStart(ctx context.Context) error {
 	pool.lastHundredBlockTimeStamp = pool.lastAdvance
 	go pool.makeRequestersRoutine(ctx)
 
-	go func() {
-		defer close(pool.exitedCh)
-		pool.Wait()
-	}()
-
 	return nil
 }
 
@@ -137,27 +130,23 @@ func (*BlockPool) OnStop() {}
 
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
-	for {
-		if !pool.IsRunning() {
-			break
+	for pool.IsRunning() {
+		if ctx.Err() != nil {
+			return
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		switch {
-		case numPending >= maxPendingRequests:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
+		if numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters {
+			// This is preferable to using a timer because the request interval
+			// is so small. Larger request intervals may necessitate using a
+			// timer/ticker.
+			time.Sleep(requestInterval)
 			pool.removeTimedoutPeers()
-		case lenRequesters >= maxTotalRequesters:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
-			pool.removeTimedoutPeers()
-		default:
-			// request for more blocks.
-			pool.makeNextRequester(ctx)
+			continue
 		}
+
+		// request for more blocks.
+		pool.makeNextRequester(ctx)
 	}
 }
 
@@ -168,7 +157,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	for _, peer := range pool.peers {
 		// check if peer timed out
 		if !peer.didTimeout && peer.numPending > 0 {
-			curRate := peer.recvMonitor.Status().CurRate
+			curRate := peer.recvMonitor.CurrentTransferRate()
 			// curRate can be 0 on start
 			if curRate != 0 && curRate < minRecvRate {
 				err := errors.New("peer is not sending us data fast enough")
@@ -637,12 +626,6 @@ func (bpr *bpRequester) redo(peerID types.NodeID) {
 // Responsible for making more requests as necessary
 // Returns only when a block is found (e.g. AddBlock() is called)
 func (bpr *bpRequester) requestRoutine(ctx context.Context) {
-	bprPoolDone := make(chan struct{})
-	go func() {
-		defer close(bprPoolDone)
-		bpr.pool.Wait()
-	}()
-
 OUTER_LOOP:
 	for {
 		// Pick a peer to send request to.
@@ -652,9 +635,16 @@ OUTER_LOOP:
 			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
 				return
 			}
+			if ctx.Err() != nil {
+				return
+			}
+
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				time.Sleep(requestIntervalMS * time.Millisecond)
+				// This is preferable to using a timer because the request
+				// interval is so small. Larger request intervals may
+				// necessitate using a timer/ticker.
+				time.Sleep(requestInterval)
 				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP
@@ -669,9 +659,6 @@ OUTER_LOOP:
 		for {
 			select {
 			case <-ctx.Done():
-				return
-			case <-bpr.pool.exitedCh:
-				bpr.Stop()
 				return
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {

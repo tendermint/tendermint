@@ -12,6 +12,8 @@ var (
 	// errAlreadyStopped is returned when somebody tries to stop an already
 	// stopped service (without resetting it).
 	errAlreadyStopped = errors.New("already stopped")
+
+	_ Service = (*BaseService)(nil)
 )
 
 // Service defines a service that can be started, stopped, and reset.
@@ -70,8 +72,7 @@ Typical usage:
 	}
 
 	func (fs *FooService) OnStop() {
-		// close/destroy private fields
-		// stop subroutines, etc.
+		// close/destroy private fields and releases resources
 	}
 */
 type BaseService struct {
@@ -195,5 +196,5 @@ func (bs *BaseService) getWait() <-chan struct{} {
 // Wait blocks until the service is stopped.
 func (bs *BaseService) Wait() { <-bs.getWait() }
 
-// String implements Service by returning a string representation of the service.
+// String provides a human-friendly representation of the service.
 func (bs *BaseService) String() string { return bs.name }

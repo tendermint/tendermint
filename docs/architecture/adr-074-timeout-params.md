@@ -67,7 +67,7 @@ The 8 timeout parameters will be consolidated down to 6. These will be as follow
 	 parameters.
 * `TimeoutCommit`
 	* Same as current `TimeoutCommit`.
-* `EnableTimeoutCommitBypass`
+* `BypassCommitTimeout`
 	* Same as current `SkipTimeoutCommit`, renamed for clarity.
 
 A safe default will be provided by Tendermint for each of these parameters and
@@ -149,7 +149,7 @@ message TimeoutParams {
  google.protobuf.Duration vote = 3;
  google.protobuf.Duration vote_delta = 4;
  google.protobuf.Duration commit = 5;
- bool enable_commit_timeout_bypass = 6;
+ bool bypass_commit_timeout = 6;
 }
 ```
 

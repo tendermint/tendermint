@@ -50,7 +50,7 @@ func (opts *NetworkOptions) setDefaults() {
 // connects them to each other.
 func MakeNetwork(ctx context.Context, t *testing.T, opts NetworkOptions) *Network {
 	opts.setDefaults()
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 	network := &Network{
 		Nodes:         map[types.NodeID]*Node{},
 		logger:        logger,
@@ -247,7 +247,9 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	}
 
 	transport := n.memoryNetwork.CreateTransport(nodeID)
-	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
+	ep, err := transport.Endpoint()
+	require.NoError(t, err)
+	require.NotNil(t, ep, "transport not listening an endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MinRetryTime:    10 * time.Millisecond,
@@ -259,14 +261,13 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		ctx,
 		n.logger,
 		p2p.NopMetrics(),
-		nodeInfo,
 		privKey,
 		peerManager,
-		[]p2p.Transport{transport},
-		transport.Endpoints(),
+		func() *types.NodeInfo { return &nodeInfo },
+		transport,
+		ep,
 		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
 	)
 
@@ -285,7 +286,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	return &Node{
 		NodeID:      nodeID,
 		NodeInfo:    nodeInfo,
-		NodeAddress: transport.Endpoints()[0].NodeAddress(nodeID),
+		NodeAddress: ep.NodeAddress(nodeID),
 		PrivKey:     privKey,
 		Router:      router,
 		PeerManager: peerManager,
@@ -305,7 +306,6 @@ func (n *Node) MakeChannel(
 	ctx, cancel := context.WithCancel(ctx)
 	channel, err := n.Router.OpenChannel(ctx, chDesc)
 	require.NoError(t, err)
-	require.Contains(t, n.Router.NodeInfo().Channels, byte(chDesc.ID))
 	t.Cleanup(func() {
 		RequireEmpty(ctx, t, channel)
 		cancel()

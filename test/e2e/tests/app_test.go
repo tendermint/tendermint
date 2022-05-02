@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
@@ -45,26 +46,28 @@ func TestApp_Hash(t *testing.T) {
 	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
+
 		info, err := client.ABCIInfo(ctx)
 		require.NoError(t, err)
 		require.NotEmpty(t, info.Response.LastBlockAppHash, "expected app to return app hash")
 
-		status, err := client.Status(ctx)
+		// In next-block execution, the app hash is stored in the next block
+		blockHeight := info.Response.LastBlockHeight + 1
+
+		require.Eventually(t, func() bool {
+			status, err := client.Status(ctx)
+			require.NoError(t, err)
+			require.NotZero(t, status.SyncInfo.LatestBlockHeight)
+			return status.SyncInfo.LatestBlockHeight >= blockHeight
+		}, 60*time.Second, 500*time.Millisecond)
+
+		block, err := client.Block(ctx, &blockHeight)
 		require.NoError(t, err)
-		require.NotZero(t, status.SyncInfo.LatestBlockHeight)
-
-		block, err := client.Block(ctx, &info.Response.LastBlockHeight)
-		require.NoError(t, err)
-
-		if info.Response.LastBlockHeight == block.Block.Height {
-			require.Equal(t,
-				fmt.Sprintf("%x", info.Response.LastBlockAppHash),
-				fmt.Sprintf("%x", block.Block.AppHash.Bytes()),
-				"app hash does not match last block's app hash")
-		}
-
-		require.True(t, status.SyncInfo.LatestBlockHeight >= info.Response.LastBlockHeight,
-			"status out of sync with application")
+		require.Equal(t, blockHeight, block.Block.Height)
+		require.Equal(t,
+			fmt.Sprintf("%x", info.Response.LastBlockAppHash),
+			fmt.Sprintf("%x", block.Block.AppHash.Bytes()),
+			"app hash does not match last block's app hash")
 	})
 }
 
@@ -183,4 +186,19 @@ func TestApp_Tx(t *testing.T) {
 
 	}
 
+}
+
+func TestApp_VoteExtensions(t *testing.T) {
+	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+		client, err := node.Client()
+		require.NoError(t, err)
+
+		// This special value should have been created by way of vote extensions
+		resp, err := client.ABCIQuery(ctx, "", []byte("extensionSum"))
+		require.NoError(t, err)
+
+		extSum, err := strconv.Atoi(string(resp.Response.Value))
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, extSum, 0)
+	})
 }

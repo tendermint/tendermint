@@ -78,25 +78,25 @@ func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
 }
 
-// Endpoints implements Transport.
-func (m *MConnTransport) Endpoints() []Endpoint {
+// Endpoint implements Transport.
+func (m *MConnTransport) Endpoint() (*Endpoint, error) {
 	if m.listener == nil {
-		return []Endpoint{}
+		return nil, errors.New("listenter not defined")
 	}
 	select {
 	case <-m.doneCh:
-		return []Endpoint{}
+		return nil, errors.New("transport closed")
 	default:
 	}
 
-	endpoint := Endpoint{
+	endpoint := &Endpoint{
 		Protocol: MConnProtocol,
 	}
 	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
 		endpoint.Port = uint16(addr.Port)
 	}
-	return []Endpoint{endpoint}
+	return endpoint, nil
 }
 
 // Listen asynchronously listens for inbound connections on the given endpoint.
@@ -106,7 +106,7 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 // FIXME: Listen currently only supports listening on a single endpoint, it
 // might be useful to support listening on multiple addresses (e.g. IPv4 and
 // IPv6, or a private and public address) via multiple Listen() calls.
-func (m *MConnTransport) Listen(endpoint Endpoint) error {
+func (m *MConnTransport) Listen(endpoint *Endpoint) error {
 	if m.listener != nil {
 		return errors.New("transport is already listening")
 	}
@@ -170,7 +170,7 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 }
 
 // Dial implements Transport.
-func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
+func (m *MConnTransport) Dial(ctx context.Context, endpoint *Endpoint) (Connection, error) {
 	if err := m.validateEndpoint(endpoint); err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor)
 }
 
 // validateEndpoint validates an endpoint.
-func (m *MConnTransport) validateEndpoint(endpoint Endpoint) error {
+func (m *MConnTransport) validateEndpoint(endpoint *Endpoint) error {
 	if err := endpoint.Validate(); err != nil {
 		return err
 	}

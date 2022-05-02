@@ -1,0 +1,6 @@
+# This is not a Tendermint config file.
+
+[ test ]
+key = 'value'
+
+# Nothing to see here, move along.

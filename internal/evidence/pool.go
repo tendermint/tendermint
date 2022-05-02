@@ -36,14 +36,14 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 	evidenceSize  uint32       // amount of pending evidence
 
-	// needed to load validators to verify evidence
-	stateDB sm.Store
 	// needed to load headers and commits to verify evidence
 	blockStore BlockStore
+	stateDB    sm.Store
 
 	mtx sync.Mutex
 	// latest state
-	state sm.State
+	state     sm.State
+	isStarted bool
 	// evidence from consensus is buffered to this slice, awaiting until the next height
 	// before being flushed to the pool. This prevents broadcasting and proposing of
 	// evidence before the height with which the evidence happened is finished.
@@ -60,46 +60,19 @@ type Pool struct {
 	Metrics *Metrics
 }
 
-func (evpool *Pool) SetEventBus(e *eventbus.EventBus) {
-	evpool.eventBus = e
-}
-
 // NewPool creates an evidence pool. If using an existing evidence store,
 // it will add all pending evidence to the concurrent list.
-func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore, metrics *Metrics) (*Pool, error) {
-	state, err := stateDB.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load state: %w", err)
-	}
-
-	pool := &Pool{
-		stateDB:         stateDB,
+func NewPool(logger log.Logger, evidenceDB dbm.DB, stateStore sm.Store, blockStore BlockStore, metrics *Metrics, eventBus *eventbus.EventBus) *Pool {
+	return &Pool{
 		blockStore:      blockStore,
-		state:           state,
+		stateDB:         stateStore,
 		logger:          logger,
 		evidenceStore:   evidenceDB,
 		evidenceList:    clist.New(),
 		consensusBuffer: make([]duplicateVoteSet, 0),
 		Metrics:         metrics,
+		eventBus:        eventBus,
 	}
-
-	// If pending evidence already in db, in event of prior failure, then check
-	// for expiration, update the size and load it back to the evidenceList.
-	pool.pruningHeight, pool.pruningTime = pool.removeExpiredPendingEvidence()
-	evList, _, err := pool.listEvidence(prefixPending, -1)
-	if err != nil {
-		return nil, err
-	}
-
-	atomic.StoreUint32(&pool.evidenceSize, uint32(len(evList)))
-	pool.Metrics.NumEvidence.Set(float64(pool.evidenceSize))
-
-	for _, ev := range evList {
-		pool.evidenceList.PushBack(ev)
-	}
-	pool.eventBus = nil
-
-	return pool, nil
 }
 
 // PendingEvidence is used primarily as part of block proposal and returns up to
@@ -277,6 +250,31 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
+func (evpool *Pool) Start(state sm.State) error {
+	if evpool.isStarted {
+		return errors.New("pool is already running")
+	}
+
+	evpool.state = state
+
+	// If pending evidence already in db, in event of prior failure, then check
+	// for expiration, update the size and load it back to the evidenceList.
+	evpool.pruningHeight, evpool.pruningTime = evpool.removeExpiredPendingEvidence()
+	evList, _, err := evpool.listEvidence(prefixPending, -1)
+	if err != nil {
+		return err
+	}
+
+	atomic.StoreUint32(&evpool.evidenceSize, uint32(len(evList)))
+	evpool.Metrics.NumEvidence.Set(float64(evpool.evidenceSize))
+
+	for _, ev := range evList {
+		evpool.evidenceList.PushBack(ev)
+	}
+
+	return nil
+}
+
 func (evpool *Pool) Close() error {
 	return evpool.evidenceStore.Close()
 }
@@ -340,7 +338,7 @@ func (evpool *Pool) addPendingEvidence(ctx context.Context, ev types.Evidence) e
 		return nil
 
 	}
-	return evpool.eventBus.PublishEventEvidenceValidated(ctx, types.EventDataEvidenceValidated{
+	return evpool.eventBus.PublishEventEvidenceValidated(types.EventDataEvidenceValidated{
 		Evidence: ev,
 		Height:   ev.Height(),
 	})
@@ -449,6 +447,7 @@ func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evide
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
+
 	batch := evpool.evidenceStore.NewBatch()
 	defer batch.Close()
 
@@ -473,7 +472,6 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 
 	// remove evidence from the clist
 	evpool.removeEvidenceFromList(blockEvidenceMap)
-
 	// update the evidence size
 	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap)-1))
 

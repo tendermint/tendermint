@@ -16,7 +16,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
@@ -46,7 +45,7 @@ type reactorTestSuite struct {
 	numStateStores   int
 }
 
-func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
+func setup(ctx context.Context, t *testing.T, stateStores []sm.Store) *reactorTestSuite {
 	t.Helper()
 
 	pID := make([]byte, 16)
@@ -56,7 +55,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 	numStateStores := len(stateStores)
 	rts := &reactorTestSuite{
 		numStateStores: numStateStores,
-		logger:         log.TestingLogger().With("testCase", t.Name()),
+		logger:         log.NewNopLogger().With("testCase", t.Name()),
 		network:        p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
 		reactors:       make(map[types.NodeID]*evidence.Reactor, numStateStores),
 		pools:          make(map[types.NodeID]*evidence.Pool, numStateStores),
@@ -82,30 +81,30 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store, chBuf uint
 			}
 			return nil
 		})
-		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics())
-
-		require.NoError(t, err)
 		eventBus := eventbus.NewDefault(logger)
 		err = eventBus.Start(ctx)
 		require.NoError(t, err)
-		rts.pools[nodeID].SetEventBus(eventBus)
+
+		rts.pools[nodeID] = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore, evidence.NopMetrics(), eventBus)
+		startPool(t, rts.pools[nodeID], stateStores[idx])
+
+		require.NoError(t, err)
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
-		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
+		pu := p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
+		rts.peerUpdates[nodeID] = pu
+		rts.network.Nodes[nodeID].PeerManager.Register(ctx, pu)
 		rts.nodes = append(rts.nodes, rts.network.Nodes[nodeID])
 
 		chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
 			return rts.evidenceChannels[nodeID], nil
 		}
 
-		rts.reactors[nodeID], err = evidence.NewReactor(
-			ctx,
+		rts.reactors[nodeID] = evidence.NewReactor(
 			logger,
 			chCreator,
-			rts.peerUpdates[nodeID],
+			func(ctx context.Context) *p2p.PeerUpdates { return pu },
 			rts.pools[nodeID])
-		require.NoError(t, err)
 
 		require.NoError(t, rts.reactors[nodeID].Start(ctx))
 		require.True(t, rts.reactors[nodeID].IsRunning())
@@ -245,7 +244,7 @@ func TestReactorMultiDisconnect(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height)
 	stateDB2 := initializeValidatorState(ctx, t, val, height)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 20)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -290,7 +289,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(ctx, t, val, height)
 	}
 
-	rts := setup(ctx, t, stateDBs, 0)
+	rts := setup(ctx, t, stateDBs)
 
 	rts.start(ctx, t)
 
@@ -348,7 +347,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height1)
 	stateDB2 := initializeValidatorState(ctx, t, val, height2)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 	rts.start(ctx, t)
 
 	primary := rts.nodes[0]
@@ -382,7 +381,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height)
 	stateDB2 := initializeValidatorState(ctx, t, val, height)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 100)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -423,7 +422,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	stateDB1 := initializeValidatorState(ctx, t, val, height)
 	stateDB2 := initializeValidatorState(ctx, t, val, height)
 
-	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2}, 0)
+	rts := setup(ctx, t, []sm.Store{stateDB1, stateDB2})
 
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
@@ -482,7 +481,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(ctx, t, val, height)
 	}
 
-	rts := setup(ctx, t, stateDBs, 0)
+	rts := setup(ctx, t, stateDBs)
 	rts.start(ctx, t)
 
 	evList := createEvidenceList(ctx, t, rts.pools[rts.network.RandomNode().NodeID], val, numEvidence)
@@ -523,10 +522,10 @@ func TestEvidenceListSerialization(t *testing.T) {
 			Round:     2,
 			Timestamp: stamp,
 			BlockID: types.BlockID{
-				Hash: tmhash.Sum([]byte("blockID_hash")),
+				Hash: crypto.Checksum([]byte("blockID_hash")),
 				PartSetHeader: types.PartSetHeader{
 					Total: 1000000,
-					Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+					Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 				},
 			},
 			ValidatorAddress: crypto.AddressHash([]byte("validator_address")),

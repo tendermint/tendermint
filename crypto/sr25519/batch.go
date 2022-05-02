@@ -1,6 +1,7 @@
 package sr25519
 
 import (
+	"crypto/rand"
 	"fmt"
 
 	"github.com/oasisprotocol/curve25519-voi/primitives/sr25519"
@@ -42,5 +43,5 @@ func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 }
 
 func (b *BatchVerifier) Verify() (bool, []bool) {
-	return b.BatchVerifier.Verify(crypto.CReader())
+	return b.BatchVerifier.Verify(rand.Reader)
 }

@@ -55,7 +55,7 @@ func TestScanner(t *testing.T) {
 			got = append(got, s.Token())
 		}
 		if err := s.Err(); err != io.EOF {
-			t.Errorf("Next: unexpected error: %w", err)
+			t.Errorf("Next: unexpected error: %v", err)
 		}
 
 		if !reflect.DeepEqual(got, test.want) {

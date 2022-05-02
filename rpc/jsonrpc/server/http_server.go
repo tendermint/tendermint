@@ -46,13 +46,7 @@ func DefaultConfig() *Config {
 
 // Serve creates a http.Server and calls Serve with the given listener. It
 // wraps handler to recover panics and limit the request body size.
-func Serve(
-	ctx context.Context,
-	listener net.Listener,
-	handler http.Handler,
-	logger log.Logger,
-	config *Config,
-) error {
+func Serve(ctx context.Context, listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	h := recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
 	s := &http.Server{
@@ -83,19 +77,14 @@ func Serve(
 // Serve creates a http.Server and calls ServeTLS with the given listener,
 // certFile and keyFile. It wraps handler to recover panics and limit the
 // request body size.
-func ServeTLS(
-	ctx context.Context,
-	listener net.Listener,
-	handler http.Handler,
-	certFile, keyFile string,
-	logger log.Logger,
-	config *Config,
-) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
-		listener.Addr(), certFile, keyFile))
-	h := recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
+func ServeTLS(ctx context.Context, listener net.Listener, handler http.Handler, certFile, keyFile string, logger log.Logger, config *Config) error {
+	logger.Info("Starting RPC HTTPS server",
+		"listenterAddr", listener.Addr(),
+		"certFile", certFile,
+		"keyFile", keyFile)
+
 	s := &http.Server{
-		Handler:        h,
+		Handler:        recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger),
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
