@@ -522,14 +522,6 @@ AgreementOnValue ==
             /\ decision[p] = Decision(v, t, r1)
             /\ decision[q] = Decision(v, t, r2)
 
-\* [PBTS-INV-TIME-AGR.0]
-AgreementOnTime ==
-    \A p, q \in Corr: 
-        \A v1 \in ValidValues, v2 \in ValidValues, t1 \in Timestamps, t2 \in Timestamps, r \in Rounds :
-            /\ decision[p] = Decision(v1, t1, r)
-            /\ decision[q] = Decision(v2, t2, r)
-            => t1 = t2
-
 \* [PBTS-CONSENSUS-TIME-VALID.0]
 ConsensusTimeValid ==
     \A p \in Corr, t \in Timestamps : 
