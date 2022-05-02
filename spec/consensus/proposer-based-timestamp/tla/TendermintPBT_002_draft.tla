@@ -798,31 +798,34 @@ ConsensusValidValue ==
 \* [PBTS-INV-MONOTONICITY.0]
 \* TODO: we would need to compare timestamps of blocks from different height
 
-\* [PBTS-CONSENSUS-TIME-VALID.0]
+\* [PBTS-INV-TIMELY.0]
 ConsensusTimeValid ==
     \A p \in Corr: 
     \* if a process decides on v and t
       \E v \in ValidValues, t \in Timestamps, pr \in Rounds, dr \in Rounds : 
+        \* FIXME: do we need to enforce pr <= dr?
         decision[p] = Decision(Proposal(v,t,pr), dr)
-        \* then 
-        \* TODO: consider tighter bound where beginRound[pr] is replaced
-        \* w/ MedianOfRound[pr]
-        => (/\ beginRound[pr,p] - Precision - Delay <= t 
-            /\ t <= endConsensus[p] + Precision)
+        \* then a process found t timely at its proposal round (pr) 
+        => \E q \in Corr:
+           LET propRecvTime == proposalReceptionTime[pr, q] IN
+           (
+             /\ beginRound[pr, q] <= propRecvTime
+             /\ beginRound[pr+1, q] >= propRecvTime
+             /\ IsTimely(propRecvTime, t)
+           )
 
 \* [PBTS-CONSENSUS-SAFE-VALID-CORR-PROP.0]
-ConsensusSafeValidCorrProp ==
-    \A v \in ValidValues:
-      \* and there exists a process that decided on v, t 
-      /\ \E p \in Corr, t \in Timestamps, pr \in Rounds, dr \in Rounds : 
-        \* if the proposer in the round is correct
-        (/\ Proposer[pr] \in Corr
-        /\ decision[p] = Decision(Proposal(v,t,pr), dr))
-          \* then t is between the minimal and maximal initial local time
-          => /\ beginRound[pr, p] <= t 
-             /\ t <= lastBeginRound[pr]
-
-
+\* ConsensusSafeValidCorrProp ==
+\*     \A v \in ValidValues:
+\*       \* and there exists a process that decided on v, t 
+\*       /\ \E p \in Corr, t \in Timestamps, pr \in Rounds, dr \in Rounds : 
+\*         \* if the proposer in the round is correct
+\*         (/\ Proposer[pr] \in Corr
+\*         /\ decision[p] = Decision(Proposal(v,t,pr), dr))
+\*           \* then t is between the minimal and maximal initial local time
+\*           => /\ beginRound[pr, p] <= t 
+\*              /\ t <= lastBeginRound[pr]
+\* 
 
 \* @type: (PROPOSAL, ROUND) => Set(PREMESSAGE);
 POLSet(prop, rnd) == 
@@ -868,9 +871,10 @@ DecideAfterMin == TRUE
 \* a conjunction of all invariants
 Inv ==
     /\ AgreementOnValue 
+    /\ ConsensusValidValue
     /\ ConsensusTimeValid
-    /\ ConsensusSafeValidCorrProp
-    /\ DerivedProofOfLocks
+\*    /\ ConsensusSafeValidCorrProp
+\*    /\ DerivedProofOfLocks
 
 \* Liveness ==
 \*     ConsensusTimeLive    
