@@ -355,15 +355,17 @@ These are the solutions proposed in discussions leading up to this RFC.
       messages for height *h*, round 0, needed for deciding in height *h*
     - an intermediate (malicious) full node *m* manages to receive block *b*, and gather more than
       *2n<sub>h</sub>/3* precommit messages for height *h*, round 0,
-    - one way or another, the solution should have a mechanism for a full node to tell another full
-      node it is late; this mechanism should somehow include a message type containing － at the very
-      least － the decided block and a commit (not necessarily an extended commit) for *h*;
-      let us call this message type *catch-up message*,
+    - one way or another, the solution should have either (a) a mechanism for a full node to *tell*
+      another full node it is late, or (b) a mechanism for a full node to conclude it is late based
+      on other full nodes' messages; any of these mechanisms should, at the very least,
+      require the late node receiving the decided block and a commit (not necessarily an extended
+      commit) for *h*,
     - node *m* uses the gathered precommit messages to build a commit for height *h*, round 0,
-    - in order to convince them they are late, node *m* sends all full nodes a catch-up message with
-      block *b*, and the commit for height *h*, round 0,
-    - all full nodes receive the *catch-up* message from *m*, decide on height *h*, and proceed to
-      height *h+1*.
+    - in order to convince full nodes that they are late, node *m* either (a) *tells* them they
+      are late, or (b) shows them it (i.e. *m*) is ahead, by sending them block *b*, along with the
+      commit for height *h*, round 0,
+    - all full nodes conclude they are late from *m*'s behavior, and use block *b* and the commit for
+      height *h*, round 0, to decide on height *h*, and proceed to height *h+1*.
 
     At this point, *all* full nodes, including all validators in *valset<sub>h+1</sub>*, have advanced
     to height *h+1* believing they are late, and so, expecting the *hypothetical* leading majority of
