@@ -306,9 +306,8 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Ch
 	r.legacy.channelMtx.Lock()
 	defer r.legacy.channelMtx.Unlock()
 
-	id := chDesc.ID
-	if _, ok := r.legacy.channelQueues[id]; ok {
-		return nil, fmt.Errorf("channel %v already exists", id)
+	if _, ok := r.legacy.channelQueues[chDesc.ID]; ok {
+		return nil, fmt.Errorf("channel %v already exists", chDesc.ID)
 	}
 	r.chDescs = append(r.chDescs, chDesc)
 
@@ -317,15 +316,15 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Ch
 	queue := r.legacy.queueFactory(chDesc.RecvBufferCapacity)
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
-	channel := NewChannel(chDesc.ID, chDesc.Name, chDesc.MessageType, queue.dequeue(), outCh, errCh)
+	channel := NewChannel(chDesc.ID, chDesc.Name, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
 	if w, ok := chDesc.MessageType.(Wrapper); ok {
 		wrapper = w
 	}
 
-	r.legacy.channelQueues[id] = queue
-	r.legacy.channelMessages[id] = messageType
+	r.legacy.channelQueues[chDesc.ID] = queue
+	r.legacy.channelMessages[chDesc.ID] = messageType
 
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfoProducer().AddChannel(uint16(chDesc.ID))
@@ -335,8 +334,8 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Ch
 	go func() {
 		defer func() {
 			r.legacy.channelMtx.Lock()
-			delete(r.legacy.channelQueues, id)
-			delete(r.legacy.channelMessages, id)
+			delete(r.legacy.channelQueues, chDesc.ID)
+			delete(r.legacy.channelMessages, chDesc.ID)
 			r.legacy.channelMtx.Unlock()
 			queue.close()
 		}()

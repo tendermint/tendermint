@@ -67,20 +67,18 @@ type legacyChannel struct {
 	outCh chan<- Envelope  // outbound messages (reactors to peers)
 	errCh chan<- PeerError // peer error reporting
 
-	messageType proto.Message // the channel's message type, used for unmarshaling
-	name        string
+	name string
 }
 
 // NewChannel creates a new channel. It is primarily for internal and test
 // use, reactors should use Router.OpenChannel().
-func NewChannel(id ChannelID, name string, messageType proto.Message, inCh <-chan Envelope, outCh chan<- Envelope, errCh chan<- PeerError) Channel {
+func NewChannel(id ChannelID, name string, inCh <-chan Envelope, outCh chan<- Envelope, errCh chan<- PeerError) Channel {
 	return &legacyChannel{
-		ID:          id,
-		name:        name,
-		messageType: messageType,
-		inCh:        inCh,
-		outCh:       outCh,
-		errCh:       errCh,
+		ID:    id,
+		name:  name,
+		inCh:  inCh,
+		outCh: outCh,
+		errCh: errCh,
 	}
 }
 
