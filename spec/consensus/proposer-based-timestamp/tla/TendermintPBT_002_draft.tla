@@ -789,6 +789,15 @@ DisagreementOnValue ==
     /\ decision[p] = Decision(p1, r1)
     /\ decision[q] = Decision(p2, r2) 
 
+\* [PBTS-INV-VALID.0]
+ConsensusValidValue ==
+    \A p \in Corr:
+        \* decision[p] = Decision(Proposal(v,t,pr), r)
+        LET prop == decision[p][1] IN prop /= NilProposal => IsValid(prop[1])
+
+\* [PBTS-INV-MONOTONICITY.0]
+\* TODO: we would need to compare timestamps of blocks from different height
+
 \* [PBTS-CONSENSUS-TIME-VALID.0]
 ConsensusTimeValid ==
     \A p \in Corr: 

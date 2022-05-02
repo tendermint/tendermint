@@ -522,6 +522,15 @@ AgreementOnValue ==
             /\ decision[p] = Decision(v, t, r1)
             /\ decision[q] = Decision(v, t, r2)
 
+\* [PBTS-INV-VALID.0]
+ConsensusValidValue ==
+    \A p \in Corr:
+        \* decision[p] = Decision(v, t, r)
+        LET dec == decision[p] IN dec /= NilDecision => IsValid(dec[1])
+
+\* [PBTS-INV-MONOTONICITY.0]
+\* TODO: we would need to compare timestamps of blocks from different height
+
 \* [PBTS-CONSENSUS-TIME-VALID.0]
 ConsensusTimeValid ==
     \A p \in Corr, t \in Timestamps : 
