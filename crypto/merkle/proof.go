@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
@@ -102,15 +102,15 @@ func (sp *Proof) ValidateBasic() error {
 	if sp.Index < 0 {
 		return errors.New("negative Index")
 	}
-	if len(sp.LeafHash) != tmhash.Size {
-		return fmt.Errorf("expected LeafHash size to be %d, got %d", tmhash.Size, len(sp.LeafHash))
+	if len(sp.LeafHash) != crypto.HashSize {
+		return fmt.Errorf("expected LeafHash size to be %d, got %d", crypto.HashSize, len(sp.LeafHash))
 	}
 	if len(sp.Aunts) > MaxAunts {
 		return fmt.Errorf("expected no more than %d aunts, got %d", MaxAunts, len(sp.Aunts))
 	}
 	for i, auntHash := range sp.Aunts {
-		if len(auntHash) != tmhash.Size {
-			return fmt.Errorf("expected Aunts#%d size to be %d, got %d", i, tmhash.Size, len(auntHash))
+		if len(auntHash) != crypto.HashSize {
+			return fmt.Errorf("expected Aunts#%d size to be %d, got %d", i, crypto.HashSize, len(auntHash))
 		}
 	}
 	return nil

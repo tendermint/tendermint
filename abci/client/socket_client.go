@@ -250,7 +250,7 @@ func (cli *socketClient) Echo(ctx context.Context, msg string) (*types.ResponseE
 	return res.GetEcho(), nil
 }
 
-func (cli *socketClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (cli *socketClient) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestInfo(req))
 	if err != nil {
 		return nil, err
@@ -258,7 +258,7 @@ func (cli *socketClient) Info(ctx context.Context, req types.RequestInfo) (*type
 	return res.GetInfo(), nil
 }
 
-func (cli *socketClient) CheckTx(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (cli *socketClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestCheckTx(req))
 	if err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ func (cli *socketClient) CheckTx(ctx context.Context, req types.RequestCheckTx) 
 	return res.GetCheckTx(), nil
 }
 
-func (cli *socketClient) Query(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
+func (cli *socketClient) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestQuery(req))
 	if err != nil {
 		return nil, err
@@ -282,7 +282,7 @@ func (cli *socketClient) Commit(ctx context.Context) (*types.ResponseCommit, err
 	return res.GetCommit(), nil
 }
 
-func (cli *socketClient) InitChain(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (cli *socketClient) InitChain(ctx context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestInitChain(req))
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func (cli *socketClient) InitChain(ctx context.Context, req types.RequestInitCha
 	return res.GetInitChain(), nil
 }
 
-func (cli *socketClient) ListSnapshots(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+func (cli *socketClient) ListSnapshots(ctx context.Context, req *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestListSnapshots(req))
 	if err != nil {
 		return nil, err
@@ -298,7 +298,7 @@ func (cli *socketClient) ListSnapshots(ctx context.Context, req types.RequestLis
 	return res.GetListSnapshots(), nil
 }
 
-func (cli *socketClient) OfferSnapshot(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+func (cli *socketClient) OfferSnapshot(ctx context.Context, req *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestOfferSnapshot(req))
 	if err != nil {
 		return nil, err
@@ -306,7 +306,7 @@ func (cli *socketClient) OfferSnapshot(ctx context.Context, req types.RequestOff
 	return res.GetOfferSnapshot(), nil
 }
 
-func (cli *socketClient) LoadSnapshotChunk(ctx context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+func (cli *socketClient) LoadSnapshotChunk(ctx context.Context, req *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestLoadSnapshotChunk(req))
 	if err != nil {
 		return nil, err
@@ -314,7 +314,7 @@ func (cli *socketClient) LoadSnapshotChunk(ctx context.Context, req types.Reques
 	return res.GetLoadSnapshotChunk(), nil
 }
 
-func (cli *socketClient) ApplySnapshotChunk(ctx context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+func (cli *socketClient) ApplySnapshotChunk(ctx context.Context, req *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestApplySnapshotChunk(req))
 	if err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func (cli *socketClient) ApplySnapshotChunk(ctx context.Context, req types.Reque
 	return res.GetApplySnapshotChunk(), nil
 }
 
-func (cli *socketClient) PrepareProposal(ctx context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+func (cli *socketClient) PrepareProposal(ctx context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestPrepareProposal(req))
 	if err != nil {
 		return nil, err
@@ -330,7 +330,7 @@ func (cli *socketClient) PrepareProposal(ctx context.Context, req types.RequestP
 	return res.GetPrepareProposal(), nil
 }
 
-func (cli *socketClient) ProcessProposal(ctx context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+func (cli *socketClient) ProcessProposal(ctx context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestProcessProposal(req))
 	if err != nil {
 		return nil, err
@@ -338,7 +338,7 @@ func (cli *socketClient) ProcessProposal(ctx context.Context, req types.RequestP
 	return res.GetProcessProposal(), nil
 }
 
-func (cli *socketClient) ExtendVote(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+func (cli *socketClient) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestExtendVote(req))
 	if err != nil {
 		return nil, err
@@ -346,7 +346,7 @@ func (cli *socketClient) ExtendVote(ctx context.Context, req types.RequestExtend
 	return res.GetExtendVote(), nil
 }
 
-func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestVerifyVoteExtension(req))
 	if err != nil {
 		return nil, err
@@ -354,7 +354,7 @@ func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req types.Requ
 	return res.GetVerifyVoteExtension(), nil
 }
 
-func (cli *socketClient) FinalizeBlock(ctx context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+func (cli *socketClient) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestFinalizeBlock(req))
 	if err != nil {
 		return nil, err

@@ -248,7 +248,7 @@ func startSigner(ctx context.Context, logger log.Logger, cfg *Config) error {
 		if err != nil {
 			return err
 		}
-		ss := grpcprivval.NewSignerServer(cfg.ChainID, filePV, logger)
+		ss := grpcprivval.NewSignerServer(logger, cfg.ChainID, filePV)
 
 		s := grpc.NewServer()
 

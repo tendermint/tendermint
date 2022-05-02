@@ -106,7 +106,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
-		abci.RequestPrepareProposal{
+		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
@@ -148,7 +148,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	block *types.Block,
 	state State,
 ) (bool, error) {
-	req := abci.RequestProcessProposal{
+	resp, err := blockExec.appClient.ProcessProposal(ctx, &abci.RequestProcessProposal{
 		Hash:                block.Header.Hash(),
 		Height:              block.Header.Height,
 		Time:                block.Header.Time,
@@ -157,9 +157,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		ByzantineValidators: block.Evidence.ToABCI(),
 		ProposerAddress:     block.ProposerAddress,
 		NextValidatorsHash:  block.NextValidatorsHash,
-	}
-
-	resp, err := blockExec.appClient.ProcessProposal(ctx, req)
+	})
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
@@ -211,7 +209,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	startTime := time.Now().UnixNano()
 	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
 		ctx,
-		abci.RequestFinalizeBlock{
+		&abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
 			Height:              block.Header.Height,
 			Time:                block.Header.Time,
@@ -298,12 +296,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 }
 
 func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]byte, error) {
-	req := abci.RequestExtendVote{
+	resp, err := blockExec.appClient.ExtendVote(ctx, &abci.RequestExtendVote{
 		Hash:   vote.BlockID.Hash,
 		Height: vote.Height,
-	}
-
-	resp, err := blockExec.appClient.ExtendVote(ctx, req)
+	})
 	if err != nil {
 		panic(fmt.Errorf("ExtendVote call failed: %w", err))
 	}
@@ -311,14 +307,12 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
-	req := abci.RequestVerifyVoteExtension{
+	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, &abci.RequestVerifyVoteExtension{
 		Hash:             vote.BlockID.Hash,
 		ValidatorAddress: vote.ValidatorAddress,
 		Height:           vote.Height,
 		VoteExtension:    vote.Extension,
-	}
-
-	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, req)
+	})
 	if err != nil {
 		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
 	}
@@ -636,7 +630,7 @@ func ExecCommitBlock(
 ) ([]byte, error) {
 	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
-		abci.RequestFinalizeBlock{
+		&abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
 			Height:              block.Height,
 			Time:                block.Time,

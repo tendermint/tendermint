@@ -488,17 +488,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	n.rpcEnv.NodeInfo = n.nodeInfo
-	// Start the RPC server before the P2P server
-	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" {
-		var err error
-		n.rpcListeners, err = n.rpcEnv.StartService(ctx, n.config)
-		if err != nil {
-			return err
-		}
-	}
-
 	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
 		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
 	}
@@ -515,12 +504,31 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}
 	}
 
+	n.rpcEnv.NodeInfo = n.nodeInfo
+	// Start the RPC server before the P2P server
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		var err error
+		n.rpcListeners, err = n.rpcEnv.StartService(ctx, n.config)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // OnStop stops the Node. It implements service.Service.
 func (n *nodeImpl) OnStop() {
 	n.logger.Info("Stopping Node")
+	// stop the listeners / external services first
+	for _, l := range n.rpcListeners {
+		n.logger.Info("Closing rpc listener", "listener", l)
+		if err := l.Close(); err != nil {
+			n.logger.Error("error closing listener", "listener", l, "err", err)
+		}
+	}
+
 	for _, es := range n.eventSinks {
 		if err := es.Stop(); err != nil {
 			n.logger.Error("failed to stop event sink", "err", err)
@@ -533,14 +541,6 @@ func (n *nodeImpl) OnStop() {
 
 	n.router.Wait()
 	n.rpcEnv.IsListening = false
-
-	// finally stop the listeners / external services
-	for _, l := range n.rpcListeners {
-		n.logger.Info("Closing rpc listener", "listener", l)
-		if err := l.Close(); err != nil {
-			n.logger.Error("error closing listener", "listener", l, "err", err)
-		}
-	}
 
 	if pvsc, ok := n.privValidator.(service.Service); ok {
 		pvsc.Wait()
@@ -720,7 +720,7 @@ func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.Route
 
 	if conf.FilterPeers && appClient != nil {
 		opts.FilterPeerByID = func(ctx context.Context, id types.NodeID) error {
-			res, err := appClient.Query(ctx, abci.RequestQuery{
+			res, err := appClient.Query(ctx, &abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
 			})
 			if err != nil {
@@ -734,7 +734,7 @@ func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.Route
 		}
 
 		opts.FilterPeerByIP = func(ctx context.Context, ip net.IP, port uint16) error {
-			res, err := appClient.Query(ctx, abci.RequestQuery{
+			res, err := appClient.Query(ctx, &abci.RequestQuery{
 				Path: fmt.Sprintf("/p2p/filter/addr/%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))),
 			})
 			if err != nil {
