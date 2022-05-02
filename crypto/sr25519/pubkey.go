@@ -7,7 +7,6 @@ import (
 	"github.com/oasisprotocol/curve25519-voi/primitives/sr25519"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 var _ crypto.PubKey = PubKey{}
@@ -31,7 +30,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	if len(pubKey) != PubKeySize {
 		panic("pubkey is incorrect size")
 	}
-	return crypto.Address(tmhash.SumTruncated(pubKey))
+	return crypto.AddressHash(pubKey)
 }
 
 // Bytes returns the PubKey byte format.

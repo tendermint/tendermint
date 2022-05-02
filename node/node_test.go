@@ -20,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -498,10 +497,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	)
 
 	blockID := types.BlockID{
-		Hash: tmhash.Sum([]byte("blockID_hash")),
+		Hash: crypto.Checksum([]byte("blockID_hash")),
 		PartSetHeader: types.PartSetHeader{
 			Total: math.MaxInt32,
-			Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+			Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 		},
 	}
 
@@ -516,8 +515,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	state.LastBlockID = blockID
 	state.LastBlockHeight = math.MaxInt64 - 2
 	state.LastBlockTime = timestamp
-	state.LastResultsHash = tmhash.Sum([]byte("last_results_hash"))
-	state.AppHash = tmhash.Sum([]byte("app_hash"))
+	state.LastResultsHash = crypto.Checksum([]byte("last_results_hash"))
+	state.AppHash = crypto.Checksum([]byte("app_hash"))
 	state.Version.Consensus.Block = math.MaxInt64
 	state.Version.Consensus.App = math.MaxInt64
 	maxChainID := ""

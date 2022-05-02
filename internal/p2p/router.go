@@ -148,15 +148,14 @@ type Router struct {
 	*service.BaseService
 	logger log.Logger
 
-	metrics            *Metrics
-	options            RouterOptions
-	privKey            crypto.PrivKey
-	peerManager        *PeerManager
-	chDescs            []*ChannelDescriptor
-	transports         []Transport
-	endpoints          []Endpoint
-	connTracker        connectionTracker
-	protocolTransports map[Protocol]Transport
+	metrics     *Metrics
+	options     RouterOptions
+	privKey     crypto.PrivKey
+	peerManager *PeerManager
+	chDescs     []*ChannelDescriptor
+	transport   Transport
+	endpoint    *Endpoint
+	connTracker connectionTracker
 
 	peerMtx    sync.RWMutex
 	peerQueues map[types.NodeID]queue // outbound messages per peer for all channels
@@ -182,8 +181,8 @@ func NewRouter(
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
 	nodeInfoProducer func() *types.NodeInfo,
-	transports []Transport,
-	endpoints []Endpoint,
+	transport Transport,
+	endpoint *Endpoint,
 	options RouterOptions,
 ) (*Router, error) {
 
@@ -200,27 +199,18 @@ func NewRouter(
 			options.MaxIncomingConnectionAttempts,
 			options.IncomingConnectionWindow,
 		),
-		chDescs:            make([]*ChannelDescriptor, 0),
-		transports:         transports,
-		endpoints:          endpoints,
-		protocolTransports: map[Protocol]Transport{},
-		peerManager:        peerManager,
-		options:            options,
-		channelQueues:      map[ChannelID]queue{},
-		channelMessages:    map[ChannelID]proto.Message{},
-		peerQueues:         map[types.NodeID]queue{},
-		peerChannels:       make(map[types.NodeID]ChannelIDSet),
+		chDescs:         make([]*ChannelDescriptor, 0),
+		transport:       transport,
+		endpoint:        endpoint,
+		peerManager:     peerManager,
+		options:         options,
+		channelQueues:   map[ChannelID]queue{},
+		channelMessages: map[ChannelID]proto.Message{},
+		peerQueues:      map[types.NodeID]queue{},
+		peerChannels:    make(map[types.NodeID]ChannelIDSet),
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
-
-	for _, transport := range transports {
-		for _, protocol := range transport.Protocols() {
-			if _, ok := router.protocolTransports[protocol]; !ok {
-				router.protocolTransports[protocol] = transport
-			}
-		}
-	}
 
 	return router, nil
 }
@@ -286,9 +276,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	// add the channel to the nodeInfo if it's not already there.
 	r.nodeInfoProducer().AddChannel(uint16(chDesc.ID))
 
-	for _, t := range r.transports {
-		t.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
-	}
+	r.transport.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
 
 	go func() {
 		defer func() {
@@ -670,12 +658,6 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 	}
 
 	for _, endpoint := range endpoints {
-		transport, ok := r.protocolTransports[endpoint.Protocol]
-		if !ok {
-			r.logger.Error("no transport found for protocol", "endpoint", endpoint)
-			continue
-		}
-
 		dialCtx := ctx
 		if r.options.DialTimeout > 0 {
 			var cancel context.CancelFunc
@@ -690,7 +672,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
 		// on a private address on this endpoint, but a peer on the public
 		// Internet can't and needs a different public address.
-		conn, err := transport.Dial(dialCtx, endpoint)
+		conn, err := r.transport.Dial(dialCtx, endpoint)
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
 		} else {
@@ -731,7 +713,7 @@ func (r *Router) handshakePeer(
 		return peerInfo, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
-	if err := r.nodeInfoProducer().CompatibleWith(peerInfo); err != nil {
+	if err := nodeInfo.CompatibleWith(peerInfo); err != nil {
 		return peerInfo, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
@@ -929,11 +911,6 @@ func (r *Router) evictPeers(ctx context.Context) {
 	}
 }
 
-// NodeInfo returns a copy of the current NodeInfo. Used for testing.
-func (r *Router) NodeInfo() types.NodeInfo {
-	return r.nodeInfoProducer().Copy()
-}
-
 func (r *Router) setupQueueFactory(ctx context.Context) error {
 	qf, err := r.createQueueFactory(ctx)
 	if err != nil {
@@ -950,29 +927,13 @@ func (r *Router) OnStart(ctx context.Context) error {
 		return err
 	}
 
-	for _, transport := range r.transports {
-		for _, endpoint := range r.endpoints {
-			if err := transport.Listen(endpoint); err != nil {
-				return err
-			}
-		}
+	if err := r.transport.Listen(r.endpoint); err != nil {
+		return err
 	}
-
-	nodeInfo := r.nodeInfoProducer()
-	r.logger.Info(
-		"starting router",
-		"node_id", nodeInfo.NodeID,
-		"channels", nodeInfo.Channels,
-		"listen_addr", nodeInfo.ListenAddr,
-		"transports", len(r.transports),
-	)
 
 	go r.dialPeers(ctx)
 	go r.evictPeers(ctx)
-
-	for _, transport := range r.transports {
-		go r.acceptPeers(ctx, transport)
-	}
+	go r.acceptPeers(ctx, r.transport)
 
 	return nil
 }
@@ -985,10 +946,8 @@ func (r *Router) OnStart(ctx context.Context) error {
 // sender's responsibility.
 func (r *Router) OnStop() {
 	// Close transport listeners (unblocks Accept calls).
-	for _, transport := range r.transports {
-		if err := transport.Close(); err != nil {
-			r.logger.Error("failed to close transport", "transport", transport, "err", err)
-		}
+	if err := r.transport.Close(); err != nil {
+		r.logger.Error("failed to close transport", "err", err)
 	}
 
 	// Collect all remaining queues, and wait for them to close.

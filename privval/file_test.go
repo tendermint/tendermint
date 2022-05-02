@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -47,7 +47,7 @@ func TestResetValidator(t *testing.T) {
 	// test vote
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
-	randBytes := tmrand.Bytes(tmhash.Size)
+	randBytes := tmrand.Bytes(crypto.HashSize)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID, nil)
 	err := privVal.SignVote(ctx, "mychainid", vote.ToProto())
@@ -150,8 +150,8 @@ func TestSignVote(t *testing.T) {
 
 	privVal, _, _ := newTestFilePV(t)
 
-	randbytes := tmrand.Bytes(tmhash.Size)
-	randbytes2 := tmrand.Bytes(tmhash.Size)
+	randbytes := tmrand.Bytes(crypto.HashSize)
+	randbytes2 := tmrand.Bytes(crypto.HashSize)
 
 	block1 := types.BlockID{Hash: randbytes,
 		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
@@ -199,8 +199,8 @@ func TestSignProposal(t *testing.T) {
 
 	privVal, _, _ := newTestFilePV(t)
 
-	randbytes := tmrand.Bytes(tmhash.Size)
-	randbytes2 := tmrand.Bytes(tmhash.Size)
+	randbytes := tmrand.Bytes(crypto.HashSize)
+	randbytes2 := tmrand.Bytes(crypto.HashSize)
 
 	block1 := types.BlockID{Hash: randbytes,
 		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
@@ -246,7 +246,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
-	randbytes := tmrand.Bytes(tmhash.Size)
+	randbytes := tmrand.Bytes(crypto.HashSize)
 	height, round := int64(10), int32(1)
 	chainID := "mychainid"
 
@@ -285,8 +285,8 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	assert.NoError(t, err)
 
 	block := types.BlockID{
-		Hash:          tmrand.Bytes(tmhash.Size),
-		PartSetHeader: types.PartSetHeader{Total: 5, Hash: tmrand.Bytes(tmhash.Size)},
+		Hash:          tmrand.Bytes(crypto.HashSize),
+		PartSetHeader: types.PartSetHeader{Total: 5, Hash: tmrand.Bytes(crypto.HashSize)},
 	}
 
 	height, round := int64(10), int32(1)
