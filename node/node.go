@@ -1369,17 +1369,26 @@ func LoadStateFromDBOrGenesisDocProvider(
 		if err != nil {
 			return sm.State{}, nil, err
 		}
-		// save genesis doc to prevent a certain class of user errors (e.g. when it
-		// was changed, accidentally or not). Also good for audit trail.
-		if err := saveGenesisDoc(stateDB, genDoc); err != nil {
-			return sm.State{}, nil, err
-		}
 	}
+
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+	// 1. Attempt to load state form the database
+	state, err := stateStore.Load()
 	if err != nil {
 		return sm.State{}, nil, err
 	}
+	if state.IsEmpty() {
+		// 2. If it's not there, load it from the genesis doc
+		state, err = sm.MakeGenesisState(genDoc)
+		if err != nil {
+			return state, nil, err
+		}
+		// 3. Save the new state to disk
+		if err := stateStore.Save(state); err != nil {
+			return sm.State{}, nil, err
+		}
+	}
+
 	return state, genDoc, nil
 }
 
@@ -1398,19 +1407,6 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
 	}
 	return genDoc, nil
-}
-
-// panics if failed to marshal the given genesis document
-func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
-	b, err := tmjson.Marshal(genDoc)
-	if err != nil {
-		return fmt.Errorf("failed to save genesis doc due to marshaling error: %w", err)
-	}
-	if err := db.SetSync(genesisDocKey, b); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func createAndStartPrivValidatorSocketClient(
