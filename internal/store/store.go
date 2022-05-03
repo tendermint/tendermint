@@ -483,7 +483,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("BlockStore can only save complete block part sets")
 	}
 	if height != seenCommit.Height {
-		panic(fmt.Sprintf("BlockStore cannot save seen commit of a different height (block:%d, commit%d)",
+		panic(fmt.Sprintf("BlockStore cannot save seen commit of a different height (block: %d, commit: %d)",
 			height, seenCommit.Height))
 	}
 
