@@ -262,7 +262,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	queue := r.queueFactory(chDesc.RecvBufferCapacity)
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
-	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
+	channel := NewChannel(id, queue.dequeue(), outCh, errCh)
 	channel.name = chDesc.Name
 
 	var wrapper Wrapper
