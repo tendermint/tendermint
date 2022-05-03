@@ -178,22 +178,22 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	lazyNodeState.decideProposal = func(ctx context.Context, height int64, round int32) {
 		require.NotNil(t, lazyNodeState.privValidator)
 
-		var commit *types.Commit
+		var commit *types.ExtendedCommit
 		switch {
 		case lazyNodeState.Height == lazyNodeState.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+			commit = types.NewExtendedCommit(0, 0, types.BlockID{}, nil)
 		case lazyNodeState.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
-			commit = lazyNodeState.LastCommit.MakeCommit()
+			commit = lazyNodeState.LastCommit.MakeExtendedCommit()
 		default: // This shouldn't happen.
 			lazyNodeState.logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
 		}
 
 		// omit the last signature in the commit
-		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
+		commit.ExtendedSignatures[len(commit.ExtendedSignatures)-1] = types.NewExtendedCommitSigAbsent()
 
 		if lazyNodeState.privValidatorPubKey == nil {
 			// If this node is a validator & proposer in the current round, it will
@@ -204,7 +204,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		proposerAddr := lazyNodeState.privValidatorPubKey.Address()
 
 		block, err := lazyNodeState.blockExec.CreateProposalBlock(
-			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr, lazyNodeState.LastCommit.GetVotes())
+			ctx, lazyNodeState.Height, lazyNodeState.state, commit, proposerAddr)
 		require.NoError(t, err)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)

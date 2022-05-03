@@ -339,13 +339,13 @@ func TestCreateProposalBlock(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	extCommit := types.NewExtendedCommit(height-1, 0, types.BlockID{}, nil)
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
-		state, commit,
+		state,
+		extCommit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -419,13 +419,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	extCommit := types.NewExtendedCommit(height-1, 0, types.BlockID{}, nil)
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
-		state, commit,
+		state,
+		extCommit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -525,14 +525,14 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 	state.ChainID = maxChainID
 
-	cs := types.CommitSig{
+	ecs := types.ExtendedCommitSig{
 		BlockIDFlag:      types.BlockIDFlagNil,
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		Timestamp:        timestamp,
 		Signature:        crypto.CRandBytes(types.MaxSignatureSize),
 	}
 
-	commit := &types.Commit{
+	extCommit := &types.ExtendedCommit{
 		Height:  math.MaxInt64,
 		Round:   math.MaxInt32,
 		BlockID: blockID,
@@ -547,16 +547,15 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		votes[i] = &types.Vote{
 			ValidatorAddress: pubKey.Address(),
 		}
-		commit.Signatures = append(commit.Signatures, cs)
+		extCommit.ExtendedSignatures = append(extCommit.ExtendedSignatures, ecs)
 	}
 
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
 		state,
-		commit,
+		extCommit,
 		proposerAddr,
-		votes,
 	)
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)

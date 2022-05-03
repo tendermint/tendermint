@@ -27,22 +27,24 @@ import (
 // test.
 type cleanupFunc func()
 
-// make a Commit with a single vote containing just the height and a timestamp
-func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
-	commitSigs := []types.CommitSig{{
+// make an extended commit with a single vote containing just the height and a
+// timestamp
+func makeTestExtCommit(height int64, timestamp time.Time) *types.ExtendedCommit {
+	extCommitSigs := []types.ExtendedCommitSig{{
 		BlockIDFlag:      types.BlockIDFlagCommit,
 		ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),
 	}}
-	return types.NewCommit(
+	return types.NewExtendedCommit(
 		height,
 		0,
 		types.BlockID{
 			Hash:          crypto.CRandBytes(32),
 			PartSetHeader: types.PartSetHeader{Hash: crypto.CRandBytes(32), Total: 2},
 		},
-		commitSigs)
+		extCommitSigs,
+	)
 }
 
 func makeStateAndBlockStore(dir string) (sm.State, *BlockStore, cleanupFunc, error) {
@@ -70,7 +72,7 @@ var (
 	partSet     *types.PartSet
 	part1       *types.Part
 	part2       *types.Part
-	seenCommit1 *types.Commit
+	seenCommit1 *types.ExtendedCommit
 )
 
 func TestMain(m *testing.M) {
@@ -93,7 +95,7 @@ func TestMain(m *testing.M) {
 	}
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)
-	seenCommit1 = makeTestCommit(10, tmtime.Now())
+	seenCommit1 = makeTestExtCommit(10, tmtime.Now())
 	code := m.Run()
 	cleanup()
 	os.RemoveAll(dir) // best-effort
@@ -120,7 +122,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 	validPartSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
-	seenCommit := makeTestCommit(10, tmtime.Now())
+	seenCommit := makeTestExtCommit(bs.Height()+1, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
@@ -139,11 +141,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// End of setup, test data
-	commitAtH10 := makeTestCommit(10, tmtime.Now())
+	commitAtH10 := makeTestExtCommit(10, tmtime.Now()).StripExtensions()
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
-		seenCommit *types.Commit
+		seenCommit *types.ExtendedCommit
 		wantPanic  string
 		wantErr    bool
 
@@ -172,10 +174,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 					ChainID:         "block_test",
 					Time:            tmtime.Now(),
 					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
-				makeTestCommit(5, tmtime.Now()),
+				makeTestExtCommit(5, tmtime.Now()).StripExtensions(),
 			),
 			parts:      validPartSet,
-			seenCommit: makeTestCommit(5, tmtime.Now()),
+			seenCommit: makeTestExtCommit(5, tmtime.Now()),
 		},
 
 		{
@@ -324,7 +326,7 @@ func TestLoadBaseMeta(t *testing.T) {
 		block := factory.MakeBlock(state, h, new(types.Commit))
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
-		seenCommit := makeTestCommit(h, tmtime.Now())
+		seenCommit := makeTestExtCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
 
@@ -391,7 +393,7 @@ func TestPruneBlocks(t *testing.T) {
 		block := factory.MakeBlock(state, h, new(types.Commit))
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
-		seenCommit := makeTestCommit(h, tmtime.Now())
+		seenCommit := makeTestExtCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
 
@@ -499,7 +501,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
-	seenCommit := makeTestCommit(10, tmtime.Now())
+	seenCommit := makeTestExtCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -536,16 +538,16 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	// produce a few blocks and check that the correct seen and cannoncial commits
 	// are persisted.
 	for h := int64(3); h <= 5; h++ {
-		blockCommit := makeTestCommit(h-1, tmtime.Now())
+		blockCommit := makeTestExtCommit(h-1, tmtime.Now()).StripExtensions()
 		block := factory.MakeBlock(state, h, blockCommit)
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
-		seenCommit := makeTestCommit(h, tmtime.Now())
+		seenCommit := makeTestExtCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 		c3 := bs.LoadSeenCommit()
 		require.NotNil(t, c3)
 		require.Equal(t, h, c3.Height)
-		require.Equal(t, seenCommit.Hash(), c3.Hash())
+		require.Equal(t, seenCommit.StripExtensions().Hash(), c3.Hash())
 		c5 := bs.LoadBlockCommit(h)
 		require.Nil(t, c5)
 		c6 := bs.LoadBlockCommit(h - 1)
