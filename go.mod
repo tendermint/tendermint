@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/adlio/schema v1.3.0
-	github.com/btcsuite/btcd v0.22.0-beta
+	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
@@ -75,7 +75,7 @@ require (
 	github.com/charithe/durationcheck v0.0.9 // indirect
 	github.com/chavacava/garif v0.0.0-20210405164556-e8a0a408d6af // indirect
 	github.com/containerd/continuity v0.2.1 // indirect
-	github.com/creachadair/tomledit v0.0.18
+	github.com/creachadair/tomledit v0.0.19
 	github.com/daixiang0/gci v0.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect

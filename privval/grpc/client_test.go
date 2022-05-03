@@ -29,7 +29,7 @@ func dialer(t *testing.T, pv types.PrivValidator, logger log.Logger) (*grpc.Serv
 
 	server := grpc.NewServer()
 
-	s := tmgrpc.NewSignerServer(chainID, pv, logger)
+	s := tmgrpc.NewSignerServer(logger, chainID, pv)
 
 	privvalproto.RegisterPrivValidatorAPIServer(server, s)
 
