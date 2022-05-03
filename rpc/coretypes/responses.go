@@ -205,6 +205,7 @@ type ResultBroadcastTx struct {
 	Log          string         `json:"log"`
 	Codespace    string         `json:"codespace"`
 	MempoolError string         `json:"mempool_error"`
+	Info         string         `json:"info"`
 
 	Hash bytes.HexBytes `json:"hash"`
 }

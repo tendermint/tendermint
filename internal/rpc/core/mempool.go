@@ -53,6 +53,7 @@ func (env *Environment) BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*co
 		Log:          r.Log,
 		Codespace:    r.Codespace,
 		MempoolError: r.MempoolError,
+		Info:         r.Info,
 		Hash:         tx.Hash(),
 	}, nil
 }
