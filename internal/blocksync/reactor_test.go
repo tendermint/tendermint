@@ -407,7 +407,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 // a) Add tests that verify whether faulty peer is properly detected
 // 1. block at H + 1 is faulty
 // 2. block at H + 2 is faulty (the validator set does not match)
-// b) Add test to verify we replace a peer with a new one if we detect misbehaviour
+// b) Add test to verify we replace a peer with a new one if we detect misbehavior
 func TestReactor_NonGenesisSync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
