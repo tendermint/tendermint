@@ -609,6 +609,8 @@ func (bs *BlockStore) Close() error {
 //---------------------------------- KEY ENCODING -----------------------------------------
 
 // key prefixes
+// NB: Before modifying these, cross-check them with those in
+// internal/state/store.go
 const (
 	// prefixes are unique across all tm db's
 	prefixBlockMeta   = int64(0)
@@ -616,7 +618,7 @@ const (
 	prefixBlockCommit = int64(2)
 	prefixSeenCommit  = int64(3)
 	prefixBlockHash   = int64(4)
-	prefixExtCommit   = int64(5)
+	prefixExtCommit   = int64(9)
 )
 
 func blockMetaKey(height int64) []byte {

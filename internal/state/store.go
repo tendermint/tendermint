@@ -26,6 +26,8 @@ const (
 
 //------------------------------------------------------------------------
 
+// NB: Before modifying these, cross-check them with those in
+// internal/store/store.go
 const (
 	// prefixes are unique across all tm db's
 	prefixValidators      = int64(5)
