@@ -779,14 +779,14 @@ func (ecs ExtendedCommitSig) Absent() bool {
 // 4. timestamp
 // 5. first 6 bytes of vote extension
 // 6. first 6 bytes of vote extension signature
-func (cs ExtendedCommitSig) String() string {
+func (ecs ExtendedCommitSig) String() string {
 	return fmt.Sprintf("ExtendedCommitSig{%X by %X on %v @ %s with %X %X}",
-		tmbytes.Fingerprint(cs.Signature),
-		tmbytes.Fingerprint(cs.ValidatorAddress),
-		cs.BlockIDFlag,
-		CanonicalTime(cs.Timestamp),
-		tmbytes.Fingerprint(cs.VoteExtension),
-		tmbytes.Fingerprint(cs.ExtensionSignature),
+		tmbytes.Fingerprint(ecs.Signature),
+		tmbytes.Fingerprint(ecs.ValidatorAddress),
+		ecs.BlockIDFlag,
+		CanonicalTime(ecs.Timestamp),
+		tmbytes.Fingerprint(ecs.VoteExtension),
+		tmbytes.Fingerprint(ecs.ExtensionSignature),
 	)
 }
 
@@ -1168,6 +1168,12 @@ func NewExtendedCommit(height int64, round int32, blockID BlockID, extCommitSigs
 		BlockID:            blockID,
 		ExtendedSignatures: extCommitSigs,
 	}
+}
+
+// Copy creates a copy of this extended commit.
+func (extCommit *ExtendedCommit) Copy() *ExtendedCommit {
+	ec := *extCommit
+	return &ec
 }
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
