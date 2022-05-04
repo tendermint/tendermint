@@ -371,7 +371,7 @@ func isHex(data []byte) bool {
 		}
 		return false
 	}
-	return true
+	return len(data) != 0
 }
 
 func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
