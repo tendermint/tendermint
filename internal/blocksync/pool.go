@@ -207,7 +207,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 // as we switch from block sync to consensus mode.
 //
 // The caller will verify the commit.
-func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block, firstExtCommit *types.ExtendedCommit) {
+func (pool *BlockPool) PeekTwoBlocks() (first, second *types.Block, firstExtCommit *types.ExtendedCommit) {
 	pool.mtx.RLock()
 	defer pool.mtx.RUnlock()
 
@@ -222,7 +222,7 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block,
 }
 
 // PopRequest pops the first block at pool.height.
-// It must have been validated by 'second'.Commit from PeekTwoBlocks()
+// It must have been validated by the second Commit from PeekTwoBlocks.
 // TODO(thane): (?) and its corresponding ExtendedCommit.
 func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock()

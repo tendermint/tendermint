@@ -43,11 +43,8 @@ func (p testPeer) runInputRoutine() {
 // Request desired, pretend like we got the block immediately.
 func (p testPeer) simulateInput(input inputData) {
 	block := &types.Block{Header: types.Header{Height: input.request.Height}}
-	blockID := types.BlockID{
-		Hash:          []byte{},
-		PartSetHeader: types.PartSetHeader{},
-	}
-	extCommitSigs := make([]types.ExtendedCommitSig, 0)
+	var blockID types.BlockID
+	var extCommitSigs []types.ExtendedCommitSig
 	extCommit := types.NewExtendedCommit(input.request.Height, 0, blockID, extCommitSigs)
 	input.pool.AddBlock(input.request.PeerID, block, extCommit, 123)
 	// TODO: uncommenting this creates a race which is detected by:

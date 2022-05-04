@@ -196,13 +196,12 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 			r.logger.Error("failed to convert block to protobuf", "err", err)
 			return err
 		}
-		extCommitProto := extCommit.ToProto()
 
 		return blockSyncCh.Send(ctx, p2p.Envelope{
 			To: peerID,
 			Message: &bcproto.BlockResponse{
 				Block:     blockProto,
-				ExtCommit: extCommitProto,
+				ExtCommit: extCommit.ToProto(),
 			},
 		})
 	}

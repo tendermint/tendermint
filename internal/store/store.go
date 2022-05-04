@@ -289,11 +289,11 @@ func (bs *BlockStore) LoadBlockExtCommit(height int64) *types.ExtendedCommit {
 	}
 	err = proto.Unmarshal(bz, pbec)
 	if err != nil {
-		panic(fmt.Errorf("error reading block extended commit: %w", err))
+		panic(fmt.Errorf("decoding extended commit: %w", err))
 	}
 	extCommit, err := types.ExtendedCommitFromProto(pbec)
 	if err != nil {
-		panic(fmt.Errorf("error from proto block extended commit: %w", err))
+		panic(fmt.Errorf("converting extended commit: %w", err))
 	}
 	return extCommit
 }
@@ -318,7 +318,7 @@ func (bs *BlockStore) LoadSeenCommit() *types.Commit {
 
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
-		panic(fmt.Errorf("error from proto seen commit: %w", err))
+		panic(fmt.Errorf("converting seen commit: %w", err))
 	}
 	return commit
 }
@@ -618,7 +618,7 @@ const (
 	prefixBlockCommit = int64(2)
 	prefixSeenCommit  = int64(3)
 	prefixBlockHash   = int64(4)
-	prefixExtCommit   = int64(9)
+	prefixExtCommit   = int64(9)  // 5..8 are used by state/store
 )
 
 func blockMetaKey(height int64) []byte {

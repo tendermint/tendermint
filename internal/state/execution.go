@@ -414,10 +414,9 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-//TODO reword
-// extendedCommitInfo expects a CommitInfo struct along with all of the
-// original votes relating to that commit, including their vote extensions. The
-// order of votes does not matter.
+// extendedCommitInfo expects an ExtendedCommitInfo, which includes the
+// original precommit votes along with their vote extensions.
+// Then, it populates the corresponding ABCI protobuf structures.
 func extendedCommitInfo(extCommit types.ExtendedCommit) abci.ExtendedCommitInfo {
 	vs := make([]abci.ExtendedVoteInfo, len(extCommit.ExtendedSignatures))
 	for i, ecs := range extCommit.ExtendedSignatures {
