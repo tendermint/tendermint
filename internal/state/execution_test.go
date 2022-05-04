@@ -999,6 +999,58 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	mp.AssertExpectations(t)
 }
 
+// TestPrepareProposalNoErrorOnInitialHeight tests that the initial height edge
+// case does not create an issue for the PrepareProposal call. The initial height
+// does not have a LastCommit nor does it have vote extensions from the previous
+// height, which other calls to PrepareProposal expect
+func TestPrepareProposalNoErrorOnInitialHeight(t *testing.T) {
+	const height = 1
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.NewNopLogger()
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	state, stateDB, _ := makeState(t, 1, height)
+	require.Equal(t, height, int(state.InitialHeight))
+	stateStore := sm.NewStore(stateDB)
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
+
+	txs := factory.MakeNTxs(height, 10)
+	mp := &mpmocks.Mempool{}
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	app := abcimocks.NewApplication(t)
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp,
+		mp,
+		evpool,
+		nil,
+		eventBus,
+		sm.NopMetrics(),
+	)
+	pa, _ := state.Validators.GetByIndex(0)
+	// The initial height has an empty commit. There was no previous round
+	// so there are no votes and no vote extensions for the previous block.
+	ec := types.NewExtendedCommit(height, 0, types.BlockID{}, nil)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, ec, pa)
+	require.NotNil(t, block)
+	require.NoError(t, err)
+
+	mp.AssertExpectations(t)
+}
+
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
 		h   = make([]byte, crypto.HashSize)
