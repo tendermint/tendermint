@@ -1,3 +1,13 @@
+## [0.8.0-dev.4] - 2022-05-03
+
+### Bug Fixes
+
+- Add a missed "info" field to broadcast-tx-response (#369)
+
+### Backport
+
+- V0.7.1 into v0.8-dev (#361)
+
 ## [0.8.0-dev.3] - 2022-04-22
 
 ### Bug Fixes
