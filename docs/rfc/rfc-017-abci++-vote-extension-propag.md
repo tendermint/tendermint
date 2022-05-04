@@ -450,7 +450,7 @@ The main limitations affecting the current version of Tendermint are the followi
 
 The blocksync reactor featuring light client verification is being actively worked on (tentatively
 for v0.37). So it is best if this RFC does not try to delve into that problem, but just makes sure
-its outcomes are compatible with that effort (TODO: check this paragraph with Callum/Jasmina).
+its outcomes are compatible with that effort.
 
 In subsection [Cases to Address](#cases-to-address), we concluded that we can focus on
 solving case (h) in theoretical terms.
