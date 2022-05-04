@@ -190,13 +190,10 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
 	block := r.store.LoadBlockProto(msg.Height)
 	if block != nil {
-		blockCommit := r.store.LoadBlockCommitProto(msg.Height)
-		if blockCommit != nil {
-			return blockSyncCh.Send(ctx, p2p.Envelope{
-				To:      peerID,
-				Message: &bcproto.BlockResponse{Block: block},
-			})
-		}
+		return blockSyncCh.Send(ctx, p2p.Envelope{
+			To:      peerID,
+			Message: &bcproto.BlockResponse{Block: block},
+		})
 	}
 
 	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
@@ -495,7 +492,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 
 			newBlockParts, err2 := newBlock.MakePartSet(types.BlockPartSizeBytes)
 			if err2 != nil {
-				r.logger.Error("failed to make ",
+				r.logger.Error("failed to make block at ",
 					"height", newBlock.Height,
 					"err", err2.Error())
 				return
@@ -520,12 +517,13 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						}); serr != nil {
 							return
 						}
+						continue
 					case ErrInvalidVerifyBlock:
 						r.logger.Error(
 							err.Error(),
 							"last_commit", verifyBlock.LastCommit,
-							"block_id", newBlockID,
-							"height", r.lastTrustedBlock.block.Height,
+							"verify_block_id", newBlockID,
+							"verify_block_height", newBlock.Height,
 						)
 						peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 2)
 						if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
@@ -534,6 +532,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						}); serr != nil {
 							return
 						}
+						continue
 					}
 
 				}
@@ -548,13 +547,19 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				}
 				oldHash := r.initialState.Validators.Hash()
 				if !bytes.Equal(oldHash, newBlock.ValidatorsHash) {
-
-					fmt.Println(
-
+					r.logger.Error("The validator set provided by the new block does not match the expected validator set",
 						"initial hash ", r.initialState.Validators.Hash(),
 						"new hash ", newBlock.ValidatorsHash,
 					)
-					return
+
+					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+						NodeID: peerID,
+						Err:    ErrValidationFailed{},
+					}); serr != nil {
+						return
+					}
+					continue
 				}
 				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
 			}

@@ -82,7 +82,8 @@ func (e ErrValidationFailed) Error() string {
 	return "failed to verify next block"
 }
 
-func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBlock *types.Block, trustedBlock *types.Block, trustedCommit *types.Commit, validators *types.ValidatorSet) error {
+func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBlock *types.Block, trustedBlock *types.Block,
+	trustedCommit *types.Commit, validators *types.ValidatorSet) error {
 
 	// If the blockID in LastCommit of NewBlock does not match the trusted block
 	// we can assume NewBlock is not correct
@@ -99,7 +100,8 @@ func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBloc
 	// Verify NewBlock usign the validator set obtained after applying the last block
 	// Note: VerifyAdjacent in the LightClient relies on a trusting period which is not applicable here
 	// ToDo: We need witness verification here as well and backwards verification from a state where we can trust validators
-	if err := VerifyAdjacent(&types.SignedHeader{Header: &trustedBlock.Header, Commit: trustedCommit}, &types.SignedHeader{Header: &newBlock.Header, Commit: verifyBlock.LastCommit}, validators); err != nil {
+	if err := VerifyAdjacent(&types.SignedHeader{Header: &trustedBlock.Header, Commit: trustedCommit},
+		&types.SignedHeader{Header: &newBlock.Header, Commit: verifyBlock.LastCommit}, validators); err != nil {
 		return ErrValidationFailed{Reason: err}
 	}
 
