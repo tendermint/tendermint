@@ -1073,9 +1073,12 @@ type ExtendedCommit struct {
 	bitArray *bits.BitArray
 }
 
-// Copy creates a copy of this extended commit.
-func (ec *ExtendedCommit) Copy() *ExtendedCommit {
+// Clone creates a deep copy of this extended commit.
+func (ec *ExtendedCommit) Clone() *ExtendedCommit {
+	sigs := make([]ExtendedCommitSig, len(ec.ExtendedSignatures))
+	copy(sigs, ec.ExtendedSignatures)
 	ecc := *ec
+	ecc.ExtendedSignatures = sigs
 	return &ecc
 }
 

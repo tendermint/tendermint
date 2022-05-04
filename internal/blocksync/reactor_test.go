@@ -153,7 +153,7 @@ func (rts *reactorTestSuite) addNode(
 	seenExtCommit := &types.ExtendedCommit{}
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastExtCommit = seenExtCommit.Copy()
+		lastExtCommit = seenExtCommit.Clone()
 
 		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.StripExtensions())
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
