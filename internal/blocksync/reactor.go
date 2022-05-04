@@ -188,8 +188,7 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 	if block != nil {
 		extCommit := r.store.LoadBlockExtCommit(msg.Height)
 		if extCommit == nil {
-			r.logger.Error("peer requesting a block; we have the block but not its extended commit (%v)", block)
-			return fmt.Errorf("blockstore has block but not extended commit %v", block)
+			return fmt.Errorf("blockstore has block but not extended commit (block: %v)", block)
 		}
 		blockProto, err := block.ToProto()
 		if err != nil {
