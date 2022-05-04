@@ -269,19 +269,16 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
 // TODO: ensure that blocks come in order for each peer.
-func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extCommit *types.ExtendedCommit, blockSize int) {
+func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extCommit *types.ExtendedCommit, blockSize int) error {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
 	if block.Height != extCommit.Height {
-		pool.logger.Error("heights don't match, not adding block", "block_height", block.Height, "commit_height", extCommit.Height)
-		return
+		return fmt.Errorf("heights don't match, not adding block (block height: %d, commit height: %d)", block.Height, extCommit.Height)
 	}
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
-		pool.logger.Error("peer sent us a block we didn't expect",
-			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
@@ -289,7 +286,7 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extComm
 		if diff > maxDiffBetweenCurrentAndReceivedBlockHeight {
 			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
 		}
-		return
+		return fmt.Errorf("peer sent us a block we didn't expect (peer: %s, current height: %d, block height: %d)", peerID, pool.height, block.Height)
 	}
 
 	if requester.setBlock(block, extCommit, peerID) {
@@ -300,9 +297,11 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extComm
 		}
 	} else {
 		err := errors.New("requester is different or block already exists")
-		pool.logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
 		pool.sendError(err, peerID)
+		return fmt.Errorf("%w (peer: %s, requester: %s, block height: %d)", err, peerID, requester.getPeerID(), block.Height)
 	}
+
+	return nil
 }
 
 // MaxPeerHeight returns the highest reported height.
