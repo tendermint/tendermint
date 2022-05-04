@@ -99,7 +99,12 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 
 				vi++
 			}
-			commit := NewCommit(tc.height, round, tc.blockID, sigs)
+			commit := &Commit{
+				Height:     tc.height,
+				Round:      round,
+				BlockID:    tc.blockID,
+				Signatures: sigs,
+			}
 
 			err := valSet.VerifyCommit(chainID, blockID, height, commit)
 			if tc.expErr {

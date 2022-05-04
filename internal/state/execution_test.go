@@ -199,12 +199,15 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
-				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")), []types.CommitSig{{
-					BlockIDFlag:      types.BlockIDFlagNil,
-					ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-					Timestamp:        defaultEvidenceTime,
-					Signature:        crypto.CRandBytes(types.MaxSignatureSize),
-				}}),
+				Commit: &types.Commit{
+					Height:  10,
+					BlockID: makeBlockID(header.Hash(), 100, []byte("partshash")),
+					Signatures: []types.CommitSig{{
+						BlockIDFlag:      types.BlockIDFlagNil,
+						ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+						Timestamp:        defaultEvidenceTime,
+						Signature:        crypto.CRandBytes(types.MaxSignatureSize)}},
+				},
 			},
 			ValidatorSet: state.Validators,
 		},
@@ -325,7 +328,10 @@ func TestProcessProposal(t *testing.T) {
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
+	lastCommit := &types.Commit{
+		Height:     height - 1,
+		Signatures: lastCommitSig,
+	}
 	block1 := sf.MakeBlock(state, height, lastCommit)
 	block1.Txs = txs
 

@@ -896,16 +896,6 @@ type Commit struct {
 	hash tmbytes.HexBytes
 }
 
-// NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSig) *Commit {
-	return &Commit{
-		Height:     height,
-		Round:      round,
-		BlockID:    blockID,
-		Signatures: commitSigs,
-	}
-}
-
 // GetVote converts the CommitSig for the given valIdx to a Vote. Commits do
 // not contain vote extensions, so the vote extension and vote extension
 // signature will not be present in the returned vote.
@@ -1122,7 +1112,12 @@ func (extCommit *ExtendedCommit) StripExtensions() *Commit {
 			Signature:        extCommitSig.Signature,
 		}
 	}
-	return NewCommit(extCommit.Height, extCommit.Round, extCommit.BlockID, commitSigs)
+	return &Commit{
+		Height:     extCommit.Height,
+		Round:      extCommit.Round,
+		BlockID:    extCommit.BlockID,
+		Signatures: commitSigs,
+	}
 }
 
 // GetExtendedVote converts the ExtendedCommitSig for the given valIdx to a

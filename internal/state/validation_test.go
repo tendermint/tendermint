@@ -65,7 +65,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
+	lastCommit := &types.Commit{}
 	var lastExtCommit *types.ExtendedCommit
 
 	// some bad values
@@ -101,7 +101,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
 
 		{"first LastCommit contains signatures", func(block *types.Block) {
-			block.LastCommit = types.NewCommit(0, 0, types.BlockID{}, []types.CommitSig{types.NewCommitSigAbsent()})
+			block.LastCommit = &types.Commit{Signatures: []types.CommitSig{types.NewCommitSigAbsent()}}
 			block.LastCommitHash = block.LastCommit.Hash()
 		}},
 	}
@@ -171,9 +171,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
+	lastCommit := &types.Commit{}
 	var lastExtCommit *types.ExtendedCommit
-	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
+	wrongSigsCommit := &types.Commit{Height: 1}
 	badPrivVal := types.NewMockPV()
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
@@ -195,12 +195,12 @@ func TestValidateBlockCommit(t *testing.T) {
 				time.Now(),
 			)
 			require.NoError(t, err)
-			wrongHeightCommit := types.NewCommit(
-				wrongHeightVote.Height,
-				wrongHeightVote.Round,
-				state.LastBlockID,
-				[]types.CommitSig{wrongHeightVote.CommitSig()},
-			)
+			wrongHeightCommit := &types.Commit{
+				Height:     wrongHeightVote.Height,
+				Round:      wrongHeightVote.Round,
+				BlockID:    state.LastBlockID,
+				Signatures: []types.CommitSig{wrongHeightVote.CommitSig()},
+			}
 			block := statefactory.MakeBlock(state, height, wrongHeightCommit)
 			err = blockExec.ValidateBlock(ctx, state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
@@ -274,8 +274,12 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		goodVote.Signature, badVote.Signature = g.Signature, b.Signature
 
-		wrongSigsCommit = types.NewCommit(goodVote.Height, goodVote.Round,
-			blockID, []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()})
+		wrongSigsCommit = &types.Commit{
+			Height:     goodVote.Height,
+			Round:      goodVote.Round,
+			BlockID:    blockID,
+			Signatures: []types.CommitSig{goodVote.CommitSig(), badVote.CommitSig()},
+		}
 	}
 }
 
@@ -323,7 +327,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
+	lastCommit := &types.Commit{}
 	var lastExtCommit *types.ExtendedCommit
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
