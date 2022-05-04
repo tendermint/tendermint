@@ -166,12 +166,26 @@ that is a total savings of around $2.50 per month.
 
 From the [IETF draft standard on BLS Signatures][bls-ietf], BLS signatures can be
 created in 370 microseconds and verified in 2700 microseconds. Our current
-[Ed25519 implementation][voi-ed25519-perf] lists a 27.5 microsecond signature creation time
-and 5.19 milliseconds to perform batch verification on 128 signatures, which is
-slightly fewer than the 175 in the Hub. blst, a popular implementation of BLS
-signature aggregation was benchmarked to perform verification on 100 signatures in
-1.5 milliseconds [when run locally][blst-verify-bench] on an 8 thread machine and
-pre-aggregated public keys.
+[Ed25519 implementation][voi-ed25519-perf] was benchmarked locally to take
+13.9 microseconds to produce a signature and 2.03 milliseconds to batch verify
+128 signatures, which is slightly fewer than the 175 in the Hub. blst, a popular
+implementation of BLS signature aggregation was benchmarked to perform verification
+on 100 signatures in 1.5 milliseconds [when run locally][blst-verify-bench]
+on an 8 thread machine and pre-aggregated public keys. It is worth noting that
+the `ed25519` library verification time grew steadily with the number of signatures,
+whereas the bls library verification time remains constant. This is because the
+number of operations used to verify a signature does not grow at all with the
+number of signatures included in the aggregate signature (as long as the signers
+signed over the same message data as is the case in Tendermint).
+
+It is worth noting that this would also represent a _degredation_ in signature
+verification time for chains with small validator sets. When batch verifying
+only 32 signatures, our ed25519 library takes .57 milliseconds, whereas BLS
+would still require the same 1.5 milliseconds.
+
+For massive validator sets, blst dominates, taking the same 1.5 milliseconds to
+check an aggregated signature from 1024 validators versus our ed25519 library's
+13.066 milliseconds to batch verify a set of that size.
 
 #### Reduce Light-Client Verification Time
 
@@ -453,12 +467,18 @@ the validator set changed.
 
 This means that the speed advantages gained by using BLS cannot be fully realized
 by the light client since the client needs to perform the expensive operation
-of re-aggregating the public key.
+of re-aggregating the public key. Aggregation is _not_ constant time in the
+number of keys and instead grows linearly. When [benchmarked locally][blst-verify-bench-agg],
+blst public key aggregation of 128 keys took 2.43 milliseconds. This, along with
+the 1.5 milliseconds to verify a signature would raise light client signature
+verification time to 3.9 milliseconds, a time above the previously mentioned 
+batch verification time using our ed25519 library of 2.0 milliseconds.
+
+Schemes to cache aggregated subsets of keys could certainly cut this time down at the
+cost of adding complexity to the light client.
 
 ## Open Questions
 
-* *Q*: Can you aggregate a signature twice and still verify?
-* *Q*: If so, how much cost may be imposed by re-including signatures into the same
 * *Q*: Can you aggregate Ed25519 signatures in Tendermint?
 
 ## Current Consideration
@@ -493,8 +513,9 @@ standards develop.
 [zcash-adoption]: https://github.com/zcash/zcash/issues/2502
 [chia-adoption]: https://github.com/Chia-Network/chia-blockchain#chia-blockchain
 [bls-ietf-ecdsa-compare]: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-1.1
-[voi-ed25519-perf]: https://github.com/oasisprotocol/curve25519-voi/blob/master/PERFORMANCE.md
+[voi-ed25519-perf]: https://github.com/williambanfield/curve25519-voi/blob/benchmark/primitives/ed25519/PERFORMANCE.txt#L79
 [blst-verify-bench]: https://github.com/williambanfield/blst/blame/bench/bindings/go/PERFORMANCE.md#L9
+[blst-verify-bench-agg]: https://github.com/williambanfield/blst/blame/bench/bindings/go/PERFORMANCE.md#L23
 [vitalik-pairing-post]: https://medium.com/@VitalikButerin/exploring-elliptic-curve-pairings-c73c1864e627
 [ledger-bls-announce]: https://www.ledger.com/first-ever-firmware-update-coming-to-the-ledger-nano-x
 [commit-proto]: https://github.com/tendermint/tendermint/blob/be7cb50bb3432ee652f88a443e8ee7b8ef7122bc/proto/tendermint/types/types.proto#L121
