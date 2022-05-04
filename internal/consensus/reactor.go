@@ -796,8 +796,8 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
 			// Load the block's extended commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
-			if extCommit := r.state.blockStore.LoadBlockExtCommit(prs.Height); extCommit != nil {
-				if ok, err := r.pickSendVote(ctx, ps, extCommit, voteCh); err != nil {
+			if ec := r.state.blockStore.LoadBlockExtCommit(prs.Height); ec != nil {
+				if ok, err := r.pickSendVote(ctx, ps, ec, voteCh); err != nil {
 					return
 				} else if ok {
 					logger.Debug("picked Catchup commit to send", "height", prs.Height)
