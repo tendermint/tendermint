@@ -1087,8 +1087,8 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 // Inverse of VoteSet.MakeCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
-	for idx, extCommitSig := range ec.ExtendedSignatures {
-		if extCommitSig.Absent() {
+	for idx, sig := range ec.ExtendedSignatures {
+		if sig.Absent() {
 			continue // OK, some precommits can be missing.
 		}
 		vote := ec.GetExtendedVote(int32(idx))
@@ -1107,12 +1107,12 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet
 // extension-related fields.
 func (ec *ExtendedCommit) StripExtensions() *Commit {
 	commitSigs := make([]CommitSig, len(ec.ExtendedSignatures))
-	for idx, extCommitSig := range ec.ExtendedSignatures {
+	for idx, sig := range ec.ExtendedSignatures {
 		commitSigs[idx] = CommitSig{
-			BlockIDFlag:      extCommitSig.BlockIDFlag,
-			ValidatorAddress: extCommitSig.ValidatorAddress,
-			Timestamp:        extCommitSig.Timestamp,
-			Signature:        extCommitSig.Signature,
+			BlockIDFlag:      sig.BlockIDFlag,
+			ValidatorAddress: sig.ValidatorAddress,
+			Timestamp:        sig.Timestamp,
+			Signature:        sig.Signature,
 		}
 	}
 	return &Commit{
@@ -1123,31 +1123,29 @@ func (ec *ExtendedCommit) StripExtensions() *Commit {
 	}
 }
 
-// GetExtendedVote converts the ExtendedCommitSig for the given valIdx to a
-// Vote with vote extensions.
-// Panics if valIdx >= extCommit.Size().
-func (ec *ExtendedCommit) GetExtendedVote(valIdx int32) *Vote {
-	commitSig := ec.ExtendedSignatures[valIdx]
+// GetExtendedVote converts the ExtendedCommitSig for the given validator
+// index to a Vote with a vote extensions.
+// It panics if valIndex is out of range.
+func (ec *ExtendedCommit) GetExtendedVote(valIndex int32) *Vote {
+	sig := ec.ExtendedSignatures[valIndex]
 	return &Vote{
 		Type:               tmproto.PrecommitType,
 		Height:             ec.Height,
 		Round:              ec.Round,
-		BlockID:            commitSig.BlockID(ec.BlockID),
-		Timestamp:          commitSig.Timestamp,
-		ValidatorAddress:   commitSig.ValidatorAddress,
-		ValidatorIndex:     valIdx,
-		Signature:          commitSig.Signature,
-		Extension:          commitSig.VoteExtension,
-		ExtensionSignature: commitSig.ExtensionSignature,
+		BlockID:            sig.BlockID(ec.BlockID),
+		Timestamp:          sig.Timestamp,
+		ValidatorAddress:   sig.ValidatorAddress,
+		ValidatorIndex:     valIndex,
+		Signature:          sig.Signature,
+		Extension:          sig.VoteExtension,
+		ExtensionSignature: sig.ExtensionSignature,
 	}
 }
 
 // Type returns the vote type of the extended commit, which is always
 // VoteTypePrecommit
 // Implements VoteSetReader.
-func (ec *ExtendedCommit) Type() byte {
-	return byte(tmproto.PrecommitType)
-}
+func (ec *ExtendedCommit) Type() byte { return byte(tmproto.PrecommitType) }
 
 // GetHeight returns height of the extended commit.
 // Implements VoteSetReader.
