@@ -797,9 +797,7 @@ func (ecs ExtendedCommitSig) BlockID(commitBlockID BlockID) BlockID {
 // ValidateBasic checks whether the structure is well-formed.
 func (ecs ExtendedCommitSig) ValidateBasic() error {
 	switch ecs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-	case BlockIDFlagCommit:
-	case BlockIDFlagNil:
+	case BlockIDFlagAbsent, BlockIDFlagCommit, BlockIDFlagNil:
 	default:
 		return fmt.Errorf("unknown BlockIDFlag: %v", ecs.BlockIDFlag)
 	}
@@ -821,7 +819,7 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		if len(ecs.ExtensionSignature) != 0 {
 			return errors.New("extension signature is present")
 		}
-	default:
+	case BlockIDFlagCommit, BlockIDFlagNil:
 		if len(ecs.ValidatorAddress) != crypto.AddressSize {
 			return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
 				crypto.AddressSize,
