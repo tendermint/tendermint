@@ -267,7 +267,14 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 	return peerID
 }
 
-// AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
+// AddBlock validates that the block comes from the peer it was expected from
+// and calls the requester to store it.
+//
+// This requires an extended commit at the same height as the supplied block -
+// the block contains the last commit, but we need the latest commit in case we
+// need to switch over from block sync to consensus at this height. If the
+// height of the extended commit and the height of the block do not match, we
+// do not add the block and return an error.
 // TODO: ensure that blocks come in order for each peer.
 func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extCommit *types.ExtendedCommit, blockSize int) error {
 	pool.mtx.Lock()
