@@ -777,19 +777,18 @@ func (ecs ExtendedCommitSig) String() string {
 	)
 }
 
+// BlockID returns the block ID associated with this extended commit signature,
+// if any. If the block ID flag is neither absent, nil nor commit, this panics.
+// If the block ID flag is absent or nil this returns an empty BlockID.
 func (ecs ExtendedCommitSig) BlockID(commitBlockID BlockID) BlockID {
-	var blockID BlockID
 	switch ecs.BlockIDFlag {
-	case BlockIDFlagAbsent:
-		blockID = BlockID{}
+	case BlockIDFlagAbsent, BlockIDFlagNil:
+		return BlockID{}
 	case BlockIDFlagCommit:
-		blockID = commitBlockID
-	case BlockIDFlagNil:
-		blockID = BlockID{}
+		return commitBlockID
 	default:
 		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", ecs.BlockIDFlag))
 	}
-	return blockID
 }
 
 // ValidateBasic checks whether the structure is well-formed.
