@@ -239,6 +239,11 @@ I cannot find support listed for Google Cloud, although perhaps it exists.
 
 ## Feasibility of implementation
 
+This section outlines the various hurdles that would exist to implementing BLS
+signature aggregation into Tendermint. It aims to demonstrate that we _could_
+implement BLS signatures but that it would require breaking changes for a
+reasonably unclear benefit.
+
 ### Can aggregated signatures be added as soft-upgrades?
 
 In my estimation, yes. With the implementation of proposer-based timestamps, 
@@ -307,7 +312,16 @@ being upgraded to parse and verify BLS. If chains upgrade without their
 counterparties first updating, they will lose the ability to interoperate with
 non-updated chains.
 
-### Rogue key attack prevention
+### New attack surfaces
+
+BLS signatures and signature aggregation comes with a new set of attack surfaces.
+Additionally, it's not clear that all possible major attacks are currently known
+on the BLS aggregation schemes since new ones have been discovered since the ietf
+draft standard was written. The known attacks are manageable and are listed below.
+Our implementation would need to prevent against these but this does not appear
+to present a significant hurdle to implementation.
+
+#### Rogue key attack prevention
 
 Generating an aggregated signature requires guarding against what is called
 a [rogue key attack][bls-ietf-terms]. A rogue key attack is one in which a
@@ -337,7 +351,7 @@ to proceed more quickly, since all signatures are over identical data and
 can therefore be checked using an aggregated public key instead of one at a
 time, public key by public key.
 
-### Summing Zero Attacks
+#### Summing Zero Attacks
 
 [Summing zero attacks][summing-zero-paper] are attacks that rely on using the '0' point of an
 elliptic curve. For BLS signatures, if the point 0 is chosen as the private
@@ -391,9 +405,14 @@ At the moment, there is one candidate, `blst`, that appears to be the most
 mature and well vetted. While this library is undergoing continuing auditing
 and is supported by funds from the Ethereum foundation, adopting a new cryptographic
 library presents some serious risks. Namely, if the support for the library were
-to be discontinued, Tendermint may become saddle with the requirement of supporting
+to be discontinued, Tendermint may become saddled with the requirement of supporting
 a very complex piece of software or force a massive ecosystem-wide migration away
-from BLS signatures.
+from BLS signatures. 
+
+This is one of the more serious reasons to avoid adopting BLS signatures at this
+time. There is no gold standard library. Some projects look promising, but no
+project has been formally verified with a long term promise of being supported
+well into the future.
 
 #### Go Standard Library
 
@@ -414,11 +433,49 @@ initial audit by NCC group, a firm I'd never heard of.
 cryptography. It is not audited and is documented as 'as-is', although
 development appears to be active so formal verification may be forthcoming.
 
+#### CIRCL
+
+[CIRCL][circl] is a go-native implementation of several cryptographic primitives,
+bls12-381 among them. The library is written and maintained by Cloudflare and
+appears to receive frequent contributions. However, it lists itself as experimental
+and urges users to take caution before using it in production.
+
+### Light Client Change
+
+Implementing BLS signature aggregation in Tendermint would pose issues for the
+light client. The light client currently validates a subset of the signatures
+on a block when performing the verification algorithm. This is no longer possible
+with an aggregated signature. Aggregated signature verification is all-or-nothing.
+The light client could no longer check that a subset of validators from some
+set of validators is represented in the signature. Instead, it would need to create
+a new aggregated key with all the stated signers for each height it verified where
+the validator set changed.
+
+This means that the speed advantages gained by using BLS cannot be fully realized
+by the light client since the client needs to perform the expensive operation
+of re-aggregating the public key.
+
 ## Open Questions
 
 * *Q*: Can you aggregate a signature twice and still verify?
 * *Q*: If so, how much cost may be imposed by re-including signatures into the same
 * *Q*: Can you aggregate Ed25519 signatures in Tendermint?
+
+## Current Consideration
+
+Adopting a signature aggregation scheme presents some serious risks and costs
+to the Tendermint project. It requires multiple backwards-incompatible changes
+to the code, namely a change in the structure of the block and a new backwards-incompatible
+signature and key type. It risks adding a new signature type for which new attack
+types are still being discovered _and_ for which no industry standard, battle-tested
+library yet exists.
+
+The gains boasted by this new signing scheme are modest: Verification time is
+marginally faster and block sizes shrink by a few kilobytes. These are relatively
+minor gains in exchange for the complexity of the change and the listed risks of the technology.
+We should take a wait-and-see approach to BLS signature aggregation, monitoring
+the up-and-coming projects and consider implementing it as the libraries and
+standards develop.
 
 ### References
 
@@ -448,3 +505,4 @@ development appears to be active so formal verification may be forthcoming.
 [eth-2-adoption]: https://notes.ethereum.org/@GW1ZUbNKR5iRjjKYx6_dJQ/Skxf3tNcg_
 [bls-weil-pairing]: https://www.iacr.org/archive/asiacrypt2001/22480516.pdf
 [summing-zero-paper]: https://eprint.iacr.org/2021/323.pdf
+[circl]: https://github.com/cloudflare/circl
