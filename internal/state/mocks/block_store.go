@@ -107,8 +107,8 @@ func (_m *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return r0
 }
 
-// LoadBlockExtCommit provides a mock function with given fields: height
-func (_m *BlockStore) LoadBlockExtCommit(height int64) *types.ExtendedCommit {
+// LoadBlockExtendedCommit provides a mock function with given fields: height
+func (_m *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
 	ret := _m.Called(height)
 
 	var r0 *types.ExtendedCommit

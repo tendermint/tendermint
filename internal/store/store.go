@@ -278,7 +278,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return commit
 }
 
-func (bs *BlockStore) LoadBlockExtCommit(height int64) *types.ExtendedCommit {
+func (bs *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
 	var pbec = new(tmproto.ExtendedCommit)
 	bz, err := bs.db.Get(extCommitKey(height))
 	if err != nil {

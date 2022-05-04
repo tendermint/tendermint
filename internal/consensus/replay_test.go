@@ -578,11 +578,11 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
-	sim.Chain = make([]*types.Block, 0)
-	sim.ExtCommits = make([]*types.ExtendedCommit, 0)
+	sim.Chain = []*types.Block{}
+	sim.ExtCommits = []*types.ExtendedCommit{}
 	for i := 1; i <= numBlocks; i++ {
 		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
-		sim.ExtCommits = append(sim.ExtCommits, css[0].blockStore.LoadBlockExtCommit(int64(i)))
+		sim.ExtCommits = append(sim.ExtCommits, css[0].blockStore.LoadBlockExtendedCommit(int64(i)))
 	}
 
 	return sim
@@ -1209,7 +1209,7 @@ func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
 func (bs *mockBlockStore) LoadSeenCommit() *types.Commit {
 	return bs.extCommits[len(bs.extCommits)-1].StripExtensions()
 }
-func (bs *mockBlockStore) LoadBlockExtCommit(height int64) *types.ExtendedCommit {
+func (bs *mockBlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
 	return bs.extCommits[height-1]
 }
 
