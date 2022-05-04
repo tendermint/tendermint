@@ -624,22 +624,22 @@ func (voteSet *VoteSet) MakeExtendedCommit() *ExtendedCommit {
 	}
 
 	// For every validator, get the precommit with extensions
-	extCommitSigs := make([]ExtendedCommitSig, len(voteSet.votes))
+	sigs := make([]ExtendedCommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
-		extCommitSig := v.ExtendedCommitSig()
+		sig := v.ExtendedCommitSig()
 		// if block ID exists but doesn't match, exclude sig
-		if extCommitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
-			extCommitSig = NewExtendedCommitSigAbsent()
+		if sig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
+			sig = NewExtendedCommitSigAbsent()
 		}
 
-		extCommitSigs[i] = extCommitSig
+		sigs[i] = sig
 	}
 
 	return &ExtendedCommit{
 		Height:             voteSet.GetHeight(),
 		Round:              voteSet.GetRound(),
 		BlockID:            *voteSet.maj23,
-		ExtendedSignatures: extCommitSigs,
+		ExtendedSignatures: sigs,
 	}
 }
 
