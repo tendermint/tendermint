@@ -43,9 +43,9 @@ func (p testPeer) runInputRoutine() {
 // Request desired, pretend like we got the block immediately.
 func (p testPeer) simulateInput(input inputData) {
 	block := &types.Block{Header: types.Header{Height: input.request.Height}}
-	var blockID types.BlockID
-	var extCommitSigs []types.ExtendedCommitSig
-	extCommit := types.NewExtendedCommit(input.request.Height, 0, blockID, extCommitSigs)
+	extCommit := &types.ExtendedCommit{
+		Height: input.request.Height,
+	}
 	_ = input.pool.AddBlock(input.request.PeerID, block, extCommit, 123)
 	// TODO: uncommenting this creates a race which is detected by:
 	// https://github.com/golang/go/blob/2bd767b1022dd3254bcec469f0ee164024726486/src/testing/testing.go#L854-L856

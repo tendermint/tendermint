@@ -94,7 +94,11 @@ func makeValidCommit(
 		votes[i] = vote
 	}
 
-	return types.NewExtendedCommit(height, 0, blockID, sigs), votes
+	return &types.ExtendedCommit{
+		Height:             height,
+		BlockID:            blockID,
+		ExtendedSignatures: sigs,
+	}, votes
 }
 
 func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {

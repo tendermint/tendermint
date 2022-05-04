@@ -1083,16 +1083,6 @@ type ExtendedCommit struct {
 	bitArray *bits.BitArray
 }
 
-// NewExtendedCommit constructs an ExtendedCommit from the given parameters.
-func NewExtendedCommit(height int64, round int32, blockID BlockID, extCommitSigs []ExtendedCommitSig) *ExtendedCommit {
-	return &ExtendedCommit{
-		Height:             height,
-		Round:              round,
-		BlockID:            blockID,
-		ExtendedSignatures: extCommitSigs,
-	}
-}
-
 // Copy creates a copy of this extended commit.
 func (extCommit *ExtendedCommit) Copy() *ExtendedCommit {
 	ec := *extCommit

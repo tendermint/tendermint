@@ -1402,7 +1402,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		extCommit = types.NewExtendedCommit(0, 0, types.BlockID{}, nil)
+		extCommit = &types.ExtendedCommit{}
 
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit

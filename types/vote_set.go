@@ -635,7 +635,12 @@ func (voteSet *VoteSet) MakeExtendedCommit() *ExtendedCommit {
 		extCommitSigs[i] = extCommitSig
 	}
 
-	return NewExtendedCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, extCommitSigs)
+	return &ExtendedCommit{
+		Height:             voteSet.GetHeight(),
+		Round:              voteSet.GetRound(),
+		BlockID:            *voteSet.maj23,
+		ExtendedSignatures: extCommitSigs,
+	}
 }
 
 //--------------------------------------------------------------------------------

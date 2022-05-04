@@ -150,7 +150,7 @@ func (rts *reactorTestSuite) addNode(
 	var lastExtCommit *types.ExtendedCommit
 
 	// The commit we are building for the current height.
-	seenExtCommit := types.NewExtendedCommit(0, 0, types.BlockID{}, nil)
+	seenExtCommit := &types.ExtendedCommit{}
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastExtCommit = seenExtCommit.Copy()
@@ -173,12 +173,12 @@ func (rts *reactorTestSuite) addNode(
 			time.Now(),
 		)
 		require.NoError(t, err)
-		seenExtCommit = types.NewExtendedCommit(
-			vote.Height,
-			vote.Round,
-			blockID,
-			[]types.ExtendedCommitSig{vote.ExtendedCommitSig()},
-		)
+		seenExtCommit = &types.ExtendedCommit{
+			Height:             vote.Height,
+			Round:              vote.Round,
+			BlockID:            blockID,
+			ExtendedSignatures: []types.ExtendedCommitSig{vote.ExtendedCommitSig()},
+		}
 
 		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
 		require.NoError(t, err)

@@ -1097,8 +1097,12 @@ func makeBlockchainFromWAL(t *testing.T, wal WAL) ([]*types.Block, []*types.Exte
 			require.NoError(t, err)
 		case *types.Vote:
 			if p.Type == tmproto.PrecommitType {
-				thisBlockExtCommit = types.NewExtendedCommit(p.Height, p.Round,
-					p.BlockID, []types.ExtendedCommitSig{p.ExtendedCommitSig()})
+				thisBlockExtCommit = &types.ExtendedCommit{
+					Height:             p.Height,
+					Round:              p.Round,
+					BlockID:            p.BlockID,
+					ExtendedSignatures: []types.ExtendedCommitSig{p.ExtendedCommitSig()},
+				}
 			}
 		}
 	}

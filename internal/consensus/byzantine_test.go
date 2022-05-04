@@ -183,7 +183,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyNodeState.Height == lazyNodeState.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewExtendedCommit(0, 0, types.BlockID{}, nil)
+			commit = &types.ExtendedCommit{}
 		case lazyNodeState.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
 			commit = lazyNodeState.LastCommit.MakeExtendedCommit()

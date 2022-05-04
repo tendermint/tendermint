@@ -35,15 +35,14 @@ func makeTestExtCommit(height int64, timestamp time.Time) *types.ExtendedCommit 
 		Timestamp:        timestamp,
 		Signature:        []byte("Signature"),
 	}}
-	return types.NewExtendedCommit(
-		height,
-		0,
-		types.BlockID{
+	return &types.ExtendedCommit{
+		Height: height,
+		BlockID: types.BlockID{
 			Hash:          crypto.CRandBytes(32),
 			PartSetHeader: types.PartSetHeader{Hash: crypto.CRandBytes(32), Total: 2},
 		},
-		extCommitSigs,
-	)
+		ExtendedSignatures: extCommitSigs,
+	}
 }
 
 func makeStateAndBlockStore(dir string) (sm.State, *BlockStore, cleanupFunc, error) {

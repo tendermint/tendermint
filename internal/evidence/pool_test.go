@@ -587,12 +587,16 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.Blo
 }
 
 func makeExtCommit(height int64, valAddr []byte) *types.ExtendedCommit {
-	return types.NewExtendedCommit(height, 0, types.BlockID{}, []types.ExtendedCommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
-		ValidatorAddress: valAddr,
-		Timestamp:        defaultEvidenceTime,
-		Signature:        []byte("Signature"),
-	}})
+	return &types.ExtendedCommit{
+		Height:  height,
+		BlockID: types.BlockID{},
+		ExtendedSignatures: []types.ExtendedCommitSig{{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: valAddr,
+			Timestamp:        defaultEvidenceTime,
+			Signature:        []byte("Signature"),
+		}},
+	}
 }
 
 func defaultTestPool(ctx context.Context, t *testing.T, height int64) (*evidence.Pool, types.MockPV, *eventbus.EventBus) {

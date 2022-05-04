@@ -339,7 +339,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	extCommit := types.NewExtendedCommit(height-1, 0, types.BlockID{}, nil)
+	extCommit := &types.ExtendedCommit{Height: height - 1}
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
@@ -419,7 +419,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	extCommit := types.NewExtendedCommit(height-1, 0, types.BlockID{}, nil)
+	extCommit := &types.ExtendedCommit{Height: height - 1}
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
