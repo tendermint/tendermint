@@ -608,16 +608,6 @@ type CommitSig struct {
 	Signature        []byte      `json:"signature"`
 }
 
-// NewCommitSigForBlock returns new CommitSig with BlockIDFlagCommit.
-func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) CommitSig {
-	return CommitSig{
-		BlockIDFlag:      BlockIDFlagCommit,
-		ValidatorAddress: valAddr,
-		Timestamp:        ts,
-		Signature:        signature,
-	}
-}
-
 func MaxCommitBytes(valCount int) int64 {
 	// From the repeated commit sig field
 	var protoEncodingOverhead int64 = 2
@@ -753,7 +743,6 @@ type ExtendedCommitSig struct {
 
 // NewExtendedCommitSigAbsent returns new ExtendedCommitSig with
 // BlockIDFlagAbsent. Other fields are all empty.
-// TODO(sergio): When all UTs passing, try removing the Commit and CommitSig version of new functions
 func NewExtendedCommitSigAbsent() ExtendedCommitSig {
 	return ExtendedCommitSig{
 		BlockIDFlag: BlockIDFlagAbsent,
@@ -910,7 +899,6 @@ type Commit struct {
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
 	hash tmbytes.HexBytes
-	//bitArray *bits.BitArray
 }
 
 // NewCommit returns a new Commit.
@@ -922,20 +910,6 @@ func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSi
 		Signatures: commitSigs,
 	}
 }
-
-// func (commit Commit) ToExtCommitNoExt() *ExtendedCommit {
-// 	// For every validator, get the precommit with extensions
-// 	extCommitSigs := make([]ExtendedCommitSig, len(commit.Signatures))
-// 	for i, cs := range commit.Signatures {
-// 		extCommitSigs[i] = ExtendedCommitSig{
-// 			BlockIDFlag:      cs.BlockIDFlag,
-// 			ValidatorAddress: cs.ValidatorAddress,
-// 			Timestamp:        cs.Timestamp,
-// 			Signature:        cs.Signature,
-// 		}
-// 	}
-// 	return NewExtendedCommit(commit.Height, commit.Round, commit.BlockID, extCommitSigs)
-// }
 
 // GetVote converts the CommitSig for the given valIdx to a Vote. Commits do
 // not contain vote extensions, so the vote extension and vote extension
@@ -970,59 +944,13 @@ func (commit *Commit) VoteSignBytes(chainID string, valIdx int32) []byte {
 	return VoteSignBytes(chainID, v)
 }
 
-// Type returns the vote type of the commit, which is always VoteTypePrecommit
-// Implements VoteSetReader.
-// func (commit *Commit) Type() byte {
-// 	return byte(tmproto.PrecommitType)
-// }
-
-// GetHeight returns height of the commit.
-// Implements VoteSetReader.
-// func (commit *Commit) GetHeight() int64 {
-// 	return commit.Height
-// }
-
-// GetRound returns height of the commit.
-// Implements VoteSetReader.
-// func (commit *Commit) GetRound() int32 {
-// 	return commit.Round
-// }
-
 // Size returns the number of signatures in the commit.
-// Implements VoteSetReader.
 func (commit *Commit) Size() int {
 	if commit == nil {
 		return 0
 	}
 	return len(commit.Signatures)
 }
-
-// BitArray returns a BitArray of which validators voted for BlockID or nil in this commit.
-// Implements VoteSetReader.
-// func (commit *Commit) BitArray() *bits.BitArray {
-// 	if commit.bitArray == nil {
-// 		commit.bitArray = bits.NewBitArray(len(commit.Signatures))
-// 		for i, commitSig := range commit.Signatures {
-// 			// TODO: need to check the BlockID otherwise we could be counting conflicts,
-// 			// not just the one with +2/3 !
-// 			commit.bitArray.SetIndex(i, !commitSig.Absent())
-// 		}
-// 	}
-// 	return commit.bitArray
-// }
-
-// GetByIndex returns the vote corresponding to a given validator index.
-// Panics if `index >= commit.Size()`.
-// Implements VoteSetReader.
-// func (commit *Commit) GetByIndex(valIdx int32) *Vote {
-// 	return commit.GetVote(valIdx)
-// }
-
-// IsCommit returns true if there is at least one signature.
-// Implements VoteSetReader.
-// func (commit *Commit) IsCommit() bool {
-// 	return len(commit.Signatures) != 0
-// }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
 // Does not actually check the cryptographic signatures.
@@ -1196,22 +1124,6 @@ func (extCommit *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *
 	}
 	return voteSet
 }
-
-// func (extCommit *ExtendedCommit) ExtensionsStripped() bool {
-// 	strippedIdx := -1
-// 	for idx, extCommitSig := range extCommit.Signatures {
-// 		if !extCommitSig.ForBlock() {
-// 			continue
-// 		}
-// 		if len(extCommitSig.ExtensionSignature) == 0 {
-// 			strippedIdx = idx
-// 		} else if strippedIdx != -1 {
-// 			panic(fmt.Sprintf("vote extension signature is missing at index %v but present at index %v in extended commit %v",
-// 				strippedIdx, idx, extCommit))
-// 		}
-// 	}
-// 	return strippedIdx != -1
-// }
 
 // StripExtensions converts an ExtendedCommit to a Commit by removing all vote
 // extension-related fields.
