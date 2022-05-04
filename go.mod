@@ -38,7 +38,7 @@ require (
 )
 
 require (
-	github.com/creachadair/atomicfile v0.2.5
+	github.com/creachadair/atomicfile v0.2.6
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/go-cmp v0.5.8
