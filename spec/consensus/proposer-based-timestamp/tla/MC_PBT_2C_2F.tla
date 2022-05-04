@@ -61,10 +61,11 @@ INSTANCE TendermintPBT_002_draft WITH
   MaxTimestamp <- 7,
   MinTimestamp <- 2,
   Delay <- 2,        
-  Precision <- 2
+  Precision <- 2,
+  PreloadAllFaultyMsgs <- FALSE
 
 \* run Apalache with --cinit=CInit
 CInit == \* the proposer is arbitrary -- works for safety
-  Proposer \in [Rounds -> AllProcs]
+  ArbitraryProposer
 
 =============================================================================    

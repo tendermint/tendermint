@@ -12,7 +12,7 @@
  Jure Kukovec, Informal Systems, 2022.
  *)
 
-EXTENDS Integers, FiniteSets, Apalache, typedefs
+EXTENDS Integers, FiniteSets, Apalache, Sequences, typedefs
 
 (********************* PROTOCOL PARAMETERS **********************************)
 \* General protocol parameters
@@ -47,6 +47,11 @@ CONSTANTS
 
 ASSUME(N = Cardinality(Corr \union Faulty))
 
+\* Modeling parameter
+CONSTANTS
+  \* @type: Bool;
+  PreloadAllFaultyMsgs
+
 (*************************** DEFINITIONS ************************************)
 \* @type: Set(PROCESS);
 AllProcs == Corr \union Faulty      \* the set of all processes
@@ -74,6 +79,14 @@ ValuesOrNil == Values \union {NilValue}
 Decisions == Proposals \X Rounds
 \* @type: DECISION;
 NilDecision == <<NilProposal, NilRound>>
+
+ArbitraryProposer == Proposer \in [Rounds -> AllProcs]
+CorrectProposer == Proposer \in [Rounds -> Corr]
+CyclicalProposer == 
+  LET ProcOrder ==
+    LET App(s,e) == Append(s,e) \* can't call-by-name for built-in operators
+    IN ApaFoldSet(Append, <<>>, AllProcs)
+  IN Proposer = [ r \in Rounds |-> ProcOrder[1 + (r % N)] ]
 
 ValidProposals == ValidValues \X (MinTimestamp..MaxTimestamp) \X Rounds
 \* a value hash is modeled as identity
@@ -108,13 +121,13 @@ THRESHOLD2 == 2 * T + 1 \* a quorum when having N > 3 * T
 \* @type: (TIME, TIME) => TIME;
 Min2(a,b) == IF a <= b THEN a ELSE b
 \* @type: (Set(TIME)) => TIME;
-Min(S) == FoldSet( Min2, MaxTimestamp, S )
+Min(S) == ApaFoldSet( Min2, MaxTimestamp, S )
 \* Min(S) == CHOOSE x \in S : \A y \in S : x <= y
 
 \* @type: (TIME, TIME) => TIME;
 Max2(a,b) == IF a >= b THEN a ELSE b
 \* @type: (Set(TIME)) => TIME;
-Max(S) == FoldSet( Max2, NilTimestamp, S )
+Max(S) == ApaFoldSet( Max2, NilTimestamp, S )
 \* Max(S) == CHOOSE x \in S : \A y \in S : y <= x
 
 \* @type: (Set(MESSAGE)) => Int;
@@ -122,7 +135,7 @@ Card(S) ==
   LET 
     \* @type: (Int, MESSAGE) => Int;
     PlusOne(i, m) == i + 1
-  IN FoldSet( PlusOne, 0, S )
+  IN ApaFoldSet( PlusOne, 0, S )
 
 (********************* PROTOCOL STATE VARIABLES ******************************)
 VARIABLES
@@ -272,6 +285,19 @@ BenignRoundsInMessages(msgfun) ==
     \A m \in msgfun[r]:
       r = m.round
 
+InitMsgs ==
+  \/ /\ PreloadAllFaultyMsgs
+     /\ msgsPropose \in [Rounds -> SUBSET AllFaultyProposals]
+     /\ msgsPrevote \in [Rounds -> SUBSET AllFaultyPrevotes]
+     /\ msgsPrecommit \in [Rounds -> SUBSET AllFaultyPrecommits]
+     /\ BenignRoundsInMessages(msgsPropose)
+     /\ BenignRoundsInMessages(msgsPrevote)
+     /\ BenignRoundsInMessages(msgsPrecommit)
+  \/ /\ ~PreloadAllFaultyMsgs
+     /\ msgsPropose = [r \in Rounds |-> {}]
+     /\ msgsPrevote = [r \in Rounds |-> {}]
+     /\ msgsPrecommit = [r \in Rounds |-> {}]
+
 \* The initial states of the protocol. Some faults can be in the system already.
 Init ==
     /\ round = [p \in Corr |-> 0]
@@ -283,13 +309,8 @@ Init ==
     /\ lockedRound = [p \in Corr |-> NilRound]
     /\ validValue = [p \in Corr |-> NilProposal]
     /\ validRound = [p \in Corr |-> NilRound]
-    /\ msgsPropose \in [Rounds -> SUBSET AllFaultyProposals]
-    /\ msgsPrevote \in [Rounds -> SUBSET AllFaultyPrevotes]
-    /\ msgsPrecommit \in [Rounds -> SUBSET AllFaultyPrecommits]
+    /\ InitMsgs
     /\ proposalReceptionTime = [r \in Rounds, p \in Corr |-> NilTimestamp]
-    /\ BenignRoundsInMessages(msgsPropose)
-    /\ BenignRoundsInMessages(msgsPrevote)
-    /\ BenignRoundsInMessages(msgsPrecommit)
     /\ evidence = {}
     /\ action = "Init"
     /\ beginRound = 
@@ -305,6 +326,30 @@ Init ==
         THEN Max({localClock[p] : p \in Corr})
         ELSE NilTimestamp
       ]
+
+\* Faulty processes send messages
+FaultyBroadcast == 
+  /\ ~PreloadAllFaultyMsgs
+  /\ action' = "FaultyBroadcast"
+  /\ \E r \in Rounds:
+    \/ \E msgs \in SUBSET FaultyProposals(r):
+        /\ msgsPropose' = [msgsPropose EXCEPT ![r] = @ \union msgs]
+        /\ UNCHANGED <<coreVars, temporalVars, invariantVars>>
+        /\ UNCHANGED 
+          <<(*msgsPropose,*) msgsPrevote, msgsPrecommit, 
+          evidence, (*action,*) proposalReceptionTime>>
+    \/ \E msgs \in SUBSET FaultyPrevotes(r):
+        /\ msgsPrevote' = [msgsPrevote EXCEPT ![r] = @ \union msgs]
+        /\ UNCHANGED <<coreVars, temporalVars, invariantVars>>
+        /\ UNCHANGED 
+          <<msgsPropose, (*msgsPrevote,*) msgsPrecommit, 
+          evidence, (*action,*) proposalReceptionTime>>
+    \/ \E msgs \in SUBSET FaultyPrecommits(r):
+        /\ msgsPrecommit' = [msgsPrecommit EXCEPT ![r] = @ \union msgs]
+        /\ UNCHANGED <<coreVars, temporalVars, invariantVars>>
+        /\ UNCHANGED 
+          <<msgsPropose, msgsPrevote, (*msgsPrecommit,*)
+          evidence, (*action,*) proposalReceptionTime>>
 
 (************************ MESSAGE PASSING ********************************)
 \* @type: (PROCESS, ROUND, PROPOSAL, ROUND) => Bool;
@@ -380,7 +425,7 @@ StartRound(p, r) ==
    /\ round' = [round EXCEPT ![p] = r]
    /\ step' = [step EXCEPT ![p] = "PROPOSE"]
    \* We only need to update (last)beginRound[r] once a process enters round `r`
-   /\ beginRound' = [beginRound EXCEPT ![r,p] = Min2(@, localClock[p])]
+   /\ beginRound' = [beginRound EXCEPT ![r,p] = localClock[p]]
    /\ lastBeginRound' = [lastBeginRound EXCEPT ![r] = Max2(@, localClock[p])]
 
 \* lines 14-19, a proposal may be sent later
@@ -697,23 +742,24 @@ OnQuorumOfNilPrevotes(p) ==
 \* lines 55-56
 \* @type: (PROCESS) => Bool;
 OnRoundCatchup(p) ==
-  \E r \in {rr \in Rounds: rr > round[p]}:
-    LET RoundMsgs == msgsPropose[r] \union msgsPrevote[r] \union msgsPrecommit[r] IN
-    \E MyEvidence \in SUBSET RoundMsgs:
-        LET Faster == { m.src: m \in MyEvidence } IN
-        /\ Cardinality(Faster) >= THRESHOLD1
-        /\ evidence' = MyEvidence \union evidence
-        /\ StartRound(p, r)
-        /\ UNCHANGED temporalVars
-        /\ UNCHANGED
-          <<(*beginRound,*) endConsensus(*, lastBeginRound*)>>
-        /\ UNCHANGED
-          <<(*round, step,*) decision, lockedValue, 
-          lockedRound, validValue, validRound>>
-        /\ UNCHANGED 
-          <<msgsPropose, msgsPrevote, msgsPrecommit,
-          (*evidence,*) proposalReceptionTime>>
-        /\ action' = "OnRoundCatchup"
+  \E r \in Rounds: 
+    /\ r > round[p]
+    /\ LET RoundMsgs == msgsPropose[r] \union msgsPrevote[r] \union msgsPrecommit[r] IN
+       \E MyEvidence \in SUBSET RoundMsgs:
+           LET Faster == { m.src: m \in MyEvidence } IN
+           /\ Cardinality(Faster) >= THRESHOLD1
+           /\ evidence' = MyEvidence \union evidence
+           /\ StartRound(p, r)
+           /\ UNCHANGED temporalVars
+           /\ UNCHANGED
+             <<(*beginRound,*) endConsensus(*, lastBeginRound*)>>
+           /\ UNCHANGED
+             <<(*round, step,*) decision, lockedValue, 
+             lockedRound, validValue, validRound>>
+           /\ UNCHANGED 
+             <<msgsPropose, msgsPrevote, msgsPrecommit,
+             (*evidence,*) proposalReceptionTime>>
+           /\ action' = "OnRoundCatchup"
 
 
 (********************* PROTOCOL TRANSITIONS ******************************)
@@ -764,6 +810,7 @@ MessageProcessing(p) ==
  *)
 Next == 
   \/ AdvanceRealTime
+  \/ FaultyBroadcast
   \/ /\ SynchronizedLocalClocks
      /\ \E p \in Corr: MessageProcessing(p)
 
@@ -793,7 +840,8 @@ DisagreementOnValue ==
 ConsensusValidValue ==
     \A p \in Corr:
         \* decision[p] = Decision(Proposal(v,t,pr), r)
-        LET prop == decision[p][1] IN prop /= NilProposal => IsValid(prop[1])
+        LET prop == decision[p][1] IN 
+          prop /= NilProposal => prop[1] \in ValidValues
 
 \* [PBTS-INV-MONOTONICITY.0]
 \* TODO: we would need to compare timestamps of blocks from different height
@@ -841,12 +889,12 @@ ContainsPrevoteFromCorrect(set) ==
 DerivedProofOfLocks == 
   \A r \in Rounds, prop \in ValidProposals:
     LET t == prop[2] IN
+    LET rStar == prop[3] IN
     LET PS == POLSet(prop, r) IN
     ( 
       /\ IsValidPOL(PS)
       /\ ContainsPrevoteFromCorrect(PS)
     ) =>
-    \E rStar \in Rounds:
       LET PSStar == POLSet(prop, rStar) IN 
         /\ rStar <= r
         /\ ContainsPrevoteFromCorrect(PSStar)
