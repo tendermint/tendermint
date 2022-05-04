@@ -744,9 +744,7 @@ type ExtendedCommitSig struct {
 // NewExtendedCommitSigAbsent returns new ExtendedCommitSig with
 // BlockIDFlagAbsent. Other fields are all empty.
 func NewExtendedCommitSigAbsent() ExtendedCommitSig {
-	return ExtendedCommitSig{
-		BlockIDFlag: BlockIDFlagAbsent,
-	}
+	return ExtendedCommitSig{BlockIDFlag: BlockIDFlagAbsent}
 }
 
 // ForBlock returns true if ExtendedCommitSig is for the block.
