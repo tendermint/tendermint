@@ -193,8 +193,7 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 		}
 		blockProto, err := block.ToProto()
 		if err != nil {
-			r.logger.Error("failed to convert block to protobuf", "err", err)
-			return err
+			return fmt.Errorf("failed to convert block to protobuf: %w", err)
 		}
 
 		return blockSyncCh.Send(ctx, p2p.Envelope{
