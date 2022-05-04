@@ -1396,7 +1396,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
-	//TODO: wouldn't it be easier if CreateProposalBlock accepted cs.LastCommit directly?
+	// TODO(sergio): wouldn't it be easier if CreateProposalBlock accepted cs.LastCommit directly?
 	var extCommit *types.ExtendedCommit
 	switch {
 	case cs.Height == cs.state.InitialHeight:
