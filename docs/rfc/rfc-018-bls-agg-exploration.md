@@ -241,7 +241,7 @@ I cannot find support listed for Google Cloud, although perhaps it exists.
 
 This section outlines the various hurdles that would exist to implementing BLS
 signature aggregation into Tendermint. It aims to demonstrate that we _could_
-implement BLS signatures but that it would require breaking changes for a
+implement BLS signatures but that it would incur risk and require breaking changes for a
 reasonably unclear benefit.
 
 ### Can aggregated signatures be added as soft-upgrades?
