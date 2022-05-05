@@ -502,6 +502,8 @@ the associated protocols.
 ## Open Questions
 
 * *Q*: Can you aggregate Ed25519 signatures in Tendermint?
+  * There is a suggested scheme in github issue [7892][suggested-ed25519-agg],
+but additional rigor would be required to fully verify its correctness.
 
 ## Current Consideration
 
@@ -550,3 +552,4 @@ standards develop.
 [summing-zero-paper]: https://eprint.iacr.org/2021/323.pdf
 [circl]: https://github.com/cloudflare/circl
 [light-client-evidence]: https://github.com/tendermint/tendermint/blob/a6fd1fe20116d4b1f7e819cded81cece8e5c1ac7/types/evidence.go#L245
+[suggested-ed25519-agg]: https://github.com/tendermint/tendermint/issues/7892
