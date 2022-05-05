@@ -50,7 +50,9 @@ ASSUME(N = Cardinality(Corr \union Faulty))
 \* Modeling parameter
 CONSTANTS
   \* @type: Bool;
-  PreloadAllFaultyMsgs
+  PreloadAllFaultyMsgs,
+  \* @type: Int;
+  N_GEN
 
 (*************************** DEFINITIONS ************************************)
 \* @type: Set(PROCESS);
@@ -84,8 +86,8 @@ ArbitraryProposer == Proposer \in [Rounds -> AllProcs]
 CorrectProposer == Proposer \in [Rounds -> Corr]
 CyclicalProposer == 
   LET ProcOrder ==
-    LET App(s,e) == Append(s,e) \* can't call-by-name for built-in operators
-    IN ApaFoldSet(Append, <<>>, AllProcs)
+    LET App(s,e) == Append(s,e)
+    IN ApaFoldSet(App, <<>>, AllProcs)
   IN Proposer = [ r \in Rounds |-> ProcOrder[1 + (r % N)] ]
 
 ValidProposals == ValidValues \X (MinTimestamp..MaxTimestamp) \X Rounds
@@ -285,14 +287,34 @@ BenignRoundsInMessages(msgfun) ==
     \A m \in msgfun[r]:
       r = m.round
 
+\* @type: (ROUND -> Set(MESSAGE), Set(MESSAGE)) => Bool;
+BenignAndSubset(msgfun, set) == 
+  /\ \A r \in Rounds: 
+    \* The generated values belong to SUBSET set
+    /\ msgfun[r] \subseteq set
+    \* the message function never contains a message for a wrong round
+    /\ \A m \in msgfun[r]: r = m.round
+
+InitGen == 
+  /\ msgsPropose \in [Rounds -> Gen(N_GEN)]
+  /\ msgsPrevote \in [Rounds -> Gen(N_GEN)]
+  /\ msgsPrecommit \in [Rounds -> Gen(N_GEN)]
+  /\ BenignAndSubset(msgsPropose, AllFaultyProposals)
+  /\ BenignAndSubset(msgsPrevote, AllFaultyPrevotes)
+  /\ BenignAndSubset(msgsPrecommit, AllFaultyPrecommits)
+
+InitPreloadAllMsgs ==
+  /\ msgsPropose \in [Rounds -> SUBSET AllFaultyProposals]
+  /\ msgsPrevote \in [Rounds -> SUBSET AllFaultyPrevotes]
+  /\ msgsPrecommit \in [Rounds -> SUBSET AllFaultyPrecommits]
+  /\ BenignRoundsInMessages(msgsPropose)
+  /\ BenignRoundsInMessages(msgsPrevote)
+  /\ BenignRoundsInMessages(msgsPrecommit)
+
 InitMsgs ==
   \/ /\ PreloadAllFaultyMsgs
-     /\ msgsPropose \in [Rounds -> SUBSET AllFaultyProposals]
-     /\ msgsPrevote \in [Rounds -> SUBSET AllFaultyPrevotes]
-     /\ msgsPrecommit \in [Rounds -> SUBSET AllFaultyPrecommits]
-     /\ BenignRoundsInMessages(msgsPropose)
-     /\ BenignRoundsInMessages(msgsPrevote)
-     /\ BenignRoundsInMessages(msgsPrecommit)
+     \* /\ InitPreloadAllMsgs
+     /\ InitGen
   \/ /\ ~PreloadAllFaultyMsgs
      /\ msgsPropose = [r \in Rounds |-> {}]
      /\ msgsPrevote = [r \in Rounds |-> {}]
