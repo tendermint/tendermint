@@ -454,7 +454,7 @@ bls12-381 among them. The library is written and maintained by Cloudflare and
 appears to receive frequent contributions. However, it lists itself as experimental
 and urges users to take caution before using it in production.
 
-### Light Client Change
+### Added complexity to light client verification
 
 Implementing BLS signature aggregation in Tendermint would pose issues for the
 light client. The light client currently validates a subset of the signatures
@@ -476,6 +476,27 @@ batch verification time using our ed25519 library of 2.0 milliseconds.
 
 Schemes to cache aggregated subsets of keys could certainly cut this time down at the
 cost of adding complexity to the light client.
+
+### Added complexity to evidence handling
+
+Implementing BLS signature aggregation in Tendermint would add complexity to
+the evidence handling within Tendermint. Currently, the light client can submit
+evidence of a fork attempt to the chain. This evidence consists of the set of
+validators that double-signed, including their public keys, with the conflicting
+block.
+
+We can quickly check that the listed validators double signed by verifying
+that each of their signatures are in the submitted conflicting block. A BLS
+signature scheme would change this by requiring the light client to submit
+the public keys of all of the validators that signed the conflicting block so
+that the aggregated signature may be checked against the full signature set.
+Again, aggregated signature verification is all-or-nothing, so without all of
+the public keys, we cannot verify the signature at all. These keys would be
+retrievable. Any party that wanted to create a fork would want to convince a
+network that its fork is legitimate, so it would need to gossip the public keys.
+This does not hamper the feasibility of implementing BLS signature aggregation
+into Tendermint, but does represent yet another piece of added complexity to
+the associated protocols.
 
 ## Open Questions
 
@@ -527,3 +548,4 @@ standards develop.
 [bls-weil-pairing]: https://www.iacr.org/archive/asiacrypt2001/22480516.pdf
 [summing-zero-paper]: https://eprint.iacr.org/2021/323.pdf
 [circl]: https://github.com/cloudflare/circl
+[light-client-evidence]: https://github.com/tendermint/tendermint/blob/a6fd1fe20116d4b1f7e819cded81cece8e5c1ac7/types/evidence.go#L245
