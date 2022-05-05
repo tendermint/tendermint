@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Install generator dependencies
         run: |
-          apk add --no-cache make bash curl git npm rsync unzip
+          apk add --no-cache make bash git npm
       - uses: actions/checkout@v3
         with:
           # We need to fetch full history so the backport branches for previous
