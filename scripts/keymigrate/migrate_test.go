@@ -1,11 +1,11 @@
 package keymigrate
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/google/orderedcode"
@@ -21,6 +21,7 @@ func makeKey(t *testing.T, elems ...interface{}) []byte {
 }
 
 func getLegacyPrefixKeys(val int) map[string][]byte {
+	vstr := fmt.Sprintf("%02x", byte(val))
 	return map[string][]byte{
 		"Height":            []byte(fmt.Sprintf("H:%d", val)),
 		"BlockPart":         []byte(fmt.Sprintf("P:%d:%d", val, val)),
@@ -40,14 +41,19 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"UserKey1":          []byte(fmt.Sprintf("foo/bar/baz/%d/%d", val, val)),
 		"TxHeight":          []byte(fmt.Sprintf("tx.height/%s/%d/%d", fmt.Sprint(val), val, val)),
 		"TxHash": append(
-			bytes.Repeat([]byte{fmt.Sprint(val)[0]}, 16),
-			bytes.Repeat([]byte{fmt.Sprint(val)[len([]byte(fmt.Sprint(val)))-1]}, 16)...,
+			[]byte(strings.Repeat(vstr[:1], 16)),
+			[]byte(strings.Repeat(vstr[1:], 16))...,
 		),
+
+		// Transaction hashes that could be mistaken for evidence keys.
+		"TxHashMimic0": append([]byte{0}, []byte(strings.Repeat(vstr, 16)[:31])...),
+		"TxHashMimic1": append([]byte{1}, []byte(strings.Repeat(vstr, 16)[:31])...),
 	}
 }
 
 func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 	t.Helper()
+	vstr := fmt.Sprintf("%02x", byte(val))
 	return map[string][]byte{
 		"Height":            makeKey(t, int64(0), int64(val)),
 		"BlockPart":         makeKey(t, int64(1), int64(val), int64(val)),
@@ -66,7 +72,9 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 		"UserKey0":          makeKey(t, "foo", "bar", int64(val), int64(val)),
 		"UserKey1":          makeKey(t, "foo", "bar/baz", int64(val), int64(val)),
 		"TxHeight":          makeKey(t, "tx.height", fmt.Sprint(val), int64(val), int64(val+2), int64(val+val)),
-		"TxHash":            makeKey(t, "tx.hash", string(bytes.Repeat([]byte{[]byte(fmt.Sprint(val))[0]}, 32))),
+		"TxHash":            makeKey(t, "tx.hash", strings.Repeat(vstr, 16)),
+		"TxHashMimic0":      makeKey(t, "tx.hash", "\x00"+strings.Repeat(vstr, 16)[:31]),
+		"TxHashMimic1":      makeKey(t, "tx.hash", "\x01"+strings.Repeat(vstr, 16)[:31]),
 	}
 }
 
@@ -107,19 +115,19 @@ func TestMigration(t *testing.T) {
 
 		t.Run("Legacy", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
-				require.True(t, keyIsLegacy(le), kind)
+				require.True(t, checkKeyType(le).isLegacy(), kind)
 			}
 		})
 		t.Run("New", func(t *testing.T) {
 			for kind, ne := range newPrefixes {
-				require.False(t, keyIsLegacy(ne), kind)
+				require.False(t, checkKeyType(ne).isLegacy(), kind)
 			}
 		})
 		t.Run("Conversion", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
 				nk, err := migrateKey(le)
 				require.NoError(t, err, kind)
-				require.False(t, keyIsLegacy(nk), kind)
+				require.False(t, checkKeyType(nk).isLegacy(), kind)
 			}
 		})
 		t.Run("Hashes", func(t *testing.T) {
@@ -129,8 +137,12 @@ func TestMigration(t *testing.T) {
 				}
 			})
 			t.Run("ContrivedLegacyKeyDetection", func(t *testing.T) {
-				require.True(t, keyIsLegacy([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
-				require.False(t, keyIsLegacy([]byte("xxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxx")))
+				// length 32: should appear to be a hash
+				require.Equal(t, txHashKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
+
+				// length ≠ 32: should not appear to be a hash
+				require.Equal(t, nonLegacyKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx--")))
+				require.Equal(t, nonLegacyKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
 			})
 		})
 	})
@@ -204,7 +216,7 @@ func TestMigration(t *testing.T) {
 			require.Equal(t, size, len(keys))
 			legacyKeys := 0
 			for _, k := range keys {
-				if keyIsLegacy(k) {
+				if checkKeyType(k).isLegacy() {
 					legacyKeys++
 				}
 			}
@@ -212,7 +224,7 @@ func TestMigration(t *testing.T) {
 		})
 		t.Run("KeyIdempotency", func(t *testing.T) {
 			for _, key := range getNewPrefixKeys(t, 84) {
-				require.False(t, keyIsLegacy(key))
+				require.False(t, checkKeyType(key).isLegacy())
 			}
 		})
 		t.Run("Migrate", func(t *testing.T) {

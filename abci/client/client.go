@@ -17,35 +17,18 @@ const (
 
 //go:generate ../../scripts/mockery_generate.sh Client
 
-// Client defines an interface for an ABCI client.
-//
-// All methods return the appropriate protobuf ResponseXxx struct and
-// an error.
+// Client defines the interface for an ABCI client.
 //
 // NOTE these are client errors, eg. ABCI socket connectivity issues.
 // Application-related errors are reflected in response via ABCI error codes
-// and logs.
+// and (potentially) error response.
 type Client interface {
 	service.Service
+	types.Application
 
 	Error() error
-
 	Flush(context.Context) error
-	Echo(ctx context.Context, msg string) (*types.ResponseEcho, error)
-	Info(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
-	CheckTx(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
-	Query(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
-	Commit(context.Context) (*types.ResponseCommit, error)
-	InitChain(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
-	PrepareProposal(context.Context, types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
-	ProcessProposal(context.Context, types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
-	ExtendVote(context.Context, types.RequestExtendVote) (*types.ResponseExtendVote, error)
-	VerifyVoteExtension(context.Context, types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error)
-	FinalizeBlock(context.Context, types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error)
-	ListSnapshots(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
-	OfferSnapshot(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
-	LoadSnapshotChunk(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
-	ApplySnapshotChunk(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	Echo(context.Context, string) (*types.ResponseEcho, error)
 }
 
 //----------------------------------------

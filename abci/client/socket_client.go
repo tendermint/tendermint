@@ -64,6 +64,8 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 		err  error
 		conn net.Conn
 	)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
 	for {
 		conn, err = tmnet.Connect(cli.addr)
@@ -73,8 +75,15 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 			}
 			cli.logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
 				cli.addr, dialRetryIntervalSeconds), "err", err)
-			time.Sleep(time.Second * dialRetryIntervalSeconds)
-			continue
+
+			timer.Reset(time.Second * dialRetryIntervalSeconds)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+				continue
+			}
+
 		}
 		cli.conn = conn
 
@@ -90,11 +99,7 @@ func (cli *socketClient) OnStop() {
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
-
-	// this timeout is arbitrary.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	cli.drainQueue(ctx)
+	cli.drainQueue()
 }
 
 // Error returns an error if the client was stopped abruptly.
@@ -113,12 +118,6 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
-			if ctx.Err() != nil {
-				return
-			}
-
-			cli.willSendReq(reqres)
-
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
@@ -162,6 +161,11 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 func (cli *socketClient) willSendReq(reqres *requestAndResponse) {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
+
+	if !cli.IsRunning() {
+		return
+	}
+
 	cli.reqSent.PushBack(reqres)
 }
 
@@ -189,138 +193,13 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *socketClient) Flush(ctx context.Context) error {
-	_, err := cli.doRequest(ctx, types.ToRequestFlush())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (cli *socketClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestEcho(msg))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetEcho(), nil
-}
-
-func (cli *socketClient) Info(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestInfo(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetInfo(), nil
-}
-
-func (cli *socketClient) CheckTx(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestCheckTx(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetCheckTx(), nil
-}
-
-func (cli *socketClient) Query(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestQuery(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetQuery(), nil
-}
-
-func (cli *socketClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestCommit())
-	if err != nil {
-		return nil, err
-	}
-	return res.GetCommit(), nil
-}
-
-func (cli *socketClient) InitChain(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestInitChain(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetInitChain(), nil
-}
-
-func (cli *socketClient) ListSnapshots(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestListSnapshots(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetListSnapshots(), nil
-}
-
-func (cli *socketClient) OfferSnapshot(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestOfferSnapshot(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetOfferSnapshot(), nil
-}
-
-func (cli *socketClient) LoadSnapshotChunk(ctx context.Context, req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestLoadSnapshotChunk(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetLoadSnapshotChunk(), nil
-}
-
-func (cli *socketClient) ApplySnapshotChunk(ctx context.Context, req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestApplySnapshotChunk(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetApplySnapshotChunk(), nil
-}
-
-func (cli *socketClient) PrepareProposal(ctx context.Context, req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestPrepareProposal(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetPrepareProposal(), nil
-}
-
-func (cli *socketClient) ProcessProposal(ctx context.Context, req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestProcessProposal(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetProcessProposal(), nil
-}
-
-func (cli *socketClient) ExtendVote(ctx context.Context, req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestExtendVote(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetExtendVote(), nil
-}
-
-func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestVerifyVoteExtension(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetVerifyVoteExtension(), nil
-}
-
-func (cli *socketClient) FinalizeBlock(ctx context.Context, req types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestFinalizeBlock(req))
-	if err != nil {
-		return nil, err
-	}
-	return res.GetFinalizeBlock(), nil
-}
-
-//----------------------------------------
-
 func (cli *socketClient) doRequest(ctx context.Context, req *types.Request) (*types.Response, error) {
+	if !cli.IsRunning() {
+		return nil, errors.New("client has stopped")
+	}
+
 	reqres := makeReqRes(req)
+	cli.willSendReq(reqres)
 
 	select {
 	case cli.reqQueue <- reqres:
@@ -342,7 +221,7 @@ func (cli *socketClient) doRequest(ctx context.Context, req *types.Request) (*ty
 
 // drainQueue marks as complete and discards all remaining pending requests
 // from the queue.
-func (cli *socketClient) drainQueue(ctx context.Context) {
+func (cli *socketClient) drainQueue() {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 
@@ -351,22 +230,136 @@ func (cli *socketClient) drainQueue(ctx context.Context) {
 		reqres := req.Value.(*requestAndResponse)
 		reqres.markDone()
 	}
+}
 
-	// Mark all queued messages as resolved.
-	//
-	// TODO(creachadair): We can't simply range the channel, because it is never
-	// closed, and the writer continues to add work.
-	// See https://github.com/tendermint/tendermint/issues/6996.
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case reqres := <-cli.reqQueue:
-			reqres.markDone()
-		default:
-			return
-		}
+//----------------------------------------
+
+func (cli *socketClient) Flush(ctx context.Context) error {
+	_, err := cli.doRequest(ctx, types.ToRequestFlush())
+	if err != nil {
+		return err
 	}
+	return nil
+}
+
+func (cli *socketClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestEcho(msg))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetEcho(), nil
+}
+
+func (cli *socketClient) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestInfo(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetInfo(), nil
+}
+
+func (cli *socketClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestCheckTx(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetCheckTx(), nil
+}
+
+func (cli *socketClient) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestQuery(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetQuery(), nil
+}
+
+func (cli *socketClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestCommit())
+	if err != nil {
+		return nil, err
+	}
+	return res.GetCommit(), nil
+}
+
+func (cli *socketClient) InitChain(ctx context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestInitChain(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetInitChain(), nil
+}
+
+func (cli *socketClient) ListSnapshots(ctx context.Context, req *types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestListSnapshots(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetListSnapshots(), nil
+}
+
+func (cli *socketClient) OfferSnapshot(ctx context.Context, req *types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestOfferSnapshot(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetOfferSnapshot(), nil
+}
+
+func (cli *socketClient) LoadSnapshotChunk(ctx context.Context, req *types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestLoadSnapshotChunk(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetLoadSnapshotChunk(), nil
+}
+
+func (cli *socketClient) ApplySnapshotChunk(ctx context.Context, req *types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestApplySnapshotChunk(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetApplySnapshotChunk(), nil
+}
+
+func (cli *socketClient) PrepareProposal(ctx context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestPrepareProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetPrepareProposal(), nil
+}
+
+func (cli *socketClient) ProcessProposal(ctx context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestProcessProposal(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetProcessProposal(), nil
+}
+
+func (cli *socketClient) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestExtendVote(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetExtendVote(), nil
+}
+
+func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestVerifyVoteExtension(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetVerifyVoteExtension(), nil
+}
+
+func (cli *socketClient) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
+	res, err := cli.doRequest(ctx, types.ToRequestFinalizeBlock(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.GetFinalizeBlock(), nil
 }
 
 //----------------------------------------

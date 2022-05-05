@@ -134,7 +134,7 @@ func NewCLI(logger log.Logger) *CLI {
 			if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
-			if err := Test(logger, cli.testnet); err != nil {
+			if err := Test(cli.testnet); err != nil {
 				return err
 			}
 			return nil
@@ -259,7 +259,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "test",
 		Short: "Runs test cases against a running testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Test(logger, cli.testnet)
+			return Test(cli.testnet)
 		},
 	})
 

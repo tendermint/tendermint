@@ -47,6 +47,7 @@ Special thanks to external contributors on this release:
   - [libs/service] \#7288 Remove SetLogger method on `service.Service` interface. (@tychoish)
   - [abci/client] \#7607 Simplify client interface (removes most "async" methods). (@creachadair)
   - [libs/json] \#7673 Remove the libs/json (tmjson) library. (@creachadair)
+  - [crypto] \#8412 \#8432 Remove `crypto/tmhash` package in favor of  small functions in `crypto` package and cleanup of unused functions. (@tychoish)
 
 - Blockchain Protocol
 
@@ -84,3 +85,4 @@ Special thanks to external contributors on this release:
 - [cli] [#7837](https://github.com/tendermint/tendermint/pull/7837) fix app hash in state rollback. (@yihuang)
 - [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
+- [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)

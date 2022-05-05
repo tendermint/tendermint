@@ -1,6 +1,8 @@
 package sr25519
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,7 +50,7 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 
 	st := signingCtx.NewTranscriptBytes(msg)
 
-	sig, err := privKey.kp.Sign(crypto.CReader(), st)
+	sig, err := privKey.kp.Sign(rand.Reader, st)
 	if err != nil {
 		return nil, fmt.Errorf("sr25519: failed to sign message: %w", err)
 	}
@@ -132,7 +134,7 @@ func (privKey *PrivKey) UnmarshalJSON(data []byte) error {
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
 func GenPrivKey() PrivKey {
-	return genPrivKey(crypto.CReader())
+	return genPrivKey(rand.Reader)
 }
 
 func genPrivKey(rng io.Reader) PrivKey {
@@ -154,10 +156,9 @@ func genPrivKey(rng io.Reader) PrivKey {
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
-	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
-
+	seed := sha256.Sum256(secret)
 	var privKey PrivKey
-	if err := privKey.msk.UnmarshalBinary(seed); err != nil {
+	if err := privKey.msk.UnmarshalBinary(seed[:]); err != nil {
 		panic("sr25519: failed to deserialize MiniSecretKey: " + err.Error())
 	}
 

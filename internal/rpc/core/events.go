@@ -26,7 +26,7 @@ const (
 
 // Subscribe for events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
-func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes.ResultSubscribe, error) {
+func (env *Environment) Subscribe(ctx context.Context, req *coretypes.RequestSubscribe) (*coretypes.ResultSubscribe, error) {
 	callInfo := rpctypes.GetCallInfo(ctx)
 	addr := callInfo.RemoteAddr()
 
@@ -34,15 +34,15 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
 	} else if env.EventBus.NumClientSubscriptions(addr) >= env.Config.MaxSubscriptionsPerClient {
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
-	} else if len(query) > maxQueryLength {
+	} else if len(req.Query) > maxQueryLength {
 		return nil, errors.New("maximum query length exceeded")
 	}
 
 	env.Logger.Info("WARNING: Websocket subscriptions are deprecated and will be removed " +
 		"in Tendermint v0.37. See https://tinyurl.com/adr075 for more information.")
-	env.Logger.Info("Subscribe to query", "remote", addr, "query", query)
+	env.Logger.Info("Subscribe to query", "remote", addr, "query", req.Query)
 
-	q, err := tmquery.New(query)
+	q, err := tmquery.New(req.Query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query: %w", err)
 	}
@@ -83,7 +83,7 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 
 			// We have a message to deliver to the client.
 			resp := callInfo.RPCRequest.MakeResponse(&coretypes.ResultEvent{
-				Query:  query,
+				Query:  req.Query,
 				Data:   msg.Data(),
 				Events: msg.Events(),
 			})
@@ -102,15 +102,15 @@ func (env *Environment) Subscribe(ctx context.Context, query string) (*coretypes
 
 // Unsubscribe from events via WebSocket.
 // More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe
-func (env *Environment) Unsubscribe(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error) {
+func (env *Environment) Unsubscribe(ctx context.Context, req *coretypes.RequestUnsubscribe) (*coretypes.ResultUnsubscribe, error) {
 	args := tmpubsub.UnsubscribeArgs{Subscriber: rpctypes.GetCallInfo(ctx).RemoteAddr()}
-	env.Logger.Info("Unsubscribe from query", "remote", args.Subscriber, "subscription", query)
+	env.Logger.Info("Unsubscribe from query", "remote", args.Subscriber, "subscription", req.Query)
 
 	var err error
-	args.Query, err = tmquery.New(query)
+	args.Query, err = tmquery.New(req.Query)
 
 	if err != nil {
-		args.ID = query
+		args.ID = req.Query
 	}
 
 	err = env.EventBus.Unsubscribe(ctx, args)
@@ -148,17 +148,13 @@ func (env *Environment) UnsubscribeAll(ctx context.Context) (*coretypes.ResultUn
 // If maxItems ≤ 0, a default positive number of events is chosen. The values
 // of maxItems and waitTime may be capped to sensible internal maxima without
 // reporting an error to the caller.
-func (env *Environment) Events(ctx context.Context,
-	filter *coretypes.EventFilter,
-	maxItems int,
-	before, after cursor.Cursor,
-	waitTime time.Duration,
-) (*coretypes.ResultEvents, error) {
+func (env *Environment) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
 	if env.EventLog == nil {
 		return nil, errors.New("the event log is not enabled")
 	}
 
 	// Parse and validate parameters.
+	maxItems := req.MaxItems
 	if maxItems <= 0 {
 		maxItems = 10
 	} else if maxItems > 100 {
@@ -167,6 +163,8 @@ func (env *Environment) Events(ctx context.Context,
 
 	const minWaitTime = 1 * time.Second
 	const maxWaitTime = 30 * time.Second
+
+	waitTime := req.WaitTime
 	if waitTime < minWaitTime {
 		waitTime = minWaitTime
 	} else if waitTime > maxWaitTime {
@@ -174,12 +172,20 @@ func (env *Environment) Events(ctx context.Context,
 	}
 
 	query := tmquery.All
-	if filter != nil && filter.Query != "" {
-		q, err := tmquery.New(filter.Query)
+	if req.Filter != nil && req.Filter.Query != "" {
+		q, err := tmquery.New(req.Filter.Query)
 		if err != nil {
 			return nil, fmt.Errorf("invalid filter query: %w", err)
 		}
 		query = q
+	}
+
+	var before, after cursor.Cursor
+	if err := before.UnmarshalText([]byte(req.Before)); err != nil {
+		return nil, fmt.Errorf("invalid cursor %q: %w", req.Before, err)
+	}
+	if err := after.UnmarshalText([]byte(req.After)); err != nil {
+		return nil, fmt.Errorf("invalid cursor %q: %w", req.After, err)
 	}
 
 	var info eventlog.Info

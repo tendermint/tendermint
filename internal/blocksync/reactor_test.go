@@ -50,7 +50,6 @@ func setup(
 	genDoc *types.GenesisDoc,
 	privVal types.PrivValidator,
 	maxBlockHeights []int64,
-	chBuf uint,
 ) *reactorTestSuite {
 	t.Helper()
 
@@ -228,7 +227,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(64)
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -268,7 +267,7 @@ func TestReactor_SyncTime(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(101)
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(ctx, t)
 
@@ -296,7 +295,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(65)
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -348,7 +347,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 
-	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
+	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0})
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 

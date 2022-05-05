@@ -117,12 +117,6 @@ proto-check-breaking: check-proto-deps
 	@buf breaking --against ".git"
 .PHONY: proto-check-breaking
 
-# TODO: Should be removed when work on ABCI++ is complete.
-# For more information, see https://github.com/tendermint/tendermint/issues/8066
-abci-proto-gen:
-	./scripts/abci-gen.sh
-.PHONY: abci-proto-gen
-
 ###############################################################################
 ###                              Build ABCI                                 ###
 ###############################################################################

@@ -20,7 +20,7 @@ jobs:
         with:
           go-version: "1.17"
       - uses: actions/checkout@v3
-      - uses: technote-space/get-diff-action@v6.0.1
+      - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
             **/**.go
@@ -42,7 +42,7 @@ jobs:
     needs: tests
     steps:
       - uses: actions/checkout@v3
-      - uses: technote-space/get-diff-action@v6.0.1
+      - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
             **/**.go
@@ -69,7 +69,7 @@ jobs:
       - run: |
           cat ./*profile.out | grep -v "mode: set" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v3.0.0
+      - uses: codecov/codecov-action@v3.1.0
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF
