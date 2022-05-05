@@ -67,12 +67,6 @@ than *2n<sub>h</sub>/3* precommit votes voting for a block *b*, where *n<sub>h</
 same block. An *extended commit* is a *commit* where every precommit vote has its respective vote extension
 attached.
 
-> TODO: [From Daniel] Node statesyncs to *h*, but latest height is *h+1*. What then?
->
-> My thoughts: Can we show that *h+1* will be finalized by up-to-date nodes? I think we can. Else,
-> we probably need to modify statesync to not send Application snapshots that are less than 2 heights
-> away from the current height.
-
 ### Problem Description
 
 In the version of [ABCI](https://github.com/tendermint/spec/blob/4fb99af/spec/abci/README.md) present up to
