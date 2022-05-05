@@ -611,6 +611,7 @@ func (bs *BlockStore) Close() error {
 // key prefixes
 // NB: Before modifying these, cross-check them with those in
 // internal/state/store.go
+// TODO(thane): Move these and the ones in internal/state/store.go to their own package.
 const (
 	// prefixes are unique across all tm db's
 	prefixBlockMeta   = int64(0)
