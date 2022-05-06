@@ -290,7 +290,7 @@ into the block instead of delaying it until the next block.
 #### Updates to storage
 
 Currently we store the [every piece of each block][save-block] in the `BlockStore`.
-I suspect that this has lead to some mistakes in reasoning round the merits of
+I suspect that this has lead to some mistakes in reasoning around the merits of
 consolidating fields in the block. We could update the storage scheme we use to
 store only some pieces of each block and still achieve a space savings without having
 to change the block structure at all.
