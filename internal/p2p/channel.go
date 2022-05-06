@@ -273,6 +273,9 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 		for {
 			msg, err := sub.Next(ctx)
 			if err != nil {
+				// TODO: maybe signal to users that it
+				// was canceled, when we begin
+				// propagating errors out.
 				return
 			}
 
@@ -297,7 +300,6 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 				ChannelID: ch.chDesc.ID,
 			}:
 			}
-
 		}
 	}()
 
