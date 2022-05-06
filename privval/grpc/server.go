@@ -21,11 +21,9 @@ type SignerServer struct {
 	privVal types.PrivValidator
 }
 
-func NewSignerServer(chainID string,
-	privVal types.PrivValidator, log log.Logger) *SignerServer {
-
+func NewSignerServer(logger log.Logger, chainID string, privVal types.PrivValidator) *SignerServer {
 	return &SignerServer{
-		logger:  log,
+		logger:  logger,
 		chainID: chainID,
 		privVal: privVal,
 	}
@@ -56,8 +54,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 
 // SignVote receives a vote sign requests, attempts to sign it
 // returns SignedVoteResponse on success and error on failure
-func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVoteRequest) (
-	*privvalproto.SignedVoteResponse, error) {
+func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVoteRequest) (*privvalproto.SignedVoteResponse, error) {
 	vote := req.Vote
 
 	err := ss.privVal.SignVote(ctx, req.ChainId, vote)
@@ -72,8 +69,7 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 
 // SignProposal receives a proposal sign requests, attempts to sign it
 // returns SignedProposalResponse on success and error on failure
-func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.SignProposalRequest) (
-	*privvalproto.SignedProposalResponse, error) {
+func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.SignProposalRequest) (*privvalproto.SignedProposalResponse, error) {
 	proposal := req.Proposal
 
 	err := ss.privVal.SignProposal(ctx, req.ChainId, proposal)

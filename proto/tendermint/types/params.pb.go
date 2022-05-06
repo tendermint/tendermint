@@ -394,7 +394,7 @@ func (m *HashedParams) GetBlockMaxGas() int64 {
 // see the specification of proposer-based timestamps:
 // https://github.com/tendermint/tendermint/tree/master/spec/consensus/proposer-based-timestamp
 type SynchronyParams struct {
-	// message_delay bounds how long a proposal message may take to reach all validators on a newtork
+	// message_delay bounds how long a proposal message may take to reach all validators on a network
 	// and still be considered valid.
 	MessageDelay *time.Duration `protobuf:"bytes,1,opt,name=message_delay,json=messageDelay,proto3,stdduration" json:"message_delay,omitempty"`
 	// precision bounds how skewed a proposer's clock may be from any validator

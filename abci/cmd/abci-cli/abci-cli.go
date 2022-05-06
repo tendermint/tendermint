@@ -482,7 +482,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.Info(cmd.Context(), types.RequestInfo{Version: version})
+	res, err := client.Info(cmd.Context(), &types.RequestInfo{Version: version})
 	if err != nil {
 		return err
 	}
@@ -511,7 +511,7 @@ func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 		}
 		txs[i] = txBytes
 	}
-	res, err := client.FinalizeBlock(cmd.Context(), types.RequestFinalizeBlock{Txs: txs})
+	res, err := client.FinalizeBlock(cmd.Context(), &types.RequestFinalizeBlock{Txs: txs})
 	if err != nil {
 		return err
 	}
@@ -539,7 +539,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTx(cmd.Context(), types.RequestCheckTx{Tx: txBytes})
+	res, err := client.CheckTx(cmd.Context(), &types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -579,7 +579,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resQuery, err := client.Query(cmd.Context(), types.RequestQuery{
+	resQuery, err := client.Query(cmd.Context(), &types.RequestQuery{
 		Data:   queryBytes,
 		Path:   flagPath,
 		Height: int64(flagHeight),

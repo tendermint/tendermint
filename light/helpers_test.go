@@ -9,7 +9,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -160,7 +159,6 @@ func (pkz privKeys) ChangeKeys(delta int) privKeys {
 // NOTE: Expected to have a large validator set size ~ 100 validators.
 func genLightBlocksWithKeys(
 	t testing.TB,
-	chainID string,
 	numBlocks int64,
 	valSize int,
 	valVariation float32,
@@ -223,5 +221,5 @@ func mockNodeFromHeadersAndVals(headers map[int64]*types.SignedHeader,
 }
 
 func hash(s string) []byte {
-	return tmhash.Sum([]byte(s))
+	return crypto.Checksum([]byte(s))
 }

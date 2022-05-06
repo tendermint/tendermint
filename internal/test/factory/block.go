@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -25,7 +24,7 @@ func RandomAddress() []byte {
 }
 
 func RandomHash() []byte {
-	return crypto.CRandBytes(tmhash.Size)
+	return crypto.CRandBytes(crypto.HashSize)
 }
 
 func MakeBlockID() types.BlockID {

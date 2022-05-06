@@ -228,7 +228,7 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	goldenFilepath := filepath.Join("testdata", t.Name()+".golden")
 	if *update {
 		t.Logf("Updating golden test vector file %s", goldenFilepath)
-		data := createGoldenTestVectors(t)
+		data := createGoldenTestVectors()
 		require.NoError(t, os.WriteFile(goldenFilepath, []byte(data), 0644))
 	}
 	f, err := os.Open(goldenFilepath)
@@ -306,7 +306,7 @@ func readLots(t *testing.T, wg *sync.WaitGroup, conn io.Reader, n int) {
 // Creates the data for a test vector file.
 // The file format is:
 // Hex(diffie_hellman_secret), loc_is_least, Hex(recvSecret), Hex(sendSecret), Hex(challenge)
-func createGoldenTestVectors(t *testing.T) string {
+func createGoldenTestVectors() string {
 	data := ""
 	for i := 0; i < 32; i++ {
 		randSecretVector := tmrand.Bytes(32)

@@ -357,32 +357,6 @@ type Evidence struct {
 func (e Evidence) MarshalJSON() ([]byte, error)     { return jsontypes.Marshal(e.Value) }
 func (e *Evidence) UnmarshalJSON(data []byte) error { return jsontypes.Unmarshal(data, &e.Value) }
 
-// RequestEvents is the argument for the "/events" RPC endpoint.
-type RequestEvents struct {
-	// Optional filter spec. If nil or empty, all items are eligible.
-	Filter *EventFilter `json:"filter"`
-
-	// The maximum number of eligible items to return.
-	// If zero or negative, the server will report a default number.
-	MaxItems int `json:"maxItems"`
-
-	// Return only items after this cursor. If empty, the limit is just
-	// before the the beginning of the event log.
-	After string `json:"after"`
-
-	// Return only items before this cursor.  If empty, the limit is just
-	// after the head of the event log.
-	Before string `json:"before"`
-
-	// Wait for up to this long for events to be available.
-	WaitTime time.Duration `json:"waitTime"`
-}
-
-// An EventFilter specifies which events are selected by an /events request.
-type EventFilter struct {
-	Query string `json:"query"`
-}
-
 // ResultEvents is the response from the "/events" RPC endpoint.
 type ResultEvents struct {
 	// The items matching the request parameters, from newest

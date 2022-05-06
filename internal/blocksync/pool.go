@@ -28,7 +28,7 @@ eg, L = latency = 0.1s
 */
 
 const (
-	requestIntervalMS         = 2
+	requestInterval           = 2 * time.Millisecond
 	maxTotalRequesters        = 600
 	maxPeerErrBuffer          = 1000
 	maxPendingRequests        = maxTotalRequesters
@@ -130,27 +130,23 @@ func (*BlockPool) OnStop() {}
 
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
-	for {
-		if !pool.IsRunning() {
-			break
+	for pool.IsRunning() {
+		if ctx.Err() != nil {
+			return
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		switch {
-		case numPending >= maxPendingRequests:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
+		if numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters {
+			// This is preferable to using a timer because the request interval
+			// is so small. Larger request intervals may necessitate using a
+			// timer/ticker.
+			time.Sleep(requestInterval)
 			pool.removeTimedoutPeers()
-		case lenRequesters >= maxTotalRequesters:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
-			pool.removeTimedoutPeers()
-		default:
-			// request for more blocks.
-			pool.makeNextRequester(ctx)
+			continue
 		}
+
+		// request for more blocks.
+		pool.makeNextRequester(ctx)
 	}
 }
 
@@ -639,9 +635,16 @@ OUTER_LOOP:
 			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
 				return
 			}
+			if ctx.Err() != nil {
+				return
+			}
+
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				time.Sleep(requestIntervalMS * time.Millisecond)
+				// This is preferable to using a timer because the request
+				// interval is so small. Larger request intervals may
+				// necessitate using a timer/ticker.
+				time.Sleep(requestInterval)
 				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP

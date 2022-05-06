@@ -51,26 +51,29 @@ func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.Ca
 	}
 }
 
-func GetVoteExtensionToSign(ext *tmproto.VoteExtension) *tmproto.VoteExtensionToSign {
-	if ext == nil {
-		return nil
-	}
-	return &tmproto.VoteExtensionToSign{
-		AppDataToSign: ext.AppDataToSign,
+// CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
+// not contain ValidatorIndex and ValidatorAddress fields, or any fields
+// relating to vote extensions.
+func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
+	return tmproto.CanonicalVote{
+		Type:      vote.Type,
+		Height:    vote.Height,       // encoded as sfixed64
+		Round:     int64(vote.Round), // encoded as sfixed64
+		BlockID:   CanonicalizeBlockID(vote.BlockID),
+		Timestamp: vote.Timestamp,
+		ChainID:   chainID,
 	}
 }
 
-// CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
-// not contain ValidatorIndex and ValidatorAddress fields.
-func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
-	return tmproto.CanonicalVote{
-		Type:          vote.Type,
-		Height:        vote.Height,       // encoded as sfixed64
-		Round:         int64(vote.Round), // encoded as sfixed64
-		BlockID:       CanonicalizeBlockID(vote.BlockID),
-		Timestamp:     vote.Timestamp,
-		ChainID:       chainID,
-		VoteExtension: GetVoteExtensionToSign(vote.VoteExtension),
+// CanonicalizeVoteExtension extracts the vote extension from the given vote
+// and constructs a CanonicalizeVoteExtension struct, whose representation in
+// bytes is what is signed in order to produce the vote extension's signature.
+func CanonicalizeVoteExtension(chainID string, vote *tmproto.Vote) tmproto.CanonicalVoteExtension {
+	return tmproto.CanonicalVoteExtension{
+		Extension: vote.Extension,
+		Height:    vote.Height,
+		Round:     int64(vote.Round),
+		ChainId:   chainID,
 	}
 }
 

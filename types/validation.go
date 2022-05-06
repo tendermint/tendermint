@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/batch"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 )
 
@@ -132,11 +132,11 @@ func VerifyCommitLightTrusting(chainID string, vals *ValidatorSet, commit *Commi
 }
 
 // ValidateHash returns an error if the hash is not empty, but its
-// size != tmhash.Size.
+// size != crypto.HashSize.
 func ValidateHash(h []byte) error {
-	if len(h) > 0 && len(h) != tmhash.Size {
+	if len(h) > 0 && len(h) != crypto.HashSize {
 		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
-			tmhash.Size,
+			crypto.HashSize,
 			len(h),
 		)
 	}

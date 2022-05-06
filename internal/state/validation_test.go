@@ -12,8 +12,8 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/proxy"
@@ -68,7 +68,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
 	// some bad values
-	wrongHash := tmhash.Sum([]byte("this hash is wrong"))
+	wrongHash := crypto.Checksum([]byte("this hash is wrong"))
 	wrongVersion1 := state.Version.Consensus
 	wrongVersion1.Block += 2
 	wrongVersion2 := state.Version.Consensus
