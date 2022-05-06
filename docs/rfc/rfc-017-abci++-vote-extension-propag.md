@@ -189,30 +189,36 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
 
 - **(h)** *Advancing majority, lagging minority*
 
-    In this case, a set of full nodes, denoted *L<sub>h<sub>p</sub></sub>*, fall behind
+    In this case, some nodes are late. More precisely, at the present time, a set of full nodes,
+    denoted *L<sub>h<sub>p</sub></sub>*, are falling behind
     (e.g., temporary disconnection or network partition, memory thrashing, crashes, new nodes)
     an arbitrary
-    number of heights,
-    say between *h<sub>s</sub>* and *h<sub>p</sub>*, where *h<sub>p</sub>* is the present height.
+    number of heights:
+    between *h<sub>s</sub>* and *h<sub>p</sub>*, where *h<sub>s</sub> < h<sub>p</sub>*, and
+    *h<sub>p</sub>* is the highest height
+    any correct full node has reached so far.
 
-    Obviously, less than *n<sub>h<sub>p</sub></sub>/3* validators of *h<sub>p</sub>* can be part
-    of *L<sub>h<sub>p</sub></sub>*, since we need enough caught-up validators to make progress
-    at the present height.
-    Further, validator set changes between *h<sub>s</sub>* and *h<sub>p</sub>* impose an
-    additional restriction on which full nodes can be part of *L<sub>h<sub>p</sub></sub>*.
-    Since every node in *L<sub>h<sub>p</sub></sub>* did not take part in any consensus between
-    *h<sub>s</sub>* and *h<sub>p</sub>*, we have this restriction on *L<sub>h<sub>p</sub></sub>*:
+    The correct full nodes that reached *h<sub>p</sub>* were able to decide for *h<sub>p</sub>-1*.
+    Therefore, less than *n<sub>h<sub>p</sub>-1</sub>/3* validators of *h<sub>p</sub>-1* can be part
+    of *L<sub>h<sub>p</sub></sub>*, since enough up-to-date validators needed to actively participate
+    in consensus for *h<sub>p</sub>-1*.
 
-    - for each height *h*, where *h<sub>s</sub> ≤ h < h<sub>p</sub>*,
-    | *valset<sub>h</sub>* \ *L<sub>h<sub>p</sub></sub>*  | *> 2n<sub>h<sub>p</sub></sub>/3*
+    Since, at the present time,
+    no node in *L<sub>h<sub>p</sub></sub>* took part in any consensus between
+    *h<sub>s</sub>* and *h<sub>p</sub>-1*,
+    the reasoning above can be extended to validator set changes between *h<sub>s</sub>* and
+    *h<sub>p</sub>-1*. This results in the following restriction on the full nodes that can be part of *L<sub>h<sub>p</sub></sub>*.
 
-    If this property did not hold for a particular height *h*, where
+    - &forall; *h*, where *h<sub>s</sub> ≤ h < h<sub>p</sub>*,
+    | *valset<sub>h</sub>* &cap; *L<sub>h<sub>p</sub></sub>*  | *< n<sub>h</sub>/3*
+
+    If this property does not hold for a particular height *h*, where
     *h<sub>s</sub> ≤ h < h<sub>p</sub>*, Tendermint could not have progressed beyond *h* and
-    therefore *h<sub>p</sub>* could not be the present height (a contradiction).
+    therefore no full node could have reached *h<sub>p</sub>* (a contradiction).
 
     These lagging nodes in *L<sub>h<sub>p</sub></sub>* need to catch up. They have to obtain the
     information needed to make
-    progress from other nodes. For each height *h* between *h<sub>s</sub>* and *h<sub>p</sub>*,
+    progress from other nodes. For each height *h* between *h<sub>s</sub>* and *h<sub>p</sub>-2*,
     this includes the decided block for *h*, and the
     precommit votes also for *deciding h* (which can be extracted from the block at height *h+1*).
 
