@@ -870,8 +870,8 @@ IsFirstProposedInRound(prop, src, r) ==
 TimeLiveness == 
 \A r \in Rounds \ {MaxRound}, v \in ValidValues:
   LET p == Proposer[r] IN
-  /\ p \in Corr \* Correct process is proposer in round r
-  /\ 
+  p \in Corr \* Correct process is proposer in round r
+  =>  
     \E t \in Timestamps:
       LET prop == Proposal(v,t,r) IN
       (
