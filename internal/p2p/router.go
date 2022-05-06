@@ -202,6 +202,7 @@ type Router struct {
 	chDescs []*ChannelDescriptor
 
 	nodeInfoProducer func() *types.NodeInfo
+	chainID          string
 
 	legacy struct {
 		peerManager *PeerManager
@@ -225,6 +226,9 @@ type Router struct {
 	network struct {
 		host host.Host // network handle for ourselves
 		ps   *pubsub.PubSub
+
+		mtx      sync.Mutex
+		channels map[string]Channel
 	}
 }
 
@@ -303,47 +307,72 @@ type ChannelCreator func(context.Context, *ChannelDescriptor) (Channel, error)
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Channel, error) {
-	r.legacy.channelMtx.Lock()
-	defer r.legacy.channelMtx.Unlock()
+	if r.options.UseLibP2P {
+		info := r.nodeInfoProducer()
+		ch, err := NewLibP2PChannel(info.Network, chDesc, r.options.NetworkPubSub, r.options.NetworkHost)
+		if err != nil {
+			return nil, err
+		}
 
-	if _, ok := r.legacy.channelQueues[chDesc.ID]; ok {
-		return nil, fmt.Errorf("channel %v already exists", chDesc.ID)
-	}
-	r.chDescs = append(r.chDescs, chDesc)
+		// TODO(tychoish): might be nice (though ultimately
+		// not particularly impactful(?)) to be able to get the
+		// canonical name for the channel without constructing
+		// it.
 
-	messageType := chDesc.MessageType
+		name := ch.String()
+		r.network.mtx.Lock()
+		defer r.network.mtx.Unlock()
+		if _, ok := r.network.channels[name]; ok {
+			// TODO(tychoish) actually maybe it would be ok to just
+			// return the existing channel.
+			return nil, fmt.Errorf("cannot construct channel %q more than once", name)
+		}
+		r.network.channels[name] = ch
 
-	queue := r.legacy.queueFactory(chDesc.RecvBufferCapacity)
-	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
-	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
-	channel := NewChannel(chDesc.ID, chDesc.Name, queue.dequeue(), outCh, errCh)
+		return ch, nil
+	} else {
+		r.legacy.channelMtx.Lock()
+		defer r.legacy.channelMtx.Unlock()
 
-	var wrapper Wrapper
-	if w, ok := chDesc.MessageType.(Wrapper); ok {
-		wrapper = w
-	}
+		if _, ok := r.legacy.channelQueues[chDesc.ID]; ok {
+			return nil, fmt.Errorf("channel %v already exists", chDesc.ID)
+		}
+		r.chDescs = append(r.chDescs, chDesc)
 
-	r.legacy.channelQueues[chDesc.ID] = queue
-	r.legacy.channelMessages[chDesc.ID] = messageType
+		messageType := chDesc.MessageType
 
-	// add the channel to the nodeInfo if it's not already there.
-	r.nodeInfoProducer().AddChannel(uint16(chDesc.ID))
+		queue := r.legacy.queueFactory(chDesc.RecvBufferCapacity)
+		outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
+		errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
+		channel := NewChannel(chDesc.ID, chDesc.Name, queue.dequeue(), outCh, errCh)
 
-	r.legacy.transport.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
+		var wrapper Wrapper
+		if w, ok := chDesc.MessageType.(Wrapper); ok {
+			wrapper = w
+		}
 
-	go func() {
-		defer func() {
-			r.legacy.channelMtx.Lock()
-			delete(r.legacy.channelQueues, chDesc.ID)
-			delete(r.legacy.channelMessages, chDesc.ID)
-			r.legacy.channelMtx.Unlock()
-			queue.close()
+		r.legacy.channelQueues[chDesc.ID] = queue
+		r.legacy.channelMessages[chDesc.ID] = messageType
+
+		// add the channel to the nodeInfo if it's not already there.
+		r.nodeInfoProducer().AddChannel(uint16(chDesc.ID))
+
+		r.legacy.transport.AddChannelDescriptors([]*ChannelDescriptor{chDesc})
+
+		go func() {
+			defer func() {
+				r.legacy.channelMtx.Lock()
+				delete(r.legacy.channelQueues, chDesc.ID)
+				delete(r.legacy.channelMessages, chDesc.ID)
+				r.legacy.channelMtx.Unlock()
+				queue.close()
+			}()
+
+			r.routeChannel(ctx, chDesc.ID, outCh, errCh, wrapper)
 		}()
 
-		r.routeChannel(ctx, chDesc.ID, outCh, errCh, wrapper)
-	}()
-
-	return channel, nil
+		return channel, nil
+	}
 }
 
 // routeChannel receives outbound channel messages and routes them to the
@@ -976,6 +1005,12 @@ func (r *Router) setupQueueFactory(ctx context.Context) error {
 
 // OnStart implements service.Service.
 func (r *Router) OnStart(ctx context.Context) error {
+	if r.options.UseLibP2P {
+		return nil
+	}
+
+	r.chainID = r.nodeInfoProducer().Network
+
 	if err := r.setupQueueFactory(ctx); err != nil {
 		return err
 	}
@@ -998,6 +1033,10 @@ func (r *Router) OnStart(ctx context.Context) error {
 // here, since that would cause any reactor senders to panic, so it is the
 // sender's responsibility.
 func (r *Router) OnStop() {
+	if r.options.UseLibP2P {
+		return
+	}
+
 	// Close transport listeners (unblocks Accept calls).
 	if err := r.legacy.transport.Close(); err != nil {
 		r.logger.Error("failed to close transport", "err", err)

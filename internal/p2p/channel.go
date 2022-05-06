@@ -2,10 +2,15 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -213,4 +218,136 @@ func MergedChannelIterator(ctx context.Context, chs ...Channel) *ChannelIterator
 	}()
 
 	return iter
+}
+
+////////////////////////////////////////////////////////////////////////
+
+type libp2pChannelImpl struct {
+	chDesc  *ChannelDescriptor
+	ps      *pubsub.PubSub
+	h       host.Host
+	topic   *pubsub.Topic
+	chainID string
+	wrapper Wrapper
+}
+
+func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
+	ch := &libp2pChannelImpl{chDesc: chDesc, ps: ps, h: h, chainID: chainID}
+	topic, err := ps.Join(ch.canonicalizedTopicName())
+	if err != nil {
+		return nil, err
+	}
+	ch.topic = topic
+
+	if w, ok := chDesc.MessageType.(Wrapper); ok {
+		ch.wrapper = w
+	}
+
+	// TODO(tychoish) register handlers for
+	// request/response patterns
+
+	return ch, nil
+}
+
+func (ch *libp2pChannelImpl) String() string {
+	return fmt.Sprintf("Channel<%s>", ch.canonicalizedTopicName())
+}
+
+func (ch *libp2pChannelImpl) canonicalizedTopicName() string {
+	return strings.Join([]string{ch.chainID, ch.chDesc.Name, fmt.Sprint(ch.chDesc.ID)}, ".")
+}
+
+func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
+	iter := &ChannelIterator{
+		pipe: make(chan Envelope), // unbuffered
+	}
+
+	sub, err := ch.topic.Subscribe()
+	if err != nil {
+		return nil
+	}
+
+	go func() {
+		defer close(iter.pipe)
+		for {
+			msg, err := sub.Next(ctx)
+			if err != nil {
+				return
+			}
+
+			payload := proto.Clone(ch.chDesc.MessageType)
+			if err := proto.Unmarshal(msg.Data, payload); err != nil {
+				// TODO: add error reporting abilities
+				// so we don't just miss these errors.
+				return
+			}
+			if wrapper, ok := payload.(Wrapper); ok {
+				if payload, err = wrapper.Unwrap(); err != nil {
+					return
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case iter.pipe <- Envelope{
+				From:      types.NodeID(msg.From),
+				Message:   payload,
+				ChannelID: ch.chDesc.ID,
+			}:
+			}
+
+		}
+	}()
+
+	return nil
+}
+
+func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
+	if ch.wrapper != nil {
+		msg := proto.Clone(ch.wrapper)
+		if err := msg.(Wrapper).Wrap(e.Message); err != nil {
+			return err
+		}
+
+		e.Message = msg
+	}
+
+	e.From = types.NodeID(ch.h.ID())
+	bz, err := proto.Marshal(e.Message)
+	if err != nil {
+		return err
+	}
+
+	if e.Broadcast {
+		return ch.topic.Publish(ctx, bz)
+	}
+
+	if !ch.topicHasPeer(peer.ID(e.To)) {
+		return fmt.Errorf("peer %q does not exist", e.To)
+	}
+
+	// TODO: there's likely some tooling that exists for doing
+	// point-to-point messaging that we can leverage here, rather
+	// than implementing directly on-top of libp2p streams.
+
+	return errors.New("direct messages between peers not supported, yet")
+}
+
+func (ch *libp2pChannelImpl) topicHasPeer(id peer.ID) bool {
+	for _, peer := range ch.ps.ListPeers(ch.canonicalizedTopicName()) {
+		if peer == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (ch *libp2pChannelImpl) SendError(ctx context.Context, pe PeerError) error {
+	// TODO: change handling of errors to peers. This problably
+	// shouldn't be handled as a property of the channel, and
+	// rather as part of some peer-info/network-management
+	// interface, but we can do it here for now, to ensure compatibility.
+	ch.ps.BlacklistPeer(peer.ID(pe.NodeID))
+	return nil
 }
