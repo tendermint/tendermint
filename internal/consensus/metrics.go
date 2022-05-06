@@ -330,7 +330,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "round_voting_power_percent",
-			Help: "Precentage of the total voting power received with a round. " +
+			Help: "Percentage of the total voting power received with a round. " +
 				"The value begins at 0 for each round and approaches 1.0 as additional " +
 				"voting power is observed.",
 		}, append(labels, "vote_type")).With(labelsAndValues...),
