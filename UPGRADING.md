@@ -212,22 +212,25 @@ and one function have moved to the Tendermint `crypto` package:
 
 The format of all tendermint on-disk database keys changes in
 0.35. Upgrading nodes must either re-sync all data or run a migration
-script provided in this release. The script located in
-`github.com/tendermint/tendermint/scripts/keymigrate/migrate.go`
-provides the function `Migrate(context.Context, db.DB)` which you can
-operationalize as makes sense for your deployment.
+script provided in this release.
+
+The script located in
+`github.com/tendermint/tendermint/scripts/keymigrate/migrate.go` provides the
+function `Migrate(context.Context, db.DB)` which you can operationalize as
+makes sense for your deployment.
 
 For ease of use the `tendermint` command includes a CLI version of the
 migration script, which you can invoke, as in:
 
 	tendermint key-migrate
 
-This reads the configuration file as normal and allows the
-`--db-backend` and `--db-dir` flags to change database operations as
-needed.
+This reads the configuration file as normal and allows the `--db-backend` and
+`--db-dir` flags to override the database location as needed.
 
-The migration operation is idempotent and can be run more than once,
-if needed.
+The migration operation is intended to be idempotent, and should be safe to
+rerun on the same database multiple times.  As a safety measure, however, we
+recommend that operators test out the migration on a copy of the database
+first, if it is practical to do so, before applying it to the production data.
 
 ### CLI Changes
 
