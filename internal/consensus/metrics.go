@@ -394,17 +394,17 @@ func (m *Metrics) MarkBlockGossipComplete() {
 	m.BlockGossipReceiveLatency.Observe(time.Since(m.blockGossipStart).Seconds())
 }
 
-func (m *Metrics) MarkProposalProcessed(appValid bool) {
+func (m *Metrics) MarkProposalProcessed(accepted bool) {
 	status := "accepted"
-	if !appValid {
+	if !accepted {
 		status = "rejected"
 	}
 	m.ProposalReceiveCount.With("status", status).Add(1)
 }
 
-func (m *Metrics) MarkVoteExtensionReceived(appValid bool) {
+func (m *Metrics) MarkVoteExtensionReceived(accepted bool) {
 	status := "accepted"
-	if !appValid {
+	if !accepted {
 		status = "rejected"
 	}
 	m.VoteExtensionReceiveCount.With("status", status).Add(1)
