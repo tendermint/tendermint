@@ -307,7 +307,8 @@ type ChannelCreator func(context.Context, *ChannelDescriptor) (Channel, error)
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Channel, error) {
-	if r.options.UseLibP2P {
+	switch {
+	case r.options.UseLibP2P:
 		info := r.nodeInfoProducer()
 		ch, err := NewLibP2PChannel(info.Network, chDesc, r.options.NetworkPubSub, r.options.NetworkHost)
 		if err != nil {
@@ -330,7 +331,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Ch
 		r.network.channels[name] = ch
 
 		return ch, nil
-	} else {
+	default:
 		r.legacy.channelMtx.Lock()
 		defer r.legacy.channelMtx.Unlock()
 
