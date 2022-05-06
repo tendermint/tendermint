@@ -228,7 +228,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     propose at height *h<sub>c</sub>+1*, which requires having received the vote extensions for
     *h<sub>c</sub>*.
     As the vote extensions are *not* stored in the blockchain, and it is difficult to have strong
-    guarantees on *when* a late node considers itself caught up, providing the late note with the right
+    guarantees on *when* a late node considers itself caught up, providing the late node with the right
     vote extensions for the right height poses a problem.
 
 At this point, we have described and compared all cases raised in discussions leading up to this
