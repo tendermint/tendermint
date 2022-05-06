@@ -279,8 +279,7 @@ func checkRequiredHeaderFields(h *types.SignedHeader) error {
 		return errors.New("height in trusted header must be set (non zero")
 	}
 
-	zeroTime := time.Time{}
-	if h.Time == zeroTime {
+	if h.Time.IsZero() {
 		return errors.New("time in trusted header must be set")
 	}
 
