@@ -51,7 +51,7 @@ func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0644)
+	err = os.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0o644)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 			if node.Mode == e2e.ModeLight && strings.Contains(dir, "app") {
 				continue
 			}
-			err := os.MkdirAll(dir, 0755)
+			err := os.MkdirAll(dir, 0o755)
 			if err != nil {
 				return err
 			}
@@ -92,7 +92,7 @@ func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
+		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0o644)
 		if err != nil {
 			return err
 		}
@@ -202,8 +202,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	}
 	switch testnet.KeyType {
 	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
-		genesis.ConsensusParams.Validator.PubKeyTypes =
-			append(genesis.ConsensusParams.Validator.PubKeyTypes, types.ABCIPubKeyTypeSecp256k1)
+		genesis.ConsensusParams.Validator.PubKeyTypes = append(genesis.ConsensusParams.Validator.PubKeyTypes, types.ABCIPubKeyTypeSecp256k1)
 	default:
 		return genesis, errors.New("unsupported KeyType")
 	}
@@ -419,5 +418,5 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 	}
 	bz = regexp.MustCompile(`(?m)^trust-height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-height = %v`, height)))
 	bz = regexp.MustCompile(`(?m)^trust-hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-hash = "%X"`, hash)))
-	return os.WriteFile(cfgPath, bz, 0644)
+	return os.WriteFile(cfgPath, bz, 0o644)
 }

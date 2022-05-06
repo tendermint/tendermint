@@ -349,7 +349,8 @@ func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
 	if len(pubKeyAndPower) != 2 {
 		return &types.ExecTxResult{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
+			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower),
+		}
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 
@@ -358,7 +359,8 @@ func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
 	if err != nil {
 		return &types.ExecTxResult{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
+			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS),
+		}
 	}
 
 	// decode the power
@@ -366,7 +368,8 @@ func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
 	if err != nil {
 		return &types.ExecTxResult{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
+			Log:  fmt.Sprintf("Power (%s) is not an int", powerS),
+		}
 	}
 
 	// update
@@ -391,7 +394,8 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxRe
 			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
 			return &types.ExecTxResult{
 				Code: code.CodeTypeUnauthorized,
-				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
+				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr),
+			}
 		}
 		if err = app.state.db.Delete(key); err != nil {
 			panic(err)
@@ -403,7 +407,8 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxRe
 		if err := types.WriteMessage(&v, value); err != nil {
 			return &types.ExecTxResult{
 				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("error encoding validator: %v", err)}
+				Log:  fmt.Sprintf("error encoding validator: %v", err),
+			}
 		}
 		if err = app.state.db.Set(key, value.Bytes()); err != nil {
 			panic(err)

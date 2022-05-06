@@ -34,7 +34,8 @@ var _ privvalproto.PrivValidatorAPIServer = (*SignerServer)(nil)
 // PubKey receives a request for the pubkey
 // returns the pubkey on success and error on failure
 func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyRequest) (
-	*privvalproto.PubKeyResponse, error) {
+	*privvalproto.PubKeyResponse, error,
+) {
 	var pubKey crypto.PubKey
 
 	pubKey, err := ss.privVal.GetPubKey(ctx)

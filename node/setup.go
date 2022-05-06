@@ -75,7 +75,6 @@ func initDBs(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 ) (*store.BlockStore, dbm.DB, closer, error) {
-
 	blockStoreDB, err := dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return nil, nil, func() error { return nil }, fmt.Errorf("unable to initialize blockstore: %w", err)
@@ -205,7 +204,6 @@ func createPeerManager(
 	dbProvider config.DBProvider,
 	nodeID types.NodeID,
 ) (*p2p.PeerManager, closer, error) {
-
 	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
 	if err != nil {
 		return nil, func() error { return nil }, fmt.Errorf("couldn't parse ExternalAddress %q: %w", cfg.P2P.ExternalAddress, err)
@@ -284,7 +282,6 @@ func createRouter(
 	cfg *config.Config,
 	appClient abciclient.Client,
 ) (*p2p.Router, error) {
-
 	p2pLogger := logger.With("module", "p2p")
 
 	transportConf := conn.DefaultMConnConfig()
@@ -323,7 +320,6 @@ func makeNodeInfo(
 	genDoc *types.GenesisDoc,
 	versionInfo version.Consensus,
 ) (types.NodeInfo, error) {
-
 	txIndexerStatus := "off"
 
 	if indexer.IndexingEnabled(eventSinks) {
@@ -409,7 +405,6 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr, chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
 		return nil, fmt.Errorf("starting validator listener: %w", err)
@@ -495,7 +490,6 @@ func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, 
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
-
 			}
 			return privValidator, nil
 		}

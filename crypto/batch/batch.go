@@ -9,7 +9,6 @@ import (
 // CreateBatchVerifier checks if a key type implements the batch verifier interface.
 // Currently only ed25519 & sr25519 supports batch verification.
 func CreateBatchVerifier(pk crypto.PubKey) (crypto.BatchVerifier, bool) {
-
 	switch pk.Type() {
 	case ed25519.KeyType:
 		return ed25519.NewBatchVerifier(), true

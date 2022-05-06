@@ -103,7 +103,6 @@ func (t *testnetStats) getReportJSON(net *e2e.Testnet) string {
 		"dur":    t.totalTime.Seconds(),
 		"length": t.benchmarkLength,
 	})
-
 	if err != nil {
 		return ""
 	}

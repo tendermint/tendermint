@@ -398,7 +398,6 @@ func TestUnsubscribeAll(t *testing.T) {
 
 	sub1.mustFail(ctx, pubsub.ErrUnsubscribed)
 	sub2.mustFail(ctx, pubsub.ErrUnsubscribed)
-
 }
 
 func TestBufferCapacity(t *testing.T) {
@@ -427,7 +426,6 @@ func TestBufferCapacity(t *testing.T) {
 	case <-ctx.Done():
 		return
 	}
-
 }
 
 func newTestServer(ctx context.Context, t testing.TB, logger log.Logger) *pubsub.Server {

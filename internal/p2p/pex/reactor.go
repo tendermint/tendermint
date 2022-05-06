@@ -161,7 +161,7 @@ func (r *Reactor) processPexCh(ctx context.Context, pexCh *p2p.Channel) {
 
 	// Initially, we will request peers quickly to bootstrap.  This duration
 	// will be adjusted upward as knowledge of the network grows.
-	var nextPeerRequest = minReceiveRequestInterval
+	nextPeerRequest := minReceiveRequestInterval
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()

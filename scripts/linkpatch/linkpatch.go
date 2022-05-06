@@ -150,7 +150,7 @@ func processFile(r *regexp.Regexp, path string) error {
 	}
 	output.Write(input[pos:]) // the rest of the file
 
-	_, err = atomicfile.WriteAll(path, &output, 0644)
+	_, err = atomicfile.WriteAll(path, &output, 0o644)
 	return err
 }
 

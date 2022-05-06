@@ -135,7 +135,8 @@ func invalidDoPrevoteFunc(
 			Type:             tmproto.PrecommitType,
 			BlockID: types.BlockID{
 				Hash:          blockHash,
-				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
+				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)},
+			},
 		}
 
 		p := precommit.ToProto()

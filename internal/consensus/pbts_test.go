@@ -98,7 +98,6 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	}
 
 	if tc.height4ProposedBlockOffset == 0 {
-
 		// Set a default height4ProposedBlockOffset.
 		// Use a proposed block time that is greater than the time that the
 		// block at height 2 was delivered. Height 3 is not relevant for testing

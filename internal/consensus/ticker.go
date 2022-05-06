@@ -8,9 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-var (
-	tickTockBufferSize = 10
-)
+var tickTockBufferSize = 10
 
 // TimeoutTicker is a timer that schedules timeouts
 // conditional on the height/round/step in the timeoutInfo.

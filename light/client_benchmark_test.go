@@ -30,7 +30,8 @@ type providerBenchmarkImpl struct {
 }
 
 func newProviderBenchmarkImpl(headers map[int64]*types.SignedHeader,
-	vals map[int64]*types.ValidatorSet) provider.Provider {
+	vals map[int64]*types.ValidatorSet,
+) provider.Provider {
 	impl := providerBenchmarkImpl{
 		blocks: make(map[int64]*types.LightBlock, len(headers)),
 	}
@@ -172,5 +173,4 @@ func BenchmarkBackwards(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-
 }

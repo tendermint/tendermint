@@ -65,7 +65,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 			defer os.RemoveAll(thisConfig.RootDir)
 
-			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+			ensureDir(t, path.Dir(thisConfig.Consensus.WalFile()), 0o700) // dir for wal
 			app := kvstore.NewApplication()
 			vals := types.TM2PB.ValidatorUpdates(state.Validators)
 			_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
@@ -144,7 +144,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for _, ps := range bzReactor.peers {
 				voteCh := rts.voteChannels[bzNodeID]
 				if i < len(bzReactor.peers)/2 {
-
 					require.NoError(t, voteCh.Send(ctx,
 						p2p.Envelope{
 							To: ps.peerID,

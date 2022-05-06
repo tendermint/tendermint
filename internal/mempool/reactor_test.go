@@ -102,7 +102,6 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 				rts.reactors[nodeID].Wait()
 				require.False(t, rts.reactors[nodeID].IsRunning())
 			}
-
 		}
 	})
 

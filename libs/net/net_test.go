@@ -7,7 +7,6 @@ import (
 )
 
 func TestProtocolAndAddress(t *testing.T) {
-
 	cases := []struct {
 		fullAddr string
 		proto    string

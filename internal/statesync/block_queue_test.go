@@ -64,7 +64,6 @@ loop:
 			trackingHeight--
 			queue.success()
 		}
-
 	}
 
 	wg.Wait()
@@ -172,7 +171,6 @@ loop:
 	}(t)
 	queue.retry(retryHeight)
 	wg.Wait()
-
 }
 
 func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {

@@ -35,9 +35,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-)
+var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 type reactorTestSuite struct {
 	network             *p2ptest.Network
@@ -497,7 +495,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
-			ev}, int64(len(ev.Bytes())))
+			ev,
+		}, int64(len(ev.Bytes())))
 		evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 
 		evpool2 := sm.EmptyEvidencePool{}

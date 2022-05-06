@@ -72,7 +72,7 @@ func NewCLI() (*CLI, error) {
 
 // generate generates manifests in a directory.
 func (cli *CLI) generate() error {
-	err := os.MkdirAll(cli.opts.Directory, 0755)
+	err := os.MkdirAll(cli.opts.Directory, 0o755)
 	if err != nil {
 		return err
 	}

@@ -24,7 +24,6 @@ const (
 // The IndexerService will accept a list of one or more EventSink types. During the OnStart method
 // it will call the appropriate APIs on each EventSink to index both block and transaction events.
 type EventSink interface {
-
 	// IndexBlockEvents indexes the blockheader.
 	IndexBlockEvents(types.EventDataNewBlockHeader) error
 

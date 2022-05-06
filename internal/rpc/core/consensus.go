@@ -117,5 +117,6 @@ func (env *Environment) ConsensusParams(ctx context.Context, req *coretypes.Requ
 
 	return &coretypes.ResultConsensusParams{
 		BlockHeight:     height,
-		ConsensusParams: consensusParams}, nil
+		ConsensusParams: consensusParams,
+	}, nil
 }

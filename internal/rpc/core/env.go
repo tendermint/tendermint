@@ -349,5 +349,4 @@ func (env *Environment) StartService(ctx context.Context, conf *config.Config) (
 	}
 
 	return listeners, nil
-
 }

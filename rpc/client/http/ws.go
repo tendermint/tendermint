@@ -77,7 +77,8 @@ func (w *wsEvents) Stop() error { return w.ws.Stop() }
 //
 // It returns an error if wsEvents is not running.
 func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
+	outCapacity ...int,
+) (out <-chan coretypes.ResultEvent, err error) {
 	if err := w.ws.Subscribe(ctx, query); err != nil {
 		return nil, err
 	}

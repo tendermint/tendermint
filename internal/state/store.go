@@ -418,7 +418,6 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 		return nil, err
 	}
 	if len(buf) == 0 {
-
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
@@ -485,7 +484,6 @@ func (store dbStore) SaveValidatorSets(lowerHeight, upperHeight int64, vals *typ
 // LoadValidators loads the ValidatorSet for a given height.
 // Returns ErrNoValSetForHeight if the validator set can't be found for this height.
 func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
-
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
 		return nil, ErrNoValSetForHeight{Height: height, Err: err}

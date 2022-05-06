@@ -66,7 +66,6 @@ func TestASCIITrim(t *testing.T) {
 		assertCorrectTrim(t, "a ", "a")
 		assertCorrectTrim(t, " a ", "a")
 	})
-
 }
 
 func TestStringSliceEqual(t *testing.T) {

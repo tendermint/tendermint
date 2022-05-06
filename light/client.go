@@ -176,7 +176,6 @@ func NewClient(
 	trustedStore store.Store,
 	options ...Option,
 ) (*Client, error) {
-
 	// Check whether the trusted store already has a trusted block. If so, then create
 	// a new client from the trusted store instead of the trust options.
 	lastHeight, err := trustedStore.LastLightBlockHeight()
@@ -239,8 +238,8 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	options ...Option) (*Client, error) {
-
+	options ...Option,
+) (*Client, error) {
 	// Check that the witness list does not include duplicates or the primary
 	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
 		return nil, err
@@ -553,8 +552,8 @@ func (c *Client) verifySequential(
 	ctx context.Context,
 	trustedBlock *types.LightBlock,
 	newLightBlock *types.LightBlock,
-	now time.Time) error {
-
+	now time.Time,
+) error {
 	var (
 		verifiedBlock = trustedBlock
 		interimBlock  *types.LightBlock
@@ -647,8 +646,8 @@ func (c *Client) verifySkipping(
 	source provider.Provider,
 	trustedBlock *types.LightBlock,
 	newLightBlock *types.LightBlock,
-	now time.Time) ([]*types.LightBlock, error) {
-
+	now time.Time,
+) ([]*types.LightBlock, error) {
 	var (
 		// The block cache is ordered in height from highest to lowest. We start
 		// with the newLightBlock and for any height requested in between we add
@@ -728,8 +727,8 @@ func (c *Client) verifySkippingAgainstPrimary(
 	ctx context.Context,
 	trustedBlock *types.LightBlock,
 	newLightBlock *types.LightBlock,
-	now time.Time) error {
-
+	now time.Time,
+) error {
 	trace, err := c.verifySkipping(ctx, c.primary, trustedBlock, newLightBlock, now)
 	if err == nil {
 		// Success! Now compare the header with the witnesses to ensure it's not a fork.
@@ -742,7 +741,7 @@ func (c *Client) verifySkippingAgainstPrimary(
 		}
 	}
 
-	var e = &ErrVerificationFailed{}
+	e := &ErrVerificationFailed{}
 	// all errors from verify skipping should be `ErrVerificationFailed`
 	// if it's not we just return the error directly
 	if !errors.As(err, e) {
@@ -882,8 +881,8 @@ func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
 func (c *Client) backwards(
 	ctx context.Context,
 	trustedHeader *types.Header,
-	newHeader *types.Header) error {
-
+	newHeader *types.Header,
+) error {
 	var (
 		verifiedHeader = trustedHeader
 		interimHeader  *types.Header
@@ -1028,7 +1027,6 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			case witnessResponsesC <- witnessResponse{lb, witnessIndex, err}:
 			case <-ctx.Done():
 			}
-
 		}(index, witnessResponsesC)
 	}
 

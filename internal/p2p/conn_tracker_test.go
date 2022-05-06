@@ -80,5 +80,4 @@ func TestConnTracker(t *testing.T) {
 		time.Sleep(window)
 		require.NoError(t, ct.AddConn(ip))
 	})
-
 }

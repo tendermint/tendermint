@@ -15,7 +15,7 @@ import (
 
 func aVote(t testing.TB) *types.Vote {
 	t.Helper()
-	var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
+	stamp, err := time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
 	require.NoError(t, err)
 
 	return &types.Vote{
@@ -43,9 +43,11 @@ func (emt *excludedMarshalTo) ProtoMessage() {}
 func (emt *excludedMarshalTo) String() string {
 	return emt.msg.String()
 }
+
 func (emt *excludedMarshalTo) Reset() {
 	emt.msg.Reset()
 }
+
 func (emt *excludedMarshalTo) Marshal() ([]byte, error) {
 	return proto.Marshal(emt.msg)
 }

@@ -170,5 +170,4 @@ func TestMigrations(t *testing.T) {
 			})
 		}
 	})
-
 }

@@ -35,7 +35,6 @@ func cachingStateFetcher(store Store) func() (State, error) {
 
 		return cache, nil
 	}
-
 }
 
 // TxPreCheckFromStore returns a function to filter transactions before processing.
@@ -61,7 +60,6 @@ func TxPreCheckForState(state State) mempool.PreCheckFunc {
 		)
 		return mempool.PreCheckMaxBytes(maxDataBytes)(tx)
 	}
-
 }
 
 // TxPostCheckFromStore returns a function to filter transactions after processing.

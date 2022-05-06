@@ -109,7 +109,6 @@ func (app *proxyClient) OnStart(ctx context.Context) error {
 					"err", killErr)
 			}
 		}
-
 	}()
 
 	return app.client.Start(ctx)

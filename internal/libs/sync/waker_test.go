@@ -9,7 +9,6 @@ import (
 )
 
 func TestWaker(t *testing.T) {
-
 	// A new waker should block when sleeping.
 	waker := tmsync.NewWaker()
 

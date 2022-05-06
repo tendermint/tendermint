@@ -43,7 +43,6 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 					ID:     dbctx,
 					Config: conf,
 				})
-
 				if err != nil {
 					return fmt.Errorf("constructing database handle: %w", err)
 				}
@@ -56,7 +55,6 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 				if dbctx == "blockstore" {
 					if err := scmigrate.Migrate(ctx, db); err != nil {
 						return fmt.Errorf("running seen commit migration: %w", err)
-
 					}
 				}
 			}

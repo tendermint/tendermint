@@ -211,7 +211,8 @@ func (r *ABCIRecorder) ABCIQueryWithOptions(
 	ctx context.Context,
 	path string,
 	data bytes.HexBytes,
-	opts client.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
+	opts client.ABCIQueryOptions,
+) (*coretypes.ResultABCIQuery, error) {
 	res, err := r.Client.ABCIQueryWithOptions(ctx, path, data, opts)
 	r.addCall(Call{
 		Name:     "abci_query",

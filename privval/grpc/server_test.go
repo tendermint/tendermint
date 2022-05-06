@@ -20,7 +20,6 @@ import (
 const ChainID = "123"
 
 func TestGetPubKey(t *testing.T) {
-
 	testCases := []struct {
 		name string
 		pv   types.PrivValidator
@@ -50,11 +49,9 @@ func TestGetPubKey(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestSignVote(t *testing.T) {
-
 	ts := time.Now()
 	hash := tmrand.Bytes(crypto.HashSize)
 	valAddr := tmrand.Bytes(crypto.AddressSize)
@@ -65,44 +62,48 @@ func TestSignVote(t *testing.T) {
 		have, want *types.Vote
 		err        bool
 	}{
-		{name: "valid", pv: types.NewMockPV(), have: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
-		}, want: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
+		{
+			name: "valid", pv: types.NewMockPV(), have: &types.Vote{
+				Type:             tmproto.PrecommitType,
+				Height:           1,
+				Round:            2,
+				BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp:        ts,
+				ValidatorAddress: valAddr,
+				ValidatorIndex:   1,
+			}, want: &types.Vote{
+				Type:             tmproto.PrecommitType,
+				Height:           1,
+				Round:            2,
+				BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp:        ts,
+				ValidatorAddress: valAddr,
+				ValidatorIndex:   1,
+			},
+			err: false,
 		},
-			err: false},
-		{name: "invalid vote", pv: types.NewErroringMockPV(), have: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
-			Signature:        []byte("signed"),
-		}, want: &types.Vote{
-			Type:             tmproto.PrecommitType,
-			Height:           1,
-			Round:            2,
-			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp:        ts,
-			ValidatorAddress: valAddr,
-			ValidatorIndex:   1,
-			Signature:        []byte("signed"),
+		{
+			name: "invalid vote", pv: types.NewErroringMockPV(), have: &types.Vote{
+				Type:             tmproto.PrecommitType,
+				Height:           1,
+				Round:            2,
+				BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp:        ts,
+				ValidatorAddress: valAddr,
+				ValidatorIndex:   1,
+				Signature:        []byte("signed"),
+			}, want: &types.Vote{
+				Type:             tmproto.PrecommitType,
+				Height:           1,
+				Round:            2,
+				BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp:        ts,
+				ValidatorAddress: valAddr,
+				ValidatorIndex:   1,
+				Signature:        []byte("signed"),
+			},
+			err: true,
 		},
-			err: true},
 	}
 
 	for _, tc := range testCases {
@@ -130,7 +131,6 @@ func TestSignVote(t *testing.T) {
 }
 
 func TestSignProposal(t *testing.T) {
-
 	ts := time.Now()
 	hash := tmrand.Bytes(crypto.HashSize)
 
@@ -140,40 +140,44 @@ func TestSignProposal(t *testing.T) {
 		have, want *types.Proposal
 		err        bool
 	}{
-		{name: "valid", pv: types.NewMockPV(), have: &types.Proposal{
-			Type:      tmproto.ProposalType,
-			Height:    1,
-			Round:     2,
-			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp: ts,
-		}, want: &types.Proposal{
-			Type:      tmproto.ProposalType,
-			Height:    1,
-			Round:     2,
-			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp: ts,
+		{
+			name: "valid", pv: types.NewMockPV(), have: &types.Proposal{
+				Type:      tmproto.ProposalType,
+				Height:    1,
+				Round:     2,
+				POLRound:  2,
+				BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp: ts,
+			}, want: &types.Proposal{
+				Type:      tmproto.ProposalType,
+				Height:    1,
+				Round:     2,
+				POLRound:  2,
+				BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp: ts,
+			},
+			err: false,
 		},
-			err: false},
-		{name: "invalid proposal", pv: types.NewErroringMockPV(), have: &types.Proposal{
-			Type:      tmproto.ProposalType,
-			Height:    1,
-			Round:     2,
-			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp: ts,
-			Signature: []byte("signed"),
-		}, want: &types.Proposal{
-			Type:      tmproto.ProposalType,
-			Height:    1,
-			Round:     2,
-			POLRound:  2,
-			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-			Timestamp: ts,
-			Signature: []byte("signed"),
+		{
+			name: "invalid proposal", pv: types.NewErroringMockPV(), have: &types.Proposal{
+				Type:      tmproto.ProposalType,
+				Height:    1,
+				Round:     2,
+				POLRound:  2,
+				BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp: ts,
+				Signature: []byte("signed"),
+			}, want: &types.Proposal{
+				Type:      tmproto.ProposalType,
+				Height:    1,
+				Round:     2,
+				POLRound:  2,
+				BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+				Timestamp: ts,
+				Signature: []byte("signed"),
+			},
+			err: true,
 		},
-			err: true},
 	}
 
 	for _, tc := range testCases {

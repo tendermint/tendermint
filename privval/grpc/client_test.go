@@ -41,7 +41,6 @@ func dialer(t *testing.T, pv types.PrivValidator, logger log.Logger) (*grpc.Serv
 }
 
 func TestSignerClient_GetPubKey(t *testing.T) {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

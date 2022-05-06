@@ -144,7 +144,6 @@ func TestStateProposerSelection2(t *testing.T) {
 		ensureNewRound(t, newRoundCh, height, i+round+1) // wait for the new round event each round
 		incrementRound(vss[1:]...)
 	}
-
 }
 
 // a non-validator should timeout into the prevote round
@@ -1143,7 +1142,6 @@ func TestStateLock_POLDoesNotUnlock(t *testing.T) {
 
 	// verify that we haven't update our locked block since the first round
 	validatePrecommit(ctx, t, cs1, round, 0, vss[0], nil, blockID.Hash)
-
 }
 
 // TestStateLock_MissingProposalWhenPOLSeenDoesNotUnlock tests that observing
@@ -1371,7 +1369,7 @@ func TestStateLock_POLSafety1(t *testing.T) {
 
 	ensureNewRound(t, newRoundCh, height, round)
 
-	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
+	// XXX: this isnt guaranteed to get there before the timeoutPropose ...
 	err = cs1.SetProposalAndBlock(ctx, prop, propBlock, propBlockParts, "some peer")
 	require.NoError(t, err)
 	/*Round2
@@ -1519,7 +1517,6 @@ func TestStateLock_POLSafety2(t *testing.T) {
 
 	ensurePrevote(t, voteCh, height, round)
 	validatePrevote(ctx, t, cs1, round, vss[0], nil)
-
 }
 
 // TestState_PrevotePOLFromPreviousRound tests that a validator will prevote
@@ -2095,7 +2092,6 @@ func TestExtendVoteCalled(t *testing.T) {
 			VoteExtension:    []byte("extension"),
 		})
 	}
-
 }
 
 // TestVerifyVoteExtensionNotCalledOnAbsentPrecommit tests that the VerifyVoteExtension
@@ -2168,7 +2164,6 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 		Height:           height,
 		VoteExtension:    []byte("extension"),
 	})
-
 }
 
 // TestPrepareProposalReceivesVoteExtensions tests that the PrepareProposal method
@@ -2435,7 +2430,6 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	assert.True(t, rs.Step == cstypes.RoundStepCommit)
 	assert.True(t, rs.ProposalBlock == nil)
 	assert.True(t, rs.ProposalBlockParts.Header().Equals(blockID.PartSetHeader))
-
 }
 
 // What we want:
@@ -2756,7 +2750,6 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 		t.Errorf("should not output stats message after receiving the known block part!")
 	case <-time.After(50 * time.Millisecond):
 	}
-
 }
 
 func TestStateOutputVoteStats(t *testing.T) {
@@ -2797,7 +2790,6 @@ func TestStateOutputVoteStats(t *testing.T) {
 		t.Errorf("should not output stats message after receiving the known vote or vote from bigger height")
 	case <-time.After(50 * time.Millisecond):
 	}
-
 }
 
 func TestSignSameVoteTwice(t *testing.T) {
@@ -2973,7 +2965,8 @@ func signAddPrecommitWithExtension(ctx context.Context,
 	chainID string,
 	blockID types.BlockID,
 	extension []byte,
-	stub *validatorStub) {
+	stub *validatorStub,
+) {
 	v, err := stub.signVote(ctx, tmproto.PrecommitType, chainID, blockID, extension)
 	require.NoError(t, err, "failed to sign vote")
 	addVotes(cs, v)

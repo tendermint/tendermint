@@ -27,5 +27,4 @@ func GetDebugCommand(logger log.Logger) *cobra.Command {
 	cmd.AddCommand(getKillCmd(logger))
 	cmd.AddCommand(getDumpCmd(logger))
 	return cmd
-
 }

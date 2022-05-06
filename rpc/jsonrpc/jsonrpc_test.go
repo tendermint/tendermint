@@ -224,7 +224,6 @@ func echoViaWS(ctx context.Context, cl *client.WSClient, val string) (string, er
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
 		return "", err
-
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
@@ -246,7 +245,6 @@ func echoBytesViaWS(ctx context.Context, cl *client.WSClient, bytes []byte) ([]b
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
 		return []byte{}, msg.Error
-
 	}
 	result := new(ResultEchoBytes)
 	err = json.Unmarshal(msg.Result, result)

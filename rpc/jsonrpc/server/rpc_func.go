@@ -117,7 +117,6 @@ func (rf *RPCFunc) adjustParams(data []byte) (json.RawMessage, error) {
 		return base, nil
 	}
 	return nil, errors.New("parameters must be an object or an array")
-
 }
 
 // NewRPCFunc constructs an RPCFunc for f, which must be a function whose type

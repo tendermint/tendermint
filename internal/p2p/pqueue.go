@@ -91,7 +91,6 @@ func newPQScheduler(
 	chDescs []*ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
 ) *pqScheduler {
-
 	// copy each ChannelDescriptor and sort them by ascending channel priority
 	chDescsCopy := make([]*ChannelDescriptor, len(chDescs))
 	copy(chDescsCopy, chDescs)

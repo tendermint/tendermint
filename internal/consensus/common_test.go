@@ -71,7 +71,7 @@ func configSetup(t *testing.T) *config.Config {
 	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
 
 	walDir := filepath.Dir(cfg.Consensus.WalFile())
-	ensureDir(t, walDir, 0700)
+	ensureDir(t, walDir, 0o700)
 
 	return cfg
 }
@@ -114,8 +114,8 @@ func (vs *validatorStub) signVote(
 	voteType tmproto.SignedMsgType,
 	chainID string,
 	blockID types.BlockID,
-	voteExtension []byte) (*types.Vote, error) {
-
+	voteExtension []byte,
+) (*types.Vote, error) {
 	pubKey, err := vs.PrivValidator.GetPubKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
@@ -157,8 +157,8 @@ func signVote(
 	vs *validatorStub,
 	voteType tmproto.SignedMsgType,
 	chainID string,
-	blockID types.BlockID) *types.Vote {
-
+	blockID types.BlockID,
+) *types.Vote {
 	var ext []byte
 	if voteType == tmproto.PrecommitType {
 		ext = []byte("extension")
@@ -398,7 +398,8 @@ func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, addr
 	votesSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 		ClientID: testSubscriber,
 		Query:    types.EventQueryVote,
-		Limit:    10})
+		Limit:    10,
+	})
 	if err != nil {
 		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
 	}
@@ -517,7 +518,7 @@ func newStateWithConfigAndBlockStore(
 func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 	t.Helper()
 	privValidatorKeyFile := cfg.PrivValidator.KeyFile()
-	ensureDir(t, filepath.Dir(privValidatorKeyFile), 0700)
+	ensureDir(t, filepath.Dir(privValidatorKeyFile), 0o700)
 	privValidatorStateFile := cfg.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
 	require.NoError(t, err)
@@ -572,7 +573,8 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 //-------------------------------------------------------------------------------
 
 func ensureNoMessageBeforeTimeout(t *testing.T, ch <-chan tmpubsub.Message, timeout time.Duration,
-	errorMessage string) {
+	errorMessage string,
+) {
 	t.Helper()
 	select {
 	case <-time.After(timeout):
@@ -819,7 +821,7 @@ func makeConsensusState(
 		}
 
 		walDir := filepath.Dir(thisConfig.Consensus.WalFile())
-		ensureDir(t, walDir, 0700)
+		ensureDir(t, walDir, 0o700)
 
 		app := kvstore.NewApplication()
 		closeFuncs = append(closeFuncs, app.Close)
@@ -870,7 +872,7 @@ func randConsensusNetWithPeers(
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
-		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0o700) // dir for wal
 		if i == 0 {
 			peer0Config = thisConfig
 		}

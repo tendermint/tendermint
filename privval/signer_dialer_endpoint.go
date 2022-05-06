@@ -53,7 +53,6 @@ func NewSignerDialerEndpoint(
 	dialer SocketDialer,
 	options ...SignerServiceEndpointOption,
 ) *SignerDialerEndpoint {
-
 	sd := &SignerDialerEndpoint{
 		dialer:         dialer,
 		retryWait:      defaultRetryWaitMilliseconds * time.Millisecond,

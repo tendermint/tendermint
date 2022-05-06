@@ -21,7 +21,6 @@ func TestVerify(t *testing.T) {
 	for _, filename := range filenames {
 		filename := filename
 		t.Run(filename, func(t *testing.T) {
-
 			jsonBlob, err := os.ReadFile(filename)
 			if err != nil {
 				t.Fatal(err)

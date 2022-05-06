@@ -26,7 +26,7 @@ func writeConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return os.WriteFile(cfile, []byte(data), 0600)
+	return os.WriteFile(cfile, []byte(data), 0o600)
 }
 
 // clearConfig clears env vars, the given root dir, and resets viper.
@@ -126,7 +126,6 @@ func TestRootFlagsEnv(t *testing.T) {
 
 			assert.Equal(t, tc.logLevel, conf.LogLevel)
 		})
-
 	}
 }
 
@@ -158,7 +157,7 @@ func TestRootConfig(t *testing.T) {
 
 			// XXX: path must match cfg.defaultConfigPath
 			configFilePath := filepath.Join(defaultRoot, "config")
-			err := tmos.EnsureDir(configFilePath, 0700)
+			err := tmos.EnsureDir(configFilePath, 0o700)
 			require.NoError(t, err)
 
 			// write the non-defaults to a different path
@@ -186,5 +185,5 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return os.WriteFile(cfile, []byte(data), 0600)
+	return os.WriteFile(cfile, []byte(data), 0o600)
 }

@@ -29,6 +29,7 @@ func (t *testService) OnStop() {
 	}
 	t.stopped = true
 }
+
 func (t *testService) OnStart(context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -131,7 +132,5 @@ func TestBaseService(t *testing.T) {
 			require.True(t, ts.isStopped())
 			require.False(t, ts.isMultiStopped())
 		})
-
 	})
-
 }

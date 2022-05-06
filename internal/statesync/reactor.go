@@ -111,7 +111,6 @@ func getChannelDescriptors() map[p2p.ChannelID]*p2p.ChannelDescriptor {
 			Name:                "params",
 		},
 	}
-
 }
 
 // Metricer defines an interface used for the rpc sync info query, please see statesync.metrics
@@ -964,7 +963,6 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 			peerUpdate.Channels.Contains(ParamsChannel) {
 
 			r.peers.Append(peerUpdate.NodeID)
-
 		} else {
 			r.logger.Error("could not use peer for statesync", "peer", peerUpdate.NodeID)
 		}
@@ -1145,6 +1143,7 @@ func (r *Reactor) SnapshotHeight() int64 {
 	}
 	return 0
 }
+
 func (r *Reactor) SnapshotChunksCount() int64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()

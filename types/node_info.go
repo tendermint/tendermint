@@ -186,7 +186,6 @@ func (info NodeInfo) Copy() NodeInfo {
 }
 
 func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
-
 	dni := new(tmp2p.NodeInfo)
 	dni.ProtocolVersion = tmp2p.ProtocolVersion{
 		P2P:   info.ProtocolVersion.P2P,
@@ -285,5 +284,4 @@ func removeProtocolIfDefined(addr string) string {
 		return strings.Split(addr, "://")[1]
 	}
 	return addr
-
 }

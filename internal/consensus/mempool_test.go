@@ -44,7 +44,8 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
-		Params:     factory.ConsensusParams()})
+		Params:     factory.ConsensusParams(),
+	})
 	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -72,7 +73,8 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
-		Params:     factory.ConsensusParams()})
+		Params:     factory.ConsensusParams(),
+	})
 	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
@@ -98,7 +100,8 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
-		Params:     factory.ConsensusParams()})
+		Params:     factory.ConsensusParams(),
+	})
 	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
 	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
@@ -187,7 +190,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
-		Params:     factory.ConsensusParams()})
+		Params:     factory.ConsensusParams(),
+	})
 	app := NewCounterApplication()
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	blockStore := store.NewBlockStore(dbm.NewMemDB())

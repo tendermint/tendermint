@@ -166,7 +166,6 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestVerifyNonAdjacentHeaders(t *testing.T) {

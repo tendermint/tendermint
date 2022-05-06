@@ -166,7 +166,6 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	case tcpConn := <-conCh:
 		return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 	}
-
 }
 
 // Dial implements Transport.
@@ -301,7 +300,6 @@ func (c *mConnConnection) Handshake(
 		case errCh <- err:
 		case <-ctx.Done():
 		}
-
 	}()
 
 	select {
@@ -349,7 +347,6 @@ func (c *mConnConnection) handshake(
 		case errCh <- err:
 		case <-ctx.Done():
 		}
-
 	}()
 	wg.Add(1)
 	go func() {

@@ -255,7 +255,8 @@ func TestPeerManager_Add(t *testing.T) {
 	// Adding a third peer with MaxPeers=2 should cause bID, which is
 	// the lowest-scored peer (not in PersistentPeers), to be removed.
 	added, err = peerManager.Add(p2p.NodeAddress{
-		Protocol: "tcp", NodeID: cID, Hostname: "localhost"})
+		Protocol: "tcp", NodeID: cID, Hostname: "localhost",
+	})
 	require.NoError(t, err)
 	require.True(t, added)
 	require.ElementsMatch(t, []types.NodeID{aID, cID}, peerManager.Peers())
@@ -746,7 +747,8 @@ func TestPeerManager_DialFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.DialFailed(ctx, p2p.NodeAddress{
-		Protocol: "tcp", NodeID: aID, Hostname: "localhost"}))
+		Protocol: "tcp", NodeID: aID, Hostname: "localhost",
+	}))
 	require.Equal(t, []p2p.NodeAddress{a}, peerManager.Addresses(aID))
 
 	dial, err = peerManager.TryDialNext()
@@ -1493,6 +1495,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
 }
+
 func TestPeerManager_TryEvictNext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

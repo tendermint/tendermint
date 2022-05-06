@@ -200,7 +200,6 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-
 			sub, err := eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
 				ClientID: fmt.Sprintf("client-%d", i),
 				Query:    tmquery.MustCompile(tc.query),
@@ -333,8 +332,8 @@ func TestEventBusPublishEventEvidenceValidated(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("did not receive a block header after 1 sec.")
 	}
-
 }
+
 func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

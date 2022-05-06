@@ -31,7 +31,6 @@ application.
 			return nil
 		},
 	}
-
 }
 
 // RollbackState takes the state at the current height n and overwrites it with the state

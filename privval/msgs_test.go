@@ -33,7 +33,6 @@ func exampleVote() *types.Vote {
 }
 
 func exampleProposal() *types.Proposal {
-
 	return &types.Proposal{
 		Type:      tmproto.SignedMsgType(1),
 		Height:    3,

@@ -129,7 +129,6 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 
 	if _, err := kvstore.Commit(ctx); err != nil {
 		t.Fatal(err)
-
 	}
 
 	resInfo, err = kvstore.Info(ctx, &types.RequestInfo{})
@@ -139,7 +138,6 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
-
 }
 
 // add a validator, remove a validator, update a validator
@@ -208,7 +206,6 @@ func TestValUpdates(t *testing.T) {
 	vals1 = append([]types.ValidatorUpdate{v1}, vals1[1:]...)
 	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
-
 }
 
 func makeApplyBlock(ctx context.Context, t *testing.T, kvstore types.Application, heightInt int, diff []types.ValidatorUpdate, txs ...[]byte) {
@@ -230,7 +227,6 @@ func makeApplyBlock(ctx context.Context, t *testing.T, kvstore types.Application
 	}
 
 	valsEqual(t, diff, resFinalizeBlock.ValidatorUpdates)
-
 }
 
 // order doesn't matter

@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-
 	conn, err := tmnet.Connect("unix://test.sock")
 	if err != nil {
 		log.Fatal(err.Error())
@@ -34,7 +33,7 @@ func main() {
 }
 
 func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error) {
-	var bufWriter = bufio.NewWriter(conn)
+	bufWriter := bufio.NewWriter(conn)
 
 	// Write desired request
 	err := types.WriteMessage(req, bufWriter)
@@ -51,12 +50,12 @@ func makeRequest(conn io.ReadWriter, req *types.Request) (*types.Response, error
 	}
 
 	// Read desired response
-	var res = &types.Response{}
+	res := &types.Response{}
 	err = types.ReadMessage(conn, res)
 	if err != nil {
 		return nil, err
 	}
-	var resFlush = &types.Response{}
+	resFlush := &types.Response{}
 	err = types.ReadMessage(conn, resFlush)
 	if err != nil {
 		return nil, err

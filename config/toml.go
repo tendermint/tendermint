@@ -13,7 +13,7 @@ import (
 )
 
 // defaultDirPerm is the default permissions used when creating directories.
-const defaultDirPerm = 0700
+const defaultDirPerm = 0o700
 
 var configTemplate *template.Template
 
@@ -59,7 +59,7 @@ func (cfg *Config) WriteToTemplate(path string) error {
 		return err
 	}
 
-	return writeFile(path, buffer.Bytes(), 0644)
+	return writeFile(path, buffer.Bytes(), 0o644)
 }
 
 func writeDefaultConfigFileIfNone(rootDir string) error {
@@ -588,15 +588,15 @@ func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, er
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		if err := writeFile(genesisFilePath, []byte(testGenesis), 0644); err != nil {
+		if err := writeFile(genesisFilePath, []byte(testGenesis), 0o644); err != nil {
 			return nil, err
 		}
 	}
 	// we always overwrite the priv val
-	if err := writeFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644); err != nil {
+	if err := writeFile(privKeyFilePath, []byte(testPrivValidatorKey), 0o644); err != nil {
 		return nil, err
 	}
-	if err := writeFile(privStateFilePath, []byte(testPrivValidatorState), 0644); err != nil {
+	if err := writeFile(privStateFilePath, []byte(testPrivValidatorState), 0o644); err != nil {
 		return nil, err
 	}
 

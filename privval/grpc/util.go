@@ -30,7 +30,7 @@ func DefaultDialOptions(
 		maxCallRecvMsgSize = 1 << 20 // Default 5Mb
 	)
 
-	var kacp = keepalive.ClientParameters{
+	kacp := keepalive.ClientParameters{
 		Time:    10 * time.Second, // send pings every 10 seconds if there is no activity
 		Timeout: 2 * time.Second,  // wait 2 seconds for ping ack before considering the connection dead
 	}

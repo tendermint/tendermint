@@ -101,7 +101,7 @@ func (pvKey FilePVKey) Save() error {
 	if err != nil {
 		return err
 	}
-	return tempfile.WriteFileAtomic(outFile, data, 0600)
+	return tempfile.WriteFileAtomic(outFile, data, 0o600)
 }
 
 //-------------------------------------------------------------------------------
@@ -133,7 +133,6 @@ func (lss *FilePVLastSignState) reset() {
 // we have already signed for this HRS, and can reuse the existing signature).
 // It panics if the HRS matches the arguments, there's a SignBytes, but no Signature.
 func (lss *FilePVLastSignState) checkHRS(height int64, round int32, step int8) (bool, error) {
-
 	if lss.Height > height {
 		return false, fmt.Errorf("height regression. Got %v, last height %v", height, lss.Height)
 	}
@@ -176,7 +175,7 @@ func (lss *FilePVLastSignState) Save() error {
 	if err != nil {
 		return err
 	}
-	return tempfile.WriteFileAtomic(outFile, jsonBytes, 0600)
+	return tempfile.WriteFileAtomic(outFile, jsonBytes, 0o600)
 }
 
 //-------------------------------------------------------------------------------

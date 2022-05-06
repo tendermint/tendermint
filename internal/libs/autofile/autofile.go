@@ -38,7 +38,7 @@ if err != nil {
 
 const (
 	autoFileClosePeriod = 1000 * time.Millisecond
-	autoFilePerms       = os.FileMode(0600)
+	autoFilePerms       = os.FileMode(0o600)
 )
 
 // ErrAutoFileClosed is reported when operations attempt to use an autofile

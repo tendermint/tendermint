@@ -221,7 +221,6 @@ func TestClientStatusRPC(t *testing.T) {
 	require.NoError(t, err)
 
 	require.EqualValues(t, lightStatus.LastTrustedHash, blockAtTrustedHeight.Hash())
-
 }
 
 // If the primary is not in the witness list, we will return 1

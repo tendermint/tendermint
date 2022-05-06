@@ -27,9 +27,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var psqldb *sql.DB
-var resource *dockertest.Resource
-var pSink indexer.EventSink
+var (
+	psqldb   *sql.DB
+	resource *dockertest.Resource
+	pSink    indexer.EventSink
+)
 
 var (
 	user     = "postgres"

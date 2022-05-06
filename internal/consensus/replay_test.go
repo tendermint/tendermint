@@ -55,7 +55,8 @@ import (
 // wal writer when we need to, instead of with every message.
 
 func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
-	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
+	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store,
+) {
 	logger := log.NewNopLogger()
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
@@ -123,14 +124,18 @@ func TestWALCrash(t *testing.T) {
 		initFn       func(dbm.DB, *State, context.Context)
 		heightToStop int64
 	}{
-		{"empty block",
+		{
+			"empty block",
 			func(stateDB dbm.DB, cs *State, ctx context.Context) {},
-			1},
-		{"many non-empty blocks",
+			1,
+		},
+		{
+			"many non-empty blocks",
 			func(stateDB dbm.DB, cs *State, ctx context.Context) {
 				go sendTxs(ctx, t, cs)
 			},
-			3},
+			3,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -147,7 +152,8 @@ func TestWALCrash(t *testing.T) {
 }
 
 func crashWALandCheckLiveness(rctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
-	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
+	initFn func(dbm.DB, *State, context.Context), heightToStop int64,
+) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
 
@@ -284,7 +290,8 @@ func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
 
 func (w *crashingWAL) SearchForEndHeight(
 	height int64,
-	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+	options *WALSearchOptions,
+) (rd io.ReadCloser, found bool, err error) {
 	return w.next.SearchForEndHeight(height, options)
 }
 
@@ -883,7 +890,6 @@ func buildAppStateFromChain(
 	default:
 		require.Fail(t, "unknown mode %v", mode)
 	}
-
 }
 
 func buildTMStateFromChain(
@@ -1070,7 +1076,7 @@ func makeBlockchainFromWAL(t *testing.T, wal WAL) ([]*types.Block, []*types.Comm
 		case EndHeightMessage:
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
-				var pbb = new(tmproto.Block)
+				pbb := new(tmproto.Block)
 				bz, err := io.ReadAll(thisBlockParts.GetReader())
 				require.NoError(t, err)
 
@@ -1106,7 +1112,7 @@ func makeBlockchainFromWAL(t *testing.T, wal WAL) ([]*types.Block, []*types.Comm
 	bz, err := io.ReadAll(thisBlockParts.GetReader())
 	require.NoError(t, err)
 
-	var pbb = new(tmproto.Block)
+	pbb := new(tmproto.Block)
 	require.NoError(t, proto.Unmarshal(bz, pbb))
 
 	block, err := types.BlockFromProto(pbb)
@@ -1200,9 +1206,11 @@ func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
 func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }
+
 func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
 }
+
 func (bs *mockBlockStore) LoadSeenCommit() *types.Commit {
 	return bs.commits[len(bs.commits)-1]
 }

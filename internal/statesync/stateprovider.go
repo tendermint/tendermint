@@ -423,7 +423,6 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 						}
 					}
 				}
-
 			}(peer)
 		}
 		sig := make(chan struct{})
@@ -459,5 +458,4 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			return param, nil
 		}
 	}
-
 }

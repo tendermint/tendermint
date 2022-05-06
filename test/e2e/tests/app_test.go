@@ -181,11 +181,9 @@ func TestApp_Tx(t *testing.T) {
 				assert.Equal(t, key, string(abciResp.Response.Key))
 				assert.Equal(t, value, string(abciResp.Response.Value))
 			})
-
 		})
 
 	}
-
 }
 
 func TestApp_VoteExtensions(t *testing.T) {

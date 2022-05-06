@@ -35,7 +35,8 @@ func TestStatus(t *testing.T) {
 					BackFilledBlocks:    9,
 					BackFillBlocksTotal: 10,
 				},
-			}},
+			},
+		},
 	}
 
 	r := mock.NewStatusRecorder(m)

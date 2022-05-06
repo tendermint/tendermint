@@ -46,7 +46,7 @@ func makeToMigrate(val []byte) (*types.Commit, error) {
 		return nil, errors.New("empty value")
 	}
 
-	var pbc = new(tmproto.Commit)
+	pbc := new(tmproto.Commit)
 
 	if err := proto.Unmarshal(val, pbc); err != nil {
 		return nil, fmt.Errorf("error reading block seen commit: %w", err)

@@ -21,8 +21,8 @@ func NewHTTPClient(
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
-	options ...Option) (*Client, error) {
-
+	options ...Option,
+) (*Client, error) {
 	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)
 	if err != nil {
 		return nil, err

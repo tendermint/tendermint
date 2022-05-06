@@ -2,9 +2,7 @@ package version
 
 import tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
-var (
-	TMVersion = TMVersionDefault
-)
+var TMVersion = TMVersionDefault
 
 const (
 

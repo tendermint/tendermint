@@ -194,7 +194,6 @@ func makeNode(
 		if err != nil {
 			return nil, combineCloseError(fmt.Errorf("can't get pubkey: %w", err),
 				makeCloser(closers))
-
 		}
 		if pubKey == nil {
 			return nil, combineCloseError(
@@ -551,7 +550,6 @@ func (n *nodeImpl) OnStop() {
 			// Error from closing listeners, or context timeout:
 			n.logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
-
 	}
 	if err := n.shutdownOps(); err != nil {
 		if strings.TrimSpace(err.Error()) != "" {
@@ -689,7 +687,6 @@ func defaultMetricsProvider(cfg *config.InstrumentationConfig) metricsProvider {
 // database, or creates one using the given genesisDocProvider. On success this also
 // returns the genesis doc loaded through the given provider.
 func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.GenesisDoc) (sm.State, error) {
-
 	// 1. Attempt to load state form the database
 	state, err := stateStore.Load()
 	if err != nil {

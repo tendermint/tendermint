@@ -25,7 +25,6 @@ func TestBlockchainInfo(t *testing.T) {
 		resultLength int64
 		wantErr      bool
 	}{
-
 		// min > max
 		{0, 0, 0, 0, 10, 0, true},  // min set to 1
 		{0, 1, 0, 0, 10, 0, true},  // max set to height (0)

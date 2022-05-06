@@ -1016,7 +1016,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	_, valOld := state.Validators.GetByIndex(0)
-	var pubkeyOld = valOld.PubKey
+	pubkeyOld := valOld.PubKey
 	pubkey := ed25519.GenPrivKey().PubKey()
 
 	// Swap the first validator with a new one (validator set size stays the same).

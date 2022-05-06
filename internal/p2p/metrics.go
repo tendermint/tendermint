@@ -18,12 +18,10 @@ const (
 	MetricsSubsystem = "p2p"
 )
 
-var (
-	// valueToLabelRegexp is used to find the golang package name and type name
-	// so that the name can be turned into a prometheus label where the characters
-	// in the label do not include prometheus special characters such as '*' and '.'.
-	valueToLabelRegexp = regexp.MustCompile(`\*?(\w+)\.(.*)`)
-)
+// valueToLabelRegexp is used to find the golang package name and type name
+// so that the name can be turned into a prometheus label where the characters
+// in the label do not include prometheus special characters such as '*' and '.'.
+var valueToLabelRegexp = regexp.MustCompile(`\*?(\w+)\.(.*)`)
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {

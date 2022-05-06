@@ -171,7 +171,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 					Height:          5,
 					ChainID:         "block_test",
 					Time:            tmtime.Now(),
-					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
+					ProposerAddress: tmrand.Bytes(crypto.AddressSize),
+				},
 				makeTestCommit(5, tmtime.Now()),
 			),
 			parts:      validPartSet,
@@ -273,8 +274,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 				require.NoError(t, err)
 			}
 			bCommit := bs.LoadBlockCommit(commitHeight)
-			return &quad{block: bBlock, seenCommit: bSeenCommit, commit: bCommit,
-				meta: bBlockMeta}, nil
+			return &quad{
+				block: bBlock, seenCommit: bSeenCommit, commit: bCommit,
+				meta: bBlockMeta,
+			}, nil
 		})
 
 		if subStr := tuple.wantPanic; subStr != "" {
@@ -475,7 +478,9 @@ func TestLoadBlockMeta(t *testing.T) {
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{Header: types.Header{
 		Version: version.Consensus{
-			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
+			Block: version.BlockProtocol, App: 0,
+		}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize),
+	}}
 	pbm := meta.ToProto()
 	err = db.Set(blockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)
@@ -551,7 +556,6 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 		c6 := bs.LoadBlockCommit(h - 1)
 		require.Equal(t, blockCommit.Hash(), c6.Hash())
 	}
-
 }
 
 func doFn(fn func() (interface{}, error)) (res interface{}, err error, panicErr error) {

@@ -26,8 +26,10 @@ func getTestProposal(t testing.TB) *Proposal {
 	return &Proposal{
 		Height: 12345,
 		Round:  23456,
-		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
-			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
+		BlockID: BlockID{
+			Hash:          []byte("--June_15_2020_amino_was_removed"),
+			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")},
+		},
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
@@ -141,7 +143,6 @@ func BenchmarkProposalVerifySignature(b *testing.B) {
 }
 
 func TestProposalValidateBasic(t *testing.T) {
-
 	privVal := NewMockPV()
 	testCases := []struct {
 		testName         string

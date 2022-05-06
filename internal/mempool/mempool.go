@@ -96,7 +96,6 @@ func NewTxMempool(
 	proxyAppConn abciclient.Client,
 	options ...TxMempoolOption,
 ) *TxMempool {
-
 	txmp := &TxMempool{
 		logger:        logger,
 		config:        cfg,

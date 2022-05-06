@@ -43,7 +43,6 @@ func startPool(t *testing.T, pool *evidence.Pool, store sm.Store) {
 	if err := pool.Start(state); err != nil {
 		t.Fatalf("cannot start state pool: %v", err)
 	}
-
 }
 
 func TestEvidencePoolBasic(t *testing.T) {
@@ -147,8 +146,10 @@ func TestAddExpiredEvidence(t *testing.T) {
 		{height, defaultEvidenceTime, false, "valid evidence"},
 		{expiredHeight, defaultEvidenceTime, false, "valid evidence (despite old height)"},
 		{height - 1, expiredEvidenceTime, false, "valid evidence (despite old time)"},
-		{expiredHeight - 1, expiredEvidenceTime, true,
-			"evidence from height 1 (created at: 2019-01-01 00:00:00 +0000 UTC) is too old"},
+		{
+			expiredHeight - 1, expiredEvidenceTime, true,
+			"evidence from height 1 (created at: 2019-01-01 00:00:00 +0000 UTC) is too old",
+		},
 		{height, defaultEvidenceTime.Add(1 * time.Minute), true, "evidence time and block time is different"},
 	}
 
@@ -369,7 +370,6 @@ func TestEventOnEvidenceValidated(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("did not receive a block header after 1 sec.")
 	}
-
 }
 
 // check that valid light client evidence is correctly validated and stored in

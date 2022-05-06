@@ -120,7 +120,6 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store) *reactorTe
 				require.False(t, r.IsRunning())
 			}
 		}
-
 	})
 	t.Cleanup(leaktest.Check(t))
 
@@ -266,7 +265,6 @@ func TestReactorMultiDisconnect(t *testing.T) {
 
 	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 	require.Equal(t, secondary.PeerManager.Status(primary.NodeID), p2p.PeerStatusUp)
-
 }
 
 // TestReactorBroadcastEvidence creates an environment of multiple peers that
@@ -328,7 +326,6 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, pool := range rts.pools {
 		require.Equal(t, numEvidence, int(pool.Size()))
 	}
-
 }
 
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
@@ -513,7 +510,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 
 func TestEvidenceListSerialization(t *testing.T) {
 	exampleVote := func(msgType byte) *types.Vote {
-		var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
+		stamp, err := time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
 		require.NoError(t, err)
 
 		return &types.Vote{

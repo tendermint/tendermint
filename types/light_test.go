@@ -59,7 +59,6 @@ func TestLightBlockValidateBasic(t *testing.T) {
 			assert.NoError(t, err, tc.name)
 		}
 	}
-
 }
 
 func TestLightBlockProtobuf(t *testing.T) {
@@ -115,7 +114,6 @@ func TestLightBlockProtobuf(t *testing.T) {
 			assert.Equal(t, lightBlock, lb)
 		}
 	}
-
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {

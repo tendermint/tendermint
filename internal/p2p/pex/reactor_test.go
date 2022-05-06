@@ -485,7 +485,6 @@ func (r *reactorTestSuite) listenFor(
 		require.Fail(t, "timed out waiting for message",
 			"node=%v, waitPeriod=%s", node, waitPeriod)
 	}
-
 }
 
 func (r *reactorTestSuite) listenForRequest(ctx context.Context, t *testing.T, fromNode, toNode int, waitPeriod time.Duration) {

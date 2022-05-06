@@ -100,7 +100,6 @@ func NewBlockPool(
 	requestsCh chan<- BlockRequest,
 	errorsCh chan<- peerError,
 ) *BlockPool {
-
 	bp := &BlockPool{
 		logger:       logger,
 		peers:        make(map[types.NodeID]*bpPeer),

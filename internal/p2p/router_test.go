@@ -298,7 +298,6 @@ func TestRouter_Channel_Wrapper(t *testing.T) {
 		From:    aID,
 		Message: &p2ptest.Message{Value: "unwrap:foo"},
 	})
-
 }
 
 // WrapperMessage prepends the value with "wrap:" and "unwrap:" to test it.

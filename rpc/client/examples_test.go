@@ -122,7 +122,6 @@ func TestHTTPBatching(t *testing.T) {
 				_, err := batch.ABCIQuery(ctx, "/key", key)
 				if err == nil {
 					exists++
-
 				}
 			}
 			return exists == 2

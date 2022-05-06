@@ -236,7 +236,6 @@ func TestMigration(t *testing.T) {
 			keys, err := getAllLegacyKeys(db)
 			require.NoError(t, err)
 			require.Equal(t, 0, len(keys))
-
 		})
 	})
 }

@@ -138,7 +138,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
-	var numSyncingNodes = 0
+	numSyncingNodes := 0
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
 	// at the initial height, and that we have two archive nodes. We also set up

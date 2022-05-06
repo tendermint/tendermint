@@ -17,9 +17,7 @@ import (
 	"github.com/creachadair/tomledit/transform"
 )
 
-var (
-	doDesnake = flag.Bool("desnake", false, "Convert snake_case to kebab-case before comparing")
-)
+var doDesnake = flag.Bool("desnake", false, "Convert snake_case to kebab-case before comparing")
 
 func init() {
 	flag.Usage = func() {

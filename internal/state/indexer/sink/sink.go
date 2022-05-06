@@ -59,5 +59,4 @@ func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chai
 		}
 	}
 	return eventSinks, nil
-
 }

@@ -146,8 +146,8 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 // ABCIQueryWithOptions returns the result for the given height (opts.Height).
 // If no height is provided, the results of the block preceding the latest are returned.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes,
-	opts rpcclient.ABCIQueryOptions) (*coretypes.ResultABCIQuery, error) {
-
+	opts rpcclient.ABCIQueryOptions,
+) (*coretypes.ResultABCIQuery, error) {
 	// always request the proof
 	opts.Prove = true
 
@@ -564,7 +564,6 @@ func (c *Client) Validators(
 	height *int64,
 	pagePtr, perPagePtr *int,
 ) (*coretypes.ResultValidators, error) {
-
 	// Update the light client if we're behind and retrieve the light block at the
 	// requested height or at the latest height if no height is provided.
 	l, err := c.updateLightClientIfNeededTo(ctx, height)
@@ -595,7 +594,8 @@ func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*cor
 }
 
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
+	outCapacity ...int,
+) (out <-chan coretypes.ResultEvent, err error) {
 	return c.next.Subscribe(ctx, subscriber, query, outCapacity...) //nolint:staticcheck
 }
 
@@ -684,7 +684,6 @@ const (
 )
 
 func validatePage(pagePtr *int, perPage uint, totalCount int) (int, error) {
-
 	if pagePtr == nil { // no page parameter
 		return 1, nil
 	}

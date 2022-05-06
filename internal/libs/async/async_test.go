@@ -11,10 +11,9 @@ import (
 )
 
 func TestParallel(t *testing.T) {
-
 	// Create tasks.
-	var counter = new(int32)
-	var tasks = make([]Task, 100*1000)
+	counter := new(int32)
+	tasks := make([]Task, 100*1000)
 	for i := 0; i < len(tasks); i++ {
 		tasks[i] = func(i int) (res interface{}, abort bool, err error) {
 			atomic.AddInt32(counter, 1)
@@ -23,7 +22,7 @@ func TestParallel(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var trs, ok = Parallel(tasks...)
+	trs, ok := Parallel(tasks...)
 	assert.True(t, ok)
 
 	// Verify.
@@ -52,14 +51,13 @@ func TestParallel(t *testing.T) {
 }
 
 func TestParallelAbort(t *testing.T) {
-
-	var flow1 = make(chan struct{}, 1)
-	var flow2 = make(chan struct{}, 1)
-	var flow3 = make(chan struct{}, 1) // Cap must be > 0 to prevent blocking.
-	var flow4 = make(chan struct{}, 1)
+	flow1 := make(chan struct{}, 1)
+	flow2 := make(chan struct{}, 1)
+	flow3 := make(chan struct{}, 1) // Cap must be > 0 to prevent blocking.
+	flow4 := make(chan struct{}, 1)
 
 	// Create tasks.
-	var tasks = []Task{
+	tasks := []Task{
 		func(i int) (res interface{}, abort bool, err error) {
 			assert.Equal(t, i, 0)
 			flow1 <- struct{}{}
@@ -83,7 +81,7 @@ func TestParallelAbort(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultSet, ok = Parallel(tasks...)
+	taskResultSet, ok := Parallel(tasks...)
 	assert.False(t, ok, "ok should be false since we aborted task #2.")
 
 	// Verify task #3.
@@ -104,9 +102,8 @@ func TestParallelAbort(t *testing.T) {
 }
 
 func TestParallelRecover(t *testing.T) {
-
 	// Create tasks.
-	var tasks = []Task{
+	tasks := []Task{
 		func(i int) (res interface{}, abort bool, err error) {
 			return 0, false, nil
 		},
@@ -119,7 +116,7 @@ func TestParallelRecover(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultSet, ok = Parallel(tasks...)
+	taskResultSet, ok := Parallel(tasks...)
 	assert.False(t, ok, "ok should be false since we panic'd in task #2.")
 
 	// Verify task #0, #1, #2.
@@ -130,7 +127,8 @@ func TestParallelRecover(t *testing.T) {
 
 // Wait for result
 func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int,
-	val interface{}, err error, pnk interface{}) {
+	val interface{}, err error, pnk interface{},
+) {
 	taskResult, ok := taskResultSet.LatestResult(index)
 	taskName := fmt.Sprintf("Task #%v", index)
 	assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)

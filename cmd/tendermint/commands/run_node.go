@@ -15,9 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-var (
-	genesisHash []byte
-)
+var genesisHash []byte
 
 // AddNodeFlags exposes some common configuration options from conf in the flag
 // set for cmd. This is a convenience for commands embedding a Tendermint node.

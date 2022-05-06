@@ -52,7 +52,6 @@ func RunReplayFile(
 
 // Replay msgs in file or start the console
 func (cs *State) ReplayFile(ctx context.Context, file string, console bool) error {
-
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
 	}
@@ -79,7 +78,7 @@ func (cs *State) ReplayFile(ctx context.Context, file string, console bool) erro
 	}()
 
 	// just open the file for reading, no need to use wal
-	fp, err := os.OpenFile(file, os.O_RDONLY, 0600)
+	fp, err := os.OpenFile(file, os.O_RDONLY, 0o600)
 	if err != nil {
 		return err
 	}
@@ -155,7 +154,7 @@ func (pb *playback) replayReset(ctx context.Context, count int, newStepSub event
 	if err := pb.fp.Close(); err != nil {
 		return err
 	}
-	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0600)
+	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0o600)
 	if err != nil {
 		return err
 	}

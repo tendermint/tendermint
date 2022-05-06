@@ -27,7 +27,7 @@ func MakeShowValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Com
 				err    error
 				bctx   = cmd.Context()
 			)
-			//TODO: remove once gRPC is the only supported protocol
+			// TODO: remove once gRPC is the only supported protocol
 			protocol, _ := tmnet.ProtocolAndAddress(conf.PrivValidator.ListenAddr)
 			switch protocol {
 			case "grpc":
@@ -79,5 +79,4 @@ func MakeShowValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Com
 			return nil
 		},
 	}
-
 }

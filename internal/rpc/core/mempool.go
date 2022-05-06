@@ -171,7 +171,8 @@ func (env *Environment) NumUnconfirmedTxs(ctx context.Context) (*coretypes.Resul
 	return &coretypes.ResultUnconfirmedTxs{
 		Count:      env.Mempool.Size(),
 		Total:      env.Mempool.Size(),
-		TotalBytes: env.Mempool.SizeBytes()}, nil
+		TotalBytes: env.Mempool.SizeBytes(),
+	}, nil
 }
 
 // CheckTx checks the transaction without executing it. The transaction won't

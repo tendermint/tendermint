@@ -9,8 +9,8 @@ import (
 )
 
 func makeCommit(ctx context.Context, blockID BlockID, height int64, round int32,
-	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
-
+	voteSet *VoteSet, validators []PrivValidator, now time.Time,
+) (*Commit, error) {
 	// all sign
 	for i := 0; i < len(validators); i++ {
 		pubKey, err := validators[i].GetPubKey(ctx)

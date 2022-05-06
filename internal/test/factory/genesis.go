@@ -13,7 +13,6 @@ func GenesisDoc(
 	validators []*types.Validator,
 	consensusParams *types.ConsensusParams,
 ) *types.GenesisDoc {
-
 	genesisValidators := make([]types.GenesisValidator, len(validators))
 
 	for i := range validators {

@@ -70,6 +70,7 @@ func TestEvidenceListProtoBuf(t *testing.T) {
 		}
 	}
 }
+
 func randomDuplicateVoteEvidence(ctx context.Context, t *testing.T) *DuplicateVoteEvidence {
 	t.Helper()
 	val := NewMockPV()
@@ -280,7 +281,6 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
@@ -446,15 +446,18 @@ func TestEvidenceVectors(t *testing.T) {
 		evList   EvidenceList
 		expBytes string
 	}{
-		{"duplicateVoteEvidence",
+		{
+			"duplicateVoteEvidence",
 			EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}},
 			"a9ce28d13bb31001fc3e5b7927051baf98f86abdbd64377643a304164c826923",
 		},
-		{"LightClientAttackEvidence",
+		{
+			"LightClientAttackEvidence",
 			EvidenceList{lcae},
 			"2f8782163c3905b26e65823ababc977fe54e97b94e60c0360b1e4726b668bb8e",
 		},
-		{"LightClientAttackEvidence & DuplicateVoteEvidence",
+		{
+			"LightClientAttackEvidence & DuplicateVoteEvidence",
 			EvidenceList{&DuplicateVoteEvidence{VoteA: v2, VoteB: v}, lcae},
 			"eedb4b47d6dbc9d43f53da8aa50bb826e8d9fc7d897da777c8af6a04aa74163e",
 		},

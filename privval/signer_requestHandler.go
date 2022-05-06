@@ -28,7 +28,9 @@ func DefaultValidationRequestHandler(
 		if r.PubKeyRequest.GetChainId() != chainID {
 			res = mustWrapMsg(&privvalproto.PubKeyResponse{
 				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{
-					Code: 0, Description: "unable to provide pubkey"}})
+					Code: 0, Description: "unable to provide pubkey",
+				},
+			})
 			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.PubKeyRequest.GetChainId(), chainID)
 		}
 
@@ -44,7 +46,8 @@ func DefaultValidationRequestHandler(
 
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.PubKeyResponse{
-				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()},
+			})
 		} else {
 			res = mustWrapMsg(&privvalproto.PubKeyResponse{PubKey: pk, Error: nil})
 		}
@@ -53,7 +56,9 @@ func DefaultValidationRequestHandler(
 		if r.SignVoteRequest.ChainId != chainID {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{
-					Code: 0, Description: "unable to sign vote"}})
+					Code: 0, Description: "unable to sign vote",
+				},
+			})
 			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.SignVoteRequest.GetChainId(), chainID)
 		}
 
@@ -62,7 +67,8 @@ func DefaultValidationRequestHandler(
 		err = privVal.SignVote(ctx, chainID, vote)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
-				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()},
+			})
 		} else {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{Vote: *vote, Error: nil})
 		}
@@ -72,7 +78,9 @@ func DefaultValidationRequestHandler(
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{
 					Code:        0,
-					Description: "unable to sign proposal"}})
+					Description: "unable to sign proposal",
+				},
+			})
 			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.SignProposalRequest.GetChainId(), chainID)
 		}
 
@@ -81,7 +89,8 @@ func DefaultValidationRequestHandler(
 		err = privVal.SignProposal(ctx, chainID, proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
-				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
+				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()},
+			})
 		} else {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{Proposal: *proposal, Error: nil})
 		}

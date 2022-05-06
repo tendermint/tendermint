@@ -160,7 +160,6 @@ func (dve *DuplicateVoteEvidence) ValidateABCI(
 	valSet *ValidatorSet,
 	evidenceTime time.Time,
 ) error {
-
 	if dve.Timestamp != evidenceTime {
 		return fmt.Errorf(
 			"evidence has a different time to the block it is associated with (%v != %v)",
@@ -303,7 +302,8 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 // the malicious validators were and returns them. This is used both for forming the ByzantineValidators
 // field and for validating that it is correct. Validators are ordered based on validator power
 func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet,
-	trusted *SignedHeader) []*Validator {
+	trusted *SignedHeader,
+) []*Validator {
 	var validators []*Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
@@ -360,7 +360,6 @@ func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *He
 		!bytes.Equal(trustedHeader.ConsensusHash, l.ConflictingBlock.ConsensusHash) ||
 		!bytes.Equal(trustedHeader.AppHash, l.ConflictingBlock.AppHash) ||
 		!bytes.Equal(trustedHeader.LastResultsHash, l.ConflictingBlock.LastResultsHash)
-
 }
 
 // Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions
@@ -447,7 +446,6 @@ func (l *LightClientAttackEvidence) ValidateABCI(
 	trustedHeader *SignedHeader,
 	evidenceTime time.Time,
 ) error {
-
 	if evTotal, valsTotal := l.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
 		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
 			evTotal, valsTotal)
@@ -829,7 +827,8 @@ func NewMockDuplicateVoteEvidenceWithValidator(ctx context.Context, height int64
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,
-	blockID BlockID, time time.Time) *Vote {
+	blockID BlockID, time time.Time,
+) *Vote {
 	return &Vote{
 		Type:             tmproto.SignedMsgType(2),
 		Height:           height,

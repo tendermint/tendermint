@@ -165,7 +165,6 @@ func TestSignerProposal(t *testing.T) {
 
 			assert.Equal(t, want.Signature, have.Signature)
 		})
-
 	}
 }
 
@@ -399,7 +398,8 @@ func TestSignerSignVoteErrors(t *testing.T) {
 }
 
 func brokenHandler(ctx context.Context, privVal types.PrivValidator, request privvalproto.Message,
-	chainID string) (privvalproto.Message, error) {
+	chainID string,
+) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
 

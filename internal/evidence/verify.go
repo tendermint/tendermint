@@ -158,7 +158,8 @@ func (evpool *Pool) verify(ctx context.Context, evidence types.Evidence) error {
 // CONTRACT: must run ValidateBasic() on the evidence before verifying
 //           must check that the evidence has not expired (i.e. is outside the maximum age threshold)
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
-	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
+	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration,
+) error {
 	// In the case of lunatic attack there will be a different commonHeader height. Therefore the node perform a single
 	// verification jump between the common header and the conflicting one
 	if commonHeader.Height != e.ConflictingBlock.Height {

@@ -17,10 +17,8 @@ type RoundVoteSet struct {
 	Precommits *types.VoteSet
 }
 
-var (
-	ErrGotVoteFromUnwantedRound = errors.New(
-		"peer has sent a vote that does not match our round for more than one round",
-	)
+var ErrGotVoteFromUnwantedRound = errors.New(
+	"peer has sent a vote that does not match our round for more than one round",
 )
 
 /*
@@ -189,7 +187,8 @@ func (hvs *HeightVoteSet) SetPeerMaj23(
 	round int32,
 	voteType tmproto.SignedMsgType,
 	peerID types.NodeID,
-	blockID types.BlockID) error {
+	blockID types.BlockID,
+) error {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(voteType) {

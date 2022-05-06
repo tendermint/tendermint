@@ -576,7 +576,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	// because of the proto overhead we expect the part set bytes to be equal or
 	// less than the pb block size
 	assert.LessOrEqual(t, partSet.ByteSize(), int64(pb.Size()))
-
 }
 
 func TestNodeNewSeedNode(t *testing.T) {
@@ -695,7 +694,7 @@ func TestNodeSetEventSink(t *testing.T) {
 	// N.B. We can't create a PSQL event sink without starting a postgres
 	// instance for it to talk to. The indexer service tests exercise that case.
 
-	var e = errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
+	e := errors.New("found duplicated sinks, please check the tx-index section in the config.toml")
 	cfg.TxIndex.Indexer = []string{"null", "kv", "Kv"}
 	ns, err = newDefaultNode(ctx, cfg, logger)
 	require.Error(t, err)

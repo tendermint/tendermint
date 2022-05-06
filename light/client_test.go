@@ -255,7 +255,6 @@ func TestClient(t *testing.T) {
 				mockNode.AssertExpectations(t)
 			})
 		}
-
 	})
 	t.Run("SkippingVerification", func(t *testing.T) {
 		// required for 2nd test case
@@ -380,7 +379,6 @@ func TestClient(t *testing.T) {
 				}
 			})
 		}
-
 	})
 	t.Run("LargeBisectionVerification", func(t *testing.T) {
 		// start from a large light block to make sure that the pivot height doesn't select a height outside

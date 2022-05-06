@@ -15,7 +15,6 @@ import (
 const testCh = 0x01
 
 func TestNodeInfoValidate(t *testing.T) {
-
 	// empty fails
 	ni := NodeInfo{}
 	assert.Error(t, ni.Validate())
@@ -92,9 +91,7 @@ func TestNodeInfoValidate(t *testing.T) {
 				assert.NoError(t, err, tc.testName)
 			}
 		})
-
 	}
-
 }
 
 func testNodeID() NodeID {

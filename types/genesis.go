@@ -82,7 +82,7 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 		return err
 	}
 
-	return os.WriteFile(file, genDocBytes, 0644) // nolint:gosec
+	return os.WriteFile(file, genDocBytes, 0o644) // nolint:gosec
 }
 
 // ValidatorHash returns the hash of the validator set contained in the GenesisDoc

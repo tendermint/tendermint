@@ -62,7 +62,7 @@ func (nk NodeKey) SaveAs(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filePath, jsonBytes, 0600)
+	return os.WriteFile(filePath, jsonBytes, 0o600)
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If

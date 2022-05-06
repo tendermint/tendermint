@@ -40,7 +40,6 @@ func TestInspectConstructor(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 	})
-
 }
 
 func TestInspectRun(t *testing.T) {
@@ -65,7 +64,6 @@ func TestInspectRun(t *testing.T) {
 		cancel()
 		stoppedWG.Wait()
 	})
-
 }
 
 func TestBlock(t *testing.T) {
@@ -152,7 +150,7 @@ func TestTxSearch(t *testing.T) {
 	cli, err := httpclient.New(rpcConfig.ListenAddress)
 	require.NoError(t, err)
 
-	var page = 1
+	page := 1
 	resultTxSearch, err := cli.TxSearch(ctx, testQuery, false, &page, &page, "")
 	require.NoError(t, err)
 	require.Len(t, resultTxSearch.Txs, 1)
@@ -165,6 +163,7 @@ func TestTxSearch(t *testing.T) {
 	stateStoreMock.AssertExpectations(t)
 	blockStoreMock.AssertExpectations(t)
 }
+
 func TestTx(t *testing.T) {
 	testHash := []byte("test")
 	testTx := []byte("tx")
@@ -210,6 +209,7 @@ func TestTx(t *testing.T) {
 	stateStoreMock.AssertExpectations(t)
 	blockStoreMock.AssertExpectations(t)
 }
+
 func TestConsensusParams(t *testing.T) {
 	testHeight := int64(1)
 	testMaxGas := int64(55)

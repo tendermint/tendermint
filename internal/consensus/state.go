@@ -575,7 +575,6 @@ func (cs *State) AddVote(ctx context.Context, vote *types.Vote, peerID types.Nod
 
 // SetProposal inputs a proposal.
 func (cs *State) SetProposal(ctx context.Context, proposal *types.Proposal, peerID types.NodeID) error {
-
 	if peerID == "" {
 		select {
 		case <-ctx.Done():
@@ -624,7 +623,6 @@ func (cs *State) SetProposalAndBlock(
 	parts *types.PartSet,
 	peerID types.NodeID,
 ) error {
-
 	if err := cs.SetProposal(ctx, proposal, peerID); err != nil {
 		return err
 	}
@@ -895,7 +893,6 @@ func (cs *State) receiveRoutine(ctx context.Context, maxSteps int) {
 				// error and we're already trying to shut down
 				if ctx.Err() != nil {
 					return
-
 				}
 			}
 
@@ -1105,7 +1102,6 @@ func (cs *State) handleTimeout(
 	default:
 		panic(fmt.Sprintf("invalid timeout step: %v", ti.Step))
 	}
-
 }
 
 func (cs *State) handleTxsAvailable(ctx context.Context) {
@@ -1385,7 +1381,6 @@ func (cs *State) isProposalComplete() bool {
 	}
 	// if this is false the proposer is lying or we haven't received the POL yet
 	return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
-
 }
 
 // Create the next block to propose and return it. Returns nil block upon error.
@@ -2177,7 +2172,7 @@ func (cs *State) addProposalBlockPart(
 			return added, err
 		}
 
-		var pbb = new(tmproto.Block)
+		pbb := new(tmproto.Block)
 		err = proto.Unmarshal(bz, pbb)
 		if err != nil {
 			return added, err
@@ -2200,6 +2195,7 @@ func (cs *State) addProposalBlockPart(
 
 	return added, nil
 }
+
 func (cs *State) handleCompleteProposal(ctx context.Context, height int64) {
 	// Update Valid* if we can.
 	prevotes := cs.Votes.Prevotes(cs.Round)

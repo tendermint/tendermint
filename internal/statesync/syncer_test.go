@@ -513,7 +513,8 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 				rts.conn.On("ApplySnapshotChunk", mock.Anything, &abci.RequestApplySnapshotChunk{
 					Index: 0, Chunk: body,
 				}).Once().Return(&abci.ResponseApplySnapshotChunk{
-					Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
+					Result: abci.ResponseApplySnapshotChunk_ACCEPT,
+				}, nil)
 			}
 
 			err = rts.syncer.applyChunks(ctx, chunks, fetchStartTime)

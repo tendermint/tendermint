@@ -96,7 +96,6 @@ if enabled.`,
 	)
 
 	return cmd
-
 }
 
 type dumpDebugDataArgs struct {

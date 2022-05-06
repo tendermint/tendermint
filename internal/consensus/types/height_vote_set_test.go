@@ -54,7 +54,6 @@ func TestPeerCatchupRounds(t *testing.T) {
 	if !added || err != nil {
 		t.Error("Expected to successfully add vote from another peer")
 	}
-
 }
 
 func makeVoteHR(

@@ -120,7 +120,6 @@ func (r *Reactor) handleEvidenceMessage(ctx context.Context, envelope *p2p.Envel
 			if _, ok := err.(*types.ErrInvalidEvidence); ok {
 				return err
 			}
-
 		}
 
 	default:

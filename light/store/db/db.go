@@ -28,7 +28,6 @@ type dbs struct {
 // New returns a Store that wraps any DB
 // If you want to share one DB across many light clients consider using PrefixDB
 func New(db dbm.DB) store.Store {
-
 	lightStore := &dbs{db: db}
 
 	// retrieve the size of the db

@@ -1003,7 +1003,6 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 				if !r.WaitSync() {
 					go func() { _ = r.sendNewRoundStepMessage(ctx, ps.peerID, chans.state) }()
 				}
-
 			}()
 		}
 

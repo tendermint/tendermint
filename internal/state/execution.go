@@ -91,7 +91,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	proposerAddr []byte,
 	votes []*types.Vote,
 ) (*types.Block, error) {
-
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 
@@ -201,7 +200,8 @@ func (blockExec *BlockExecutor) ValidateBlock(ctx context.Context, state State, 
 func (blockExec *BlockExecutor) ApplyBlock(
 	ctx context.Context,
 	state State,
-	blockID types.BlockID, block *types.Block) (State, error) {
+	blockID types.BlockID, block *types.Block,
+) (State, error) {
 	// validate the block if we haven't already
 	if err := blockExec.ValidateBlock(ctx, state, block); err != nil {
 		return state, ErrInvalidBlock(err)
@@ -458,7 +458,8 @@ func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCom
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params types.ValidatorParams) error {
+	params types.ValidatorParams,
+) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
@@ -490,7 +491,6 @@ func (state State) Update(
 	consensusParamUpdates *tmtypes.ConsensusParams,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
-
 	// Copy the valset so we can apply changes from FinalizeBlock
 	// and update s.LastValidators and s.Validators.
 	nValSet := state.NextValidators.Copy()
@@ -639,7 +639,6 @@ func ExecCommitBlock(
 			ByzantineValidators: block.Evidence.ToABCI(),
 		},
 	)
-
 	if err != nil {
 		logger.Error("executing block", "err", err)
 		return nil, err

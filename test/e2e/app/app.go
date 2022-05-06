@@ -170,7 +170,7 @@ func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*a
 
 // FinalizeBlock implements ABCI.
 func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	var txs = make([]*abci.ExecTxResult, len(req.Txs))
+	txs := make([]*abci.ExecTxResult, len(req.Txs))
 
 	app.mu.Lock()
 	defer app.mu.Unlock()

@@ -447,7 +447,6 @@ func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evide
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
-
 	batch := evpool.evidenceStore.NewBatch()
 	defer batch.Close()
 
@@ -517,8 +516,8 @@ func (evpool *Pool) batchExpiredPendingEvidence(batch dbm.Batch) (int64, time.Ti
 }
 
 func (evpool *Pool) removeEvidenceFromList(
-	blockEvidenceMap map[string]struct{}) {
-
+	blockEvidenceMap map[string]struct{},
+) {
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		// Remove from clist
 		ev := e.Value.(types.Evidence)

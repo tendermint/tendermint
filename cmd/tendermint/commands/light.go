@@ -228,5 +228,4 @@ for applications built w/ Cosmos SDK).
 	)
 
 	return cmd
-
 }

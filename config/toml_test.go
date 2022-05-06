@@ -60,7 +60,7 @@ func TestEnsureTestRoot(t *testing.T) {
 func checkConfig(t *testing.T, configFile string) {
 	t.Helper()
 	// list of words we expect in the config
-	var elems = []string{
+	elems := []string{
 		"moniker",
 		"seeds",
 		"proxy-app",

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	nodeDirPerm = 0755
+	nodeDirPerm = 0o755
 )
 
 // MakeTestnetFilesCommand constructs a command to generate testnet config files.
@@ -294,7 +294,6 @@ func (args *testnetPeerArgs) hostnameOrIP(i int) (string, error) {
 		ip[3]++
 	}
 	return ip.String(), nil
-
 }
 
 // get an array of persistent peers

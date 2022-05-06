@@ -67,8 +67,10 @@ func makeAndApplyGoodBlock(
 	require.NoError(t, err)
 
 	require.NoError(t, blockExec.ValidateBlock(ctx, state, block))
-	blockID := types.BlockID{Hash: block.Hash(),
-		PartSetHeader: partSet.Header()}
+	blockID := types.BlockID{
+		Hash:          block.Hash(),
+		PartSetHeader: partSet.Header(),
+	}
 	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.NoError(t, err)
 
@@ -145,7 +147,6 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	state sm.State,
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
-
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	abciResponses := &tmstate.ABCIResponses{}
 	// If the pubkey is new, remove the old and add the new.
@@ -243,6 +244,7 @@ func makeRandomStateFromValidatorSet(
 		InitialHeight:                    1,
 	}
 }
+
 func makeRandomStateFromConsensusParams(
 	ctx context.Context,
 	t *testing.T,

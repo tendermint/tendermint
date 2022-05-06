@@ -29,8 +29,8 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
 func NewSignerClient(conn *grpc.ClientConn,
-	chainID string, log log.Logger) (*SignerClient, error) {
-
+	chainID string, log log.Logger,
+) (*SignerClient, error) {
 	sc := &SignerClient{
 		logger:  log,
 		chainID: chainID,
@@ -88,7 +88,6 @@ func (sc *SignerClient) SignVote(ctx context.Context, chainID string, vote *tmpr
 func (sc *SignerClient) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	resp, err := sc.client.SignProposal(
 		ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
-
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("SignerClient::SignProposal", "err", errStatus.Message())

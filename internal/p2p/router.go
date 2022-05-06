@@ -185,7 +185,6 @@ func NewRouter(
 	endpoint *Endpoint,
 	options RouterOptions,
 ) (*Router, error) {
-
 	if err := options.Validate(); err != nil {
 		return nil, err
 	}
@@ -690,7 +689,6 @@ func (r *Router) handshakePeer(
 	conn Connection,
 	expectID types.NodeID,
 ) (types.NodeInfo, error) {
-
 	if r.options.HandshakeTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)

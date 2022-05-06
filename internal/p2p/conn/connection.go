@@ -49,8 +49,10 @@ const (
 	defaultPongTimeout         = 90 * time.Second
 )
 
-type receiveCbFunc func(ctx context.Context, chID ChannelID, msgBytes []byte)
-type errorCbFunc func(context.Context, interface{})
+type (
+	receiveCbFunc func(ctx context.Context, chID ChannelID, msgBytes []byte)
+	errorCbFunc   func(context.Context, interface{})
+)
 
 /*
 Each peer has one `MConnection` (multiplex connection) instance.
@@ -182,8 +184,8 @@ func NewMConnection(
 	mconn.BaseService = *service.NewBaseService(logger, "MConnection", mconn)
 
 	// Create channels
-	var channelsIdx = map[ChannelID]*channel{}
-	var channels = []*channel{}
+	channelsIdx := map[ChannelID]*channel{}
+	channels := []*channel{}
 
 	for _, desc := range chDescs {
 		channel := newChannel(mconn, *desc)
@@ -728,7 +730,7 @@ func (ch *channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 // Not goroutine-safe
 func (ch *channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 	ch.logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
-	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
+	recvCap, recvReceived := ch.desc.RecvMessageCapacity, len(ch.recving)+len(packet.Data)
 	if recvCap < recvReceived {
 		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)
 	}

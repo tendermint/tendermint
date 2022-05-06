@@ -29,7 +29,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		labels = append(labels, labelsAndValues[i])
 	}
 	return &Metrics{
-
 		NumEvidence: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,

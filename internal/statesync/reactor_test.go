@@ -542,7 +542,6 @@ func TestReactor_BlockProviders(t *testing.T) {
 		t.Fail()
 	case <-ctx.Done():
 	}
-
 }
 
 func TestReactor_StateProviderP2P(t *testing.T) {
@@ -720,7 +719,8 @@ func handleLightBlockRequests(
 	receiving chan p2p.Envelope,
 	sending chan p2p.Envelope,
 	close chan struct{},
-	failureRate int) {
+	failureRate int,
+) {
 	requests := 0
 	errorCount := 0
 	for {

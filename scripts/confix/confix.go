@@ -71,7 +71,7 @@ func main() {
 
 	if *outPath == "" {
 		os.Stdout.Write(buf.Bytes())
-	} else if err := atomicfile.WriteData(*outPath, buf.Bytes(), 0600); err != nil {
+	} else if err := atomicfile.WriteData(*outPath, buf.Bytes(), 0o600); err != nil {
 		log.Fatalf("Writing output: %v", err)
 	}
 }

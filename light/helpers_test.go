@@ -102,8 +102,8 @@ func makeVote(t testing.TB, header *types.Header, valset *types.ValidatorSet, ke
 }
 
 func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
-	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
-
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte,
+) *types.Header {
 	return &types.Header{
 		Version: version.Consensus{Block: version.BlockProtocol, App: 0},
 		ChainID: chainID,
@@ -123,8 +123,8 @@ func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
 func (pkz privKeys) GenSignedHeader(t testing.TB, chainID string, height int64, bTime time.Time, txs types.Txs,
-	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) *types.SignedHeader {
-
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
+) *types.SignedHeader {
 	t.Helper()
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
@@ -137,8 +137,8 @@ func (pkz privKeys) GenSignedHeader(t testing.TB, chainID string, height int64, 
 // GenSignedHeaderLastBlockID calls genHeader and signHeader and combines them into a SignedHeader.
 func (pkz privKeys) GenSignedHeaderLastBlockID(t testing.TB, chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
-	lastBlockID types.BlockID) *types.SignedHeader {
-
+	lastBlockID types.BlockID,
+) *types.SignedHeader {
 	t.Helper()
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
@@ -211,7 +211,8 @@ func genLightBlocksWithKeys(
 }
 
 func mockNodeFromHeadersAndVals(headers map[int64]*types.SignedHeader,
-	vals map[int64]*types.ValidatorSet) *provider_mocks.Provider {
+	vals map[int64]*types.ValidatorSet,
+) *provider_mocks.Provider {
 	mockNode := &provider_mocks.Provider{}
 	for i, header := range headers {
 		lb := &types.LightBlock{SignedHeader: header, ValidatorSet: vals[i]}

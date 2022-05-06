@@ -95,7 +95,6 @@ func (cs *State) readReplayMessage(ctx context.Context, msg *TimedWALMessage, ne
 // Replay only those messages since the last block.  `timeoutRoutine` should
 // run concurrently to read off tickChan.
 func (cs *State) catchupReplay(ctx context.Context, csHeight int64) error {
-
 	// Set replayMode to true so we don't log signing errors.
 	cs.replayMode = true
 	defer func() { cs.replayMode = false }()
@@ -237,7 +236,6 @@ func (h *Handshaker) NBlocks() int {
 
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client) error {
-
 	// Handshake is done via ABCI Info on the query conn.
 	res, err := appClient.Info(ctx, &proxy.RequestInfo)
 	if err != nil {
@@ -391,7 +389,6 @@ func (h *Handshaker) ReplayBlocks(
 		if appBlockHeight < storeBlockHeight {
 			// the app is behind, so replay blocks, but no need to go through WAL (state is already synced to store)
 			return h.replayBlocks(ctx, state, appClient, appBlockHeight, storeBlockHeight, false)
-
 		} else if appBlockHeight == storeBlockHeight {
 			// We're good!
 			if err := checkAppHashEqualsOneFromState(appHash, state); err != nil {
@@ -399,7 +396,6 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			return appHash, nil
 		}
-
 	} else if storeBlockHeight == stateBlockHeight+1 {
 		// We saved the block in the store but haven't updated the state,
 		// so we'll need to replay a block using the WAL.
@@ -418,7 +414,6 @@ func (h *Handshaker) ReplayBlocks(
 			state, err = h.replayBlock(ctx, state, storeBlockHeight, appClient)
 			if err != nil {
 				return nil, err
-
 			}
 			return state.AppHash, nil
 
@@ -444,7 +439,6 @@ func (h *Handshaker) ReplayBlocks(
 
 			return state.AppHash, nil
 		}
-
 	}
 
 	return nil, fmt.Errorf("uncovered case! appHeight: %d, storeHeight: %d, stateHeight: %d",
