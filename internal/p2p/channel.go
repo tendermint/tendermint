@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
@@ -220,19 +219,21 @@ func MergedChannelIterator(ctx context.Context, chs ...Channel) *ChannelIterator
 	return iter
 }
 
-////////////////////////////////////////////////////////////////////////
-
 type libp2pChannelImpl struct {
 	chDesc  *ChannelDescriptor
-	ps      *pubsub.PubSub
-	h       host.Host
+	pubsub  *pubsub.PubSub
+	host    host.Host
 	topic   *pubsub.Topic
 	chainID string
 	wrapper Wrapper
 }
 
 func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
-	ch := &libp2pChannelImpl{chDesc: chDesc, ps: ps, h: h, chainID: chainID}
+	ch := &libp2pChannelImpl{
+		chDesc:  chDesc,
+		pubsub:  ps,
+		host:    h,
+		chainID: chainID}
 	topic, err := ps.Join(ch.canonicalizedTopicName())
 	if err != nil {
 		return nil, err
@@ -254,12 +255,12 @@ func (ch *libp2pChannelImpl) String() string {
 }
 
 func (ch *libp2pChannelImpl) canonicalizedTopicName() string {
-	return strings.Join([]string{ch.chainID, ch.chDesc.Name, fmt.Sprint(ch.chDesc.ID)}, ".")
+	return fmt.Sprintf("%s.%s.%d", ch.chainID, ch.chDesc.Name, ch.chDesc.ID)
 }
 
 func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 	iter := &ChannelIterator{
-		pipe: make(chan Envelope), // unbuffered
+		pipe: make(chan Envelope),
 	}
 
 	sub, err := ch.topic.Subscribe()
@@ -313,7 +314,7 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 		e.Message = msg
 	}
 
-	e.From = types.NodeID(ch.h.ID())
+	e.From = types.NodeID(ch.host.ID())
 	bz, err := proto.Marshal(e.Message)
 	if err != nil {
 		return err
@@ -335,7 +336,7 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 }
 
 func (ch *libp2pChannelImpl) topicHasPeer(id peer.ID) bool {
-	for _, peer := range ch.ps.ListPeers(ch.canonicalizedTopicName()) {
+	for _, peer := range ch.pubsub.ListPeers(ch.canonicalizedTopicName()) {
 		if peer == id {
 			return true
 		}
@@ -348,6 +349,6 @@ func (ch *libp2pChannelImpl) SendError(ctx context.Context, pe PeerError) error 
 	// shouldn't be handled as a property of the channel, and
 	// rather as part of some peer-info/network-management
 	// interface, but we can do it here for now, to ensure compatibility.
-	ch.ps.BlacklistPeer(peer.ID(pe.NodeID))
+	ch.pubsub.BlacklistPeer(peer.ID(pe.NodeID))
 	return nil
 }
