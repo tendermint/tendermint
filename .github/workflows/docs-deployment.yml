@@ -8,6 +8,9 @@ on:
   push:
     branches:
       - master
+    paths:
+      - docs/**
+      - spec/**
 
 jobs:
   # This is split into two jobs so that the build, which runs npm, does not
