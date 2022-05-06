@@ -1017,6 +1017,9 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		added, err = cs.tryAddVote(ctx, msg.Vote, peerID)
 		if added {
+			vals := cs.state.Validators
+			_, val := vals.GetByIndex(msg.Vote.ValidatorIndex)
+			cs.metrics.MarkVoteReceived(msg.Vote.Type, val.VotingPower, vals.TotalVotingPower())
 			select {
 			case cs.statsMsgQueue <- mi:
 			case <-ctx.Done():
@@ -1334,6 +1337,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		} else if block == nil {
 			return
 		}
+		cs.metrics.ProposalCreateCount.Add(1)
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
 		if err != nil {
 			cs.logger.Error("unable to create proposal block part set", "error", err)
@@ -1531,6 +1535,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	if err != nil {
 		panic(fmt.Sprintf("ProcessProposal: %v", err))
 	}
+	cs.metrics.MarkProposalProcessed(isAppValid)
 
 	// Vote nil if the Application rejected the block
 	if !isAppValid {
@@ -2337,7 +2342,9 @@ func (cs *State) addVote(
 
 	// Verify VoteExtension if precommit
 	if vote.Type == tmproto.PrecommitType {
-		if err = cs.blockExec.VerifyVoteExtension(ctx, vote); err != nil {
+		err := cs.blockExec.VerifyVoteExtension(ctx, vote)
+		cs.metrics.MarkVoteExtensionReceived(err == nil)
+		if err != nil {
 			return false, err
 		}
 	}
