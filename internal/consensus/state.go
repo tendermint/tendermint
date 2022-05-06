@@ -1017,9 +1017,6 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo) {
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		added, err = cs.tryAddVote(ctx, msg.Vote, peerID)
 		if added {
-			vals := cs.state.Validators
-			_, val := vals.GetByIndex(msg.Vote.ValidatorIndex)
-			cs.metrics.MarkVoteReceived(msg.Vote.Type, val.VotingPower, vals.TotalVotingPower())
 			select {
 			case cs.statsMsgQueue <- mi:
 			case <-ctx.Done():
@@ -2354,6 +2351,11 @@ func (cs *State) addVote(
 	if !added {
 		// Either duplicate, or error upon cs.Votes.AddByIndex()
 		return
+	}
+	if vote.Round == cs.Round {
+		vals := cs.state.Validators
+		_, val := vals.GetByIndex(vote.ValidatorIndex)
+		cs.metrics.MarkVoteReceived(vote.Type, val.VotingPower, vals.TotalVotingPower())
 	}
 
 	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
