@@ -108,8 +108,11 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 		stateID = RandStateID().WithHeight(h - 1)
 	)
 
-	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, stateID)
-	commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	voteSet, valSet, vals := randVoteSet(ctx, t, h, 0, tmproto.PrecommitType, 4, stateID)
+	commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	// malleate threshold sigs signature

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -18,6 +17,7 @@ import (
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/types"
@@ -46,19 +46,25 @@ const (
 	dbName   = "postgres"
 	chainID  = "test-chainID"
 
-	viewBlockEvents = "block_events"
-	viewTxEvents    = "tx_events"
+	viewTxEvents = "tx_events"
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 
-	// Set up docker and start a container running PostgreSQL.
+	// Set up docker.
 	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 	if err != nil {
 		log.Fatalf("Creating docker pool: %v", err)
 	}
 
+	// If docker is unavailable, log and exit without reporting failure.
+	if _, err := pool.Client.Info(); err != nil {
+		log.Printf("WARNING: Docker is not available: %v [skipping this test]", err)
+		return
+	}
+
+	// Start a container running PostgreSQL.
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "13",
@@ -111,7 +117,9 @@ func TestMain(m *testing.M) {
 	sm, err := readSchema()
 	if err != nil {
 		log.Fatalf("Reading schema: %v", err)
-	} else if err := schema.NewMigrator().Apply(db, sm); err != nil {
+	}
+	migrator := schema.NewMigrator()
+	if err := migrator.Apply(db, sm); err != nil {
 		log.Fatalf("Applying schema: %v", err)
 	}
 
@@ -144,6 +152,9 @@ func TestType(t *testing.T) {
 }
 
 func TestIndexing(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("IndexBlockEvents", func(t *testing.T) {
 		indexer := &EventSink{store: testDB(), chainID: chainID}
 		require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
@@ -155,7 +166,7 @@ func TestIndexing(t *testing.T) {
 		verifyNotImplemented(t, "hasBlock", func() (bool, error) { return indexer.HasBlock(2) })
 
 		verifyNotImplemented(t, "block search", func() (bool, error) {
-			v, err := indexer.SearchBlockEvents(context.Background(), nil)
+			v, err := indexer.SearchBlockEvents(ctx, nil)
 			return v != nil, err
 		})
 
@@ -189,7 +200,7 @@ func TestIndexing(t *testing.T) {
 			return txr != nil, err
 		})
 		verifyNotImplemented(t, "tx search", func() (bool, error) {
-			txr, err := indexer.SearchTxEvents(context.Background(), nil)
+			txr, err := indexer.SearchTxEvents(ctx, nil)
 			return txr != nil, err
 		})
 
@@ -209,15 +220,11 @@ func TestStop(t *testing.T) {
 func newTestBlockHeader() types.EventDataNewBlockHeader {
 	return types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
-		ResultBeginBlock: abci.ResponseBeginBlock{
+		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 			Events: []abci.Event{
-				makeIndexedEvent("begin_event.proposer", "FCAA001"),
+				makeIndexedEvent("finalize_event.proposer", "FCAA001"),
 				makeIndexedEvent("thingy.whatzit", "O.O"),
-			},
-		},
-		ResultEndBlock: abci.ResponseEndBlock{
-			Events: []abci.Event{
-				makeIndexedEvent("end_event.foo", "100"),
+				makeIndexedEvent("my_event.foo", "100"),
 				makeIndexedEvent("thingy.whatzit", "-.O"),
 			},
 		},
@@ -227,7 +234,7 @@ func newTestBlockHeader() types.EventDataNewBlockHeader {
 // readSchema loads the indexing database schema file
 func readSchema() ([]*schema.Migration, error) {
 	const filename = "schema.sql"
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read sql file from '%s': %w", filename, err)
 	}
@@ -242,11 +249,11 @@ func readSchema() ([]*schema.Migration, error) {
 func resetDatabase(db *sql.DB) error {
 	_, err := db.Exec(`DROP TABLE IF EXISTS blocks,tx_results,events,attributes CASCADE;`)
 	if err != nil {
-		return fmt.Errorf("dropping tables: %v", err)
+		return fmt.Errorf("dropping tables: %w", err)
 	}
 	_, err = db.Exec(`DROP VIEW IF EXISTS event_attributes,block_events,tx_events CASCADE;`)
 	if err != nil {
-		return fmt.Errorf("dropping views: %v", err)
+		return fmt.Errorf("dropping views: %w", err)
 	}
 	return nil
 }
@@ -258,7 +265,7 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Height: 1,
 		Index:  0,
 		Tx:     types.Tx("HELLO WORLD"),
-		Result: abci.ResponseDeliverTx{
+		Result: abci.ExecTxResult{
 			Data:   []byte{0},
 			Code:   abci.CodeTypeOK,
 			Log:    "",
@@ -278,7 +285,7 @@ SELECT tx_result FROM `+tableTxResults+` WHERE tx_hash = $1;
 
 	txr := new(abci.TxResult)
 	if err := proto.Unmarshal(resultData, txr); err != nil {
-		return nil, fmt.Errorf("unmarshaling txr: %v", err)
+		return nil, fmt.Errorf("unmarshaling txr: %w", err)
 	}
 
 	return txr, nil
@@ -301,25 +308,6 @@ SELECT height FROM `+tableBlocks+` WHERE height = $1;
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}
-
-	// Verify the presence of begin_block and end_block events.
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeBeginBlock, height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %v", err)
-	}
-
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, types.EventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", types.EventTypeEndBlock, height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %v", err)
-	}
 }
 
 // verifyNotImplemented calls f and verifies that it returns both a
@@ -332,7 +320,7 @@ func verifyNotImplemented(t *testing.T, label string, f func() (bool, error)) {
 	want := label + " is not supported via the postgres event sink"
 	ok, err := f()
 	assert.False(t, ok)
-	require.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, want, err.Error())
 }
 

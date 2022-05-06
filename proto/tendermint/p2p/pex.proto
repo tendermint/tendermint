@@ -6,9 +6,9 @@ option go_package = "github.com/tendermint/tendermint/proto/tendermint/p2p";
 import "gogoproto/gogo.proto";
 
 message PexAddress {
-  string id   = 1 [(gogoproto.customname) = "ID"];
-  string ip   = 2 [(gogoproto.customname) = "IP"];
-  uint32 port = 3;
+  string url = 1 [(gogoproto.customname) = "URL"];
+
+  reserved 2, 3;  // See https://github.com/tendermint/spec/pull/352
 }
 
 message PexRequest {}
@@ -17,21 +17,10 @@ message PexResponse {
   repeated PexAddress addresses = 1 [(gogoproto.nullable) = false];
 }
 
-message PexAddressV2 {
-  string url = 1 [(gogoproto.customname) = "URL"];
-}
-
-message PexRequestV2 {}
-
-message PexResponseV2 {
-  repeated PexAddressV2 addresses = 1 [(gogoproto.nullable) = false];
-}
-
 message PexMessage {
+  reserved 1, 2;  // See https://github.com/tendermint/spec/pull/352
   oneof sum {
-    PexRequest    pex_request     = 1;
-    PexResponse   pex_response    = 2;
-    PexRequestV2  pex_request_v2  = 3;
-    PexResponseV2 pex_response_v2 = 4;
+    PexRequest  pex_request  = 3;
+    PexResponse pex_response = 4;
   }
 }

@@ -256,6 +256,7 @@ func (pv *MockPV) SignVote(
 	}
 
 	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
+	extSignBytes := VoteExtensionSignBytes(useChainID, vote)
 
 	var privKey crypto.PrivKey
 	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
@@ -283,6 +284,17 @@ func (pv *MockPV) SignVote(
 		vote.StateSignature = stateSignature
 	}
 
+	var extSig []byte
+	// We only sign vote extensions for precommits
+	if vote.Type == tmproto.PrecommitType {
+		extSig, err = pv.PrivKey.SignDigest(extSignBytes)
+		if err != nil {
+			return err
+		}
+	} else if len(vote.Extension) > 0 {
+		return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
+	}
+	vote.ExtensionSignature = extSig
 	return nil
 }
 
@@ -353,7 +365,7 @@ func (pv *MockPV) ExtractIntoValidator(ctx context.Context, quorumHash crypto.Qu
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	proTxHash, _ := pv.GetProTxHash(context.Background()) // mockPV will never return an error, ignored here
+	proTxHash, _ := pv.GetProTxHash(context.TODO()) // mockPV will never return an error, ignored here
 	return fmt.Sprintf("MockPV{%v}", proTxHash)
 }
 

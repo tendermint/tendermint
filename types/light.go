@@ -4,9 +4,25 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
+	tbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
+
+// Info about the status of the light client
+type LightClientInfo struct {
+	PrimaryID         string          `json:"primaryID"`
+	WitnessesID       []string        `json:"witnessesID"`
+	NumPeers          int             `json:"number_of_peers,string"`
+	LastTrustedHeight int64           `json:"last_trusted_height,string"`
+	LastTrustedHash   tbytes.HexBytes `json:"last_trusted_hash"`
+	LatestBlockTime   time.Time       `json:"latest_block_time"`
+	TrustingPeriod    string          `json:"trusting_period"`
+	// Boolean that reflects whether LatestBlockTime + trusting period is before
+	// time.Now() (time when /status is called)
+	TrustedBlockExpired bool `json:"trusted_block_expired"`
+}
 
 // LightBlock is a SignedHeader and a ValidatorSet.
 // It is the basis of the light client

@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
-
-	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -30,36 +28,75 @@ const (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	PubKey    crypto.PubKey    `json:"pub_key"`
+	PubKey    crypto.PubKey
+	Power     int64
+	Name      string
+	ProTxHash crypto.ProTxHash
+}
+
+type genesisValidatorJSON struct {
+	PubKey    json.RawMessage  `json:"pub_key"`
 	Power     int64            `json:"power"`
 	Name      string           `json:"name"`
-	ProTxHash crypto.ProTxHash `json:"pro_tx_hash"`
+	ProTxHash json.RawMessage `json:"pro_tx_hash"`
+}
+
+func (g GenesisValidator) MarshalJSON() ([]byte, error) {
+	pk, err := jsontypes.Marshal(g.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	proTxHash, err := jsontypes.Marshal(g.ProTxHash)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(genesisValidatorJSON{
+		ProTxHash: proTxHash, PubKey: pk, Power: g.Power, Name: g.Name,
+	})
+}
+
+func (g *GenesisValidator) UnmarshalJSON(data []byte) error {
+	var gv genesisValidatorJSON
+	if err := json.Unmarshal(data, &gv); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(gv.PubKey, &g.PubKey); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(gv.ProTxHash, &g.ProTxHash); err != nil {
+		return err
+	}
+	g.Power = gv.Power
+	g.Name = gv.Name
+	return nil
 }
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
-	GenesisTime                  time.Time              `json:"genesis_time"`
-	ChainID                      string                 `json:"chain_id"`
-	InitialHeight                int64                  `json:"initial_height"`
+	GenesisTime     time.Time          `json:"genesis_time"`
+	ChainID         string             `json:"chain_id"`
+	InitialHeight   int64              `json:"initial_height,string"`
+	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
+	Validators      []GenesisValidator `json:"validators,omitempty"`
+	AppHash         tmbytes.HexBytes   `json:"app_hash"`
+	AppState        json.RawMessage    `json:"app_state,omitempty"`
+
+	// dash fields
 	InitialCoreChainLockedHeight uint32                 `json:"initial_core_chain_locked_height"`
 	InitialProposalCoreChainLock *tmproto.CoreChainLock `json:"initial_proposal_core_chain_lock"`
-	ConsensusParams              *ConsensusParams       `json:"consensus_params,omitempty"`
-	Validators                   []GenesisValidator     `json:"validators,omitempty"`
 	ThresholdPublicKey           crypto.PubKey          `json:"threshold_public_key"`
 	QuorumType                   btcjson.LLMQType       `json:"quorum_type"`
 	QuorumHash                   crypto.QuorumHash      `json:"quorum_hash"`
-	AppHash                      tmbytes.HexBytes       `json:"app_hash"`
-	AppState                     json.RawMessage        `json:"app_state,omitempty"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
-	genDocBytes, err := tmjson.MarshalIndent(genDoc, "", "  ")
+	genDocBytes, err := json.MarshalIndent(genDoc, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(file, genDocBytes, 0644) // nolint:gosec
+	return os.WriteFile(file, genDocBytes, 0644) // nolint:gosec
 }
 
 // ValidatorHash returns the hash of the validator set contained in the GenesisDoc
@@ -99,7 +136,10 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
-	} else if err := genDoc.ConsensusParams.ValidateConsensusParams(); err != nil {
+	}
+	genDoc.ConsensusParams.Complete()
+
+	if err := genDoc.ConsensusParams.ValidateConsensusParams(); err != nil {
 		return err
 	}
 
@@ -142,7 +182,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 // GenesisDocFromJSON unmarshalls JSON data into a GenesisDoc.
 func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 	genDoc := GenesisDoc{}
-	err := tmjson.Unmarshal(jsonBlob, &genDoc)
+	err := json.Unmarshal(jsonBlob, &genDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +196,7 @@ func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 
 // GenesisDocFromFile reads JSON data from a file and unmarshalls it into a GenesisDoc.
 func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
-	jsonBlob, err := ioutil.ReadFile(genDocFile)
+	jsonBlob, err := os.ReadFile(genDocFile)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't read GenesisDoc file: %w", err)
 	}

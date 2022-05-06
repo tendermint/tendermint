@@ -8,8 +8,8 @@ info:
     Tendermint supports the following RPC protocols:
 
     * URI over HTTP
-    * JSONRPC over HTTP
-    * JSONRPC over websockets
+    * JSON-RPC 2.0 over HTTP
+    * JSON-RPC 2.0 over websockets (deprecated)
 
     ## Configuration
 
@@ -30,7 +30,7 @@ info:
 
     ## URI/HTTP
 
-    A REST like interface.
+    A GET request with arguments encoded as query parameters:
 
         curl localhost:26657/block?height=5
 
@@ -42,10 +42,13 @@ info:
 
     ## JSONRPC/websockets
 
-    JSONRPC requests can be also made via websocket.
+    In Tendermint v0.35 and earlier, JSONRPC requests can be also made via
+    websocket.  The websocket interface is deprecated in Tendermint v0.36, and
+    will be removed in v0.37.
+
     The websocket endpoint is at `/websocket`, e.g. `localhost:26657/websocket`.
-    Asynchronous RPC functions like event `subscribe` and `unsubscribe` are
-    only available via websockets.
+    The RPC methods for event subscription (`subscribe`, `unsubscribe`, and
+    `unsubscribe_all`) are only available via websockets.
 
     Example using https://github.com/hashrocket/ws:
 
@@ -69,6 +72,8 @@ tags:
     description: Transactions broadcast APIs
   - name: ABCI
     description: ABCI APIs
+  - name: Events
+    description: Event subscription APIs
   - name: Evidence
     description: Evidence APIs
   - name: Unsafe
@@ -81,21 +86,13 @@ paths:
         - Tx
       operationId: broadcast_tx_sync
       description: |
-        If you want to be sure that the transaction is included in a block, you can
-        subscribe for the result using JSONRPC via a websocket. See
+        This method blocks until CheckTx returns and reports its result, but
+        does not wait for the transaction to be included in a block. To know
+        when the transaction is included in a block, check for the transaction
+        event using JSON-RPC.  See
         https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
-        If you haven't received anything after a couple of blocks, resend it. If the
-        same happens again, send it to some other node. A few reasons why it could
-        happen:
 
-        1. malicious node can drop or pretend it had committed your tx
-        2. malicious proposer (not necessary the one you're communicating with) can
-        drop transactions, which might become valid in the future
-        (https://github.com/tendermint/tendermint/issues/3322)
-
-
-        Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        See https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -125,21 +122,13 @@ paths:
         - Tx
       operationId: broadcast_tx_async
       description: |
-        If you want to be sure that the transaction is included in a block, you can
-        subscribe for the result using JSONRPC via a websocket. See
+        This method submits the transaction and returns immediately without
+        waiting for the transaction to be checked (CheckTx) or committed.  Too
+        know when the transaction is included in a block, you can check for the
+        transaction event using JSON-RPC.  See
         https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
-        If you haven't received anything after a couple of blocks, resend it. If the
-        same happens again, send it to some other node. A few reasons why it could
-        happen:
 
-        1. malicious node can drop or pretend it had committed your tx
-        2. malicious proposer (not necessary the one you're communicating with) can
-        drop transactions, which might become valid in the future
-        (https://github.com/tendermint/tendermint/issues/3322)
-        3. node can be offline
-
-        Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        See https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -169,19 +158,20 @@ paths:
         - Tx
       operationId: broadcast_tx_commit
       description: |
-        IMPORTANT: use only for testing and development. In production, use
-        BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
-        result using JSONRPC via a websocket. See
+        This method waits for the transaction to be checked (CheckTx) and makes
+        a best effort to wait for it to be committed into a block before
+        returning.  It will report an error if the request times out before the
+        transaction commits.  If CheckTx or DeliverTx fails, the RPC will
+        succeed and report the failing (non-zero) ABCI result code.
+
+        WARNING: Use this only for testing and development. For production use,
+        call broadcast_tx_sync or broadcast_tx_async.
+
+        To know when a transaction is included in a block, check for the
+        transaction event using JSON-RPC.  See
         https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
 
-        CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
-        waiting for tx to commit.
-
-        If CheckTx or DeliverTx fail, no error will be returned, but the returned result
-        will contain a non-OK ABCI code.
-
-        Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        See https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -211,7 +201,7 @@ paths:
         - Tx
       operationId: check_tx
       description: |
-        The transaction won't be added to the mempool.
+        The transaction won\'t be added to the mempool.
 
         Please refer to
         https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
@@ -262,10 +252,103 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /events:
+    get:
+      summary: Fetch events posted by the consensus node.
+      tags:
+        - Events
+      operationId: events
+      description: |
+        Fetch a batch of events posted by the consensus node and matching a
+        specified query.
+
+        The query grammar is defined in
+        https://godoc.org/github.com/tendermint/tendermint/internal/pubsub/query/syntax.
+        An empty query matches all events; otherwise a query comprises one or
+        more terms comparing event metadata to target values. For example, to
+        select new block events:
+
+            tm.event = 'NewBlock'
+
+        Multiple terms can be combined with AND, for example to match the
+        transaction event with a given hash, use:
+
+            tm.event = 'Tx' AND tx.hash = 'EA7B33F'
+
+        The comparison operators include "=", "<", "<=", ">", ">=", and
+        "CONTAINS". Operands may be strings (in single quotes), numbers, dates,
+        or timestamps. In addition, the "EXISTS" operator allows you to check
+        for the presence of an attribute regardless of its value.
+
+        Tendermint defines a tm.event attribute for all events. Transactions
+        are also assigned tx.hash and tx.height attributes. Other attributes
+        are provided by the application as ABCI Event records. The name of the
+        event in the query is formed by combining the type and attribute key
+        with a period. For example, given:
+
+            []abci.Event{{
+                Type: "reward",
+                Attributes: []abci.EventAttribute{
+                    {Key: "address", Value: "cosmos1xyz012pdq"},
+                    {Key: "amount", Value: "45.62"},
+                    {Key: "balance", Value: "100.390001"},
+                },
+            }}
+
+        the query may refer to the names "reward.address", "reward.amount", and
+        "reward.balance", as in:
+
+            reward.address EXISTS AND reward.balance > 45
+
+        The node maintains a log of all events within an operator-defined time
+        window. The /events method returns the most recent items from the log
+        that match the query. Each item returned includes a cursor that marks
+        its location in the log. Cursors can be passed via the "before" and
+        "after" parameters to fetch events earlier in the log.
+      parameters:
+        - in: query
+          name: filter
+          schema:
+            $ref: "#/components/schemas/EventFilter"
+        - in: query
+          name: maxItems
+          schema:
+            type: integer
+            example: 10
+        - in: query
+          name: after
+          schema:
+            type: string
+            example: "0005d7c09065e9a7-01cf"
+        - in: query
+          name: before
+          schema:
+            type: string
+            example: "0005d7c09065e9a7-01cf"
+        - in: query
+          name: waitTime
+          schema:
+            type: integer
+            example: 5000000000
+      responses:
+        "200":
+          description: Reports a batch of matching events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventsResponse"
+        "500":
+          description: Reports an error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /subscribe:
     get:
       summary: Subscribe for events via WebSocket.
       tags:
+        - Events
         - Websocket
       operationId: subscribe
       description: |
@@ -422,6 +505,7 @@ paths:
     get:
       summary: Unsubscribe from event on Websocket
       tags:
+        - Events
         - Websocket
       operationId: unsubscribe
       description: |
@@ -472,6 +556,7 @@ paths:
     get:
       summary: Unsubscribe from all events via WebSocket
       tags:
+        - Events
         - Websocket
       operationId: unsubscribe_all
       description: |
@@ -1062,13 +1147,21 @@ paths:
       operationId: unconfirmed_txs
       parameters:
         - in: query
-          name: limit
-          description: Maximum number of unconfirmed transactions to return (max 100)
+          name: page
+          description: "Page number (1-based)"
           required: false
           schema:
             type: integer
-            default: 30
+            default: 1
             example: 1
+        - in: query
+          name: per_page
+          description: "Number of entries per page (max: 100)"
+          required: false
+          schema:
+            type: integer
+            example: 100
+            default: 30
       tags:
         - Info
       description: |
@@ -1395,6 +1488,47 @@ components:
             error:
               type: string
               example: "Description of failure"
+    EventItem:
+      description: Event item metadata
+      type: object
+      properties:
+        cursor:
+          type: string
+          example: "0005d7c09065e9a7-01cf"
+        data:
+          type: object
+          properties:
+            type:
+              type: string
+              example: "tendermint/event/Tx"
+            value:
+              type: string
+              format: json
+    EventFilter:
+      description: Event filter query
+      type: object
+      properties:
+        filter:
+          type: string
+          example: "tm.event = 'Tx'"
+    EventsResponse:
+      description: Events response
+      allOf:
+        - $ref: "#/components/schemas/JSONRPC"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventItem"
+            more:
+              type: boolean
+            oldest:
+              type: string
+              example: "0005d7c09065e9a7-01cf"
+            newest:
+              type: string
+              example: "0005d7c090660099-0200"
     ProtocolVersion:
       type: object
       properties:

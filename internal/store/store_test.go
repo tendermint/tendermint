@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	stdlog "log"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -20,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/test/factory"
-	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
@@ -61,17 +61,18 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		goodVote.BlockSignature, goodVote.StateSignature)
 }
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
-	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
+func makeStateAndBlockStore(dir string) (sm.State, *BlockStore, cleanupFunc, error) {
+	cfg, err := config.ResetTestRoot(dir, "blockchain_reactor_test")
 	if err != nil {
-		panic(err)
+		return sm.State{}, nil, nil, err
 	}
+
 	blockDB := dbm.NewMemDB()
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
-		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
+		return sm.State{}, nil, nil, fmt.Errorf("error constructing state from genesis file: %w", err)
 	}
-	return state, NewBlockStore(blockDB), func() { os.RemoveAll(cfg.RootDir) }
+	return state, NewBlockStore(blockDB), func() { os.RemoveAll(cfg.RootDir) }, nil
 }
 
 func freshBlockStore() (*BlockStore, dbm.DB) {
@@ -89,26 +90,40 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "store_test")
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 	var cleanup cleanupFunc
-	state, _, cleanup = makeStateAndBlockStore(log.NewNopLogger())
-	var err error
+
+	state, _, cleanup, err = makeStateAndBlockStore(dir)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
 	block, err = factory.MakeBlock(state, 1, new(types.Commit), nil, 0)
 	if err != nil {
-		panic(err)
+		stdlog.Fatal(err)
 	}
-	partSet = block.MakePartSet(2)
+
+	partSet, err = block.MakePartSet(2)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
 	part1 = partSet.GetPart(0)
 	part2 = partSet.GetPart(1)
 	seenCommit1 = makeTestCommit(10, tmtime.Now())
 	code := m.Run()
 	cleanup()
+	os.RemoveAll(dir) // best-effort
 	os.Exit(code)
 }
 
 // TODO: This test should be simplified ...
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
 	defer cleanup()
+	require.NoError(t, err)
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
@@ -123,7 +138,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// save a block
 	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
-	validPartSet := block.MakePartSet(2)
+	validPartSet, err := block.MakePartSet(2)
+	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
@@ -298,7 +314,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		}
 
 		assert.Nil(t, panicErr, "#%d: unexpected panic", i)
-		assert.Nil(t, err, "#%d: expecting a non-nil error", i)
+		assert.NoError(t, err, "#%d: expecting a non-nil error", i)
 		qua, ok := res.(*quad)
 		if !ok || qua == nil {
 			t.Errorf("#%d: got nil quad back; gotType=%T", i, res)
@@ -316,7 +332,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func TestLoadBaseMeta(t *testing.T) {
-	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -328,7 +344,8 @@ func TestLoadBaseMeta(t *testing.T) {
 		state.LastBlockHeight = h - 1
 		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
 		require.NoError(t, err)
-		partSet := block.MakePartSet(2)
+		partSet, err := block.MakePartSet(2)
+		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
@@ -376,7 +393,7 @@ func TestLoadBlockPart(t *testing.T) {
 }
 
 func TestPruneBlocks(t *testing.T) {
-	cfg, err := config.ResetTestRoot("blockchain_reactor_test")
+	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
 	require.NoError(t, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -396,7 +413,8 @@ func TestPruneBlocks(t *testing.T) {
 		state.LastBlockHeight = h - 1
 		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
 		require.NoError(t, err)
-		partSet := block.MakePartSet(2)
+		partSet, err := block.MakePartSet(2)
+		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
@@ -497,13 +515,15 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewNopLogger())
+	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
 	defer cleanup()
+	require.NoError(t, err)
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
 
-	partSet := block.MakePartSet(2)
+	partSet, err := block.MakePartSet(2)
+	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
@@ -545,7 +565,8 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 		blockCommit := makeTestCommit(h-1, tmtime.Now())
 		block, err := factory.MakeBlock(state, h, blockCommit, nil, 0)
 		require.NoError(t, err)
-		partSet := block.MakePartSet(2)
+		partSet, err := block.MakePartSet(2)
+		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
 		bs.SaveBlock(block, partSet, seenCommit)
 		c3 := bs.LoadSeenCommit()

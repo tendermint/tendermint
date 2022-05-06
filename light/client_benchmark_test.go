@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -56,8 +57,12 @@ func (impl *providerBenchmarkImpl) LightBlock(ctx context.Context, height int64)
 }
 
 func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evidence) error {
-	panic("not implemented")
+	return errors.New("not implemented")
 }
+
+// provierBenchmarkImpl does not have an ID iteself.
+// Thus we return a sample string
+func (impl *providerBenchmarkImpl) ID() string { return "ip-not-defined.com" }
 
 func setupDashCoreRPCMockForBenchmark(b *testing.B, validator types.PrivValidator) {
 	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, validator, true)
@@ -67,22 +72,27 @@ func setupDashCoreRPCMockForBenchmark(b *testing.B, validator types.PrivValidato
 	})
 }
 
-func BenchmarkDashCore(b *testing.B) {
+func BenchmarkSequence(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	headers, vals, privvals := genLightBlocksWithValidatorsRotatingEveryBlock(chainID, 1000, 100, bTime)
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
+
+	logger := log.NewTestingLogger(b)
 
 	privval := privvals[0]
 
 	setupDashCoreRPCMockForBenchmark(b, privval)
 
 	c, err := light.NewClient(
-		context.Background(),
+		ctx,
 		chainID,
 		benchmarkFullNode,
-		[]provider.Provider{benchmarkFullNode},
+		nil,
 		dbs.New(dbm.NewMemDB()),
 		dashCoreMockClient,
-		light.Logger(log.TestingLogger()),
+		light.Logger(logger),
 	)
 	if err != nil {
 		b.Fatal(err)
@@ -90,7 +100,7 @@ func BenchmarkDashCore(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1000, bTime.Add(1000*time.Minute))
+		_, err = c.VerifyLightBlockAtHeight(ctx, 1000, bTime.Add(1000*time.Minute))
 		if err != nil {
 			b.Fatal(err)
 		}

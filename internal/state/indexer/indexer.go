@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -30,37 +30,37 @@ type BlockIndexer interface {
 	// upon database query failure.
 	Has(height int64) (bool, error)
 
-	// Index indexes BeginBlock and EndBlock events for a given block by its height.
+	// Index indexes FinalizeBlock events for a given block by its height.
 	Index(types.EventDataNewBlockHeader) error
 
-	// Search performs a query for block heights that match a given BeginBlock
-	// and Endblock event search criteria.
+	// Search performs a query for block heights that match a given FinalizeBlock
+	// event search criteria.
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
 }
 
 // Batch groups together multiple Index operations to be performed at the same time.
 // NOTE: Batch is NOT thread-safe and must not be modified after starting its execution.
 type Batch struct {
-	Ops []*abci.TxResult
+	Ops     []*abci.TxResult
+	Pending int64
 }
 
 // NewBatch creates a new Batch.
 func NewBatch(n int64) *Batch {
-	return &Batch{
-		Ops: make([]*abci.TxResult, n),
-	}
+	return &Batch{Ops: make([]*abci.TxResult, n), Pending: n}
 }
 
 // Add or update an entry for the given result.Index.
 func (b *Batch) Add(result *abci.TxResult) error {
-	b.Ops[result.Index] = result
+	if b.Ops[result.Index] == nil {
+		b.Pending--
+		b.Ops[result.Index] = result
+	}
 	return nil
 }
 
 // Size returns the total number of operations inside the batch.
-func (b *Batch) Size() int {
-	return len(b.Ops)
-}
+func (b *Batch) Size() int { return len(b.Ops) }
 
 // ErrorEmptyHash indicates empty hash
 var ErrorEmptyHash = errors.New("transaction hash cannot be empty")

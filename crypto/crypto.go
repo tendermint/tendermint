@@ -2,16 +2,21 @@ package crypto
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
+	// HashSize is the size in bytes of an AddressHash.
+	HashSize = sha256.Size
+
 	// AddressSize is the size of a pubkey address.
 	AddressSize        = tmhash.TruncatedSize
 	DefaultHashSize    = 32
@@ -118,8 +123,9 @@ type PubKey interface {
 	VerifyAggregateSignature(msgs [][]byte, sig []byte) bool
 	Equals(PubKey) bool
 	Type() string
-	TypeValue() KeyType
-	String() string
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
 }
 
 type PrivKey interface {
@@ -129,7 +135,9 @@ type PrivKey interface {
 	PubKey() PubKey
 	Equals(PrivKey) bool
 	Type() string
-	TypeValue() KeyType
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
 }
 
 type Symmetric interface {

@@ -3,6 +3,7 @@ package app
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,7 +40,7 @@ func NewState(dir string, persistInterval uint64) (*State, error) {
 		previousFile:    filepath.Join(dir, prevStateFileName),
 		persistInterval: persistInterval,
 	}
-	state.Hash = hashItems(state.Values)
+	state.Hash = hashItems(state.Values, state.Height)
 	err := state.load()
 	switch {
 	case errors.Is(err, os.ErrNotExist):
@@ -115,7 +116,7 @@ func (s *State) Import(height uint64, jsonBytes []byte) error {
 	}
 	s.Height = height
 	s.Values = values
-	s.Hash = hashItems(values)
+	s.Hash = hashItems(values, height)
 	return s.save()
 }
 
@@ -141,7 +142,6 @@ func (s *State) Set(key, value string) {
 func (s *State) Commit() (uint64, []byte, error) {
 	s.Lock()
 	defer s.Unlock()
-	s.Hash = hashItems(s.Values)
 	switch {
 	case s.Height > 0:
 		s.Height++
@@ -150,6 +150,7 @@ func (s *State) Commit() (uint64, []byte, error) {
 	default:
 		s.Height = 1
 	}
+	s.Hash = hashItems(s.Values, s.Height)
 	if s.persistInterval > 0 && s.Height%s.persistInterval == 0 {
 		err := s.save()
 		if err != nil {
@@ -172,7 +173,7 @@ func (s *State) Rollback() error {
 }
 
 // hashItems hashes a set of key/value items.
-func hashItems(items map[string]string) []byte {
+func hashItems(items map[string]string, height uint64) []byte {
 	keys := make([]string, 0, len(items))
 	for key := range items {
 		keys = append(keys, key)
@@ -180,6 +181,9 @@ func hashItems(items map[string]string) []byte {
 	sort.Strings(keys)
 
 	hasher := sha256.New()
+	var b [8]byte
+	binary.BigEndian.PutUint64(b[:], height)
+	_, _ = hasher.Write(b[:])
 	for _, key := range keys {
 		_, _ = hasher.Write([]byte(key))
 		_, _ = hasher.Write([]byte{0})

@@ -4,7 +4,7 @@
 
 As part of our [Coordinated Vulnerability Disclosure
 Policy](https://tendermint.com/security), we operate a [bug
-bounty](https://hackerone.com/tendermint).
+bounty](https://hackerone.com/cosmos).
 See the policy for more details on submissions and rewards, and see "Example Vulnerabilities" (below) for examples of the kinds of bugs we're most interested in.
 
 ### Guidelines
@@ -86,7 +86,7 @@ If you are running older versions of Tendermint Core, we encourage you to upgrad
 
 ## Scope
 
-The full scope of our bug bounty program is outlined on our [Hacker One program page](https://hackerone.com/tendermint). Please also note that, in the interest of the safety of our users and staff, a few things are explicitly excluded from scope:
+The full scope of our bug bounty program is outlined on our [Hacker One program page](https://hackerone.com/cosmos). Please also note that, in the interest of the safety of our users and staff, a few things are explicitly excluded from scope:
 
 * Any third-party services
 * Findings from physical testing, such as office access

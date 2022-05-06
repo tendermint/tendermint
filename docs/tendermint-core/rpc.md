@@ -8,7 +8,7 @@ The RPC documentation is hosted here:
 
 - [https://docs.tendermint.com/master/rpc/](https://docs.tendermint.com/master/rpc/)
 
-To update the documentation, edit the relevant `godoc` comments in the [rpc directory](https://github.com/tendermint/tendermint/blob/v0.35.x/rpc).
+To update the documentation, edit the relevant `godoc` comments in the [rpc directory](https://github.com/tendermint/tendermint/tree/master/rpc).
 
 If you are using Tendermint in-process, you will need to set the version to be displayed in the RPC.
 

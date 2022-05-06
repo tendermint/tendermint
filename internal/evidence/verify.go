@@ -2,6 +2,7 @@ package evidence
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/tendermint/tendermint/types"
@@ -18,7 +19,7 @@ import (
 // set for. In these cases, we do not return a ErrInvalidEvidence as not to have
 // the sending peer disconnect. All other errors are treated as invalid evidence
 // (i.e. ErrInvalidEvidence).
-func (evpool *Pool) verify(evidence types.Evidence) error {
+func (evpool *Pool) verify(ctx context.Context, evidence types.Evidence) error {
 	var (
 		state          = evpool.State()
 		height         = state.LastBlockHeight
@@ -71,7 +72,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 
 		if err := ev.ValidateABCI(val, valSet, evTime); err != nil {
 			ev.GenerateABCI(val, valSet, evTime)
-			if addErr := evpool.addPendingEvidence(ev); addErr != nil {
+			if addErr := evpool.addPendingEvidence(ctx, ev); addErr != nil {
 				evpool.logger.Error("adding pending duplicate vote evidence failed", "err", addErr)
 			}
 			return err

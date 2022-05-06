@@ -3,8 +3,7 @@ updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: daily
-      time: "11:00"
+      interval: weekly
     open-pull-requests-limit: 10
 #  - package-ecosystem: npm
 #    directory: "/docs"
@@ -18,7 +17,7 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-      time: "11:00"
+    target-branch: "v0.35.x"
     open-pull-requests-limit: 10
     reviewers:
       - shotonoff

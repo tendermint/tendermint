@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -34,12 +35,9 @@ func TestNewDefaultLogger(t *testing.T) {
 		tc := tc
 
 		t.Run(name, func(t *testing.T) {
-			_, err := log.NewDefaultLogger(tc.format, tc.level, false)
+			_, err := log.NewDefaultLogger(tc.format, tc.level)
 			if tc.expectErr {
 				require.Error(t, err)
-				require.Panics(t, func() {
-					_ = log.MustNewDefaultLogger(tc.format, tc.level, false)
-				})
 			} else {
 				require.NoError(t, err)
 			}

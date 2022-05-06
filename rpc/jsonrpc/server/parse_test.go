@@ -1,8 +1,8 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestParseJSONMap(t *testing.T) {
@@ -19,7 +18,7 @@ func TestParseJSONMap(t *testing.T) {
 	// naive is float,string
 	var p1 map[string]interface{}
 	err := json.Unmarshal(input, &p1)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		h, ok := p1["height"].(float64)
 		if assert.True(t, ok, "%#v", p1["height"]) {
 			assert.EqualValues(t, 22, h)
@@ -37,7 +36,7 @@ func TestParseJSONMap(t *testing.T) {
 		"height": &tmp,
 	}
 	err = json.Unmarshal(input, &p2)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		h, ok := p2["height"].(float64)
 		if assert.True(t, ok, "%#v", p2["height"]) {
 			assert.EqualValues(t, 22, h)
@@ -59,7 +58,7 @@ func TestParseJSONMap(t *testing.T) {
 		Value:  &bytes.HexBytes{},
 	}
 	err = json.Unmarshal(input, &p3)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		h, ok := p3.Height.(*int)
 		if assert.True(t, ok, "%#v", p3.Height) {
 			assert.Equal(t, 22, *h)
@@ -76,7 +75,7 @@ func TestParseJSONMap(t *testing.T) {
 		Height int            `json:"height"`
 	}{}
 	err = json.Unmarshal(input, &p4)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		assert.EqualValues(t, 22, p4.Height)
 		assert.EqualValues(t, []byte{0x12, 0x34}, p4.Value)
 	}
@@ -85,16 +84,16 @@ func TestParseJSONMap(t *testing.T) {
 	// dynamic keys on map, and we can deserialize to the desired types
 	var p5 map[string]*json.RawMessage
 	err = json.Unmarshal(input, &p5)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		var h int
 		err = json.Unmarshal(*p5["height"], &h)
-		if assert.Nil(t, err) {
+		if assert.NoError(t, err) {
 			assert.Equal(t, 22, h)
 		}
 
 		var v bytes.HexBytes
 		err = json.Unmarshal(*p5["value"], &v)
-		if assert.Nil(t, err) {
+		if assert.NoError(t, err) {
 			assert.Equal(t, bytes.HexBytes{0x12, 0x34}, v)
 		}
 	}
@@ -106,7 +105,7 @@ func TestParseJSONArray(t *testing.T) {
 	// naive is float,string
 	var p1 []interface{}
 	err := json.Unmarshal(input, &p1)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		v, ok := p1[0].(string)
 		if assert.True(t, ok, "%#v", p1[0]) {
 			assert.EqualValues(t, "1234", v)
@@ -121,7 +120,7 @@ func TestParseJSONArray(t *testing.T) {
 	tmp := 0
 	p2 := []interface{}{&bytes.HexBytes{}, &tmp}
 	err = json.Unmarshal(input, &p2)
-	if assert.Nil(t, err) {
+	if assert.NoError(t, err) {
 		v, ok := p2[0].(*bytes.HexBytes)
 		if assert.True(t, ok, "%#v", p2[0]) {
 			assert.EqualValues(t, []byte{0x12, 0x34}, *v)
@@ -134,8 +133,12 @@ func TestParseJSONArray(t *testing.T) {
 }
 
 func TestParseJSONRPC(t *testing.T) {
-	demo := func(ctx *rpctypes.Context, height int, name string) {}
-	call := NewRPCFunc(demo, "height,name", false)
+	type demoArgs struct {
+		Height int    `json:"height,string"`
+		Name   string `json:"name"`
+	}
+	demo := func(ctx context.Context, _ *demoArgs) error { return nil }
+	rfunc := NewRPCFunc(demo)
 
 	cases := []struct {
 		raw    string
@@ -153,17 +156,19 @@ func TestParseJSONRPC(t *testing.T) {
 		{`[7,"flew",100]`, 0, "", true},
 		{`{"name": -12, "height": "fred"}`, 0, "", true},
 	}
+	ctx := context.Background()
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
-		data := []byte(tc.raw)
-		vals, err := jsonParamsToArgs(call, data)
+		vals, err := rfunc.parseParams(ctx, []byte(tc.raw))
 		if tc.fail {
-			assert.NotNil(t, err, i)
+			assert.Error(t, err, i)
 		} else {
-			assert.Nil(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 2, len(vals), i) {
-				assert.Equal(t, tc.height, vals[0].Int(), i)
-				assert.Equal(t, tc.name, vals[1].String(), i)
+			assert.NoError(t, err, "%s: %+v", i, err)
+			assert.Equal(t, 2, len(vals), i)
+			p, ok := vals[1].Interface().(*demoArgs)
+			if assert.True(t, ok) {
+				assert.Equal(t, tc.height, int64(p.Height), i)
+				assert.Equal(t, tc.name, p.Name, i)
 			}
 		}
 
@@ -171,43 +176,153 @@ func TestParseJSONRPC(t *testing.T) {
 }
 
 func TestParseURI(t *testing.T) {
-	demo := func(ctx *rpctypes.Context, height int, name string) {}
-	call := NewRPCFunc(demo, "height,name", false)
+	// URI parameter parsing happens in two phases:
+	//
+	// Phase 1 swizzles the query parameters into JSON.  The result of this
+	// phase must be valid JSON, but may fail the second stage.
+	//
+	// Phase 2 decodes the JSON to obtain the actual arguments. A failure at
+	// this stage means the JSON is not compatible with the target.
 
-	cases := []struct {
-		raw    []string
-		height int64
-		name   string
-		fail   bool
-	}{
-		// can parse numbers unquoted and strings quoted
-		{[]string{"7", `"flew"`}, 7, "flew", false},
-		{[]string{"22", `"john"`}, 22, "john", false},
-		{[]string{"-10", `"bob"`}, -10, "bob", false},
-		// can parse numbers quoted, too
-		{[]string{`"7"`, `"flew"`}, 7, "flew", false},
-		{[]string{`"-10"`, `"bob"`}, -10, "bob", false},
-		// cant parse strings uquoted
-		{[]string{`"-10"`, `bob`}, -10, "bob", true},
-	}
-	for idx, tc := range cases {
-		i := strconv.Itoa(idx)
-		// data := []byte(tc.raw)
-		url := fmt.Sprintf(
-			"test.com/method?height=%v&name=%v",
-			tc.raw[0], tc.raw[1])
-		req, err := http.NewRequest("GET", url, nil)
-		assert.NoError(t, err)
-		vals, err := httpParamsToArgs(call, req)
-		if tc.fail {
-			assert.NotNil(t, err, i)
-		} else {
-			assert.Nil(t, err, "%s: %+v", i, err)
-			if assert.Equal(t, 2, len(vals), i) {
-				assert.Equal(t, tc.height, vals[0].Int(), i)
-				assert.Equal(t, tc.name, vals[1].String(), i)
-			}
+	t.Run("Swizzle", func(t *testing.T) {
+		tests := []struct {
+			name string
+			url  string
+			args []argInfo
+			want string
+			fail bool
+		}{
+			{
+				name: "quoted numbers and strings",
+				url:  `http://localhost?num="7"&str="flew"&neg="-10"`,
+				args: []argInfo{{name: "neg"}, {name: "num"}, {name: "str"}, {name: "other"}},
+				want: `{"neg":-10,"num":7,"str":"flew"}`,
+			},
+			{
+				name: "unquoted numbers and strings",
+				url:  `http://localhost?num1=7&str1=cabbage&num2=-199&str2=hey+you`,
+				args: []argInfo{{name: "num1"}, {name: "num2"}, {name: "str1"}, {name: "str2"}, {name: "other"}},
+				want: `{"num1":7,"num2":-199,"str1":"cabbage","str2":"hey you"}`,
+			},
+			{
+				name: "quoted byte strings",
+				url:  `http://localhost?left="Fahrvergnügen"&right="Applesauce"`,
+				args: []argInfo{{name: "left", isBinary: true}, {name: "right", isBinary: false}},
+				want: `{"left":"RmFocnZlcmduw7xnZW4=","right":"Applesauce"}`,
+			},
+			{
+				name: "hexadecimal byte strings",
+				url:  `http://localhost?lower=0x626f62&upper=0X646F7567`,
+				args: []argInfo{{name: "upper", isBinary: true}, {name: "lower", isBinary: false}, {name: "other"}},
+				want: `{"lower":"bob","upper":"ZG91Zw=="}`,
+			},
+			{
+				name: "invalid hex odd length",
+				url:  `http://localhost?bad=0xa`,
+				args: []argInfo{{name: "bad"}, {name: "superbad"}},
+				fail: true,
+			},
+			{
+				name: "invalid hex empty",
+				url:  `http://localhost?bad=0x`,
+				args: []argInfo{{name: "bad"}},
+				fail: true,
+			},
+			{
+				name: "invalid quoted string",
+				url:  `http://localhost?bad="double""`,
+				args: []argInfo{{name: "bad"}},
+				fail: true,
+			},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				hreq, err := http.NewRequest("GET", test.url, nil)
+				if err != nil {
+					t.Fatalf("NewRequest for %q: %v", test.url, err)
+				}
+
+				bits, err := parseURLParams(test.args, hreq)
+				if err != nil && !test.fail {
+					t.Fatalf("Parse %q: unexpected error: %v", test.url, err)
+				} else if err == nil && test.fail {
+					t.Fatalf("Parse %q: got %#q, wanted error", test.url, string(bits))
+				}
+				if got := string(bits); got != test.want {
+					t.Errorf("Parse %q: got %#q, want %#q", test.url, got, test.want)
+				}
+			})
+		}
+	})
+
+	t.Run("Decode", func(t *testing.T) {
+		type argValue struct {
+			Height json.Number `json:"height"`
+			Name   string      `json:"name"`
+			Flag   bool        `json:"flag"`
 		}
 
-	}
+		echo := NewRPCFunc(func(_ context.Context, arg *argValue) (*argValue, error) {
+			return arg, nil
+		})
+
+		tests := []struct {
+			name string
+			url  string
+			fail string
+			want interface{}
+		}{
+			{
+				name: "valid all args",
+				url:  `http://localhost?height=235&flag=true&name="bogart"`,
+				want: &argValue{
+					Height: "235",
+					Flag:   true,
+					Name:   "bogart",
+				},
+			},
+			{
+				name: "valid partial args",
+				url:  `http://localhost?height="1987"&name=free+willy`,
+				want: &argValue{
+					Height: "1987",
+					Name:   "free willy",
+				},
+			},
+			{
+				name: "invalid quoted number",
+				url:  `http://localhost?height="-xx"`,
+				fail: "invalid number literal",
+			},
+			{
+				name: "invalid unquoted number",
+				url:  `http://localhost?height=25*q`,
+				fail: "invalid number literal",
+			},
+			{
+				name: "invalid boolean",
+				url:  `http://localhost?flag="garbage"`,
+				fail: "flag of type bool",
+			},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				hreq, err := http.NewRequest("GET", test.url, nil)
+				if err != nil {
+					t.Fatalf("NewRequest for %q: %v", test.url, err)
+				}
+				bits, err := parseURLParams(echo.args, hreq)
+				if err != nil {
+					t.Fatalf("Parse %#q: unexpected error: %v", test.url, err)
+				}
+				rsp, err := echo.Call(context.Background(), bits)
+				if test.want != nil {
+					assert.Equal(t, test.want, rsp)
+				}
+				if test.fail != "" {
+					assert.ErrorContains(t, err, test.fail)
+				}
+			})
+		}
+	})
 }

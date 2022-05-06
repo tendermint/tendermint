@@ -8,18 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/rs/zerolog"
-
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/rs/zerolog"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
@@ -48,12 +46,12 @@ const (
 
 // Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
-	mtx tmsync.Mutex
+	mtx sync.Mutex
 
 	Header        `json:"header"`
 	Data          `json:"data"`
 	CoreChainLock *CoreChainLock `json:"core_chain_lock"`
-	Evidence      EvidenceData   `json:"evidence"`
+	Evidence      EvidenceList   `json:"evidence"`
 	LastCommit    *Commit        `json:"last_commit"`
 }
 
@@ -93,7 +91,7 @@ func (b *Block) ValidateBasic() error {
 		return errors.New("nil LastPrecommits")
 	}
 	if err := b.LastCommit.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong LastPrecommits: %v", err)
+		return fmt.Errorf("wrong LastPrecommits: %w", err)
 	}
 
 	if w, g := b.LastCommit.Hash(), b.LastCommitHash; !bytes.Equal(w, g) {
@@ -105,8 +103,8 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("wrong Header.DataHash. Expected %X, got %X", w, g)
 	}
 
-	// NOTE: b.Evidence.Evidence may be nil, but we're just looping.
-	for i, ev := range b.Evidence.Evidence {
+	// NOTE: b.Evidence may be nil, but we're just looping.
+	for i, ev := range b.Evidence {
 		if err := ev.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid evidence (#%d): %v", i, err)
 		}
@@ -151,22 +149,22 @@ func (b *Block) Hash() tmbytes.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 // CONTRACT: partSize is greater than zero.
-func (b *Block) MakePartSet(partSize uint32) *PartSet {
+func (b *Block) MakePartSet(partSize uint32) (*PartSet, error) {
 	if b == nil {
-		return nil
+		return nil, errors.New("nil block")
 	}
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
 	pbb, err := b.ToProto()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	bz, err := proto.Marshal(pbb)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return NewPartSetFromData(bz, partSize)
+	return NewPartSetFromData(bz, partSize), nil
 }
 
 // HashesTo is a convenience function that checks if a block hashes to the given argument.
@@ -358,7 +356,7 @@ func MakeBlock(height int64, coreHeight uint32, coreChainLock *CoreChainLock, tx
 			Txs: txs,
 		},
 		CoreChainLock: coreChainLock,
-		Evidence:      EvidenceData{Evidence: evidence},
+		Evidence:      evidence,
 		LastCommit:    lastCommit,
 	}
 	block.fillHeader()
@@ -371,14 +369,15 @@ func MakeBlock(height int64, coreHeight uint32, coreChainLock *CoreChainLock, tx
 // NOTE: changes to the Header should be duplicated in:
 // - header.Hash()
 // - abci.Header
-// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
+// - https://github.com/tendermint/tendermint/blob/master/spec/core/data_structures.md
 type Header struct {
 	// basic block info
-	Version               version.Consensus `json:"version"`
-	ChainID               string            `json:"chain_id"`
-	Height                int64             `json:"height"`
-	CoreChainLockedHeight uint32            `json:"core_chain_locked_height"`
-	Time                  time.Time         `json:"time"`
+	Version version.Consensus `json:"version"`
+	ChainID string            `json:"chain_id"`
+	Height  int64             `json:"height,string"`
+	Time    time.Time         `json:"time"`
+
+	CoreChainLockedHeight uint32 `json:"core_chain_locked_height"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
@@ -447,15 +446,15 @@ func (h Header) ValidateBasic() error {
 	}
 
 	if err := ValidateHash(h.LastCommitHash); err != nil {
-		return fmt.Errorf("wrong LastCommitHash: %v", err)
+		return fmt.Errorf("wrong LastCommitHash: %w", err)
 	}
 
 	if err := ValidateHash(h.DataHash); err != nil {
-		return fmt.Errorf("wrong DataHash: %v", err)
+		return fmt.Errorf("wrong DataHash: %w", err)
 	}
 
 	if err := ValidateHash(h.EvidenceHash); err != nil {
-		return fmt.Errorf("wrong EvidenceHash: %v", err)
+		return fmt.Errorf("wrong EvidenceHash: %w", err)
 	}
 
 	if len(h.ProposerProTxHash) != crypto.DefaultHashSize {
@@ -468,17 +467,17 @@ func (h Header) ValidateBasic() error {
 	// Basic validation of hashes related to application data.
 	// Will validate fully against state in state#ValidateBlock.
 	if err := ValidateHash(h.ValidatorsHash); err != nil {
-		return fmt.Errorf("wrong ValidatorsHash: %v", err)
+		return fmt.Errorf("wrong ValidatorsHash: %w", err)
 	}
 	if err := ValidateHash(h.NextValidatorsHash); err != nil {
-		return fmt.Errorf("wrong NextValidatorsHash: %v", err)
+		return fmt.Errorf("wrong NextValidatorsHash: %w", err)
 	}
 	if err := ValidateHash(h.ConsensusHash); err != nil {
-		return fmt.Errorf("wrong ConsensusHash: %v", err)
+		return fmt.Errorf("wrong ConsensusHash: %w", err)
 	}
 	// NOTE: AppHash is arbitrary length
 	if err := ValidateHash(h.LastResultsHash); err != nil {
-		return fmt.Errorf("wrong LastResultsHash: %v", err)
+		return fmt.Errorf("wrong LastResultsHash: %w", err)
 	}
 
 	return nil
@@ -569,7 +568,8 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.EvidenceHash,
 		indent, h.ProposerProTxHash,
 		indent, h.ProposedAppVersion,
-		indent, h.Hash())
+		indent, h.Hash(),
+	)
 }
 
 // ToProto converts Header to protobuf
@@ -691,7 +691,6 @@ func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quor
 }
 
 // GetCanonicalVote returns the message that is being voted on in the form of a vote without signatures.
-//
 func (commit *Commit) GetCanonicalVote() *Vote {
 	return &Vote{
 		Type:    tmproto.PrecommitType,
@@ -773,7 +772,7 @@ func (commit *Commit) ValidateBasic() error {
 	}
 
 	if commit.Height >= 1 {
-		if commit.BlockID.IsZero() {
+		if commit.BlockID.IsNil() {
 			return errors.New("commit cannot be for nil block")
 		}
 		if len(commit.ThresholdBlockSignature) != SignatureSize {
@@ -1004,97 +1003,6 @@ func DataFromProto(dp *tmproto.Data) (Data, error) {
 	return *data, nil
 }
 
-//-----------------------------------------------------------------------------
-
-// EvidenceData contains any evidence of malicious wrong-doing by validators
-type EvidenceData struct {
-	Evidence EvidenceList `json:"evidence"`
-
-	// Volatile. Used as cache
-	hash     tmbytes.HexBytes
-	byteSize int64
-}
-
-// Hash returns the hash of the data.
-func (data *EvidenceData) Hash() tmbytes.HexBytes {
-	if data.hash == nil {
-		data.hash = data.Evidence.Hash()
-	}
-	return data.hash
-}
-
-// ByteSize returns the total byte size of all the evidence
-func (data *EvidenceData) ByteSize() int64 {
-	if data.byteSize == 0 && len(data.Evidence) != 0 {
-		pb, err := data.ToProto()
-		if err != nil {
-			panic(err)
-		}
-		data.byteSize = int64(pb.Size())
-	}
-	return data.byteSize
-}
-
-// StringIndented returns a string representation of the evidence.
-func (data *EvidenceData) StringIndented(indent string) string {
-	if data == nil {
-		return "nil-Evidence"
-	}
-	evStrings := make([]string, tmmath.MinInt(len(data.Evidence), 21))
-	for i, ev := range data.Evidence {
-		if i == 20 {
-			evStrings[i] = fmt.Sprintf("... (%v total)", len(data.Evidence))
-			break
-		}
-		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
-	}
-	return fmt.Sprintf(`EvidenceData{
-%s  %v
-%s}#%v`,
-		indent, strings.Join(evStrings, "\n"+indent+"  "),
-		indent, data.hash)
-}
-
-// ToProto converts EvidenceData to protobuf
-func (data *EvidenceData) ToProto() (*tmproto.EvidenceList, error) {
-	if data == nil {
-		return nil, errors.New("nil evidence data")
-	}
-
-	evi := new(tmproto.EvidenceList)
-	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
-	for i := range data.Evidence {
-		protoEvi, err := EvidenceToProto(data.Evidence[i])
-		if err != nil {
-			return nil, err
-		}
-		eviBzs[i] = *protoEvi
-	}
-	evi.Evidence = eviBzs
-
-	return evi, nil
-}
-
-// FromProto sets a protobuf EvidenceData to the given pointer.
-func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceList) error {
-	if eviData == nil {
-		return errors.New("nil evidenceData")
-	}
-
-	eviBzs := make(EvidenceList, len(eviData.Evidence))
-	for i := range eviData.Evidence {
-		evi, err := EvidenceFromProto(&eviData.Evidence[i])
-		if err != nil {
-			return err
-		}
-		eviBzs[i] = evi
-	}
-	data.Evidence = eviBzs
-	data.byteSize = int64(eviData.Size())
-
-	return nil
-}
-
 //--------------------------------------------------------------------------------
 
 // BlockID
@@ -1132,17 +1040,17 @@ func (blockID BlockID) ValidateBasic() error {
 	return nil
 }
 
-// IsZero returns true if this is the BlockID of a nil block.
-func (blockID BlockID) IsZero() bool {
+// IsNil returns true if this is the BlockID of a nil block.
+func (blockID BlockID) IsNil() bool {
 	return len(blockID.Hash) == 0 &&
 		blockID.PartSetHeader.IsZero()
 }
 
 // IsComplete returns true if this is a valid BlockID of a non-nil block.
 func (blockID BlockID) IsComplete() bool {
-	return len(blockID.Hash) == tmhash.Size &&
+	return len(blockID.Hash) == crypto.HashSize &&
 		blockID.PartSetHeader.Total > 0 &&
-		len(blockID.PartSetHeader.Hash) == tmhash.Size
+		len(blockID.PartSetHeader.Hash) == crypto.HashSize
 }
 
 // String returns a human readable string representation of the BlockID.

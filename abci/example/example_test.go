@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -30,95 +29,69 @@ func init() {
 }
 
 func TestKVStore(t *testing.T) {
-	fmt.Println("### Testing KVStore")
-	testStream(t, kvstore.NewApplication())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logger := log.NewNopLogger()
+
+	t.Log("### Testing KVStore")
+	testBulk(ctx, t, logger, kvstore.NewApplication())
 }
 
 func TestBaseApp(t *testing.T) {
-	fmt.Println("### Testing BaseApp")
-	testStream(t, types.NewBaseApplication())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logger := log.NewNopLogger()
+
+	t.Log("### Testing BaseApp")
+	testBulk(ctx, t, logger, types.NewBaseApplication())
 }
 
 func TestGRPC(t *testing.T) {
-	fmt.Println("### Testing GRPC")
-	testGRPCSync(t, types.NewGRPCApplication(types.NewBaseApplication()))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.NewNopLogger()
+
+	t.Log("### Testing GRPC")
+	testGRPCSync(ctx, t, logger, types.NewBaseApplication())
 }
 
-func testStream(t *testing.T, app types.Application) {
-	const numDeliverTxs = 20000
+func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Application) {
+	t.Helper()
+
+	const numDeliverTxs = 700000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
-
 	// Start the listener
-	server := abciserver.NewSocketServer(socket, app)
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	err := server.Start()
+	server := abciserver.NewSocketServer(logger.With("module", "abci-server"), socket, app)
+	t.Cleanup(server.Wait)
+	err := server.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := server.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(socket, false)
-	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	err = client.Start()
+	client := abciclient.NewSocketClient(logger.With("module", "abci-client"), socket, false)
+	t.Cleanup(client.Wait)
+
+	err = client.Start(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := client.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
-	done := make(chan struct{})
-	counter := 0
-	client.SetResponseCallback(func(req *types.Request, res *types.Response) {
-		// Process response
-		switch r := res.Value.(type) {
-		case *types.Response_DeliverTx:
-			counter++
-			if r.DeliverTx.Code != code.CodeTypeOK {
-				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
-			}
-			if counter > numDeliverTxs {
-				t.Fatalf("Too many DeliverTx responses. Got %d, expected %d", counter, numDeliverTxs)
-			}
-			if counter == numDeliverTxs {
-				go func() {
-					time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
-					close(done)
-				}()
-				return
-			}
-		case *types.Response_Flush:
-			// ignore
-		default:
-			t.Error("Unexpected response type", reflect.TypeOf(res.Value))
-		}
-	})
-
-	ctx := context.Background()
-
-	// Write requests
+	// Construct request
+	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
 	for counter := 0; counter < numDeliverTxs; counter++ {
-		// Send request
-		_, err = client.DeliverTxAsync(ctx, types.RequestDeliverTx{Tx: []byte("test")})
-		require.NoError(t, err)
-
-		// Sometimes send flush messages
-		if counter%128 == 0 {
-			err = client.FlushSync(context.Background())
-			require.NoError(t, err)
-		}
+		rfb.Txs[counter] = []byte("test")
+	}
+	// Send bulk request
+	res, err := client.FinalizeBlock(ctx, rfb)
+	require.NoError(t, err)
+	require.Equal(t, numDeliverTxs, len(res.TxResults), "Number of txs doesn't match")
+	for _, tx := range res.TxResults {
+		require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
 	}
 
 	// Send final flush message
-	_, err = client.FlushAsync(ctx)
+	err = client.Flush(ctx)
 	require.NoError(t, err)
-
-	<-done
 }
 
 //-------------------------
@@ -128,33 +101,25 @@ func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
 	return tmnet.Connect(addr)
 }
 
-func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
-	numDeliverTxs := 2000
+func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app types.Application) {
+	t.Helper()
+	numDeliverTxs := 680000
 	socketFile := fmt.Sprintf("/tmp/test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
 
 	// Start the listener
-	server := abciserver.NewGRPCServer(socket, app)
-	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if err := server.Start(); err != nil {
-		t.Fatalf("Error starting GRPC server: %v", err.Error())
-	}
+	server := abciserver.NewGRPCServer(logger.With("module", "abci-server"), socket, app)
 
-	t.Cleanup(func() {
-		if err := server.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	require.NoError(t, server.Start(ctx))
+	t.Cleanup(server.Wait)
 
 	// Connect to the socket
 	conn, err := grpc.Dial(socket,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialerFunc),
 	)
-	if err != nil {
-		t.Fatalf("Error dialing GRPC server: %v", err.Error())
-	}
+	require.NoError(t, err, "Error dialing GRPC server")
 
 	t.Cleanup(func() {
 		if err := conn.Close(); err != nil {
@@ -164,26 +129,17 @@ func testGRPCSync(t *testing.T, app types.ABCIApplicationServer) {
 
 	client := types.NewABCIApplicationClient(conn)
 
-	// Write requests
+	// Construct request
+	rfb := types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
 	for counter := 0; counter < numDeliverTxs; counter++ {
-		// Send request
-		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
-		if err != nil {
-			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
-		}
-		counter++
-		if response.Code != code.CodeTypeOK {
-			t.Error("DeliverTx failed with ret_code", response.Code)
-		}
-		if counter > numDeliverTxs {
-			t.Fatal("Too many DeliverTx responses")
-		}
-		t.Log("response", counter)
-		if counter == numDeliverTxs {
-			go func() {
-				time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
-			}()
-		}
+		rfb.Txs[counter] = []byte("test")
+	}
 
+	// Send request
+	response, err := client.FinalizeBlock(ctx, &rfb)
+	require.NoError(t, err, "Error in GRPC FinalizeBlock")
+	require.Equal(t, numDeliverTxs, len(response.TxResults), "Number of txs returned via GRPC doesn't match")
+	for _, tx := range response.TxResults {
+		require.Equal(t, tx.Code, code.CodeTypeOK, "Tx failed")
 	}
 }

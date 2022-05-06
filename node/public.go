@@ -2,6 +2,7 @@
 package node
 
 import (
+	"context"
 	"fmt"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -17,8 +18,12 @@ import (
 // process that host their own process-local tendermint node. This is
 // equivalent to running tendermint in it's own process communicating
 // to an external ABCI application.
-func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error) {
-	return newDefaultNode(conf, logger)
+func NewDefault(
+	ctx context.Context,
+	conf *config.Config,
+	logger log.Logger,
+) (service.Service, error) {
+	return newDefaultNode(ctx, conf, logger)
 }
 
 // New constructs a tendermint node. The ClientCreator makes it
@@ -27,9 +32,11 @@ func NewDefault(conf *config.Config, logger log.Logger) (service.Service, error)
 // Genesis document: if the value is nil, the genesis document is read
 // from the file specified in the config, and otherwise the node uses
 // value of the final argument.
-func New(conf *config.Config,
+func New(
+	ctx context.Context,
+	conf *config.Config,
 	logger log.Logger,
-	cf abciclient.Creator,
+	cf abciclient.Client,
 	gen *types.GenesisDoc,
 	dashCoreRPCClient dashcore.Client,
 ) (service.Service, error) {
@@ -53,7 +60,9 @@ func New(conf *config.Config,
 			return nil, err
 		}
 
-		return makeNode(conf,
+		return makeNode(
+			ctx,
+			conf,
 			pval,
 			nodeKey,
 			cf,
@@ -62,7 +71,7 @@ func New(conf *config.Config,
 			dashCoreRPCClient,
 			logger)
 	case config.ModeSeed:
-		return makeSeedNode(conf, config.DefaultDBProvider, nodeKey, genProvider, logger)
+		return makeSeedNode(logger, conf, config.DefaultDBProvider, nodeKey, genProvider)
 	default:
 		return nil, fmt.Errorf("%q is not a valid mode", conf.Mode)
 	}

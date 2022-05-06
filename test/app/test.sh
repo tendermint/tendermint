@@ -1,17 +1,26 @@
-#! /bin/bash
-set -ex
+#!/bin/bash
+set -exo pipefail
 
 #- kvstore over socket, curl
 
 # TODO: install everything
 
-GOPATH=$(go env GOPATH)
 export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tenderdash_app
 
-function kvstore_over_socket(){
-    rm -rf $TMHOME
+function init_validator() {
+    rm -rf -- "$TMHOME"
     tenderdash init validator
+
+    # The default configuration sets a null indexer, but these tests require
+    # indexing to be enabled. Rewrite the config file to set the "kv" indexer
+    # before starting up the node.
+    sed -i'' -e '/indexer = \["null"\]/c\
+indexer = ["kv"]' "$TMHOME/config/config.toml"
+}
+
+function kvstore_over_socket() {
+    init_validator
     echo "Starting kvstore_over_socket"
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!
@@ -25,13 +34,12 @@ function kvstore_over_socket(){
     kill -9 $pid_kvstore $pid_tenderdash
 }
 
-# start tenderdash first
-function kvstore_over_socket_reorder(){
-    rm -rf $TMHOME
-    tenderdash init validator
+# start tendermint first
+function kvstore_over_socket_reorder() {
+    init_validator
     echo "Starting kvstore_over_socket_reorder (ie. start tenderdash first)"
     tenderdash start --mode validator > tenderdash.log &
-    pid_tenderdash=$!
+    pid_tendermint=$!
     sleep 2
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!

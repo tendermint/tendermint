@@ -1,22 +1,34 @@
 package core
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"time"
 
+	"github.com/rs/cors"
+
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
+	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/eventlog"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
-	"github.com/tendermint/tendermint/internal/proxy"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/rpc/coretypes"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -45,25 +57,6 @@ type consensusState interface {
 	GetRoundStateSimpleJSON() ([]byte, error)
 }
 
-type transport interface {
-	Listeners() []string
-	IsListening() bool
-	NodeInfo() types.NodeInfo
-}
-
-type peers interface {
-	AddPersistentPeers([]string) error
-	AddUnconditionalPeerIDs([]string) error
-	AddPrivatePeerIDs([]string) error
-	DialPeersAsync([]string) error
-	Peers() p2p.IPeerSet
-}
-
-type consensusReactor interface {
-	WaitSync() bool
-	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
-}
-
 type peerManager interface {
 	Peers() []types.NodeID
 	Addresses(types.NodeID) []p2p.NodeAddress
@@ -74,19 +67,19 @@ type peerManager interface {
 // to be setup once during startup.
 type Environment struct {
 	// external, thread safe interfaces
-	ProxyAppQuery   proxy.AppConnQuery
-	ProxyAppMempool proxy.AppConnMempool
+	ProxyApp abciclient.Client
 
 	// interfaces defined in types and above
 	StateStore       sm.Store
 	BlockStore       sm.BlockStore
 	EvidencePool     sm.EvidencePool
 	ConsensusState   consensusState
-	ConsensusReactor consensusReactor
-	P2PPeers         peers
+	ConsensusReactor *consensus.Reactor
+	BlockSyncReactor *blocksync.Reactor
 
-	// Legacy p2p stack
-	P2PTransport transport
+	IsListening bool
+	Listeners   []string
+	NodeInfo    types.NodeInfo
 
 	// interfaces for new p2p interfaces
 	PeerManager peerManager
@@ -95,9 +88,9 @@ type Environment struct {
 	ProTxHash         crypto.ProTxHash
 	GenDoc            *types.GenesisDoc // cache the genesis structure
 	EventSinks        []indexer.EventSink
-	EventBus          *types.EventBus // thread safe
+	EventBus          *eventbus.EventBus // thread safe
+	EventLog          *eventlog.Log
 	Mempool           mempool.Mempool
-	BlockSyncReactor  consensus.BlockSyncReactor
 	StateSyncMetricer statesync.Metricer
 
 	Logger log.Logger
@@ -159,7 +152,7 @@ func (env *Environment) InitGenesisChunks() error {
 		return nil
 	}
 
-	data, err := tmjson.Marshal(env.GenDoc)
+	data, err := json.Marshal(env.GenDoc)
 	if err != nil {
 		return err
 	}
@@ -207,9 +200,154 @@ func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, 
 }
 
 func (env *Environment) latestUncommittedHeight() int64 {
-	nodeIsSyncing := env.ConsensusReactor.WaitSync()
-	if nodeIsSyncing {
-		return env.BlockStore.Height()
+	if env.ConsensusReactor != nil {
+		// consensus reactor can be nil in inspect mode.
+
+		nodeIsSyncing := env.ConsensusReactor.WaitSync()
+		if nodeIsSyncing {
+			return env.BlockStore.Height()
+		}
 	}
 	return env.BlockStore.Height() + 1
+}
+
+// StartService constructs and starts listeners for the RPC service
+// according to the config object, returning an error if the service
+// cannot be constructed or started. The listeners, which provide
+// access to the service, run until the context is canceled.
+func (env *Environment) StartService(ctx context.Context, conf *config.Config) ([]net.Listener, error) {
+	if err := env.InitGenesisChunks(); err != nil {
+		return nil, err
+	}
+
+	env.Listeners = []string{
+		fmt.Sprintf("Listener(@%v)", conf.P2P.ExternalAddress),
+	}
+
+	listenAddrs := strings.SplitAndTrimEmpty(conf.RPC.ListenAddress, ",", " ")
+	routes := NewRoutesMap(env, &RouteOptions{
+		Unsafe: conf.RPC.Unsafe,
+	})
+
+	cfg := rpcserver.DefaultConfig()
+	cfg.MaxBodyBytes = conf.RPC.MaxBodyBytes
+	cfg.MaxHeaderBytes = conf.RPC.MaxHeaderBytes
+	cfg.MaxOpenConnections = conf.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if cfg.WriteTimeout <= conf.RPC.TimeoutBroadcastTxCommit {
+		cfg.WriteTimeout = conf.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
+	// If the event log is enabled, subscribe to all events published to the
+	// event bus, and forward them to the event log.
+	if lg := env.EventLog; lg != nil {
+		// TODO(creachadair): This is kind of a hack, ideally we'd share the
+		// observer with the indexer, but it's tricky to plumb them together.
+		// For now, use a "normal" subscription with a big buffer allowance.
+		// The event log should always be able to keep up.
+		const subscriberID = "event-log-subscriber"
+		sub, err := env.EventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+			ClientID: subscriberID,
+			Query:    query.All,
+			Limit:    1 << 16, // essentially "no limit"
+		})
+		if err != nil {
+			return nil, fmt.Errorf("event log subscribe: %w", err)
+		}
+		go func() {
+			// N.B. Use background for unsubscribe, ctx is already terminated.
+			defer env.EventBus.UnsubscribeAll(context.Background(), subscriberID) // nolint:errcheck
+			for {
+				msg, err := sub.Next(ctx)
+				if err != nil {
+					env.Logger.Error("Subscription terminated", "err", err)
+					return
+				}
+				etype, ok := eventlog.FindType(msg.Events())
+				if ok {
+					_ = lg.Add(etype, msg.Data())
+				}
+			}
+		}()
+
+		env.Logger.Info("Event log subscription enabled")
+	}
+
+	// We may expose the RPC over both TCP and a Unix-domain socket.
+	listeners := make([]net.Listener, len(listenAddrs))
+	for i, listenAddr := range listenAddrs {
+		mux := http.NewServeMux()
+		rpcLogger := env.Logger.With("module", "rpc-server")
+		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
+
+		if conf.RPC.ExperimentalDisableWebsocket {
+			rpcLogger.Info("Disabling websocket endpoints (experimental-disable-websocket=true)")
+		} else {
+			rpcLogger.Info("WARNING: Websocket RPC access is deprecated and will be removed " +
+				"in Tendermint v0.37. See https://tinyurl.com/adr075 for more information.")
+			wmLogger := rpcLogger.With("protocol", "websocket")
+			wm := rpcserver.NewWebsocketManager(wmLogger, routes,
+				rpcserver.OnDisconnect(func(remoteAddr string) {
+					err := env.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
+					if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
+						wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+					}
+				}),
+				rpcserver.ReadLimit(cfg.MaxBodyBytes),
+			)
+			mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		}
+
+		listener, err := rpcserver.Listen(
+			listenAddr,
+			cfg.MaxOpenConnections,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var rootHandler http.Handler = mux
+		if conf.RPC.IsCorsEnabled() {
+			corsMiddleware := cors.New(cors.Options{
+				AllowedOrigins: conf.RPC.CORSAllowedOrigins,
+				AllowedMethods: conf.RPC.CORSAllowedMethods,
+				AllowedHeaders: conf.RPC.CORSAllowedHeaders,
+			})
+			rootHandler = corsMiddleware.Handler(mux)
+		}
+		if conf.RPC.IsTLSEnabled() {
+			go func() {
+				if err := rpcserver.ServeTLS(
+					ctx,
+					listener,
+					rootHandler,
+					conf.RPC.CertFile(),
+					conf.RPC.KeyFile(),
+					rpcLogger,
+					cfg,
+				); err != nil {
+					env.Logger.Error("error serving server with TLS", "err", err)
+				}
+			}()
+		} else {
+			go func() {
+				if err := rpcserver.Serve(
+					ctx,
+					listener,
+					rootHandler,
+					rpcLogger,
+					cfg,
+				); err != nil {
+					env.Logger.Error("error serving server", "err", err)
+				}
+			}()
+		}
+
+		listeners[i] = listener
+	}
+
+	return listeners, nil
+
 }

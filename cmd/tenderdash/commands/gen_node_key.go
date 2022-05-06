@@ -1,11 +1,11 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,7 +20,7 @@ var GenNodeKeyCmd = &cobra.Command{
 func genNodeKey(cmd *cobra.Command, args []string) error {
 	nodeKey := types.GenNodeKey()
 
-	bz, err := tmjson.Marshal(nodeKey)
+	bz, err := json.Marshal(nodeKey)
 	if err != nil {
 		return fmt.Errorf("nodeKey -> json: %w", err)
 	}

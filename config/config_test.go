@@ -10,46 +10,43 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
-	assert := assert.New(t)
-
 	// set up some defaults
 	cfg := DefaultConfig()
-	assert.NotNil(cfg.P2P)
-	assert.NotNil(cfg.Mempool)
-	assert.NotNil(cfg.Consensus)
+	assert.NotNil(t, cfg.P2P)
+	assert.NotNil(t, cfg.Mempool)
+	assert.NotNil(t, cfg.Consensus)
 
 	// check the root dir stuff...
 	cfg.SetRoot("/foo")
 	cfg.Genesis = "bar"
 	cfg.DBPath = "/opt/data"
 
-	assert.Equal("/foo/bar", cfg.GenesisFile())
-	assert.Equal("/opt/data", cfg.DBDir())
+	assert.Equal(t, "/foo/bar", cfg.GenesisFile())
+	assert.Equal(t, "/opt/data", cfg.DBDir())
 }
 
 func TestConfigValidateBasic(t *testing.T) {
 	cfg := DefaultConfig()
 	assert.NoError(t, cfg.ValidateBasic())
 
-	// tamper with timeout_propose
-	cfg.Consensus.TimeoutPropose = -10 * time.Second
+	// tamper with unsafe-propose-timeout-override
+	cfg.Consensus.UnsafeProposeTimeoutOverride = -10 * time.Second
 	assert.Error(t, cfg.ValidateBasic())
 }
 
 func TestTLSConfiguration(t *testing.T) {
-	assert := assert.New(t)
 	cfg := DefaultConfig()
 	cfg.SetRoot("/home/user")
 
 	cfg.RPC.TLSCertFile = "file.crt"
-	assert.Equal("/home/user/config/file.crt", cfg.RPC.CertFile())
+	assert.Equal(t, "/home/user/config/file.crt", cfg.RPC.CertFile())
 	cfg.RPC.TLSKeyFile = "file.key"
-	assert.Equal("/home/user/config/file.key", cfg.RPC.KeyFile())
+	assert.Equal(t, "/home/user/config/file.key", cfg.RPC.KeyFile())
 
 	cfg.RPC.TLSCertFile = "/abs/path/to/file.crt"
-	assert.Equal("/abs/path/to/file.crt", cfg.RPC.CertFile())
+	assert.Equal(t, "/abs/path/to/file.crt", cfg.RPC.CertFile())
 	cfg.RPC.TLSKeyFile = "/abs/path/to/file.key"
-	assert.Equal("/abs/path/to/file.key", cfg.RPC.KeyFile())
+	assert.Equal(t, "/abs/path/to/file.key", cfg.RPC.KeyFile())
 }
 
 func TestBaseConfigValidateBasic(t *testing.T) {
@@ -66,33 +63,12 @@ func TestRPCConfigValidateBasic(t *testing.T) {
 	assert.NoError(t, cfg.ValidateBasic())
 
 	fieldsToTest := []string{
-		"GRPCMaxOpenConnections",
 		"MaxOpenConnections",
 		"MaxSubscriptionClients",
 		"MaxSubscriptionsPerClient",
 		"TimeoutBroadcastTxCommit",
 		"MaxBodyBytes",
 		"MaxHeaderBytes",
-	}
-
-	for _, fieldName := range fieldsToTest {
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
-		assert.Error(t, cfg.ValidateBasic())
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
-	}
-}
-
-func TestP2PConfigValidateBasic(t *testing.T) {
-	cfg := TestP2PConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-
-	fieldsToTest := []string{
-		"MaxNumInboundPeers",
-		"MaxNumOutboundPeers",
-		"FlushThrottleTimeout",
-		"MaxPacketMsgPayloadSize",
-		"SendRate",
-		"RecvRate",
 	}
 
 	for _, fieldName := range fieldsToTest {
@@ -125,42 +101,26 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 	require.NoError(t, cfg.ValidateBasic())
 }
 
-func TestBlockSyncConfigValidateBasic(t *testing.T) {
-	cfg := TestBlockSyncConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-
-	// tamper with version
-	cfg.Version = "v2"
-	assert.Error(t, cfg.ValidateBasic())
-
-	cfg.Version = "invalid"
-	assert.Error(t, cfg.ValidateBasic())
-}
-
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
 	testcases := map[string]struct {
 		modify    func(*ConsensusConfig)
 		expectErr bool
 	}{
-		"TimeoutPropose":                       {func(c *ConsensusConfig) { c.TimeoutPropose = time.Second }, false},
-		"TimeoutPropose negative":              {func(c *ConsensusConfig) { c.TimeoutPropose = -1 }, true},
-		"TimeoutProposeDelta":                  {func(c *ConsensusConfig) { c.TimeoutProposeDelta = time.Second }, false},
-		"TimeoutProposeDelta negative":         {func(c *ConsensusConfig) { c.TimeoutProposeDelta = -1 }, true},
-		"TimeoutPrevote":                       {func(c *ConsensusConfig) { c.TimeoutPrevote = time.Second }, false},
-		"TimeoutPrevote negative":              {func(c *ConsensusConfig) { c.TimeoutPrevote = -1 }, true},
-		"TimeoutPrevoteDelta":                  {func(c *ConsensusConfig) { c.TimeoutPrevoteDelta = time.Second }, false},
-		"TimeoutPrevoteDelta negative":         {func(c *ConsensusConfig) { c.TimeoutPrevoteDelta = -1 }, true},
-		"TimeoutPrecommit":                     {func(c *ConsensusConfig) { c.TimeoutPrecommit = time.Second }, false},
-		"TimeoutPrecommit negative":            {func(c *ConsensusConfig) { c.TimeoutPrecommit = -1 }, true},
-		"TimeoutPrecommitDelta":                {func(c *ConsensusConfig) { c.TimeoutPrecommitDelta = time.Second }, false},
-		"TimeoutPrecommitDelta negative":       {func(c *ConsensusConfig) { c.TimeoutPrecommitDelta = -1 }, true},
-		"TimeoutCommit":                        {func(c *ConsensusConfig) { c.TimeoutCommit = time.Second }, false},
-		"TimeoutCommit negative":               {func(c *ConsensusConfig) { c.TimeoutCommit = -1 }, true},
-		"PeerGossipSleepDuration":              {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = time.Second }, false},
-		"PeerGossipSleepDuration negative":     {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = -1 }, true},
-		"PeerQueryMaj23SleepDuration":          {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = time.Second }, false},
-		"PeerQueryMaj23SleepDuration negative": {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
-		"DoubleSignCheckHeight negative":       {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
+		"UnsafeProposeTimeoutOverride":               {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutOverride = time.Second }, false},
+		"UnsafeProposeTimeoutOverride negative":      {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutOverride = -1 }, true},
+		"UnsafeProposeTimeoutDeltaOverride":          {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutDeltaOverride = time.Second }, false},
+		"UnsafeProposeTimeoutDeltaOverride negative": {func(c *ConsensusConfig) { c.UnsafeProposeTimeoutDeltaOverride = -1 }, true},
+		"UnsafePrevoteTimeoutOverride":               {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutOverride = time.Second }, false},
+		"UnsafePrevoteTimeoutOverride negative":      {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutOverride = -1 }, true},
+		"UnsafePrevoteTimeoutDeltaOverride":          {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutDeltaOverride = time.Second }, false},
+		"UnsafePrevoteTimeoutDeltaOverride negative": {func(c *ConsensusConfig) { c.UnsafeVoteTimeoutDeltaOverride = -1 }, true},
+		"UnsafeCommitTimeoutOverride":                {func(c *ConsensusConfig) { c.UnsafeCommitTimeoutOverride = time.Second }, false},
+		"UnsafeCommitTimeoutOverride negative":       {func(c *ConsensusConfig) { c.UnsafeCommitTimeoutOverride = -1 }, true},
+		"PeerGossipSleepDuration":                    {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = time.Second }, false},
+		"PeerGossipSleepDuration negative":           {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = -1 }, true},
+		"PeerQueryMaj23SleepDuration":                {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = time.Second }, false},
+		"PeerQueryMaj23SleepDuration negative":       {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
+		"DoubleSignCheckHeight negative":             {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
 	}
 	for desc, tc := range testcases {
 		tc := tc // appease linter
@@ -185,4 +145,22 @@ func TestInstrumentationConfigValidateBasic(t *testing.T) {
 	// tamper with maximum open connections
 	cfg.MaxOpenConnections = -1
 	assert.Error(t, cfg.ValidateBasic())
+}
+
+func TestP2PConfigValidateBasic(t *testing.T) {
+	cfg := TestP2PConfig()
+	assert.NoError(t, cfg.ValidateBasic())
+
+	fieldsToTest := []string{
+		"FlushThrottleTimeout",
+		"MaxPacketMsgPayloadSize",
+		"SendRate",
+		"RecvRate",
+	}
+
+	for _, fieldName := range fieldsToTest {
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
+		assert.Error(t, cfg.ValidateBasic())
+		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
+	}
 }

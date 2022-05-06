@@ -14,12 +14,12 @@ func TestMarshal(t *testing.T) {
 	bz := []byte("hello world")
 	dataB := HexBytes(bz)
 	bz2, err := dataB.Marshal()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, bz, bz2)
 
 	var dataB2 HexBytes
 	err = (&dataB2).Unmarshal(bz)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, dataB, dataB2)
 }
 
@@ -61,7 +61,7 @@ func TestJSONMarshal(t *testing.T) {
 				t.Fatal(err)
 			}
 			assert.Equal(t, ts2.B1, tc.input)
-			assert.Equal(t, ts2.B2, HexBytes(tc.input))
+			assert.Equal(t, string(ts2.B2), string(tc.input))
 		})
 	}
 }

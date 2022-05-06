@@ -1,7 +1,7 @@
 package autofile
 
 import (
-	"io/ioutil"
+	"context"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -13,6 +13,9 @@ import (
 )
 
 func TestSIGHUP(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -22,16 +25,12 @@ func TestSIGHUP(t *testing.T) {
 	})
 
 	// First, create a temporary directory and move into it
-	dir, err := ioutil.TempDir("", "sighup_test")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = os.RemoveAll(dir)
-	})
+	dir := t.TempDir()
 	require.NoError(t, os.Chdir(dir))
 
 	// Create an AutoFile in the temporary directory
 	name := "sighup_test"
-	af, err := OpenAutoFile(name)
+	af, err := OpenAutoFile(ctx, name)
 	require.NoError(t, err)
 	require.True(t, filepath.IsAbs(af.Path))
 
@@ -45,9 +44,7 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, os.Rename(name, name+"_old"))
 
 	// Move into a different temporary directory
-	otherDir, err := ioutil.TempDir("", "sighup_test_other")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(otherDir) })
+	otherDir := t.TempDir()
 	require.NoError(t, os.Chdir(otherDir))
 
 	// Send SIGHUP to self.
@@ -72,7 +69,7 @@ func TestSIGHUP(t *testing.T) {
 	}
 
 	// The current directory should be empty
-	files, err := ioutil.ReadDir(".")
+	files, err := os.ReadDir(".")
 	require.NoError(t, err)
 	assert.Empty(t, files)
 }
@@ -80,7 +77,7 @@ func TestSIGHUP(t *testing.T) {
 // // Manually modify file permissions, close, and reopen using autofile:
 // // We expect the file permissions to be changed back to the intended perms.
 // func TestOpenAutoFilePerms(t *testing.T) {
-// 	file, err := ioutil.TempFile("", "permission_test")
+// 	file, err := os.CreateTemp("", "permission_test")
 // 	require.NoError(t, err)
 // 	err = file.Close()
 // 	require.NoError(t, err)
@@ -105,13 +102,16 @@ func TestSIGHUP(t *testing.T) {
 // }
 
 func TestAutoFileSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// First, create an AutoFile writing to a tempfile dir
-	f, err := ioutil.TempFile("", "sighup_test")
+	f, err := os.CreateTemp(t.TempDir(), "sighup_test")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
 	// Here is the actual AutoFile.
-	af, err := OpenAutoFile(f.Name())
+	af, err := OpenAutoFile(ctx, f.Name())
 	require.NoError(t, err)
 
 	// 1. Empty file
@@ -128,7 +128,7 @@ func TestAutoFileSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// 3. Not existing file
-	require.NoError(t, af.Close())
+	require.NoError(t, af.closeFile())
 	require.NoError(t, os.Remove(f.Name()))
 	size, err = af.Size()
 	require.EqualValues(t, 0, size, "Expected a new file to be empty")
@@ -139,7 +139,7 @@ func TestAutoFileSize(t *testing.T) {
 }
 
 func mustReadFile(t *testing.T, filePath string) []byte {
-	fileBytes, err := ioutil.ReadFile(filePath)
+	fileBytes, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 
 	return fileBytes

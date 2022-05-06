@@ -11,7 +11,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -128,8 +127,7 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 	err = proto.Unmarshal(buf, sp)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		tmos.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
-		%v\n`, err))
+		panic(fmt.Sprintf("data has been corrupted or its spec has changed: %+v", err))
 	}
 
 	sm, err := FromProto(sp)
@@ -172,7 +170,12 @@ func (store dbStore) save(state State, key []byte) error {
 		return err
 	}
 
-	if err := batch.Set(key, state.Bytes()); err != nil {
+	stateBz, err := state.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(key, stateBz); err != nil {
 		return err
 	}
 
@@ -208,7 +211,12 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	if err := batch.Set(stateKey, state.Bytes()); err != nil {
+	stateBz, err := state.Bytes()
+	if err != nil {
+		return err
+	}
+
+	if err := batch.Set(stateKey, stateBz); err != nil {
 		return err
 	}
 
@@ -398,14 +406,6 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 
 //------------------------------------------------------------------------
 
-// ABCIResponsesResultsHash returns the root hash of a Merkle tree of
-// ResponseDeliverTx responses (see ABCIResults.Hash)
-//
-// See merkle.SimpleHashFromByteSlices
-func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
-	return types.NewResults(ar.DeliverTxs).Hash()
-}
-
 // LoadABCIResponses loads the ABCIResponses for the given height from the
 // database. If not found, ErrNoABCIResponsesForHeight is returned.
 //
@@ -426,8 +426,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 	err = abciResponses.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		tmos.Exit(fmt.Sprintf(`LoadABCIResponses: Data has been corrupted or its spec has
-                changed: %v\n`, err))
+		panic(fmt.Sprintf("data has been corrupted or its spec has changed: %+v", err))
 	}
 	// TODO: ensure that buf is completely read.
 
@@ -445,15 +444,15 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 }
 
 func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
-	var dtxs []*abci.ResponseDeliverTx
+	var dtxs []*abci.ExecTxResult
 	// strip nil values,
-	for _, tx := range abciResponses.DeliverTxs {
+	for _, tx := range abciResponses.FinalizeBlock.TxResults {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
 		}
 	}
 
-	abciResponses.DeliverTxs = dtxs
+	abciResponses.FinalizeBlock.TxResults = dtxs
 
 	bz, err := abciResponses.Marshal()
 	if err != nil {
@@ -489,7 +488,7 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
-		return nil, ErrNoValSetForHeight{height}
+		return nil, ErrNoValSetForHeight{Height: height, Err: err}
 	}
 	if valInfo.ValidatorSet == nil {
 		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
@@ -507,8 +506,12 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 		if err != nil {
 			return nil, err
 		}
+		h, err := tmmath.SafeConvertInt32(height - lastStoredHeight)
+		if err != nil {
+			return nil, err
+		}
 
-		vs.IncrementProposerPriority(tmmath.SafeConvertInt32(height - lastStoredHeight)) // mutate
+		vs.IncrementProposerPriority(h) // mutate
 		vi2, err := vs.ToProto()
 		if err != nil {
 			return nil, err
@@ -547,8 +550,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 	err = v.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		tmos.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
-                %v\n`, err))
+		panic(fmt.Sprintf("data has been corrupted or its spec has changed: %+v", err))
 	}
 	// TODO: ensure that buf is completely read.
 
@@ -635,8 +637,7 @@ func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusPa
 	paramsInfo := new(tmstate.ConsensusParamsInfo)
 	if err = paramsInfo.Unmarshal(buf); err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		tmos.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:
-                %v\n`, err))
+		panic(fmt.Sprintf(`data has been corrupted or its spec has changed: %+v`, err))
 	}
 	// TODO: ensure that buf is completely read.
 

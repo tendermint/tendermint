@@ -1,27 +1,35 @@
 package p2p
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
 
+type testMessage = gogotypes.StringValue
+
 func TestCloseWhileDequeueFull(t *testing.T) {
 	enqueueLength := 5
-	chDescs := []ChannelDescriptor{
-		{ID: 0x01, Priority: 1, MaxSendBytes: 4},
+	chDescs := []*ChannelDescriptor{
+		{ID: 0x01, Priority: 1},
 	}
 	pqueue := newPQScheduler(log.NewNopLogger(), NopMetrics(), chDescs, uint(enqueueLength), 1, 120)
 
 	for i := 0; i < enqueueLength; i++ {
 		pqueue.enqueue() <- Envelope{
-			channelID: 0x01,
+			ChannelID: 0x01,
 			Message:   &testMessage{Value: "foo"}, // 5 bytes
 		}
 	}
 
-	go pqueue.process()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go pqueue.process(ctx)
 
 	// sleep to allow context switch for process() to run
 	time.Sleep(10 * time.Millisecond)

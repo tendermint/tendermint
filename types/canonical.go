@@ -21,7 +21,7 @@ func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
 		panic(err)
 	}
 	var cbid *tmproto.CanonicalBlockID
-	if rbid == nil || rbid.IsZero() {
+	if rbid == nil || rbid.IsNil() {
 		cbid = nil
 	} else {
 		cbid = &tmproto.CanonicalBlockID{
@@ -60,6 +60,18 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 		Round:   int64(vote.Round), // encoded as sfixed64
 		BlockID: CanonicalizeBlockID(vote.BlockID),
 		ChainID: chainID,
+	}
+}
+
+// CanonicalizeVoteExtension extracts the vote extension from the given vote
+// and constructs a CanonicalizeVoteExtension struct, whose representation in
+// bytes is what is signed in order to produce the vote extension's signature.
+func CanonicalizeVoteExtension(chainID string, vote *tmproto.Vote) tmproto.CanonicalVoteExtension {
+	return tmproto.CanonicalVoteExtension{
+		Extension: vote.Extension,
+		Height:    vote.Height,
+		Round:     int64(vote.Round),
+		ChainId:   chainID,
 	}
 }
 

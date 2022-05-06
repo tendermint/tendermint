@@ -13,7 +13,6 @@ import (
 	"testing/quick"
 
 	"github.com/dashevo/dashd-go/btcjson"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -81,8 +80,11 @@ func TestValidatorSetBasic(t *testing.T) {
 }
 
 func TestValidatorSetValidateBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	quorumHash := crypto.RandQuorumHash()
-	val, _ := randValidatorInQuorum(quorumHash)
+	val, _ := randValidatorInQuorum(ctx, t, quorumHash)
 	badValNoPublicKey := &Validator{ProTxHash: val.ProTxHash}
 	badValNoProTxHash := &Validator{PubKey: val.PubKey}
 
@@ -275,9 +277,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 		pubKey := privKey.PubKey()
 		val := NewValidatorDefaultVotingPower(pubKey, crypto.ProTxHash{})
 		err := vset.UpdateWithChangeSet([]*Validator{val}, nil, crypto.RandQuorumHash())
-		if err != nil {
-			panic("Failed to add validator")
-		}
+		require.NoError(b, err)
 	}
 	b.StartTimer()
 
@@ -376,8 +376,8 @@ func TestProposerSelection3(t *testing.T) {
 		}
 
 		// serialize, deserialize, check proposer
-		b := vset.toBytes()
-		vset = vset.fromBytes(b)
+		b := vset.toBytes(t)
+		vset = vset.fromBytes(t, b)
 
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
@@ -422,16 +422,14 @@ func randModuloValidator(totalVotingPower int64) *Validator {
 	return val
 }
 
-func randValidatorInQuorum(quorumHash crypto.QuorumHash) (*Validator, PrivValidator) {
+func randValidatorInQuorum(ctx context.Context, t *testing.T, quorumHash crypto.QuorumHash) (*Validator, PrivValidator) {
 	privVal := NewMockPVForQuorum(quorumHash)
-	proTxHash, err := privVal.GetProTxHash(context.Background())
+	proTxHash, err := privVal.GetProTxHash(ctx)
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve proTxHash %w", err))
 	}
-	pubKey, err := privVal.GetPubKey(context.Background(), quorumHash)
-	if err != nil {
-		panic(fmt.Errorf("could not retrieve pubkey %w", err))
-	}
+	pubKey, err := privVal.GetPubKey(ctx, quorumHash)
+	require.NoError(t, err)
 	address := RandValidatorAddress().String()
 	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash, address)
 	return val, privVal
@@ -439,30 +437,21 @@ func randValidatorInQuorum(quorumHash crypto.QuorumHash) (*Validator, PrivValida
 
 func (vals *ValidatorSet) toBytes() []byte {
 	pbvs, err := vals.ToProto()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	bz, err := pbvs.Marshal()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	return bz
 }
 
-func (vals *ValidatorSet) fromBytes(b []byte) *ValidatorSet {
+func (vals *ValidatorSet) fromBytes(t *testing.T, b []byte) *ValidatorSet {
 	pbvs := new(tmproto.ValidatorSet)
 	err := pbvs.Unmarshal(b)
-	if err != nil {
-		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	vs, err := ValidatorSetFromProto(pbvs)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	return vs
 }
@@ -1098,7 +1087,7 @@ type testVSetCfg struct {
 
 func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	if nBase <= 0 || nAddMax < 0 {
-		panic(fmt.Sprintf("bad parameters %v %v", nBase, nAddMax))
+		t.Fatalf("bad parameters %v %v", nBase, nAddMax)
 	}
 
 	var nOld, nDel, nChanged, nAdd int
@@ -1410,7 +1399,10 @@ func BenchmarkUpdates(b *testing.B) {
 	}
 }
 
-func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
+func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) { // nolint
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, n := range []int{1, 8, 64, 1024} {
 		n := n
 		var (
@@ -1422,9 +1414,9 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 			b.ReportAllocs()
 			// generate n validators
 			stateID := RandStateID()
-			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, stateID)
+			voteSet, valSet, vals := randVoteSet(ctx, b, h, 0, tmproto.PrecommitType, n, stateID)
 			// create a commit with n validators
-			commit, err := MakeCommit(blockID, stateID, h, 0, voteSet, vals)
+			commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals, time.Now())
 			require.NoError(b, err)
 
 			for i := 0; i < b.N/n; i++ {

@@ -6,21 +6,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
 // Cleanup removes the Docker Compose containers and testnet directory.
-func Cleanup(testnet *e2e.Testnet) error {
-	err := cleanupDocker()
+func Cleanup(logger log.Logger, testnet *e2e.Testnet) error {
+	err := cleanupDocker(logger)
 	if err != nil {
 		return err
 	}
-	return cleanupDir(testnet.Dir)
+	return cleanupDir(logger, testnet.Dir)
 }
 
 // cleanupDocker removes all E2E resources (with label e2e=True), regardless
 // of testnet.
-func cleanupDocker() error {
+func cleanupDocker(logger log.Logger) error {
 	logger.Info("Removing Docker containers and networks")
 
 	// GNU xargs requires the -r flag to not run when input is empty, macOS
@@ -38,7 +39,7 @@ func cleanupDocker() error {
 }
 
 // cleanupDir cleans up a testnet directory
-func cleanupDir(dir string) error {
+func cleanupDir(logger log.Logger, dir string) error {
 	if dir == "" {
 		return errors.New("no directory set")
 	}

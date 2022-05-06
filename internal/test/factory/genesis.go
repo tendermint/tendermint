@@ -2,6 +2,7 @@ package factory
 
 import (
 	"sort"
+	"time"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -14,6 +15,7 @@ func RandGenesisDoc(
 	cfg *config.Config,
 	numValidators int,
 	initialHeight int64,
+	consensusParams *types.ConsensusParams,
 ) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, 0, numValidators)
 	privValidators := make([]types.PrivValidator, 0, numValidators)
@@ -42,10 +44,13 @@ func RandGenesisDoc(
 	coreChainLock := types.NewMockChainLock(2)
 
 	return &types.GenesisDoc{
-		GenesisTime:                  tmtime.Now(),
-		InitialHeight:                initialHeight,
-		ChainID:                      cfg.ChainID(),
-		Validators:                   validators,
+		GenesisTime:     tmtime.Now(),
+		InitialHeight:   initialHeight,
+		ChainID:         cfg.ChainID(),
+		Validators:      validators,
+		ConsensusParams: consensusParams,
+
+		// dash fields
 		InitialCoreChainLockedHeight: 1,
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
 		ThresholdPublicKey:           ld.ThresholdPubKey,

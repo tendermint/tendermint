@@ -3,13 +3,14 @@ package statesync_test
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 func TestValidateMsg(t *testing.T) {
@@ -186,8 +187,28 @@ func TestStateSyncVectors(t *testing.T) {
 		{
 			"ParamsResponse",
 			&ssproto.ParamsResponse{
-				Height:          9001,
-				ConsensusParams: types.DefaultConsensusParams().ToProto(),
+				Height: 9001,
+				ConsensusParams: tmproto.ConsensusParams{
+					Block: &tmproto.BlockParams{
+						MaxBytes: 10,
+						MaxGas:   20,
+					},
+					Evidence: &tmproto.EvidenceParams{
+						MaxAgeNumBlocks: 10,
+						MaxAgeDuration:  300,
+						MaxBytes:        100,
+					},
+					Validator: &tmproto.ValidatorParams{
+						PubKeyTypes: []string{ed25519.KeyType},
+					},
+					Version: &tmproto.VersionParams{
+						AppVersion: 11,
+					},
+					Synchrony: &tmproto.SynchronyParams{
+						MessageDelay: durationPtr(550),
+						Precision:    durationPtr(90),
+					},
+				},
 			},
 			"423508a94612300a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a0a0a08626c7331323338312200",
 		},
@@ -203,4 +224,8 @@ func TestStateSyncVectors(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
+}
+
+func durationPtr(t time.Duration) *time.Duration {
+	return &t
 }

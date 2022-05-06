@@ -1,70 +1,71 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
+	stdlog "log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	auto "github.com/tendermint/tendermint/internal/libs/autofile"
-	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const Version = "0.0.1"
 const readBufferSize = 1024 // 1KB at a time
 
 // Parse command-line options
-func parseFlags() (headPath string, chopSize int64, limitSize int64, version bool) {
+func parseFlags() (headPath string, chopSize int64, limitSize int64, version bool, err error) {
 	var flagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	var chopSizeStr, limitSizeStr string
 	flagSet.StringVar(&headPath, "head", "logjack.out", "Destination (head) file.")
 	flagSet.StringVar(&chopSizeStr, "chop", "100M", "Move file if greater than this")
 	flagSet.StringVar(&limitSizeStr, "limit", "10G", "Only keep this much (for each specified file). Remove old files.")
 	flagSet.BoolVar(&version, "version", false, "Version")
-	if err := flagSet.Parse(os.Args[1:]); err != nil {
-		fmt.Printf("err parsing flag: %v\n", err)
-		os.Exit(1)
-	}
-	chopSize = parseBytesize(chopSizeStr)
-	limitSize = parseBytesize(limitSizeStr)
-	return
-}
 
-type fmtLogger struct{}
-
-func (fmtLogger) Info(msg string, keyvals ...interface{}) {
-	strs := make([]string, len(keyvals))
-	for i, kv := range keyvals {
-		strs[i] = fmt.Sprintf("%v", kv)
-	}
-	fmt.Printf("%s %s\n", msg, strings.Join(strs, ","))
-}
-
-func main() {
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(fmtLogger{}, func() {
-		fmt.Println("logjack shutting down")
-	})
-
-	// Read options
-	headPath, chopSize, limitSize, version := parseFlags()
-	if version {
-		fmt.Printf("logjack version %v\n", Version)
+	if err = flagSet.Parse(os.Args[1:]); err != nil {
 		return
 	}
 
-	// Open Group
-	group, err := auto.OpenGroup(headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
+	chopSize, err = parseByteSize(chopSizeStr)
 	if err != nil {
-		fmt.Printf("logjack couldn't create output file %v\n", headPath)
-		os.Exit(1)
+		return
+	}
+	limitSize, err = parseByteSize(limitSizeStr)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func main() {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	defer cancel()
+	defer func() { fmt.Println("logjack shutting down") }()
+
+	// Read options
+	headPath, chopSize, limitSize, version, err := parseFlags()
+	if err != nil {
+		stdlog.Fatalf("problem parsing arguments: %q", err.Error())
 	}
 
-	if err = group.Start(); err != nil {
-		fmt.Printf("logjack couldn't start with file %v\n", headPath)
-		os.Exit(1)
+	if version {
+		stdlog.Printf("logjack version %s", Version)
+	}
+
+	// Open Group
+	group, err := auto.OpenGroup(ctx, log.NewNopLogger(), headPath, auto.GroupHeadSizeLimit(chopSize), auto.GroupTotalSizeLimit(limitSize))
+	if err != nil {
+		stdlog.Fatalf("logjack couldn't create output file %q", headPath)
+	}
+
+	if err = group.Start(ctx); err != nil {
+		stdlog.Fatalf("logjack couldn't start with file %q", headPath)
 	}
 
 	// Forever read from stdin and write to AutoFile.
@@ -72,30 +73,22 @@ func main() {
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
-			if err := group.Stop(); err != nil {
-				fmt.Fprintf(os.Stderr, "logjack stopped with error %v\n", headPath)
-				os.Exit(1)
-			}
 			if err == io.EOF {
-				os.Exit(0)
-			} else {
-				fmt.Println("logjack errored")
-				os.Exit(1)
+				return
 			}
+			stdlog.Fatalln("logjack errored:", err.Error())
 		}
 		_, err = group.Write(buf[:n])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "logjack failed write with error %v\n", headPath)
-			os.Exit(1)
+			stdlog.Fatalf("logjack failed write %q with error: %q", headPath, err.Error())
 		}
 		if err := group.FlushAndSync(); err != nil {
-			fmt.Fprintf(os.Stderr, "logjack flushsync fail with error %v\n", headPath)
-			os.Exit(1)
+			stdlog.Fatalf("logjack flushsync %q fail with error: %q", headPath, err.Error())
 		}
 	}
 }
 
-func parseBytesize(chopSize string) int64 {
+func parseByteSize(chopSize string) (int64, error) {
 	// Handle suffix multiplier
 	var multiplier int64 = 1
 	if strings.HasSuffix(chopSize, "T") {
@@ -118,8 +111,8 @@ func parseBytesize(chopSize string) int64 {
 	// Parse the numeric part
 	chopSizeInt, err := strconv.Atoi(chopSize)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
-	return int64(chopSizeInt) * multiplier
+	return int64(chopSizeInt) * multiplier, nil
 }

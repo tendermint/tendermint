@@ -5,15 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto/bls12381"
-	crypto2 "github.com/tendermint/tendermint/proto/tendermint/crypto"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	privproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -23,18 +21,20 @@ var stamp = time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC)
 
 func exampleVote() *types.Vote {
 	return &types.Vote{
-		Type:   tmproto.SignedMsgType(1),
+		Type:   tmproto.PrecommitType,
 		Height: 3,
 		Round:  2,
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
+			Hash: crypto.Checksum([]byte("blockID_hash")),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000000,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+				Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 			},
 		},
+		Timestamp:          stamp,
 		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
 		ValidatorIndex:     56789,
+		Extension:          []byte("extension"),
 	}
 }
 
@@ -48,10 +48,10 @@ func exampleProposal() *types.Proposal {
 		POLRound:  2,
 		Signature: []byte("it's a signature"),
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
+			Hash: crypto.Checksum([]byte("blockID_hash")),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000000,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+				Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 			},
 		},
 	}

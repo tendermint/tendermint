@@ -14,7 +14,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -26,6 +25,9 @@ import (
 )
 
 func TestMsgToProto(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	psh := types.PartSetHeader{
 		Total: 1,
 		Hash:  tmrand.Bytes(32),
@@ -66,11 +68,12 @@ func TestMsgToProto(t *testing.T) {
 
 	quorumHash := crypto.RandQuorumHash()
 	pv := types.NewMockPVForQuorum(quorumHash)
-	pk, err := pv.GetPubKey(context.Background(), quorumHash)
-	require.NoError(t, err)
+	pk, err := pv.GetPubKey(ctx, quorumHash)
 	val := types.NewValidatorDefaultVotingPower(pk, pv.ProTxHash)
+	require.NoError(t, err)
 
 	vote, err := factory.MakeVote(
+		ctx,
 		pv,
 		&types.ValidatorSet{Proposer: val, Validators: []*types.Validator{val}, QuorumHash: quorumHash, ThresholdPublicKey: pk},
 		"chainID",
@@ -81,7 +84,6 @@ func TestMsgToProto(t *testing.T) {
 		types.BlockID{},
 		types.StateID{},
 	)
-	require.NoError(t, err)
 	pbVote := vote.ToProto()
 
 	testsCases := []struct {
@@ -377,8 +379,10 @@ func TestConsMsgsVectors(t *testing.T) {
 		ValidatorIndex:     1,
 		Height:             1,
 		Round:              0,
+		Timestamp:          date,
 		Type:               tmproto.PrecommitType,
 		BlockID:            bi,
+		Extension:          []byte("extension"),
 	}
 	vpb := v.ToProto()
 
@@ -680,7 +684,7 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 
 func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testPart := new(types.Part)
-	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
+	testPart.Proof.LeafHash = crypto.Checksum([]byte("leaf"))
 	testCases := []struct {
 		testName      string
 		messageHeight int64

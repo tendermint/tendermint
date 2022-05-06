@@ -26,18 +26,16 @@ var (
 // NOTE: It is not the responsibility of the dispatcher to verify the light blocks.
 type Dispatcher struct {
 	// the channel with which to send light block requests on
-	requestCh chan<- p2p.Envelope
-	closeCh   chan struct{}
+	requestCh *p2p.Channel
 
 	mtx sync.Mutex
 	// all pending calls that have been dispatched and are awaiting an answer
 	calls map[types.NodeID]chan *types.LightBlock
 }
 
-func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
+func NewDispatcher(requestChannel *p2p.Channel) *Dispatcher {
 	return &Dispatcher{
-		requestCh: requestCh,
-		closeCh:   make(chan struct{}),
+		requestCh: requestChannel,
 		calls:     make(map[types.NodeID]chan *types.LightBlock),
 	}
 }
@@ -47,7 +45,7 @@ func NewDispatcher(requestCh chan<- p2p.Envelope) *Dispatcher {
 // LightBlock response is used to signal that the peer doesn't have the requested LightBlock.
 func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.NodeID) (*types.LightBlock, error) {
 	// dispatch the request to the peer
-	callCh, err := d.dispatch(peer, height)
+	callCh, err := d.dispatch(ctx, peer, height)
 	if err != nil {
 		return nil, err
 	}
@@ -69,19 +67,16 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
-
-	case <-d.closeCh:
-		return nil, errDisconnected
 	}
 }
 
 // dispatch takes a peer and allocates it a channel so long as it's not already
 // busy and the receiving channel is still running. It then dispatches the message
-func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.LightBlock, error) {
+func (d *Dispatcher) dispatch(ctx context.Context, peer types.NodeID, height int64) (chan *types.LightBlock, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 	select {
-	case <-d.closeCh:
+	case <-ctx.Done():
 		return nil, errDisconnected
 	default:
 	}
@@ -96,11 +91,14 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 	d.calls[peer] = ch
 
 	// send request
-	d.requestCh <- p2p.Envelope{
+	if err := d.requestCh.Send(ctx, p2p.Envelope{
 		To: peer,
 		Message: &ssproto.LightBlockRequest{
 			Height: uint64(height),
 		},
+	}); err != nil {
+		close(ch)
+		return ch, err
 	}
 
 	return ch, nil
@@ -109,7 +107,7 @@ func (d *Dispatcher) dispatch(peer types.NodeID, height int64) (chan *types.Ligh
 // Respond allows the underlying process which receives requests on the
 // requestCh to respond with the respective light block. A nil response is used to
 // represent that the receiver of the request does not have a light block at that height.
-func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
+func (d *Dispatcher) Respond(ctx context.Context, lb *tmproto.LightBlock, peer types.NodeID) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
@@ -123,8 +121,12 @@ func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 	// If lb is nil we take that to mean that the peer didn't have the requested light
 	// block and thus pass on the nil to the caller.
 	if lb == nil {
-		answerCh <- nil
-		return nil
+		select {
+		case answerCh <- nil:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	block, err := types.LightBlockFromProto(lb)
@@ -132,8 +134,12 @@ func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 		return err
 	}
 
-	answerCh <- block
-	return nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case answerCh <- block:
+		return nil
+	}
 }
 
 // Close shuts down the dispatcher and cancels any pending calls awaiting responses.
@@ -141,15 +147,12 @@ func (d *Dispatcher) Respond(lb *tmproto.LightBlock, peer types.NodeID) error {
 func (d *Dispatcher) Close() {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
-	close(d.closeCh)
-	for peer, call := range d.calls {
+	for peer := range d.calls {
 		delete(d.calls, peer)
-		close(call)
+		// don't close the channel here as it's closed in
+		// other handlers, and would otherwise get garbage
+		// collected.
 	}
-}
-
-func (d *Dispatcher) Done() <-chan struct{} {
-	return d.closeCh
 }
 
 //----------------------------------------------------------------
@@ -192,7 +195,7 @@ func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	case errPeerAlreadyBusy:
 		return nil, provider.ErrLightBlockNotFound
 	default:
-		return nil, provider.ErrUnreliableProvider{Reason: err.Error()}
+		return nil, provider.ErrUnreliableProvider{Reason: err}
 	}
 
 	// check that the height requested is the same one returned
@@ -220,6 +223,9 @@ func (p *BlockProvider) ReportEvidence(ctx context.Context, ev types.Evidence) e
 
 // String implements stringer interface
 func (p *BlockProvider) String() string { return string(p.peer) }
+
+// Returns the ID address of the provider (NodeID of peer)
+func (p *BlockProvider) ID() string { return string(p.peer) }
 
 //----------------------------------------------------------------
 

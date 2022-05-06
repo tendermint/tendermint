@@ -2,6 +2,7 @@ package secp256k1
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
@@ -13,10 +14,10 @@ import (
 	secp256k1 "github.com/btcsuite/btcd/btcec"
 
 	"github.com/tendermint/tendermint/crypto"
-	tmjson "github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 
 	// necessary for Bitcoin address format
-	"golang.org/x/crypto/ripemd160" // nolint
+	"golang.org/x/crypto/ripemd160" //nolint:staticcheck
 )
 
 //-------------------------------------
@@ -29,14 +30,17 @@ const (
 )
 
 func init() {
-	tmjson.RegisterType(PubKey{}, PubKeyName)
-	tmjson.RegisterType(PrivKey{}, PrivKeyName)
+	jsontypes.MustRegister(PubKey{})
+	jsontypes.MustRegister(PrivKey{})
 }
 
 var _ crypto.PrivKey = PrivKey{}
 
 // PrivKey implements PrivKey.
 type PrivKey []byte
+
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PrivKey) TypeTag() string { return PrivKeyName }
 
 // Bytes marshalls the private key using amino encoding.
 func (privKey PrivKey) Bytes() []byte {
@@ -73,7 +77,7 @@ func (privKey PrivKey) TypeValue() crypto.KeyType {
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
 // It uses OS randomness to generate the private key.
 func GenPrivKey() PrivKey {
-	return genPrivKey(crypto.CReader())
+	return genPrivKey(rand.Reader)
 }
 
 // genPrivKey generates a new secp256k1 private key using the provided reader.
@@ -144,6 +148,9 @@ const PubKeySize = 33
 // the x-coordinate. Otherwise the first byte is a 0x03.
 // This prefix is followed with the x-coordinate.
 type PubKey []byte
+
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PubKey) TypeTag() string { return PubKeyName }
 
 // Address returns a Bitcoin style addresses: RIPEMD160(SHA256(pubkey))
 func (pubKey PubKey) Address() crypto.Address {
@@ -277,4 +284,69 @@ func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) boo
 
 func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
 	return false
+}
+
+// used to reject malleable signatures
+// see:
+//  - https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/signature_nocgo.go#L90-L93
+//  - https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/crypto.go#L39
+var secp256k1halfN = new(big.Int).Rsh(secp256k1.S256().N, 1)
+
+// Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
+// The returned signature will be of the form R || S (in lower-S form).
+func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
+	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey)
+	seed := sha256.Sum256(msg)
+	sig, err := priv.Sign(seed[:])
+	if err != nil {
+		return nil, err
+	}
+
+	sigBytes := serializeSig(sig)
+	return sigBytes, nil
+}
+
+// VerifySignature verifies a signature of the form R || S.
+// It rejects signatures which are not in lower-S form.
+func (pubKey PubKey) VerifySignature(msg []byte, sigStr []byte) bool {
+	if len(sigStr) != 64 {
+		return false
+	}
+
+	pub, err := secp256k1.ParsePubKey(pubKey, secp256k1.S256())
+	if err != nil {
+		return false
+	}
+
+	// parse the signature:
+	signature := signatureFromBytes(sigStr)
+	// Reject malleable signatures. libsecp256k1 does this check but btcec doesn't.
+	// see: https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/signature_nocgo.go#L90-L93
+	if signature.S.Cmp(secp256k1halfN) > 0 {
+		return false
+	}
+
+	seed := sha256.Sum256(msg)
+	return signature.Verify(seed[:], pub)
+}
+
+// Read Signature struct from R || S. Caller needs to ensure
+// that len(sigStr) == 64.
+func signatureFromBytes(sigStr []byte) *secp256k1.Signature {
+	return &secp256k1.Signature{
+		R: new(big.Int).SetBytes(sigStr[:32]),
+		S: new(big.Int).SetBytes(sigStr[32:64]),
+	}
+}
+
+// Serialize signature to R || S.
+// R, S are padded to 32 bytes respectively.
+func serializeSig(sig *secp256k1.Signature) []byte {
+	rBytes := sig.R.Bytes()
+	sBytes := sig.S.Bytes()
+	sigBytes := make([]byte, 64)
+	// 0 pad the byte arrays from the left if they aren't big enough.
+	copy(sigBytes[32-len(rBytes):32], rBytes)
+	copy(sigBytes[64-len(sBytes):64], sBytes)
+	return sigBytes
 }

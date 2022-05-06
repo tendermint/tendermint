@@ -1,7 +1,7 @@
 package types
 
 import (
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,7 +48,7 @@ func TestBasicPartSet(t *testing.T) {
 	// adding existing part
 	added, err = partSet2.AddPart(partSet2.GetPart(0))
 	assert.False(t, added)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, partSet.Hash(), partSet2.Hash())
 	assert.EqualValues(t, nParts, partSet2.Total())
@@ -57,7 +57,7 @@ func TestBasicPartSet(t *testing.T) {
 
 	// Reconstruct data, assert that they are equal.
 	data2Reader := partSet2.GetReader()
-	data2, err := ioutil.ReadAll(data2Reader)
+	data2, err := io.ReadAll(data2Reader)
 	require.NoError(t, err)
 
 	assert.Equal(t, data, data2)

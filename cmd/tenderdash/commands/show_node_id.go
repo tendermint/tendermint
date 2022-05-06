@@ -4,21 +4,23 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/tendermint/tendermint/config"
 )
 
-// ShowNodeIDCmd dumps node's ID to the standard output.
-var ShowNodeIDCmd = &cobra.Command{
-	Use:   "show-node-id",
-	Short: "Show this node's ID",
-	RunE:  showNodeID,
-}
+// MakeShowNodeIDCommand constructs a command to dump the node ID to stdout.
+func MakeShowNodeIDCommand(conf *config.Config) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show-node-id",
+		Short: "Show this node's ID",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			nodeKeyID, err := conf.LoadNodeKeyID()
+			if err != nil {
+				return err
+			}
 
-func showNodeID(cmd *cobra.Command, args []string) error {
-	nodeKeyID, err := config.LoadNodeKeyID()
-	if err != nil {
-		return err
+			fmt.Println(nodeKeyID)
+			return nil
+		},
 	}
-
-	fmt.Println(nodeKeyID)
-	return nil
 }

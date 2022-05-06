@@ -1,6 +1,8 @@
 package config
 
 import (
+	"context"
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -8,7 +10,7 @@ import (
 )
 
 // ServiceProvider takes a config and a logger and returns a ready to go Node.
-type ServiceProvider func(*Config, log.Logger) (service.Service, error)
+type ServiceProvider func(context.Context, *Config, log.Logger) (service.Service, error)
 
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {

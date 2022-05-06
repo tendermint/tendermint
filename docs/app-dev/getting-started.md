@@ -96,25 +96,21 @@ like:
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "check_tx": {},
-    "deliver_tx": {
-      "tags": [
-        {
-          "key": "YXBwLmNyZWF0b3I=",
-          "value": "amFl"
-        },
-        {
-          "key": "YXBwLmtleQ==",
-          "value": "YWJjZA=="
-        }
-      ]
-    },
-    "hash": "9DF66553F98DE3C26E3C3317A3E4CED54F714E39",
-    "height": 14
-  }
+  "check_tx": { ... },
+  "deliver_tx": {
+    "tags": [
+      {
+        "key": "YXBwLmNyZWF0b3I=",
+        "value": "amFl"
+      },
+      {
+        "key": "YXBwLmtleQ==",
+        "value": "YWJjZA=="
+      }
+    ]
+  },
+  "hash": "9DF66553F98DE3C26E3C3317A3E4CED54F714E39",
+  "height": 14
 }
 ```
 
@@ -129,15 +125,11 @@ The result should look like:
 
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "response": {
-      "log": "exists",
-      "index": "-1",
-      "key": "YWJjZA==",
-      "value": "YWJjZA=="
-    }
+  "response": {
+    "log": "exists",
+    "index": "-1",
+    "key": "YWJjZA==",
+    "value": "YWJjZA=="
   }
 }
 ```
@@ -190,7 +182,7 @@ node example/counter.js
 In another window, reset and start `tendermint`:
 
 ```sh
-tendermint unsafe-reset-all
+tendermint reset unsafe-all
 tendermint start
 ```
 

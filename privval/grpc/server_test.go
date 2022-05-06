@@ -35,17 +35,21 @@ func TestGetPubKey(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
-			quorumHash, _ := tc.pv.GetFirstQuorumHash(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			logger := log.NewTestingLogger(t)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
+			quorumHash, _ := tc.pv.GetFirstQuorumHash(ctx)
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID, QuorumHash: quorumHash}
-			resp, err := s.GetPubKey(context.Background(), req)
+			resp, err := s.GetPubKey(ctx, req)
+			require.NoError(t, err)
+
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				quorumHash, err := tc.pv.GetFirstQuorumHash(ctx)
 				require.NoError(t, err)
-				pk, err := tc.pv.GetPubKey(context.Background(), quorumHash)
+				pk, err := tc.pv.GetPubKey(ctx, quorumHash)
 				require.NoError(t, err)
 				assert.Equal(t, resp.PubKey.GetBls12381(), pk.Bytes())
 			}
@@ -104,7 +108,11 @@ func TestSignVote(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			logger := log.NewTestingLogger(t)
+
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			quorumHash, _ := tc.pv.GetFirstQuorumHash(context.Background())
 			req := &privvalproto.SignVoteRequest{
@@ -117,12 +125,12 @@ func TestSignVote(t *testing.T) {
 					LastAppHash: factory.RandomHash(),
 				},
 			}
-			resp, err := s.SignVote(context.Background(), req)
+			resp, err := s.SignVote(ctx, req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbVote := tc.want.ToProto()
-				require.NoError(t, tc.pv.SignVote(context.Background(), ChainID, btcjson.LLMQType_5_60, quorumHash,
+				require.NoError(t, tc.pv.SignVote(ctx, ChainID, btcjson.LLMQType_5_60, quorumHash,
 					pbVote, types.StateID{}, log.TestingLogger()))
 
 				assert.Equal(t, pbVote.BlockSignature, resp.Vote.BlockSignature)
@@ -134,7 +142,7 @@ func TestSignVote(t *testing.T) {
 func TestSignProposal(t *testing.T) {
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(tmhash.HashSize)
 	quorumHash := crypto.RandQuorumHash()
 
 	testCases := []struct {
@@ -182,8 +190,11 @@ func TestSignProposal(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			logger := log.NewTestingLogger(t)
+
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.SignProposalRequest{
 				Proposal:   tc.have.ToProto(),

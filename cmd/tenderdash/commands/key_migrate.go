@@ -5,11 +5,14 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/scripts/keymigrate"
+	"github.com/tendermint/tendermint/scripts/scmigrate"
 )
 
-func MakeKeyMigrateCommand() *cobra.Command {
+func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "key-migrate",
 		Short: "Run Database key migration",
@@ -38,7 +41,7 @@ func MakeKeyMigrateCommand() *cobra.Command {
 
 				db, err := cfg.DefaultDBProvider(&cfg.DBContext{
 					ID:     dbctx,
-					Config: config,
+					Config: conf,
 				})
 
 				if err != nil {
@@ -49,6 +52,13 @@ func MakeKeyMigrateCommand() *cobra.Command {
 					return fmt.Errorf("running migration for context %q: %w",
 						dbctx, err)
 				}
+
+				if dbctx == "blockstore" {
+					if err := scmigrate.Migrate(ctx, db); err != nil {
+						return fmt.Errorf("running seen commit migration: %w", err)
+
+					}
+				}
 			}
 
 			logger.Info("completed database migration successfully")
@@ -58,7 +68,7 @@ func MakeKeyMigrateCommand() *cobra.Command {
 	}
 
 	// allow database info to be overridden via cli
-	addDBFlags(cmd)
+	addDBFlags(cmd, conf)
 
 	return cmd
 }

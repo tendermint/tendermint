@@ -16,7 +16,8 @@ the parameters set with their default values. It will look something
 like the file below, however, double check by inspecting the
 `config.toml` created with your version of `tendermint` installed:
 
-```toml# This is a TOML config file.
+```toml
+# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
 # NOTE: Any path below can be absolute (e.g. "/var/myawesomeapp/data") or
@@ -33,11 +34,10 @@ like the file below, however, double check by inspecting the
 proxy-app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
-moniker = "ape"
+moniker = "sidewinder"
 
-
-# Mode of Node: full | validator | seed (default: "validator")
-# * validator node (default)
+# Mode of Node: full | validator | seed
+# * validator node
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json
 # * full node
@@ -47,11 +47,6 @@ moniker = "ape"
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
 mode = "validator"
-
-# If this node is many blocks behind the tip of the chain, FastSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-fast-sync = true
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -120,10 +115,10 @@ laddr = ""
 client-certificate-file = ""
 
 # Client key generated while creating certificates for secure connection
-validator-client-key-file = ""
+client-key-file = ""
 
 # Path to the Root Certificate Authority used to sign both client and server certificates
-certificate-authority = ""
+root-ca-file = ""
 
 
 #######################################################################
@@ -149,26 +144,10 @@ cors-allowed-methods = ["HEAD", "GET", "POST", ]
 # A list of non simple headers the client is allowed to use with cross-domain requests
 cors-allowed-headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
 
-# TCP or UNIX socket address for the gRPC server to listen on
-# NOTE: This server only supports /broadcast_tx_commit
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-laddr = ""
-
-# Maximum number of simultaneous connections.
-# Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-# If you want to accept a larger number than the default, make sure
-# you increase your OS limits.
-# 0 - unlimited.
-# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
-# 1024 - 40 - 10 - 50 = 924 = ~900
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-max-open-connections = 900
-
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
 unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
-# Does not include gRPC connections. See grpc-max-open-connections
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
@@ -182,9 +161,36 @@ max-open-connections = 900
 max-subscription-clients = 100
 
 # Maximum number of unique queries a given client can /subscribe to
-# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
-# the estimated # maximum number of broadcast_tx_commit calls per block.
+# If you're using a Local RPC client and /broadcast_tx_commit, set this
+# to the estimated maximum number of broadcast_tx_commit calls per block.
 max-subscriptions-per-client = 5
+
+# If true, disable the websocket interface to the RPC service.  This has
+# the effect of disabling the /subscribe, /unsubscribe, and /unsubscribe_all
+# methods for event subscription.
+#
+# EXPERIMENTAL: This setting will be removed in Tendermint v0.37.
+experimental-disable-websocket = false
+
+# The time window size for the event log. All events up to this long before
+# the latest (up to EventLogMaxItems) will be available for subscribers to
+# fetch via the /events method.  If 0 (the default) the event log and the
+# /events RPC method are disabled.
+event-log-window-size = "0s"
+
+# The maxiumum number of events that may be retained by the event log.  If
+# this value is 0, no upper limit is set. Otherwise, items in excess of
+# this number will be discarded from the event log.
+#
+# Warning: This setting is a safety valve. Setting it too low may cause
+# subscribers to miss events.  Try to choose a value higher than the
+# maximum worst-case expected event load within the chosen window size in
+# ordinary operation.
+#
+# For example, if the window size is 10 minutes and the node typically
+# averages 1000 events per ten minutes, but with occasional known spikes of
+# up to 2000, choose a value > 2000.
+event-log-max-items = 0
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
@@ -221,9 +227,6 @@ pprof-laddr = ""
 #######################################################
 [p2p]
 
-# Enable the legacy p2p layer.
-use-legacy = false
-
 # Select the p2p internal queue
 queue-type = "priority"
 
@@ -255,62 +258,11 @@ persistent-peers = ""
 # UPNP port forwarding
 upnp = false
 
-# Path to address book
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-addr-book-file = "config/addrbook.json"
-
-# Set true for strict address routability rules
-# Set false for private or local networks
-addr-book-strict = true
-
-# Maximum number of inbound peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-inbound-peers = 40
-
-# Maximum number of outbound peers to connect to, excluding persistent peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-outbound-peers = 10
-
 # Maximum number of connections (inbound and outbound).
 max-connections = 64
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = 100
-
-# List of node IDs, to which a connection will be (re)established ignoring any existing limits
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-unconditional-peer-ids = ""
-
-# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-persistent-peers-max-dial-period = "0s"
-
-# Time to wait before flushing messages out on the connection
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-flush-throttle-timeout = "100ms"
-
-# Maximum size of a message packet payload, in bytes
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-max-packet-msg-payload-size = 1400
-
-# Rate at which packets can be sent, in bytes/second
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-send-rate = 5120000
-
-# Rate at which packets can be received, in bytes/second
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-recv-rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true
@@ -326,15 +278,27 @@ allow-duplicate-ip = false
 handshake-timeout = "20s"
 dial-timeout = "3s"
 
+# Time to wait before flushing messages out on the connection
+# TODO: Remove once MConnConnection is removed.
+flush-throttle-timeout = "100ms"
+
+# Maximum size of a message packet payload, in bytes
+# TODO: Remove once MConnConnection is removed.
+max-packet-msg-payload-size = 1400
+
+# Rate at which packets can be sent, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+send-rate = 5120000
+
+# Rate at which packets can be received, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+recv-rate = 5120000
+
+
 #######################################################
 ###          Mempool Configuration Option          ###
 #######################################################
 [mempool]
-
-# Mempool version to use:
-#   1) "v0" - The legacy non-prioritized mempool reactor.
-#   2) "v1" (default) - The prioritized mempool reactor.
-version = "v1"
 
 recheck = true
 broadcast = true
@@ -391,22 +355,30 @@ ttl-num-blocks = 0
 # starting from the height of the snapshot.
 enable = false
 
-# RPC servers (comma-separated) for light client verification of the synced state machine and
-# retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
-# header hash obtained from a trusted source, and a period during which validators can be trusted.
-#
-# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
-# weeks) during which they can be financially punished (slashed) for misbehavior.
+# State sync uses light client verification to verify state. This can be done either through the
+# P2P layer or RPC layer. Set this to true to use the P2P layer. If false (default), RPC layer
+# will be used.
+use-p2p = false
+
+# If using RPC, at least two addresses need to be provided. They should be compatible with net.Dial,
+# for example: "host.example.com:2125"
 rpc-servers = ""
+
+# The hash and height of a trusted block. Must be within the trust-period.
 trust-height = 0
 trust-hash = ""
+
+# The trust period should be set so that Tendermint can detect and gossip misbehavior before
+# it is considered expired. For chains based on the Cosmos SDK, one day less than the unbonding
+# period should suffice.
 trust-period = "168h0m0s"
 
 # Time to spend discovering snapshots before initiating a restore.
 discovery-time = "15s"
 
-# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
-# Will create a new, randomly named directory within, and remove it when done.
+# Temporary directory for state sync snapshot chunks, defaults to os.TempDir().
+# The synchronizer will create a new, randomly named directory within this directory
+# and remove it when the sync is complete.
 temp-dir = ""
 
 # The timeout duration before re-requesting a chunk, possibly from a different
@@ -417,52 +389,17 @@ chunk-request-timeout = "15s"
 fetchers = "4"
 
 #######################################################
-###       Block Sync Configuration Connections       ###
-#######################################################
-[blocksync]
-
-# If this node is many blocks behind the tip of the chain, BlockSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-enable = true
-
-# Block Sync version to use:
-#   1) "v0" (default) - the standard block sync implementation
-#   2) "v2" - DEPRECATED, please use v0
-version = "v0"
-
-#######################################################
 ###         Consensus Configuration Options         ###
 #######################################################
 [consensus]
 
 wal-file = "data/cs.wal/wal"
 
-# How long we wait for a proposal block before prevoting nil
-timeout-propose = "3s"
-# How much timeout-propose increases with each round
-timeout-propose-delta = "500ms"
-# How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
-timeout-prevote = "1s"
-# How much the timeout-prevote increases with each round
-timeout-prevote-delta = "500ms"
-# How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
-timeout-precommit = "1s"
-# How much the timeout-precommit increases with each round
-timeout-precommit-delta = "500ms"
-# How long we wait after committing a block, before starting on the new
-# height (this gives us a chance to receive some more precommits, even
-# though we already have +2/3).
-timeout-commit = "1s"
-
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
 # When non-zero, the node will panic upon restart
 # if the same consensus key was used to sign {double-sign-check-height} last blocks.
 # So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
 double-sign-check-height = 0
-
-# Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
-skip-timeout-commit = false
 
 # EmptyBlocks mode and possible interval between empty blocks
 create-empty-blocks = true
@@ -471,6 +408,50 @@ create-empty-blocks-interval = "0s"
 # Reactor sleep duration parameters
 peer-gossip-sleep-duration = "100ms"
 peer-query-maj23-sleep-duration = "2s"
+
+### Unsafe Timeout Overrides ###
+
+# These fields provide temporary overrides for the Timeout consensus parameters.
+# Use of these parameters is strongly discouraged. Using these parameters may have serious
+# liveness implications for the validator and for the chain.
+#
+# These fields will be removed from the configuration file in the v0.37 release of Tendermint.
+# For additional information, see ADR-74:
+# https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-074-timeout-params.md
+
+# This field provides an unsafe override of the Propose timeout consensus parameter.
+# This field configures how long the consensus engine will wait for a proposal block before prevoting nil.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-propose-timeout-override = 0s
+
+# This field provides an unsafe override of the ProposeDelta timeout consensus parameter.
+# This field configures how much the propose timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-propose-timeout-delta-override = 0s
+
+# This field provides an unsafe override of the Vote timeout consensus parameter.
+# This field configures how long the consensus engine will wait after
+# receiving +2/3 votes in a around.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-vote-timeout-override = 0s
+
+# This field provides an unsafe override of the VoteDelta timeout consensus parameter.
+# This field configures how much the vote timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-vote-timeout-delta-override = 0s
+
+# This field provides an unsafe override of the Commit timeout consensus parameter.
+# This field configures how long the consensus engine will wait after receiving
+# +2/3 precommits before beginning the next height.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-commit-timeout-override = 0s
+
+# This field provides an unsafe override of the BypassCommitTimeout consensus parameter.
+# This field configures if the consensus engine will wait for the full Commit timeout
+# before proceeding to the next height.
+# If this field is set to true, the consensus engine will proceed to the next height
+# as soon as the node has gathered votes from all of the validators on the network.
+# unsafe-bypass-commit-timeout-override =
 
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
@@ -546,46 +527,6 @@ transactions every `create-empty-blocks-interval`. For instance, with
 Tendermint will only create blocks if there are transactions, or after waiting
 30 seconds without receiving any transactions.
 
-## Consensus timeouts explained
-
-There's a variety of information about timeouts in [Running in
-production](../tendermint-core/running-in-production.md)
-
-You can also find more detailed technical explanation in the spec: [The latest
-gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
-
-```toml
-[consensus]
-...
-
-timeout-propose = "3s"
-timeout-propose-delta = "500ms"
-timeout-prevote = "1s"
-timeout-prevote-delta = "500ms"
-timeout-precommit = "1s"
-timeout-precommit-delta = "500ms"
-timeout-commit = "1s"
-```
-
-Note that in a successful round, the only timeout that we absolutely wait no
-matter what is `timeout-commit`.
-
-Here's a brief summary of the timeouts:
-
-- `timeout-propose` = how long we wait for a proposal block before prevoting
-  nil
-- `timeout-propose-delta` = how much timeout-propose increases with each round
-- `timeout-prevote` = how long we wait after receiving +2/3 prevotes for
-  anything (ie. not a single block or nil)
-- `timeout-prevote-delta` = how much the timeout-prevote increases with each
-  round
-- `timeout-precommit` = how long we wait after receiving +2/3 precommits for
-  anything (ie. not a single block or nil)
-- `timeout-precommit-delta` = how much the timeout-precommit increases with
-  each round
-- `timeout-commit` = how long we wait after committing a block, before starting
-  on the new height (this gives us a chance to receive some more precommits,
-  even though we already have +2/3)
 
 ## P2P settings
 
@@ -597,7 +538,7 @@ This section will cover settings within the p2p section of the `config.toml`.
 - `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
 - `private-peer-ids` = is a comma-separated list of node ids that will _not_ be exposed to other peers (i.e., you will not tell other peers about the ids in this list). This can be filled with a validator's node id.
 
-Recently the Tendermint Team conducted a refactor of the p2p layer. This lead to multiple config paramters being deprecated and/or replaced. 
+Recently the Tendermint Team conducted a refactor of the p2p layer. This lead to multiple config parameters being deprecated and/or replaced. 
 
 We will cover the new and deprecated parameters below.
 ### New Parameters
@@ -651,3 +592,27 @@ Example:
 ```shell
 $ psql ... -f state/indexer/sink/psql/schema.sql
 ```
+
+## Unsafe Consensus Timeout Overrides
+
+Tendermint version v0.36 provides a set of unsafe overrides for the consensus
+timing parameters. These parameters are provided as a safety measure in case of
+unusual timing issues during the upgrade to v0.36 so that an operator may
+override the timings for a single node. These overrides will completely be
+removed in Tendermint v0.37.
+
+- `unsafe-propose-override`: How long the Tendermint consensus engine will wait
+  for a proposal block before prevoting nil.
+- `unsafe-propose-delta-override`: How much the propose timeout increase with
+  each round.
+- `unsafe-vote-override`: How long the consensus engine will wait after
+  receiving +2/3 votes in a round.
+- `unsafe-vote-delta-override`: How much the vote timeout increases with each
+  round.
+- `unsafe-commit-override`: How long the consensus engine will wait after
+  receiving +2/3 precommits before beginning the next height.
+- `unsafe-bypass-commit-timeout-override`: Configures if the consensus engine
+  will wait for the full commit timeout before proceeding to the next height. If
+  this field is set to true, the consensus engine will proceed to the next
+  height as soon as the node has gathered votes from all of the validators on
+  the network.

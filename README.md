@@ -3,7 +3,7 @@
 ![banner](docs/tendermint-core-image.jpg)
 
 [Byzantine-Fault Tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
-[State Machines](https://en.wikipedia.org/wiki/State_machine_replication).
+[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication).
 Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for short.
 
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/dashevo/tenderdash/releases/latest)
@@ -20,10 +20,14 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 
 Tendermint Core is a Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language - and securely replicates it on many machines.
 
-For protocol details, see [the specification](https://github.com/tendermint/spec).
+For protocol details, refer to the [Tendermint Specification](./spec/README.md).
 
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
-see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
+read our paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
+
+## Documentation
+
+Complete documentation can be found on the [website](https://docs.tendermint.com/).
 
 ## Releases
 
@@ -33,11 +37,14 @@ Tendermint has been in the production of private and public environments, most n
 See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production, we're happy to help. You can
-contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/cosmosnetwork).
+contact us [over email](mailto:hello@interchain.io) or [join the chat](https://discord.gg/cosmosnetwork).
+
+More on how releases are conducted can be found [here](./RELEASES.md).
 
 ## Security
 
-To report a security vulnerability, see our [bug bounty program](https://hackerone.com/cosmos).
+To report a security vulnerability, see our [bug bounty
+program](https://hackerone.com/cosmos).
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
@@ -50,22 +57,17 @@ to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe
 
 | Requirement | Notes            |
 |-------------|------------------|
-| Go version  | Go1.16 or higher |
-
-## Documentation
-
-Complete documentation can be found on the [website](https://docs.tendermint.com/master/).
+| Go version  | Go1.17 or higher |
 
 ### Install
 
-See the [install instructions](/docs/introduction/install.md).
+See the [install instructions](./docs/introduction/install.md).
 
 ### Quick Start
 
-- [Single node](/docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](/docs/tools/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](/docs/tools/terraform-and-ansible.md)
-- [Join the Cosmos testnet](https://cosmos.network/testnet)
+- [Single node](./docs/introduction/quick-start.md)
+- [Local cluster using docker-compose](./docs/tools/docker-compose.md)
+- [Remote cluster using Terraform and Ansible](./docs/tools/terraform-and-ansible.md)
 
 ## Contributing
 
@@ -73,9 +75,9 @@ Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 
 Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
 and the [style guide](STYLE_GUIDE.md). You may also find it helpful to read the
-[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md),
+[specifications](./spec/README.md),
 and familiarize yourself with our
-[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+[Architectural Decision Records (ADRs)](./docs/architecture/README.md) and [Request For Comments (RFCs)](./docs/rfc/README.md).
 
 ## Versioning
 
@@ -111,24 +113,23 @@ in [UPGRADING.md](./UPGRADING.md).
 
 ## Resources
 
-### Tendermint Core
+### Roadmap
 
-For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/master/spec/).
+We keep a public up-to-date version of our roadmap [here](./docs/roadmap/roadmap.md)
 
-For details on using the software, see the [documentation](/docs/) which is also
-hosted at: <https://docs.tendermint.com/master/>
+### Libraries
 
-### Tools
-
-Benchmarking is provided by [`tm-load-test`](https://github.com/informalsystems/tm-load-test).
-Additional tooling can be found in [/docs/tools](/docs/tools).
+- [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); A framework for building applications in Golang
+- [Tendermint in Rust](https://github.com/informalsystems/tendermint-rs)
+- [ABCI Tower](https://github.com/penumbra-zone/tower-abci)
 
 ### Applications
 
-- [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
-- [Ethermint](http://github.com/cosmos/ethermint); Ethereum on Tendermint
-- [Many more](https://tendermint.com/ecosystem)
+- [Cosmos Hub](https://hub.cosmos.network/)
+- [Terra](https://www.terra.money/)
+- [Celestia](https://celestia.org/)
+- [Anoma](https://anoma.network/)
+- [Vocdoni](https://docs.vocdoni.io/)
 
 ### Research
 
@@ -144,7 +145,7 @@ Tenderdash is maintained by [Dash Core Group](https://www.dash.org/dcg/).
 If you'd like to work full-time on Tenderdash, [see our Jobs page](https://www.dash.org/dcg/jobs/).
 
 Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
-If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
+If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/)!
 
 Funding for Tendermint Core development comes primarily from the [Interchain Foundation](https://interchain.io),
 a Swiss non-profit. The Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the for-profit entity

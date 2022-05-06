@@ -4,11 +4,11 @@ order: 1
 
 # Tendermint Roadmap
 
-*Last Updated: Friday 8 October 2021*
+*Last Updated: Friday 4 February 2022*
 
 This document endeavours to inform the wider Tendermint community about development plans and priorities for Tendermint Core, and when we expect features to be delivered. It is intended to broadly inform all users of Tendermint, including application developers, node operators, integrators, and the engineering and research teams.
 
-Anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/spec/issues/new/choose) in the spec. Bug reports and other implementation concerns should be brought up in the [core repository](https://github.com/tendermint/tendermint).
+Anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/tendermint/issues/new/choose). Bug reports and other implementation concerns should be brought up in the [core repository](https://github.com/tendermint/tendermint).
 
 This roadmap should be read as a high-level guide to plans and priorities, rather than a commitment to schedules and deliverables. Features earlier on the roadmap will generally be more specific and detailed than those later on. We will update this document periodically to reflect the current status.
 
@@ -43,38 +43,38 @@ Added a new `EventSink` interface to allow alternatives to Tendermint's propriet
 
 ### ABCI++
 
-An overhaul of the existing interface between the application and consensus, to give the application more control over block construction. ABCI++ adds new hooks allowing modification of transactions before they get into a block, verification of a block before voting, injection of signed information into votes, and more compact delivery of blocks after agreement (to allow for concurrent execution). [More](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
+An overhaul of the existing interface between the application and consensus, to give the application more control over block construction. ABCI++ adds new hooks allowing modification of transactions before they get into a block, verification of a block before voting, and complete delivery of blocks after agreement (to allow for concurrent execution). It enables both immediate and delayed agreement. [More](https://github.com/tendermint/tendermint/blob/master/spec/abci++/README.md)
 
 ### Proposer-Based Timestamps
 
-Proposer-based timestamps are a replacement of [BFT time](https://docs.tendermint.com/master/spec/consensus/bft-time.html), whereby the proposer chooses a timestamp and validators vote on the block only if the timestamp is considered *timely*. This increases reliance on an accurate local clock, but in exchange makes block time more reliable and resistant to faults. This has important use cases in light clients, IBC relayers, CosmosHub inflation and enabling signature aggregation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-071-proposer-based-timestamps.md)
+Proposer-based timestamps are a replacement of [BFT time](https://github.com/tendermint/tendermint/blob/master/spec/consensus/bft-time.md), whereby the proposer chooses a timestamp and validators vote on the block only if the timestamp is considered *timely*. This increases reliance on an accurate local clock, but in exchange makes block time more reliable and resistant to faults. This has important use cases in light clients, IBC relayers, CosmosHub inflation and enabling signature aggregation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-071-proposer-based-timestamps.md)
 
-### Soft Upgrades
+### RPC Event Subscription
 
-We are working on a suite of tools and patterns to make it easier for both node operators and application developers to quickly and safely upgrade to newer versions of Tendermint. [More](https://github.com/tendermint/spec/pull/222)
+The websocket-based RPC event subscription API has been an ongoing pain point for users and operators of Tendermint. In this release, we are adding a new API for event subscription that will be more predictable and reliable for clients, easier to use, and reduce resource pressure for the consensus node. The existing API based on websockets will be kept as-is but deprecated, and we plan to remove it entirely in the following release.  [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md)
 
 ### Minor Works
 
 - Remove the "legacy" P2P framework, and clean up of P2P package. [More](https://github.com/tendermint/tendermint/issues/5670)
 - Remove the global mutex from the local ABCI client to enable application-controlled concurrency. [More](https://github.com/tendermint/tendermint/issues/7073)
-- Enable P2P support for light clients
-- Node orchestration of services + Node initialization and composibility
+- Improve life cycle management of a node and its reactors.
 - Remove redundancy in several data structures. Remove unused components such as the block sync v2 reactor, gRPC in the RPC layer, and the socket-based remote signer.
-- Improve node visibility by introducing more metrics
+- Improve node visibility through the introduction of more metrics
+- Migrating locally configured consensus timeouts to global consensus parameters. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-074-timeout-params.md)
 
 ## V0.37 (expected Q3 2022)
 
-### Complete P2P Refactor
+### LibP2P Implementation
 
-Finish the final phase of the P2P system. Ongoing research and planning is taking place to decide whether to adopt [libp2p](https://libp2p.io/), alternative transports to `MConn` such as [QUIC](https://en.wikipedia.org/wiki/QUIC) and handshake/authentication protocols such as [Noise](https://noiseprotocol.org/). Research into more advanced gossiping techniques.
+Implement LibP2P to replace `mconnection` in sending and receiving messages across `Channel`s. Use LibP2P also for peer life cycle management and discovery. This aims to reduce the occurence of network thrashing and overall network traffic to provide a more stable networking layer. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-073-libp2p.md).
+
+### Soft Upgrades
+
+We are working on a suite of tools and patterns to make it easier for both node operators and application developers to quickly and safely upgrade to newer versions of Tendermint. [More](https://github.com/tendermint/spec/pull/222)
 
 ### Streamline Storage Engine
 
 Tendermint currently has an abstraction to allow support for multiple database backends. This generality incurs maintenance overhead and interferes with application-specific optimizations that Tendermint could use (ACID guarantees, etc.). We plan to converge on a single database and streamline the Tendermint storage engine. [More](https://github.com/tendermint/tendermint/pull/6897)
-
-### Evaluate Interprocess Communication
-
-Tendermint nodes currently have multiple areas of communication with other processes (ABCI, remote-signer, P2P, JSONRPC, websockets, events as examples). Many of these have multiple implementations in which a single suffices. Consolidate and clean up IPC. [More](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-002-ipc-ecosystem.md)
 
 ### Minor Works
 
@@ -82,6 +82,7 @@ Tendermint nodes currently have multiple areas of communication with other proce
 - Remove / Update Consensus WAL. [More](https://github.com/tendermint/tendermint/issues/6397)
 - Signature Aggregation. [More](https://github.com/tendermint/tendermint/issues/1319)
 - Remove gogoproto dependency. [More](https://github.com/tendermint/tendermint/issues/5446)
+- Enable P2P support for light clients. [More](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-010-p2p-light-client.rst)
 
 ## V1.0 (expected Q4 2022)
 
@@ -91,6 +92,7 @@ Has the same feature set as V0.37 but with a focus towards testing, protocol cor
 
 - Improved block propagation with erasure coding and/or compact blocks. [More](https://github.com/tendermint/spec/issues/347)
 - Consensus engine refactor
+- Fork accountability protocol
 - Bidirectional ABCI
 - Randomized Leader Election
 - ZK proofs / other cryptographic primitives

@@ -10,7 +10,8 @@ message BlockRequest {
   int64 height = 1;
 }
 
-// NoBlockResponse informs the node that the peer does not have block at the requested height
+// NoBlockResponse informs the node that the peer does not have block at the
+// requested height
 message NoBlockResponse {
   int64 height = 1;
 }
@@ -21,8 +22,7 @@ message BlockResponse {
 }
 
 // StatusRequest requests the status of a peer.
-message StatusRequest {
-}
+message StatusRequest {}
 
 // StatusResponse is a peer response to inform their status.
 message StatusResponse {

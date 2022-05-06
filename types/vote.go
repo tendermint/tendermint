@@ -2,20 +2,18 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/rs/zerolog"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 )
 
 const (
@@ -38,14 +36,17 @@ func MaxVoteBytesForKeyType(keyType crypto.KeyType) int64 {
 var (
 	ErrVoteUnexpectedStep             = errors.New("unexpected step")
 	ErrVoteInvalidValidatorIndex      = errors.New("invalid validator index")
+	ErrVoteInvalidValidatorAddress    = errors.New("invalid validator address")
+	ErrVoteInvalidSignature           = errors.New("invalid signature")
+	ErrVoteInvalidBlockHash           = errors.New("invalid block hash")
+	ErrVoteNonDeterministicSignature  = errors.New("non-deterministic signature")
+	ErrVoteNil                        = errors.New("nil vote")
+	ErrVoteInvalidExtension           = errors.New("invalid vote extension")
 	ErrVoteInvalidValidatorProTxHash  = errors.New("invalid validator pro_tx_hash")
 	ErrVoteInvalidValidatorPubKeySize = errors.New("invalid validator public key size")
 	ErrVoteInvalidBlockSignature      = errors.New("invalid block signature")
 	ErrVoteInvalidStateSignature      = errors.New("invalid state signature")
 	ErrVoteStateSignatureShouldBeNil  = errors.New("state signature when voting for nil block")
-	ErrVoteInvalidBlockHash           = errors.New("invalid block hash")
-	ErrVoteNonDeterministicSignature  = errors.New("non-deterministic signature")
-	ErrVoteNil                        = errors.New("nil vote")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -73,13 +74,39 @@ type ProTxHash = crypto.ProTxHash
 // consensus.
 type Vote struct {
 	Type               tmproto.SignedMsgType `json:"type"`
-	Height             int64                 `json:"height"`
+	Height             int64                 `json:"height,string"`
 	Round              int32                 `json:"round"`    // assume there will not be greater than 2^32 rounds
 	BlockID            BlockID               `json:"block_id"` // zero if vote is nil.
 	ValidatorProTxHash ProTxHash             `json:"validator_pro_tx_hash"`
 	ValidatorIndex     int32                 `json:"validator_index"`
 	BlockSignature     tmbytes.HexBytes      `json:"block_signature"`
 	StateSignature     tmbytes.HexBytes      `json:"state_signature"`
+	Extension          []byte                `json:"extension"`
+	ExtensionSignature []byte                `json:"extension_signature"`
+}
+
+// VoteFromProto attempts to convert the given serialization (Protobuf) type to
+// our Vote domain type. No validation is performed on the resulting vote -
+// this is left up to the caller to decide whether to call ValidateBasic or
+// ValidateWithExtension.
+func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
+	blockID, err := BlockIDFromProto(&pv.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Vote{
+		Type:               pv.Type,
+		Height:             pv.Height,
+		Round:              pv.Round,
+		BlockID:            *blockID,
+		ValidatorProTxHash: pv.ValidatorProTxHash,
+		ValidatorIndex:     pv.ValidatorIndex,
+		BlockSignature:     pv.BlockSignature,
+		StateSignature:     pv.StateSignature,
+		Extension:          pv.Extension,
+		ExtensionSignature: pv.ExtensionSignature,
+	}, nil
 }
 
 // VoteBlockSignBytes returns the proto-encoding of the canonicalized Vote, for
@@ -92,6 +119,21 @@ type Vote struct {
 // See CanonicalizeVote
 func VoteBlockSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	pb := CanonicalizeVote(chainID, vote)
+	bz, err := protoio.MarshalDelimited(&pb)
+	if err != nil {
+		panic(err)
+	}
+
+	return bz
+}
+
+// VoteExtensionSignBytes returns the proto-encoding of the canonicalized vote
+// extension for signing. Panics if the marshaling fails.
+//
+// Similar to VoteSignBytes, the encoded Protobuf message is varint
+// length-prefixed for backwards-compatibility with the Amino encoding.
+func VoteExtensionSignBytes(chainID string, vote *tmproto.Vote) []byte {
+	pb := CanonicalizeVoteExtension(chainID, vote)
 	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
@@ -133,7 +175,8 @@ func (vote *Vote) Copy() *Vote {
 // 6. type string
 // 7. first 6 bytes of block hash
 // 8. first 6 bytes of signature
-// 9. timestamp
+// 9. first 6 bytes of vote extension
+// 10. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
@@ -149,7 +192,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X %X}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorProTxHash),
 		vote.Height,
@@ -159,33 +202,40 @@ func (vote *Vote) String() string {
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.BlockSignature),
 		tmbytes.Fingerprint(vote.StateSignature),
+		tmbytes.Fingerprint(vote.Extension),
 	)
 }
 
-func VoteBlockRequestID(vote *Vote) []byte {
-	requestIDMessage := []byte("dpbvote")
-	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-	requestIDMessage = append(requestIDMessage, roundByteArray...)
-
-	return crypto.Sha256(requestIDMessage)
+func (vote *Vote) verifyAndReturnProto(chainID string, pubKey crypto.PubKey) (*tmproto.Vote, error) {
+	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
+		return nil, ErrVoteInvalidValidatorAddress
+	}
+	v := vote.ToProto()
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
+		return nil, ErrVoteInvalidSignature
+	}
+	return v, nil
 }
 
-func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
-	requestIDMessage := []byte("dpbvote")
-	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-	requestIDMessage = append(requestIDMessage, roundByteArray...)
-
-	return crypto.Sha256(requestIDMessage)
+// VerifyWithExtension performs the same verification as Verify, but
+// additionally checks whether the vote extension signature corresponds to the
+// given chain ID and public key. We only verify vote extension signatures for
+// precommits.
+func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) error {
+	v, err := vote.verifyAndReturnProto(chainID, pubKey)
+	if err != nil {
+		return err
+	}
+	// We only verify vote extension signatures for precommits.
+	if vote.Type == tmproto.PrecommitType {
+		extSignBytes := VoteExtensionSignBytes(chainID, v)
+		// TODO: Remove extension signature nil check to enforce vote extension
+		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
+		if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+			return ErrVoteInvalidSignature
+		}
+	}
+	return nil
 }
 
 func (vote *Vote) Verify(
@@ -247,7 +297,9 @@ func (vote *Vote) Verify(
 	return signID, stateSignID, nil
 }
 
-// ValidateBasic performs basic validation.
+// ValidateBasic checks whether the vote is well-formed. It does not, however,
+// check vote extensions - for vote validation with vote extension validation,
+// use ValidateWithExtension.
 func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
@@ -264,12 +316,12 @@ func (vote *Vote) ValidateBasic() error {
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
-	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
+	if !vote.BlockID.IsNil() && !vote.BlockID.IsComplete() {
 		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
 
@@ -299,6 +351,40 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("state signature is too big (max: %d)", SignatureSize)
 	}
 
+	// We should only ever see vote extensions in precommits.
+	if vote.Type != tmproto.PrecommitType {
+		if len(vote.Extension) > 0 {
+			return errors.New("unexpected vote extension")
+		}
+		if len(vote.ExtensionSignature) > 0 {
+			return errors.New("unexpected vote extension signature")
+		}
+	}
+
+	return nil
+}
+
+// ValidateWithExtension performs the same validations as ValidateBasic, but
+// additionally checks whether a vote extension signature is present. This
+// function is used in places where vote extension signatures are expected.
+func (vote *Vote) ValidateWithExtension() error {
+	if err := vote.ValidateBasic(); err != nil {
+		return err
+	}
+
+	// We should always see vote extension signatures in precommits
+	if vote.Type == tmproto.PrecommitType {
+		// TODO(thane): Remove extension length check once
+		//              https://github.com/tendermint/tendermint/issues/8272 is
+		//              resolved.
+		if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
+			return errors.New("vote extension signature is missing")
+		}
+		if len(vote.ExtensionSignature) > MaxSignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
+		}
+	}
+
 	return nil
 }
 
@@ -318,6 +404,8 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		ValidatorIndex:     vote.ValidatorIndex,
 		BlockSignature:     vote.BlockSignature,
 		StateSignature:     vote.StateSignature,
+		Extension:          vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
 	}
 }
 
@@ -344,27 +432,44 @@ func (vote *Vote) HasVoteMessage() *tmcons.HasVote {
 	}
 }
 
-// FromProto converts a proto generetad type to a handwritten type
-// return type, nil if everything converts safely, otherwise nil, error
-func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
-	if pv == nil {
-		return nil, errors.New("nil vote")
+func VotesToProto(votes []*Vote) []*tmproto.Vote {
+	if votes == nil {
+		return nil
 	}
 
-	blockID, err := BlockIDFromProto(&pv.BlockID)
-	if err != nil {
-		return nil, err
+	res := make([]*tmproto.Vote, 0, len(votes))
+	for _, vote := range votes {
+		v := vote.ToProto()
+		// protobuf crashes when serializing "repeated" fields with nil elements
+		if v != nil {
+			res = append(res, v)
+		}
 	}
+	return res
+}
 
-	vote := new(Vote)
-	vote.Type = pv.Type
-	vote.Height = pv.Height
-	vote.Round = pv.Round
-	vote.BlockID = *blockID
-	vote.ValidatorProTxHash = pv.ValidatorProTxHash
-	vote.ValidatorIndex = pv.ValidatorIndex
-	vote.BlockSignature = pv.BlockSignature
-	vote.StateSignature = pv.StateSignature
+func VoteBlockRequestID(vote *Vote) []byte {
+	requestIDMessage := []byte("dpbvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
 
-	return vote, vote.ValidateBasic()
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIDMessage)
+}
+
+func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
+	requestIDMessage := []byte("dpbvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIDMessage = append(requestIDMessage, heightByteArray...)
+	requestIDMessage = append(requestIDMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIDMessage)
 }

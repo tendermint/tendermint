@@ -2,7 +2,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	stdlog "log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,41 +19,41 @@ const (
 	randomSeed int64 = 4827085738
 )
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-
 func main() {
-	NewCLI().Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cli, err := NewCLI()
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	cli.Run(ctx)
 }
 
 // CLI is the Cobra-based command-line interface.
 type CLI struct {
-	root *cobra.Command
-	opts Options
+	root   *cobra.Command
+	opts   Options
+	logger log.Logger
 }
 
 // NewCLI sets up the CLI.
-func NewCLI() *CLI {
-	cli := &CLI{}
+func NewCLI() (*CLI, error) {
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	cli := &CLI{
+		logger: logger,
+	}
 	cli.root = &cobra.Command{
 		Use:           "generator",
 		Short:         "End-to-end testnet generator",
 		SilenceUsage:  true,
 		SilenceErrors: true, // we'll output them ourselves in Run()
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
-			p2pMode, err := cmd.Flags().GetString("p2p")
-			if err != nil {
-				return err
-			}
-
-			switch mode := P2PMode(p2pMode); mode {
-			case NewP2PMode, LegacyP2PMode, HybridP2PMode, MixedP2PMode:
-				cli.opts.P2P = mode
-			default:
-				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
-			}
-
 			configPreset, err := cmd.Flags().GetString("preset")
 			if err != nil {
 				return err
@@ -60,7 +62,6 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-
 			return cli.generate()
 		},
 	}
@@ -69,8 +70,6 @@ func NewCLI() *CLI {
 	_ = cli.root.MarkPersistentFlagRequired("dir")
 	cli.root.Flags().BoolVarP(&cli.opts.Reverse, "reverse", "r", false, "Reverse sort order")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.NumGroups, "groups", "g", 0, "Number of groups")
-	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
-		"P2P typology to be generated [\"new\", \"legacy\", \"hybrid\" or \"mixed\" ]")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.MinNetworkSize, "min-size", "", 1,
 		"Minimum network size (nodes)")
 	cli.root.PersistentFlags().IntVarP(&cli.opts.MaxNetworkSize, "max-size", "", 0,
@@ -78,7 +77,7 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("preset", "", "default",
 		"Config preset, by default is used \"default\"")
 
-	return cli
+	return cli, nil
 }
 
 // generate generates manifests in a directory.
@@ -117,9 +116,9 @@ func (cli *CLI) generate() error {
 }
 
 // Run runs the CLI.
-func (cli *CLI) Run() {
-	if err := cli.root.Execute(); err != nil {
-		logger.Error(err.Error())
+func (cli *CLI) Run(ctx context.Context) {
+	if err := cli.root.ExecuteContext(ctx); err != nil {
+		cli.logger.Error(err.Error())
 		os.Exit(1)
 	}
 }

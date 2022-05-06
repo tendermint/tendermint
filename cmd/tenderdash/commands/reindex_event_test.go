@@ -8,14 +8,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
-	tmcfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/mocks"
+	"github.com/tendermint/tendermint/libs/log"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 
 	_ "github.com/lib/pq" // for the psql sink
 )
@@ -25,13 +26,15 @@ const (
 	base   int64 = 2
 )
 
-func setupReIndexEventCmd() *cobra.Command {
+func setupReIndexEventCmd(ctx context.Context, conf *config.Config, logger log.Logger) *cobra.Command {
+	cmd := MakeReindexEventCommand(conf, logger)
+
 	reIndexEventCmd := &cobra.Command{
-		Use: ReIndexEventCmd.Use,
+		Use: cmd.Use,
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
 
-	_ = reIndexEventCmd.ExecuteContext(context.Background())
+	_ = reIndexEventCmd.ExecuteContext(ctx)
 
 	return reIndexEventCmd
 }
@@ -68,10 +71,7 @@ func TestReIndexEventCheckHeight(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		startHeight = tc.startHeight
-		endHeight = tc.endHeight
-
-		err := checkValidHeight(mockBlockStore)
+		err := checkValidHeight(mockBlockStore, checkValidHeightArgs{startHeight: tc.startHeight, endHeight: tc.endHeight})
 		if tc.validHeight {
 			require.NoError(t, err)
 		} else {
@@ -97,7 +97,7 @@ func TestLoadEventSink(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		cfg := tmcfg.TestConfig()
+		cfg := config.TestConfig()
 		cfg.TxIndex.Indexer = tc.sinks
 		cfg.TxIndex.PsqlConn = tc.connURL
 		_, err := loadEventSinks(cfg)
@@ -110,7 +110,7 @@ func TestLoadEventSink(t *testing.T) {
 }
 
 func TestLoadBlockStore(t *testing.T) {
-	testCfg, err := tmcfg.ResetTestRoot(t.Name())
+	testCfg, err := config.ResetTestRoot(t.TempDir(), t.Name())
 	require.NoError(t, err)
 	testCfg.DBBackend = "goleveldb"
 	_, _, err = loadStateAndBlockStore(testCfg)
@@ -152,11 +152,11 @@ func TestReIndexEvent(t *testing.T) {
 		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(errors.New("")).Once().
 		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(nil)
 
-	dtx := abcitypes.ResponseDeliverTx{}
+	dtx := abcitypes.ExecTxResult{}
 	abciResp := &prototmstate.ABCIResponses{
-		DeliverTxs: []*abcitypes.ResponseDeliverTx{&dtx},
-		EndBlock:   &abcitypes.ResponseEndBlock{},
-		BeginBlock: &abcitypes.ResponseBeginBlock{},
+		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
+			TxResults: []*abcitypes.ExecTxResult{&dtx},
+		},
 	}
 
 	mockStateStore.
@@ -177,11 +177,22 @@ func TestReIndexEvent(t *testing.T) {
 		{height, height, false},
 	}
 
-	for _, tc := range testCases {
-		startHeight = tc.startHeight
-		endHeight = tc.endHeight
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logger := log.NewNopLogger()
+	conf := config.DefaultConfig()
 
-		err := eventReIndex(setupReIndexEventCmd(), []indexer.EventSink{mockEventSink}, mockBlockStore, mockStateStore)
+	for _, tc := range testCases {
+		err := eventReIndex(
+			setupReIndexEventCmd(ctx, conf, logger),
+			eventReIndexArgs{
+				sinks:       []indexer.EventSink{mockEventSink},
+				blockStore:  mockBlockStore,
+				stateStore:  mockStateStore,
+				startHeight: tc.startHeight,
+				endHeight:   tc.endHeight,
+			})
+
 		if tc.reIndexErr {
 			require.Error(t, err)
 		} else {
