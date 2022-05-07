@@ -787,7 +787,7 @@ func (ecs *ExtendedCommitSig) ToProto() *tmproto.ExtendedCommitSig {
 		ValidatorAddress:   ecs.ValidatorAddress,
 		Timestamp:          ecs.Timestamp,
 		Signature:          ecs.Signature,
-		VoteExtension:      ecs.Extension,
+		Extension:          ecs.Extension,
 		ExtensionSignature: ecs.ExtensionSignature,
 	}
 }
@@ -800,7 +800,7 @@ func (ecs *ExtendedCommitSig) FromProto(ecsp tmproto.ExtendedCommitSig) error {
 	ecs.ValidatorAddress = ecsp.ValidatorAddress
 	ecs.Timestamp = ecsp.Timestamp
 	ecs.Signature = ecsp.Signature
-	ecs.Extension = ecsp.VoteExtension
+	ecs.Extension = ecsp.Extension
 	ecs.ExtensionSignature = ecsp.ExtensionSignature
 
 	return ecs.ValidateBasic()
