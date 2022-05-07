@@ -737,12 +737,6 @@ func NewExtendedCommitSigAbsent() ExtendedCommitSig {
 	return ExtendedCommitSig{BlockIDFlag: BlockIDFlagAbsent}
 }
 
-// Absent returns true if ExtendedCommitSig is absent.
-func (ecs ExtendedCommitSig) Absent() bool {
-	// TODO(sergio): What about BlockIDFlagNil?
-	return ecs.BlockIDFlag == BlockIDFlagAbsent
-}
-
 // String returns a string representation of an ExtendedCommitSig.
 //
 // 1. first 6 bytes of signature
@@ -1073,7 +1067,7 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
 	for idx, sig := range ec.ExtendedSignatures {
-		if sig.Absent() {
+		if sig.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
 		vote := ec.GetExtendedVote(int32(idx))
@@ -1160,9 +1154,9 @@ func (ec *ExtendedCommit) BitArray() *bits.BitArray {
 	if ec.bitArray == nil {
 		ec.bitArray = bits.NewBitArray(len(ec.ExtendedSignatures))
 		for i, extCommitSig := range ec.ExtendedSignatures {
-			// TODO: need to check the BlockID otherwise we could be counting conflicts,
-			// not just the one with +2/3 !
-			ec.bitArray.SetIndex(i, !extCommitSig.Absent())
+			// TODO(sergio): need to check the BlockID otherwise we could be counting conflicts,
+			//               not just the one with +2/3 !
+			ec.bitArray.SetIndex(i, extCommitSig.BlockIDFlag != BlockIDFlagAbsent)
 		}
 	}
 	return ec.bitArray
