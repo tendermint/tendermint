@@ -420,15 +420,15 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 // validator set obtained from the store at the height of the last extended
 // commit.
 func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
-	// The current height is ec.Height+1
-	if ec.Height+1 == initialHeight {
-		// There is no extended commit for the initial height.
+	// We assume the current height is ec.Height + 1.
+	if ec.Height < initialHeight {
+		// There is no extended commit for heights below the initial height.
 		return abci.ExtendedCommitInfo{}
 	}
 
 	valSet, err := store.LoadValidators(ec.Height)
 	if err != nil {
-		panic(fmt.Errorf("failed to load validator set at height %d: %w", ec.Height, err))
+		panic(fmt.Errorf("failed to load validator set at height %d, initial height %d: %w", ec.Height, initialHeight, err))
 	}
 
 	vs := make([]abci.ExtendedVoteInfo, ec.Size())
