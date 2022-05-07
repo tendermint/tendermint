@@ -102,7 +102,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	commit := lastExtCommit.StripExtensions()
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
-	fmt.Printf("height = %d, lastExtCommit.Height = %d\n", height, lastExtCommit.Height)
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		&abci.RequestPrepareProposal{
