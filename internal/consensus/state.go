@@ -2022,7 +2022,7 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 
 		for i, val := range cs.LastValidators.Validators {
 			commitSig := block.LastCommit.Signatures[i]
-			if commitSig.Absent() {
+			if commitSig.BlockIDFlag == types.BlockIDFlagAbsent {
 				missingValidators++
 				missingValidatorsPower += val.VotingPower
 			}

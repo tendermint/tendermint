@@ -404,7 +404,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 		commitSig := block.LastCommit.Signatures[i]
 		votes[i] = abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: !commitSig.Absent(),
+			SignedLastBlock: commitSig.BlockIDFlag != types.BlockIDFlagAbsent,
 		}
 	}
 

@@ -36,7 +36,7 @@ func VerifyCommit(chainID string, vals *ValidatorSet, blockID BlockID,
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
 
 	// ignore all absent signatures
-	ignore := func(c CommitSig) bool { return c.Absent() }
+	ignore := func(c CommitSig) bool { return c.BlockIDFlag == BlockIDFlagAbsent }
 
 	// only count the signatures that are for the block
 	count := func(c CommitSig) bool { return c.BlockIDFlag == BlockIDFlagCommit }

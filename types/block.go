@@ -622,11 +622,6 @@ func NewCommitSigAbsent() CommitSig {
 	}
 }
 
-// Absent returns true if CommitSig is absent.
-func (cs CommitSig) Absent() bool {
-	return cs.BlockIDFlag == BlockIDFlagAbsent
-}
-
 // CommitSig returns a string representation of CommitSig.
 //
 // 1. first 6 bytes of signature
