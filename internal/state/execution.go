@@ -86,7 +86,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	ctx context.Context,
 	height int64,
 	state State,
-	extCommit *types.ExtendedCommit,
+	lastExtCommit *types.ExtendedCommit,
 	proposerAddr []byte,
 ) (*types.Block, error) {
 
@@ -99,15 +99,16 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
-	commit := extCommit.StripExtensions()
+	commit := lastExtCommit.StripExtensions()
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
+	fmt.Printf("height = %d, lastExtCommit.Height = %d\n", height, lastExtCommit.Height)
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     extendedCommitInfo(*extCommit),
+			LocalLastCommit:     buildLastExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
@@ -375,14 +376,14 @@ func (blockExec *BlockExecutor) Commit(
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
 	if block.Height == initialHeight {
-		// there is no last commmit for the initial height.
+		// there is no last commit for the initial height.
 		// return an empty value.
 		return abci.CommitInfo{}
 	}
 
 	lastValSet, err := store.LoadValidators(block.Height - 1)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to load validator set at height %d: %w", block.Height-1, err))
 	}
 
 	var (
@@ -414,28 +415,51 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-// extendedCommitInfo expects an ExtendedCommitInfo, which includes the
-// original precommit votes along with their vote extensions.
-// Then, it populates the corresponding ABCI protobuf structures.
-func extendedCommitInfo(extCommit types.ExtendedCommit) abci.ExtendedCommitInfo {
-	vs := make([]abci.ExtendedVoteInfo, len(extCommit.ExtendedSignatures))
-	for i, ecs := range extCommit.ExtendedSignatures {
+// buildLastExtendedCommitInfo expects an ExtendedCommitInfo, which includes
+// the original precommit votes along with their vote extensions from the last
+// commit. It populates the corresponding ABCI protobuf structures using the
+// validator set obtained from the store at the height of the last extended
+// commit.
+func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
+	// The current height is ec.Height+1
+	if ec.Height+1 == initialHeight {
+		// There is no extended commit for the initial height.
+		return abci.ExtendedCommitInfo{}
+	}
+
+	valSet, err := store.LoadValidators(ec.Height)
+	if err != nil {
+		panic(fmt.Errorf("failed to load validator set at height %d: %w", ec.Height, err))
+	}
+
+	vs := make([]abci.ExtendedVoteInfo, ec.Size())
+	for i, ecs := range ec.ExtendedSignatures {
 		var ext []byte
-		if ecs.ForBlock() {
+		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
+			// We only care about vote extensions if a validator has voted to
+			// commit.
 			ext = ecs.VoteExtension
 		}
+		var vpb abci.Validator
+		// The ValidatorAddress field is empty when their vote is absent.
+		if ecs.BlockIDFlag != types.BlockIDFlagAbsent {
+			_, val := valSet.GetByAddress(ecs.ValidatorAddress)
+			if val == nil {
+				panic(fmt.Sprintf(
+					"cannot find validator with address '%s' from extended commit in validator set from height %d",
+					ecs.ValidatorAddress, ec.Height,
+				))
+			}
+			vpb = types.TM2PB.Validator(val)
+		}
 		vs[i] = abci.ExtendedVoteInfo{
-			Validator: abci.Validator{
-				Address: ecs.ValidatorAddress,
-				//TODO: Important: why do we need power here?
-				Power: 0,
-			},
-			SignedLastBlock: ecs.ForBlock(),
+			Validator:       vpb,
+			SignedLastBlock: ecs.BlockIDFlag != types.BlockIDFlagAbsent,
 			VoteExtension:   ext,
 		}
 	}
 	return abci.ExtendedCommitInfo{
-		Round: extCommit.Round,
+		Round: ec.Round,
 		Votes: vs,
 	}
 }
