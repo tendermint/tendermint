@@ -720,105 +720,56 @@ func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
 
 //-------------------------------------
 
-// ExtendedCommitSig is similar to CommitSig, except it also contains the vote
-// extension and vote extension signature related to this commit.
+// ExtendedCommitSig contains a commit signature along with its corresponding
+// vote extension and vote extension signature.
 type ExtendedCommitSig struct {
-	BlockIDFlag        BlockIDFlag `json:"block_id_flag"`
-	ValidatorAddress   Address     `json:"validator_address"`
-	Timestamp          time.Time   `json:"timestamp"`
-	Signature          []byte      `json:"signature"`
-	VoteExtension      []byte      `json:"extension"`
-	ExtensionSignature []byte      `json:"extension_signature"`
+	CommitSig                 // Commit signature
+	Extension          []byte // Vote extension
+	ExtensionSignature []byte // Vote extension signature
 }
 
 // NewExtendedCommitSigAbsent returns new ExtendedCommitSig with
 // BlockIDFlagAbsent. Other fields are all empty.
 func NewExtendedCommitSigAbsent() ExtendedCommitSig {
-	return ExtendedCommitSig{BlockIDFlag: BlockIDFlagAbsent}
+	return ExtendedCommitSig{CommitSig: NewCommitSigAbsent()}
 }
 
 // String returns a string representation of an ExtendedCommitSig.
 //
-// 1. first 6 bytes of signature
-// 2. first 6 bytes of validator address
-// 3. block ID flag
-// 4. timestamp
-// 5. first 6 bytes of vote extension
-// 6. first 6 bytes of vote extension signature
+// 1. commit sig
+// 2. first 6 bytes of vote extension
+// 3. first 6 bytes of vote extension signature
 func (ecs ExtendedCommitSig) String() string {
-	return fmt.Sprintf("ExtendedCommitSig{%X by %X on %v @ %s with %X %X}",
-		tmbytes.Fingerprint(ecs.Signature),
-		tmbytes.Fingerprint(ecs.ValidatorAddress),
-		ecs.BlockIDFlag,
-		CanonicalTime(ecs.Timestamp),
-		tmbytes.Fingerprint(ecs.VoteExtension),
+	return fmt.Sprintf("ExtendedCommitSig{%s with %X %X}",
+		ecs.CommitSig,
+		tmbytes.Fingerprint(ecs.Extension),
 		tmbytes.Fingerprint(ecs.ExtensionSignature),
 	)
 }
 
-// BlockID returns the block ID associated with this extended commit signature,
-// if any. If the block ID flag is neither absent, nil nor commit, this panics.
-// If the block ID flag is absent or nil this returns an empty BlockID.
-func (ecs ExtendedCommitSig) BlockID(commitBlockID BlockID) BlockID {
-	switch ecs.BlockIDFlag {
-	case BlockIDFlagAbsent, BlockIDFlagNil:
-		return BlockID{}
-	case BlockIDFlagCommit:
-		return commitBlockID
-	default:
-		panic(fmt.Sprintf("Unknown BlockIDFlag: %v", ecs.BlockIDFlag))
-	}
-}
-
 // ValidateBasic checks whether the structure is well-formed.
 func (ecs ExtendedCommitSig) ValidateBasic() error {
-	switch ecs.BlockIDFlag {
-	case BlockIDFlagAbsent, BlockIDFlagCommit, BlockIDFlagNil:
-	default:
-		return fmt.Errorf("unknown BlockIDFlag: %v", ecs.BlockIDFlag)
+	if err := ecs.CommitSig.ValidateBasic(); err != nil {
+		return err
 	}
 
 	switch ecs.BlockIDFlag {
 	case BlockIDFlagAbsent:
-		if len(ecs.ValidatorAddress) != 0 {
-			return errors.New("validator address is present")
-		}
-		if !ecs.Timestamp.IsZero() {
-			return errors.New("time is present")
-		}
-		if len(ecs.Signature) != 0 {
-			return errors.New("signature is present")
-		}
-		if len(ecs.VoteExtension) != 0 {
-			return errors.New("extension is present")
+		if len(ecs.Extension) != 0 {
+			return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
 		}
 		if len(ecs.ExtensionSignature) != 0 {
-			return errors.New("extension signature is present")
+			return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
 		}
 	case BlockIDFlagCommit, BlockIDFlagNil:
-		if len(ecs.ValidatorAddress) != crypto.AddressSize {
-			return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
-				crypto.AddressSize,
-				len(ecs.ValidatorAddress),
-			)
-		}
-		// NOTE: Timestamp validation is subtle and handled elsewhere.
-		if len(ecs.Signature) == 0 {
-			return errors.New("signature is missing")
-		}
-		if len(ecs.Signature) > MaxSignatureSize {
-			return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
-		}
-		//TODO move this to a better place
-		const MaxExtensionSize = 100
-		if len(ecs.VoteExtension) > 100 {
-			return fmt.Errorf("extension is too big (max: %d)", MaxExtensionSize)
+		if len(ecs.Extension) > MaxVoteExtensionSize {
+			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
 		}
 		if len(ecs.ExtensionSignature) == 0 {
-			return errors.New("extension signature is missing")
+			return errors.New("vote extension signature is missing")
 		}
 		if len(ecs.ExtensionSignature) > MaxSignatureSize {
-			return fmt.Errorf("extension signature is too big (max: %d)", MaxSignatureSize)
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
 	}
 
@@ -836,7 +787,7 @@ func (ecs *ExtendedCommitSig) ToProto() *tmproto.ExtendedCommitSig {
 		ValidatorAddress:   ecs.ValidatorAddress,
 		Timestamp:          ecs.Timestamp,
 		Signature:          ecs.Signature,
-		VoteExtension:      ecs.VoteExtension,
+		VoteExtension:      ecs.Extension,
 		ExtensionSignature: ecs.ExtensionSignature,
 	}
 }
@@ -849,7 +800,7 @@ func (ecs *ExtendedCommitSig) FromProto(ecsp tmproto.ExtendedCommitSig) error {
 	ecs.ValidatorAddress = ecsp.ValidatorAddress
 	ecs.Timestamp = ecsp.Timestamp
 	ecs.Signature = ecsp.Signature
-	ecs.VoteExtension = ecsp.VoteExtension
+	ecs.Extension = ecsp.VoteExtension
 	ecs.ExtensionSignature = ecsp.ExtensionSignature
 
 	return ecs.ValidateBasic()
@@ -1066,8 +1017,8 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 // Inverse of VoteSet.MakeCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
-	for idx, sig := range ec.ExtendedSignatures {
-		if sig.BlockIDFlag == BlockIDFlagAbsent {
+	for idx, ecs := range ec.ExtendedSignatures {
+		if ecs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
 		vote := ec.GetExtendedVote(int32(idx))
@@ -1086,13 +1037,8 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet
 // extension-related fields.
 func (ec *ExtendedCommit) StripExtensions() *Commit {
 	commitSigs := make([]CommitSig, len(ec.ExtendedSignatures))
-	for idx, sig := range ec.ExtendedSignatures {
-		commitSigs[idx] = CommitSig{
-			BlockIDFlag:      sig.BlockIDFlag,
-			ValidatorAddress: sig.ValidatorAddress,
-			Timestamp:        sig.Timestamp,
-			Signature:        sig.Signature,
-		}
+	for idx, ecs := range ec.ExtendedSignatures {
+		commitSigs[idx] = ecs.CommitSig
 	}
 	return &Commit{
 		Height:     ec.Height,
@@ -1106,18 +1052,18 @@ func (ec *ExtendedCommit) StripExtensions() *Commit {
 // index to a Vote with a vote extensions.
 // It panics if valIndex is out of range.
 func (ec *ExtendedCommit) GetExtendedVote(valIndex int32) *Vote {
-	sig := ec.ExtendedSignatures[valIndex]
+	ecs := ec.ExtendedSignatures[valIndex]
 	return &Vote{
 		Type:               tmproto.PrecommitType,
 		Height:             ec.Height,
 		Round:              ec.Round,
-		BlockID:            sig.BlockID(ec.BlockID),
-		Timestamp:          sig.Timestamp,
-		ValidatorAddress:   sig.ValidatorAddress,
+		BlockID:            ecs.BlockID(ec.BlockID),
+		Timestamp:          ecs.Timestamp,
+		ValidatorAddress:   ecs.ValidatorAddress,
 		ValidatorIndex:     valIndex,
-		Signature:          sig.Signature,
-		Extension:          sig.VoteExtension,
-		ExtensionSignature: sig.ExtensionSignature,
+		Signature:          ecs.Signature,
+		Extension:          ecs.Extension,
+		ExtensionSignature: ecs.ExtensionSignature,
 	}
 }
 

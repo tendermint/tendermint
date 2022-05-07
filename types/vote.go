@@ -14,6 +14,9 @@ import (
 
 const (
 	nilVoteStr string = "nil-Vote"
+
+	// The maximum supported number of bytes in a vote extension.
+	MaxVoteExtensionSize int = 1024
 )
 
 var (
@@ -117,25 +120,14 @@ func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
 		return NewExtendedCommitSigAbsent()
 	}
 
-	var blockIDFlag BlockIDFlag
-	switch {
-	case vote.BlockID.IsComplete():
-		blockIDFlag = BlockIDFlagCommit
-		if len(vote.ExtensionSignature) == 0 {
-			panic(fmt.Sprintf("Invalid vote %v - a BlockID is complete but missing vote extension signature", vote))
-		}
-	case vote.BlockID.IsNil():
-		blockIDFlag = BlockIDFlagNil
-	default:
-		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
+	cs := vote.CommitSig()
+	if vote.BlockID.IsComplete() && len(vote.ExtensionSignature) == 0 {
+		panic(fmt.Sprintf("Invalid vote %v - BlockID is complete but missing vote extension signature", vote))
 	}
 
 	return ExtendedCommitSig{
-		BlockIDFlag:        blockIDFlag,
-		ValidatorAddress:   vote.ValidatorAddress,
-		Timestamp:          vote.Timestamp,
-		Signature:          vote.Signature,
-		VoteExtension:      vote.Extension,
+		CommitSig:          cs,
+		Extension:          vote.Extension,
 		ExtensionSignature: vote.ExtensionSignature,
 	}
 }

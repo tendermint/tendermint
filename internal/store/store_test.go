@@ -30,10 +30,12 @@ type cleanupFunc func()
 // timestamp
 func makeTestExtCommit(height int64, timestamp time.Time) *types.ExtendedCommit {
 	extCommitSigs := []types.ExtendedCommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
-		ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
-		Timestamp:        timestamp,
-		Signature:        []byte("Signature"),
+		CommitSig: types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
+			Timestamp:        timestamp,
+			Signature:        []byte("Signature"),
+		},
 	}}
 	return &types.ExtendedCommit{
 		Height: height,

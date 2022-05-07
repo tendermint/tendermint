@@ -591,10 +591,12 @@ func makeExtCommit(height int64, valAddr []byte) *types.ExtendedCommit {
 		Height:  height,
 		BlockID: types.BlockID{},
 		ExtendedSignatures: []types.ExtendedCommitSig{{
-			BlockIDFlag:      types.BlockIDFlagCommit,
-			ValidatorAddress: valAddr,
-			Timestamp:        defaultEvidenceTime,
-			Signature:        []byte("Signature"),
+			CommitSig: types.CommitSig{
+				BlockIDFlag:      types.BlockIDFlagCommit,
+				ValidatorAddress: valAddr,
+				Timestamp:        defaultEvidenceTime,
+				Signature:        []byte("Signature"),
+			},
 		}},
 	}
 }

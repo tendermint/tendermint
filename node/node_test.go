@@ -526,10 +526,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	state.ChainID = maxChainID
 
 	ecs := types.ExtendedCommitSig{
-		BlockIDFlag:      types.BlockIDFlagNil,
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		Timestamp:        timestamp,
-		Signature:        crypto.CRandBytes(types.MaxSignatureSize),
+		CommitSig: types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlagNil,
+			ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+			Timestamp:        timestamp,
+			Signature:        crypto.CRandBytes(types.MaxSignatureSize),
+		},
 	}
 
 	extCommit := &types.ExtendedCommit{

@@ -437,7 +437,7 @@ func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialH
 		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
 			// We only care about vote extensions if a validator has voted to
 			// commit.
-			ext = ecs.VoteExtension
+			ext = ecs.Extension
 		}
 		var vpb abci.Validator
 		// The ValidatorAddress field is empty when their vote is absent.
