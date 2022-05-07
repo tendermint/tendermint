@@ -521,7 +521,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			first, second, extCommit := r.pool.PeekTwoBlocks()
 			if first == nil || second == nil || extCommit == nil {
 				if first != nil && extCommit == nil {
-					r.logger.Error("peeked a block without extended commit", "height", first.Height)
+					// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
+					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
 				}
 				// we need all to sync the first block
 				continue
