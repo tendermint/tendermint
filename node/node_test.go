@@ -533,7 +533,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 
 	extCommit := &types.ExtendedCommit{
-		Height:  math.MaxInt64,
+		Height:  math.MaxInt64 - 1,
 		Round:   math.MaxInt32,
 		BlockID: blockID,
 	}
@@ -544,9 +544,11 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	for i := 0; i < types.MaxVotesCount; i++ {
 		pubKey, err := privVals[i].GetPubKey(ctx)
 		require.NoError(t, err)
+		valAddr := pubKey.Address()
 		votes[i] = &types.Vote{
-			ValidatorAddress: pubKey.Address(),
+			ValidatorAddress: valAddr,
 		}
+		ecs.ValidatorAddress = valAddr
 		extCommit.ExtendedSignatures = append(extCommit.ExtendedSignatures, ecs)
 	}
 
