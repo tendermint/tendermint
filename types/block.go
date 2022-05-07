@@ -1044,10 +1044,10 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 // ExtendedCommit is similar to Commit, except that its signatures also retain
 // their corresponding vote extensions and vote extension signatures.
 type ExtendedCommit struct {
-	Height             int64               `json:"height,string"`
-	Round              int32               `json:"round"`
-	BlockID            BlockID             `json:"block_id"`
-	ExtendedSignatures []ExtendedCommitSig `json:"signatures"`
+	Height             int64
+	Round              int32
+	BlockID            BlockID
+	ExtendedSignatures []ExtendedCommitSig
 
 	bitArray *bits.BitArray
 }
