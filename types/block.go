@@ -737,11 +737,6 @@ func NewExtendedCommitSigAbsent() ExtendedCommitSig {
 	return ExtendedCommitSig{BlockIDFlag: BlockIDFlagAbsent}
 }
 
-// ForBlock returns true if ExtendedCommitSig is for the block.
-func (ecs ExtendedCommitSig) ForBlock() bool {
-	return ecs.BlockIDFlag == BlockIDFlagCommit
-}
-
 // Absent returns true if ExtendedCommitSig is absent.
 func (ecs ExtendedCommitSig) Absent() bool {
 	// TODO(sergio): What about BlockIDFlagNil?

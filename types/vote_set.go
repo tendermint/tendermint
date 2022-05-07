@@ -628,7 +628,7 @@ func (voteSet *VoteSet) MakeExtendedCommit() *ExtendedCommit {
 	for i, v := range voteSet.votes {
 		sig := v.ExtendedCommitSig()
 		// if block ID exists but doesn't match, exclude sig
-		if sig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
+		if sig.BlockIDFlag == BlockIDFlagCommit && !v.BlockID.Equals(*voteSet.maj23) {
 			sig = NewExtendedCommitSigAbsent()
 		}
 
