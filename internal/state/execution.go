@@ -422,7 +422,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
 	// We assume the current height is ec.Height + 1.
 	if ec.Height < initialHeight {
-		// There is no extended commit for heights below the initial height.
+		// There are no extended commits for heights below the initial height.
 		return abci.ExtendedCommitInfo{}
 	}
 
