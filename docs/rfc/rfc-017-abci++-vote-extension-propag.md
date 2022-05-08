@@ -227,7 +227,7 @@ discussions and need to be addressed. They are (roughly) ordered from easiest to
     (maybe out of date) information it is getting from its peers. Then, the node needs to be ready to
     propose at height *h<sub>c</sub>+1*, which requires having received the vote extensions for
     *h<sub>c</sub>*.
-    As the vote extensions are *not* stored in the blockchain, and it is difficult to have strong
+    As the vote extensions are *not* stored in the blocks, and it is difficult to have strong
     guarantees on *when* a late node considers itself caught up, providing the late node with the right
     vote extensions for the right height poses a problem.
 
