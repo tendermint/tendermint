@@ -4,6 +4,7 @@
 
 - 11-Apr-2022: Initial draft (@sergio-mena).
 - 15-Apr-2022: Addressed initial comments. First complete version (@sergio-mena).
+- 09-May-2022: Addressed all outstanding comments.
 
 ## Abstract
 
