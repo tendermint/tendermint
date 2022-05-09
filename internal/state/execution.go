@@ -432,7 +432,21 @@ func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialH
 		panic(fmt.Errorf("failed to load validator set at height %d, initial height %d: %w", ec.Height, initialHeight, err))
 	}
 
-	vs := make([]abci.ExtendedVoteInfo, ec.Size())
+	var (
+		ecSize    = ec.Size()
+		valSetLen = len(valSet.Validators)
+	)
+
+	// Ensure that the size of the validator set in the extended commit matches
+	// the size of the validator set in the state store.
+	if ecSize != valSetLen {
+		panic(fmt.Errorf(
+			"extended commit size (%d) does not match validator set length (%d) at height %d\n\n%v\n\n%v",
+			ecSize, valSetLen, ec.Height, ec.ExtendedSignatures, valSet.Validators,
+		))
+	}
+
+	vs := make([]abci.ExtendedVoteInfo, ecSize)
 	for i, ecs := range ec.ExtendedSignatures {
 		var ext []byte
 		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
