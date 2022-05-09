@@ -463,6 +463,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			)
 
 			switch {
+			// TODO(sergio) Might be needed for implementing the upgrading solution. Remove after that
 			//case state.LastBlockHeight > 0 && r.store.LoadBlockExtCommit(state.LastBlockHeight) == nil:
 			case state.LastBlockHeight > 0 && blocksSynced == 0:
 				// Having state-synced, we need to blocksync at least one block
