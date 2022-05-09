@@ -56,4 +56,7 @@ sections.
 - [RFC-018: BLS Signature Aggregation Exploration](./rfc-018-bls-agg-exploration.md)
 - [RFC-019: Configuration File Versioning](./rfc-019-config-version.md)
 
+
+- [RFC-017: ABCI++ Vote Extension Propagation](./rfc-017-abci++-vote-extension-propag.md)
+
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
