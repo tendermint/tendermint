@@ -107,7 +107,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     buildLastExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight),
+			LocalLastCommit:     buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
@@ -414,14 +414,14 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-// buildLastExtendedCommitInfo populates an ABCI extended commit from the
-// corresponding Tendermint extended commit ec, using the stored validator set from
-// ec.  It requires ec to include the original precommit votes along
-// with the vote extensions from the last commit.
+// buildExtendedCommitInfo populates an ABCI extended commit from the
+// corresponding Tendermint extended commit ec, using the stored validator set
+// from ec.  It requires ec to include the original precommit votes along with
+// the vote extensions from the last commit.
 //
-// For heights below the initial height, for which we do not have the
-// required data, it returns an empty record.
-func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
+// For heights below the initial height, for which we do not have the required
+// data, it returns an empty record.
+func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
 	if ec.Height < initialHeight {
 		// There are no extended commits for heights below the initial height.
 		return abci.ExtendedCommitInfo{}
@@ -446,7 +446,7 @@ func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialH
 		))
 	}
 
-	vs := make([]abci.ExtendedVoteInfo, ecSize)
+	votes := make([]abci.ExtendedVoteInfo, ecSize)
 	for i, ecs := range ec.ExtendedSignatures {
 		var ext []byte
 		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
@@ -466,7 +466,7 @@ func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialH
 			}
 			vpb = types.TM2PB.Validator(val)
 		}
-		vs[i] = abci.ExtendedVoteInfo{
+		votes[i] = abci.ExtendedVoteInfo{
 			Validator:       vpb,
 			SignedLastBlock: ecs.BlockIDFlag != types.BlockIDFlagAbsent,
 			VoteExtension:   ext,
@@ -474,7 +474,7 @@ func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialH
 	}
 	return abci.ExtendedCommitInfo{
 		Round: ec.Round,
-		Votes: vs,
+		Votes: votes,
 	}
 }
 
