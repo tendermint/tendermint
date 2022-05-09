@@ -328,11 +328,10 @@ func TestProcessProposal(t *testing.T) {
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
 
-	lastCommit := &types.Commit{
+	block1 := sf.MakeBlock(state, height, &types.Commit{
 		Height:     height - 1,
 		Signatures: lastCommitSig,
-	}
-	block1 := sf.MakeBlock(state, height, lastCommit)
+	})
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{

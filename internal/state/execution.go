@@ -414,11 +414,13 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-// buildLastExtendedCommitInfo expects an ExtendedCommitInfo, which includes
-// the original precommit votes along with their vote extensions from the last
-// commit. It populates the corresponding ABCI protobuf structures using the
-// validator set obtained from the store at the height of the last extended
-// commit.
+// buildLastExtendedCommitInfo populates an ABCI extended commit from the
+// corresponding Tendermint extended commit ec, using the stored validator set from
+// ec.  It requires ec to include the original precommit votes along
+// with the vote extensions from the last commit.
+//
+// For heights below the initial height, for which we do not have the
+// required data, it returns an empty record.
 func buildLastExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
 	// We assume the current height is ec.Height + 1.
 	if ec.Height < initialHeight {

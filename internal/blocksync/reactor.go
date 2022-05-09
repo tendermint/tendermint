@@ -188,7 +188,7 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 	if block != nil {
 		extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
 		if extCommit == nil {
-			return fmt.Errorf("blockstore has block but not extended commit (block: %v)", block)
+			return fmt.Errorf("found block in store without extended commit: %v", block)
 		}
 		blockProto, err := block.ToProto()
 		if err != nil {
@@ -465,7 +465,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			switch {
 			//case state.LastBlockHeight > 0 && r.store.LoadBlockExtCommit(state.LastBlockHeight) == nil:
 			case state.LastBlockHeight > 0 && blocksSynced == 0:
-				//If we have state-synced, we need to blocksync at least one block
+				// Having state-synced, we need to blocksync at least one block
 				r.logger.Info(
 					"no seen commit yet",
 					"height", height,

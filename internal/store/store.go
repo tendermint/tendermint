@@ -273,16 +273,16 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
-		panic(fmt.Errorf("error from proto block commit: %w", err))
+		panic(fmt.Errorf("converting commit to proto: %w", err))
 	}
 	return commit
 }
 
 func (bs *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
-	var pbec = new(tmproto.ExtendedCommit)
+	pbec := new(tmproto.ExtendedCommit)
 	bz, err := bs.db.Get(extCommitKey(height))
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("fetching extended commit: %w", err))
 	}
 	if len(bz) == 0 {
 		return nil

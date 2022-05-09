@@ -1074,9 +1074,7 @@ func (ec *ExtendedCommit) Type() byte { return byte(tmproto.PrecommitType) }
 
 // GetHeight returns height of the extended commit.
 // Implements VoteSetReader.
-func (ec *ExtendedCommit) GetHeight() int64 {
-	return ec.Height
-}
+func (ec *ExtendedCommit) GetHeight() int64 { return ec.Height }
 
 // GetRound returns height of the extended commit.
 // Implements VoteSetReader.
@@ -1175,9 +1173,7 @@ func ExtendedCommitFromProto(ecp *tmproto.ExtendedCommit) (*ExtendedCommit, erro
 		return nil, errors.New("nil ExtendedCommit")
 	}
 
-	var (
-		extCommit = new(ExtendedCommit)
-	)
+	extCommit := new(ExtendedCommit)
 
 	bi, err := BlockIDFromProto(&ecp.BlockID)
 	if err != nil {
@@ -1191,7 +1187,6 @@ func ExtendedCommitFromProto(ecp *tmproto.ExtendedCommit) (*ExtendedCommit, erro
 		}
 	}
 	extCommit.ExtendedSignatures = sigs
-
 	extCommit.Height = ecp.Height
 	extCommit.Round = ecp.Round
 	extCommit.BlockID = *bi

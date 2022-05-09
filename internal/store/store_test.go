@@ -310,7 +310,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.NoError(t, err)
 
 	bs, db := newInMemoryBlockStore()
-	height, index := int64(10), 1
+	const height, index = 10, 1
 	loadPart := func() (interface{}, error) {
 		part := bs.LoadBlockPart(height, index)
 		return part, nil
