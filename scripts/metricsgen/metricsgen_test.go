@@ -184,11 +184,11 @@ func TestParseMetricsStruct(t *testing.T) {
 			)
 			`
 
-			_, err = io.WriteString(pkgLine)
+			_, err = io.WriteString(f, pkgLine)
 			require.NoError(t, err)
-			_, err = io.WriteString(importClause)
+			_, err = io.WriteString(f, importClause)
 			require.NoError(t, err)
-			_, err = io.WriteString(testCase.metricsStruct)
+			_, err = io.WriteString(f, testCase.metricsStruct)
 			require.NoError(t, err)
 
 			td, err := metricsgen.ParseMetricsDir(dir, "Metrics")
