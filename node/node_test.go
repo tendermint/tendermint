@@ -35,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -525,40 +526,40 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 	state.ChainID = maxChainID
 
-	ecs := types.ExtendedCommitSig{
-		CommitSig: types.CommitSig{
-			BlockIDFlag:      types.BlockIDFlagNil,
-			ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-			Timestamp:        timestamp,
-			Signature:        crypto.CRandBytes(types.MaxSignatureSize),
-		},
-	}
-
-	extCommit := &types.ExtendedCommit{
-		Height:  math.MaxInt64 - 1,
-		Round:   math.MaxInt32,
-		BlockID: blockID,
-	}
-
-	votes := make([]*types.Vote, types.MaxVotesCount)
+	voteSet := types.NewVoteSet(state.ChainID, math.MaxInt64-1, math.MaxInt32, tmproto.PrecommitType, state.Validators)
 
 	// add maximum amount of signatures to a single commit
 	for i := 0; i < types.MaxVotesCount; i++ {
 		pubKey, err := privVals[i].GetPubKey(ctx)
 		require.NoError(t, err)
-		valAddr := pubKey.Address()
-		votes[i] = &types.Vote{
-			ValidatorAddress: valAddr,
+		valIdx, val := state.Validators.GetByAddress(pubKey.Address())
+		require.NotNil(t, val)
+
+		vote := &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           math.MaxInt64 - 1,
+			Round:            math.MaxInt32,
+			BlockID:          blockID,
+			Timestamp:        timestamp,
+			ValidatorAddress: val.Address,
+			ValidatorIndex:   valIdx,
+			Extension:        []byte("extension"),
 		}
-		ecs.ValidatorAddress = valAddr
-		extCommit.ExtendedSignatures = append(extCommit.ExtendedSignatures, ecs)
+		vpb := vote.ToProto()
+		require.NoError(t, privVals[i].SignVote(ctx, state.ChainID, vpb))
+		vote.Signature = vpb.Signature
+		vote.ExtensionSignature = vpb.ExtensionSignature
+
+		added, err := voteSet.AddVote(vote)
+		require.NoError(t, err)
+		require.True(t, added)
 	}
 
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
 		state,
-		extCommit,
+		voteSet.MakeExtendedCommit(),
 		proposerAddr,
 	)
 	require.NoError(t, err)
