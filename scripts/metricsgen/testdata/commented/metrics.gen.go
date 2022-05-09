@@ -18,7 +18,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "field",
-			Help:      "Height of the chain.We expect multi-line comments to parse correctly.",
+			Help:      "Height of the chain. We expect multi-line comments to parse correctly.",
 		}, labels).With(labelsAndValues...),
 	}
 }

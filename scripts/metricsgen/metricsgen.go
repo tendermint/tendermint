@@ -251,8 +251,11 @@ func findMetricsStruct(files map[string]*ast.File, structName string) (*ast.Stru
 func parseMetricField(f *ast.Field) ParsedMetricField {
 	var comment string
 	if f.Doc != nil {
-		for _, c := range f.Doc.List {
+		for i, c := range f.Doc.List {
 			comment += strings.TrimPrefix(c.Text, "// ")
+			if i < len(f.Doc.List)-1 {
+				comment += " "
+			}
 		}
 	}
 	pmf := ParsedMetricField{
