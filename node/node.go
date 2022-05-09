@@ -489,7 +489,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	}
 
 	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
-		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
+		n.prometheusSrv = n.startPrometheusServer(ctx, registry, n.config.Instrumentation.PrometheusListenAddr)
 	}
 
 	// Start the transport.
@@ -572,12 +572,12 @@ func (n *nodeImpl) OnStop() {
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics
 // collectors on addr.
-func (n *nodeImpl) startPrometheusServer(ctx context.Context, addr string) *http.Server {
+func (n *nodeImpl) startPrometheusServer(ctx context.Context, registry *prometheus.Registry, addr string) *http.Server {
 	srv := &http.Server{
 		Addr: addr,
 		Handler: promhttp.InstrumentMetricHandler(
-			prometheus.DefaultRegisterer, promhttp.HandlerFor(
-				prometheus.DefaultGatherer,
+			registry, promhttp.HandlerFor(
+				registry,
 				promhttp.HandlerOpts{MaxRequestsInFlight: n.config.Instrumentation.MaxOpenConnections},
 			),
 		),

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -502,4 +503,11 @@ func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, 
 	}
 
 	return defaultPV, nil
+}
+
+func createRegistry(conf *config.Config) *prometheus.Registry {
+	if conf.Instrumentation.Prometheus {
+		return prometheus.NewRegistry()
+	}
+	return prometheus.NewRegistry()
 }
