@@ -238,6 +238,9 @@ func TestParseAliasedMetric(t *testing.T) {
 		t.Fatalf("unable to open file: %v", err)
 	}
 	_, err = io.WriteString(f, aliasedData)
+	if err != nil {
+		t.Fatalf("unable to write to file: %v", err)
+	}
 	td, err := metricsgen.ParseMetricsDir(dir, "Metrics")
 	require.NoError(t, err)
 
