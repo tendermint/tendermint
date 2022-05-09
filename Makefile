@@ -257,7 +257,7 @@ mockery:
 
 metrics:
 	go generate -run="go run github.com/tendermint/tendermint/scripts/metricsgen" ./...
-.PHONY: mockery
+.PHONY: metrics
 
 ###############################################################################
 ###                       Local testnet using docker                        ###
