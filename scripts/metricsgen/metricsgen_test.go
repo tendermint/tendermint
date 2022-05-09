@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -200,4 +201,42 @@ func TestParseMetricsStruct(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseAliasedMetric(t *testing.T) {
+	aliasedData := `
+			package mypkg
+
+			import(
+				mymetrics "github.com/go-kit/kit/metrics"
+			)
+			type Metrics struct {
+				m mymetrics.Gauge
+			}
+			`
+	dir, err := os.MkdirTemp(os.TempDir(), "metricsdir")
+	if err != nil {
+		t.Fatalf("unable to create directory: %v", err)
+	}
+	defer os.Remove(dir)
+	f, err := os.Create(filepath.Join(dir, "metrics.go"))
+	if err != nil {
+		t.Fatalf("unable to open file: %v", err)
+	}
+	_, err = io.WriteString(f, aliasedData)
+	td, err := metricsgen.ParseMetricsDir(dir, "Metrics")
+	require.NoError(t, err)
+
+	expected :=
+		metricsgen.TemplateData{
+			Package: "mypkg",
+			ParsedMetrics: []metricsgen.ParsedMetricField{
+				{
+					TypeName:   "Gauge",
+					FieldName:  "m",
+					MetricName: "m",
+				},
+			},
+		}
+	require.Equal(t, expected, td)
 }
