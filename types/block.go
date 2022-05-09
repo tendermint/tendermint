@@ -1098,8 +1098,8 @@ func (ec *ExtendedCommit) BitArray() *bits.BitArray {
 	if ec.bitArray == nil {
 		ec.bitArray = bits.NewBitArray(len(ec.ExtendedSignatures))
 		for i, extCommitSig := range ec.ExtendedSignatures {
-			// TODO(sergio): need to check the BlockID otherwise we could be counting conflicts,
-			//               not just the one with +2/3 !
+			// TODO: need to check the BlockID otherwise we could be counting conflicts,
+			//       not just the one with +2/3 !
 			ec.bitArray.SetIndex(i, extCommitSig.BlockIDFlag != BlockIDFlagAbsent)
 		}
 	}
