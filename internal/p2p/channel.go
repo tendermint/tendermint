@@ -326,6 +326,10 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 		return ch.topic.Publish(ctx, bz)
 	}
 
+	// TODO: remove this, likely. Checking to see if a topic has a
+	// peer is *probably* right, but maybe it's better to just try
+	// and connect to a peer directly (using whatever method) and
+	// go from there.
 	if !ch.topicHasPeer(peer.ID(e.To)) {
 		return fmt.Errorf("peer %q does not exist", e.To)
 	}
@@ -333,7 +337,6 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 	// TODO: there's likely some tooling that exists for doing
 	// point-to-point messaging that we can leverage here, rather
 	// than implementing directly on-top of libp2p streams.
-
 	return errors.New("direct messages between peers not supported, yet")
 }
 
@@ -352,5 +355,6 @@ func (ch *libp2pChannelImpl) SendError(ctx context.Context, pe PeerError) error 
 	// rather as part of some peer-info/network-management
 	// interface, but we can do it here for now, to ensure compatibility.
 	ch.pubsub.BlacklistPeer(peer.ID(pe.NodeID))
+
 	return nil
 }
