@@ -177,7 +177,7 @@ func ParseMetricsDir(dir string, structName string) (TemplateData, error) {
 		Package: pkgName,
 	}
 	// Grab the metrics struct
-	m, mPkgName, err := fetchMetricsStruct(pkg.Files, structName)
+	m, mPkgName, err := findMetricsStruct(pkg.Files, structName)
 	if err != nil {
 		return TemplateData{}, err
 	}
@@ -212,7 +212,7 @@ func GenerateMetricsFile(w io.Writer, td TemplateData) error {
 	return nil
 }
 
-func fetchMetricsStruct(files map[string]*ast.File, structName string) (*ast.StructType, string, error) {
+func findMetricsStruct(files map[string]*ast.File, structName string) (*ast.StructType, string, error) {
 	var (
 		st *ast.StructType
 	)
