@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -421,6 +422,8 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 //
 // For heights below the initial height, for which we do not have the required
 // data, it returns an empty record.
+//
+// Assumes that the commit signatures are sorted according to validator index.
 func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
 	if ec.Height < initialHeight {
 		// There are no extended commits for heights below the initial height.
@@ -447,31 +450,31 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 	}
 
 	votes := make([]abci.ExtendedVoteInfo, ecSize)
-	for i, ecs := range ec.ExtendedSignatures {
+	for i, val := range valSet.Validators {
+		ecs := ec.ExtendedSignatures[i]
+
+		// Absent signatures have empty validator addresses, but otherwise we
+		// expect the validator addresses to be the same.
+		if ecs.BlockIDFlag != types.BlockIDFlagAbsent && !bytes.Equal(ecs.ValidatorAddress, val.Address) {
+			panic(fmt.Errorf("validator address of extended commit signature in position %d (%s) does not match the corresponding validator's at height %d (%s)",
+				i, ecs.ValidatorAddress, ec.Height, val.Address,
+			))
+		}
+
 		var ext []byte
 		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
 			// We only care about vote extensions if a validator has voted to
 			// commit.
 			ext = ecs.Extension
 		}
-		var vpb abci.Validator
-		// The ValidatorAddress field is empty when their vote is absent.
-		if ecs.BlockIDFlag != types.BlockIDFlagAbsent {
-			_, val := valSet.GetByAddress(ecs.ValidatorAddress)
-			if val == nil {
-				panic(fmt.Sprintf(
-					"cannot find validator with address '%s' from extended commit in validator set from height %d",
-					ecs.ValidatorAddress, ec.Height,
-				))
-			}
-			vpb = types.TM2PB.Validator(val)
-		}
+
 		votes[i] = abci.ExtendedVoteInfo{
-			Validator:       vpb,
+			Validator:       types.TM2PB.Validator(val),
 			SignedLastBlock: ecs.BlockIDFlag != types.BlockIDFlagAbsent,
 			VoteExtension:   ext,
 		}
 	}
+
 	return abci.ExtendedCommitInfo{
 		Round: ec.Round,
 		Votes: votes,
