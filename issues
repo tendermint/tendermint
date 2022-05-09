@@ -1,0 +1,24 @@
+# Metricsgen generates metrics.md markdown file
+
+The metricsgen tool parses and reads a metrics struct with various metrics
+fields. Currently, the tool uses this data to generate the corresponding prometheus
+and no-op constructors for use withint Tendermint. The same data that is parsed
+to generate the constructor can trivially be used to generate the [metrics.md]()
+documentation file. Autogenerating this file will reduce the toil of keeping this
+file up to date and make it less likely for this simple file to become out of date.
+
+- [] metricsgen generates markdown table output using `TemplateData` data
+- [] make target added for regenerating this markdown file
+
+# Replace go-kit metrics metricsgen output with standard prometheus types.
+
+Tendermint uses the `go-kit` metrics library to create and register metrics.
+Tendermint only uses the standard prometheus implementations of the various
+go-kit metrics type. We therefore derive very little benefit from using the `go-kit`
+types. It also prevents Tendermint from easily generating two instances of the `nodeImpl`
+with metrics for each. This is because `go-kit` under the hood uses the `DefaultRegistery`
+from prometheus which is a global object, created and managed by the prometheus
+library. Migrating to use just prometheus will allow us to control and insantiate
+separate metrics registries for each instance of the `nodeImpl` that is created.
+
+- [] replace go-kit metrics with equivalent standard prometheus types
