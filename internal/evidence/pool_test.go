@@ -588,7 +588,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.Blo
 
 func makeExtCommit(height int64, valAddr []byte) *types.ExtendedCommit {
 	return &types.ExtendedCommit{
-		Height:  height,
+		Height: height,
 		ExtendedSignatures: []types.ExtendedCommitSig{{
 			CommitSig: types.CommitSig{
 				BlockIDFlag:      types.BlockIDFlagCommit,
