@@ -26,10 +26,10 @@ import (
 
 func init() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `Usage: %[1]s -dir <dir> -struct <struct>
+		fmt.Fprintf(os.Stderr, `Usage: %[1]s  -struct <struct>
 
-Generate constructors for the metrics type contained in the specified -dir
-Go directory. The tool creates a new file in the same directory as the specified directory
+Generate constructors for the metrics type specified by -struct contained in
+the current directory. The tool creates a new file in the current directory
 containing the generated code.
 
 Options:
@@ -131,10 +131,7 @@ func main() {
 	if *strct == "" {
 		log.Fatal("You must specify a non-empty -struct")
 	}
-	if *dir == "" {
-		log.Fatal("You must specify a non-empty -dir")
-	}
-	td, err := ParseMetricsDir(*dir, *strct)
+	td, err := ParseMetricsDir(".", *strct)
 	if err != nil {
 		log.Fatalf("Parsing file: %v", err)
 	}
