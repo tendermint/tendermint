@@ -1014,7 +1014,7 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the commit can't be added to the voteset.
-// Inverse of VoteSet.MakeCommit().
+// Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
 	for idx, ecs := range ec.ExtendedSignatures {
@@ -1036,15 +1036,15 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet
 // StripExtensions converts an ExtendedCommit to a Commit by removing all vote
 // extension-related fields.
 func (ec *ExtendedCommit) StripExtensions() *Commit {
-	commitSigs := make([]CommitSig, len(ec.ExtendedSignatures))
+	cs := make([]CommitSig, len(ec.ExtendedSignatures))
 	for idx, ecs := range ec.ExtendedSignatures {
-		commitSigs[idx] = ecs.CommitSig
+		cs[idx] = ecs.CommitSig
 	}
 	return &Commit{
 		Height:     ec.Height,
 		Round:      ec.Round,
 		BlockID:    ec.BlockID,
-		Signatures: commitSigs,
+		Signatures: cs,
 	}
 }
 
@@ -1078,9 +1078,7 @@ func (ec *ExtendedCommit) GetHeight() int64 { return ec.Height }
 
 // GetRound returns height of the extended commit.
 // Implements VoteSetReader.
-func (ec *ExtendedCommit) GetRound() int32 {
-	return ec.Round
-}
+func (ec *ExtendedCommit) GetRound() int32 { return ec.Round }
 
 // Size returns the number of signatures in the extended commit.
 // Implements VoteSetReader.
