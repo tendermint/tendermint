@@ -67,6 +67,20 @@ func TestFromData(t *testing.T) {
 			if _, err := parser.ParseFile(token.NewFileSet(), outFile, nil, parser.AllErrors); err != nil {
 				t.Fatalf("unable to parse generated file %s: %v", outFile, err)
 			}
+			bNew, err := ioutil.ReadFile(outFile)
+			if err != nil {
+				t.Fatalf("unable to read generated file %s: %v", outFile, err)
+			}
+			goldenFile := path.Join(dirName, "metrics.gen.go")
+			bOld, err := ioutil.ReadFile(goldenFile)
+			if err != nil {
+				t.Fatalf("unable to read file %s: %v", goldenFile, err)
+			}
+			if !bytes.Equal(bNew, bOld) {
+				t.Fatalf("newly generated code in file %s does not match golden file %s\n"+
+					"if the output of the metricsgen tool is expected to change run the following make target: \n"+
+					"\tmake metrics", outFile, goldenFile)
+			}
 		})
 	}
 }
