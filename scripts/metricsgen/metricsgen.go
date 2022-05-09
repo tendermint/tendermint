@@ -88,8 +88,8 @@ func PrometheusMetrics(namespace string, labelsAndValues...string) *Metrics {
 		{{- if eq (len $metric.Labels) 0 }}
 		}, labels).With(labelsAndValues...),
 		{{ else }}
-		}, append(labels, {{$metric.Labels | printf "%q" }})).With(labelsAndValues...),
-		{{- end }}
+		}, append(labels, {{$metric.Labels}})).With(labelsAndValues...),
+		{{ end }}
 		{{- end }}
 	}
 }
@@ -251,8 +251,13 @@ func findMetricsStruct(files map[string]*ast.File, structName string) (*ast.Stru
 func parseMetricField(f *ast.Field) ParsedMetricField {
 	var comment string
 	if f.Doc != nil {
-		for _, c := range f.Doc.List {
-			comment += strings.TrimPrefix(c.Text, "// ")
+		for i, c := range f.Doc.List {
+			if str := strings.TrimPrefix(c.Text, "//"); len(str) > 0 {
+				comment += strings.TrimPrefix(str, " ")
+			}
+			if i < len(f.Doc.List)-1 {
+				comment += " "
+			}
 		}
 	}
 	pmf := ParsedMetricField{
@@ -280,7 +285,11 @@ func extractLabels(bl *ast.BasicLit) string {
 	if bl != nil {
 		t := reflect.StructTag(strings.Trim(bl.Value, "`"))
 		if v := t.Get(labelsTag); v != "" {
-			return v
+			var res string
+			for _, s := range strings.Split(v, ",") {
+				res += strconv.Quote(strings.TrimSpace(s)) + ","
+			}
+			return res
 		}
 	}
 	return ""
