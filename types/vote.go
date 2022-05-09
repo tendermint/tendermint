@@ -16,7 +16,7 @@ const (
 	nilVoteStr string = "nil-Vote"
 
 	// The maximum supported number of bytes in a vote extension.
-	MaxVoteExtensionSize int = 1024
+	MaxVoteExtensionSize int = 1024 * 1024
 )
 
 var (
