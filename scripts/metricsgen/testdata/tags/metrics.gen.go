@@ -19,23 +19,26 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "with_labels",
 			Help:      "",
-		}, labels).With(labelsAndValues...),
-		WithExpBuckets: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		}, append(labels, "step,time")).With(labelsAndValues...), WithExpBuckets: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "with_exp_buckets",
 			Help:      "",
+
+			Buckets: stdprometheus.ExponentialBuckets(.1, 100, 8),
 		}, labels).With(labelsAndValues...),
 		WithBuckets: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "with_buckets",
 			Help:      "",
+
+			Buckets: []float64{1, 2, 3, 4, 5},
 		}, labels).With(labelsAndValues...),
 		Named: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "named",
+			Name:      "metric_with_name",
 			Help:      "",
 		}, labels).With(labelsAndValues...),
 	}
