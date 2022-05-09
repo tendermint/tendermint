@@ -41,10 +41,10 @@ Options:
 const metricsPackageName = "github.com/go-kit/kit/metrics"
 
 const (
-	metricNameTag = "metricsgen_name"
-	labelsTag     = "metricsgen_labels"
-	bucketTypeTag = "metricsgen_bucketsType"
-	bucketSizeTag = "metricsgen_bucketSizes"
+	metricNameTag = "metrics_name"
+	labelsTag     = "metrics_labels"
+	bucketTypeTag = "metrics_buckettype"
+	bucketSizeTag = "metrics_bucketsizes"
 )
 
 var (

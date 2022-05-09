@@ -98,7 +98,7 @@ func TestParseMetricsStruct(t *testing.T) {
 		{
 			name: "histogram",
 			metricsStruct: "type Metrics struct {\n" +
-				"myHistogram metrics.Histogram `metricsgen_bucketsType:\"exp\" metricsgen_bucketSizes:\"1, 100, .8\"`\n" +
+				"myHistogram metrics.Histogram `metrics_buckettype:\"exp\" metrics_bucketsizes:\"1, 100, .8\"`\n" +
 				"}",
 			expected: metricsgen.TemplateData{
 				Package: pkgName,
@@ -119,7 +119,7 @@ func TestParseMetricsStruct(t *testing.T) {
 		{
 			name: "labeled name",
 			metricsStruct: "type Metrics struct {\n" +
-				"myCounter metrics.Counter `metricsgen_name:\"new_name\"`\n" +
+				"myCounter metrics.Counter `metrics_name:\"new_name\"`\n" +
 				"}",
 			expected: metricsgen.TemplateData{
 				Package: pkgName,
@@ -135,7 +135,7 @@ func TestParseMetricsStruct(t *testing.T) {
 		{
 			name: "metric labels",
 			metricsStruct: "type Metrics struct {\n" +
-				"myCounter metrics.Counter `metricsgen_labels:\"label1, label2\"`\n" +
+				"myCounter metrics.Counter `metrics_labels:\"label1, label2\"`\n" +
 				"}",
 			expected: metricsgen.TemplateData{
 				Package: pkgName,
