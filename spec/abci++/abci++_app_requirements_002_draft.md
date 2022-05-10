@@ -131,7 +131,7 @@ extensions will be discarded.
 Requirements 9 and 10 ensure that the validation of vote extensions will be deterministic at all
 correct processes.
 Requirements 9 and 10 protect against arbitrary vote extension data from Byzantine processes
-similarly to Requirements 6 and 7 protecting against arbitrary proposed blocks.
+in a similar way as Requirements 6 and 7 protect against arbitrary proposed blocks.
 Requirements 9 and 10 can be violated by a bug inducing non-determinism in
 `VerifyVoteExtension`. In this case liveness can be compromised.
 Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension` and,
