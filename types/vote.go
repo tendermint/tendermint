@@ -294,8 +294,10 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
-	// We should only ever see vote extensions in precommits.
-	if vote.Type != tmproto.PrecommitType {
+	// We should only ever see vote extensions in non-nil precommits, otherwise
+	// this is a violation of the specification.
+	// https://github.com/tendermint/tendermint/issues/8487
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsNil()) {
 		if len(vote.Extension) > 0 {
 			return errors.New("unexpected vote extension")
 		}
