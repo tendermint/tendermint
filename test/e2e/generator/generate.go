@@ -124,6 +124,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
+		//nolint:staticcheck
 		numSeeds = r.Intn(1)
 		numLightClients = r.Intn(2)
 		numValidators = 4 + r.Intn(4)
