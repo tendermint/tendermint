@@ -50,6 +50,7 @@ The following metrics are available:
 | consensus_proposal_receive_count        | Counter   | status          | Total number of proposals received by the node since process start                                                                         |
 | consensus_proposal_create_count         | Counter   |                 | Total number of proposals created by the node since process start                                                                          |
 | consensus_round_voting_power_percent    | Gauge     | vote_type       | A value between 0 and 1.0 representing the percentage of the total voting power per vote type received within a round                      |
+| consensus_late_votes                    | Counter   | vote_type       | Number of votes received by the node since process start that correspond to earlier heights and rounds than this node is currently in.     |
 | evidence_pool_num_evidence              | Gauge     |                 | Number of evidence in the evidence pool                                                                                                    |
 | p2p_peers                               | Gauge     |                 | Number of peers node's connected to                                                                                                        |
 | p2p_peer_receive_bytes_total            | Counter   | peer_id, chID   | number of bytes per channel received from a given peer                                                                                     |
@@ -64,7 +65,6 @@ The following metrics are available:
 | state_block_processing_time             | Histogram |                 | time between BeginBlock and EndBlock in ms                                                                                                 |
 | state_consensus_param_updates           | Counter   |                 | number of consensus parameter updates returned by the application since process start                                                      |
 | state_validator_set_updates             | Counter   |                 | number of validator set updates returned by the application since process start                                                            |
-
 
 ## Useful queries
 
