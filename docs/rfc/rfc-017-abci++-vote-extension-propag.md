@@ -558,19 +558,22 @@ Then, we need to handle two new situations, roughly equivalent to cases (h.1) an
 
 v0.36 of Tendermint will be the first version to implement the vote extension system.
 The v0.36 release aims to be backwards compatible with the previous release, v0.35,
-which had no implementation of vote extensions and no mechanisms in place to facilitate
-their later addition.
+via a coordinated upgrade. Chains that were previously running v0.35 must be able
+to upgrade to v0.36 without creating a new chain. v0.35 had no implementation 
+of vote extensions and no mechanisms in place to facilitate their later addition.
 
 Vote extensions pose an issue for Tendermint upgrades. Chains that upgrade from
 v0.35 to v0.36 will attempt to produce the first height running v0.36 without vote
 extension data from the previous height. We intend to allow chains to _require_
 vote extensions data. Chains that do so will not make progress without vote
-extension data and the corresponding application will expect vote extension
+extension data. The corresponding application will expect vote extension
 data to be present for [PrepareProposal](https://github.com/tendermint/tendermint/blob/cec0a9798/proto/tendermint/abci/types.proto#L129) call it receives. 
+Vote extension data being absent during upgrade poses a critical issue for Solution 3,
+which requires that vote extension data be present when the node begins consensus.
 
 To facilitate the upgrade and provide applications a mechanism to require
 vote extensions, we will provide application developers with a [ConsensusParam](https://github.com/tendermint/tendermint/blob/cec0a9798/proto/tendermint/types/params.proto#L13)
-to transition the chain from no history of vote extensions to requiring vote extensions.
+to transition the chain from maintaining no history of vote extensions to requiring vote extensions.
 This parameter will be an `int64` representing the first height where vote extensions
 will be required for votes to be considered valid. Once the configured height occurs,
 the parameter will be disallowed from changing, meaning that vote extensions cannot flip from being
