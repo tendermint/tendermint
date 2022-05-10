@@ -124,7 +124,7 @@ apart into a few different lines of inquiry.
 1. What values need to be included as part of the Merkle tree so that the
 consensus algorithm can use proof-of-stake consensus to validate all of the
 properties of the chain that we would like?
-1. How can we create views of the data that can be easily retrieved, stored, and
+2. How can we create views of the data that can be easily retrieved, stored, and
 verified by the relevant protocols?
 
 These two concerns are intertwined at the moment as a result of how we store
