@@ -2494,15 +2494,15 @@ func (cs *State) signVote(
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
 	timeout := cs.voteTimeout(cs.Round)
 
-	switch msgType {
-	case tmproto.PrecommitType:
-		// if the signedMessage type is for a precommit, add VoteExtension
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		// if the signedMessage type is for a non-nil precommit, add
+		// VoteExtension
 		ext, err := cs.blockExec.ExtendVote(ctx, vote)
 		if err != nil {
 			return nil, err
 		}
 		vote.Extension = ext
-	default:
+	} else {
 		timeout = time.Second
 	}
 
