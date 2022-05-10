@@ -388,7 +388,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 				for {
 					iterCount++
 					select {
-					case s.paramsSendCh <- p2p.Envelope{
+					case requestCh <- p2p.Envelope{
 						To: peer,
 						Message: &ssproto.ParamsRequest{
 							Height: uint64(height),
