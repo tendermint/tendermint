@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/kit/metrics/discard"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -103,6 +104,33 @@ type Metrics struct {
 	// the proposal message and the local time of the validator at the time
 	// that the validator received the message.
 	ProposalTimestampDifference metrics.Histogram
+
+	// VoteExtensionReceiveCount is the number of vote extensions received by this
+	// node. The metric is annotated by the status of the vote extension from the
+	// application, either 'accepted' or 'rejected'.
+	VoteExtensionReceiveCount metrics.Counter
+
+	// ProposalReceiveCount is the total number of proposals received by this node
+	// since process start.
+	// The metric is annotated by the status of the proposal from the application,
+	// either 'accepted' or 'rejected'.
+	ProposalReceiveCount metrics.Counter
+
+	// ProposalCreationCount is the total number of proposals created by this node
+	// since process start.
+	// The metric is annotated by the status of the proposal from the application,
+	// either 'accepted' or 'rejected'.
+	ProposalCreateCount metrics.Counter
+
+	// RoundVotingPowerPercent is the percentage of the total voting power received
+	// with a round. The value begins at 0 for each round and approaches 1.0 as
+	// additional voting power is observed. The metric is labeled by vote type.
+	RoundVotingPowerPercent metrics.Gauge
+
+	// LateVotes stores the number of votes that were received by this node that
+	// correspond to earlier heights and rounds than this node is currently
+	// in.
+	LateVotes metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -280,6 +308,43 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 				"Only calculated when a new block is proposed.",
 			Buckets: []float64{-10, -.5, -.025, 0, .1, .5, 1, 1.5, 2, 10},
 		}, append(labels, "is_timely")).With(labelsAndValues...),
+		VoteExtensionReceiveCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "vote_extension_receive_count",
+			Help: "Number of vote extensions received by the node since process start, labeled by " +
+				"the application's response to VerifyVoteExtension, either accept or reject.",
+		}, append(labels, "status")).With(labelsAndValues...),
+
+		ProposalReceiveCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "proposal_receive_count",
+			Help: "Number of vote proposals received by the node since process start, labeled by " +
+				"the application's response to ProcessProposal, either accept or reject.",
+		}, append(labels, "status")).With(labelsAndValues...),
+
+		ProposalCreateCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "proposal_create_count",
+			Help:      "Number of proposals created by the node since process start.",
+		}, labels).With(labelsAndValues...),
+
+		RoundVotingPowerPercent: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "round_voting_power_percent",
+			Help: "Percentage of the total voting power received with a round. " +
+				"The value begins at 0 for each round and approaches 1.0 as additional " +
+				"voting power is observed.",
+		}, append(labels, "vote_type")).With(labelsAndValues...),
+		LateVotes: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "late_votes",
+			Help:      "Number of votes received by the node since process start that correspond to earlier heights and rounds than this node is currently in.",
+		}, append(labels, "vote_type")).With(labelsAndValues...),
 	}
 }
 
@@ -317,6 +382,11 @@ func NopMetrics() *Metrics {
 		QuorumPrevoteDelay:          discard.NewGauge(),
 		FullPrevoteDelay:            discard.NewGauge(),
 		ProposalTimestampDifference: discard.NewHistogram(),
+		VoteExtensionReceiveCount:   discard.NewCounter(),
+		ProposalReceiveCount:        discard.NewCounter(),
+		ProposalCreateCount:         discard.NewCounter(),
+		RoundVotingPowerPercent:     discard.NewGauge(),
+		LateVotes:                   discard.NewCounter(),
 	}
 }
 
@@ -336,10 +406,45 @@ func (m *Metrics) MarkBlockGossipComplete() {
 	m.BlockGossipReceiveLatency.Observe(time.Since(m.blockGossipStart).Seconds())
 }
 
+func (m *Metrics) MarkProposalProcessed(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.ProposalReceiveCount.With("status", status).Add(1)
+}
+
+func (m *Metrics) MarkVoteExtensionReceived(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.VoteExtensionReceiveCount.With("status", status).Add(1)
+}
+
+func (m *Metrics) MarkVoteReceived(vt tmproto.SignedMsgType, power, totalPower int64) {
+	p := float64(power) / float64(totalPower)
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", n).Add(p)
+}
+
 func (m *Metrics) MarkRound(r int32, st time.Time) {
 	m.Rounds.Set(float64(r))
 	roundTime := time.Since(st).Seconds()
 	m.RoundDuration.Observe(roundTime)
+
+	pvt := tmproto.PrevoteType
+	pvn := strings.ToLower(strings.TrimPrefix(pvt.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", pvn).Set(0)
+
+	pct := tmproto.PrecommitType
+	pcn := strings.ToLower(strings.TrimPrefix(pct.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", pcn).Set(0)
+}
+
+func (m *Metrics) MarkLateVote(vt tmproto.SignedMsgType) {
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.LateVotes.With("vote_type", n).Add(1)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {

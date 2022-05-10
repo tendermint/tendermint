@@ -17,6 +17,14 @@ const (
 type Metrics struct {
 	// Time between BeginBlock and EndBlock.
 	BlockProcessingTime metrics.Histogram
+
+	// ConsensusParamUpdates is the total number of times the application has
+	// udated the consensus params since process start.
+	ConsensusParamUpdates metrics.Counter
+
+	// ValidatorSetUpdates is the total number of times the application has
+	// udated the validator set since process start.
+	ValidatorSetUpdates metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -35,12 +43,29 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help:      "Time between BeginBlock and EndBlock in ms.",
 			Buckets:   stdprometheus.LinearBuckets(1, 10, 10),
 		}, labels).With(labelsAndValues...),
+		ConsensusParamUpdates: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "consensus_param_updates",
+			Help: "The total number of times the application as updated the consensus " +
+				"parameters since process start.",
+		}, labels).With(labelsAndValues...),
+
+		ValidatorSetUpdates: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validator_set_updates",
+			Help: "The total number of times the application as updated the validator " +
+				"set since process start.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		BlockProcessingTime: discard.NewHistogram(),
+		BlockProcessingTime:   discard.NewHistogram(),
+		ConsensusParamUpdates: discard.NewCounter(),
+		ValidatorSetUpdates:   discard.NewCounter(),
 	}
 }

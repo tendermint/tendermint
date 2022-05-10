@@ -1334,6 +1334,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		} else if block == nil {
 			return
 		}
+		cs.metrics.ProposalCreateCount.Add(1)
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
 		if err != nil {
 			cs.logger.Error("unable to create proposal block part set", "error", err)
@@ -1531,6 +1532,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	if err != nil {
 		panic(fmt.Sprintf("ProcessProposal: %v", err))
 	}
+	cs.metrics.MarkProposalProcessed(isAppValid)
 
 	// Vote nil if the Application rejected the block
 	if !isAppValid {
@@ -2297,6 +2299,10 @@ func (cs *State) addVote(
 		"cs_height", cs.Height,
 	)
 
+	if vote.Height < cs.Height || (vote.Height == cs.Height && vote.Round < cs.Round) {
+		cs.metrics.MarkLateVote(vote.Type)
+	}
+
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
 	if vote.Height+1 == cs.Height && vote.Type == tmproto.PrecommitType {
@@ -2337,7 +2343,9 @@ func (cs *State) addVote(
 
 	// Verify VoteExtension if precommit
 	if vote.Type == tmproto.PrecommitType {
-		if err = cs.blockExec.VerifyVoteExtension(ctx, vote); err != nil {
+		err := cs.blockExec.VerifyVoteExtension(ctx, vote)
+		cs.metrics.MarkVoteExtensionReceived(err == nil)
+		if err != nil {
 			return false, err
 		}
 	}
@@ -2347,6 +2355,11 @@ func (cs *State) addVote(
 	if !added {
 		// Either duplicate, or error upon cs.Votes.AddByIndex()
 		return
+	}
+	if vote.Round == cs.Round {
+		vals := cs.state.Validators
+		_, val := vals.GetByIndex(vote.ValidatorIndex)
+		cs.metrics.MarkVoteReceived(vote.Type, val.VotingPower, vals.TotalVotingPower())
 	}
 
 	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
