@@ -135,7 +135,7 @@ in a similar way as Requirements 6 and 7 protect against arbitrary proposed bloc
 Requirements 9 and 10 can be violated by a bug inducing non-determinism in
 `VerifyVoteExtension`. In this case liveness can be compromised.
 Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension`.
-as a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension.
+As a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension.
 
 * Requirement 11 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
   `RequestProcessProposal`, `RequestExtendVote`, and `RequestVerifyVoteExtension` at height *h* do
