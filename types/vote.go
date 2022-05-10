@@ -317,8 +317,8 @@ func (vote *Vote) ValidateWithExtension() error {
 		return err
 	}
 
-	// We should always see vote extension signatures in precommits
-	if vote.Type == tmproto.PrecommitType {
+	// We should always see vote extension signatures in non-nil precommits
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
 		if len(vote.ExtensionSignature) == 0 {
 			return errors.New("vote extension signature is missing")
 		}
