@@ -210,7 +210,7 @@ be also reflected in the `AppHash`. The `AppHash` is provided by the application
 and should be deterministically calculated by each node. This field could
 therefore be removed on the grounds that its data is already reflected elsewhere.
 
-I would advocated for keeping this field. This field provides an additional check
+I would advocate for keeping this field. This field provides an additional check
 for determinism across nodes. Logic to update the application hash is more
 complicated for developers to implement because it relies either on building a
 complete view of the state of the application data. The `Results` returned by
