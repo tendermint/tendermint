@@ -419,6 +419,13 @@ These are the solutions proposed in discussions leading up to this RFC.
     being fed a block without extensions to make it believe it is late, in a similar way as explained
     for Solution 2.
 
+    This solution can be implemented in normal operation of Tendermint, but notably cannot be
+    used when upgrading from a previous version of Tendermint that did not implement vote
+    extensions. The previous version of Tendermint did not have any vote extension data,
+    so nodes transitioning to use vote extensions must agree on the initial height
+    during which vote extension data will be required. Additional discussion of this
+    is included in the [upgrade path](#upgrade-path) section.
+
 ### Feasibility of the Proposed Solutions
 
 Solution 0, besides the drawbacks described in the previous section, provides guarantees that are
@@ -565,23 +572,41 @@ of vote extensions and no mechanisms in place to facilitate their later addition
 Vote extensions pose an issue for Tendermint upgrades. Chains that upgrade from
 v0.35 to v0.36 will attempt to produce the first height running v0.36 without vote
 extension data from the previous height. We intend to allow chains to _require_
-vote extensions data. Chains that do so will not make progress without vote
-extension data. The corresponding application will expect vote extension
-data to be present for [PrepareProposal](https://github.com/tendermint/tendermint/blob/cec0a9798/proto/tendermint/abci/types.proto#L129) call it receives. 
-Vote extension data being absent during upgrade poses a critical issue for Solution 3,
-which requires that vote extension data be present when the node begins consensus.
+vote extensions data. Chains that require vote extension data will not make progress
+with out. The corresponding application will expect vote extension
+data to be present for each [PrepareProposal](https://github.com/tendermint/tendermint/blob/cec0a9798/proto/tendermint/abci/types.proto#L129) call it receives.
 
 To facilitate the upgrade and provide applications a mechanism to require
 vote extensions, we will provide application developers with a [ConsensusParam](https://github.com/tendermint/tendermint/blob/cec0a9798/proto/tendermint/types/params.proto#L13)
 to transition the chain from maintaining no history of vote extensions to requiring vote extensions.
 This parameter will be an `int64` representing the first height where vote extensions
-will be required for votes to be considered valid. Once the configured height occurs,
-the parameter will be disallowed from changing, meaning that vote extensions cannot flip from being
-required to again being optional. Whatever system is created for transitioning a
-chain to requiring vote extensions needs to save the height at which the
-parameter changed so that Tendermint can determine whether or not to enforce
-vote extension presence on the `PrepareProposal` call. For further clarification
-and implementation, see [issue 8453](https://github.com/tendermint/tendermint/issues/8453)
+will be required for votes to be considered valid.
+
+Concretely, this value must be set to some height, `H`, that is higher than the
+current height of the chain. During all heights >= `H`, the consensus algorithm will
+reject any votes that do not have vote extension data as invalid. Height `H+1`
+will be the first height for which `PrepareProposal` is guaranteed to have vote
+extension data.
+
+The mechanism for transitioning a chain to requiring vote extensions
+_must_ save the height at which the parameter changed. Tendermint must be able
+to distinguish between the first height that vote extensions are required during
+consensus voting and the first height during which `PrepareProposal` must
+receive the extensions. A simple on/off boolean cannot encode this information.
+
+Once the configured height occurs, the parameter will be disallowed from changing.
+Vote extensions cannot flip from being required to being optional. This will be
+enforced by the `ConsensusParam` validation logic. Forcing vote extensions to
+be required beyond the configured height simplifies the logic for transitioning
+from optional to required since all checks will only need to understand if the
+chain _ever_ enabled vote extensions in the past. Additionally, the major known
+uses cases of vote extensions such as threshold decryption and oracle data will
+be _central_ components of the applications that use vote extensions. Flipping
+vote extensions to be no longer required will fundamentally change the behavior
+of the application and is therefore not valuable to these applications. 
+
+Additional discussion and implementation of this upgrade strategy can be found
+in github [issue 8453](https://github.com/tendermint/tendermint/issues/8453).
 
 ### Formalization Work
 
