@@ -543,10 +543,24 @@ FOR_LOOP:
 			// NOTE: We can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
+<<<<<<< HEAD:internal/blocksync/v0/reactor.go
 			err := state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
 			if err != nil {
 				err = fmt.Errorf("invalid last commit: %w", err)
 				r.Logger.Error(
+=======
+			err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
+
+			if err == nil {
+				// validate the block before we persist it
+				err = r.blockExec.ValidateBlock(ctx, state, first)
+			}
+
+			// If either of the checks failed we log the error and request for a new block
+			// at that height
+			if err != nil {
+				r.logger.Error(
+>>>>>>> a4c3b5cab (validate block before we persist it (#8493)):internal/blocksync/reactor.go
 					err.Error(),
 					"last_commit", second.LastCommit,
 					"block_id", firstID,
@@ -568,16 +582,22 @@ FOR_LOOP:
 						Err:    err,
 					}
 				}
+<<<<<<< HEAD:internal/blocksync/v0/reactor.go
 
 				continue FOR_LOOP
 			} else {
 				r.pool.PopRequest()
+=======
+				return
+			}
+>>>>>>> a4c3b5cab (validate block before we persist it (#8493)):internal/blocksync/reactor.go
 
-				// TODO: batch saves so we do not persist to disk every block
-				r.store.SaveBlock(first, firstParts, second.LastCommit)
+			r.pool.PopRequest()
 
-				var err error
+			// TODO: batch saves so we do not persist to disk every block
+			r.store.SaveBlock(first, firstParts, second.LastCommit)
 
+<<<<<<< HEAD:internal/blocksync/v0/reactor.go
 				// TODO: Same thing for app - but we would need a way to get the hash
 				// without persisting the state.
 				state, err = r.blockExec.ApplyBlock(state, firstID, first)
@@ -585,11 +605,20 @@ FOR_LOOP:
 					// TODO: This is bad, are we zombie?
 					panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 				}
+=======
+			// TODO: Same thing for app - but we would need a way to get the hash
+			// without persisting the state.
+			state, err = r.blockExec.ApplyBlock(ctx, state, firstID, first)
+			if err != nil {
+				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+			}
+>>>>>>> a4c3b5cab (validate block before we persist it (#8493)):internal/blocksync/reactor.go
 
-				r.metrics.RecordConsMetrics(first)
+			r.metrics.RecordConsMetrics(first)
 
-				blocksSynced++
+			blocksSynced++
 
+<<<<<<< HEAD:internal/blocksync/v0/reactor.go
 				if blocksSynced%100 == 0 {
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
 					r.Logger.Info(
@@ -598,9 +627,18 @@ FOR_LOOP:
 						"max_peer_height", r.pool.MaxPeerHeight(),
 						"blocks/s", lastRate,
 					)
+=======
+			if blocksSynced%100 == 0 {
+				lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+				r.logger.Info(
+					"block sync rate",
+					"height", r.pool.height,
+					"max_peer_height", r.pool.MaxPeerHeight(),
+					"blocks/s", lastRate,
+				)
+>>>>>>> a4c3b5cab (validate block before we persist it (#8493)):internal/blocksync/reactor.go
 
-					lastHundred = time.Now()
-				}
+				lastHundred = time.Now()
 			}
 
 			continue FOR_LOOP
