@@ -134,7 +134,7 @@ Requirements 9 and 10 protect against arbitrary vote extension data from Byzanti
 in a similar way as Requirements 6 and 7 protect against arbitrary proposed blocks.
 Requirements 9 and 10 can be violated by a bug inducing non-determinism in
 `VerifyVoteExtension`. In this case liveness can be compromised.
-Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension` and,
+Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension`.
 as a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension.
 
 * Requirement 11 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
