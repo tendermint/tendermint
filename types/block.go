@@ -753,15 +753,7 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		return err
 	}
 
-	switch ecs.BlockIDFlag {
-	case BlockIDFlagAbsent, BlockIDFlagNil:
-		if len(ecs.Extension) != 0 {
-			return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
-		}
-		if len(ecs.ExtensionSignature) != 0 {
-			return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
-		}
-	case BlockIDFlagCommit:
+	if ecs.BlockIDFlag == BlockIDFlagCommit {
 		if len(ecs.Extension) > MaxVoteExtensionSize {
 			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
 		}
@@ -771,8 +763,17 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		if len(ecs.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
+		return nil
 	}
 
+	// We expect there to not be any vote extension or vote extension signature
+	// on nil or absent votes.
+	if len(ecs.Extension) != 0 {
+		return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	}
+	if len(ecs.ExtensionSignature) != 0 {
+		return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	}
 	return nil
 }
 
