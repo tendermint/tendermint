@@ -126,6 +126,11 @@ type Metrics struct {
 	// with a round. The value begins at 0 for each round and approaches 1.0 as
 	// additional voting power is observed. The metric is labeled by vote type.
 	RoundVotingPowerPercent metrics.Gauge
+
+	// LateVotes stores the number of votes that were received by this node that
+	// correspond to earlier heights and rounds than this node is currently
+	// in.
+	LateVotes metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -334,6 +339,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 				"The value begins at 0 for each round and approaches 1.0 as additional " +
 				"voting power is observed.",
 		}, append(labels, "vote_type")).With(labelsAndValues...),
+		LateVotes: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "late_votes",
+			Help:      "Number of votes received by the node since process start that correspond to earlier heights and rounds than this node is currently in.",
+		}, append(labels, "vote_type")).With(labelsAndValues...),
 	}
 }
 
@@ -375,6 +386,7 @@ func NopMetrics() *Metrics {
 		ProposalReceiveCount:        discard.NewCounter(),
 		ProposalCreateCount:         discard.NewCounter(),
 		RoundVotingPowerPercent:     discard.NewGauge(),
+		LateVotes:                   discard.NewCounter(),
 	}
 }
 
@@ -428,6 +440,11 @@ func (m *Metrics) MarkRound(r int32, st time.Time) {
 	pct := tmproto.PrecommitType
 	pcn := strings.ToLower(strings.TrimPrefix(pct.String(), "SIGNED_MSG_TYPE_"))
 	m.RoundVotingPowerPercent.With("vote_type", pcn).Set(0)
+}
+
+func (m *Metrics) MarkLateVote(vt tmproto.SignedMsgType) {
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.LateVotes.With("vote_type", n).Add(1)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {
