@@ -2331,8 +2331,9 @@ func (cs *State) addVote(
 		return
 	}
 
-	// Verify VoteExtension if precommit
-	if vote.Type == tmproto.PrecommitType {
+	// Verify VoteExtension if precommit and not nil
+	// https://github.com/tendermint/tendermint/issues/8487
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
 		if err = cs.blockExec.VerifyVoteExtension(ctx, vote); err != nil {
 			return false, err
 		}
