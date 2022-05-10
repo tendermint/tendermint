@@ -1,0 +1,64 @@
+package main_test
+
+import (
+	"bytes"
+	"io"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	metricsdiff "github.com/tendermint/tendermint/scripts/metricsgen/metricsdiff"
+)
+
+func TestDiff(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		aContents string
+		bContents string
+
+		expectedDiff metricsdiff.MetricsDiff
+	}{
+		{
+			name: "labels",
+			aContents: `
+			metric_one{label_one="content", label_two="content"} 0
+			`,
+			bContents: `
+			metric_one{label_three="content", label_four="content"} 0
+			`,
+			expectedDiff: metricsdiff.MetricsDiff{
+				LabelDiffs: []metricsdiff.LabelDiff{
+					{
+						MetricsName: "metric_one",
+						Adds:        []string{"label_three", "label_four"},
+						Removes:     []string{"label_one", "label_two"},
+					},
+				},
+			},
+		},
+		{
+			name: "metrics",
+			aContents: `
+			metric_one{label_one="content"} 0
+			`,
+			bContents: `
+			metric_two{label_two="content"} 0
+			`,
+			expectedDiff: metricsdiff.MetricsDiff{
+				Adds:    []string{"metric_two"},
+				Removes: []string{"metric_one"},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bufA := bytes.NewBuffer([]byte{})
+			bufB := bytes.NewBuffer([]byte{})
+			_, err := io.WriteString(bufA, tc.aContents)
+			require.NoError(t, err)
+			_, err = io.WriteString(bufB, tc.bContents)
+			require.NoError(t, err)
+			md, err := metricsdiff.MetricsDiffFromReaders(bufA, bufB)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedDiff, md)
+		})
+	}
+}
