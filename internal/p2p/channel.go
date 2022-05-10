@@ -252,9 +252,6 @@ func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubS
 		ch.wrapper = w
 	}
 
-	// TODO(tychoish) register handlers for
-	// request/response patterns
-
 	return ch, nil
 }
 
