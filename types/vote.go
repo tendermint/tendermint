@@ -239,8 +239,8 @@ func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) erro
 	if err != nil {
 		return err
 	}
-	// We only verify vote extension signatures for precommits.
-	if vote.Type == tmproto.PrecommitType {
+	// We only verify vote extension signatures for non-nil precommits.
+	if vote.Type == tmproto.PrecommitType && !ProtoBlockIDIsNil(&v.BlockID) {
 		extSignBytes := VoteExtensionSignBytes(chainID, v)
 		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 			return ErrVoteInvalidSignature

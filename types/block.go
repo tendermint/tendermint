@@ -754,14 +754,14 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 	}
 
 	switch ecs.BlockIDFlag {
-	case BlockIDFlagAbsent:
+	case BlockIDFlagAbsent, BlockIDFlagNil:
 		if len(ecs.Extension) != 0 {
 			return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
 		}
 		if len(ecs.ExtensionSignature) != 0 {
 			return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
 		}
-	case BlockIDFlagCommit, BlockIDFlagNil:
+	case BlockIDFlagCommit:
 		if len(ecs.Extension) > MaxVoteExtensionSize {
 			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
 		}
@@ -1362,4 +1362,10 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()
+}
+
+// ProtoBlockIDIsNil is similar to the IsNil function on BlockID, but for the
+// Protobuf representation.
+func ProtoBlockIDIsNil(bID *tmproto.BlockID) bool {
+	return len(bID.Hash) == 0 && ProtoPartSetHeaderIsZero(&bID.PartSetHeader)
 }
