@@ -281,9 +281,10 @@ the `ProposerAddress` included in the block corresponds to the validator that
 proposed the height. Instead, the validation logic simply checks that the value
 is an address of one of the known validators.
 
-Currently, we include this value in the `Commit` for height `H` which is
-written into the block at height `H+1`. Tendermint can add this value directly
-into the block instead of delaying it until the next block.
+Currently, we maintain the _committed round_ in the `Commit` for height `H`, which is
+written into the block at height `H+1`. This value corresponds to the round in
+which the proposer of height `H+1` received the commit for height `H`. The proof
+of lock round would not subsume this value.
 
 ### Additional possible updates
 
