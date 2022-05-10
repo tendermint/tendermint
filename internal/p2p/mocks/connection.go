@@ -13,6 +13,8 @@ import (
 
 	p2p "github.com/tendermint/tendermint/internal/p2p"
 
+	testing "testing"
+
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -149,4 +151,14 @@ func (_m *Connection) String() string {
 	}
 
 	return r0
+}
+
+// NewConnection creates a new instance of Connection. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
+func NewConnection(t testing.TB) *Connection {
+	mock := &Connection{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
 }

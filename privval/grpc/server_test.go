@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -38,7 +37,7 @@ func TestGetPubKey(t *testing.T) {
 			defer cancel()
 			logger := log.NewTestingLogger(t)
 
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
 			resp, err := s.GetPubKey(ctx, req)
@@ -57,7 +56,7 @@ func TestGetPubKey(t *testing.T) {
 func TestSignVote(t *testing.T) {
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 	valAddr := tmrand.Bytes(crypto.AddressSize)
 
 	testCases := []struct {
@@ -113,7 +112,7 @@ func TestSignVote(t *testing.T) {
 			defer cancel()
 			logger := log.NewTestingLogger(t)
 
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.SignVoteRequest{ChainId: ChainID, Vote: tc.have.ToProto()}
 			resp, err := s.SignVote(ctx, req)
@@ -133,7 +132,7 @@ func TestSignVote(t *testing.T) {
 func TestSignProposal(t *testing.T) {
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 
 	testCases := []struct {
 		name       string
@@ -184,7 +183,7 @@ func TestSignProposal(t *testing.T) {
 			defer cancel()
 			logger := log.NewTestingLogger(t)
 
-			s := tmgrpc.NewSignerServer(ChainID, tc.pv, logger)
+			s := tmgrpc.NewSignerServer(logger, ChainID, tc.pv)
 
 			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
 			resp, err := s.SignProposal(ctx, req)

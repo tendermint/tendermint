@@ -17,9 +17,16 @@ import (
 )
 
 func testMux() *http.ServeMux {
+	type testArgs struct {
+		S string      `json:"s"`
+		I json.Number `json:"i"`
+	}
+	type blockArgs struct {
+		H json.Number `json:"h"`
+	}
 	funcMap := map[string]*RPCFunc{
-		"c":     NewRPCFunc(func(ctx context.Context, s string, i int) (string, error) { return "foo", nil }, "s", "i"),
-		"block": NewRPCFunc(func(ctx context.Context, h int) (string, error) { return "block", nil }, "height"),
+		"c":     NewRPCFunc(func(ctx context.Context, arg *testArgs) (string, error) { return "foo", nil }),
+		"block": NewRPCFunc(func(ctx context.Context, arg *blockArgs) (string, error) { return "block", nil }),
 	}
 	mux := http.NewServeMux()
 	logger := log.NewNopLogger()
@@ -46,7 +53,7 @@ func TestRPCParams(t *testing.T) {
 		// id not captured in JSON parsing failures
 		{`{"method": "c", "id": "0", "params": a}`, "invalid character", ""},
 		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1", `"0"`},
-		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid syntax", `"0"`},
+		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid number", `"0"`},
 		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string", `"0"`},
 
 		// no ID - notification

@@ -239,7 +239,7 @@ func (h *Handshaker) NBlocks() int {
 func (h *Handshaker) Handshake(ctx context.Context, appClient abciclient.Client) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := appClient.Info(ctx, proxy.RequestInfo)
+	res, err := appClient.Info(ctx, &proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("error calling Info: %w", err)
 	}
@@ -307,15 +307,14 @@ func (h *Handshaker) ReplayBlocks(
 		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		pbParams := h.genDoc.ConsensusParams.ToProto()
-		req := abci.RequestInitChain{
+		res, err := appClient.InitChain(ctx, &abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
 			ConsensusParams: &pbParams,
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
-		}
-		res, err := appClient.InitChain(ctx, req)
+		})
 		if err != nil {
 			return nil, err
 		}

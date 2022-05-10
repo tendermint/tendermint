@@ -1,6 +1,7 @@
 package kvstore
 
 import (
+	"context"
 	mrand "math/rand"
 
 	"github.com/tendermint/tendermint/abci/types"
@@ -32,8 +33,9 @@ func RandVals(cnt int) []types.ValidatorUpdate {
 // InitKVStore initializes the kvstore app with some data,
 // which allows tests to pass and is fine as long as you
 // don't make any tx that modify the validator state
-func InitKVStore(app *PersistentKVStoreApplication) {
-	app.InitChain(types.RequestInitChain{
+func InitKVStore(ctx context.Context, app *PersistentKVStoreApplication) error {
+	_, err := app.InitChain(ctx, &types.RequestInitChain{
 		Validators: RandVals(1),
 	})
+	return err
 }

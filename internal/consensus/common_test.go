@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -158,7 +159,11 @@ func signVote(
 	chainID string,
 	blockID types.BlockID) *types.Vote {
 
-	v, err := vs.signVote(ctx, voteType, chainID, blockID, []byte("extension"))
+	var ext []byte
+	if voteType == tmproto.PrecommitType {
+		ext = []byte("extension")
+	}
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, ext)
 	require.NoError(t, err, "failed to sign vote")
 
 	vs.lastVote = v
@@ -730,9 +735,9 @@ func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64,
 			msg.Data())
 
 		vote := voteEvent.Vote
-		require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
-		require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
-		require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 		if hash == nil {
 			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
 		} else {
@@ -820,7 +825,8 @@ func makeConsensusState(
 		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 
 		l := logger.With("validator", i, "module", "consensus")
 		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
@@ -891,7 +897,8 @@ func randConsensusNetWithPeers(
 		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(ctx, t, logger.With("validator", i, "module", "consensus"), thisConfig, state, privVal, app)

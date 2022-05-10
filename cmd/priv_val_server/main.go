@@ -113,7 +113,7 @@ func main() {
 	// add prometheus metrics for unary RPC calls
 	opts = append(opts, grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor))
 
-	ss := grpcprivval.NewSignerServer(*chainID, pv, logger)
+	ss := grpcprivval.NewSignerServer(logger, *chainID, pv)
 
 	protocol, address := tmnet.ProtocolAndAddress(*addr)
 

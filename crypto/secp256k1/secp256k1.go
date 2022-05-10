@@ -2,6 +2,7 @@ package secp256k1
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"fmt"
@@ -70,7 +71,7 @@ func (privKey PrivKey) Type() string {
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
 // It uses OS randomness to generate the private key.
 func GenPrivKey() PrivKey {
-	return genPrivKey(crypto.CReader())
+	return genPrivKey(rand.Reader)
 }
 
 // genPrivKey generates a new secp256k1 private key using the provided reader.
@@ -190,8 +191,8 @@ var secp256k1halfN = new(big.Int).Rsh(secp256k1.S256().N, 1)
 // The returned signature will be of the form R || S (in lower-S form).
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey)
-
-	sig, err := priv.Sign(crypto.Sha256(msg))
+	seed := sha256.Sum256(msg)
+	sig, err := priv.Sign(seed[:])
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +221,8 @@ func (pubKey PubKey) VerifySignature(msg []byte, sigStr []byte) bool {
 		return false
 	}
 
-	return signature.Verify(crypto.Sha256(msg), pub)
+	seed := sha256.Sum256(msg)
+	return signature.Verify(seed[:], pub)
 }
 
 // Read Signature struct from R || S. Caller needs to ensure

@@ -145,6 +145,27 @@ subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
 - `tendermint reset unsafe-all`: A summation of the other three commands. This will delete
   the entire `data` directory which may include application data as well.
 
+### Go API Changes
+
+#### `crypto` Package Cleanup
+
+The `github.com/tendermint/tendermint/crypto/tmhash` package was removed
+to improve clarity. Users are encouraged to use the standard library
+`crypto/sha256` package directly. However, as a convenience, some constants
+and one function have moved to the Tendermint `crypto` package:
+
+- The `crypto.Checksum` function returns the sha256 checksum of a
+  byteslice. This is a wrapper around `sha256.Sum265` from the
+  standard libary, but provided as a function to ease type
+  requirements (the library function returns a `[32]byte` rather than
+  a `[]byte`).
+- `tmhash.TruncatedSize` is now `crypto.AddressSize` which was
+  previously an alias for the same value.
+- `tmhash.Size` and `tmhash.BlockSize` are now `crypto.HashSize` and
+  `crypto.HashSize`.
+- `tmhash.SumTruncated` is now available via `crypto.AddressHash` or by
+  `crypto.Checksum(<...>)[:crypto.AddressSize]`
+
 ## v0.35
 
 ### ABCI Changes
@@ -191,22 +212,25 @@ subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
 
 The format of all tendermint on-disk database keys changes in
 0.35. Upgrading nodes must either re-sync all data or run a migration
-script provided in this release. The script located in
-`github.com/tendermint/tendermint/scripts/keymigrate/migrate.go`
-provides the function `Migrate(context.Context, db.DB)` which you can
-operationalize as makes sense for your deployment.
+script provided in this release.
+
+The script located in
+`github.com/tendermint/tendermint/scripts/keymigrate/migrate.go` provides the
+function `Migrate(context.Context, db.DB)` which you can operationalize as
+makes sense for your deployment.
 
 For ease of use the `tendermint` command includes a CLI version of the
 migration script, which you can invoke, as in:
 
 	tendermint key-migrate
 
-This reads the configuration file as normal and allows the
-`--db-backend` and `--db-dir` flags to change database operations as
-needed.
+This reads the configuration file as normal and allows the `--db-backend` and
+`--db-dir` flags to override the database location as needed.
 
-The migration operation is idempotent and can be run more than once,
-if needed.
+The migration operation is intended to be idempotent, and should be safe to
+rerun on the same database multiple times.  As a safety measure, however, we
+recommend that operators test out the migration on a copy of the database
+first, if it is practical to do so, before applying it to the production data.
 
 ### CLI Changes
 
@@ -259,11 +283,13 @@ the full RPC interface provided as direct function calls. Import the
 the node service as in the following:
 
 ```go
-    node := node.NewDefault() //construct the node object
-    // start and set up the node service
+logger := log.NewNopLogger()
 
-    client := local.New(node.(local.NodeService))
-    // use client object to interact with the node
+// Construct and start up a node with default settings.
+node := node.NewDefault(logger)
+
+// Construct a local (in-memory) RPC client to the node.
+client := local.New(logger, node.(local.NodeService))
 ```
 
 ### gRPC Support
