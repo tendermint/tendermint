@@ -29,9 +29,9 @@ label sets from path1 to path2.
 	}
 }
 
-// MetricsDiff contains the set of metrics that were modified between two files
+// Diff contains the set of metrics that were modified between two files
 // containing prometheus metrics output.
-type MetricsDiff struct {
+type Diff struct {
 	Adds    []string
 	Removes []string
 
