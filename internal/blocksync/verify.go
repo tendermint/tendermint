@@ -87,8 +87,10 @@ func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBloc
 
 	// If the blockID in LastCommit of NewBlock does not match the trusted block
 	// we can assume NewBlock is not correct
-	if !(newBlock.LastCommit.BlockID.Equals(trustedCommit.BlockID)) {
-		return ErrBlockIDDiff{}
+	if trustedCommit != nil {
+		if !(newBlock.LastCommit.BlockID.Equals(trustedCommit.BlockID)) {
+			return ErrBlockIDDiff{}
+		}
 	}
 
 	// Todo: Verify verifyBlock.LastCommit validators against state.NextValidators

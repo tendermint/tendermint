@@ -690,7 +690,7 @@ OUTER_LOOP:
 			}
 			peer = wreq.pool.pickIncrAvailableWitness(wreq.height)
 			if peer == nil {
-				time.Sleep(requestIntervalMS * time.Millisecond)
+				time.Sleep(requestInterval * time.Millisecond)
 				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP

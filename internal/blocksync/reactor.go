@@ -638,11 +638,11 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					}
 					continue // was return previously
 				}
-
+				r.lastTrustedBlock = &BlockResponse{}
 			}
-			if err := r.verifyWithWitnesses(newBlock); err != nil {
-				r.logger.Debug("Witness verificatio nfailed")
-			}
+			// if err := r.verifyWithWitnesses(newBlock); err != nil {
+			// 	r.logger.Debug("Witness verificatio nfailed")
+			// }
 			var err error
 			// validate the block before we persist it
 			err = r.blockExec.ValidateBlock(ctx, state, newBlock)
@@ -677,6 +677,9 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				// TODO: This is bad, are we zombie?
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
 			}
+
+			r.lastTrustedBlock.block = newBlock
+			r.lastTrustedBlock.commit = r.store.LoadSeenCommit()
 
 			r.metrics.RecordConsMetrics(newBlock)
 
