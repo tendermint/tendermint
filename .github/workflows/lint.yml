@@ -13,7 +13,7 @@ jobs:
     container: tendermintdev/docker-tm-db-testing
     steps:
       - uses: actions/checkout@v3
-      - uses: golangci/golangci-lint-action@v3.1.0
+      - uses: golangci/golangci-lint-action@v3.2.0
         with:
           args: --timeout 10m
           github-token: ${{ secrets.github_token }}
