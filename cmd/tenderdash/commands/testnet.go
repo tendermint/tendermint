@@ -140,7 +140,7 @@ Example:
 				return err
 			}
 
-			if err := initFilesWithConfig(ctx, config, logger, keyType); err != nil {
+			if err := initFilesWithConfig(ctx, nodeConfig{Config: config}, logger); err != nil {
 				return err
 			}
 
@@ -154,16 +154,16 @@ Example:
 			ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 			defer cancel()
 
-		pubKey, err := pv.GetPubKey(ctx, crypto.QuorumHash{})
-		if err != nil {
-			return fmt.Errorf("can't get pubkey in testnet files: %w", err)
+			pubKey, err := pv.GetPubKey(ctx, crypto.QuorumHash{})
+			if err != nil {
+				return fmt.Errorf("can't get pubkey in testnet files: %w", err)
+			}
+			genVals[i] = types.GenesisValidator{
+				PubKey: pubKey,
+				Power:  1,
+				Name:   nodeDirName,
+			}
 		}
-		genVals[i] = types.GenesisValidator{
-			PubKey: pubKey,
-			Power:  1,
-			Name:   nodeDirName,
-		}
-	}
 
 		for i := 0; i < nNonValidators; i++ {
 			nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i+nValidators))
@@ -181,7 +181,7 @@ Example:
 				return err
 			}
 
-			if err := initFilesWithConfig(ctx, conf, logger, keyType); err != nil {
+			if err := initFilesWithConfig(ctx, nodeConfig{Config: conf}, logger); err != nil {
 				return err
 			}
 		}
@@ -253,10 +253,10 @@ Example:
 			}
 			config.Moniker = tpargs.moniker(i)
 
-		if err := cfg.WriteConfigFile(nodeDir, config); err != nil {
-			return err
+			if err := cfg.WriteConfigFile(nodeDir, config); err != nil {
+				return err
+			}
 		}
-	}
 
 		fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)
 		return nil

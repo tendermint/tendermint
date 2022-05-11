@@ -140,19 +140,22 @@ func TestWALWrite(t *testing.T) {
 }
 
 func TestWALWriteCommit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.NewTestingLogger(t)
+
 	walDir, err := ioutil.TempDir("", "wal")
 	require.NoError(t, err)
 	defer os.RemoveAll(walDir)
 	walFile := filepath.Join(walDir, "wal")
 
-	wal, err := NewWAL(walFile)
+	wal, err := NewWAL(ctx, logger, walFile)
 	require.NoError(t, err)
-	err = wal.Start()
+	err = wal.Start(ctx)
 	require.NoError(t, err)
 	defer func() {
-		if err := wal.Stop(); err != nil {
-			t.Error(err)
-		}
+		wal.Stop()
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()

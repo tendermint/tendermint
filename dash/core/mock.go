@@ -1,4 +1,4 @@
-package dashcore
+package core
 
 import (
 	"context"

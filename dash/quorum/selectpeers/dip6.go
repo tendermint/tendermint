@@ -25,7 +25,7 @@ func NewDIP6ValidatorSelector(quorumHash bytes.HexBytes) ValidatorSelector {
 	return &dip6PeerSelector{quorumHash: quorumHash}
 }
 
-// SelectValidator implements ValidtorSelector.
+// SelectValidators implements ValidtorSelector.
 // SelectValidators selects some validators from `validatorSetMembers`, according to the algorithm
 // described in DIP-6 https://github.com/dashpay/dips/blob/master/dip-0006.md
 func (s *dip6PeerSelector) SelectValidators(

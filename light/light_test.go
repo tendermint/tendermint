@@ -10,7 +10,7 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
@@ -183,8 +183,7 @@ func TestClientStatusRPC(t *testing.T) {
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	require.NoError(t, err)
 
-	// give Tendermint time to generate some blocks
-	block, err := waitForBlock(ctx, primary, 2)
+	filePV, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
 	require.NoError(t, err)
 
 	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
@@ -196,14 +195,10 @@ func TestClientStatusRPC(t *testing.T) {
 
 	c, err := light.NewClient(ctx,
 		chainID,
-		light.TrustOptions{
-			Period: 504 * time.Hour, // 21 days
-			Height: 2,
-			Hash:   block.Hash(),
-		},
 		primary,
 		witnesses,
 		dbs.New(db),
+		dashcore.NewMockClient(chainID, btcjson.LLMQType_5_60, filePV, true),
 		light.Logger(log.NewNopLogger()),
 	)
 	require.NoError(t, err)

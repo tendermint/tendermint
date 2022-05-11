@@ -3,7 +3,7 @@ package light
 import (
 	"context"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/provider/http"
 	"github.com/tendermint/tendermint/light/store"

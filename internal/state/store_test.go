@@ -3,7 +3,6 @@ package state_test
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"testing"
 
@@ -33,7 +32,7 @@ func TestStoreBootstrap(t *testing.T) {
 	require.NoError(t, stateStore.Bootstrap(bootstrapState))
 
 	// bootstrap should also save the previous validator
-	_, err = stateStore.LoadValidators(99)
+	_, err := stateStore.LoadValidators(99)
 	require.NoError(t, err)
 
 	_, err = stateStore.LoadValidators(100)

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/internal/test/factory"
@@ -164,9 +165,9 @@ func (p *pbtsTestHarness) observedValidatorProposerHeight(ctx context.Context, t
 
 	ensureNewBlock(t, p.blockCh, p.currentHeight)
 
-	vk, err := p.observedValidator.GetPubKey(ctx)
+	proTxHash, err := p.observedValidator.GetProTxHash(ctx)
 	require.NoError(t, err)
-	res := collectHeightResults(ctx, t, p.eventCh, p.currentHeight, vk.Address())
+	res := collectHeightResults(ctx, t, p.eventCh, p.currentHeight, proTxHash)
 
 	p.currentHeight++
 	incrementHeight(p.otherValidators...)
@@ -200,6 +201,9 @@ func (p *pbtsTestHarness) height5(ctx context.Context, t *testing.T) (heightResu
 }
 
 func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
+	quorumType := p.observedState.state.Validators.QuorumType
+	quorumHash := p.observedState.state.Validators.QuorumHash
+
 	p.validatorClock.On("Now").Return(nextProposedTime).Times(6)
 
 	ensureNewRound(t, p.roundCh, p.currentHeight, p.currentRound)
@@ -210,16 +214,15 @@ func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer
 	b.Header.Height = p.currentHeight
 	b.Header.Time = proposedTime
 
-	k, err := proposer.GetPubKey(ctx)
+	b.Header.ProposerProTxHash, err = proposer.GetProTxHash(ctx)
 	require.NoError(t, err)
-	b.Header.ProposerProTxHash = k.Address()
 	ps, err := b.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	bid := types.BlockID{Hash: b.Hash(), PartSetHeader: ps.Header()}
 	prop := types.NewProposal(p.currentHeight, 0, 0, -1, bid, proposedTime)
 	tp := prop.ToProto()
 
-	if err := proposer.SignProposal(ctx, p.observedState.state.ChainID, tp); err != nil {
+	if _, err := proposer.SignProposal(ctx, p.observedState.state.ChainID, quorumType, quorumHash, tp); err != nil {
 		t.Fatalf("error signing proposal: %s", err)
 	}
 
@@ -236,9 +239,9 @@ func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer
 	signAddVotes(ctx, t, p.observedState, tmproto.PrecommitType, p.chainID, bid, p.otherValidators...)
 	ensurePrecommit(t, p.ensureVoteCh, p.currentHeight, p.currentRound)
 
-	vk, err := p.observedValidator.GetPubKey(ctx)
+	proTxHash, err := p.observedValidator.GetProTxHash(ctx)
 	require.NoError(t, err)
-	res := collectHeightResults(ctx, t, p.eventCh, p.currentHeight, vk.Address())
+	res := collectHeightResults(ctx, t, p.eventCh, p.currentHeight, proTxHash)
 	ensureNewBlock(t, p.blockCh, p.currentHeight)
 
 	p.currentHeight++
@@ -265,7 +268,7 @@ func timestampedCollector(ctx context.Context, t *testing.T, eb *eventbus.EventB
 	return eventCh
 }
 
-func collectHeightResults(ctx context.Context, t *testing.T, eventCh <-chan timestampedEvent, height int64, address []byte) heightResult {
+func collectHeightResults(ctx context.Context, t *testing.T, eventCh <-chan timestampedEvent, height int64, proTxHash crypto.ProTxHash) heightResult {
 	t.Helper()
 	var res heightResult
 	for event := range eventCh {
@@ -274,7 +277,7 @@ func collectHeightResults(ctx context.Context, t *testing.T, eventCh <-chan time
 			if v.Vote.Height > height {
 				t.Fatalf("received prevote from unexpected height, expected: %d, saw: %d", height, v.Vote.Height)
 			}
-			if !bytes.Equal(address, v.Vote.ValidatorAddress) {
+			if !bytes.Equal(proTxHash, v.Vote.ValidatorProTxHash) {
 				continue
 			}
 			if v.Vote.Type != tmproto.PrevoteType {

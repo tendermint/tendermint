@@ -18,7 +18,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	smmocks "github.com/tendermint/tendermint/internal/state/mocks"
@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	chainID  = "test-chain"
-	llmqType = btcjson.LLMQType_5_60
+	chainID        = "test-chain"
+	llmqType       = btcjson.LLMQType_5_60
+	testAppVersion = 9
 )
 
 var (
@@ -879,7 +880,7 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 	})
 	header.Version.App = testAppVersion
 
-	nextVals, nextPrivVals := factory.ValidatorSet(ctx, t, 3, 10)
+	nextVals, nextPrivVals := types.RandValidatorSet(3)
 	header.ValidatorsHash = currentVals.Hash()
 	header.NextValidatorsHash = nextVals.Hash()
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()

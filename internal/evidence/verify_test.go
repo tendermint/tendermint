@@ -31,6 +31,8 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := log.NewTestingLogger(t)
+
 	quorumType := crypto.SmallQuorumType()
 	quorumHash := crypto.RandQuorumHash()
 	val := types.NewMockPVForQuorum(quorumHash)
@@ -72,7 +74,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 2, blockID2, quorumType, quorumHash, stateID), false},    // wrong step
 		{vote1, makeVote(ctx, t, val2, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), false},   // wrong validator
 		// a different vote time doesn't matter
-		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID2, blockID2, quorumType, quorumHash, stateID), true},
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), true},
 		{vote1, badVote, false}, // signed by wrong key
 	}
 

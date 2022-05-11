@@ -29,10 +29,7 @@ import (
 )
 
 const (
-	mySeedID uint16 = math.MaxUint16 - 1
-)
-
-var (
+	mySeedID     uint16 = math.MaxUint16 - 1
 	chainID             = "execution_chain"
 	testPartSize uint32 = 65536
 	nTxsPerBlock        = 10

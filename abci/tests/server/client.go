@@ -22,7 +22,7 @@ func InitChain(ctx context.Context, client abciclient.Client) error {
 	if err != nil {
 		return err
 	}
-	_, err := client.InitChain(ctx, &types.RequestInitChain{
+	_, err = client.InitChain(ctx, &types.RequestInitChain{
 		ValidatorSet: validatorSet,
 	})
 	if err != nil {

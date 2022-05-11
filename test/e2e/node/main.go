@@ -20,7 +20,7 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"

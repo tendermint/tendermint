@@ -287,7 +287,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// validate the validator updates and convert to tendermint types
-	err = validateValidatorUpdates(finalizeBlockResponse.ValidatorSetUpdate, state.ConsensusParams.Validator)
+	err = validateValidatorSetUpdate(finalizeBlockResponse.ValidatorSetUpdate, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, fmt.Errorf("error in validator updates: %w", err)
 	}
@@ -471,41 +471,44 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 // original votes relating to that commit, including their vote extensions. The
 // order of votes does not matter.
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
-	if len(c.Votes) != len(votes) {
-		panic(fmt.Sprintf("extendedCommitInfo: number of votes from commit differ from the number of votes supplied (%d != %d)", len(c.Votes), len(votes)))
-	}
-	votesByVal := make(map[string]*types.Vote)
-	for _, vote := range votes {
-		if vote != nil {
-			valProTxHash := vote.ValidatorProTxHash.String()
-			if _, ok := votesByVal[valProTxHash]; ok {
-				panic(fmt.Sprintf("extendedCommitInfo: found duplicate vote for validator with address %s", valAddr))
-			}
-			votesByVal[valProTxHash] = vote
-		}
-	}
-	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
-	for i := range vs {
-		var ext []byte
-		// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
-		if c.Votes[i].SignedLastBlock {
-			valAddr := crypto.Address(c.Votes[i].Validator.Address).String()
-			vote, ok := votesByVal[valAddr]
-			if !ok || vote == nil {
-				panic(fmt.Sprintf("extendedCommitInfo: validator with address %s signed last block, but could not find vote for it", valAddr))
-			}
-			ext = vote.Extension
-		}
-		vs[i] = abci.ExtendedVoteInfo{
-			Validator:       c.Votes[i].Validator,
-			SignedLastBlock: c.Votes[i].SignedLastBlock,
-			VoteExtension:   ext,
-		}
-	}
-	return abci.ExtendedCommitInfo{
-		Round: c.Round,
-		Votes: vs,
-	}
+	// TODO this function must be adopted for using the dash approach with BLS signature
+
+	//if len(c.Votes) != len(votes) {
+	//	panic(fmt.Sprintf("extendedCommitInfo: number of votes from commit differ from the number of votes supplied (%d != %d)", len(c.Votes), len(votes)))
+	//}
+	//votesByVal := make(map[string]*types.Vote)
+	//for _, vote := range votes {
+	//	if vote != nil {
+	//		valProTxHash := vote.ValidatorProTxHash
+	//		if _, ok := votesByVal[valProTxHash.String()]; ok {
+	//			panic(fmt.Sprintf("extendedCommitInfo: found duplicate vote for validator with address %s", valProTxHash.ShortString()))
+	//		}
+	//		votesByVal[valProTxHash.String()] = vote
+	//	}
+	//}
+	//vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
+	//for i := range vs {
+	//	var ext []byte
+	//	// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
+	//	if c.Votes[i].SignedLastBlock {
+	//		valAddr := crypto.Address(c.Votes[i].Validator.Address).String()
+	//		vote, ok := votesByVal[valAddr]
+	//		if !ok || vote == nil {
+	//			panic(fmt.Sprintf("extendedCommitInfo: validator with address %s signed last block, but could not find vote for it", valAddr))
+	//		}
+	//		ext = vote.Extension
+	//	}
+	//	vs[i] = abci.ExtendedVoteInfo{
+	//		Validator:       c.Votes[i].Validator,
+	//		SignedLastBlock: c.Votes[i].SignedLastBlock,
+	//		VoteExtension:   ext,
+	//	}
+	//}
+	//return abci.ExtendedCommitInfo{
+	//	Round: c.Round,
+	//	Votes: vs,
+	//}
+	return abci.ExtendedCommitInfo{}
 }
 
 func validateValidatorSetUpdate(
@@ -520,12 +523,11 @@ func validateValidatorSetUpdate(
 		abciValidatorSetUpdate.ThresholdPublicKey.Sum == nil {
 		return fmt.Errorf("received validator updates without a threshold public key")
 	}
-	return validateValidatorUpdates(abciValidatorSetUpdate, params)
+	return validateValidatorUpdates(abciValidatorSetUpdate.ValidatorUpdates, params)
 }
 
-func validateValidatorUpdates(abciValSetUpdate *abci.ValidatorSetUpdate,
-	params types.ValidatorParams) error {
-	for _, valUpdate := range abciValSetUpdate.ValidatorUpdates {
+func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params types.ValidatorParams) error {
+	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
 		} else if valUpdate.GetPower() == 0 {
@@ -772,7 +774,7 @@ func ExecCommitBlock(
 
 	// the BlockExecutor condition is using for the final block replay process.
 	if be != nil {
-		err = validateValidatorUpdates(finalizeBlockResponse.ValidatorSetUpdate, s.ConsensusParams.Validator)
+		err = validateValidatorSetUpdate(finalizeBlockResponse.ValidatorSetUpdate, s.ConsensusParams.Validator)
 		if err != nil {
 			logger.Error("validating validator updates", "err", err)
 			return nil, err

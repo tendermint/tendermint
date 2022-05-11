@@ -17,15 +17,18 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+type nodeConfig struct {
+	*config.Config
+	quorumType             int
+	coreChainLockedHeight  uint32
+	initChainInitialHeight int64
+	appHash                []byte
+	proTxHash              []byte
+}
+
 // MakeInitFilesCommand returns the command to initialize a fresh Tendermint Core instance.
 func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command {
-	var (
-		quorumType             int
-		coreChainLockedHeight  uint32
-		initChainInitialHeight int64
-		appHash                []byte
-		proTxHash              []byte
-	)
+	nodeConf := nodeConfig{Config: conf}
 
 	cmd := &cobra.Command{
 		Use:       "init [full|validator|seed]",
@@ -37,21 +40,21 @@ func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command
 			if len(args) == 0 {
 				return errors.New("must specify a node type: tendermint init [validator|full|seed]")
 			}
-			conf.Mode = args[0]
-			return initFilesWithConfig(cmd.Context(), conf, logger)
+			nodeConf.Mode = args[0]
+			return initFilesWithConfig(cmd.Context(), nodeConf, logger)
 		},
 	}
 
-	cmd.Flags().IntVar(&quorumType, "quorumType", 0, "Quorum Type")
-	cmd.Flags().Uint32Var(&coreChainLockedHeight, "coreChainLockedHeight", 1, "Initial Core Chain Locked Height")
-	cmd.Flags().Int64Var(&initChainInitialHeight, "initialHeight", 0, "Initial Height")
-	cmd.Flags().BytesHexVar(&proTxHash, "proTxHash", []byte(nil), "Node pro tx hash")
-	cmd.Flags().BytesHexVar(&appHash, "appHash", []byte(nil), "App hash")
+	cmd.Flags().IntVar(&nodeConf.quorumType, "quorumType", 0, "Quorum Type")
+	cmd.Flags().Uint32Var(&nodeConf.coreChainLockedHeight, "coreChainLockedHeight", 1, "Initial Core Chain Locked Height")
+	cmd.Flags().Int64Var(&nodeConf.initChainInitialHeight, "initialHeight", 0, "Initial Height")
+	cmd.Flags().BytesHexVar(&nodeConf.proTxHash, "proTxHash", []byte(nil), "Node pro tx hash")
+	cmd.Flags().BytesHexVar(&nodeConf.appHash, "appHash", []byte(nil), "App hash")
 
 	return cmd
 }
 
-func initFilesWithConfig(ctx context.Context, conf *config.Config, logger log.Logger) error {
+func initFilesWithConfig(ctx context.Context, conf nodeConfig, logger log.Logger) error {
 	var (
 		pv  *privval.FilePV
 		err error
@@ -102,10 +105,10 @@ func initFilesWithConfig(ctx context.Context, conf *config.Config, logger log.Lo
 			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:                  time.Now(),
 			ConsensusParams:              types.DefaultConsensusParams(),
-			QuorumType:                   btcjson.LLMQType(quorumType),
-			InitialCoreChainLockedHeight: coreChainLockedHeight,
-			InitialHeight:                initChainInitialHeight,
-			AppHash:                      appHash,
+			QuorumType:                   btcjson.LLMQType(conf.quorumType),
+			InitialCoreChainLockedHeight: conf.coreChainLockedHeight,
+			InitialHeight:                conf.initChainInitialHeight,
+			AppHash:                      conf.appHash,
 		}
 
 		ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
@@ -143,7 +146,7 @@ func initFilesWithConfig(ctx context.Context, conf *config.Config, logger log.Lo
 	}
 
 	// write config file
-	if err := config.WriteConfigFile(conf.RootDir, conf); err != nil {
+	if err := config.WriteConfigFile(conf.RootDir, conf.Config); err != nil {
 		return err
 	}
 	logger.Info("Generated config", "mode", conf.Mode)

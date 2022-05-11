@@ -45,7 +45,7 @@ func MakeShowValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Com
 				ctx, cancel := context.WithTimeout(bctx, ctxTimeout)
 				defer cancel()
 
-				proTxHash, err = pvsc.GetProTxHash(ctx)
+				_, err = pvsc.GetProTxHash(ctx)
 				if err != nil {
 					return fmt.Errorf("can't get proTxHash: %w", err)
 				}
@@ -64,7 +64,7 @@ func MakeShowValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Com
 				ctx, cancel := context.WithTimeout(bctx, ctxTimeout)
 				defer cancel()
 
-				proTxHash, err = pv.GetProTxHash(ctx)
+				_, err = pv.GetProTxHash(ctx)
 				if err != nil {
 					return fmt.Errorf("can't get proTxHash: %w", err)
 				}

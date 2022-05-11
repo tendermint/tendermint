@@ -14,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 )
@@ -22,7 +22,7 @@ import (
 func TestServer(t *testing.T) {
 	ctx := context.Background()
 	srv := NewHTTPServer(":9981")
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	go func() {
 		srv.Start()
 	}()
@@ -80,7 +80,7 @@ func TestDashCoreSignerPingMethod(t *testing.T) {
 	go func() {
 		srv.Start()
 	}()
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root", logger)
 	assert.NoError(t, err)
 	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)
@@ -127,7 +127,7 @@ func TestGetPubKey(t *testing.T) {
 		srv.Start()
 	}()
 
-	logger := log.TestingLogger()
+	logger := log.NewTestingLogger(t)
 	dashCoreRPCClient, err := dashcore.NewRPCClient(addr, "root", "root", logger)
 	assert.NoError(t, err)
 	client, err := privval.NewDashCoreSignerClient(dashCoreRPCClient, btcjson.LLMQType_5_60)

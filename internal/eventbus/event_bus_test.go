@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -79,7 +81,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
+	block := types.MakeBlock(0, 0, nil, []types.Tx{}, nil, []types.Evidence{}, 1)
 	bps, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -251,7 +253,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
+	block := types.MakeBlock(0, 0, nil, []types.Tx{}, nil, []types.Evidence{}, 1)
 	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{
@@ -301,7 +303,9 @@ func TestEventBusPublishEventEvidenceValidated(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id")
+	quorumHash := crypto.RandQuorumHash()
+
+	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id", btcjson.LLMQType_5_60, quorumHash)
 	require.NoError(t, err)
 
 	const query = `tm.event='EvidenceValidated'`
@@ -343,7 +347,9 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id")
+	quorumHash := crypto.RandQuorumHash()
+
+	ev, err := types.NewMockDuplicateVoteEvidence(ctx, 1, time.Now(), "test-chain-id", btcjson.LLMQType_5_60, quorumHash)
 	require.NoError(t, err)
 
 	const query = `tm.event='NewEvidence'`

@@ -44,7 +44,7 @@ func (env *Environment) Validators(ctx context.Context, req *coretypes.RequestVa
 		Count:       len(v),
 		Total:       totalCount,
 	}
-	if req.RequestQuorumInfo != nil && libs.BoolValue(requestQuorumInfo) {
+	if libs.BoolValue(req.RequestQuorumInfo) {
 		result.QuorumHash = &validators.QuorumHash
 		result.QuorumType = validators.QuorumType
 		result.ThresholdPublicKey = &validators.ThresholdPublicKey

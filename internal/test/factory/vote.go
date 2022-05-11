@@ -19,7 +19,7 @@ func MakeVote(
 	blockID types.BlockID,
 	stateID types.StateID,
 ) (*types.Vote, error) {
-	proTxHash, err := val.GetProTxHash(context.Background())
+	proTxHash, err := val.GetProTxHash(ctx)
 	if err != nil {
 		return nil, err
 	}

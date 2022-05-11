@@ -3,14 +3,14 @@ package light
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
@@ -526,13 +526,13 @@ func (c *Client) verifyBlockSignatureWithDashCore(ctx context.Context, newLightB
 
 	blockSignBytes := types.VoteBlockSignBytes(c.chainID, protoVote)
 
-	blockMessageHash := crypto.Sha256(blockSignBytes)
+	blockMessageHash := sha256.Sum256(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
 	blockSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
 		blockRequestID,
-		blockMessageHash,
+		blockMessageHash[:],
 		newLightBlock.Commit.ThresholdBlockSignature,
 		quorumHash,
 	)
@@ -558,14 +558,14 @@ func (c *Client) verifyStateIDSignatureWithDashCore(ctx context.Context, newLigh
 
 	stateSignBytes := stateID.SignBytes(c.chainID)
 
-	stateMessageHash := crypto.Sha256(stateSignBytes)
+	stateMessageHash := sha256.Sum256(stateSignBytes)
 	stateRequestID := stateID.SignRequestID()
 	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
 	stateSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
 		quorumType,
 		stateRequestID,
-		stateMessageHash,
+		stateMessageHash[:],
 		stateSignature,
 		quorumHash,
 	)

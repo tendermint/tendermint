@@ -7,17 +7,17 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/libs/log"
-	cryptoproto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -78,28 +78,40 @@ type Application struct {
 	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
 	logger       log.Logger
 
-	// validator set
-	ValUpdates         []types.ValidatorUpdate
-	valAddrToPubKeyMap map[string]cryptoproto.PublicKey
+	// validator set update
+	valUpdatesRepo *repository
+	valSetUpdate   types.ValidatorSetUpdate
+	valsIndex      map[string]*types.ValidatorUpdate
 }
 
 func NewApplication() *Application {
+	db := dbm.NewMemDB()
 	return &Application{
-		logger:             log.NewNopLogger(),
-		state:              loadState(dbm.NewMemDB()),
-		valAddrToPubKeyMap: make(map[string]cryptoproto.PublicKey),
+		logger:         log.NewNopLogger(),
+		state:          loadState(db),
+		valsIndex:      make(map[string]*types.ValidatorUpdate),
+		valUpdatesRepo: &repository{db},
 	}
+}
+
+func (app *Application) setValSetUpdate(valSetUpdate *types.ValidatorSetUpdate) error {
+	err := app.valUpdatesRepo.set(valSetUpdate)
+	if err != nil {
+		return err
+	}
+	app.valsIndex = make(map[string]*types.ValidatorUpdate)
+	for _, v := range valSetUpdate.ValidatorUpdates {
+		app.valsIndex[crypto.ProTxHash(v.ProTxHash).String()] = &v
+	}
+	return nil
 }
 
 func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
-	for _, v := range req.ValidatorSet.ValidatorUpdates {
-		r := app.updateValidator(v)
-		if r.IsErr() {
-			app.logger.Error("error updating validators", "r", r)
-			panic("problem updating validators")
-		}
+	err := app.setValSetUpdate(req.ValidatorSet)
+	if err != nil {
+		return nil, err
 	}
 	return &types.ResponseInitChain{}, nil
 }
@@ -118,12 +130,15 @@ func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
 func (app *Application) handleTx(tx []byte) *types.ExecTxResult {
-	// if it starts with "val:", update the validator set
-	// format is "val:pubkey!power"
-	if isValidatorTx(tx) {
-		// update validators in the merkle tree
-		// and in app.ValUpdates
-		return app.execValidatorTx(tx)
+	if isValidatorSetUpdateTx(tx) {
+		err := app.execValidatorSetTx(tx)
+		if err != nil {
+			return &types.ExecTxResult{
+				Code: code.CodeTypeUnknownError,
+				Log:  err.Error(),
+			}
+		}
+		return &types.ExecTxResult{Code: code.CodeTypeOK}
 	}
 
 	if isPrepareTx(tx) {
@@ -170,23 +185,23 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
+	valSetUpdate := proto.Clone(&app.valSetUpdate).(*types.ValidatorSetUpdate)
+
 	// reset valset changes
-	app.ValUpdates = make([]types.ValidatorUpdate, 0)
+	app.valSetUpdate = types.ValidatorSetUpdate{}
+	app.valSetUpdate.ValidatorUpdates = make([]types.ValidatorUpdate, 0)
+	app.valsIndex = make(map[string]*types.ValidatorUpdate)
 
 	// Punish validators who committed equivocation.
 	for _, ev := range req.ByzantineValidators {
+		// TODO it seems this code is not needed to keep here
 		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
-			addr := string(ev.Validator.Address)
-			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
-				app.updateValidator(types.ValidatorUpdate{
-					PubKey: pubKey,
-					Power:  ev.Validator.Power - 1,
-				})
-				app.logger.Info("Decreased val power by 1 because of the equivocation",
-					"val", addr)
-			} else {
-				panic(fmt.Errorf("wanted to punish val %q but can't find it", addr))
+			proTxHash := crypto.ProTxHash(ev.Validator.ProTxHash)
+			v, ok := app.valsIndex[proTxHash.String()]
+			if !ok {
+				return nil, fmt.Errorf("wanted to punish val %q but can't find it", proTxHash.ShortString())
 			}
+			v.Power = ev.Validator.Power - 1
 		}
 	}
 
@@ -195,7 +210,10 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 		respTxs[i] = app.handleTx(tx)
 	}
 
-	return &types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates}, nil
+	return &types.ResponseFinalizeBlock{
+		TxResults:          respTxs,
+		ValidatorSetUpdate: valSetUpdate,
+	}, nil
 }
 
 func (*Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
@@ -220,12 +238,31 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 	return resp, nil
 }
 
-// Returns an associated value or nil if missing.
+// Query returns an associated value or nil if missing.
 func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (*types.ResponseQuery, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
 	switch reqQuery.Path {
+	case "/vsu":
+		vsu, err := app.valUpdatesRepo.get()
+		if err != nil {
+			return &types.ResponseQuery{
+				Code: code.CodeTypeUnknownError,
+				Log:  err.Error(),
+			}, nil
+		}
+		data, err := encodeMsg(vsu)
+		if err != nil {
+			return &types.ResponseQuery{
+				Code: code.CodeTypeEncodingError,
+				Log:  err.Error(),
+			}, nil
+		}
+		return &types.ResponseQuery{
+			Key:   reqQuery.Data,
+			Value: data,
+		}, nil
 	case "/verify-chainlock":
 		return &types.ResponseQuery{
 			Code: 0,
@@ -306,120 +343,81 @@ func (*Application) ProcessProposal(_ context.Context, req *types.RequestProcess
 //---------------------------------------------
 // update validators
 
-func (app *Application) Validators() (validators []types.ValidatorUpdate) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
-	itr, err := app.state.db.Iterator(nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	for ; itr.Valid(); itr.Next() {
-		if isValidatorTx(itr.Key()) {
-			validator := new(types.ValidatorUpdate)
-			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
-			if err != nil {
-				panic(err)
-			}
-			validators = append(validators, *validator)
-		}
-	}
-	if err = itr.Error(); err != nil {
-		panic(err)
-	}
-	return
+func (app *Application) ValidatorSet() (*types.ValidatorSetUpdate, error) {
+	return app.valUpdatesRepo.get()
 }
 
-func MakeValSetChangeTx(pubkey cryptoproto.PublicKey, power int64) []byte {
-	pk, err := encoding.PubKeyFromProto(pubkey)
+func (app *Application) execValidatorSetTx(tx []byte) error {
+	vsu, err := UnmarshalValidatorSetUpdate(tx)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
-	return []byte(fmt.Sprintf("val:%s!%d", pubStr, power))
+	err = app.valUpdatesRepo.set(vsu)
+	if err != nil {
+		return err
+	}
+	app.valSetUpdate = *vsu
+	return nil
 }
 
-func isValidatorTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
+// MarshalValidatorSetUpdate encodes validator-set-update into protobuf, encode into base64 and add "vsu:" prefix
+func MarshalValidatorSetUpdate(vsu *types.ValidatorSetUpdate) ([]byte, error) {
+	pbData, err := proto.Marshal(vsu)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(ValidatorSetUpdatePrefix + base64.StdEncoding.EncodeToString(pbData)), nil
 }
 
-// format is "val:pubkey!power"
-// pubkey is a base64-encoded 32-byte ed25519 key
-func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
-	tx = tx[len(ValidatorSetChangePrefix):]
-
-	//  get the pubkey and power
-	pubKeyAndPower := strings.Split(string(tx), "!")
-	if len(pubKeyAndPower) != 2 {
-		return &types.ExecTxResult{
-			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
-	}
-	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
-
-	// decode the pubkey
-	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
+// UnmarshalValidatorSetUpdate removes "vsu:" prefix and unmarshal a string into validator-set-update
+func UnmarshalValidatorSetUpdate(data []byte) (*types.ValidatorSetUpdate, error) {
+	l := len(ValidatorSetUpdatePrefix)
+	data, err := base64.StdEncoding.DecodeString(string(data[l:]))
 	if err != nil {
-		return &types.ExecTxResult{
-			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
+		return nil, err
 	}
-
-	// decode the power
-	power, err := strconv.ParseInt(powerS, 10, 64)
-	if err != nil {
-		return &types.ExecTxResult{
-			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
-	}
-
-	// update
-	return app.updateValidator(types.UpdateValidator(pubkey, power, ""))
+	vsu := new(types.ValidatorSetUpdate)
+	err = proto.Unmarshal(data, vsu)
+	return vsu, err
 }
 
-// add, update, or remove a validator
-func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxResult {
+type repository struct {
+	db dbm.DB
+}
 
-	pubkey, err := encoding.PubKeyFromProto(v.PubKey)
+func (r *repository) set(vsu *types.ValidatorSetUpdate) error {
+	data, err := proto.Marshal(vsu)
 	if err != nil {
-		panic(fmt.Errorf("can't decode public key: %w", err))
+		return err
 	}
-	key := []byte("val:" + string(pubkey.Bytes()))
+	return r.db.Set([]byte(ValidatorSetUpdatePrefix), data)
+}
 
-	if v.Power == 0 {
-		// remove validator
-		hasKey, err := app.state.db.Has(key)
-		if err != nil {
-			panic(err)
-		}
-		if !hasKey {
-			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
-			return &types.ExecTxResult{
-				Code: code.CodeTypeUnauthorized,
-				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
-		}
-		if err = app.state.db.Delete(key); err != nil {
-			panic(err)
-		}
-		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
-	} else {
-		// add or update validator
-		value := bytes.NewBuffer(make([]byte, 0))
-		if err := types.WriteMessage(&v, value); err != nil {
-			return &types.ExecTxResult{
-				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("error encoding validator: %v", err)}
-		}
-		if err = app.state.db.Set(key, value.Bytes()); err != nil {
-			panic(err)
-		}
-		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
+func (r *repository) get() (*types.ValidatorSetUpdate, error) {
+	data, err := r.db.Get([]byte(ValidatorSetUpdatePrefix))
+	if err != nil {
+		return nil, err
 	}
+	vsu := new(types.ValidatorSetUpdate)
+	err = proto.Unmarshal(data, vsu)
+	if err != nil {
+		return nil, err
+	}
+	return vsu, nil
+}
 
-	// we only update the changes array if we successfully updated the tree
-	app.ValUpdates = append(app.ValUpdates, v)
+func isValidatorSetUpdateTx(tx []byte) bool {
+	return strings.HasPrefix(string(tx), ValidatorSetUpdatePrefix)
+}
 
-	return &types.ExecTxResult{Code: code.CodeTypeOK}
+func encodeMsg(data proto.Message) ([]byte, error) {
+	buf := bytes.NewBufferString("")
+	w := protoio.NewDelimitedWriter(buf)
+	_, err := w.WriteMsg(data)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // -----------------------------

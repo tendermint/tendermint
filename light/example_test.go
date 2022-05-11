@@ -8,7 +8,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
@@ -67,7 +67,7 @@ func TestExampleClient(t *testing.T) {
 		nil,
 		dbs.New(db),
 		dashcore.NewMockClient(chainID, 100, nil, false),
-		light.Logger(log.TestingLogger()),
+		light.Logger(log.NewTestingLogger(t)),
 	)
 
 	if err != nil {

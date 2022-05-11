@@ -9,14 +9,13 @@ import (
 	"github.com/tendermint/tendermint/privval"
 )
 
-
-// GenValidatorCmd allows the generation of a keypair for a
+// MakeGenValidatorCommand allows the generation of a keypair for a
 // validator.
 func MakeGenValidatorCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gen-validator",
 		Short: "Generate new validator keypair",
-		RunE: func(cmd *cobra.Command, args []stringkeyType) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			pv := privval.GenFilePV("", "")
 
 			jsbz, err := json.Marshal(pv)

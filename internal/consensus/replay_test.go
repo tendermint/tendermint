@@ -25,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempl "github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -299,7 +298,7 @@ type simulatorTestSuite struct {
 	Commits      []*types.Commit
 	CleanupFunc  cleanupFunc
 
-	Mempool mempl.Mempool
+	Mempool mempool.Mempool
 	Evpool  sm.EvidencePool
 }
 
@@ -330,7 +329,6 @@ func findProposer(validatorStubs []*validatorStub, proTxHash crypto.ProTxHash) *
 func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	t.Helper()
 	cfg := configSetup(t)
-	ctx := context.Background()
 
 	sim := &simulatorTestSuite{
 		Mempool: emptyMempool{},
@@ -457,7 +455,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 
-	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, hvsu4.tx, nil, mempooll.TxInfo{})
+	err = assertMempool(t, css[0].txNotifier).CheckTx(ctx, hvsu4.tx, nil, mempool.TxInfo{})
 	assert.Nil(t, err)
 
 	propBlock, err = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
@@ -524,7 +522,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 	propBlock, _ = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID, propBlock.Header.Time)
@@ -578,7 +577,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NoError(t, err)
 
 	propBlock, _ = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID, propBlock.Header.Time)
@@ -676,7 +676,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	height++
 	incrementHeight(vss...)
 	propBlock, _ = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID, propBlock.Header.Time)
@@ -731,7 +732,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	assert.Nil(t, err)
 
 	propBlock, _ = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal = types.NewProposal(vss[5].Height, 1, round, -1, blockID, propBlock.Header.Time)
@@ -760,7 +762,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			//t.Fatal("wrong proposer pubKey", err)
 		}*/
 
-	css[0].Logger.Debug(
+	css[0].logger.Debug(
 		"signed proposal", "height", proposal.Height, "round", proposal.Round,
 		"proposer", proposerProTxHash.ShortString(), "signature", p.Signature,
 		"pubkey", proposerPubKey.Bytes(), "quorum type",
@@ -945,7 +947,7 @@ func testHandshakeReplay(
 		err = wal.Start(ctx)
 		require.NoError(t, err)
 		t.Cleanup(func() { cancel(); wal.Wait() })
-		chain, commits = makeBlockchainFromWAL(t, wal)
+		chain, commits = makeBlockchainFromWAL(t, wal, gdoc)
 		pubKey, err := privVal.GetPubKey(ctx, gdoc.QuorumHash)
 		require.NoError(t, err)
 		stateDB, genesisState, store = stateAndStore(t, cfg, pubKey, kvstore.ProtocolVersion)
@@ -1033,7 +1035,7 @@ func testHandshakeReplay(
 	require.NotNil(t, proxyApp)
 	t.Cleanup(func() { cancel(); proxyApp.Wait() })
 
-	err = handshaker.Handshake(ctx, proxyApp)
+	_, err = handshaker.Handshake(ctx, proxyApp)
 	if expectError {
 		require.Error(t, err)
 		return
@@ -1109,7 +1111,7 @@ func buildAppStateFromChain(
 	appClient abciclient.Client,
 	stateStore sm.Store,
 	nodeProTxHash crypto.ProTxHash,
-	mempool mempl.Mempool,
+	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
 	state sm.State,
 	chain []*types.Block,
@@ -1271,7 +1273,8 @@ func TestHandshakeErrorsIfAppReturnsWrongAppHash(t *testing.T) {
 			proTxHash,
 			cfg.Consensus.AppHashSize,
 		)
-		assert.Error(t, h.Handshake(ctx, proxyApp))
+		_, err = h.Handshake(ctx, proxyApp)
+		assert.Error(t, err)
 	}
 
 	// 3. Tendermint must panic if app returns wrong hash for the last block
@@ -1295,7 +1298,8 @@ func TestHandshakeErrorsIfAppReturnsWrongAppHash(t *testing.T) {
 			proTxHash,
 			cfg.Consensus.AppHashSize,
 		)
-		require.Error(t, h.Handshake(ctx, proxyApp))
+		_, err = h.Handshake(ctx, proxyApp)
+		require.Error(t, err)
 	}
 }
 
@@ -1587,7 +1591,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
 
-	require.NoError(t, handshaker.Handshake(ctx, proxyApp), "error on abci handshake")
+	_, err = handshaker.Handshake(ctx, proxyApp)
+	require.NoError(t, err, "error on abci handshake")
 
 	// reload the state, check the validator set was updated
 	state, err = stateStore.Load()
@@ -1643,8 +1648,8 @@ func TestHandshakeInitialCoreLockHeight(t *testing.T) {
 
 	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NoError(t, proxyApp.Start(ctx), "Error starting proxy app connections")
-
-	require.NoError(t, handshaker.Handshake(ctx, proxyApp), "error on abci handshake")
+	_, err = handshaker.Handshake(ctx, proxyApp)
+	require.NoError(t, err, "error on abci handshake")
 
 	// reload the state, check the validator set was updated
 	state, err = stateStore.Load()

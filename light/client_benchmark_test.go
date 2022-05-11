@@ -8,7 +8,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
@@ -64,26 +64,18 @@ func (impl *providerBenchmarkImpl) ReportEvidence(_ context.Context, _ types.Evi
 // Thus we return a sample string
 func (impl *providerBenchmarkImpl) ID() string { return "ip-not-defined.com" }
 
-func setupDashCoreRPCMockForBenchmark(b *testing.B, validator types.PrivValidator) {
-	dashCoreMockClient = dashcore.NewMockClient(chainID, 100, validator, true)
-
-	b.Cleanup(func() {
-		dashCoreMockClient = nil
-	})
-}
-
 func BenchmarkSequence(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	headers, vals, privvals := genLightBlocksWithValidatorsRotatingEveryBlock(chainID, 1000, 100, bTime)
+	headers, vals, privvals := genLightBlocksWithValidatorsRotatingEveryBlock(b, chainID, 1000, 100, bTime)
 	benchmarkFullNode := newProviderBenchmarkImpl(headers, vals)
 
 	logger := log.NewTestingLogger(b)
 
 	privval := privvals[0]
 
-	setupDashCoreRPCMockForBenchmark(b, privval)
+	dashCoreMockClient := dashcore.NewMockClient(chainID, 100, privval, true)
 
 	c, err := light.NewClient(
 		ctx,

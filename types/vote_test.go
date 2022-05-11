@@ -281,6 +281,8 @@ func TestVoteExtension(t *testing.T) {
 			privVal := NewMockPVForQuorum(quorumHash)
 			proTxHash, err := privVal.GetProTxHash(ctx)
 			require.NoError(t, err)
+			pk, err := privVal.GetPubKey(ctx, quorumHash)
+			require.NoError(t, err)
 			blk := Block{}
 			blockID, err := blk.BlockID()
 			require.NoError(t, err)
@@ -302,7 +304,7 @@ func TestVoteExtension(t *testing.T) {
 			if tc.includeSignature {
 				vote.ExtensionSignature = v.ExtensionSignature
 			}
-			err = vote.VerifyWithExtension("test_chain_id", pk)
+			_, _, err = vote.VerifyWithExtension("test_chain_id", btcjson.LLMQType_5_60, quorumHash, pk, proTxHash, stateID)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {
@@ -503,7 +505,7 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 		}},
 		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
 		//{"missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }},
-		{"oversized vote extension signature", func(v *Vote) { v.ExtensionSignature = make([]byte, MaxSignatureSize+1) }},
+		{"oversized vote extension signature", func(v *Vote) { v.ExtensionSignature = make([]byte, SignatureSize+1) }},
 	}
 	for _, tc := range testCases {
 		precommit := examplePrecommit(t)
@@ -563,19 +565,6 @@ func TestVoteProtobuf(t *testing.T) {
 
 var sink interface{}
 
-func getSampleCommit(ctx context.Context, t testing.TB) *Commit {
-	t.Helper()
-
-	lastID := makeBlockIDRandom()
-	stateID := RandStateID().WithHeight(1)
-	voteSet, _, vals := randVoteSet(ctx, t, 2, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, stateID, 2, 1, voteSet, vals)
-
-	require.NoError(t, err)
-
-	return commit
-}
-
 func BenchmarkVoteSignBytes(b *testing.B) {
 	protoVote := examplePrecommit(b).ToProto()
 
@@ -583,30 +572,7 @@ func BenchmarkVoteSignBytes(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		sink = VoteSignBytes("test_chain_id", protoVote)
-	}
-
-	if sink == nil {
-		b.Fatal("Benchmark did not run")
-	}
-
-	// Reset the sink.
-	sink = (interface{})(nil)
-}
-
-func BenchmarkCommitVoteSignBytes(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sampleCommit := getSampleCommit(ctx, b)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		for index := range sampleCommit.Signatures {
-			sink = sampleCommit.VoteSignBytes("test_chain_id", int32(index))
-		}
+		sink = VoteBlockSignBytes("test_chain_id", protoVote)
 	}
 
 	if sink == nil {

@@ -45,7 +45,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	err = stateStore.Save(state)
 	require.NoError(t, err)
 
-	tearDown := func(t *testing.T) { os.RemoveAll(cfg.RootDir) }
+	tearDown := func(t *testing.T) { _ = os.RemoveAll(cfg.RootDir) }
 
 	return tearDown, stateDB, state
 }
@@ -459,7 +459,8 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	assert.EqualValues(t, 0, val1.ProposerPriority)
 
 	block := statefactory.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
-	blockID := block.BlockID()
+	blockID, err := block.BlockID()
+	require.NoError(t, err)
 	fb := &abci.ResponseFinalizeBlock{
 		ValidatorSetUpdate: nil,
 	}
@@ -595,7 +596,8 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	assert.Equal(t, val1ProTxHash, state.Validators.Proposer.ProTxHash)
 
 	block := statefactory.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
-	blockID := block.BlockID()
+	blockID, err := block.BlockID()
+	require.NoError(t, err)
 	// no updates:
 	fb := &abci.ResponseFinalizeBlock{
 		ValidatorSetUpdate: nil,
@@ -716,7 +718,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// -> proposers should alternate:
 	oldState := updatedState3
 	fb = &abci.ResponseFinalizeBlock{
-		ValidatorUpdates: nil,
+		ValidatorSetUpdate: nil,
 	}
 	validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err =
 		types.PB2TM.ValidatorUpdatesFromValidatorSet(fb.ValidatorSetUpdate)
@@ -735,7 +737,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		// no validator updates:
 		fb := &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: nil,
+			ValidatorSetUpdate: nil,
 		}
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err =
 			types.PB2TM.ValidatorUpdatesFromValidatorSet(fb.ValidatorSetUpdate)
@@ -910,6 +912,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	firstNodeProTxHash, val0 := state.Validators.GetByIndex(0)
 	proTxHash := val0.ProTxHash // this is not really old, as it stays the same
 	oldPubkey := val0.PubKey
+	pubkey := bls12381.GenPrivKey().PubKey()
 
 	// Swap the first validator with a new one (validator set size stays the same).
 	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(t, state, pubkey)
@@ -1000,16 +1003,19 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
 	cp := params[changeIndex]
-	var validatorUpdates []*types.Validator
-	var thresholdPublicKeyUpdate crypto.PubKey
-	var quorumHash crypto.QuorumHash
+	var (
+		validatorUpdates         []*types.Validator
+		thresholdPublicKeyUpdate crypto.PubKey
+		quorumHash               crypto.QuorumHash
+		err                      error
+	)
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next params.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
 			cp = params[changeIndex]
 		}
-		header, blockID, responses := makeHeaderPartsResponsesParams(t, state, &cp)
+		header, _, blockID, responses := makeHeaderPartsResponsesParams(t, state, &cp)
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err = types.PB2TM.ValidatorUpdatesFromValidatorSet(responses.FinalizeBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 		rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
@@ -1103,14 +1109,18 @@ func blockExecutorFunc(t *testing.T, firstProTxHash crypto.ProTxHash) func(prevS
 	return func(prevState, state sm.State, vsu *abci.ValidatorSetUpdate) sm.State {
 		t.Helper()
 		resp := &tmstate.ABCIResponses{
-			BeginBlock: &abci.ResponseBeginBlock{},
-			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: vsu},
+			FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorSetUpdate: vsu},
 		}
 		validatorUpdates, thresholdPubKey, quorumHash, err :=
-			types.PB2TM.ValidatorUpdatesFromValidatorSet(resp.EndBlock.ValidatorSetUpdate)
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(resp.FinalizeBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 		block := statefactory.MakeBlock(t, prevState, prevState.LastBlockHeight+1, new(types.Commit), nil, 0)
-		state, err = sm.UpdateState(state, firstProTxHash, block.BlockID(), &block.Header, resp,
+		blockID, err := block.BlockID()
+		require.NoError(t, err)
+		rs, err := abci.MarshalTxResults(resp.FinalizeBlock.TxResults)
+		require.NoError(t, err)
+		h := merkle.HashFromByteSlices(rs)
+		state, err = state.Update(firstProTxHash, blockID, &block.Header, h, resp.FinalizeBlock.ConsensusParamUpdates,
 			validatorUpdates, thresholdPubKey, quorumHash)
 		require.NoError(t, err)
 		return state

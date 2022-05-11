@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
@@ -38,13 +38,9 @@ func init() {
 }
 
 func TestClient(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var (
 		vals, privVals = types.RandValidatorSet(4)
 		keys           = exposeMockPVKeys(privVals, vals.QuorumHash)
-
-		trustPeriod = 4 * time.Hour
 
 		valSet = map[int64]*types.ValidatorSet{
 			1: vals,
@@ -76,142 +72,6 @@ func TestClient(t *testing.T) {
 		dashCoreMockClient = dashcore.NewMockClient(chainID, llmqType, privVals[0], true)
 	)
 
-	t.Run("SequentialVerification", func(t *testing.T) {
-		newKeys := genPrivKeys(4)
-		newVals := newKeys.ToValidators(10, 1)
-		differentVals, _ := factory.ValidatorSet(ctx, t, 10, 100)
-
-		testCases := []struct {
-			name         string
-			otherHeaders map[int64]*types.SignedHeader // all except ^
-			vals         map[int64]*types.ValidatorSet
-			initErr      bool
-			verifyErr    bool
-		}{
-			{
-				name:         "good",
-				otherHeaders: headerSet,
-				vals:         valSet,
-				initErr:      false,
-				verifyErr:    false,
-			},
-			{
-				"bad: different first header",
-				map[int64]*types.SignedHeader{
-					// different header
-					1: keys.GenSignedHeader(t, chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
-						hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
-				},
-				map[int64]*types.ValidatorSet{
-					1: vals,
-				},
-				true,
-				false,
-			},
-			{
-				"bad: no first signed header",
-				map[int64]*types.SignedHeader{},
-				map[int64]*types.ValidatorSet{
-					1: differentVals,
-				},
-				true,
-				true,
-			},
-			{
-				"bad: different first validator set",
-				map[int64]*types.SignedHeader{
-					1: h1,
-				},
-				map[int64]*types.ValidatorSet{
-					1: differentVals,
-				},
-				true,
-				true,
-			},
-			{
-				"bad: 1/3 signed interim header",
-				map[int64]*types.SignedHeader{
-					// trusted header
-					1: h1,
-					// interim header (1/3 signed)
-					2: keys.GenSignedHeader(t, chainID, 2, bTime.Add(1*time.Hour), nil, vals, vals,
-						hash("app_hash"), hash("cons_hash"), hash("results_hash"), len(keys)-1, len(keys)),
-					// last header (3/3 signed)
-					3: keys.GenSignedHeader(t, chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
-						hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
-				},
-				valSet,
-				false,
-				true,
-			},
-			{
-				"bad: 1/3 signed last header",
-				map[int64]*types.SignedHeader{
-					// trusted header
-					1: h1,
-					// interim header (3/3 signed)
-					2: keys.GenSignedHeader(t, chainID, 2, bTime.Add(1*time.Hour), nil, vals, vals,
-						hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
-					// last header (1/3 signed)
-					3: keys.GenSignedHeader(t, chainID, 3, bTime.Add(2*time.Hour), nil, vals, vals,
-						hash("app_hash"), hash("cons_hash"), hash("results_hash"), len(keys)-1, len(keys)),
-				},
-				valSet,
-				false,
-				true,
-			},
-			{
-				"bad: different validator set at height 3",
-				headerSet,
-				map[int64]*types.ValidatorSet{
-					1: vals,
-					2: vals,
-					3: newVals,
-				},
-				false,
-				true,
-			},
-		}
-
-		for _, tc := range testCases {
-			testCase := tc
-			t.Run(testCase.name, func(t *testing.T) {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-
-				logger := log.NewNopLogger()
-
-				mockNode := mockNodeFromHeadersAndVals(testCase.otherHeaders, testCase.vals)
-				mockNode.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
-				c, err := light.NewClient(
-					ctx,
-					chainID,
-					trustOptions,
-					mockNode,
-					nil,
-					dbs.New(dbm.NewMemDB()),
-					light.SequentialVerification(),
-					light.Logger(logger),
-				)
-
-				if testCase.initErr {
-					require.Error(t, err)
-					return
-				}
-
-				require.NoError(t, err)
-
-				_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(3*time.Hour))
-				if testCase.verifyErr {
-					assert.Error(t, err)
-				} else {
-					assert.NoError(t, err)
-				}
-				mockNode.AssertExpectations(t)
-			})
-		}
-
-	})
 	//t.Run("LargeBisectionVerification", func(t *testing.T) {
 	//	// start from a large light block to make sure that the pivot height doesn't select a height outside
 	//	// the appropriate range
@@ -780,63 +640,5 @@ func TestClient(t *testing.T) {
 				mockBadNode.AssertExpectations(t)
 			})
 		}
-	})
-	t.Run("EnsureValidHeadersAndValSets", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		mockNode := &provider_mocks.Provider{}
-		mockNode.On("LightBlock",
-			mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
-			int64(1)).Return(l1, nil)
-		mockNode.On("LightBlock",
-			mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == context.DeadlineExceeded }),
-			mock.Anything).Return(nil, context.DeadlineExceeded)
-
-		mockNode.On("LightBlock",
-			mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == context.Canceled }),
-			mock.Anything).Return(nil, context.Canceled)
-
-		dashcoreClient := dashcore.NewMockClient(chainID, llmqType, privVals[0], true)
-
-		// instantiate the light client with a timeout
-		ctxTimeOut, cancel := context.WithTimeout(ctx, 1*time.Nanosecond)
-		defer cancel()
-		_, err := light.NewClientAtHeight(
-			ctxTimeOut,
-			1,
-			chainID,
-			mockNode,
-			[]provider.Provider{mockNode, mockNode},
-			dbs.New(dbm.NewMemDB()),
-			dashcoreClient,
-		)
-		require.Error(t, ctxTimeOut.Err())
-		require.Error(t, err)
-		require.True(t, errors.Is(err, context.DeadlineExceeded))
-
-		// instantiate the client for real
-		c, err := light.NewClient(
-			ctx,
-			chainID,
-			mockNode,
-			[]provider.Provider{mockNode, mockNode},
-			dbs.New(dbm.NewMemDB()),
-			dashcoreClient,
-		)
-		require.NoError(t, err)
-
-		// verify a block with a timeout
-		ctxTimeOutBlock, cancel := context.WithTimeout(ctx, 1*time.Nanosecond)
-		defer cancel()
-		_, err = c.VerifyLightBlockAtHeight(ctxTimeOutBlock, 100, bTime.Add(100*time.Minute))
-		require.Error(t, ctxTimeOutBlock.Err())
-		require.Error(t, err)
-		require.True(t, errors.Is(err, context.DeadlineExceeded))
-
-		_, err = c.VerifyLightBlockAtHeight(ctx, 100, bTime.Add(100*time.Minute))
-		require.Error(t, ctxCancel.Err())
-		require.Error(t, err)
-		require.True(t, errors.Is(err, context.Canceled))
 	})
 }

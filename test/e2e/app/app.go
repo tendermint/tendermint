@@ -225,7 +225,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinali
 			Attributes: []abci.EventAttribute{
 				{
 					Key:   "size",
-					Value: strconv.Itoa(valUpdates.Len()),
+					Value: strconv.Itoa(len(resp.ValidatorSetUpdate.ValidatorUpdates)),
 				},
 				{
 					Key:   "height",
@@ -363,8 +363,8 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 		if err != nil {
 			panic(fmt.Errorf("failed to parse vote extension in PrepareProposal: %w", err))
 		}
-		valAddr := crypto.Address(vote.Validator.Address)
-		app.logger.Info("got vote extension value in PrepareProposal", "valAddr", valAddr, "value", extValue)
+		proTxHash := crypto.ProTxHash(vote.Validator.ProTxHash)
+		app.logger.Info("got vote extension value in PrepareProposal", "proTxHash", proTxHash, "value", extValue)
 		sum += extValue
 		extCount++
 	}
@@ -514,10 +514,6 @@ func (app *Application) Rollback() error {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	return app.state.Rollback()
-}
-
-func (app *Application) Rollback() error {
 	return app.state.Rollback()
 }
 

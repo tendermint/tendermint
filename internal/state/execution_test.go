@@ -14,6 +14,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
+	abciclientmocks "github.com/tendermint/tendermint/abci/client/mocks"
 	abci "github.com/tendermint/tendermint/abci/types"
 	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
 	"github.com/tendermint/tendermint/crypto"
@@ -30,7 +31,6 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 var (
@@ -145,8 +145,8 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			require.NoError(t, eventBus.Start(ctx))
 
 			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), appClient, mp, evpool, blockStore, eventBus, sm.NopMetrics())
-			proposerProTxHash := state.NextValidators.Validators[0].GetProTxHash(ctx)
-			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, nodeProTxHash, 1, new(types.Commit), proposerProTxHash, blockExec, privVals)
+			proposerProTxHash := state.NextValidators.Validators[0].ProTxHash
+			state, _, lastCommit := makeAndCommitGoodBlock(ctx, t, state, nodeProTxHash, 1, new(types.Commit), proposerProTxHash, blockExec, privVals, nil, 0)
 
 			// block for height 2
 			block := sf.MakeBlock(t, state, 2, lastCommit, nil, 1)
@@ -177,24 +177,8 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	app.ValidatorSetUpdate = state.Validators.ABCIEquivalentValidatorUpdates()
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	privVal := privVals[state.Validators.Validators[0].Address.String()]
+	privVal := privVals[state.Validators.Validators[0].ProTxHash.String()]
 	blockID := makeBlockID([]byte("headerhash"), 1000, []byte("partshash"))
-	header := &types.Header{
-		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
-		ChainID:            state.ChainID,
-		Height:             10,
-		Time:               defaultEvidenceTime,
-		LastBlockID:        blockID,
-		LastCommitHash:     crypto.CRandBytes(crypto.HashSize),
-		DataHash:           crypto.CRandBytes(crypto.HashSize),
-		ValidatorsHash:     state.Validators.Hash(),
-		NextValidatorsHash: state.Validators.Hash(),
-		ConsensusHash:      crypto.CRandBytes(crypto.HashSize),
-		AppHash:            crypto.CRandBytes(crypto.HashSize),
-		LastResultsHash:    crypto.CRandBytes(crypto.HashSize),
-		EvidenceHash:       crypto.CRandBytes(crypto.HashSize),
-		ProposerProTxHash:  crypto.RandProTxHash(),
-	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
 	dve, err := types.NewMockDuplicateVoteEvidenceWithValidator(
@@ -272,7 +256,7 @@ func TestProcessProposal(t *testing.T) {
 	err := proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, privVals := makeState(t, 1, height)
+	state, stateDB, _ := makeState(t, 1, height)
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -290,30 +274,25 @@ func TestProcessProposal(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	block0 := sf.MakeBlock(t, state, height-1, new(types.Commit), nil, 0)
-	lastCommitSig := []types.CommitSig{}
-	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
-	require.NoError(t, err)
-	blockID := types.BlockID{Hash: block0.Hash(), PartSetHeader: partSet.Header()}
-	voteInfos := []abci.VoteInfo{}
-	for _, privVal := range privVals {
-		vote, err := factory.MakeVote(ctx, privVal, block0.Header.ChainID, 0, 0, 0, 2, blockID, time.Now())
-		require.NoError(t, err)
-		pk, err := privVal.GetPubKey(ctx)
-		require.NoError(t, err)
-		addr := pk.Address()
-		voteInfos = append(voteInfos,
-			abci.VoteInfo{
-				SignedLastBlock: true,
-				Validator: abci.Validator{
-					Address: addr,
-					Power:   1000,
-				},
-			})
-		lastCommitSig = append(lastCommitSig, vote.CommitSig())
-	}
+	//block0 := sf.MakeBlock(t, state, height-1, new(types.Commit), nil, 0)
+	//partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
+	//require.NoError(t, err)
+	//blockID := types.BlockID{Hash: block0.Hash(), PartSetHeader: partSet.Header()}
+	//stateID := types.RandStateID().WithHeight(height - 1)
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
+	//quorumHash := state.Validators.QuorumHash
+	//thBlockSign :=
+	//thStateSign
+	//voteInfos := []abci.VoteInfo{}
+	//for _, privVal := range privVals {
+	//	vote, err := factory.MakeVote(ctx, privVal, state.Validators, block0.Header.ChainID, 0, 0, 0, 2, blockID, stateID)
+	//	require.NoError(t, err)
+	//	proTxHash, err := privVal.GetProTxHash(ctx)
+	//	require.NoError(t, err)
+	//
+	//}
+
+	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
 	block1 := sf.MakeBlock(t, state, height, lastCommit, nil, 0)
 	block1.Txs = txs
 
@@ -325,10 +304,12 @@ func TestProcessProposal(t *testing.T) {
 		ByzantineValidators: block1.Evidence.ToABCI(),
 		ProposedLastCommit: abci.CommitInfo{
 			Round: 0,
-			Votes: voteInfos,
+			//QuorumHash:
+			//BlockSignature:
+			//StateSignature:
 		},
 		NextValidatorsHash: block1.NextValidatorsHash,
-		ProposerAddress:    block1.ProposerAddress,
+		ProposerProTxHash:  block1.ProposerProTxHash,
 	}
 
 	app.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
@@ -714,9 +695,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, proposerProTxHash, 0)
 	require.NoError(t, err)
 }
 
@@ -769,9 +750,9 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, proposerProTxHash, 0)
 	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
 	require.Nil(t, block)
 
@@ -825,9 +806,9 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, proposerProTxHash, 0)
 	require.NoError(t, err)
 	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
 
@@ -884,9 +865,9 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, proposerProTxHash, 0)
 	require.NoError(t, err)
 
 	require.Equal(t, txs[0], block.Data.Txs[0])
@@ -940,9 +921,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, proposerProTxHash, 0)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, types.Tx(trs[i].Tx), tx)
@@ -973,7 +954,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 
 	const nValidators = 1
 	var bytesPerTx int64 = 3
-	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, 0, nValidators)
+	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, crypto.BLS12381, 0, nValidators)
 	txs := factory.MakeNTxs(height, maxDataBytes/bytesPerTx+2) // +2 so that tx don't fit
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
@@ -1000,10 +981,10 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	proposerProTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
 
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, proposerProTxHash, 0)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
 	require.Nil(t, block, "")
 
@@ -1052,10 +1033,10 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	proTxHash, _ := state.Validators.GetByIndex(0)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, types.StateID{}, state.Validators, privVals)
 
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, proTxHash, 0)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "an injected error")
 

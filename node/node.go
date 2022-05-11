@@ -16,8 +16,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash/core"
 	dashquorum "github.com/tendermint/tendermint/dash/quorum"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
 	"github.com/tendermint/tendermint/internal/blocksync"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -77,7 +77,7 @@ type nodeImpl struct {
 
 	// Dash
 	validatorConnExecutor *dashquorum.ValidatorConnExecutor
-	dashCoreRPCClient     dashcore.Client
+	dashCoreRPCClient     core.Client
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
@@ -133,7 +133,7 @@ func makeNode(
 	client abciclient.Client,
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient core.Client,
 	logger log.Logger,
 ) (service.Service, error) {
 	var cancel context.CancelFunc
@@ -210,7 +210,7 @@ func makeNode(
 				llmqType = btcjson.LLMQType_100_67
 			}*/
 		if dashCoreRPCClient == nil {
-			rpcClient, err := DefaultDashCoreRPCClient(cfg, logger.With("module", dashcore.ModuleName))
+			rpcClient, err := DefaultDashCoreRPCClient(cfg, logger.With("module", core.ModuleName))
 			if err != nil {
 				return nil, combineCloseError(
 					fmt.Errorf("failed to create Dash Core RPC client %w", err),
@@ -312,7 +312,7 @@ func makeNode(
 			llmqType = btcjson.LLMQType_100_67
 		}
 		// This is used for light client verification only
-		dashCoreRPCClient = dashcore.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
+		dashCoreRPCClient = core.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
 	}
 
 	weAreOnlyValidator := onlyValidatorIsUs(state, proTxHash)
@@ -907,8 +907,8 @@ func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.Route
 }
 
 // DefaultDashCoreRPCClient returns RPC client for the Dash Core node
-func DefaultDashCoreRPCClient(cfg *config.Config, logger log.Logger) (dashcore.Client, error) {
-	return dashcore.NewRPCClient(
+func DefaultDashCoreRPCClient(cfg *config.Config, logger log.Logger) (core.Client, error) {
+	return core.NewRPCClient(
 		cfg.PrivValidator.CoreRPCHost,
 		cfg.PrivValidator.CoreRPCUsername,
 		cfg.PrivValidator.CoreRPCPassword,

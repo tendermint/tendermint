@@ -2,7 +2,6 @@ package protoio_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
@@ -15,14 +14,11 @@ import (
 
 func aVote(t testing.TB) *types.Vote {
 	t.Helper()
-	var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
-	require.NoError(t, err)
 
 	return &types.Vote{
-		Type:      tmproto.SignedMsgType(byte(tmproto.PrevoteType)),
-		Height:    12345,
-		Round:     2,
-		Timestamp: stamp,
+		Type:   tmproto.SignedMsgType(byte(tmproto.PrevoteType)),
+		Height: 12345,
+		Round:  2,
 		BlockID: types.BlockID{
 			Hash: crypto.Checksum([]byte("blockID_hash")),
 			PartSetHeader: types.PartSetHeader{
@@ -30,8 +26,8 @@ func aVote(t testing.TB) *types.Vote {
 				Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 			},
 		},
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		ValidatorIndex:   56789,
+		ValidatorProTxHash: crypto.RandProTxHash(),
+		ValidatorIndex:     56789,
 	}
 }
 

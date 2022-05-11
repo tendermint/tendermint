@@ -339,9 +339,6 @@ func TestMConnectionPingPongs(t *testing.T) {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	mconn := createMConnectionWithCallbacks(log.NewNopLogger(), client, onReceive, onError)
 	err := mconn.Start(ctx)
 	require.NoError(t, err)

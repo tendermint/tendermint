@@ -8,15 +8,15 @@ import (
 	"math/rand"
 	"regexp"
 	"strings"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
 // BitArray is a thread-safe implementation of a bit array.
 type BitArray struct {
-	mtx   tmsync.RWMutex
+	mtx   sync.RWMutex
 	Bits  int      `json:"bits"`  // NOTE: persisted via reflect, must be exported
 	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }

@@ -5,9 +5,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
-	"testing"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
@@ -280,7 +281,6 @@ func makeRandomStateFromConsensusParams(
 type testApp struct {
 	abci.BaseApplication
 
-	CommitVotes         []abci.VoteInfo
 	ByzantineValidators []abci.Misbehavior
 	ValidatorSetUpdate  *abci.ValidatorSetUpdate
 }
@@ -292,7 +292,6 @@ func (app *testApp) Info(_ context.Context, req *abci.RequestInfo) (*abci.Respon
 }
 
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	app.CommitVotes = req.DecidedLastCommit.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 
 	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
@@ -305,7 +304,7 @@ func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBl
 	}
 
 	return &abci.ResponseFinalizeBlock{
-		ValidatorUpdates: app.ValidatorUpdates,
+		ValidatorSetUpdate: app.ValidatorSetUpdate,
 		ConsensusParamUpdates: &tmproto.ConsensusParams{
 			Version: &tmproto.VersionParams{
 				AppVersion: 1,

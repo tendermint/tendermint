@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -167,7 +166,7 @@ func TestValUpdates(t *testing.T) {
 
 	kvVals, err := kvstore.ValidatorSet()
 	require.NoError(t, err)
-	valSetEqualTest(t, *kvVals, initVals)
+	valSetEqualTest(t, kvVals, &initVals)
 
 	tx, err := MarshalValidatorSetUpdate(&fullVals)
 	require.NoError(t, err)
@@ -177,7 +176,7 @@ func TestValUpdates(t *testing.T) {
 
 	kvVals, err = kvstore.ValidatorSet()
 	require.NoError(t, err)
-	valSetEqualTest(t, *kvVals, fullVals)
+	valSetEqualTest(t, kvVals, &fullVals)
 }
 
 func makeApplyBlock(
@@ -204,13 +203,14 @@ func makeApplyBlock(
 		t.Fatal(err)
 	}
 
-	valSetEqualTest(t, diff, resFinalizeBlock.ValidatorUpdates)
+	valSetEqualTest(t, &diff, resFinalizeBlock.ValidatorSetUpdate)
 
 }
 
 // order doesn't matter
 func valsEqualTest(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	t.Helper()
+
 	require.Equal(t, len(vals1), len(vals2), "vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	sort.Sort(types.ValidatorUpdates(vals1))
 	sort.Sort(types.ValidatorUpdates(vals2))
@@ -223,16 +223,20 @@ func valsEqualTest(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	}
 }
 
-func valSetEqualTest(t *testing.T, vals1, vals2 types.ValidatorSetUpdate) {
+func valSetEqualTest(t *testing.T, vals1, vals2 *types.ValidatorSetUpdate) {
+	t.Helper()
+
 	valsEqualTest(t, vals1.ValidatorUpdates, vals2.ValidatorUpdates)
-	if !vals1.ThresholdPublicKey.Equal(vals2.ThresholdPublicKey) {
-		t.Fatalf("val set threshold public key did not match. got %X, expected %X",
-			vals1.ThresholdPublicKey, vals2.ThresholdPublicKey)
-	}
-	if !bytes.Equal(vals1.QuorumHash, vals2.QuorumHash) {
-		t.Fatalf("val set quorum hash did not match. got %X, expected %X",
-			vals1.QuorumHash, vals2.QuorumHash)
-	}
+	require.True(t,
+		vals1.ThresholdPublicKey.Equal(vals2.ThresholdPublicKey),
+		"val set threshold public key did not match. got %X, expected %X",
+		vals1.ThresholdPublicKey, vals2.ThresholdPublicKey,
+	)
+	require.True(t,
+		bytes.Equal(vals1.QuorumHash, vals2.QuorumHash),
+		"val set quorum hash did not match. got %X, expected %X",
+		vals1.QuorumHash, vals2.QuorumHash,
+	)
 }
 
 func makeSocketClientServer(
