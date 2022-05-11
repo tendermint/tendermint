@@ -502,11 +502,21 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				newBlockPartSetHeader = newBlockParts.Header()
 				newBlockID            = types.BlockID{Hash: newBlock.Hash(), PartSetHeader: newBlockPartSetHeader}
 			)
-
+			// Finally, verify the first block using the second's commit.
+			//
+			// NOTE: We can probably make this more efficient, but note that calling
+			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
+			// currently necessary.
 			if r.lastTrustedBlock != nil {
 				err := VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.NextValidators)
 
 				if err != nil {
+					r.logger.Error(
+						err.Error(),
+						"last_commit", verifyBlock.LastCommit,
+						"block_id", newBlock,
+						"height", newBlock.Height,
+					)
 					switch err.(type) {
 					case ErrBlockIDDiff:
 					case ErrValidationFailed:
@@ -517,7 +527,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						}); serr != nil {
 							return
 						}
-						continue
+
 					case ErrInvalidVerifyBlock:
 						r.logger.Error(
 							err.Error(),
@@ -532,10 +542,19 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						}); serr != nil {
 							return
 						}
-						continue
-					}
 
+					}
+					continue // was return previously
 				}
+
+				// // Finally, verify the first block using the second's commit.
+				// //
+				// // NOTE: We can probably make this more efficient, but note that calling
+				// // first.Hash() doesn't verify the tx contents, so MakePartSet() is
+				// // currently necessary.
+				// err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
+
+				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
 
 			} else {
 				// we need to load the last block we trusted
@@ -559,22 +578,42 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					}); serr != nil {
 						return
 					}
-					continue
+					continue // was return previously
 				}
-				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
+
+				r.lastTrustedBlock.block = newBlock
+				// r.lastTrustedBlock.commit
 			}
-			r.lastTrustedBlock.block = newBlock
-			r.lastTrustedBlock.commit = verifyBlock.LastCommit
+			var err error
+			// validate the block before we persist it
+			err = r.blockExec.ValidateBlock(ctx, state, newBlock)
+			if err != nil {
+				r.logger.Error("The validator set provided by the new block does not match the expected validator set",
+					"initial hash ", r.initialState.Validators.Hash(),
+					"new hash ", newBlock.ValidatorsHash,
+				)
+
+				peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+				if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+					NodeID: peerID,
+					Err:    ErrValidationFailed{},
+				}); serr != nil {
+					return
+				}
+				continue // was return previously
+			}
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
 			r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
 
-			var err error
-
 			// TODO: Same thing for app - but we would need a way to get the hash
 			// without persisting the state.
 			state, err = r.blockExec.ApplyBlock(ctx, state, newBlockID, newBlock)
+			if err != nil {
+				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
+			}
+
 			if err != nil {
 				// TODO: This is bad, are we zombie?
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
