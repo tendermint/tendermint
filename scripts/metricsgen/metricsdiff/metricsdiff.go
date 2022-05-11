@@ -65,7 +65,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Generating diff: %v", err)
 	}
-	fmt.Printf("%s", md)
+	fmt.Print(md)
 }
 
 // DiffFromReaders parses the metrics present in the readers a and b and
