@@ -692,23 +692,53 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
-// (which happens even before saving the state)
+// Reconstruct LastCommit from either SeenCommit or the ExtendedCommit. SeenCommit
+// and ExtendedCommit are saved along with the block. If VoteExtensions are required
+// the method will panic on an absent ExtendedCommit or an ExtendedCommit without
+// extension data.
 func (cs *State) reconstructLastCommit(state sm.State) {
-	extCommit := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
-	if extCommit == nil {
-		panic(fmt.Sprintf(
-			"failed to reconstruct last commit; commit for height %v not found",
-			state.LastBlockHeight,
-		))
+	requireExtensions := cs.state.ConsensusParams.Vote.RequireExtensions(state.LastBlockHeight)
+	votes, err := cs.votesFromExtendedCommit(state, requireExtensions)
+	if err == nil {
+		cs.LastCommit = votes
+		return
+	}
+	if requireExtensions {
+		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+	}
+	votes, err = cs.votesFromSeenCommit(state)
+	if err != nil {
+		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+	}
+	cs.LastCommit = votes
+}
+
+func (cs *State) votesFromExtendedCommit(state sm.State, requireExtensions bool) (*types.VoteSet, error) {
+	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
+	if ec == nil {
+		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
+	}
+	vs := ec.ToVoteSet(state.ChainID, state.LastValidators, requireExtensions)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("extended commit does not have +2/3 majority")
+	}
+	return vs, nil
+}
+
+func (cs *State) votesFromSeenCommit(state sm.State) (*types.VoteSet, error) {
+	commit := cs.blockStore.LoadSeenCommit()
+	if commit == nil || commit.Height != state.LastBlockHeight {
+		commit = cs.blockStore.LoadBlockCommit(state.LastBlockHeight)
+	}
+	if commit == nil {
+		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
 
-	lastPrecommits := extCommit.ToVoteSet(state.ChainID, state.LastValidators)
-	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("failed to reconstruct last commit; does not have +2/3 maj")
+	vs := commit.ToVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("commit does not have +2/3 majority")
 	}
-
-	cs.LastCommit = lastPrecommits
+	return vs, nil
 }
 
 // Updates State and increments height to match that of state.
@@ -810,7 +840,8 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	requireExtensions := state.ConsensusParams.Vote.RequireExtensions(height)
+	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators, requireExtensions)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -2337,13 +2368,37 @@ func (cs *State) addVote(
 		return
 	}
 
+	var addr []byte
+	if cs.privValidatorPubKey != nil {
+		addr = cs.privValidatorPubKey.Address()
+	}
 	// Verify VoteExtension if precommit and not nil
 	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
-		err := cs.blockExec.VerifyVoteExtension(ctx, vote)
-		cs.metrics.MarkVoteExtensionReceived(err == nil)
-		if err != nil {
-			return false, err
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
+		!bytes.Equal(vote.ValidatorAddress, addr) {
+		// The core fields of the vote message were already validated in the
+		// consensus reactor when the vote was received.
+		// Here, we valdiate that the vote extension was included in the vote
+		// message.
+		// Chains that are not configured to require vote extensions
+		// will consider the vote valid even if the extension is absent.
+		// VerifyVoteExtension will not be called in this case if the extension
+		// is absent.
+		err := vote.EnsureExtension()
+		if err == nil {
+			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
+			err = vote.VerifyExtension(cs.state.ChainID, val.PubKey)
+		}
+		if err == nil {
+			err := cs.blockExec.VerifyVoteExtension(ctx, vote)
+			cs.metrics.MarkVoteExtensionReceived(err == nil)
+		} else {
+			if !errors.Is(err, types.ErrVoteExtensionAbsent) {
+				return false, err
+			}
+			if cs.state.ConsensusParams.Vote.RequireExtensions(cs.Height) {
+				return false, err
+			}
 		}
 	}
 

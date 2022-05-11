@@ -233,7 +233,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	// we are simulating a duplicate vote attack where all the validators in the conflictingVals set
 	// except the last validator vote twice
 	blockID := factory.MakeBlockIDWithHash(conflictingHeader.Hash())
-	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals, false)
 	extCommit, err := factory.MakeExtendedCommit(ctx, blockID, 10, 1, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
 	require.NoError(t, err)
 	commit := extCommit.StripExtensions()
@@ -253,7 +253,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	}
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
-	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals, false)
 	trustedExtCommit, err := factory.MakeExtendedCommit(ctx, trustedBlockID, 10, 1,
 		trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
@@ -336,7 +336,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	// we are simulating an amnesia attack where all the validators in the conflictingVals set
 	// except the last validator vote twice. However this time the commits are of different rounds.
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(evidenceChainID, height, 0, tmproto.SignedMsgType(2), conflictingVals)
+	voteSet := types.NewVoteSet(evidenceChainID, height, 0, tmproto.SignedMsgType(2), conflictingVals, false)
 	extCommit, err := factory.MakeExtendedCommit(ctx, blockID, height, 0, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	commit := extCommit.StripExtensions()
@@ -356,7 +356,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	}
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
-	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
+	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals, false)
 	trustedExtCommit, err := factory.MakeExtendedCommit(ctx, trustedBlockID, height, 1,
 		trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
@@ -553,7 +553,7 @@ func makeLunaticEvidence(
 	})
 
 	blockID := factory.MakeBlockIDWithHash(conflictingHeader.Hash())
-	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
+	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals, false)
 	extCommit, err := factory.MakeExtendedCommit(ctx, blockID, height, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	commit := extCommit.StripExtensions()
@@ -582,7 +582,7 @@ func makeLunaticEvidence(
 	}
 	trustedBlockID := factory.MakeBlockIDWithHash(trustedHeader.Hash())
 	trustedVals, privVals := factory.ValidatorSet(ctx, t, totalVals, defaultVotingPower)
-	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), trustedVals)
+	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), trustedVals, false)
 	trustedExtCommit, err := factory.MakeExtendedCommit(ctx, trustedBlockID, height, 1, trustedVoteSet, privVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trustedCommit := trustedExtCommit.StripExtensions()

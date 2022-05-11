@@ -757,22 +757,25 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		if len(ecs.Extension) > MaxVoteExtensionSize {
 			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
 		}
-		if len(ecs.ExtensionSignature) == 0 {
-			return errors.New("vote extension signature is missing")
-		}
 		if len(ecs.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
 		return nil
 	}
 
-	// We expect there to not be any vote extension or vote extension signature
-	// on nil or absent votes.
-	if len(ecs.Extension) != 0 {
-		return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	if len(ecs.ExtensionSignature) == 0 && len(ecs.Extension) != 0 {
+		return fmt.Errorf("vote extension signature absent on vote with extension")
 	}
-	if len(ecs.ExtensionSignature) != 0 {
-		return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	return nil
+}
+
+// EnsureExtensions validates that a vote extensions signature is present for
+// this ExtendedCommitSig.
+func (ecs ExtendedCommitSig) EnsureExtension() error {
+	if ecs.BlockIDFlag == BlockIDFlagCommit {
+		if len(ecs.ExtensionSignature) == 0 {
+			return errors.New("vote extension signature is missing")
+		}
 	}
 	return nil
 }
@@ -1014,16 +1017,16 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 }
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
-// Panics if signatures from the commit can't be added to the voteset.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
 // Inverse of VoteSet.MakeExtendedCommit().
-func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet, requireExtensions bool) *VoteSet {
+	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals, requireExtensions)
 	for idx, ecs := range ec.ExtendedSignatures {
 		if ecs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
 		vote := ec.GetExtendedVote(int32(idx))
-		if err := vote.ValidateWithExtension(); err != nil {
+		if err := vote.ValidateBasic(); err != nil {
 			panic(fmt.Errorf("failed to validate vote reconstructed from LastCommit: %w", err))
 		}
 		added, err := voteSet.AddVote(vote)
@@ -1032,6 +1035,38 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet
 		}
 	}
 	return voteSet
+}
+
+// ToVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the commit can't be added to the voteset.
+// Inverse of VoteSet.MakeCommit().
+func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals, false)
+	for idx, cs := range commit.Signatures {
+		if cs.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
+		}
+		vote := commit.GetVote(int32(idx))
+		if err := vote.ValidateBasic(); err != nil {
+			panic(fmt.Errorf("failed to validate vote reconstructed from commit: %w", err))
+		}
+		added, err := voteSet.AddVote(vote)
+		if !added || err != nil {
+			panic(fmt.Errorf("failed to reconstruct vote set from commit: %w", err))
+		}
+	}
+	return voteSet
+}
+
+// EnsureExtensions validates that a vote extensions signature is present for
+// every ExtendedCommitSig in the ExtendedCommit.
+func (ec *ExtendedCommit) EnsureExtensions() error {
+	for _, ecs := range ec.ExtendedSignatures {
+		if err := ecs.EnsureExtension(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // StripExtensions converts an ExtendedCommit to a Commit by removing all vote

@@ -53,11 +53,12 @@ const (
 	NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 */
 type VoteSet struct {
-	chainID       string
-	height        int64
-	round         int32
-	signedMsgType tmproto.SignedMsgType
-	valSet        *ValidatorSet
+	chainID           string
+	height            int64
+	round             int32
+	signedMsgType     tmproto.SignedMsgType
+	valSet            *ValidatorSet
+	requireExtensions bool
 
 	mtx           sync.Mutex
 	votesBitArray *bits.BitArray
@@ -70,22 +71,23 @@ type VoteSet struct {
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int32,
-	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, requireExtensions bool) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	return &VoteSet{
-		chainID:       chainID,
-		height:        height,
-		round:         round,
-		signedMsgType: signedMsgType,
-		valSet:        valSet,
-		votesBitArray: bits.NewBitArray(valSet.Size()),
-		votes:         make([]*Vote, valSet.Size()),
-		sum:           0,
-		maj23:         nil,
-		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
-		peerMaj23s:    make(map[string]BlockID),
+		chainID:           chainID,
+		height:            height,
+		round:             round,
+		signedMsgType:     signedMsgType,
+		valSet:            valSet,
+		requireExtensions: requireExtensions,
+		votesBitArray:     bits.NewBitArray(valSet.Size()),
+		votes:             make([]*Vote, valSet.Size()),
+		sum:               0,
+		maj23:             nil,
+		votesByBlock:      make(map[string]*blockVotes, valSet.Size()),
+		peerMaj23s:        make(map[string]BlockID),
 	}
 }
 
@@ -194,8 +196,14 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.VerifyWithExtension(voteSet.chainID, val.PubKey); err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+	if voteSet.requireExtensions || len(vote.ExtensionSignature) > 0 {
+		if err := vote.VerifyVoteAndExtension(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
+	} else {
+		if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
 	}
 
 	// Add vote and get conflicting vote if any.

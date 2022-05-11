@@ -498,6 +498,81 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 	}
 }
 
+// TestVoteSet_RequireExtensions tests that the vote set correctly validates
+// vote extensions data when either required or not required.
+func TestVoteSet_RequireExtensions(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		requireExtensions bool
+		addExtension      bool
+		exepectError      bool
+	}{
+		{
+			name:              "no extension but expected",
+			requireExtensions: true,
+			addExtension:      false,
+			exepectError:      true,
+		},
+		{
+			name:              "invalid extensions but not expected",
+			requireExtensions: true,
+			addExtension:      false,
+			exepectError:      true,
+		},
+		{
+			name:              "no extension and not expected",
+			requireExtensions: false,
+			addExtension:      false,
+			exepectError:      false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			height, round := int64(1), int32(0)
+			valSet, privValidators := randValidatorPrivValSet(ctx, t, 5, 10)
+			voteSet := NewVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet, tc.requireExtensions)
+
+			val0 := privValidators[0]
+
+			val0p, err := val0.GetPubKey(ctx)
+			require.NoError(t, err)
+			val0Addr := val0p.Address()
+			blockHash := crypto.CRandBytes(32)
+			blockPartsTotal := uint32(123)
+			blockPartSetHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
+
+			vote := &Vote{
+				ValidatorAddress: val0Addr,
+				ValidatorIndex:   0,
+				Height:           height,
+				Round:            round,
+				Type:             tmproto.PrecommitType,
+				Timestamp:        tmtime.Now(),
+				BlockID:          BlockID{blockHash, blockPartSetHeader},
+			}
+			v := vote.ToProto()
+			err = val0.SignVote(ctx, voteSet.ChainID(), v)
+			require.NoError(t, err)
+			vote.Signature = v.Signature
+
+			if tc.addExtension {
+				vote.ExtensionSignature = v.ExtensionSignature
+			}
+
+			added, err := voteSet.AddVote(vote)
+			if tc.exepectError {
+				require.Error(t, err)
+				require.False(t, added)
+			} else {
+				require.NoError(t, err)
+				require.True(t, added)
+			}
+		})
+	}
+}
+
 // NOTE: privValidators are in order
 func randVoteSet(
 	ctx context.Context,
@@ -510,7 +585,7 @@ func randVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, true), valSet, privValidators
 }
 
 func deterministicVoteSet(
@@ -523,7 +598,7 @@ func deterministicVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := deterministicValidatorSet(ctx, t)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, true), valSet, privValidators
 }
 
 func randValidatorPrivValSet(ctx context.Context, t testing.TB, numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
