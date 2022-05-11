@@ -39,15 +39,17 @@ func exposeMockPVKeys(pvs []types.PrivValidator, quorumHash crypto.QuorumHash) p
 // (should be enough for testing).
 func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.ValidatorSet {
 	res := make([]*types.Validator, len(pkz))
+
 	for i, k := range pkz {
-		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Sha256(k.PubKey().Address()))
+		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Checksum(k.PubKey().Address()))
 	}
+
 	// Quorum hash is pseudorandom
 	return types.NewValidatorSet(
 		res,
 		thresholdPublicKey,
 		btcjson.LLMQType_5_60,
-		crypto.Sha256(thresholdPublicKey.Bytes()),
+		crypto.Checksum(thresholdPublicKey.Bytes()),
 		true,
 	)
 }

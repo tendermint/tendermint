@@ -144,7 +144,8 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	state sm.State,
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
-	block := sf.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	abciResponses := &tmstate.ABCIResponses{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
@@ -178,7 +179,8 @@ func makeHeaderPartsResponsesValPowerChange(
 ) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block := sf.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 
 	abciResponses := &tmstate.ABCIResponses{}
 
@@ -212,7 +214,8 @@ func makeHeaderPartsResponsesParams(
 ) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block := sf.MakeBlock(t, state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		FinalizeBlock: &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams},

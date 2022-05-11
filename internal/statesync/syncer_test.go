@@ -43,13 +43,13 @@ func TestSyncer_SyncAny(t *testing.T) {
 		AppHash:         []byte("app_hash"),
 
 		LastValidators: &types.ValidatorSet{
-			Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val1"))},
+			Proposer: &types.Validator{ProTxHash: crypto.Checksum([]byte("val1"))},
 		},
 		Validators: &types.ValidatorSet{
-			Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val2"))},
+			Proposer: &types.Validator{ProTxHash: crypto.Checksum([]byte("val2"))},
 		},
 		NextValidators: &types.ValidatorSet{
-			Proposer: &types.Validator{ProTxHash: crypto.Sha256([]byte("val3"))},
+			Proposer: &types.Validator{ProTxHash: crypto.Checksum([]byte("val3"))},
 		},
 
 		ConsensusParams:                  *types.DefaultConsensusParams(),

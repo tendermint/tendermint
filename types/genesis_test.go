@@ -104,7 +104,7 @@ func TestBasicGenesisDoc(t *testing.T) {
 			"consensus_params": null,
 			"validators": [{
 				"pub_key":{"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},
-				"power":"100",
+				"power":100,
 				"name":"",
 				"pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
 			}],
@@ -171,7 +171,6 @@ func TestBasicGenesisDoc(t *testing.T) {
 		[]byte(`{"chain_id":"mychain"}`),                   // missing validators
 		[]byte(`{"chain_id":"mychain","validators":[]}`),   // missing validators
 		[]byte(`{"chain_id":"mychain","validators":null}`), // nil validator
-		[]byte(`{"chain_id":"mychain"}`),                   // missing validators
 	}
 
 	for _, tc := range missingValidatorsTestCases {

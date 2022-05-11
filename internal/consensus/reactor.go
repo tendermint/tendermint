@@ -166,10 +166,6 @@ func NewReactor(
 		close(r.readySignal)
 	}
 
-	if !r.waitSync {
-		close(r.readySignal)
-	}
-
 	return r
 }
 

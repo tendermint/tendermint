@@ -4,7 +4,6 @@ package types
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"math"
 	"math/rand"
@@ -260,9 +259,9 @@ func TestCopy(t *testing.T) {
 // Test that IncrementProposerPriority requires positive times.
 func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
-		NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("foo"))),
-		NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("bar"))),
-		NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("baz"))),
+		NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("foo"))),
+		NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("bar"))),
+		NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("baz"))),
 	}, bls12381.GenPrivKey().PubKey(), btcjson.LLMQType_5_60, crypto.RandQuorumHash(), true)
 
 	assert.Panics(t, func() { vset.IncrementProposerPriority(-1) })
@@ -290,9 +289,9 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 //-------------------------------------------------------------------
 
 func TestProposerSelection1(t *testing.T) {
-	fooProTxHash := crypto.ProTxHash(sha256Sum([]byte("foo")))
-	barProTxHash := crypto.ProTxHash(sha256Sum([]byte("bar")))
-	bazProTxHash := crypto.ProTxHash(sha256Sum([]byte("baz")))
+	fooProTxHash := crypto.ProTxHash(crypto.Checksum([]byte("foo")))
+	barProTxHash := crypto.ProTxHash(crypto.Checksum([]byte("bar")))
+	bazProTxHash := crypto.ProTxHash(crypto.Checksum([]byte("baz")))
 	vset := NewValidatorSet([]*Validator{
 		NewTestValidatorGeneratedFromProTxHash(fooProTxHash),
 		NewTestValidatorGeneratedFromProTxHash(barProTxHash),
@@ -349,10 +348,10 @@ func TestProposerSelection2(t *testing.T) {
 
 func TestProposerSelection3(t *testing.T) {
 	proTxHashes := make([]crypto.ProTxHash, 4)
-	proTxHashes[0] = sha256Sum([]byte("avalidator_address12"))
-	proTxHashes[1] = sha256Sum([]byte("bvalidator_address12"))
-	proTxHashes[2] = sha256Sum([]byte("cvalidator_address12"))
-	proTxHashes[3] = sha256Sum([]byte("dvalidator_address12"))
+	proTxHashes[0] = crypto.Checksum([]byte("avalidator_address12"))
+	proTxHashes[1] = crypto.Checksum([]byte("bvalidator_address12"))
+	proTxHashes[2] = crypto.Checksum([]byte("cvalidator_address12"))
+	proTxHashes[3] = crypto.Checksum([]byte("dvalidator_address12"))
 
 	vset, _ := GenerateValidatorSet(NewValSetParam(proTxHashes))
 
@@ -570,14 +569,14 @@ func TestEmptySet(t *testing.T) {
 	valSet.GetProposer()
 
 	// Add to empty set
-	proTxHashes := []crypto.ProTxHash{sha256Sum([]byte("v1")), sha256Sum([]byte("v2"))}
+	proTxHashes := []crypto.ProTxHash{crypto.Checksum([]byte("v1")), crypto.Checksum([]byte("v2"))}
 	valSetAdd, _ := GenerateValidatorSet(NewValSetParam(proTxHashes))
 	assert.NoError(t, valSet.UpdateWithChangeSet(valSetAdd.Validators, valSetAdd.ThresholdPublicKey, crypto.RandQuorumHash()))
 	verifyValidatorSet(t, valSet)
 
 	// Delete all validators from set
-	v1 := NewTestRemoveValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
-	v2 := NewTestRemoveValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
+	v1 := NewTestRemoveValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
+	v2 := NewTestRemoveValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
 	delList := []*Validator{v1, v2}
 	assert.Error(t, valSet.UpdateWithChangeSet(delList, bls12381.PubKey{}, crypto.RandQuorumHash()))
 
@@ -588,33 +587,33 @@ func TestEmptySet(t *testing.T) {
 
 func TestUpdatesForNewValidatorSet(t *testing.T) {
 
-	addresses12 := []crypto.Address{sha256Sum([]byte("v1")), sha256Sum([]byte("v2"))}
+	addresses12 := []crypto.Address{crypto.Checksum([]byte("v1")), crypto.Checksum([]byte("v2"))}
 
 	valSet, _ := GenerateValidatorSet(NewValSetParam(addresses12))
 	verifyValidatorSet(t, valSet)
 
 	// Verify duplicates are caught in NewValidatorSet() and it panics
-	v111 := NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
-	v112 := NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
-	v113 := NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
+	v111 := NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
+	v112 := NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
+	v113 := NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
 	valList := []*Validator{v111, v112, v113}
 	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}, true) })
 
 	// Verify set including validator with voting power 0 cannot be created
-	v1 := NewTestRemoveValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
-	v2 := NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v2")))
-	v3 := NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v3")))
+	v1 := NewTestRemoveValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
+	v2 := NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v2")))
+	v3 := NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v3")))
 	valList = []*Validator{v1, v2, v3}
 	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}, true) })
 
 	// Verify set including validator with negative voting power cannot be created
-	v1 = NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v1")))
+	v1 = NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v1")))
 	v2 = &Validator{
 		VotingPower:      -20,
 		ProposerPriority: 0,
-		ProTxHash:        sha256Sum([]byte("v2")),
+		ProTxHash:        crypto.Checksum([]byte("v2")),
 	}
-	v3 = NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte("v3")))
+	v3 = NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte("v3")))
 	valList = []*Validator{v1, v2, v3}
 	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}, true) })
 
@@ -645,7 +644,7 @@ func permutation(valList []testVal) []testVal {
 func createNewValidatorList(testValList []testVal) []*Validator {
 	valList := make([]*Validator, 0, len(testValList))
 	for _, val := range testValList {
-		valList = append(valList, NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte(val.name))))
+		valList = append(valList, NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte(val.name))))
 	}
 	sort.Sort(ValidatorsByProTxHashes(valList))
 	return valList
@@ -655,7 +654,7 @@ func createNewValidatorSet(testValList []testVal) *ValidatorSet {
 	opts := make([]ValSetParam, len(testValList))
 	for i, val := range testValList {
 		opts[i] = ValSetParam{
-			ProTxHash:   sha256Sum([]byte(val.name)),
+			ProTxHash:   crypto.Checksum([]byte(val.name)),
 			VotingPower: val.power,
 		}
 	}
@@ -670,18 +669,18 @@ func addValidatorsToValidatorSet(vals *ValidatorSet, testValList []testVal) ([]*
 	combinedProTxHashes := make([]ProTxHash, 0, len(testValList)+len(vals.Validators))
 	for _, val := range testValList {
 		if val.power != 0 {
-			valProTxHash := sha256Sum([]byte(val.name))
+			valProTxHash := crypto.Checksum([]byte(val.name))
 			_, value := vals.GetByProTxHash(valProTxHash)
 			if value == nil {
 				addedProTxHashes = append(addedProTxHashes, valProTxHash)
 			}
 		} else {
-			valProTxHash := sha256Sum([]byte(val.name))
+			valProTxHash := crypto.Checksum([]byte(val.name))
 			_, value := vals.GetByProTxHash(valProTxHash)
 			if value != nil {
 				removedProTxHashes = append(removedProTxHashes, valProTxHash)
 			}
-			removedVals = append(removedVals, NewTestRemoveValidatorGeneratedFromProTxHash(sha256Sum([]byte(val.name))))
+			removedVals = append(removedVals, NewTestRemoveValidatorGeneratedFromProTxHash(crypto.Checksum([]byte(val.name))))
 		}
 	}
 	originalProTxHashes := vals.GetProTxHashes()
@@ -754,7 +753,7 @@ func toTestProTxHashValList(valList []*Validator) []testProTxHashVal {
 func switchToTestProTxHashValList(valList []testVal) []testProTxHashVal {
 	testList := make([]testProTxHashVal, len(valList))
 	for i, val := range valList {
-		testList[i].proTxHash = sha256Sum([]byte(val.name))
+		testList[i].proTxHash = crypto.Checksum([]byte(val.name))
 		testList[i].power = val.power
 	}
 	return testList
@@ -1357,7 +1356,7 @@ func (tvals testValsByVotingPower) Len() int {
 //  from the name by applying a single SHA256
 func (tvals testValsByVotingPower) Less(i, j int) bool {
 	if tvals[i].power == tvals[j].power {
-		return bytes.Compare(sha256Sum([]byte(tvals[i].name)), sha256Sum([]byte(tvals[j].name))) == -1
+		return bytes.Compare(crypto.Checksum([]byte(tvals[i].name)), crypto.Checksum([]byte(tvals[j].name))) == -1
 	}
 	return tvals[i].power > tvals[j].power
 }
@@ -1377,7 +1376,7 @@ func BenchmarkUpdates(b *testing.B) {
 	// Init with n validators
 	proTxHashes0 := make([]crypto.ProTxHash, n)
 	for j := 0; j < n; j++ {
-		proTxHashes0[j] = sha256Sum([]byte(fmt.Sprintf("v%d", j)))
+		proTxHashes0[j] = crypto.Checksum([]byte(fmt.Sprintf("v%d", j)))
 	}
 	valSet, _ := GenerateValidatorSet(NewValSetParam(proTxHashes0))
 
@@ -1386,7 +1385,7 @@ func BenchmarkUpdates(b *testing.B) {
 	for j := 0; j < n+m; j++ {
 		proTxHashes1[j] = []byte(fmt.Sprintf("v%d", j))
 		if j >= n {
-			newValList[j-n] = NewTestValidatorGeneratedFromProTxHash(sha256Sum([]byte(fmt.Sprintf("v%d", j))))
+			newValList[j-n] = NewTestValidatorGeneratedFromProTxHash(crypto.Checksum([]byte(fmt.Sprintf("v%d", j))))
 		}
 	}
 	valSet2, _ := GenerateValidatorSet(NewValSetParam(proTxHashes1))
@@ -1426,9 +1425,4 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) { // nolint
 			}
 		})
 	}
-}
-
-func sha256Sum(b []byte) []byte {
-	h := sha256.Sum256(b)
-	return h[:]
 }

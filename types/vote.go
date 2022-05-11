@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -145,22 +144,14 @@ func VoteExtensionSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	return bz
 }
 
+// VoteExtensionSignID returns vote extension signature ID
+func VoteExtensionSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+	return makeSignID(VoteExtensionSignBytes(chainID, vote), vote, quorumType, quorumHash)
+}
+
 // VoteBlockSignID returns signID that should be signed for the block
 func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	blockSignBytes := VoteBlockSignBytes(chainID, vote)
-
-	blockMessageHash := sha256.Sum256(blockSignBytes)
-
-	blockRequestID := VoteBlockRequestIDProto(vote)
-
-	blockSignID := crypto.SignID(
-		quorumType,
-		tmbytes.Reverse(quorumHash),
-		tmbytes.Reverse(blockRequestID),
-		tmbytes.Reverse(blockMessageHash[:]),
-	)
-
-	return blockSignID
+	return makeSignID(VoteBlockSignBytes(chainID, vote), vote, quorumType, quorumHash)
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -228,11 +219,10 @@ func (vote *Vote) VerifyWithExtension(
 	}
 	// We only verify vote extension signatures for precommits.
 	if vote.Type == tmproto.PrecommitType {
-		extSignBytes := VoteExtensionSignBytes(chainID, v)
-		extSignDigest := sha256.Sum256(extSignBytes)
+		extSignID := VoteExtensionSignID(chainID, v, quorumType, quorumHash)
 		// TODO: Remove extension signature nil check to enforce vote extension
 		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		if vote.ExtensionSignature != nil && !pubKey.VerifySignatureDigest(extSignDigest[:], vote.ExtensionSignature) {
+		if vote.ExtensionSignature != nil && !pubKey.VerifySignatureDigest(extSignID, vote.ExtensionSignature) {
 			return nil, nil, ErrVoteInvalidSignature
 		}
 	}
@@ -256,7 +246,7 @@ func (vote *Vote) Verify(
 	v := vote.ToProto()
 	voteBlockSignBytes := VoteBlockSignBytes(chainID, v)
 
-	blockMessageHash := sha256.Sum256(voteBlockSignBytes)
+	blockMessageHash := crypto.Checksum(voteBlockSignBytes)
 
 	blockRequestID := VoteBlockRequestID(vote)
 
@@ -264,7 +254,7 @@ func (vote *Vote) Verify(
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(blockRequestID),
-		tmbytes.Reverse(blockMessageHash[:]),
+		tmbytes.Reverse(blockMessageHash),
 	)
 
 	// fmt.Printf("block vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
@@ -280,7 +270,7 @@ func (vote *Vote) Verify(
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
 		voteStateSignBytes := stateID.SignBytes(chainID)
-		stateMessageHash := sha256.Sum256(voteStateSignBytes)
+		stateMessageHash := crypto.Checksum(voteStateSignBytes)
 
 		stateRequestID := stateID.SignRequestID()
 
@@ -288,7 +278,7 @@ func (vote *Vote) Verify(
 			quorumType,
 			tmbytes.Reverse(quorumHash),
 			tmbytes.Reverse(stateRequestID),
-			tmbytes.Reverse(stateMessageHash[:]))
+			tmbytes.Reverse(stateMessageHash))
 
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
@@ -438,46 +428,31 @@ func (vote *Vote) HasVoteMessage() *tmcons.HasVote {
 	}
 }
 
-func VotesToProto(votes []*Vote) []*tmproto.Vote {
-	if votes == nil {
-		return nil
-	}
-
-	res := make([]*tmproto.Vote, 0, len(votes))
-	for _, vote := range votes {
-		v := vote.ToProto()
-		// protobuf crashes when serializing "repeated" fields with nil elements
-		if v != nil {
-			res = append(res, v)
-		}
-	}
-	return res
-}
-
 func VoteBlockRequestID(vote *Vote) []byte {
-	requestIDMessage := []byte("dpbvote")
-	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
-
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-	requestIDMessage = append(requestIDMessage, roundByteArray...)
-
-	hash := sha256.Sum256(requestIDMessage)
-	return hash[:]
+	return voteHeightRoundRequestID(vote.Height, vote.Round)
 }
 
 func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
-	requestIDMessage := []byte("dpbvote")
-	heightByteArray := make([]byte, 8)
-	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
-	roundByteArray := make([]byte, 4)
-	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+	return voteHeightRoundRequestID(vote.Height, vote.Round)
+}
 
-	requestIDMessage = append(requestIDMessage, heightByteArray...)
-	requestIDMessage = append(requestIDMessage, roundByteArray...)
+func voteHeightRoundRequestID(height int64, round int32) []byte {
+	reqID := []byte("dpevote")
+	heightBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightBytes, uint64(height))
+	roundBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundBytes, uint32(round))
+	reqID = append(reqID, append(reqID, roundBytes...)...)
+	return crypto.Checksum(reqID)
+}
 
-	hash := sha256.Sum256(requestIDMessage)
-	return hash[:]
+func makeSignID(signBytes []byte, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+	msgHash := crypto.Checksum(signBytes)
+	reqID := voteHeightRoundRequestID(vote.Height, vote.Round)
+	return crypto.SignID(
+		quorumType,
+		tmbytes.Reverse(quorumHash),
+		tmbytes.Reverse(reqID),
+		tmbytes.Reverse(msgHash),
+	)
 }

@@ -61,11 +61,9 @@ func (g *GenesisValidator) UnmarshalJSON(data []byte) error {
 	if err := jsontypes.Unmarshal(gv.PubKey, &g.PubKey); err != nil {
 		return err
 	}
-	if err := jsontypes.Unmarshal(gv.ProTxHash, &g.ProTxHash); err != nil {
-		return err
-	}
 	g.Power = gv.Power
 	g.Name = gv.Name
+	g.ProTxHash = gv.ProTxHash
 	return nil
 }
 
@@ -85,6 +83,67 @@ type GenesisDoc struct {
 	ThresholdPublicKey           crypto.PubKey          `json:"threshold_public_key"`
 	QuorumType                   btcjson.LLMQType       `json:"quorum_type"`
 	QuorumHash                   crypto.QuorumHash      `json:"quorum_hash"`
+}
+
+type genesisDocJSON struct {
+	GenesisTime     time.Time          `json:"genesis_time"`
+	ChainID         string             `json:"chain_id"`
+	InitialHeight   int64              `json:"initial_height,string"`
+	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
+	Validators      []GenesisValidator `json:"validators,omitempty"`
+	AppHash         tmbytes.HexBytes   `json:"app_hash"`
+	AppState        json.RawMessage    `json:"app_state,omitempty"`
+
+	// dash fields
+	InitialCoreChainLockedHeight uint32                 `json:"initial_core_chain_locked_height"`
+	InitialProposalCoreChainLock *tmproto.CoreChainLock `json:"initial_proposal_core_chain_lock"`
+	ThresholdPublicKey           json.RawMessage        `json:"threshold_public_key"`
+	QuorumType                   btcjson.LLMQType       `json:"quorum_type"`
+	QuorumHash                   crypto.QuorumHash      `json:"quorum_hash"`
+}
+
+func (genDoc GenesisDoc) MarshalJSON() ([]byte, error) {
+	tpk, err := jsontypes.Marshal(genDoc.ThresholdPublicKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(genesisDocJSON{
+		GenesisTime:     genDoc.GenesisTime,
+		ChainID:         genDoc.ChainID,
+		InitialHeight:   genDoc.InitialHeight,
+		ConsensusParams: genDoc.ConsensusParams,
+		Validators:      genDoc.Validators,
+		AppHash:         genDoc.AppHash,
+		AppState:        genDoc.AppState,
+
+		InitialCoreChainLockedHeight: genDoc.InitialCoreChainLockedHeight,
+		InitialProposalCoreChainLock: genDoc.InitialProposalCoreChainLock,
+		ThresholdPublicKey:           tpk,
+		QuorumType:                   genDoc.QuorumType,
+		QuorumHash:                   genDoc.QuorumHash,
+	})
+}
+
+func (genDoc *GenesisDoc) UnmarshalJSON(data []byte) error {
+	var g genesisDocJSON
+	if err := json.Unmarshal(data, &g); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(g.ThresholdPublicKey, &genDoc.ThresholdPublicKey); err != nil {
+		return err
+	}
+	genDoc.GenesisTime = g.GenesisTime
+	genDoc.ChainID = g.ChainID
+	genDoc.InitialHeight = g.InitialHeight
+	genDoc.ConsensusParams = g.ConsensusParams
+	genDoc.Validators = g.Validators
+	genDoc.AppHash = g.AppHash
+	genDoc.AppState = g.AppState
+	genDoc.InitialCoreChainLockedHeight = g.InitialCoreChainLockedHeight
+	genDoc.InitialProposalCoreChainLock = g.InitialProposalCoreChainLock
+	genDoc.QuorumType = g.QuorumType
+	genDoc.QuorumHash = g.QuorumHash
+	return nil
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
@@ -141,6 +200,8 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return err
 	}
 
+	lenVals := len(genDoc.Validators)
+
 	for _, v := range genDoc.Validators {
 		if v.Power == 0 {
 			return fmt.Errorf("the genesis file cannot contain validators with no voting power: %v", v)
@@ -150,14 +211,14 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		}
 	}
 
-	if genDoc.Validators != nil && genDoc.ThresholdPublicKey == nil {
+	if lenVals > 0 && genDoc.ThresholdPublicKey == nil {
 		return fmt.Errorf("the threshold public key must be set if there are validators (%d Validator(s))",
 			len(genDoc.Validators))
 	}
-	if genDoc.Validators != nil && len(genDoc.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
+	if lenVals > 0 && len(genDoc.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
 		return fmt.Errorf("the threshold public key must be 48 bytes for BLS")
 	}
-	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) < crypto.SmallAppHashSize {
+	if lenVals > 0 && len(genDoc.QuorumHash.Bytes()) < crypto.SmallAppHashSize {
 		return fmt.Errorf("the quorum hash must be at least %d bytes long (%d Validator(s))",
 			crypto.SmallAppHashSize,
 			len(genDoc.Validators))

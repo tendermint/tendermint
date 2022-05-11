@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 
@@ -43,9 +44,9 @@ func MakeBlocks(ctx context.Context, t *testing.T, n int, state *sm.State, privV
 	return blocks
 }
 
-func MakeBlock(t require.TestingT, state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock, proposedAppVersion uint64) *types.Block {
+func MakeBlock(state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock, proposedAppVersion uint64) (*types.Block, error) {
 	if state.LastBlockHeight != (height - 1) {
-		t.Errorf("requested height %d should be 1 more than last block height %d", height, state.LastBlockHeight)
+		return nil, fmt.Errorf("requested height %d should be 1 more than last block height %d", height, state.LastBlockHeight)
 	}
 	return state.MakeBlock(
 		height,
@@ -55,7 +56,7 @@ func MakeBlock(t require.TestingT, state sm.State, height int64, c *types.Commit
 		nil,
 		state.Validators.GetProposer().ProTxHash,
 		proposedAppVersion,
-	)
+	), nil
 }
 
 func makeBlockAndPartSet(

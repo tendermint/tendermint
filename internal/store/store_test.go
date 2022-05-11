@@ -99,7 +99,17 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-
+	block, err := factory.MakeBlock(state, 1, new(types.Commit), nil, 0)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	partSet, err = block.MakePartSet(2)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+	part1 = partSet.GetPart(0)
+	part2 = partSet.GetPart(1)
+	seenCommit1 = makeTestCommit(10, tmtime.Now())
 	code := m.Run()
 	cleanup()
 	os.RemoveAll(dir) // best-effort
@@ -123,7 +133,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// save a block
-	block := factory.MakeBlock(t, state, bs.Height()+1, new(types.Commit), nil, 0)
+	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
 	validPartSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())
@@ -328,7 +338,8 @@ func TestLoadBaseMeta(t *testing.T) {
 
 	for h := int64(1); h <= 10; h++ {
 		state.LastBlockHeight = h - 1
-		block := factory.MakeBlock(t, state, h, new(types.Commit), nil, 0)
+		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
@@ -396,7 +407,8 @@ func TestPruneBlocks(t *testing.T) {
 	// make more than 1000 blocks, to test batch deletions
 	for h := int64(1); h <= 1500; h++ {
 		state.LastBlockHeight = h - 1
-		block := factory.MakeBlock(t, state, h, new(types.Commit), nil, 0)
+		block, err := factory.MakeBlock(state, h, new(types.Commit), nil, 0)
+		require.NoError(t, err)
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())
@@ -503,7 +515,8 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	defer cleanup()
 	require.NoError(t, err)
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
-	block := factory.MakeBlock(t, state, bs.Height()+1, new(types.Commit), nil, 0)
+	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
@@ -546,7 +559,8 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	for h := int64(3); h <= 5; h++ {
 		state.LastBlockHeight = h - 1
 		blockCommit := makeTestCommit(h-1, tmtime.Now())
-		block := factory.MakeBlock(t, state, h, blockCommit, nil, 0)
+		block, err := factory.MakeBlock(state, h, blockCommit, nil, 0)
+		require.NoError(t, err)
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestCommit(h, tmtime.Now())

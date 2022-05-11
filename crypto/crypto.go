@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -117,9 +118,50 @@ func (sptxh SortProTxHash) Swap(i, j int) {
 }
 
 type QuorumKeys struct {
-	PrivKey            PrivKey `json:"priv_key"`
-	PubKey             PubKey  `json:"pub_key"`
-	ThresholdPublicKey PubKey  `json:"threshold_public_key"`
+	PrivKey            PrivKey
+	PubKey             PubKey
+	ThresholdPublicKey PubKey
+}
+
+type quorumKeysJSON struct {
+	PrivKey            json.RawMessage `json:"priv_key"`
+	PubKey             json.RawMessage `json:"pub_key"`
+	ThresholdPublicKey json.RawMessage `json:"threshold_public_key"`
+}
+
+func (pvKey QuorumKeys) MarshalJSON() ([]byte, error) {
+	var keys quorumKeysJSON
+	var err error
+	keys.PrivKey, err = jsontypes.Marshal(pvKey.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	keys.PubKey, err = jsontypes.Marshal(pvKey.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	keys.ThresholdPublicKey, err = jsontypes.Marshal(pvKey.ThresholdPublicKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(keys)
+}
+
+func (pvKey *QuorumKeys) UnmarshalJSON(data []byte) error {
+	var keys quorumKeysJSON
+	err := json.Unmarshal(data, &keys)
+	if err != nil {
+		return err
+	}
+	err = jsontypes.Unmarshal(keys.PrivKey, &pvKey.PrivKey)
+	if err != nil {
+		return err
+	}
+	err = jsontypes.Unmarshal(keys.PubKey, &pvKey.PubKey)
+	if err != nil {
+		return err
+	}
+	return jsontypes.Unmarshal(keys.ThresholdPublicKey, &pvKey.ThresholdPublicKey)
 }
 
 // Validator is a validator interface

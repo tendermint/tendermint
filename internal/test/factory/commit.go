@@ -18,7 +18,7 @@ func MakeCommit(
 ) (*types.Commit, error) {
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		proTxHash, err := validators[i].GetProTxHash(context.Background())
+		proTxHash, err := validators[i].GetProTxHash(ctx)
 		if err != nil {
 			return nil, err
 		}

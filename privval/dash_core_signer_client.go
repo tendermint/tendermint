@@ -3,7 +3,6 @@ package privval
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -233,10 +232,10 @@ func (sc *DashCoreSignerClient) SignVote(
 	}
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, protoVote)
-	blockMessageHash := sha256.Sum256(blockSignBytes)
+	blockMessageHash := crypto.Checksum(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
-	blockResponse, err := sc.dashCoreRPCClient.QuorumSign(quorumType, blockRequestID, blockMessageHash[:], quorumHash)
+	blockResponse, err := sc.dashCoreRPCClient.QuorumSign(quorumType, blockRequestID, blockMessageHash, quorumHash)
 
 	if err != nil {
 		return &RemoteSignerError{Code: 500, Description: err.Error()}
@@ -291,11 +290,11 @@ func (sc *DashCoreSignerClient) SignVote(
 	// Only sign the state when voting for the block
 	if protoVote.BlockID.Hash != nil {
 		stateSignBytes := stateID.SignBytes(chainID)
-		stateMessageHash := sha256.Sum256(stateSignBytes)
+		stateMessageHash := crypto.Checksum(stateSignBytes)
 		stateRequestID := stateID.SignRequestID()
 
 		stateResponse, err := sc.dashCoreRPCClient.QuorumSign(
-			sc.defaultQuorumType, stateRequestID, stateMessageHash[:], quorumHash)
+			sc.defaultQuorumType, stateRequestID, stateMessageHash, quorumHash)
 
 		if err != nil {
 			return &RemoteSignerError{Code: 500, Description: err.Error()}
@@ -344,7 +343,7 @@ func (sc *DashCoreSignerClient) SignProposal(
 ) ([]byte, error) {
 	messageBytes := types.ProposalBlockSignBytes(chainID, proposalProto)
 
-	messageHash := sha256.Sum256(messageBytes)
+	messageHash := crypto.Checksum(messageBytes)
 
 	requestIDHash := types.ProposalRequestIDProto(proposalProto)
 
@@ -352,7 +351,7 @@ func (sc *DashCoreSignerClient) SignProposal(
 		return nil, fmt.Errorf("error signing proposal with invalid quorum type")
 	}
 
-	response, err := sc.dashCoreRPCClient.QuorumSign(quorumType, requestIDHash, messageHash[:], quorumHash)
+	response, err := sc.dashCoreRPCClient.QuorumSign(quorumType, requestIDHash, messageHash, quorumHash)
 
 	if err != nil {
 		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}

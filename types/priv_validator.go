@@ -260,7 +260,6 @@ func (pv *MockPV) SignVote(
 	}
 
 	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
-	extSignID := VoteExtensionSignBytes(useChainID, vote)
 
 	privKey := pv.getPrivateKey(quorumHash)
 
@@ -286,6 +285,7 @@ func (pv *MockPV) SignVote(
 	var extSig []byte
 	// We only sign vote extensions for precommits
 	if vote.Type == tmproto.PrecommitType {
+		extSignID := VoteExtensionSignID(useChainID, vote, quorumType, quorumHash)
 		extSig, err = privKey.SignDigest(extSignID)
 		if err != nil {
 			return err

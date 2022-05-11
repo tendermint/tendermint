@@ -377,12 +377,11 @@ func MakeBlock(height int64, coreHeight uint32, coreChainLock *CoreChainLock, tx
 // - https://github.com/tendermint/tendermint/blob/master/spec/core/data_structures.md
 type Header struct {
 	// basic block info
-	Version version.Consensus `json:"version"`
-	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height,string"`
-	Time    time.Time         `json:"time"`
-
-	CoreChainLockedHeight uint32 `json:"core_chain_locked_height"`
+	Version               version.Consensus `json:"version"`
+	ChainID               string            `json:"chain_id"`
+	Height                int64             `json:"height,string"`
+	CoreChainLockedHeight uint32            `json:"core_chain_locked_height"`
+	Time                  time.Time         `json:"time"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`

@@ -123,31 +123,8 @@ type ApplicationInfo struct {
 
 // Info about the node's validator
 type ValidatorInfo struct {
-	ProTxHash   crypto.ProTxHash
-	VotingPower int64
-}
-
-type validatorInfoJSON struct {
 	ProTxHash   crypto.ProTxHash `json:"pro_tx_hash"`
-	VotingPower int64            `json:"voting_power,string"`
-}
-
-func (v ValidatorInfo) MarshalJSON() ([]byte, error) {
-	return json.Marshal(validatorInfoJSON{
-		ProTxHash: v.ProTxHash, VotingPower: v.VotingPower,
-	})
-}
-
-func (v *ValidatorInfo) UnmarshalJSON(data []byte) error {
-	var val validatorInfoJSON
-	if err := json.Unmarshal(data, &val); err != nil {
-		return err
-	}
-	if err := jsontypes.Unmarshal(val.ProTxHash, &v.ProTxHash); err != nil {
-		return err
-	}
-	v.VotingPower = val.VotingPower
-	return nil
+	VotingPower int64            `json:"voting_power"`
 }
 
 // Node Status
