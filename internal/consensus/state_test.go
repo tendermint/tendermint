@@ -2266,6 +2266,87 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	}
 }
 
+func TestVerifyVoteExtensionCalled(t *testing.T) {
+	for _, testCase := range []struct {
+		name                 string
+		hasExtension         bool
+		initialRequireHeight int64
+	}{
+		{
+			name:         "called when extension present",
+			hasExtension: true,
+		},
+		{
+			name:         "not called when extension absent",
+			hasExtension: false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			config := configSetup(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			numValidators := 3
+			m := abcimocks.NewApplication(t)
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{
+				Status: abci.ResponseProcessProposal_ACCEPT,
+			}, nil)
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{}, nil)
+			if testCase.hasExtension {
+				m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
+					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+				}, nil).Times(numValidators)
+			}
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+			l := log.NewTestingLogger(t)
+			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m, logger: l, validators: numValidators})
+			height, round := cs1.Height, cs1.Round
+
+			proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
+			newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
+			pv1, err := cs1.privValidator.GetPubKey(ctx)
+			require.NoError(t, err)
+			addr := pv1.Address()
+			voteCh := subscribeToVoter(ctx, t, cs1, addr)
+
+			startTestRound(ctx, cs1, cs1.Height, round)
+			ensureNewRound(t, newRoundCh, height, round)
+			ensureNewProposal(t, proposalCh, height, round)
+			rs := cs1.GetRoundState()
+
+			blockID := types.BlockID{
+				Hash:          rs.ProposalBlock.Hash(),
+				PartSetHeader: rs.ProposalBlockParts.Header(),
+			}
+
+			// sign all of the votes
+			signAddVotes(ctx, t, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vss[1:]...)
+			ensurePrevoteMatch(t, voteCh, height, round, rs.ProposalBlock.Hash())
+
+			var ext []byte
+			if testCase.hasExtension {
+				ext = []byte("extension")
+			}
+			// sign all of the precommits
+			for _, vs := range vss[1:] {
+				vote, err := vs.signVote(ctx, tmproto.PrecommitType, config.ChainID(), blockID, ext)
+				if !testCase.hasExtension {
+					vote.ExtensionSignature = nil
+				}
+				require.NoError(t, err)
+				addVotes(cs1, vote)
+			}
+			ensurePrecommit(t, voteCh, height, round)
+
+			height++
+			ensureNewRound(t, newRoundCh, height, round)
+			m.AssertExpectations(t)
+		})
+	}
+}
+
 // 4 vals, 3 Nil Precommits at P0
 // What we want:
 // P0 waits for timeoutPrecommit before starting next round

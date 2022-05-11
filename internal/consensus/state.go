@@ -2308,6 +2308,7 @@ func (cs *State) addVote(
 			return
 		}
 
+		// late votes still _must_ have extensions.
 		added, err = cs.LastCommit.AddVote(vote)
 		if !added {
 			return
@@ -2339,11 +2340,31 @@ func (cs *State) addVote(
 
 	// Verify VoteExtension if precommit and not nil
 	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
-		err := cs.blockExec.VerifyVoteExtension(ctx, vote)
-		cs.metrics.MarkVoteExtensionReceived(err == nil)
-		if err != nil {
-			return false, err
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
+		!bytes.Equal(vote.ValidatorAddress, cs.privValidatorPubKey.Address()) {
+		// The core fields of the vote message were already validated in the
+		// consensus reactor when the vote was received.
+		// Here, we valdiate that the vote extension was included in the vote
+		// message.
+		// Chains that are not configured to require vote extensions
+		// will consider the vote valid even if the extension is absent.
+		// VerifyVoteExtension will not be called in this case if the extension
+		// is absent.
+		err := vote.ValidateExtension()
+		if err == nil {
+			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
+			err = vote.VerifyWithExtension(cs.state.ChainID, val.PubKey)
+		}
+		if err == nil {
+			err := cs.blockExec.VerifyVoteExtension(ctx, vote)
+			cs.metrics.MarkVoteExtensionReceived(err == nil)
+		} else {
+			if !errors.Is(err, types.ErrVoteExtensionAbsent) {
+				return false, err
+			}
+			if cs.requireVoteExtension() {
+				return false, err
+			}
 		}
 	}
 
@@ -2739,6 +2760,14 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}
+}
+
+func (cs *State) requireVoteExtension() bool {
+	requireHeight := cs.state.ConsensusParams.Vote.ExtensionRequireHeight
+	if requireHeight < cs.Height {
+		return false
+	}
+	return true
 }
 
 // proposerWaitTime determines how long the proposer should wait to propose its next block.

@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -102,13 +103,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 	commit := lastExtCommit.StripExtensions()
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
-
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight),
+			LocalLastCommit:     buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight, state.ConsensusParams.Vote.ExtensionRequireHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
@@ -321,7 +321,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 	}
 
 	if !resp.IsOK() {
-		return types.ErrVoteInvalidExtension
+		return errors.New("invalid vote extension")
 	}
 
 	return nil
@@ -428,7 +428,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 // data, it returns an empty record.
 //
 // Assumes that the commit signatures are sorted according to validator index.
-func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64) abci.ExtendedCommitInfo {
+func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight, extensionRequireHeight int64) abci.ExtendedCommitInfo {
 	if ec.Height < initialHeight {
 		// There are no extended commits for heights below the initial height.
 		return abci.ExtendedCommitInfo{}
@@ -469,6 +469,10 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
 			// We only care about vote extensions if a validator has voted to
 			// commit.
+			if ecs.Extension == nil && ecs.ExtensionSignature == nil && ec.Height > extensionRequireHeight {
+				// TODO: this error is akward, make it better
+				panic(fmt.Errorf("commit received with missing vote extension data"))
+			}
 			ext = ecs.Extension
 		}
 

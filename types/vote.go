@@ -27,7 +27,7 @@ var (
 	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
 	ErrVoteNil                       = errors.New("nil vote")
-	ErrVoteInvalidExtension          = errors.New("invalid vote extension")
+	ErrVoteExtensionAbsent           = errors.New("vote extensions absent")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -317,16 +317,24 @@ func (vote *Vote) ValidateWithExtension() error {
 		return err
 	}
 
+	if err := vote.ValidateExtension(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//
+func (vote *Vote) ValidateExtension() error {
 	// We should always see vote extension signatures in non-nil precommits
 	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
 		if len(vote.ExtensionSignature) == 0 {
-			return errors.New("vote extension signature is missing")
+			return ErrVoteExtensionAbsent
 		}
 		if len(vote.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
 	}
-
 	return nil
 }
 
