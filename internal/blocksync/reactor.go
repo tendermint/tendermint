@@ -553,9 +553,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				// // first.Hash() doesn't verify the tx contents, so MakePartSet() is
 				// // currently necessary.
 				// err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
-
-				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
-
+				r.lastTrustedBlock.block = newBlock
+				r.lastTrustedBlock.commit = verifyBlock.LastCommit
 			} else {
 				// we need to load the last block we trusted
 				if r.initialState.LastBlockHeight != 0 {
@@ -581,8 +580,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					continue // was return previously
 				}
 
-				r.lastTrustedBlock.block = newBlock
-				// r.lastTrustedBlock.commit
+				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
 			}
 			var err error
 			// validate the block before we persist it
