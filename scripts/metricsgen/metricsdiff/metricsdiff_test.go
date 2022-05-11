@@ -15,7 +15,7 @@ func TestDiff(t *testing.T) {
 		aContents string
 		bContents string
 
-		want metricsdiff.MetricsDiff
+		want metricsdiff.Diff
 	}{
 		{
 			name: "labels",
@@ -25,7 +25,7 @@ func TestDiff(t *testing.T) {
 			bContents: `
 			metric_one{label_three="content", label_four="content"} 0
 			`,
-			want: metricsdiff.MetricsDiff{
+			want: metricsdiff.Diff{
 				LabelDiffs: []metricsdiff.LabelDiff{
 					{
 						MetricsName: "metric_one",
@@ -43,7 +43,7 @@ func TestDiff(t *testing.T) {
 			bContents: `
 			metric_two{label_two="content"} 0
 			`,
-			want: metricsdiff.MetricsDiff{
+			want: metricsdiff.Diff{
 				Adds:    []string{"metric_two"},
 				Removes: []string{"metric_one"},
 			},

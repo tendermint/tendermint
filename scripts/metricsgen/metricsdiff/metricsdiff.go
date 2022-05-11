@@ -68,18 +68,18 @@ func main() {
 
 // MetricsDiffFromReaders parses the metrics present in the readers a and b and
 // determines which metrics were added and removed in b.
-func MetricsDiffFromReaders(a, b io.Reader) (MetricsDiff, error) {
+func MetricsDiffFromReaders(a, b io.Reader) (Diff, error) {
 	parser := expfmt.TextParser{}
 	amf, err := parser.TextToMetricFamilies(a)
 	if err != nil {
-		return MetricsDiff{}, err
+		return Diff{}, err
 	}
 	bmf, err := parser.TextToMetricFamilies(b)
 	if err != nil {
-		return MetricsDiff{}, err
+		return Diff{}, err
 	}
 
-	md := MetricsDiff{}
+	md := Diff{}
 	for name, afamily := range amf {
 		bfamily, ok := bmf[name]
 		if !ok {
@@ -127,7 +127,7 @@ func toSet(lps []*dto.LabelPair) map[string]struct{} {
 	return m
 }
 
-func (m MetricsDiff) String() string {
+func (m Diff) String() string {
 	var s string
 	if len(m.Adds) > 0 {
 		s += "Adds: \n"
