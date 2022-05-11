@@ -53,11 +53,11 @@ func main() {
 	}
 	fa, err := os.Open(os.Args[1])
 	if err != nil {
-		log.Fatalf("Unable to open file %s: %v", os.Args[1], err)
+		log.Fatalf("Open: %v", err)
 	}
 	fb, err := os.Open(os.Args[2])
 	if err != nil {
-		log.Fatalf("Unable to open file %s: %v", os.Args[2], err)
+		log.Fatalf("Open: %v", err)
 	}
 	md, err := DiffFromReaders(fa, fb)
 	if err != nil {
