@@ -77,7 +77,7 @@ type Reactor struct {
 	stateStore sm.Store
 
 	blockExec   *sm.BlockExecutor
-	store       sm.BlockStore
+	store       store.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
 	blockSync   *atomicBool
@@ -113,7 +113,7 @@ func NewReactor(
 		logger:      logger,
 		stateStore:  stateStore,
 		blockExec:   blockExec,
-		store:       store,
+		store:       *store,
 		consReactor: consReactor,
 		blockSync:   newAtomicBool(blockSync),
 		chCreator:   channelCreator,
@@ -193,15 +193,15 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 		if extCommit == nil {
 			return fmt.Errorf("found block in store without extended commit: %v", block)
 		}
-		blockProto, err := block.ToProto()
-		if err != nil {
-			return fmt.Errorf("failed to convert block to protobuf: %w", err)
-		}
+		// blockProto, err := block.ToProto()
+		// if err != nil {
+		// 	return fmt.Errorf("failed to convert block to protobuf: %w", err)
+		// }
 
 		return blockSyncCh.Send(ctx, p2p.Envelope{
 			To: peerID,
 			Message: &bcproto.BlockResponse{
-				Block:     blockProto,
+				Block:     block,
 				ExtCommit: extCommit.ToProto(),
 			},
 		})
@@ -522,7 +522,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			if newBlock == nil || verifyBlock == nil || extCommit == nil {
 				if newBlock != nil && extCommit == nil {
 					// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
-					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
+					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", newBlock.Height))
 				}
 				// we need all to sync the first block
 
