@@ -45,10 +45,6 @@ module.exports = {
           title: 'Resources',
           children: [
             {
-              title: 'Developer Sessions',
-              path: '/DEV_SESSIONS.html'
-            },
-            {
               // TODO(creachadair): Figure out how to make this per-branch.
               // See: https://github.com/tendermint/tendermint/issues/7908
               title: 'RPC',
