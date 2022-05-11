@@ -2,14 +2,12 @@ package quorum
 
 import (
 	"context"
-	"github.com/tendermint/tendermint/internal/eventbus"
-	"github.com/tendermint/tendermint/internal/mempool/mocks"
-	"github.com/tendermint/tendermint/internal/pubsub"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	testifymock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -18,8 +16,11 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/dash/quorum/mock"
 	"github.com/tendermint/tendermint/dash/quorum/selectpeers"
+	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -341,7 +342,7 @@ func TestValidatorConnExecutor_ValidatorUpdatesSequence(t *testing.T) {
 
 // TestEndBlock verifies if ValidatorConnExecutor is called correctly during processing of EndBlock
 // message from the ABCI app.
-func TestEndBlock(t *testing.T) {
+func TestFinalizeBlock(t *testing.T) {
 	const timeout = 3 * time.Second // how long we'll wait for connection
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -364,11 +365,23 @@ func TestEndBlock(t *testing.T) {
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
+	mp := mocks.NewMempool(t)
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", testifymock.Anything).Return(nil)
+	mp.On("Update",
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything).Return(nil)
+
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger,
 		proxyApp,
-		&mocks.Mempool{},
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -652,35 +665,34 @@ func newTestApp() *testApp {
 
 var _ abci.Application = (*testApp)(nil)
 
-func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
-	return abci.ResponseInfo{}
+func (app *testApp) Info(context.Context, *abci.RequestInfo) (*abci.ResponseInfo, error) {
+	return &abci.ResponseInfo{}, nil
 }
 
-func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.ByzantineValidators = req.ByzantineValidators
-	return abci.ResponseBeginBlock{}
-}
-
-func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return abci.ResponseEndBlock{
+	var txs []*abci.ExecTxResult
+	for _, tx := range req.Txs {
+		txs = append(txs, &abci.ExecTxResult{Data: tx})
+	}
+	return &abci.ResponseFinalizeBlock{
+		Events:             []abci.Event{},
+		TxResults:          txs,
 		ValidatorSetUpdate: app.ValidatorSetUpdates[req.Height],
 		ConsensusParamUpdates: &tmproto.ConsensusParams{
-			Version: &tmproto.VersionParams{
-				AppVersion: 1}}}
+			Version: &tmproto.VersionParams{AppVersion: 1},
+		},
+	}, nil
 }
 
-func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Events: []abci.Event{}}
+func (app *testApp) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+	return &abci.ResponseCheckTx{Code: abci.CodeTypeOK}, nil
 }
 
-func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
-	return abci.ResponseCheckTx{}
+func (app *testApp) Commit(_ context.Context) (*abci.ResponseCommit, error) {
+	return &abci.ResponseCommit{RetainHeight: 1}, nil
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{RetainHeight: 1}
-}
-
-func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
-	return
+func (app *testApp) Query(_ context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
+	return &abci.ResponseQuery{}, nil
 }

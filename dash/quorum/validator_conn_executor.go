@@ -80,6 +80,7 @@ func NewValidatorConnExecutor(
 	opts ...optionFunc,
 ) (*ValidatorConnExecutor, error) {
 	vc := &ValidatorConnExecutor{
+		logger:              log.NewNopLogger(),
 		proTxHash:           proTxHash,
 		eventBus:            eventBus,
 		dialer:              connMgr,
