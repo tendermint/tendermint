@@ -19,9 +19,10 @@ func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `Usage: %[1]s <path> <path>
 
-Generate the diff between the sets of prometheus metrics peresent in the two files
-in the <path> files. The tool outputs which metrics have been added, removed, or
-use different label sets between the two files.
+Generate the diff between the two files of Prometheus metrics.
+The input should have the format output by a Prometheus HTTP endpoint.
+The tool indicates which metrics have been added, removed, or use different
+label sets from path1 to path2.
 
 `, filepath.Base(os.Args[0]))
 		flag.PrintDefaults()
