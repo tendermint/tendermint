@@ -556,8 +556,7 @@ type bpRequester struct {
 
 	mtx    sync.Mutex
 	peerID types.NodeID
-	block  *types.Block //*types.Block
-
+	block  *types.Block
 }
 
 func newBPRequester(logger log.Logger, pool *BlockPool, height int64) *bpRequester {
