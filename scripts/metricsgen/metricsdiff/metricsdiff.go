@@ -168,14 +168,15 @@ func (m metricsList) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 
 func (m Diff) String() string {
 	var s strings.Builder
+	if len(m.Adds) > 0 || len(m.Removes) > 0 {
+		fmt.Fprintln(&s, "Metric changes:")
+	}
 	if len(m.Adds) > 0 {
-		fmt.Fprintln(&s, "Adds:")
 		for _, add := range m.Adds {
 			fmt.Fprintf(&s, "+++ %s\n", add)
 		}
 	}
 	if len(m.Removes) > 0 {
-		fmt.Fprintln(&s, "Removes:")
 		for _, rem := range m.Removes {
 			fmt.Fprintf(&s, "--- %s\n", rem)
 		}
@@ -183,7 +184,7 @@ func (m Diff) String() string {
 	if len(m.Changes) > 0 {
 		fmt.Fprintln(&s, "Label changes:")
 		for _, ld := range m.Changes {
-			fmt.Fprintf(&s, "Label: %s\n", ld.Metric)
+			fmt.Fprintf(&s, "Metric: %s\n", ld.Metric)
 			for _, add := range ld.Adds {
 				fmt.Fprintf(&s, "+++ %s\n", add)
 			}
