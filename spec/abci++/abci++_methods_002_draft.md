@@ -289,7 +289,7 @@ title: Methods
     |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|
     | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 1            |
     | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 2            |
-    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 3            |
+    | local_last_commit       | [Info](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 3            |
     | byzantine_validators    | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                                           | 4            |
     | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 5            |
     | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 6            |

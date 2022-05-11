@@ -175,6 +175,7 @@ func (rts *reactorTestSuite) addMultipleNodes(
 			commitSigs := make([]types.CommitSig, len(privValArray))
 			votes := make([]types.Vote, len(privValArray))
 			for i, val := range privValArray {
+
 				vote, err := factory.MakeVote(
 					ctx,
 					val,
@@ -186,6 +187,7 @@ func (rts *reactorTestSuite) addMultipleNodes(
 				require.NoError(t, err)
 				votes[i] = *vote
 				commitSigs[i] = vote.CommitSig()
+
 			}
 			lastCommit = types.NewCommit(
 				votes[0].Height,
@@ -420,7 +422,7 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(101)
 
-	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 50, 4, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 2, 0}) //50, 4, 0})
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(ctx, t)
 
@@ -442,7 +444,7 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 			}
 			return matching
 		},
-		20*time.Second,
+		10*time.Second,
 		10*time.Millisecond,
 		"expected node to be partially synced",
 	)
