@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	ctest "github.com/tendermint/tendermint/internal/libs/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
@@ -53,7 +53,7 @@ func TestProof(t *testing.T) {
 
 	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(tmrand.Bytes(tmhash.Size))
+		items[i] = testItem(tmrand.Bytes(crypto.HashSize))
 	}
 
 	rootHash = HashFromByteSlices(items)
@@ -106,7 +106,7 @@ func TestHashAlternatives(t *testing.T) {
 
 	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(tmrand.Bytes(tmhash.Size))
+		items[i] = testItem(tmrand.Bytes(crypto.HashSize))
 	}
 
 	rootHash1 := HashFromByteSlicesIterative(items)
@@ -119,7 +119,7 @@ func BenchmarkHashAlternatives(b *testing.B) {
 
 	items := make([][]byte, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(tmrand.Bytes(tmhash.Size))
+		items[i] = testItem(tmrand.Bytes(crypto.HashSize))
 	}
 
 	b.ResetTimer()

@@ -23,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/internal/p2p/pex"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
@@ -93,29 +92,6 @@ func initDBs(
 	closers = append(closers, stateDB.Close)
 
 	return blockStore, stateDB, makeCloser(closers), nil
-}
-
-func createIndexerService(
-	cfg *config.Config,
-	dbProvider config.DBProvider,
-	eventBus *eventbus.EventBus,
-	logger log.Logger,
-	chainID string,
-	metrics *indexer.Metrics,
-) (*indexer.Service, []indexer.EventSink, error) {
-	eventSinks, err := sink.EventSinksFromConfig(cfg, dbProvider, chainID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	indexerService := indexer.NewService(indexer.ServiceArgs{
-		Sinks:    eventSinks,
-		EventBus: eventBus,
-		Logger:   logger.With("module", "txindex"),
-		Metrics:  metrics,
-	})
-
-	return indexerService, eventSinks, nil
 }
 
 func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger, mode string) {
@@ -215,20 +191,13 @@ func createEvidenceReactor(
 	if err != nil {
 		return nil, nil, func() error { return nil }, fmt.Errorf("unable to initialize evidence db: %w", err)
 	}
-	dbCloser := evidenceDB.Close
 
 	logger = logger.With("module", "evidence")
 
 	evidencePool := evidence.NewPool(logger, evidenceDB, store, blockStore, metrics, eventBus)
+	evidenceReactor := evidence.NewReactor(logger, chCreator, peerEvents, evidencePool)
 
-	evidenceReactor := evidence.NewReactor(
-		logger,
-		chCreator,
-		peerEvents,
-		evidencePool,
-	)
-
-	return evidenceReactor, evidencePool, dbCloser, nil
+	return evidenceReactor, evidencePool, evidenceDB.Close, nil
 }
 
 func createPeerManager(
@@ -341,8 +310,8 @@ func createRouter(
 		nodeKey.PrivKey,
 		peerManager,
 		nodeInfoProducer,
-		[]p2p.Transport{transport},
-		[]p2p.Endpoint{ep},
+		transport,
+		ep,
 		getRouterConfig(cfg, appClient),
 	)
 }

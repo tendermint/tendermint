@@ -289,7 +289,7 @@ title: Methods
     |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|
     | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 1            |
     | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 2            |
-    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 3            |
+    | local_last_commit       | [Info](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 3            |
     | byzantine_validators    | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                                           | 4            |
     | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 5            |
     | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 6            |
@@ -302,7 +302,7 @@ title: Methods
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
     | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
-    | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
+    | tx_results              | repeated [ExecTxResult](#exectxresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
@@ -414,7 +414,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
     | status                  | [ProposalStatus](#proposalstatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
-    | tx_results              | repeated [ExecTxResult](#txresult)               | List of structures containing the data resulting from executing the transactions. | 3            |
+    | tx_results              | repeated [ExecTxResult](#exectxresult)               | List of structures containing the data resulting from executing the transactions. | 3            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
 
@@ -582,7 +582,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
     | events                  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
-    | tx_results              | repeated [ExecTxResult](#txresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
+    | tx_results              | repeated [ExecTxResult](#exectxresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |

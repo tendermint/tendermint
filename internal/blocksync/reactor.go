@@ -214,13 +214,10 @@ func (r *Reactor) sendHeaderToPeer(ctx context.Context, msg *bcproto.HeaderReque
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
 	block := r.store.LoadBlockProto(msg.Height)
 	if block != nil {
-		blockCommit := r.store.LoadBlockCommitProto(msg.Height)
-		if blockCommit != nil {
-			return blockSyncCh.Send(ctx, p2p.Envelope{
-				To:      peerID,
-				Message: &bcproto.BlockResponse{Block: block},
-			})
-		}
+		return blockSyncCh.Send(ctx, p2p.Envelope{
+			To:      peerID,
+			Message: &bcproto.BlockResponse{Block: block},
+		})
 	}
 
 	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
@@ -234,7 +231,7 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelope *p2p.Envelope, blockSyncCh *p2p.Channel) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, blockSyncCh *p2p.Channel) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -248,7 +245,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 
 	r.logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
-	switch chID {
+	switch envelope.ChannelID {
 	case BlockSyncChannel:
 		switch msg := envelope.Message.(type) {
 		case *bcproto.HeaderRequest:
@@ -292,7 +289,7 @@ func (r *Reactor) handleMessage(ctx context.Context, chID p2p.ChannelID, envelop
 		}
 
 	default:
-		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", envelope.ChannelID, envelope)
 	}
 
 	return err
@@ -307,12 +304,12 @@ func (r *Reactor) processBlockSyncCh(ctx context.Context, blockSyncCh *p2p.Chann
 	iter := blockSyncCh.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
-		if err := r.handleMessage(ctx, blockSyncCh.ID, envelope, blockSyncCh); err != nil {
+		if err := r.handleMessage(ctx, envelope, blockSyncCh); err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return
 			}
 
-			r.logger.Error("failed to process message", "ch_id", blockSyncCh.ID, "envelope", envelope, "err", err)
+			r.logger.Error("failed to process message", "ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
 			if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
 				NodeID: envelope.From,
 				Err:    err,
@@ -554,7 +551,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 
 			newBlockParts, err2 := newBlock.MakePartSet(types.BlockPartSizeBytes)
 			if err2 != nil {
-				r.logger.Error("failed to make ",
+				r.logger.Error("failed to make block at ",
 					"height", newBlock.Height,
 					"err", err2.Error())
 				return
@@ -564,11 +561,21 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				newBlockPartSetHeader = newBlockParts.Header()
 				newBlockID            = types.BlockID{Hash: newBlock.Hash(), PartSetHeader: newBlockPartSetHeader}
 			)
-
+			// Finally, verify the first block using the second's commit.
+			//
+			// NOTE: We can probably make this more efficient, but note that calling
+			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
+			// currently necessary.
 			if r.lastTrustedBlock != nil {
 				err := VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.NextValidators)
 
 				if err != nil {
+					r.logger.Error(
+						err.Error(),
+						"last_commit", verifyBlock.LastCommit,
+						"block_id", newBlock,
+						"height", newBlock.Height,
+					)
 					switch err.(type) {
 					case ErrBlockIDDiff:
 					case ErrValidationFailed:
@@ -579,12 +586,13 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						}); serr != nil {
 							return
 						}
+
 					case ErrInvalidVerifyBlock:
 						r.logger.Error(
 							err.Error(),
 							"last_commit", verifyBlock.LastCommit,
-							"block_id", newBlockID,
-							"height", r.lastTrustedBlock.block.Height,
+							"verify_block_id", newBlockID,
+							"verify_block_height", newBlock.Height,
 						)
 						peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 2)
 						if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
@@ -593,10 +601,19 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						}); serr != nil {
 							return
 						}
-					}
 
+					}
+					continue // was return previously
 				}
 
+				// // Finally, verify the first block using the second's commit.
+				// //
+				// // NOTE: We can probably make this more efficient, but note that calling
+				// // first.Hash() doesn't verify the tx contents, so MakePartSet() is
+				// // currently necessary.
+				// err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
+				r.lastTrustedBlock.block = newBlock
+				r.lastTrustedBlock.commit = verifyBlock.LastCommit
 			} else {
 				// we need to load the last block we trusted
 				if r.initialState.LastBlockHeight != 0 {
@@ -607,36 +624,55 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				}
 				oldHash := r.initialState.Validators.Hash()
 				if !bytes.Equal(oldHash, newBlock.ValidatorsHash) {
-
-					fmt.Println(
-
+					r.logger.Error("The validator set provided by the new block does not match the expected validator set",
 						"initial hash ", r.initialState.Validators.Hash(),
 						"new hash ", newBlock.ValidatorsHash,
 					)
-					return
+
+					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+						NodeID: peerID,
+						Err:    ErrValidationFailed{},
+					}); serr != nil {
+						return
+					}
+					continue // was return previously
 				}
 
 			}
 			if err := r.verifyWithWitnesses(newBlock); err != nil {
 				r.logger.Debug("Witness verificatio nfailed")
 			}
-			if r.lastTrustedBlock == nil {
-				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
-			} else {
-				r.lastTrustedBlock.block = newBlock
-				r.lastTrustedBlock.commit = verifyBlock.LastCommit
-			}
+			var err error
+			// validate the block before we persist it
+			err = r.blockExec.ValidateBlock(ctx, state, newBlock)
+			if err != nil {
+				r.logger.Error("The validator set provided by the new block does not match the expected validator set",
+					"initial hash ", r.initialState.Validators.Hash(),
+					"new hash ", newBlock.ValidatorsHash,
+				)
 
+				peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+				if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+					NodeID: peerID,
+					Err:    ErrValidationFailed{},
+				}); serr != nil {
+					return
+				}
+				continue // was return previously
+			}
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
 			r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
 
-			var err error
-
 			// TODO: Same thing for app - but we would need a way to get the hash
 			// without persisting the state.
 			state, err = r.blockExec.ApplyBlock(ctx, state, newBlockID, newBlock)
+			if err != nil {
+				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
+			}
+
 			if err != nil {
 				// TODO: This is bad, are we zombie?
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))

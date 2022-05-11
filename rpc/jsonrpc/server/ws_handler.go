@@ -36,11 +36,7 @@ type WebsocketManager struct {
 
 // NewWebsocketManager returns a new WebsocketManager that passes a map of
 // functions, connection options and logger to new WS connections.
-func NewWebsocketManager(
-	logger log.Logger,
-	funcMap map[string]*RPCFunc,
-	wsConnOptions ...func(*wsConnection),
-) *WebsocketManager {
+func NewWebsocketManager(logger log.Logger, funcMap map[string]*RPCFunc, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
 		Upgrader: websocket.Upgrader{
@@ -137,12 +133,7 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func newWSConnection(
-	baseConn *websocket.Conn,
-	funcMap map[string]*RPCFunc,
-	logger log.Logger,
-	options ...func(*wsConnection),
-) *wsConnection {
+func newWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, logger log.Logger, options ...func(*wsConnection)) *wsConnection {
 	wsc := &wsConnection{
 		Logger:          logger,
 		remoteAddr:      baseConn.RemoteAddr().String(),
@@ -340,22 +331,8 @@ func (wsc *wsConnection) readRoutine(ctx context.Context) {
 				RPCRequest: &request,
 				WSConn:     wsc,
 			})
-			args, err := parseParams(fctx, rpcFunc, request.Params)
-			if err != nil {
-				if err := wsc.WriteRPCResponse(writeCtx, request.MakeErrorf(rpctypes.CodeInvalidParams,
-					"converting JSON parameters: %v", err)); err != nil {
-					wsc.Logger.Error("error writing RPC response", "err", err)
-				}
-				continue
-			}
-
-			returns := rpcFunc.f.Call(args)
-
-			// TODO: Need to encode args/returns to string if we want to log them
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
-
 			var resp rpctypes.RPCResponse
-			result, err := unreflectResult(returns)
+			result, err := rpcFunc.Call(fctx, request.Params)
 			if err == nil {
 				resp = request.MakeResponse(result)
 			} else {

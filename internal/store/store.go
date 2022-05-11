@@ -126,7 +126,7 @@ func (bs *BlockStore) LoadBaseMeta() *types.BlockMeta {
 	return nil
 }
 
-// LoadBlock returns the block with the given height in protobuf.
+// LoadBlockProto returns the block with the given height in protobuf.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlockProto(height int64) *tmproto.Block {
 	var blockMeta = bs.LoadBlockMeta(height)
@@ -157,30 +157,11 @@ func (bs *BlockStore) LoadBlockProto(height int64) *tmproto.Block {
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
-	var blockMeta = bs.LoadBlockMeta(height)
-	if blockMeta == nil {
+	blockProto := bs.LoadBlockProto(height)
+	if blockProto == nil {
 		return nil
 	}
-
-	pbb := new(tmproto.Block)
-	buf := []byte{}
-	for i := 0; i < int(blockMeta.BlockID.PartSetHeader.Total); i++ {
-		part := bs.LoadBlockPart(height, i)
-		// If the part is missing (e.g. since it has been deleted after we
-		// loaded the block meta) we consider the whole block to be missing.
-		if part == nil {
-			return nil
-		}
-		buf = append(buf, part.Bytes...)
-	}
-	err := proto.Unmarshal(buf, pbb)
-	if err != nil {
-		// NOTE: The existence of meta should imply the existence of the
-		// block. So, make sure meta is only saved after blocks are saved.
-		panic(fmt.Errorf("error reading block: %w", err))
-	}
-
-	block, err := types.BlockFromProto(pbb)
+	block, err := types.BlockFromProto(blockProto)
 	if err != nil {
 		panic(fmt.Errorf("error from proto block: %w", err))
 	}
@@ -280,26 +261,6 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	}
 
 	return blockMeta
-}
-
-// LoadBlockCommit returns the Commit for the given height in protobuf.
-// This commit consists of the +2/3 and other Precommit-votes for block at `height`,
-// and it comes from the block.LastCommit for `height+1`.
-// If no commit is found for the given height, it returns nil.
-func (bs *BlockStore) LoadBlockCommitProto(height int64) *tmproto.Commit {
-	var pbc = new(tmproto.Commit)
-	bz, err := bs.db.Get(blockCommitKey(height))
-	if err != nil {
-		panic(err)
-	}
-	if len(bz) == 0 {
-		return nil
-	}
-	err = proto.Unmarshal(bz, pbc)
-	if err != nil {
-		panic(fmt.Errorf("error reading block commit: %w", err))
-	}
-	return pbc
 }
 
 // LoadBlockCommit returns the Commit for the given height.

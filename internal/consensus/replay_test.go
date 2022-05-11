@@ -118,9 +118,6 @@ func sendTxs(ctx context.Context, t *testing.T, cs *State) {
 
 // TestWALCrash uses crashing WAL to test we can recover from any WAL failure.
 func TestWALCrash(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	testCases := []struct {
 		name         string
 		initFn       func(dbm.DB, *State, context.Context)
@@ -139,6 +136,9 @@ func TestWALCrash(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			consensusReplayConfig, err := ResetConfig(t.TempDir(), tc.name)
 			require.NoError(t, err)
 			crashWALandCheckLiveness(ctx, t, consensusReplayConfig, tc.initFn, tc.heightToStop)
@@ -788,7 +788,7 @@ func testHandshakeReplay(
 	require.NoError(t, err, "Error on abci handshake")
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Info(ctx, abci.RequestInfo{Version: ""})
+	res, err := proxyApp.Info(ctx, &abci.RequestInfo{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -856,7 +856,7 @@ func buildAppStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := appClient.InitChain(ctx, abci.RequestInitChain{
+	_, err := appClient.InitChain(ctx, &abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)
@@ -910,7 +910,7 @@ func buildTMStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	_, err := proxyApp.InitChain(ctx, abci.RequestInitChain{
+	_, err := proxyApp.InitChain(ctx, &abci.RequestInitChain{
 		Validators: validators,
 	})
 	require.NoError(t, err)
@@ -1017,15 +1017,15 @@ type badApp struct {
 	onlyLastHashIsWrong bool
 }
 
-func (app *badApp) Commit() abci.ResponseCommit {
+func (app *badApp) Commit(context.Context) (*abci.ResponseCommit, error) {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
-			return abci.ResponseCommit{Data: tmrand.Bytes(8)}
+			return &abci.ResponseCommit{Data: tmrand.Bytes(8)}, nil
 		}
-		return abci.ResponseCommit{Data: []byte{app.height}}
+		return &abci.ResponseCommit{Data: []byte{app.height}}, nil
 	} else if app.allHashesAreWrong {
-		return abci.ResponseCommit{Data: tmrand.Bytes(8)}
+		return &abci.ResponseCommit{Data: tmrand.Bytes(8)}, nil
 	}
 
 	panic("either allHashesAreWrong or onlyLastHashIsWrong must be set")
@@ -1275,8 +1275,6 @@ type initChainApp struct {
 	vals []abci.ValidatorUpdate
 }
 
-func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
-	return abci.ResponseInitChain{
-		Validators: ica.vals,
-	}
+func (ica *initChainApp) InitChain(_ context.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
+	return &abci.ResponseInitChain{Validators: ica.vals}, nil
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -28,6 +27,7 @@ import (
 	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/indexer"
+	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
@@ -454,7 +454,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := state(t, types.MaxVotesCount, int64(1))
+	state, stateDB, privVals := state(t, types.MaxVotesCount, int64(1))
+
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
@@ -496,10 +497,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	)
 
 	blockID := types.BlockID{
-		Hash: tmhash.Sum([]byte("blockID_hash")),
+		Hash: crypto.Checksum([]byte("blockID_hash")),
 		PartSetHeader: types.PartSetHeader{
 			Total: math.MaxInt32,
-			Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+			Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 		},
 	}
 
@@ -514,8 +515,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	state.LastBlockID = blockID
 	state.LastBlockHeight = math.MaxInt64 - 2
 	state.LastBlockTime = timestamp
-	state.LastResultsHash = tmhash.Sum([]byte("last_results_hash"))
-	state.AppHash = tmhash.Sum([]byte("app_hash"))
+	state.LastResultsHash = crypto.Checksum([]byte("last_results_hash"))
+	state.AppHash = crypto.Checksum([]byte("app_hash"))
 	state.Version.Consensus.Block = math.MaxInt64
 	state.Version.Consensus.App = math.MaxInt64
 	maxChainID := ""
@@ -537,17 +538,25 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		BlockID: blockID,
 	}
 
+	votes := make([]*types.Vote, types.MaxVotesCount)
+
 	// add maximum amount of signatures to a single commit
 	for i := 0; i < types.MaxVotesCount; i++ {
+		pubKey, err := privVals[i].GetPubKey(ctx)
+		require.NoError(t, err)
+		votes[i] = &types.Vote{
+			ValidatorAddress: pubKey.Address(),
+		}
 		commit.Signatures = append(commit.Signatures, cs)
 	}
 
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
-		state, commit,
+		state,
+		commit,
 		proposerAddr,
-		nil,
+		votes,
 	)
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
@@ -627,11 +636,9 @@ func TestNodeSetEventSink(t *testing.T) {
 		genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
 
-		indexService, eventSinks, err := createIndexerService(cfg,
-			config.DefaultDBProvider, eventBus, logger, genDoc.ChainID,
-			indexer.NopMetrics())
+		eventSinks, err := sink.EventSinksFromConfig(cfg, config.DefaultDBProvider, genDoc.ChainID)
 		require.NoError(t, err)
-		t.Cleanup(indexService.Wait)
+
 		return eventSinks
 	}
 	cleanup := func(ns service.Service) func() {

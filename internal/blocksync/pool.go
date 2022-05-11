@@ -28,7 +28,7 @@ eg, L = latency = 0.1s
 */
 
 const (
-	requestIntervalMS         = 2
+	requestInterval           = 2 * time.Millisecond
 	maxTotalRequesters        = 600
 	maxPeerErrBuffer          = 1000
 	maxPendingRequests        = maxTotalRequesters
@@ -121,7 +121,6 @@ func NewBlockPool(
 		peers:             make(map[types.NodeID]*bpPeer),
 		requesters:        make(map[int64]*bpRequester),
 		witnessRequesters: make(map[int64]*witnessRequester),
-		// verificationRequesters: make(map[int64]*bpRequester),
 		height:            start,
 		startHeight:       start,
 		numPending:        0,
@@ -148,27 +147,23 @@ func (*BlockPool) OnStop() {}
 
 // spawns requesters as needed
 func (pool *BlockPool) makeRequestersRoutine(ctx context.Context) {
-	for {
-		if !pool.IsRunning() {
-			break
+	for pool.IsRunning() {
+		if ctx.Err() != nil {
+			return
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		switch {
-		case numPending >= maxPendingRequests:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
+		if numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters {
+			// This is preferable to using a timer because the request interval
+			// is so small. Larger request intervals may necessitate using a
+			// timer/ticker.
+			time.Sleep(requestInterval)
 			pool.removeTimedoutPeers()
-		case lenRequesters >= maxTotalRequesters:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
-			pool.removeTimedoutPeers()
-		default:
-			// request for more blocks.
-			pool.makeNextRequester(ctx)
+			continue
 		}
+
+		// request for more blocks.
+		pool.makeNextRequester(ctx)
 	}
 }
 
@@ -222,16 +217,6 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
-func (pool *BlockPool) PeekBlock() (first *types.Block) {
-	pool.mtx.RLock()
-	defer pool.mtx.RUnlock()
-
-	if r := pool.requesters[pool.height]; r != nil {
-		first = r.getBlock()
-	}
-	return
-}
-
 // PeekTwoBlocks returns blocks at pool.height and pool.height+1.
 // We need to see the second block's Commit to validate the first block.
 // So we peek two blocks at a time.
@@ -277,10 +262,6 @@ func (pool *BlockPool) PopRequest() {
 	} else {
 		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
-	// if r := pool.verificationRequesters[pool.height]; r != nil {
-	// 	r.Stop()
-	// 	delete(pool.verificationRequesters, pool.height)
-	// }
 }
 
 // RedoRequest invalidates the block at pool.height,
@@ -856,9 +837,16 @@ OUTER_LOOP:
 			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
 				return
 			}
+			if ctx.Err() != nil {
+				return
+			}
+
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				time.Sleep(requestIntervalMS * time.Millisecond)
+				// This is preferable to using a timer because the request
+				// interval is so small. Larger request intervals may
+				// necessitate using a timer/ticker.
+				time.Sleep(requestInterval)
 				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP

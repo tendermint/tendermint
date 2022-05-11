@@ -31,6 +31,7 @@ func MakeCommit(ctx context.Context, blockID types.BlockID, height int64, round 
 			return nil, err
 		}
 		vote.Signature = v.Signature
+		vote.ExtensionSignature = v.ExtensionSignature
 		if _, err := voteSet.AddVote(vote); err != nil {
 			return nil, err
 		}

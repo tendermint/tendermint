@@ -305,7 +305,12 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		return nil
 	}
 
-	go r.processChannels(ctx, snapshotCh, chunkCh, blockCh, paramsCh)
+	go r.processChannels(ctx, map[p2p.ChannelID]*p2p.Channel{
+		SnapshotChannel:   snapshotCh,
+		ChunkChannel:      chunkCh,
+		LightBlockChannel: blockCh,
+		ParamsChannel:     paramsCh,
+	})
 	go r.processPeerUpdates(ctx, r.peerEvents(ctx))
 
 	if r.needsStateSync {
@@ -661,7 +666,7 @@ func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envel
 				"failed to add snapshot",
 				"height", msg.Height,
 				"format", msg.Format,
-				"channel", snapshotCh.ID,
+				"channel", envelope.ChannelID,
 				"err", err,
 			)
 			return nil
@@ -688,7 +693,7 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		resp, err := r.conn.LoadSnapshotChunk(ctx, abci.RequestLoadSnapshotChunk{
+		resp, err := r.conn.LoadSnapshotChunk(ctx, &abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
@@ -907,15 +912,14 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, cha
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
-func (r *Reactor) processChannels(ctx context.Context, chs ...*p2p.Channel) {
+func (r *Reactor) processChannels(ctx context.Context, chanTable map[p2p.ChannelID]*p2p.Channel) {
 	// make sure that the iterator gets cleaned up in case of error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	chanTable := make(map[p2p.ChannelID]*p2p.Channel, len(chs))
-	for idx := range chs {
-		ch := chs[idx]
-		chanTable[ch.ID] = ch
+	chs := make([]*p2p.Channel, 0, len(chanTable))
+	for key := range chanTable {
+		chs = append(chs, chanTable[key])
 	}
 
 	iter := p2p.MergedChannelIterator(ctx, chs...)
@@ -1015,7 +1019,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerU
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(ctx context.Context, n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshots(ctx, abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshots(ctx, &abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

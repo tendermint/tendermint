@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 // TrustOptions are the trust parameters needed when a new light client
@@ -43,9 +43,9 @@ func (opts TrustOptions) ValidateBasic() error {
 	if opts.Height <= 0 {
 		return errors.New("negative or zero height")
 	}
-	if len(opts.Hash) != tmhash.Size {
+	if len(opts.Hash) != crypto.HashSize {
 		return fmt.Errorf("expected hash size to be %d bytes, got %d bytes",
-			tmhash.Size,
+			crypto.HashSize,
 			len(opts.Hash),
 		)
 	}
