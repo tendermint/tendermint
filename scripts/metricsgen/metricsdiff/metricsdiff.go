@@ -55,10 +55,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Open: %v", err)
 	}
+	defer fa.Close()
 	fb, err := os.Open(os.Args[2])
 	if err != nil {
 		log.Fatalf("Open: %v", err)
 	}
+	defer fb.Close()
 	md, err := DiffFromReaders(fa, fb)
 	if err != nil {
 		log.Fatalf("Generating diff: %v", err)
