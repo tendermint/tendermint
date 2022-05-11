@@ -573,7 +573,7 @@ Vote extensions pose an issue for Tendermint upgrades. Chains that upgrade from
 v0.35 to v0.36 will attempt to produce the first height running v0.36 without vote
 extension data from the previous height. We intend to allow chains to _require_
 vote extensions data. Chains that require vote extension data will not make progress
-with out. The corresponding application will expect vote extension
+without it. The corresponding application will expect vote extension
 data to be present for each [PrepareProposal](https://github.com/tendermint/tendermint/blob/cec0a9798/proto/tendermint/abci/types.proto#L129) call it receives.
 
 To facilitate the upgrade and provide applications a mechanism to require
