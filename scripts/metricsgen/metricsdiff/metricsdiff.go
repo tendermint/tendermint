@@ -69,7 +69,7 @@ func main() {
 // DiffFromReaders parses the metrics present in the readers a and b and
 // determines which metrics were added and removed in b.
 func DiffFromReaders(a, b io.Reader) (Diff, error) {
-	parser := expfmt.TextParser{}
+	var parser expfmt.TextParser
 	amf, err := parser.TextToMetricFamilies(a)
 	if err != nil {
 		return Diff{}, err
