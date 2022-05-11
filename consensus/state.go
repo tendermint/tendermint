@@ -564,15 +564,15 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	if seenCommit == nil {
+	extCommit := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
+	if extCommit == nil {
 		panic(fmt.Sprintf(
 			"failed to reconstruct last commit; seen commit for height %v not found",
 			state.LastBlockHeight,
 		))
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
+	lastPrecommits := extCommit.ToVoteSet(state.ChainID, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("failed to reconstruct last commit; does not have +2/3 maj")
 	}
@@ -1210,16 +1210,17 @@ func (cs *State) createProposalBlock() (*types.Block, error) {
 		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
-	var commit *types.Commit
+	// TODO(sergio): wouldn't it be easier if CreateProposalBlock accepted cs.LastCommit directly?
+	var lastExtCommit *types.ExtendedCommit
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+		lastExtCommit = &types.ExtendedCommit{}
 
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
-		commit = cs.LastCommit.MakeCommit()
+		lastExtCommit = cs.LastCommit.MakeExtendedCommit()
 
 	default: // This shouldn't happen.
 		return nil, errors.New("propose step; cannot propose anything without commit for the previous block")
@@ -1233,7 +1234,7 @@ func (cs *State) createProposalBlock() (*types.Block, error) {
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	ret, err := cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	ret, err := cs.blockExec.CreateProposalBlock(cs.Height, cs.state, lastExtCommit, proposerAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -1656,8 +1657,7 @@ func (cs *State) finalizeCommit(height int64) {
 		// NOTE: the seenCommit is local justification to commit this block,
 		// but may differ from the LastCommit included in the next block
 		precommits := cs.Votes.Precommits(cs.CommitRound)
-		seenCommit := precommits.MakeCommit()
-		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
+		cs.blockStore.SaveBlock(block, blockParts, precommits.MakeExtendedCommit())
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
 		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
@@ -1766,7 +1766,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 
 		for i, val := range cs.LastValidators.Validators {
 			commitSig := block.LastCommit.Signatures[i]
-			if commitSig.Absent() {
+			if commitSig.BlockIDFlag == types.BlockIDFlagAbsent {
 				missingValidators++
 				missingValidatorsPower += val.VotingPower
 			}
@@ -1776,7 +1776,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 					"validator_address", val.Address.String(),
 				}
 				cs.metrics.ValidatorPower.With(label...).Set(float64(val.VotingPower))
-				if commitSig.ForBlock() {
+				if commitSig.BlockIDFlag == types.BlockIDFlagCommit {
 					cs.metrics.ValidatorLastSignedHeight.With(label...).Set(float64(height))
 				} else {
 					cs.metrics.ValidatorMissedBlocks.With(label...).Add(float64(1))
@@ -2068,8 +2068,9 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 		return
 	}
 
-	// Verify VoteExtension if precommit
-	if vote.Type == tmproto.PrecommitType {
+	// Verify VoteExtension if precommit and not nil
+	// https://github.com/tendermint/tendermint/issues/8487
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
 		if err = cs.blockExec.VerifyVoteExtension(vote); err != nil {
 			return false, err
 		}
@@ -2236,9 +2237,9 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	switch msgType {
-	case tmproto.PrecommitType:
-		// if the signedMessage type is for a precommit, add VoteExtension
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		// if the signedMessage type is for a non-nil precommit, add
+		// VoteExtension
 		ext, err := cs.blockExec.ExtendVote(vote)
 		if err != nil {
 			return nil, err

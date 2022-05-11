@@ -333,12 +333,12 @@ func TestCreateProposalBlock(t *testing.T) {
 		blockStore,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	extCommit := &types.ExtendedCommit{Height: height - 1}
 	block, err := blockExec.CreateProposalBlock(
 		height,
-		state, commit,
+		state,
+		extCommit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -419,12 +419,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		blockStore,
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	extCommit := &types.ExtendedCommit{Height: height - 1}
 	block, err := blockExec.CreateProposalBlock(
 		height,
-		state, commit,
+		state,
+		extCommit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
