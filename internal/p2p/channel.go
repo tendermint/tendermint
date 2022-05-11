@@ -276,32 +276,23 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 	}
 
 	ch.host.SetStreamHandler(protocol.ID(ch.canonicalizedTopicName()), func(stream network.Stream) {
-		buf := bufio.NewReader(stream)
-		// TODO: change the max delimited message into
-		// something that's passed in as a parmeter.
-		reader := protoio.NewDelimitedReader(buf, 1023)
+		// TODO: properly capture the max message size here.
+		reader := protoio.NewDelimitedReader(bufio.NewReader(stream), ch.chDesc.RecvBufferCapacity*2)
 
 		remote := stream.Conn().RemotePeer()
 
-		for {
-			if ctx.Err() != nil {
-				return
-			}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go func() { <-ctx.Done(); _ = stream.Close() }()
 
+		for {
 			payload := proto.Clone(ch.chDesc.MessageType)
 
-			// TODO: context might expire while reading
-			// the message, and so we could end up
-			// blocking here without any way to clean
-			// things up.
 			if _, err := reader.ReadMsg(payload); err != nil {
-				if errors.Is(err, io.EOF) {
+				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					return
-
 				}
-				// TODO: this should cause the channel to
-				// report an error, or abort the receiver.
-				_ = stream.Close()
+				// TODO: propogate or capture this error
 			}
 			select {
 			case <-ctx.Done():
