@@ -17,7 +17,7 @@ import (
 
 func init() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `Usage: %[1]s <path> <path>
+		fmt.Fprintf(os.Stderr, `Usage: %[1]s <path1> <path2>
 
 Generate the diff between the two files of Prometheus metrics.
 The input should have the format output by a Prometheus HTTP endpoint.
