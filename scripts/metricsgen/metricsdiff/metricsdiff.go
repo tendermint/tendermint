@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	dto "github.com/prometheus/client_model/go"
@@ -45,6 +46,13 @@ type LabelDiff struct {
 	Adds    []string
 	Removes []string
 }
+
+type parsedMetric struct {
+	name   string
+	labels []string
+}
+
+type metricsList []parsedMetric
 
 func main() {
 	flag.Parse()
@@ -83,52 +91,80 @@ func DiffFromReaders(a, b io.Reader) (Diff, error) {
 	}
 
 	md := Diff{}
-	for name, afamily := range amf {
-		bfamily, ok := bmf[name]
-		if !ok {
-			md.Removes = append(md.Removes, name)
-			continue
-		}
+	aList := toList(amf)
+	bList := toList(bmf)
 
-		labelsDiff := false
-		aLabelSet := toSet(afamily.Metric[0].Label)
-		bLabelSet := toSet(bfamily.Metric[0].Label)
-		ld := LabelDiff{
-			Metric: name,
+	i, j := 0, 0
+	for i < len(aList) || j < len(bList) {
+		for j < len(bList) && (i >= len(aList) || bList[j].name < aList[i].name) {
+			md.Adds = append(md.Adds, bList[j].name)
+			j++
 		}
-		for name := range aLabelSet {
-			_, ok := bLabelSet[name]
-			if !ok {
-				ld.Removes = append(ld.Removes, name)
-				labelsDiff = true
+		for i < len(aList) && j < len(bList) && aList[i].name == bList[j].name {
+			adds, removes := listDiff(aList[i].labels, bList[j].labels)
+			if len(adds) > 0 || len(removes) > 0 {
+				md.Changes = append(md.Changes, LabelDiff{
+					Metric:  aList[i].name,
+					Adds:    adds,
+					Removes: removes,
+				})
 			}
+			i++
+			j++
 		}
-		for name := range bLabelSet {
-			_, ok := aLabelSet[name]
-			if !ok {
-				ld.Adds = append(ld.Adds, name)
-				labelsDiff = true
-			}
-		}
-		if labelsDiff {
-			md.Changes = append(md.Changes, ld)
-		}
-	}
-	for name := range bmf {
-		if _, ok := amf[name]; !ok {
-			md.Adds = append(md.Adds, name)
+		for i < len(aList) && (j >= len(bList) || aList[i].name < bList[j].name) {
+			md.Removes = append(md.Removes, aList[i].name)
+			i++
 		}
 	}
 	return md, nil
 }
 
-func toSet(lps []*dto.LabelPair) map[string]struct{} {
-	m := make(map[string]struct{}, len(lps))
-	for _, pair := range lps {
-		m[*pair.Name] = struct{}{}
+func toList(l map[string]*dto.MetricFamily) metricsList {
+	r := make([]parsedMetric, len(l))
+	var idx int
+	for name, family := range l {
+		r[idx] = parsedMetric{
+			name:   name,
+			labels: labelsToStringList(family.Metric[0].Label),
+		}
+		idx++
 	}
-	return m
+	sort.Sort(metricsList(r))
+	return r
 }
+
+func labelsToStringList(ls []*dto.LabelPair) []string {
+	r := make([]string, len(ls))
+	for i, l := range ls {
+		r[i] = *l.Name
+	}
+	return sort.StringSlice(r)
+}
+
+func listDiff(a, b []string) ([]string, []string) {
+	adds, removes := []string{}, []string{}
+	i, j := 0, 0
+	for i < len(a) || j < len(b) {
+		for j < len(b) && (i >= len(a) || b[j] < a[i]) {
+			adds = append(adds, b[j])
+			j++
+		}
+		for i < len(a) && j < len(b) && a[i] == b[j] {
+			i++
+			j++
+		}
+		for i < len(a) && (j >= len(b) || a[i] < b[j]) {
+			removes = append(removes, a[i])
+			i++
+		}
+	}
+	return adds, removes
+}
+
+func (m metricsList) Len() int           { return len(m) }
+func (m metricsList) Less(i, j int) bool { return m[i].name < m[j].name }
+func (m metricsList) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
 
 func (m Diff) String() string {
 	var s strings.Builder
