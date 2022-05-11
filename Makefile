@@ -228,10 +228,8 @@ build-docs:
 ###                            Docker image                                 ###
 ###############################################################################
 
-build-docker: build-linux
-	cp $(BUILDDIR)/tendermint DOCKER/tendermint
+build-docker:
 	docker build --label=tendermint --tag="tendermint/tendermint" -f DOCKER/Dockerfile .
-	rm -rf DOCKER/tendermint
 .PHONY: build-docker
 
 

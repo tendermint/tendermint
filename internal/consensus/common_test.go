@@ -663,6 +663,39 @@ func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int32) {
 	ensureVote(voteCh, height, round, tmproto.PrevoteType)
 }
 
+func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
+}
+
+func ensurePrecommitMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrecommitType)
+}
+
+func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
+	t.Helper()
+	select {
+	case <-time.After(ensureTimeout):
+		t.Fatal("Timeout expired while waiting for NewVote event")
+	case msg := <-voteCh:
+		voteEvent, ok := msg.Data().(types.EventDataVote)
+		require.True(t, ok, "expected a EventDataVote, got %T. Wrong subscription channel?",
+			msg.Data())
+
+		vote := voteEvent.Vote
+		require.Equal(t, height, vote.Height)
+		require.Equal(t, round, vote.Round)
+
+		require.Equal(t, voteType, vote.Type)
+		if hash == nil {
+			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
+		} else {
+			require.True(t, bytes.Equal(vote.BlockID.Hash, hash), "Expected prevote to be for %X, got %X", hash, vote.BlockID.Hash)
+		}
+	}
+}
+
 func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
 	voteType tmproto.SignedMsgType) {
 	select {
