@@ -110,17 +110,16 @@ func NewReactor(
 	eventBus *eventbus.EventBus,
 ) *Reactor {
 	r := &Reactor{
-		logger:           logger,
-		stateStore:       stateStore,
-		blockExec:        blockExec,
-		store:            store,
-		consReactor:      consReactor,
-		blockSync:        newAtomicBool(blockSync),
-		chCreator:        channelCreator,
-		peerEvents:       peerEvents,
-		metrics:          metrics,
-		eventBus:         eventBus,
-		lastTrustedBlock: nil,
+		logger:      logger,
+		stateStore:  stateStore,
+		blockExec:   blockExec,
+		store:       store,
+		consReactor: consReactor,
+		blockSync:   newAtomicBool(blockSync),
+		chCreator:   channelCreator,
+		peerEvents:  peerEvents,
+		metrics:     metrics,
+		eventBus:    eventBus,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "BlockSync", r)
