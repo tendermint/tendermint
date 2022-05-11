@@ -59,16 +59,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to open file %s: %v", os.Args[2], err)
 	}
-	md, err := MetricsDiffFromReaders(fa, fb)
+	md, err := DiffFromReaders(fa, fb)
 	if err != nil {
 		log.Fatalf("Generating diff: %v", err)
 	}
 	fmt.Printf("%s", md)
 }
 
-// MetricsDiffFromReaders parses the metrics present in the readers a and b and
+// DiffFromReaders parses the metrics present in the readers a and b and
 // determines which metrics were added and removed in b.
-func MetricsDiffFromReaders(a, b io.Reader) (Diff, error) {
+func DiffFromReaders(a, b io.Reader) (Diff, error) {
 	parser := expfmt.TextParser{}
 	amf, err := parser.TextToMetricFamilies(a)
 	if err != nil {

@@ -56,7 +56,7 @@ func TestDiff(t *testing.T) {
 			require.NoError(t, err)
 			_, err = io.WriteString(bufB, tc.bContents)
 			require.NoError(t, err)
-			md, err := metricsdiff.MetricsDiffFromReaders(bufA, bufB)
+			md, err := metricsdiff.DiffFromReaders(bufA, bufB)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, md)
 		})
