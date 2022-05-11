@@ -38,8 +38,7 @@ type Diff struct {
 	LabelDiffs []LabelDiff
 }
 
-// MetricsDiff contains the set of labels that were modified for a single metric
-// between two files containing prometheus metrics output.
+// LabelDiff describes the label changes between two versions of the same metric.
 type LabelDiff struct {
 	MetricsName string
 	Adds        []string
