@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -130,30 +131,30 @@ func toSet(lps []*dto.LabelPair) map[string]struct{} {
 }
 
 func (m Diff) String() string {
-	var s string
+	var s strings.Builder
 	if len(m.Adds) > 0 {
-		s += "Adds: \n"
+		fmt.Fprintln(&s, "Adds:")
 		for _, add := range m.Adds {
-			s += fmt.Sprintf("+++ %s\n", add)
+			fmt.Fprintf(&s, "+++ %s\n", add)
 		}
 	}
 	if len(m.Removes) > 0 {
-		s += "Removes: \n"
-		for _, remove := range m.Removes {
-			s += fmt.Sprintf("--- %s\n", remove)
+		fmt.Fprintln(&s, "Removes:")
+		for _, rem := range m.Removes {
+			fmt.Fprintf(&s, "--- %s\n", rem)
 		}
 	}
 	if len(m.Changes) > 0 {
-		s += "Label Changes: \n"
+		fmt.Fprintln(&s, "Label changes:")
 		for _, ld := range m.Changes {
-			s += fmt.Sprintf("Label: %s\n", ld.Metric)
+			fmt.Fprintf(&s, "Label: %s\n", ld.Metric)
 			for _, add := range ld.Adds {
-				s += fmt.Sprintf("+++ %s", add)
+				fmt.Fprintf(&s, "+++ %s\n", add)
 			}
-			for _, remove := range ld.Removes {
-				s += fmt.Sprintf("--- %s", remove)
+			for _, rem := range ld.Removes {
+				fmt.Fprintf(&s, "--- %s\n", rem)
 			}
 		}
 	}
-	return s
+	return s.String()
 }
