@@ -77,7 +77,7 @@ type Reactor struct {
 	stateStore sm.Store
 
 	blockExec   *sm.BlockExecutor
-	store       *store.BlockStore
+	store       sm.BlockStore
 	pool        *BlockPool
 	consReactor consensusReactor
 	blockSync   *atomicBool
@@ -189,9 +189,21 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
 	block := r.store.LoadBlockProto(msg.Height)
 	if block != nil {
+		extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
+		if extCommit == nil {
+			return fmt.Errorf("found block in store without extended commit: %v", block)
+		}
+		blockProto, err := block.ToProto()
+		if err != nil {
+			return fmt.Errorf("failed to convert block to protobuf: %w", err)
+		}
+
 		return blockSyncCh.Send(ctx, p2p.Envelope{
-			To:      peerID,
-			Message: &bcproto.BlockResponse{Block: block},
+			To: peerID,
+			Message: &bcproto.BlockResponse{
+				Block:     blockProto,
+				ExtCommit: extCommit.ToProto(),
+			},
 		})
 	}
 
@@ -231,8 +243,18 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, blo
 				r.logger.Error("failed to convert block from proto", "err", err)
 				return err
 			}
+			extCommit, err := types.ExtendedCommitFromProto(msg.ExtCommit)
+			if err != nil {
+				r.logger.Error("failed to convert extended commit from proto",
+					"peer", envelope.From,
+					"err", err)
+				return err
+			}
 
-			r.pool.AddBlock(envelope.From, block, block.Size())
+			if err := r.pool.AddBlock(envelope.From, block, extCommit, block.Size()); err != nil {
+				r.logger.Error("failed to add block", "err", err)
+			}
+
 		case *bcproto.StatusRequest:
 			return blockSyncCh.Send(ctx, p2p.Envelope{
 				To: envelope.From,
@@ -440,6 +462,20 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			)
 
 			switch {
+			// TODO(sergio) Might be needed for implementing the upgrading solution. Remove after that
+			//case state.LastBlockHeight > 0 && r.store.LoadBlockExtCommit(state.LastBlockHeight) == nil:
+			case state.LastBlockHeight > 0 && blocksSynced == 0:
+				// Having state-synced, we need to blocksync at least one block
+				r.logger.Info(
+					"no seen commit yet",
+					"height", height,
+					"last_block_height", state.LastBlockHeight,
+					"initial_height", state.InitialHeight,
+					"max_peer_height", r.pool.MaxPeerHeight(),
+					"timeout_in", syncTimeout-time.Since(lastAdvance),
+				)
+				continue
+
 			case r.pool.IsCaughtUp():
 				r.logger.Info("switching to consensus reactor", "height", height)
 
@@ -481,9 +517,15 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			//
 			// TODO: Uncouple from request routine.
 
-			newBlock, verifyBlock := r.pool.PeekTwoBlocks()
+			newBlock, verifyBlock, extCommit := r.pool.PeekTwoBlocks()
 
-			if newBlock == nil || verifyBlock == nil {
+			if newBlock == nil || verifyBlock == nil || extCommit == nil {
+				if newBlock != nil && extCommit == nil {
+					// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
+					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
+				}
+				// we need all to sync the first block
+
 				continue
 			} else {
 				didProcessCh <- struct{}{}
@@ -506,6 +548,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// NOTE: We can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
+
+			// TODO(sergio): Should we also validate against the extended commit?
 			if r.lastTrustedBlock != nil {
 				err := VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.NextValidators)
 
@@ -602,7 +646,10 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
-			r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
+
+			//	r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
+
+			r.store.SaveBlock(newBlock, newBlockParts, extCommit)
 
 			// TODO: Same thing for app - but we would need a way to get the hash
 			// without persisting the state.
