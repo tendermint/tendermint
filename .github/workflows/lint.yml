@@ -30,7 +30,7 @@ jobs:
         name: Install BLS library
         if: "env.GIT_DIFF != ''"
 
-      - uses: golangci/golangci-lint-action@v3.1.0
+      - uses: golangci/golangci-lint-action@v3.2.0
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.46
