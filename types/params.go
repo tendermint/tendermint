@@ -56,8 +56,9 @@ type HashedParams struct {
 // BlockParams define limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
-	MaxBytes int64 `json:"max_bytes,string"`
-	MaxGas   int64 `json:"max_gas,string"`
+	MaxBytes  int64 `json:"max_bytes,string"`
+	MaxGas    int64 `json:"max_gas,string"`
+	RecheckTx bool  `json:"recheck_tx"`
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
