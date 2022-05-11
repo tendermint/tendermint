@@ -256,7 +256,7 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 	// validators who are in the commonVals and voted for the lunatic header
 	if l.ConflictingHeaderIsInvalid(trusted.Header) {
 		for _, commitSig := range l.ConflictingBlock.Commit.Signatures {
-			if !commitSig.ForBlock() {
+			if commitSig.BlockIDFlag != BlockIDFlagCommit {
 				continue
 			}
 
@@ -276,12 +276,12 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 		// only need a single loop to find the validators that voted twice.
 		for i := 0; i < len(l.ConflictingBlock.Commit.Signatures); i++ {
 			sigA := l.ConflictingBlock.Commit.Signatures[i]
-			if sigA.Absent() {
+			if sigA.BlockIDFlag != BlockIDFlagCommit {
 				continue
 			}
 
 			sigB := trusted.Commit.Signatures[i]
-			if sigB.Absent() {
+			if sigB.BlockIDFlag != BlockIDFlagCommit {
 				continue
 			}
 

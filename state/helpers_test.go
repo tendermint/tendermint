@@ -38,7 +38,7 @@ func makeAndCommitGoodBlock(
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
-	evidence []types.Evidence) (sm.State, types.BlockID, *types.Commit, error) {
+	evidence []types.Evidence) (sm.State, types.BlockID, *types.ExtendedCommit, error) {
 	// A good block passes
 	state, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
 	if err != nil {
@@ -88,8 +88,8 @@ func makeValidCommit(
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
-) (*types.Commit, []*types.Vote, error) {
-	sigs := make([]types.CommitSig, vals.Size())
+) (*types.ExtendedCommit, []*types.Vote, error) {
+	sigs := make([]types.ExtendedCommitSig, vals.Size())
 	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
@@ -97,10 +97,14 @@ func makeValidCommit(
 		if err != nil {
 			return nil, nil, err
 		}
-		sigs[i] = vote.CommitSig()
+		sigs[i] = vote.ExtendedCommitSig()
 		votes[i] = vote
 	}
-	return types.NewCommit(height, 0, blockID, sigs), votes, nil
+	return &types.ExtendedCommit{
+		Height:             height,
+		BlockID:            blockID,
+		ExtendedSignatures: sigs,
+	}, votes, nil
 }
 
 func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {

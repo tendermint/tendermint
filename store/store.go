@@ -233,13 +233,33 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	err = proto.Unmarshal(bz, pbc)
 	if err != nil {
-		panic(fmt.Errorf("error reading block commit: %w", err))
+		panic(fmt.Errorf("converting commit to proto: %w", err))
 	}
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block commit: %v", err))
 	}
 	return commit
+}
+
+func (bs *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
+	var pbec = new(tmproto.ExtendedCommit)
+	bz, err := bs.db.Get(calcExtCommitKey(height))
+	if err != nil {
+		panic(fmt.Errorf("fetching extended commit: %w", err))
+	}
+	if len(bz) == 0 {
+		return nil
+	}
+	err = proto.Unmarshal(bz, pbec)
+	if err != nil {
+		panic(fmt.Errorf("decoding extended commit: %w", err))
+	}
+	extCommit, err := types.ExtendedCommitFromProto(pbec)
+	if err != nil {
+		panic(fmt.Errorf("converting extended commit: %w", err))
+	}
+	return extCommit
 }
 
 // LoadSeenCommit returns the locally seen Commit for the given height.
@@ -261,7 +281,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
-		panic(fmt.Errorf("error from proto commit: %w", err))
+		panic(fmt.Errorf("converting seen commit: %w", err))
 	}
 	return commit
 }
@@ -367,7 +387,7 @@ func (bs *BlockStore) PruneBlocks(height int64, state sm.State) (uint64, int64, 
 //	If all the nodes restart after committing a block,
 //	we need this to reload the precommits to catch-up nodes to the
 //	most recent height.  Otherwise they'd stall at H-1.
-func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
@@ -380,6 +400,10 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	if !blockParts.IsComplete() {
 		panic("BlockStore can only save complete block part sets")
+	}
+	if height != seenCommit.Height {
+		panic(fmt.Sprintf("BlockStore cannot save seen commit of a different height (block: %d, commit: %d)",
+			height, seenCommit.Height))
 	}
 
 	// Save block parts. This must be done before the block meta, since callers
@@ -414,9 +438,15 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
-	pbsc := seenCommit.ToProto()
+	pbsc := seenCommit.StripExtensions().ToProto()
 	seenCommitBytes := mustEncode(pbsc)
 	if err := bs.db.Set(calcSeenCommitKey(height), seenCommitBytes); err != nil {
+		panic(err)
+	}
+
+	pbec := seenCommit.ToProto()
+	extCommitBytes := mustEncode(pbec)
+	if err := bs.db.Set(calcExtCommitKey(height), extCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -483,6 +513,10 @@ func calcBlockCommitKey(height int64) []byte {
 
 func calcSeenCommitKey(height int64) []byte {
 	return []byte(fmt.Sprintf("SC:%v", height))
+}
+
+func calcExtCommitKey(height int64) []byte {
+	return []byte(fmt.Sprintf("EC:%v", height))
 }
 
 func calcBlockHashKey(hash []byte) []byte {

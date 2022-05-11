@@ -99,8 +99,10 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
+	extCommit, err := MakeExtCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
+	commit := extCommit.StripExtensions()
+
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
 			SignedHeader: &SignedHeader{
@@ -159,8 +161,10 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	header.Height = height
 	header.ValidatorsHash = valSet.Hash()
 	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	extCommit, err := MakeExtCommit(blockID, height, 1, voteSet, privVals, time.Now())
 	require.NoError(t, err)
+	commit := extCommit.StripExtensions()
+
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
 			SignedHeader: &SignedHeader{

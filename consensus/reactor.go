@@ -735,10 +735,10 @@ OUTER_LOOP:
 		// If peer is lagging by more than 1, send Commit.
 		blockStoreBase := conR.conS.blockStore.Base()
 		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
-			// Load the block commit for prs.Height,
+			// Load the block's extended commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
-			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ps.PickSendVote(commit) {
+			if ec := conR.conS.blockStore.LoadBlockExtendedCommit(prs.Height); ec != nil {
+				if ps.PickSendVote(ec) {
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
@@ -1691,7 +1691,7 @@ func (m *VoteMessage) ValidateBasic() error {
 	// here.
 	return m.Vote.ValidateWithExtension()
 }
-
+g
 // String returns a string representation.
 func (m *VoteMessage) String() string {
 	return fmt.Sprintf("[Vote %v]", m.Vote)

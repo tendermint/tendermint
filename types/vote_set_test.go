@@ -427,7 +427,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 	}
 
 	// MakeCommit should fail.
-	assert.Panics(t, func() { voteSet.MakeCommit() }, "Doesn't have +2/3 majority")
+	assert.Panics(t, func() { voteSet.MakeExtendedCommit() }, "Doesn't have +2/3 majority")
 
 	// 7th voted for some other block.
 	{
@@ -464,13 +464,13 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	commit := voteSet.MakeCommit()
+	extCommit := voteSet.MakeExtendedCommit()
 
 	// Commit should have 10 elements
-	assert.Equal(t, 10, len(commit.Signatures))
+	assert.Equal(t, 10, len(extCommit.ExtendedSignatures))
 
 	// Ensure that Commit is good.
-	if err := commit.ValidateBasic(); err != nil {
+	if err := extCommit.ValidateBasic(); err != nil {
 		t.Errorf("error in Commit.ValidateBasic(): %v", err)
 	}
 }
