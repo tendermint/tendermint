@@ -194,17 +194,12 @@ func makeApplyBlock(
 		Height: height,
 		Txs:    txs,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = kvstore.Commit(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	valSetEqualTest(t, &diff, resFinalizeBlock.ValidatorSetUpdate)
-
 }
 
 // order doesn't matter

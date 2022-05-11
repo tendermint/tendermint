@@ -32,7 +32,7 @@ func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *Persisten
 			state:          loadState(db),
 			logger:         logger,
 			valsIndex:      make(map[string]*types.ValidatorUpdate),
-			valUpdatesRepo: &repository{},
+			valUpdatesRepo: &repository{db},
 		},
 	}
 }

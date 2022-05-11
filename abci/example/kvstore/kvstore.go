@@ -185,8 +185,6 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	valSetUpdate := proto.Clone(&app.valSetUpdate).(*types.ValidatorSetUpdate)
-
 	// reset valset changes
 	app.valSetUpdate = types.ValidatorSetUpdate{}
 	app.valSetUpdate.ValidatorUpdates = make([]types.ValidatorUpdate, 0)
@@ -212,7 +210,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 
 	return &types.ResponseFinalizeBlock{
 		TxResults:          respTxs,
-		ValidatorSetUpdate: valSetUpdate,
+		ValidatorSetUpdate: proto.Clone(&app.valSetUpdate).(*types.ValidatorSetUpdate),
 	}, nil
 }
 
@@ -357,6 +355,10 @@ func (app *Application) execValidatorSetTx(tx []byte) error {
 		return err
 	}
 	app.valSetUpdate = *vsu
+	app.valsIndex = make(map[string]*types.ValidatorUpdate)
+	for _, v := range vsu.ValidatorUpdates {
+		app.valsIndex[v.String()] = &v
+	}
 	return nil
 }
 
