@@ -178,12 +178,12 @@ func TestReportConflictingVotes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, pv := defaultTestPool(t, height)
+	pool, pv, _ := defaultTestPool(ctx, t, height)
 
 	quorumHash := pool.State().Validators.QuorumHash
 
-	val := pv.ExtractIntoValidator(context.Background(), quorumHash)
-	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height+1, defaultEvidenceTime, pv, evidenceChainID,
+	val := pv.ExtractIntoValidator(ctx, quorumHash)
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height+1, defaultEvidenceTime, &pv, evidenceChainID,
 		btcjson.LLMQType_5_60, quorumHash)
 	require.NoError(t, err)
 
@@ -229,7 +229,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	prunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx,
 		1,
 		defaultEvidenceTime.Add(1*time.Minute),
-		val,
+		&val,
 		evidenceChainID,
 		state.Validators.QuorumType,
 		state.Validators.QuorumHash,
@@ -239,7 +239,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	notPrunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx,
 		2,
 		defaultEvidenceTime.Add(2*time.Minute),
-		val,
+		&val,
 		evidenceChainID,
 		state.Validators.QuorumType,
 		state.Validators.QuorumHash,
@@ -253,7 +253,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(21*time.Minute),
-		val,
+		&val,
 		evidenceChainID,
 		state.Validators.QuorumType,
 		state.Validators.QuorumHash,
@@ -305,7 +305,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
-		val,
+		&val,
 		evidenceChainID,
 		vals.QuorumType,
 		vals.QuorumHash,
@@ -321,13 +321,13 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, val := defaultTestPool(t, height)
+	pool, val, _ := defaultTestPool(ctx, t, height)
 	vals := pool.State().Validators
 	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(
 		ctx,
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
-		val,
+		&val,
 		evidenceChainID,
 		vals.QuorumType,
 		vals.QuorumHash,
@@ -355,7 +355,7 @@ func TestEventOnEvidenceValidated(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
-		val,
+		&val,
 		evidenceChainID,
 		vals.QuorumType,
 		vals.QuorumHash,
@@ -390,74 +390,6 @@ func TestEventOnEvidenceValidated(t *testing.T) {
 		t.Fatal("did not receive a block header after 1 sec.")
 	}
 
-}
-
-// check that valid light client evidence is correctly validated and stored in
-// evidence pool
-func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
-	var (
-		height       int64 = 100
-		commonHeight int64 = 90
-	)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ev, trusted, common := makeLunaticEvidence(ctx, t, height, commonHeight,
-		10, 5, 5, defaultEvidenceTime, defaultEvidenceTime.Add(1*time.Hour))
-
-	state := sm.State{
-		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
-		LastBlockHeight: 110,
-		ConsensusParams: *types.DefaultConsensusParams(),
-	}
-
-	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", height).Return(trusted.ValidatorSet, nil)
-	stateStore.On("LoadValidators", commonHeight).Return(common.ValidatorSet, nil)
-	stateStore.On("Load").Return(state, nil)
-
-	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trusted.Header})
-	blockStore.On("LoadBlockMeta", commonHeight).Return(&types.BlockMeta{Header: *common.Header})
-	blockStore.On("LoadBlockCommit", height).Return(trusted.Commit)
-	blockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
-
-	logger := log.NewNopLogger()
-	eventBus := eventbus.NewDefault(logger)
-	require.NoError(t, eventBus.Start(ctx))
-
-	pool := evidence.NewPool(logger, dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics(), eventBus)
-
-	hash := ev.Hash()
-
-	err := pool.AddEvidence(ctx, ev)
-	require.NoError(t, err)
-	err = pool.AddEvidence(ctx, ev)
-	require.NoError(t, err)
-
-	pendingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Equal(t, 1, len(pendingEv))
-	require.Equal(t, ev, pendingEv[0])
-
-	require.NoError(t, pool.CheckEvidence(ctx, pendingEv))
-	require.Equal(t, ev, pendingEv[0])
-
-	state.LastBlockHeight++
-	state.LastBlockTime = state.LastBlockTime.Add(1 * time.Minute)
-	pool.Update(ctx, state, pendingEv)
-	require.Equal(t, hash, pendingEv[0].Hash())
-
-	remaindingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Empty(t, remaindingEv)
-
-	// evidence is already committed so it shouldn't pass
-	require.Error(t, pool.CheckEvidence(ctx, types.EvidenceList{ev}))
-
-	err = pool.AddEvidence(ctx, ev)
-	require.NoError(t, err)
-
-	remaindingEv, _ = pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
-	require.Empty(t, remaindingEv)
 }
 
 // Tests that restarting the evidence pool after a potential failure will recover the
@@ -609,7 +541,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valProTxHash []byte) (*stor
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
 		lastCommit := makeCommit(i-1, state.Validators.QuorumHash, valProTxHash)
-		block, _ := state.MakeBlock(i, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
+		block := state.MakeBlock(i, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
 
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
