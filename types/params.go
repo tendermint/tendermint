@@ -43,6 +43,7 @@ type ConsensusParams struct {
 	Version   VersionParams   `json:"version"`
 	Synchrony SynchronyParams `json:"synchrony"`
 	Timeout   TimeoutParams   `json:"timeout"`
+	Vote      VoteParams      `json:"vote"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -96,6 +97,11 @@ type TimeoutParams struct {
 	BypassCommitTimeout bool          `json:"bypass_commit_timeout"`
 }
 
+// VoteParams configure validity rules of the votes within Tendermint consensus.
+type VoteParams struct {
+	ExtensionRequireHeight int64 `json:"extension_require_height"`
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
@@ -105,6 +111,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Version:   DefaultVersionParams(),
 		Synchrony: DefaultSynchronyParams(),
 		Timeout:   DefaultTimeoutParams(),
+		Vote:      DefaultVoteParams(),
 	}
 }
 
@@ -173,6 +180,13 @@ func DefaultTimeoutParams() TimeoutParams {
 		VoteDelta:           500 * time.Millisecond,
 		Commit:              1000 * time.Millisecond,
 		BypassCommitTimeout: false,
+	}
+}
+
+func DefaultVoteParams() VoteParams {
+	return VoteParams{
+		// When set to 0, vote extensions are not required.
+		ExtensionRequireHeight: 0,
 	}
 }
 
