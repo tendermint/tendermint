@@ -222,6 +222,10 @@ func (pv *MockPV) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHas
 	return pv.PrivateKeys[quorumHash.String()].PrivKey, nil
 }
 
+func (pv *MockPV) getPrivateKey(quorumHash crypto.QuorumHash) crypto.PrivKey {
+	return pv.PrivateKeys[quorumHash.String()].PrivKey
+}
+
 // ThresholdPublicKeyForQuorumHash ...
 func (pv *MockPV) ThresholdPublicKeyForQuorumHash(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	pv.mtx.RLock()
@@ -258,10 +262,7 @@ func (pv *MockPV) SignVote(
 	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
 	extSignID := VoteExtensionSignBytes(useChainID, vote)
 
-	privKey, err := pv.GetPrivateKey(ctx, quorumHash)
-	if err != nil {
-		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
-	}
+	privKey := pv.getPrivateKey(quorumHash)
 
 	blockSignature, err := privKey.SignDigest(blockSignID)
 	// fmt.Printf("validator %X signing vote of type %d at height %d with key %X blockSignBytes %X stateSignBytes %X\n",
