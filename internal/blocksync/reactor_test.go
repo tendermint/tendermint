@@ -57,8 +57,7 @@ func setup(
 	ctx, cancel = context.WithCancel(ctx)
 
 	numNodes := len(maxBlockHeights)
-	require.True(t, numNodes >= 1,
-		"must specify at least one block height (nodes)")
+	require.True(t, numNodes >= 1, "must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
 		logger:            log.NewNopLogger().With("module", "block_sync", "testCase", t.Name()),
@@ -134,17 +133,17 @@ func (rts *reactorTestSuite) addNode(
 		mock.Anything,
 		mock.Anything).Return(nil)
 
-	eventbus := eventbus.NewDefault(logger)
-	require.NoError(t, eventbus.Start(ctx))
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.NewNopLogger(),
+		logger,
 		rts.app[nodeID],
 		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
-		eventbus,
+		eventBus,
 		sm.NopMetrics(),
 	)
 
