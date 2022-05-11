@@ -137,7 +137,7 @@ func toList(l map[string]*dto.MetricFamily) metricsList {
 func labelsToStringList(ls []*dto.LabelPair) []string {
 	r := make([]string, len(ls))
 	for i, l := range ls {
-		r[i] = *l.Name
+		r[i] = l.GetName()
 	}
 	return sort.StringSlice(r)
 }
