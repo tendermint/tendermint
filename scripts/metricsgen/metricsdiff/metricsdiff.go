@@ -48,7 +48,8 @@ type LabelDiff struct {
 func main() {
 	flag.Parse()
 	if flag.NArg() != 2 {
-		log.Fatalf("Incorrect number of arguments, expected 2 but received %d", len(os.Args)-1)
+		log.Fatalf("Usage is %s <path1> <path2>, got %d arguments",
+			filepath.Base(os.Args[0]), flag.NArg())
 	}
 	fa, err := os.Open(os.Args[1])
 	if err != nil {

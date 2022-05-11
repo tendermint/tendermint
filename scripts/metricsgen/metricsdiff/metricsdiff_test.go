@@ -15,7 +15,7 @@ func TestDiff(t *testing.T) {
 		aContents string
 		bContents string
 
-		expectedDiff metricsdiff.MetricsDiff
+		want metricsdiff.MetricsDiff
 	}{
 		{
 			name: "labels",
@@ -25,7 +25,7 @@ func TestDiff(t *testing.T) {
 			bContents: `
 			metric_one{label_three="content", label_four="content"} 0
 			`,
-			expectedDiff: metricsdiff.MetricsDiff{
+			want: metricsdiff.MetricsDiff{
 				LabelDiffs: []metricsdiff.LabelDiff{
 					{
 						MetricsName: "metric_one",
@@ -43,7 +43,7 @@ func TestDiff(t *testing.T) {
 			bContents: `
 			metric_two{label_two="content"} 0
 			`,
-			expectedDiff: metricsdiff.MetricsDiff{
+			want: metricsdiff.MetricsDiff{
 				Adds:    []string{"metric_two"},
 				Removes: []string{"metric_one"},
 			},
@@ -58,7 +58,7 @@ func TestDiff(t *testing.T) {
 			require.NoError(t, err)
 			md, err := metricsdiff.MetricsDiffFromReaders(bufA, bufB)
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedDiff, md)
+			require.Equal(t, tc.want, md)
 		})
 	}
 }
