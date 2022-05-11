@@ -292,7 +292,7 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					return
 				}
-				// TODO: propogate or capture this error
+				// TODO: propagate or capture this error
 			}
 			select {
 			case <-ctx.Done():
