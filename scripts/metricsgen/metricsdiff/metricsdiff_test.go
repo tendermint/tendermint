@@ -26,11 +26,11 @@ func TestDiff(t *testing.T) {
 			metric_one{label_three="content", label_four="content"} 0
 			`,
 			want: metricsdiff.Diff{
-				LabelDiffs: []metricsdiff.LabelDiff{
+				Changes: []metricsdiff.LabelDiff{
 					{
-						MetricsName: "metric_one",
-						Adds:        []string{"label_three", "label_four"},
-						Removes:     []string{"label_one", "label_two"},
+						Metric:  "metric_one",
+						Adds:    []string{"label_three", "label_four"},
+						Removes: []string{"label_one", "label_two"},
 					},
 				},
 			},

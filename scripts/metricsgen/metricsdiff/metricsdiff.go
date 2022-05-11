@@ -35,14 +35,14 @@ type Diff struct {
 	Adds    []string
 	Removes []string
 
-	LabelDiffs []LabelDiff
+	Changes []LabelDiff
 }
 
 // LabelDiff describes the label changes between two versions of the same metric.
 type LabelDiff struct {
-	MetricsName string
-	Adds        []string
-	Removes     []string
+	Metric  string
+	Adds    []string
+	Removes []string
 }
 
 func main() {
@@ -93,7 +93,7 @@ func DiffFromReaders(a, b io.Reader) (Diff, error) {
 		aLabelSet := toSet(afamily.Metric[0].Label)
 		bLabelSet := toSet(bfamily.Metric[0].Label)
 		ld := LabelDiff{
-			MetricsName: name,
+			Metric: name,
 		}
 		for name := range aLabelSet {
 			_, ok := bLabelSet[name]
@@ -110,7 +110,7 @@ func DiffFromReaders(a, b io.Reader) (Diff, error) {
 			}
 		}
 		if labelsDiff {
-			md.LabelDiffs = append(md.LabelDiffs, ld)
+			md.Changes = append(md.Changes, ld)
 		}
 	}
 	for name := range bmf {
@@ -143,10 +143,10 @@ func (m Diff) String() string {
 			s += fmt.Sprintf("--- %s\n", remove)
 		}
 	}
-	if len(m.LabelDiffs) > 0 {
+	if len(m.Changes) > 0 {
 		s += "Label Changes: \n"
-		for _, ld := range m.LabelDiffs {
-			s += fmt.Sprintf("Label: %s\n", ld.MetricsName)
+		for _, ld := range m.Changes {
+			s += fmt.Sprintf("Label: %s\n", ld.Metric)
 			for _, add := range ld.Adds {
 				s += fmt.Sprintf("+++ %s", add)
 			}
