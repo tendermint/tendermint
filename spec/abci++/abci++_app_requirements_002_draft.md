@@ -258,7 +258,7 @@ or `ProcessProposal`). There are two main reasons why the Application may want t
 it is not possible to accurately predict which of the blocks proposed in a height will be decided, being delivered to the application
 in that height's `FinalizeBlock`.
 Therefore, the state resulting from exectuing proposed blocks, denoted *candidate state*, needs
-to be kept in memory as an alternative. When `FinalizeBlock` is called, the Application can
+be kept in memory as a possible final state for that height. When `FinalizeBlock` is called, the Application should
 check if the decided block corresponds to one of its candidate states; if so, it will apply it as
 its `ExecuteTxState` (see [Consensus Connection](#consensus-connection) below),
 which will be persisted during the upcoming `Commit` call.
