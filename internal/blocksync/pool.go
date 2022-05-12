@@ -238,7 +238,7 @@ func (pool *BlockPool) PopRequest() {
 		// to smooth the block sync rate and the unit represents the number of blocks per second.
 		// -1 because the start height is assumed to be 1  @jmalicevic ToDo, verify it is still OK when
 		// starting height is not 1
-		if (pool.height-pool.startHeight-1)%100 == 0 {
+		if (pool.height-pool.startHeight)%100 == 0 && pool.height != pool.startHeight {
 			newSyncRate := 100 / time.Since(pool.lastHundredBlockTimeStamp).Seconds()
 			if pool.lastSyncRate == 0 {
 				pool.lastSyncRate = newSyncRate
@@ -558,10 +558,14 @@ func (peer *bpPeer) onTimeout() {
 
 //-------------------------------------
 
-type BlockResponse struct {
+// Trusted Block data stores the last block verified by blocksync
+// along with the commit used to verify it.
+type TrustedBlockData struct {
 	block  *types.Block
 	commit *types.Commit
 }
+
+//-------------------------------------
 
 type bpRequester struct {
 	service.BaseService

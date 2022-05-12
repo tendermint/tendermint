@@ -93,7 +93,7 @@ type Reactor struct {
 
 	syncStartTime time.Time
 
-	lastTrustedBlock *BlockResponse
+	lastTrustedBlock *TrustedBlockData
 }
 
 // NewReactor returns new reactor instance.
@@ -601,7 +601,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			} else {
 				// we need to load the last block we trusted
 				if r.initialState.LastBlockHeight != 0 {
-					r.lastTrustedBlock = &BlockResponse{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
+					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
 					if r.lastTrustedBlock == nil {
 						panic("Failed to load last trusted block")
 					}
@@ -623,7 +623,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					continue // was return previously
 				}
 
-				r.lastTrustedBlock = &BlockResponse{block: newBlock, commit: verifyBlock.LastCommit}
+				r.lastTrustedBlock = &TrustedBlockData{block: newBlock, commit: verifyBlock.LastCommit}
 			}
 			var err error
 			// validate the block before we persist it
