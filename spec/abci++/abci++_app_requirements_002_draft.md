@@ -278,7 +278,7 @@ decided block and thus have to be reexecuted upon `FinalizeBlock`.
 The Consensus Connection should maintain an `ExecuteTxState` - the working state
 for block execution. It should be updated by the call to `FinalizeBlock`
 during block execution and committed to disk as the "latest
-committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`) must not update the `ExecuteTxState`, but rather be kept as a separate candidate state until `FinalizeBlock`
+committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`) **must not** update the `ExecuteTxState`, but rather be kept as a separate candidate state until `FinalizeBlock`
 confirms which of the candidate states (if any) can be used to update `ExecuteTxState`.
 
 #### Mempool Connection
