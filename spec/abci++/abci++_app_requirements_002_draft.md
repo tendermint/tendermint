@@ -430,7 +430,7 @@ In same block execution mode, `ExecTxResult` is returned by `PrepareProposal` so
 be used to build the block to be proposed in the current height.
 
 The `Data` field in `ExecTxResult` contains an array of bytes with the transaction result.
-It must be strictly deterministic (all nodes should return the same value), but can contain arbitrary
+It must be deterministic (i.e., the same value must be returned in all nodes), but it can contain arbitrary
 data. Likewise, the value of `Code` must be deterministic.
 Both the `Code` and `Data` are included in a structure that is hashed into the
 `LastResultsHash` of the block header in the next height (next block execution mode), or the
