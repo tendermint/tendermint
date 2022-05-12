@@ -2260,6 +2260,9 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	}
 }
 
+// TestVoteExtensionRequiredHeight tests that 'ExtensionRequireHeight' correctly
+// enforces that vote extensions be present in consensus for heights greater than
+// or equal to the configured value.
 func TestVoteExtensionRequiredHeight(t *testing.T) {
 	for _, testCase := range []struct {
 		name                  string
@@ -2290,6 +2293,12 @@ func TestVoteExtensionRequiredHeight(t *testing.T) {
 			hasExtension:          false,
 			initialRequiredHeight: 1,
 			expectSuccessfulRound: false,
+		},
+		{
+			name:                  "extension absent but required in future height",
+			hasExtension:          false,
+			initialRequiredHeight: 2,
+			expectSuccessfulRound: true,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

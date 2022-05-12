@@ -2764,7 +2764,7 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 
 func (cs *State) requireVoteExtension() bool {
 	requireHeight := cs.state.ConsensusParams.Vote.ExtensionRequireHeight
-	if requireHeight < cs.Height {
+	if requireHeight == 0 || cs.Height < requireHeight {
 		return false
 	}
 	return true
