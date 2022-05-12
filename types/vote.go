@@ -27,7 +27,7 @@ var (
 	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
 	ErrVoteNil                       = errors.New("nil vote")
-	ErrVoteExtensionAbsent           = errors.New("vote extensions absent")
+	ErrVoteExtensionAbsent           = errors.New("vote extension absent")
 )
 
 type ErrVoteConflictingVotes struct {
