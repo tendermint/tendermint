@@ -303,7 +303,7 @@ recheck (`CheckTxType_Recheck`).
 Finally, after re-checking transactions in the mempool, Tendermint will unlock
 the mempool connection. New transactions are once again able to be processed through `CheckTx`.
 
-Note that `CheckTx` is just a weak filter to keep invalid transactions out of the blockchain.
+Note that `CheckTx` is just a weak filter to keep invalid transactions out of the mempool.
 Since the transaction cannot be guaranteed to be checked against the exact same state as it
 will be executed as part of a (potential) decided block, `CheckTx` shouldn't check *everything*
 that affects the transaction's validity, in particular those checks whose validity may depend on
