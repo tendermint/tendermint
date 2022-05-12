@@ -221,7 +221,7 @@ pick up from when it restarts. See information on the Handshake, below.
 
 The Application state should be persisted during `Commit`.
 
-Before `Commit` is called, Tendermint locks the mempool and flushes the mempool connection so that
+Before invoking `Commit`, Tendermint locks the mempool and flushes the mempool connection. This ensures that
 no new messages
 will be received on the mempool connection. This provides an opportunity to safely update all four
 connection states to the latest committed state at once.
