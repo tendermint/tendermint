@@ -1045,9 +1045,6 @@ func (r *Reactor) isValidator(proTxHash types.ProTxHash) bool {
 func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate, chans channelBundle) {
 	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		// Do not allow starting new broadcasting goroutines after reactor shutdown
