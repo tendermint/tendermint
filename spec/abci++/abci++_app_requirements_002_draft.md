@@ -226,7 +226,7 @@ no new messages
 will be received on the mempool connection during this processing step, providing a good opportunity to safely update all four
 connection states to the latest committed state at once.
 
-When `Commit` completes, it unlocks the mempool.
+When `Commit` completes, Tendermint unlocks the mempool.
 
 WARNING: if the ABCI app logic processing the `Commit` message sends a
 `/broadcast_tx_sync` or `/broadcast_tx_commit` and waits for the response
