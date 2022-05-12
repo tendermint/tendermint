@@ -65,15 +65,13 @@ the clock of `p` is `PRECISION` *ahead* of the clock of the proposer of `v`, and
 
 The following changes are proposed for the algorithm in the [arXiv paper][arXiv].
 
-#### New `StartRound`
+#### New `StartRound` (Lines 11 - 21)
 
 There are two additions to the `propose` round step when executed by the `proposer` of a round:
 
-1. to ensure time monotonicity, the proposer does not propose a value until its current local time becomes greater than the previously decided value's time
-1. when the proposer produce a new proposal it sets the proposal's time to its current local time
-   - no changes are made to the logic when a proposer has a non-nil `validValue`, which retains its original proposal time.
-
-#### **[PBTS-ALG-STARTROUND.1]**
+1. The proposer does not propose a value until its current local time becomes greater than the previously decided value's time;
+1. When the proposer produces a new proposal, it sets the proposal's time to its current local time;
+   - No changes are made to the logic when a proposer re-proposes its `validValue`, which retains its original proposal time.
 
 ```go
 function StartRound(round) {
@@ -94,20 +92,18 @@ function StartRound(round) {
 }
 ```
 
-#### New Rule Replacing Lines 22 - 27
+#### New rule for accepting values (Lines 22 - 27)
 
-The rule on line 22 applies to values `v` proposed for the first time, i.e., for proposals not backed by `2f + 1 PREVOTE`s for `v` in a previous round.
+The rule on line 22 applies to values `v` proposed for the first time, i.e., for proposals not backed by `PREVOTE`s for `v` in a previous round `vr < r`.
 The `PROPOSAL` message, in this case, carry `-1` in its `validRound` field.
 
 The new rule for issuing a `PREVOTE` for a proposed value `v` requires the value to be `timely`.
-As the `timely` predicate is evaluated in the moment that the value is received,
-as part of a `PROPOSAL` message, we require the `PROPOSAL` message to be `timely`.
-
-#### **[PBTS-ALG-UPON-PROP.1]**
+The `timely` predicate is evaluated in the moment that the value is received,
+as part of a `PROPOSAL` message, by comparing the process local time with `v.time`.
 
 ```go
-upon timely(⟨PROPOSAL, h_p, round_p, v, −1⟩) from proposer(h_p, round_p) while step_p = propose do {
-  if valid(v) ∧ (lockedRound_p = −1 ∨ lockedValue_p = v) {
+upon ⟨PROPOSAL, h_p, round_p, v, −1⟩ from proposer(h_p, round_p) while step_p = propose do {
+  if timely(v.time) ∧ valid(v) ∧ (lockedRound_p = −1 ∨ lockedValue_p = v) {
     broadcast ⟨PREVOTE, h_p, round_p, id(v)⟩ 
   }
   else {
