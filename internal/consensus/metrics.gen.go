@@ -162,7 +162,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "quorum_prevote_delay",
-			Help:      "QuroumPrevoteMessageDelay is the interval in seconds between the proposal timestamp and the timestamp of the earliest prevote that achieved a quorum during the prevote step.  To compute it, sum the voting power over each prevote received, in increasing order of timestamp. The timestamp of the first prevote to increase the sum to be above 2/3 of the total voting power of the network defines the endpoint the endpoint of the interval. Subtract the proposal timestamp from this endpoint to obtain the quorum delay.",
+			Help:      "QuroumPrevoteMessageDelay is the interval in seconds between the proposal timestamp and the timestamp of the earliest prevote that achieved a quorum during the prevote step. To compute it, sum the voting power over each prevote received, in increasing order of timestamp. The timestamp of the first prevote to increase the sum to be above 2/3 of the total voting power of the network defines the endpoint the endpoint of the interval. Subtract the proposal timestamp from this endpoint to obtain the quorum delay.",
 		}, append(labels, "proposer_address")).With(labelsAndValues...),
 		FullPrevoteDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,

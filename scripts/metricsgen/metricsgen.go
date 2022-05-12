@@ -249,19 +249,8 @@ func findMetricsStruct(files map[string]*ast.File, structName string) (*ast.Stru
 }
 
 func parseMetricField(f *ast.Field) ParsedMetricField {
-	var comment string
-	if f.Doc != nil {
-		for i, c := range f.Doc.List {
-			if str := strings.TrimPrefix(c.Text, "//"); len(str) > 0 {
-				comment += strings.TrimPrefix(str, " ")
-			}
-			if i < len(f.Doc.List)-1 {
-				comment += " "
-			}
-		}
-	}
 	pmf := ParsedMetricField{
-		Description: comment,
+		Description: extractHelpMessage(f.Doc),
 		MetricName:  extractFieldName(f.Names[0].String(), f.Tag),
 		FieldName:   f.Names[0].String(),
 		TypeName:    extractTypeName(f.Type),
@@ -275,6 +264,28 @@ func parseMetricField(f *ast.Field) ParsedMetricField {
 
 func extractTypeName(e ast.Expr) string {
 	return strings.TrimPrefix(path.Ext(types.ExprString(e)), ".")
+}
+
+func extractHelpMessage(cg *ast.CommentGroup) string {
+	if cg == nil {
+		return ""
+	}
+	var help string
+	for i, c := range cg.List {
+		str := strings.TrimPrefix(c.Text, "//")
+		if len(str) == 0 {
+			continue
+		}
+		mt := strings.TrimPrefix(str, "metrics:")
+		if len(mt) < len(str) {
+			return mt
+		}
+		help += strings.TrimPrefix(str, " ")
+		if i < len(cg.List)-1 {
+			help += " "
+		}
+	}
+	return help
 }
 
 func isMetric(e ast.Expr, mPkgName string) bool {
