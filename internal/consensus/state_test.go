@@ -2353,12 +2353,11 @@ func TestVoteExtensionRequiredHeight(t *testing.T) {
 			if testCase.expectSuccessfulRound {
 				ensurePrecommit(t, voteCh, height, round)
 				height++
+				ensureNewRound(t, newRoundCh, height, round)
 			} else {
-				ensureNewTimeout(t, timeoutCh, height, round, cs1.state.ConsensusParams.Timeout.VoteTimeout(round).Nanoseconds())
-				round++
+				ensureNoNewTimeout(t, timeoutCh, cs1.state.ConsensusParams.Timeout.VoteTimeout(round).Nanoseconds())
 			}
 
-			ensureNewRound(t, newRoundCh, height, round)
 			m.AssertExpectations(t)
 		})
 	}
