@@ -2280,7 +2280,7 @@ func TestVerifyVoteExtensionCalled(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			numValidators := 3
+			numValidators := 4
 			m := abcimocks.NewApplication(t)
 			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{
 				Status: abci.ResponseProcessProposal_ACCEPT,
@@ -2290,7 +2290,7 @@ func TestVerifyVoteExtensionCalled(t *testing.T) {
 			if testCase.hasExtension {
 				m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
 					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
-				}, nil).Times(numValidators)
+				}, nil).Times(numValidators - 1)
 			}
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
