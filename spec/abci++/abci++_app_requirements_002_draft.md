@@ -210,7 +210,7 @@ up to the Application to ensure that handling ABCI++ connections is thread safe.
 
 #### FinalizeBlock
 
-When the Consensus algorithm decides on a block locally, Tendermint uses `FinalizeBlock` to send the
+When the Consensus algorithm decides on a block, Tendermint uses `FinalizeBlock` to send the
 current block's hash, height, transactions, etc., which the Application uses to transition its state.
 
 The Application should remember the latest height from which it
