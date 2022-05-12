@@ -270,22 +270,15 @@ func extractHelpMessage(cg *ast.CommentGroup) string {
 	if cg == nil {
 		return ""
 	}
-	var help string
-	for i, c := range cg.List {
-		str := strings.TrimPrefix(c.Text, "//")
-		if len(str) == 0 {
-			continue
+	var help []string
+	for _, c := range cg.List {
+		mt := strings.TrimPrefix(str, "//metrics:")
+		if mt != c {
+			return strings.TrimSpace(mt)
 		}
-		mt := strings.TrimPrefix(str, "metrics:")
-		if len(mt) < len(str) {
-			return mt
-		}
-		help += strings.TrimPrefix(str, " ")
-		if i < len(cg.List)-1 {
-			help += " "
-		}
+		help = append(help, strings.TrimSpace(strings.TrimPrefix(c, "//")))
 	}
-	return help
+	return strings.Join(help, " ")
 }
 
 func isMetric(e ast.Expr, mPkgName string) bool {
