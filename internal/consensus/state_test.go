@@ -2076,19 +2076,13 @@ func TestExtendVoteCalled(t *testing.T) {
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", ctx, &abci.RequestVerifyVoteExtension{
-		Hash:             blockID.Hash,
-		ValidatorAddress: addr,
-		Height:           height,
-		VoteExtension:    []byte("extension"),
-	})
 	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), blockID, vss[1:]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
 	m.AssertExpectations(t)
 
 	// Only 3 of the vote extensions are seen, as consensus proceeds as soon as the +2/3 threshold
 	// is observed by the consensus engine.
-	for _, pv := range vss[:3] {
+	for _, pv := range vss[1:3] {
 		pv, err := pv.GetPubKey(ctx)
 		require.NoError(t, err)
 		addr := pv.Address()
