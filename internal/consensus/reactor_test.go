@@ -148,8 +148,6 @@ func setup(
 		require.NoError(t, reactor.Start(ctx))
 		require.True(t, reactor.IsRunning())
 		t.Cleanup(reactor.Wait)
-
-		i++
 	}
 
 	require.Len(t, rts.reactors, numNodes)
