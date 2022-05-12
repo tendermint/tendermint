@@ -219,7 +219,7 @@ pick up from when it restarts. See information on the Handshake, below.
 
 #### Commit
 
-Application state should only be persisted to disk during `Commit`.
+The Application state should be persisted during `Commit`.
 
 Before `Commit` is called, Tendermint locks the mempool and flushes the mempool connection so that
 no new messages
