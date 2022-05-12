@@ -2360,9 +2360,11 @@ func (cs *State) addVote(
 			cs.metrics.MarkVoteExtensionReceived(err == nil)
 		} else {
 			if !errors.Is(err, types.ErrVoteExtensionAbsent) {
+				cs.logger.Error("verifying vote extension", "err", err)
 				return false, err
 			}
 			if cs.requireVoteExtension() {
+				cs.logger.Error("required vote extension absent", "err", err)
 				return false, err
 			}
 		}
