@@ -113,22 +113,13 @@ upon ⟨PROPOSAL, h_p, round_p, v, −1⟩ from proposer(h_p, round_p) while ste
 }
 ```
 
-#### Rules at Lines 28 - 33 remain unchanged
+#### All other rules remains unchanged
 
-The rule on line 28 applies to values `v` proposed again in the current round because its proposer received `2f + 1 PREVOTE`s for `v` in a previous round `vr`.
-This means that there was a round `r <= vr` in which `2f + 1` processes accepted `v` for the first time, and so sent `PREVOTE`s for `v`.
-Which, in turn, means that these processes executed the line 22 of the algorithm, and therefore judged `v` as a `timely` proposal.
-
-In other words, we don't need to verify whether `v` is a timely proposal because at least `f + 1` processes judged `v` as `timely` in a previous round,
-and because, since `v` was re-proposed as a `validValue` (line 16), `v.time` has not being updated from its original proposal.
-
-**All other rules remains unchanged.**
+Notice, in particular, that the rule on line 28 for values re-proposed, and backed by `2f + 1`-equivalent voting power `PREVOTE` messages, is not affected by the changes.
 
 Back to [main document][main].
 
 [main]: ./README.md
-
-[algorithm_v1]: ./v1/pbts-algorithm_001_draft.md
 
 [sysmodel]: ./pbts-sysmodel_002_draft.md
 
