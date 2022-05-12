@@ -264,7 +264,7 @@ its `ExecuteTxState` (see [Consensus Connection](#consensus-connection) below),
 which will be persisted during the upcoming `Commit` call.
 
 In bad runs (e.g., under network instability), Consensus might take many rounds.
-In those cases many proposed blocks will be disclosed to the Application for a given height.
+In this case, several proposed blocks will be disclosed to the Application for a given height.
 Indeed, by the nature of Consensus, the number of proposed blocks received by the Application for
 a particular height cannot be bound, so Application developers must act with care and use mechanisms
 to bound memory usage. As a general rule, the Application should be ready to discard candidate states
