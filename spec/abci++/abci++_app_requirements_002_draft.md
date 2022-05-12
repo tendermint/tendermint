@@ -415,7 +415,7 @@ semantically meaningless to Tendermint.
 `Events` include any events for the execution, though since the transaction has not
 been committed yet, they are effectively ignored by Tendermint.
 
-In v0.35.x and later, there is a `Priority` field in `ResponseCheckTx` that can be
+From v0.35.x, there is a `Priority` field in `ResponseCheckTx` that can be
 used to explicitly prioritize transactions in the mempool for inclusion in a block
 proposal.
 
