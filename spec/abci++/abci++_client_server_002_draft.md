@@ -1,5 +1,5 @@
 ---
-order: 3
+order: 5
 title: Client and Server
 ---
 
@@ -8,10 +8,13 @@ title: Client and Server
 This section is for those looking to implement their own ABCI Server, perhaps in
 a new programming language.
 
-You are expected to have read [ABCI Methods and Types](./abci.md) and [ABCI
-Applications](./apps.md).
+You are expected to have read all previous sections of ABCI++ specification, namely
+[Basic Concepts](./abci%2B%2B_basic_concepts_002_draft.md),
+[Methods](./abci%2B%2B_methods_002_draft.md),
+[Application Requirements](./abci%2B%2B_app_requirements_002_draft.md), and
+[Expected Behavior](./abci%2B%2B_tmint_expected_behavior_002_draft.md).
 
-## Message Protocol
+## Message Protocol and Synchrony
 
 The message protocol consists of pairs of requests and responses defined in the
 [protobuf file](../../proto/tendermint/abci/types.proto).
@@ -21,21 +24,24 @@ or custom protobuf types.
 
 For more details on protobuf, see the [documentation](https://developers.google.com/protocol-buffers/docs/overview).
 
-For each request, a server should respond with the corresponding
-response, where the order of requests is preserved in the order of
-responses.
+As of v0.36 requests are synchronous. For each of ABCI++'s four connections (see
+[Connections](./abci%2B%2B_app_requirements_002_draft.md)), when Tendermint issues a request to the
+Application, it will wait for the response before continuing execution. As a side effect,
+requests and responses are ordered for each connection, but not necessarily across connections.
 
 ## Server Implementations
 
-To use ABCI in your programming language of choice, there must be a ABCI
-server in that language. Tendermint supports three implementations of the ABCI, written in Go:
+To use ABCI in your programming language of choice, there must be an ABCI
+server in that language. Tendermint supports four implementations of the ABCI server:
 
-- In-process ([Golang](https://github.com/tendermint/tendermint/tree/master/abci), [Rust](https://github.com/tendermint/rust-abci))
-- ABCI-socket
-- GRPC
+- in Tendermint's repository:
+    - In-process
+    - ABCI-socket
+    - GRPC
+- [tendermint-rs](https://github.com/informalsystems/tendermint-rs)
 
-The latter two can be tested using the `abci-cli` by setting the `--abci` flag
-appropriately (ie. to `socket` or `grpc`).
+The implementations in Tendermint's repository can be tested using `abci-cli` by setting
+the `--abci` flag appropriately.
 
 See examples, in various stages of maintenance, in
 [Go](https://github.com/tendermint/tendermint/tree/master/abci/server),
@@ -55,9 +61,9 @@ though it will have significant performance overhead.
 
 To get started with GRPC, copy in the [protobuf
 file](../../proto/tendermint/abci/types.proto) and compile it using the GRPC
-plugin for your language. For instance, for golang, the command is `protoc
---go_out=plugins=grpc:. types.proto`.  See the [grpc documentation for more
-details](http://www.grpc.io/docs/).  `protoc` will autogenerate all the
+plugin for your language. For instance, for Golang, the command is `protoc
+--go_out=plugins=grpc:. types.proto`.  See the [grpc documentation](http://www.grpc.io/docs/)
+for more details.  `protoc` will autogenerate all the
 necessary code for ABCI client and server in your language, including whatever
 interface your application must satisfy to be used by the ABCI server for
 handling requests.
@@ -81,7 +87,7 @@ remaining bytes in the prefix are the Big Endian encoded length.
 For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
 bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
 encoded ABCI message is 65535 bytes long, the length-prefixed message
-would be like 0x02FFFF....
+would start with 0x02FFFF.
 
 The benefit of using this `varint` encoding over the old version (where integers were encoded as `<len of len><big endian len>` is that
 it is the standard way to encode integers in Protobuf. It is also generally shorter.
@@ -90,15 +96,6 @@ As noted above, this prefixing does not apply for GRPC.
 
 An ABCI server must also be able to support multiple connections, as
 Tendermint uses four connections.
-
-### Async vs Sync
-
-The main ABCI server (ie. non-GRPC) provides ordered asynchronous messages.
-This is useful for DeliverTx and CheckTx, since it allows Tendermint to forward
-transactions to the app before it's finished processing previous ones.
-
-Thus, DeliverTx and CheckTx messages are sent asynchronously, while all other
-messages are sent synchronously.
 
 ## Client
 
