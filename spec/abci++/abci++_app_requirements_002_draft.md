@@ -232,7 +232,7 @@ WARNING: if the ABCI app logic processing the `Commit` message sends a
 `/broadcast_tx_sync` or `/broadcast_tx_commit` and waits for the response
 before proceeding, it will deadlock. Executing `broadcast_tx` calls
 involves acquiring the mempool lock that Tendermint holds during the `Commit` call.
-possible. If you make the call to the `broadcast_tx` endpoints concurrently,
+If you make the call to the `broadcast_tx` endpoints concurrently,
 that's not a problem, it just can't be part of the sequential logic of the
 `Commit` function.
 
