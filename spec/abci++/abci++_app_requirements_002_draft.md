@@ -290,7 +290,7 @@ at the end of every `Commit`.
 
 During the execution of a Consensus instance, the `CheckTxState` may be updated concurrently with the
 `ExecuteTxState`, as messages may be sent concurrently on the Consensus and Mempool connections.
-At the end of the Consensus instance, as described above, Tendermint will lock the mempool and flush
+At the end of the Consensus instance, as described above, Tendermint locks the mempool and flushes
 the mempool connection before calling `Commit`, ensuring that all existing `CheckTx` calls are
 responded to and no new ones can begin.
 
