@@ -223,7 +223,7 @@ The Application state should be persisted during `Commit`.
 
 Before invoking `Commit`, Tendermint locks the mempool and flushes the mempool connection. This ensures that
 no new messages
-will be received on the mempool connection. This provides an opportunity to safely update all four
+will be received on the mempool connection during this processing step, providing a good opportunity to safely update all four
 connection states to the latest committed state at once.
 
 When `Commit` completes, it unlocks the mempool.
