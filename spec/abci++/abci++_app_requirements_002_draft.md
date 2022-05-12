@@ -263,7 +263,7 @@ check if the decided block corresponds to one of its candidate states; if so, it
 its `ExecuteTxState` (see [Consensus Connection](#consensus-connection) below),
 which will be persisted during the upcoming `Commit` call.
 
-In particularly bad runs (e.g., because of network instability), Consensus might take many rounds.
+In bad runs (e.g., under network instability), Consensus might take many rounds.
 In those cases many proposed blocks will be disclosed to the Application for a given height.
 Indeed, by the nature of Consensus, the number of proposed blocks received by the Application for
 a particular height cannot be bound, so Application developers must act with care and use mechanisms
