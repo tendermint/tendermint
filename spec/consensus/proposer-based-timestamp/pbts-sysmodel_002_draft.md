@@ -42,10 +42,10 @@ and drifts of local clocks from real time.
 #### **[PBTS-CLOCK-PRECISION.0]**
 
 There exists a system parameter `PRECISION`, such that
-for any two processes `p` and `q`, with local clocks `C_p` and `C_q`:
+for any two processes `p` and `q`, with local clocks <code>C<sub>p</sub></code> and <code>C<sub>q</sub></code>:
 
 - If `p` and `q` are equipped with synchronized clocks,
- then for any real-time `t` we have `|C_p(t) - C_q(t)| <= PRECISION`.
+ then for any real-time `t` we have <code>|C<sub>p</sub>(t) - C<sub>q</sub>(t)| <= PRECISION</code>.
 
 `PRECISION` thus bounds the difference on the times simultaneously read by processes
 from their local clocks, so that their clocks can be considered synchronized.
@@ -60,12 +60,12 @@ processes from their clocks to real time.
 For the sake of completeness, we define a parameter `ACCURACY` such that:
 
 - At real time `t` there is at least one correct process `p` which clock marks
-  `C_p(t)` with `|C_p(t) - t| <= ACCURACY`.
+  <code>C<sub>p</sub>(t)</code> with <code>|C<sub>p</sub>(t) - t| <= ACCURACY</code>.
 
 As a consequence, applying the definition of `PRECISION`, we have:
 
 - At real time `t` the synchronized clock of any correct process `p` marks
-  `C_p(t)` with `|C_p(t) - t| <= ACCURACY + PRECISION`.
+  <code>C<sub>p</sub>(t)</code> with <code>|C<sub>p</sub>(t) - t| <= ACCURACY + PRECISION</code>.
 
 The reason for not adopting `ACCURACY` as a system parameter is the assumption
 that `PRECISION >> ACCURACY`.
@@ -163,7 +163,7 @@ rounds, but the evaluation of the `timely` predicate is only relevant at round
 
 > Considering the algorithm in the [arXiv paper][arXiv], a new proposal is
 > produced by the `getValue()` method, invoked by the proposer `p` of round
-> `round_p` when starting its proposing round with a nil `validValue_p`.
+> <code>round<sub>p</sub></code> when starting its proposing round with a nil <code>validValue<sub>p</sub></code>.
 > The first round at which a value `v` is proposed is then the round at which
 > the proposal for `v` was produced, and broadcast in a `PROPOSAL` message with
 > `vr = -1`.
@@ -190,7 +190,7 @@ associated proposal time `v.time` is considered `timely`.
 
 > Considering the algorithm in the [arXiv paper][arXiv], the `timely` predicate
 > is evaluated by a process `p` when it receives a valid `PROPOSAL` message
-> from the proposer of the current round `round_p` with `vr = -1`.
+> from the proposer of the current round <code>round<sub>p</sub></code> with `vr = -1`.
 
 ### Timely Proof-of-Locks
 
@@ -259,7 +259,7 @@ produced (by hypothesis) we can affirm that at least one correct process (also)
 observed a `POL(v,vr)`.
 
 > Considering the algorithm in the [arXiv paper][arXiv], `v` was proposed by
-> the proposer `p` of round `round_p` because its `validValue_p` variable was
+> the proposer `p` of round <code>round<sub>p</sub></code> because its <code>validValue<sub>p</sub></code> variable was
 > set to `v`.
 > The `PROPOSAL` message broadcast by the proposer, in this case, had `vr > -1`,
 > and it could only be accepted by processes that also observed a `POL(v,vr)`.
