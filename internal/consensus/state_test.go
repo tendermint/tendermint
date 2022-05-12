@@ -2280,7 +2280,7 @@ func TestVerifyVoteExtensionCalled(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			numValidators := 4
+			numValidators := 3
 			m := abcimocks.NewApplication(t)
 			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{
 				Status: abci.ResponseProcessProposal_ACCEPT,
