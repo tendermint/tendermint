@@ -19,9 +19,11 @@ type Metrics struct {
 
 	// ConsensusParamUpdates is the total number of times the application has
 	// udated the consensus params since process start.
+	//metrics:Number of consensus parameter updates returned by the application since process start.
 	ConsensusParamUpdates metrics.Counter
 
 	// ValidatorSetUpdates is the total number of times the application has
 	// udated the validator set since process start.
+	//metrics:Number of validator set updates returned by the application since process start.
 	ValidatorSetUpdates metrics.Counter
 }
