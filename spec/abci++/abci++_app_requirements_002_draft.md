@@ -205,7 +205,7 @@ concurrent at all. This meant if your app was written in Go, and compiled in-pro
 using the default `NewLocalClient`, or run out-of-process using the default `SocketServer`,
 ABCI messages from all connections were linearizable (received one at a
 time).
-This is no longer the case starting from v0.36.1: those locks have been removed and now it is thus
+This is no longer the case starting from v0.36.1: the global locks have been removed and it is
 up to the Application to ensure its thread safety.
 
 #### FinalizeBlock
