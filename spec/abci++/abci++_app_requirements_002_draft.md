@@ -396,7 +396,7 @@ Since the introduction of `PrepareProposal` and `ProcessProposal` in v.0.36.x, i
 to enforce that all blocks proposed (and voted for) in consensus &mdash; and thus all
 blocks decided &mdash; respect the `MaxGas` limits described above.
 
-The `GasUsed` field is ignored completely by Tendermint. That said, applications should enforce:
+The `GasUsed` field is ignored by Tendermint. That said, applications should enforce:
 
 * `GasUsed <= GasWanted` for any given transaction
 * `(sum of GasUsed in a block) <= MaxGas` for every block
