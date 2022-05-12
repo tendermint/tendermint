@@ -757,9 +757,6 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		if len(ecs.Extension) > MaxVoteExtensionSize {
 			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
 		}
-		if len(ecs.ExtensionSignature) == 0 {
-			return errors.New("vote extension signature is missing")
-		}
 		if len(ecs.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
@@ -773,6 +770,13 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 	}
 	if len(ecs.ExtensionSignature) != 0 {
 		return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	}
+	return nil
+}
+
+func (ecs ExtendedCommitSig) ValidateExtension() error {
+	if len(ecs.ExtensionSignature) == 0 {
+		return errors.New("vote extension signature is missing")
 	}
 	return nil
 }
@@ -1017,7 +1021,6 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
-	requireExtensions := false
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
 	for idx, ecs := range ec.ExtendedSignatures {
 		if ecs.BlockIDFlag == BlockIDFlagAbsent {
@@ -1027,17 +1030,28 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet
 		if err := vote.ValidateBasic(); err != nil {
 			panic(fmt.Errorf("failed to validate vote reconstructed from LastCommit: %w", err))
 		}
-		if requireExtensions {
-			if err := vote.ValidateExtension(); err != nil {
-				panic(fmt.Errorf("failed to validate vote extensions reconstructed from LastCommit: %w", err))
-			}
-		}
 		added, err := voteSet.AddVote(vote)
 		if !added || err != nil {
 			panic(fmt.Errorf("failed to reconstruct vote set from extended commit: %w", err))
 		}
 	}
 	return voteSet
+}
+
+// TODO Comment
+// this should probably also verify the signature
+// probably want to change to just verify when present.
+func (ec *ExtendedCommit) EnsureExtensions() error {
+	for idx, ecs := range ec.ExtendedSignatures {
+		if ecs.BlockIDFlag == BlockIDFlagAbsent {
+			continue
+		}
+		vote := ec.GetExtendedVote(int32(idx))
+		if err := vote.EnsureExtension(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // StripExtensions converts an ExtendedCommit to a Commit by removing all vote

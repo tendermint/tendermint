@@ -703,6 +703,13 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 		))
 	}
 
+	requireHeight := cs.state.ConsensusParams.Vote.ExtensionRequireHeight
+	if requireHeight != 0 && extCommit.Height >= requireHeight {
+		if err := extCommit.EnsureExtensions(); err != nil {
+			panic(fmt.Sprintf("failed to reconstruct last commit; invalid vote extensions: %v", err))
+		}
+	}
+
 	lastPrecommits := extCommit.ToVoteSet(state.ChainID, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
 		panic("failed to reconstruct last commit; does not have +2/3 maj")
@@ -2350,7 +2357,7 @@ func (cs *State) addVote(
 		// will consider the vote valid even if the extension is absent.
 		// VerifyVoteExtension will not be called in this case if the extension
 		// is absent.
-		err := vote.ValidateExtension()
+		err := vote.EnsureExtension()
 		if err == nil {
 			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
 			err = vote.VerifyWithExtension(cs.state.ChainID, val.PubKey)

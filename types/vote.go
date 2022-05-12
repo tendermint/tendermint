@@ -313,7 +313,7 @@ func (vote *Vote) ValidateWithExtension() error {
 		return err
 	}
 
-	if err := vote.ValidateExtension(); err != nil {
+	if err := vote.EnsureExtension(); err != nil {
 		return err
 	}
 
@@ -321,14 +321,11 @@ func (vote *Vote) ValidateWithExtension() error {
 }
 
 //
-func (vote *Vote) ValidateExtension() error {
+func (vote *Vote) EnsureExtension() error {
 	// We should always see vote extension signatures in non-nil precommits
 	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
 		if len(vote.ExtensionSignature) == 0 {
 			return ErrVoteExtensionAbsent
-		}
-		if len(vote.ExtensionSignature) > MaxSignatureSize {
-			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
 	}
 	return nil
