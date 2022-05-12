@@ -28,31 +28,36 @@ var (
 type Metrics struct {
 	// Number of peers.
 	Peers metrics.Gauge
-	// Number of bytes received from a given peer.
+	// Number of bytes per channel received from a given peer.
 	PeerReceiveBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
-	// Number of bytes sent to a given peer.
+	// Number of bytes per channel sent to a given peer.
 	PeerSendBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
-	// Pending bytes to be sent to a given peer.
+	// Number of bytes pending being sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge `metrics_labels:"peer_id"`
 
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
+	//metrics:The time taken to read off of a peer's queue before sending on the connection.
 	RouterPeerQueueRecv metrics.Histogram
 
 	// RouterPeerQueueSend defines the time taken to send on a peer's queue which
 	// will later be read and sent on the connection (see RouterPeerQueueRecv).
+	//metrics:The time taken to send on a peer's queue which will later be read and sent on the connection.
 	RouterPeerQueueSend metrics.Histogram
 
 	// RouterChannelQueueSend defines the time taken to send on a p2p channel's
 	// queue which will later be consued by the corresponding reactor/service.
+	//metrics:The time taken to send on a p2p channel's queue which will later be consued by the corresponding reactor/service.
 	RouterChannelQueueSend metrics.Histogram
 
 	// PeerQueueDroppedMsgs defines the number of messages dropped from a peer's
 	// queue for a specific flow (i.e. Channel).
+	//metrics:The number of messages dropped from a peer's queue for a specific p2p Channel.
 	PeerQueueDroppedMsgs metrics.Counter `metrics_labels:"ch_id" metrics_name:"router_channel_queue_dropped_msgs"`
 
 	// PeerQueueMsgSize defines the average size of messages sent over a peer's
 	// queue for a specific flow (i.e. Channel).
+	//metrics:The size of messages sent over a peer's queue for a specific p2p Channel.
 	PeerQueueMsgSize metrics.Gauge `metrics_labels:"ch_id" metric_name:"router_channel_queue_msg_size"`
 }
 
