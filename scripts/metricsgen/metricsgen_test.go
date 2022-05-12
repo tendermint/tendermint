@@ -158,7 +158,7 @@ func TestParseMetricsStruct(t *testing.T) {
 						TypeName:   "Counter",
 						FieldName:  "myCounter",
 						MetricName: "my_counter",
-						Labels:     "\"label1\",\"label2\",",
+						Labels:     "\"label1\",\"label2\"",
 					},
 				},
 			},

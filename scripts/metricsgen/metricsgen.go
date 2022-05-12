@@ -272,11 +272,11 @@ func extractHelpMessage(cg *ast.CommentGroup) string {
 	}
 	var help []string
 	for _, c := range cg.List {
-		mt := strings.TrimPrefix(str, "//metrics:")
-		if mt != c {
+		mt := strings.TrimPrefix(c.Text, "//metrics:")
+		if mt != c.Text {
 			return strings.TrimSpace(mt)
 		}
-		help = append(help, strings.TrimSpace(strings.TrimPrefix(c, "//")))
+		help = append(help, strings.TrimSpace(strings.TrimPrefix(c.Text, "//")))
 	}
 	return strings.Join(help, " ")
 }
