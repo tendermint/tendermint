@@ -426,7 +426,7 @@ including the list of all its transactions synchronously to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
 by the Agreement property of Tendermint consensus.
 
-In same block execution mode `ExecTxResult` is returned by `PrepareProposal` so that its data can
+In same block execution mode, `ExecTxResult` is returned by `PrepareProposal` so that its data can
 be used to build the block to be proposed in the current height.
 
 The `Data` field in `ExecTxResult` contains an array of bytes with the transaction result.
