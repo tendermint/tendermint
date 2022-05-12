@@ -260,10 +260,9 @@ paths:
       operationId: events
       description: |
         Fetch a batch of events posted by the consensus node and matching a
-        specified query.
+        specified query string.
 
-        The query grammar is defined in
-        https://godoc.org/github.com/tendermint/tendermint/internal/pubsub/query/syntax.
+        The query grammar is defined in [pubsub/query/syntax](https://godoc.org/github.com/tendermint/tendermint/internal/pubsub/query/syntax).
         An empty query matches all events; otherwise a query comprises one or
         more terms comparing event metadata to target values. For example, to
         select new block events:
@@ -275,13 +274,13 @@ paths:
 
             tm.event = 'Tx' AND tx.hash = 'EA7B33F'
 
-        The comparison operators include "=", "<", "<=", ">", ">=", and
-        "CONTAINS". Operands may be strings (in single quotes), numbers, dates,
-        or timestamps. In addition, the "EXISTS" operator allows you to check
+        The comparison operators include `=`, `<`, `<=`, `>`, `>=`, and
+        `CONTAINS`. Operands may be strings (in single quotes), numbers, dates,
+        or timestamps. In addition, the `EXISTS` operator allows you to check
         for the presence of an attribute regardless of its value.
 
-        Tendermint defines a tm.event attribute for all events. Transactions
-        are also assigned tx.hash and tx.height attributes. Other attributes
+        Tendermint defines a `tm.event` attribute for all events. Transactions
+        are also assigned `tx.hash` and `tx.height` attributes. Other attributes
         are provided by the application as ABCI Event records. The name of the
         event in the query is formed by combining the type and attribute key
         with a period. For example, given:
@@ -295,16 +294,16 @@ paths:
                 },
             }}
 
-        the query may refer to the names "reward.address", "reward.amount", and
-        "reward.balance", as in:
+        the query may refer to the names`"reward.address`,`"reward.amount`, and
+        `reward.balance`, as in:
 
             reward.address EXISTS AND reward.balance > 45
 
         The node maintains a log of all events within an operator-defined time
         window. The /events method returns the most recent items from the log
         that match the query. Each item returned includes a cursor that marks
-        its location in the log. Cursors can be passed via the "before" and
-        "after" parameters to fetch events earlier in the log.
+        its location in the log. Cursors can be passed via the `before` and
+        `after` parameters to fetch events earlier in the log.
       parameters:
         - in: query
           name: filter
