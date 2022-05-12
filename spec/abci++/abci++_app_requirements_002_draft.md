@@ -203,15 +203,17 @@ and the
 used a global lock to guard the handling of events across all connections, so they were not
 concurrent at all. This meant if your app was written in Go, and compiled in-process with Tendermint
 using the default `NewLocalClient`, or run out-of-process using the default `SocketServer`,
-ABCI messages from all connections were linearizable (received one at a
-time).
+ABCI messages from all connections were received in sequence, one at a
+time.
 This is no longer the case starting from v0.36.1: the global locks have been removed and it is
 up to the Application to ensure that handling ABCI++ connections is thread safe.
+Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
+still received in sequence.
 
 #### FinalizeBlock
 
 When the Consensus algorithm decides on a block, Tendermint uses `FinalizeBlock` to send the
-current block's hash, height, transactions, etc., which the Application uses to transition its state.
+decided block's hash, height, transactions, etc., which the Application uses to transition its state.
 
 The Application should remember the latest height from which it
 has run a successful `Commit` so that it can tell Tendermint where to
@@ -223,7 +225,8 @@ The Application state should be persisted during `Commit`.
 
 Before invoking `Commit`, Tendermint locks the mempool and flushes the mempool connection. This ensures that
 no new messages
-will be received on the mempool connection during this processing step, providing a good opportunity to safely update all four
+will be received on the mempool connection during this processing step, providing an opportunity to safely
+update all four
 connection states to the latest committed state at once.
 
 When `Commit` completes, Tendermint unlocks the mempool.
@@ -232,31 +235,41 @@ WARNING: if the ABCI app logic processing the `Commit` message sends a
 `/broadcast_tx_sync` or `/broadcast_tx_commit` and waits for the response
 before proceeding, it will deadlock. Executing `broadcast_tx` calls
 involves acquiring the mempool lock that Tendermint holds during the `Commit` call.
-If you make the call to the `broadcast_tx` endpoints concurrently,
-that's not a problem, it just can't be part of the sequential logic of the
+Synchronous mempool-related calls must be avoided as part of the sequential logic of the
 `Commit` function.
 
 #### Candidate States
 
 Tendermint calls `PrepareProposal` when it is about to send a proposed block to the network.
 Likewise, Tendermint calls `ProcessProposal` upon reception of a proposed block from the
-network. In both cases, the proposed block's data (last block's commit info, transactions, etc.)
+network. In both cases, the proposed block's data
 is disclosed to the Application, in the same conditions as is done in `FinalizeBlock`.
+The block data disclosed the to Application by these three methods are the following:
+
+* the transaction list
+* the `LastCommit` referring to the previous block
+* the block header's hash (except in `PrepareProposal`, where it is not known yet)
+* list of validators that misbehaved
+* the block's timestamp
+* `NextValidatorsHash`
+* Proposer address
 
 The Application may decide to *immediately* execute the given block (i.e., upon `PrepareProposal`
 or `ProcessProposal`). There are two main reasons why the Application may want to do this:
 
-* In order to be sure that the block does not contain *any* invalid transaction, there is usually
+* *Avoiding invalid transactions in blocks*.
+  In order to be sure that the block does not contain *any* invalid transaction, there is usually
   no way other than fully executing the transactions in the block as though it was the *decided*
   block.
-* Upon reception of the decided block via `FinalizeBlock`, if that same block was executed
+* *Quick `FinalizeBlock` execution*.
+  Upon reception of the decided block via `FinalizeBlock`, if that same block was executed
   upon `PrepareProposal` or `ProcessProposal` and the resulting state was kept in memory, the
   Application can simply apply that state (faster) to the main state, rather than reexecuting
   the decided block (slower).
 
 `PrepareProposal`/`ProcessProposal` can be called many times for a given height. Moreover,
-it is not possible to accurately predict which of the blocks proposed in a height will be decided, being delivered to the application
-in that height's `FinalizeBlock`.
+it is not possible to accurately predict which of the blocks proposed in a height will be decided,
+being delivered to the Application in that height's `FinalizeBlock`.
 Therefore, the state resulting from executing a proposed block, denoted a *candidate state*, should
 be kept in memory as a possible final state for that height. When `FinalizeBlock` is called, the Application should
 check if the decided block corresponds to one of its candidate states; if so, it will apply it as
@@ -264,7 +277,7 @@ its `ExecuteTxState` (see [Consensus Connection](#consensus-connection) below),
 which will be persisted during the upcoming `Commit` call.
 
 In bad runs (e.g., under network instability), Consensus might take many rounds.
-In this case, several proposed blocks will be disclosed to the Application for a given height.
+In this case, potentially many proposed blocks will be disclosed to the Application for a given height.
 Indeed, by the nature of Consensus, the number of proposed blocks received by the Application for
 a particular height cannot be bound, so Application developers must act with care and use mechanisms
 to bound memory usage. As a general rule, the Application should be ready to discard candidate states
@@ -278,14 +291,17 @@ decided block and thus have to be reexecuted upon `FinalizeBlock`.
 The Consensus Connection should maintain an `ExecuteTxState` - the working state
 for block execution. It should be updated by the call to `FinalizeBlock`
 during block execution and committed to disk as the "latest
-committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`) **must not** update the `ExecuteTxState`, but rather be kept as a separate candidate state until `FinalizeBlock`
+committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`)
+**must not** update the `ExecuteTxState`, but rather be kept as a separate candidate state until `FinalizeBlock`
 confirms which of the candidate states (if any) can be used to update `ExecuteTxState`.
 
 #### Mempool Connection
 
-The mempool Connection should maintain a `CheckTxState`
-to sequentially process pending transactions in the mempool that have
-not yet been committed. It should be initialized to the latest committed state
+The mempool Connection maintains `CheckTxState`. Tendermint sequentially processes an incoming
+transaction (via RPC from client or P2P from the gossip layer) against `CheckTxState`.
+If the processing does not return any error, the transaction is accepted into the mempool
+and Tendermint starts gossipping it.
+`CheckTxState` should be reset to the latest committed state
 at the end of every `Commit`.
 
 During the execution of a Consensus instance, the `CheckTxState` may be updated concurrently with the
@@ -294,16 +310,17 @@ At the end of the Consensus instance, as described above, Tendermint locks the m
 the mempool connection before calling `Commit`. This ensures that all pending `CheckTx` calls are
 responded to and no new ones can begin.
 
-After `Commit`, while still holding the mempool lock, `CheckTx` is run again on all transactions
-that remain in the node's local mempool after filtering those included in the block.
-An additional `Type` parameter is made available to the `CheckTx` function that
+After the `Commit` call returns, while still holding the mempool lock, `CheckTx` is run again on all
+transactions that remain in the node's local mempool after filtering those included in the block.
+Parameter `Type` in `RequestCheckTx`
 indicates whether an incoming transaction is new (`CheckTxType_New`), or a
 recheck (`CheckTxType_Recheck`).
 
 Finally, after re-checking transactions in the mempool, Tendermint will unlock
 the mempool connection. New transactions are once again able to be processed through `CheckTx`.
 
-Note that `CheckTx` is just a weak filter to keep invalid transactions out of the mempool.
+Note that `CheckTx` is just a weak filter to keep invalid transactions out of the mempool and,
+utimately, ouf of the blockchain.
 Since the transaction cannot be guaranteed to be checked against the exact same state as it
 will be executed as part of a (potential) decided block, `CheckTx` shouldn't check *everything*
 that affects the transaction's validity, in particular those checks whose validity may depend on
@@ -315,19 +332,24 @@ in place for dealing with such behavior is `ProcessProposal`.
 
 To prevent old transactions from being replayed, `CheckTx` must implement
 replay protection.
-
 It is possible for old transactions to be sent to the application. So
 it is important `CheckTx` implements some logic to handle them.
 
+Additionally, the mempool has a mechanism to prevent duplicated transactions from being processed.
+This mechanism is nevertheless best-effort and does not provide any guarantee of non duplication.
+
 #### Info/Query Connection
 
-The Info (or Query) Connection should maintain a `QueryState` for answering queries from the user,
-and for initialization when Tendermint first starts up (both described further
-below).
+The Info (or Query) Connection should maintain a `QueryState`. This connection has two
+purposes: 1) having the application answer the queries Tenderissued receives from users
+(see section [Query](#query)),
+and 2) synchronizing Tendermint and the Application at start up time (see
+[Crash Recovery](#crash-recovery))
+or after state sync (see [State Sync](#state-sync)).
 
-`QueryState` always contain a copy of of the latest `ExecuteTxState` at the end of every `Commit`,
+`QueryState` is a read-only copy of `ExecuteTxState` as it was after the last
+`Commit`, i.e.
 after the full block has been processed and the state committed to disk.
-Otherwise it should never be modified.
 
 Tendermint Core currently uses the Query connection to filter peers upon
 connecting, according to IP address or node ID. For instance,
@@ -342,10 +364,11 @@ Note: these query formats are subject to change!
 
 #### Snapshot Connection
 
-The Snapshot Connection is optional, and is only used to serve state sync snapshots for other nodes
+The Snapshot Connection is used to serve state sync snapshots for other nodes
 and/or restore state sync snapshots to a local node being bootstrapped.
+Snapshop management is optional: an Application may choose not to implement it.
 
-For more information, see [the state sync section](#state-sync) below.
+For more information, see Section [State Sync](#state-sync).
 
 ### Transaction Results
 
@@ -359,27 +382,31 @@ This section discusses the fields inside this structure, along with the fields i
 whose semantics are similar.
 
 The `Info` and `Log` fields are
-non-deterministic values for debugging/convenience purposes that are otherwise ignored.
+non-deterministic values for debugging/convenience purposes. Tendermint logs them but they
+are otherwise ignored.
 
 #### Gas
 
 Ethereum introduced the notion of *gas* as an abstract representation of the
-cost of the resources consumed by nodes when processing transactions. Every operation in the
-Ethereum Virtual Machine uses some amount of gas, and gas can be accepted at a market-variable price.
+cost of the resources consumed by nodes when processing a transaction. Every operation in the
+Ethereum Virtual Machine uses some amount of gas.
+Gas has a market-variable price based on which miners can accept or reject to execute a
+particular operation.
+
 Users propose a maximum amount of gas for their transaction; if the transaction uses less, they get
 the difference credited back. Tendermint adopts a similar abstraction,
 though uses it only optionally and weakly, allowing applications to define
 their own sense of the cost of execution.
 
-In Tendermint, the [ConsensusParams.Block.MaxGas](../proto/types/params.proto) limits the amount of gas
-that can be used in a block.
-The default value is `-1`, meaning no limit, or that the concept of gas is
-meaningless.
+In Tendermint, the [ConsensusParams.Block.MaxGas](#consensus-parameters) limits the amount of
+total gas that can be used by all transactions in a block.
+The default value is `-1`, which means the block gas limit is not enforced, or that the concept of
+gas is meaningless.
 
 Responses contain a `GasWanted` and `GasUsed` field. The former is the maximum
 amount of gas the sender of a tx is willing to use, and the latter is how much it actually
-used. Applications should enforce that `GasUsed <= GasWanted` &mdash; ie. transaction execution
-should halt before it can use more resources than it requested.
+used. Applications should enforce that `GasUsed <= GasWanted` &mdash; i.e. transaction execution
+or validation should fail before it can use more resources than it requested.
 
 When `MaxGas > -1`, Tendermint enforces the following rules:
 
@@ -406,16 +433,16 @@ The `GasUsed` field is ignored by Tendermint. That said, applications should enf
 If `Code != 0`, it will be rejected from the mempool and hence
 not broadcasted to other peers and not included in a proposal block.
 
-`Data` contains the result of the `CheckTx` transaction execution, if any. It is not required to be
+`Data` contains the result of the `CheckTx` transaction execution, if any. It does not need to be
 deterministic since, given a transaction, nodes' Applications
-might have a different `CheckTxState` when they receive it and check their validity via `CheckTx`.
-It is
-semantically meaningless to Tendermint.
+might have a different `CheckTxState` values when they receive it and check their validity
+via `CheckTx`.
+Tendermint ignores this value in `ResponseCheckTx`.
 
 `Events` include any events for the execution, though since the transaction has not
 been committed yet, they are effectively ignored by Tendermint.
 
-From v0.35.x, there is a `Priority` field in `ResponseCheckTx` that can be
+From v0.35.x on, there is a `Priority` field in `ResponseCheckTx` that can be
 used to explicitly prioritize transactions in the mempool for inclusion in a block
 proposal.
 
@@ -426,19 +453,19 @@ including the list of all its transactions synchronously to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
 by the Agreement property of Tendermint consensus.
 
-In same block execution mode, `ExecTxResult` is returned by `PrepareProposal` so that its data can
+In same block execution mode, `PrepareProposal` must return `ExecTxResult` so that its data can
 be used to build the block to be proposed in the current height.
 
 The `Data` field in `ExecTxResult` contains an array of bytes with the transaction result.
-It must be deterministic (i.e., the same value must be returned in all nodes), but it can contain arbitrary
+It must be deterministic (i.e., the same value must be returned at all nodes), but it can contain arbitrary
 data. Likewise, the value of `Code` must be deterministic.
+If `Code != 0`, the transaction will be marked invalid,
+though it is still included in the block.
+
 Both the `Code` and `Data` are included in a structure that is hashed into the
 `LastResultsHash` of the block header in the next height (next block execution mode), or the
 header of the block to propose in the current height (same block execution mode, `ExecTxResult` as
 part of `PrepareProposal`).
-
-If `ExecTxResult` contains `Code != 0`, the transaction will be considered invalid,
-though it is still included in the block.
 
 `Events` include any events for the execution, which Tendermint will use to index
 the transaction by. This allows transactions to be queried according to what
@@ -454,48 +481,44 @@ The application may set the validator set during
 (same block execution mode). In all cases, a structure of type
 [`ValidatorUpdate`](./abci%2B%2B_methods_002_draft.md#validatorupdate) is returned.
 
-The `InitChain` method can return a list of validators.
+The `InitChain` method, used to initialize the Application, can return a list of validators.
 If the list is empty, Tendermint will use the validators loaded from the genesis
 file.
 If the list returned by `InitChain` is not empty, Tendermint will use its contents as the validator set.
 This way the application can set the initial validator set for the
 blockchain.
 
-Note that the maximum total power of the validator set is bounded by
-`MaxTotalVotingPower = MaxInt64 / 8`. Applications are responsible for ensuring
-they do not make changes to the validator set that cause it to exceed this
-limit.
-
 Applications must ensure that a single set of validator updates does not contain duplicates, i.e.
 a given public key can only appear once within a given update. If an update includes
 duplicates, the block execution will fail irrecoverably.
 
-Structure `ValidatorUpdate` contains a public key to reference the validator:
-
+Structure `ValidatorUpdate` contains a public key, which is used to identify the validator:
 The public key currently supports three types:
 
 * `ed25519`
 * `secp256k1`
 * `sr25519`
 
-Structure `ValidatorUpdate` also contains an `ìnt64` with the validator's new power.
-It must abide by the
-following rules:
+Structure `ValidatorUpdate` also contains an `ìnt64` field denoting the validator's new power.
+Applications must ensure that
+`ValidatorUpdate` structures abide by the following rules:
 
 * power must be non-negative
-* if power is 0, the validator must already exist, and will be removed from the
-  validator set
+* if power is set to 0, the validator must be in the validator set; it will be removed from the set
 * if power is greater than 0:
-    * if the validator does not already exist, it will be added to the validator
+    * if the validator is not in the validator set, it will be added to the
       set with the given power
-    * if the validator does already exist, its power will be adjusted to the given power
-* the total power of the new validator set must not exceed `MaxTotalVotingPower`
+    * if the validator is in the validator set, its power will be adjusted to the given power
+* the total power of the new validator set must not exceed `MaxTotalVotingPower`, where
+  `MaxTotalVotingPower = MaxInt64 / 8`
 
-Note the updates returned in block `H` will only take effect at block `H+2`.
+Note the updates returned after processing the block at height `H` will only take effect
+at block `H+2` (see Section [Methods](./abci%2B%2B_methods_002_draft.md)).
 
 ### Consensus Parameters
 
-`ConsensusParams` enforce certain limits in the blockchain, like the maximum size
+`ConsensusParams` are global parameters that apply to all validators in a blockchain.
+They enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in
 [`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain), and updated in

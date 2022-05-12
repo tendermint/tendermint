@@ -80,13 +80,15 @@ title: Methods
 
 * **Usage**:
     * Called once upon genesis.
-    * If ResponseInitChain.Validators is empty, the initial validator set will be the RequestInitChain.Validators
-    * If ResponseInitChain.Validators is not empty, it will be the initial
-    validator set (regardless of what is in RequestInitChain.Validators).
+    * If `ResponseInitChain.Validators` is empty, the initial validator set will be the `RequestInitChain.Validators`
+    * If `ResponseInitChain.Validators` is not empty, it will be the initial
+      validator set (regardless of what is in `RequestInitChain.Validators`).
     * This allows the app to decide if it wants to accept the initial validator
-    set proposed by tendermint (ie. in the genesis file), or if it wants to use
-    a different one (perhaps computed based on some application specific
-    information in the genesis file).
+      set proposed by tendermint (ie. in the genesis file), or if it wants to use
+      a different one (perhaps computed based on some application specific
+      information in the genesis file).
+    * Both `ResponseInitChain.Validators` and `ResponseInitChain.Validators` are [ValidatorUpdate](#validatorupdate) structs.
+      So, technically, they both are _updating_ the set of validators from the empty set.
 
 ### Query
 
