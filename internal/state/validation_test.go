@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -204,15 +205,10 @@ func TestValidateBlockCommit(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	blockExec.SetNextCoreChainLock(nextChainLock)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
-		nil, nil)
-	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
-		nil, nil)
-	badPrivVal := types.NewMockPV()
-	badPrivValQuorumHash, err := badPrivVal.GetFirstQuorumHash(context.Background())
-	if err != nil {
-		panic(err)
-	}
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	badPrivValQuorumHash := crypto.RandQuorumHash()
+	badPrivVal := types.NewMockPVForQuorum(badPrivValQuorumHash)
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		stateID := state.StateID()
@@ -222,8 +218,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				#2589: ensure state.LastValidators.VerifyCommit fails here
 			*/
 			// should be height-1 instead of height
-			wrongHeightVote, err := testfactory.MakeVote(
-				ctx,
+			wrongHeightVote, err := testfactory.MakeVote(ctx,
 				privVals[proTxHash.String()],
 				state.Validators,
 				chainID,
@@ -244,16 +239,16 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.BlockSignature,
 				wrongHeightVote.StateSignature,
 			)
-			block, err := statefactory.MakeBlock(state, height, wrongHeightCommit, nil, 0)
+			block, err := statefactory.MakeBlock(state, height, wrongHeightCommit, nextChainLock, 0)
 			require.NoError(t, err)
 			err = blockExec.ValidateBlock(ctx, state, block)
-			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
-			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
+			var wantErr types.ErrInvalidCommitHeight
+			require.True(t, errors.As(err, &wantErr), "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
 
 			/*
 				Test that the threshold block signatures are good
 			*/
-			block, err = statefactory.MakeBlock(state, height, wrongVoteMessageSignedCommit, nil, 0)
+			block, err = statefactory.MakeBlock(state, height, wrongVoteMessageSignedCommit, nextChainLock, 0)
 			require.NoError(t, err)
 			err = blockExec.ValidateBlock(ctx, state, block)
 			require.True(
@@ -272,9 +267,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			A good block passes
 		*/
 		var blockID types.BlockID
-		state, blockID, lastCommit = makeAndCommitGoodBlock(
-			ctx,
-			t,
+		state, blockID, lastCommit = makeAndCommitGoodBlock(ctx, t,
 			state,
 			nodeProTxHash,
 			height,
@@ -291,8 +284,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		*/
 
 		proTxHashString := proTxHash.String()
-		goodVote, err := testfactory.MakeVote(
-			ctx,
+		goodVote, err := testfactory.MakeVote(ctx,
 			privVals[proTxHashString],
 			state.Validators,
 			chainID,

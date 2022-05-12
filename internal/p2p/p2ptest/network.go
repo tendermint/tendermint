@@ -80,7 +80,7 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 
 	// Set up a list of node addresses to dial, and a peer update subscription
 	// for each node.
-	dialQueue := []p2p.NodeAddress{}
+	var dialQueue []p2p.NodeAddress
 	subs := map[types.NodeID]*p2p.PeerUpdates{}
 	subctx, subcancel := context.WithCancel(ctx)
 	defer subcancel()
@@ -120,8 +120,9 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 			case peerUpdate := <-targetSub.Updates():
 				peerUpdate.Channels = nil
 				require.Equal(t, p2p.PeerUpdate{
-					NodeID: sourceNode.NodeID,
-					Status: p2p.PeerStatusUp,
+					NodeID:    sourceNode.NodeID,
+					Status:    p2p.PeerStatusUp,
+					ProTxHash: sourceNode.NodeInfo.ProTxHash,
 				}, peerUpdate)
 			case <-time.After(3 * time.Second):
 				require.Fail(t, "timed out waiting for peer", "%v accepting %v",

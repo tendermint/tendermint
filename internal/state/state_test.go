@@ -297,6 +297,8 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		h := merkle.HashFromByteSlices(rs)
 		state, err = state.Update(firstNodeProTxHash, blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates, thresholdPubKey, quorumHash)
 		require.NoError(t, err)
+		validator := state.Validators.Validators[0]
+		testCases[i-1] = validator.PubKey
 		err = stateStore.Save(state)
 		require.NoError(t, err)
 	}
@@ -915,10 +917,9 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	firstNodeProTxHash, val0 := state.Validators.GetByIndex(0)
 	proTxHash := val0.ProTxHash // this is not really old, as it stays the same
 	oldPubkey := val0.PubKey
-	pubkey := bls12381.GenPrivKey().PubKey()
 
 	// Swap the first validator with a new one (validator set size stays the same).
-	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(t, state, pubkey)
+	header, _, blockID, responses := makeHeaderPartsResponsesValKeysRegenerate(t, state, true)
 
 	// Save state etc.
 	var validatorUpdates []*types.Validator

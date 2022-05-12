@@ -55,9 +55,9 @@ type PeerUpdate struct {
 	ProTxHash types.ProTxHash
 }
 
-// SetProTxHash copies `protxhash` into `PeerUpdate.ProTxHash`
-func (pu *PeerUpdate) SetProTxHash(protxhash types.ProTxHash) {
-	pu.ProTxHash = protxhash.Copy()
+// SetProTxHash copies `proTxHash` into `PeerUpdate.ProTxHash`
+func (pu *PeerUpdate) SetProTxHash(proTxHash types.ProTxHash) {
+	pu.ProTxHash = proTxHash.Copy()
 }
 
 // PeerUpdates is a peer update subscription with notifications about peer

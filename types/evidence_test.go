@@ -256,7 +256,7 @@ func TestEvidenceVectors(t *testing.T) {
 	// Votes for duplicateEvidence
 	quorumType := btcjson.LLMQType_5_60
 	quorumHash := make([]byte, crypto.QuorumHashSize)
-	val := NewMockPVForQuorum(make([]byte, crypto.QuorumHashSize))
+	val := NewMockPVForQuorum(quorumHash)
 	val.ProTxHash = make([]byte, crypto.ProTxHashSize)
 	key := bls12381.GenPrivKeyFromSecret([]byte("it's a secret")) // deterministic key
 	val.UpdatePrivateKey(context.Background(), key, quorumHash, key.PubKey(), 10)

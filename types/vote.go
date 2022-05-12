@@ -146,12 +146,14 @@ func VoteExtensionSignBytes(chainID string, vote *tmproto.Vote) []byte {
 
 // VoteExtensionSignID returns vote extension signature ID
 func VoteExtensionSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	return makeSignID(VoteExtensionSignBytes(chainID, vote), vote, quorumType, quorumHash)
+	reqID := voteHeightRoundRequestID("dpevote", vote.Height, vote.Round)
+	return makeSignID(VoteExtensionSignBytes(chainID, vote), reqID, quorumType, quorumHash)
 }
 
 // VoteBlockSignID returns signID that should be signed for the block
 func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	return makeSignID(VoteBlockSignBytes(chainID, vote), vote, quorumType, quorumHash)
+	reqID := voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
+	return makeSignID(VoteBlockSignBytes(chainID, vote), reqID, quorumType, quorumHash)
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -429,26 +431,26 @@ func (vote *Vote) HasVoteMessage() *tmcons.HasVote {
 }
 
 func VoteBlockRequestID(vote *Vote) []byte {
-	return voteHeightRoundRequestID(vote.Height, vote.Round)
+	return voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
 }
 
 func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
-	return voteHeightRoundRequestID(vote.Height, vote.Round)
+	return voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
 }
 
-func voteHeightRoundRequestID(height int64, round int32) []byte {
-	reqID := []byte("dpevote")
+func voteHeightRoundRequestID(prefix string, height int64, round int32) []byte {
+	reqID := []byte(prefix)
 	heightBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(heightBytes, uint64(height))
 	roundBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(roundBytes, uint32(round))
-	reqID = append(reqID, append(reqID, roundBytes...)...)
+	reqID = append(reqID, heightBytes...)
+	reqID = append(reqID, roundBytes...)
 	return crypto.Checksum(reqID)
 }
 
-func makeSignID(signBytes []byte, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+func makeSignID(signBytes, reqID []byte, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	msgHash := crypto.Checksum(signBytes)
-	reqID := voteHeightRoundRequestID(vote.Height, vote.Round)
 	return crypto.SignID(
 		quorumType,
 		tmbytes.Reverse(quorumHash),

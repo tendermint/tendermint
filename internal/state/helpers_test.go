@@ -207,6 +207,24 @@ func makeHeaderPartsResponsesValPowerChange(
 	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
+func makeHeaderPartsResponsesValKeysRegenerate(t *testing.T, state sm.State, regenerate bool) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	abciResponses := &tmstate.ABCIResponses{
+		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorSetUpdate: nil},
+	}
+	if regenerate == true {
+		proTxHashes := state.Validators.GetProTxHashes()
+		valUpdates := types.ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes)
+		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
+			ValidatorSetUpdate: &valUpdates,
+		}
+	}
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+}
+
 func makeHeaderPartsResponsesParams(
 	t *testing.T,
 	state sm.State,
