@@ -1017,14 +1017,20 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	requireExtensions := false
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
 	for idx, ecs := range ec.ExtendedSignatures {
 		if ecs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
 		vote := ec.GetExtendedVote(int32(idx))
-		if err := vote.ValidateWithExtension(); err != nil {
+		if err := vote.ValidateBasic(); err != nil {
 			panic(fmt.Errorf("failed to validate vote reconstructed from LastCommit: %w", err))
+		}
+		if requireExtensions {
+			if err := vote.ValidateExtension(); err != nil {
+				panic(fmt.Errorf("failed to validate vote extensions reconstructed from LastCommit: %w", err))
+			}
 		}
 		added, err := voteSet.AddVote(vote)
 		if !added || err != nil {
