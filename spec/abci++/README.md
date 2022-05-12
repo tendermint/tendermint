@@ -35,8 +35,5 @@ This specification is split as follows:
 - [Tendermint's expected behavior](./abci++_tmint_expected_behavior_002_draft.md) - specification of
   how the different ABCI++ methods may be called by Tendermint. This explains what the Application
   is to expect from Tendermint.
-
->**TODO** Re-read these and remove redundant info
-
 - [Client and Server](../abci/client-server.md) - for those looking to implement their
   own ABCI application servers
