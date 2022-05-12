@@ -190,7 +190,7 @@ Tendermint maintains four concurrent ABCI++ connections, namely
 [Info/Query Connection](#infoquery-connection), and
 [Snapshot Connection](#snapshot-connection).
 It is common for an application to maintain a distinct copy of
-the state for each, and for the states to be synchronized during `Commit`.
+the state for each connection, which are synchronized upon `Commit` calls.
 
 #### Concurrency
 
