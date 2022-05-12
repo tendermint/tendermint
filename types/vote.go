@@ -121,10 +121,6 @@ func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
 	}
 
 	cs := vote.CommitSig()
-	if vote.BlockID.IsComplete() && len(vote.ExtensionSignature) == 0 {
-		panic(fmt.Sprintf("Invalid vote %v - BlockID is complete but missing vote extension signature", vote))
-	}
-
 	return ExtendedCommitSig{
 		CommitSig:          cs,
 		Extension:          vote.Extension,
