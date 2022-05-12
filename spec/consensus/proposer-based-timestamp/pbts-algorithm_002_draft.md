@@ -24,14 +24,14 @@ Since the originally proposed value and its associated time were considered vali
 
 Values decided in successive heights of consensus must have increasing times, so:
 
-- Monotonicity: for any process `p` and any two decided heights `h` and `h'`, if `h > h'` then `decision<sub>p</sub>[h].time > decision<sub>p</sub>[h'].time`.
+- Monotonicity: for any process `p` and any two decided heights `h` and `h'`, if `h > h'` then <code>decision<sub>p</sub>[h].time > decision<sub>p</sub>[h'].time</code>.
 
-For ensuring time monotonicity, it is enough to ensure that a value `v` proposed by process `p` at height `h<sub>p</sub>` has `v.time > decision<sub>p</sub>[h<sub>p</sub>-1].time`.
-So, if process `p` is the proposer of a round of height `h<sub>p</sub>` and reads from its clock a time `now<sub>p</sub> <= decision<sub>p</sub>[h<sub>p</sub>-1]`,
-it should postpone the generation of its proposal until `now<sub>p</sub> > decision<sub>p</sub>[h<sub>p</sub>-1]`.
+For ensuring time monotonicity, it is enough to ensure that a value `v` proposed by process `p` at height <code>h<sub>p</sub></code> has <code>v.time > decision<sub>p</sub>[h<sub>p</sub>-1].time</code>.
+So, if process `p` is the proposer of a round of height <code>h<sub>p</sub></code> and reads from its clock a time <code>now<sub>p</sub> <= decision<sub>p</sub>[h<sub>p</sub>-1]</code>,
+it should postpone the generation of its proposal until <code>now<sub>p</sub> > decision<sub>p</sub>[h<sub>p</sub>-1]</code>.
 
 > Although it should be considered, this scenario is unlikely during regular operation,
-as from `decision<sub>p</sub>[h<sub>p</sub>-1].time` and the start of height `h<sub>p</sub>`, a complete consensus instance need to terminate.
+as from <code>decision<sub>p</sub>[h<sub>p</sub>-1].time</code> and the start of height <code>h<sub>p</sub></code>, a complete consensus instance need to terminate.
 
 The time monotonicity of values proposed in heights of consensus is verified by the `valid()` predicate, to which every proposed value is submitted.
 A value rejected by the `valid()` implementation is not accepted by any correct process.
@@ -47,18 +47,18 @@ It is a temporal requirement, associated with the following synchrony (that is, 
 
 #### **[PBTS-RECEPTION-STEP.1]**
 
-Let `now<sub>p</sub>` be the time, read from the clock of process `p`, at which `p` receives the proposed value `v`.
+Let <code>now<sub>p</sub></code> be the time, read from the clock of process `p`, at which `p` receives the proposed value `v`.
 The proposal is considered `timely` by `p` when:
 
-1. `now<sub>p</sub> >= v.time - PRECISION`
-1. `now<sub>p</sub> <= v.time + MSGDELAY + PRECISION`
+1. <code>now<sub>p</sub> >= v.time - PRECISION</code>
+1. <code>now<sub>p</sub> <= v.time + MSGDELAY + PRECISION</code>
 
 The first condition derives from the fact that the generation and sending of `v` precedes its reception.
-The minimum receiving time `now<sub>p</sub>` for `v` be considered `timely` by `p` is derived from the extreme scenario when
+The minimum receiving time <code>now<sub>p</sub></code> for `v` be considered `timely` by `p` is derived from the extreme scenario when
 the clock of `p` is `PRECISION` *behind* of the clock of the proposer of `v`, and the proposal's transmission delay is `0` (minimum).
 
 The second condition derives from the assumption of an upper bound for the transmission delay of a proposal.
-The maximum receiving time `now<sub>p</sub>` for `v` be considered `timely` by `p` is derived from the extreme scenario when
+The maximum receiving time <code>now<sub>p</sub></code> for `v` be considered `timely` by `p` is derived from the extreme scenario when
 the clock of `p` is `PRECISION` *ahead* of the clock of the proposer of `v`, and the proposal's transmission delay is `MSGDELAY` (maximum).
 
 ## Updated Consensus Algorithm
