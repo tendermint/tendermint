@@ -254,7 +254,7 @@ or `ProcessProposal`). There are two main reasons why the Application may want t
   Application can simply apply that state (faster) to the main state, rather than reexecuting
   the decided block (slower).
 
-`PrepareProposal`/`ProcessProposal` can be called many times for a given block height. Moreover,
+`PrepareProposal`/`ProcessProposal` can be called many times for a given height. Moreover,
 it is impossible to accurately predict which of the proposed blocks for a height will finally make
 it into that height's `FinalizeBlock`.
 Therefore, the state resulting from exectuing proposed blocks, denoted *candidate state*, needs
