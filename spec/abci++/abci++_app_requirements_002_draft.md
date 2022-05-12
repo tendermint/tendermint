@@ -257,7 +257,7 @@ or `ProcessProposal`). There are two main reasons why the Application may want t
 `PrepareProposal`/`ProcessProposal` can be called many times for a given height. Moreover,
 it is not possible to accurately predict which of the blocks proposed in a height will be decided, being delivered to the application
 in that height's `FinalizeBlock`.
-Therefore, the state resulting from exectuing proposed blocks, denoted *candidate state*, needs
+Therefore, the state resulting from executing a proposed block, denoted a *candidate state*, should
 be kept in memory as a possible final state for that height. When `FinalizeBlock` is called, the Application should
 check if the decided block corresponds to one of its candidate states; if so, it will apply it as
 its `ExecuteTxState` (see [Consensus Connection](#consensus-connection) below),
