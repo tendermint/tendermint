@@ -364,7 +364,7 @@ non-deterministic values for debugging/convenience purposes that are otherwise i
 #### Gas
 
 Ethereum introduced the notion of *gas* as an abstract representation of the
-cost of resources used by nodes when processing transactions. Every operation in the
+cost of the resources consumed by nodes when processing transactions. Every operation in the
 Ethereum Virtual Machine uses some amount of gas, and gas can be accepted at a market-variable price.
 Users propose a maximum amount of gas for their transaction; if the transaction uses less, they get
 the difference credited back. Tendermint adopts a similar abstraction,
