@@ -53,11 +53,12 @@ const (
 	NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 */
 type VoteSet struct {
-	chainID       string
-	height        int64
-	round         int32
-	signedMsgType tmproto.SignedMsgType
-	valSet        *ValidatorSet
+	chainID           string
+	height            int64
+	round             int32
+	signedMsgType     tmproto.SignedMsgType
+	valSet            *ValidatorSet
+	requireExtensions bool
 
 	mtx           sync.Mutex
 	votesBitArray *bits.BitArray
@@ -75,17 +76,18 @@ func NewVoteSet(chainID string, height int64, round int32,
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	return &VoteSet{
-		chainID:       chainID,
-		height:        height,
-		round:         round,
-		signedMsgType: signedMsgType,
-		valSet:        valSet,
-		votesBitArray: bits.NewBitArray(valSet.Size()),
-		votes:         make([]*Vote, valSet.Size()),
-		sum:           0,
-		maj23:         nil,
-		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
-		peerMaj23s:    make(map[string]BlockID),
+		chainID:           chainID,
+		height:            height,
+		round:             round,
+		signedMsgType:     signedMsgType,
+		valSet:            valSet,
+		requireExtensions: false,
+		votesBitArray:     bits.NewBitArray(valSet.Size()),
+		votes:             make([]*Vote, valSet.Size()),
+		sum:               0,
+		maj23:             nil,
+		votesByBlock:      make(map[string]*blockVotes, valSet.Size()),
+		peerMaj23s:        make(map[string]BlockID),
 	}
 }
 
@@ -194,8 +196,14 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+	if voteSet.requireExtensions {
+		if err := vote.VerifyWithExtension(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
+	} else {
+		if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
 	}
 
 	// Add vote and get conflicting vote if any.
