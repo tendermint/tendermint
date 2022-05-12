@@ -16,14 +16,9 @@ When a value `v` is produced by a process, it also assigns the associated propos
 If the same value `v` is then re-proposed in a subsequent round of consensus,
 it retains its original time, assigned by its original proposer.
 
-A value `v` should re-proposed when it becomes locked by the network, i.e., when it receives `2f + 1 PREVOTES` in a round `r` of consensus.
+A value `v` is re-proposed when it becomes a valid value, i.e., when it receives `2f + 1 PREVOTE`s in a round `r` of consensus.
 This means that processes with `2f + 1`-equivalent voting power accepted, in round `r`, both `v` and its associated time `v.time`.
 Since the originally proposed value and its associated time were considered valid, there is no reason for reassigning `v.time`.
-
-In the [first version][algorithm_v1] of this specification, proposals were defined as pairs `(v, time)`.
-In addition, the same value `v` could be proposed, in different rounds, but would be associated to distinct times each time it was reproposed.
-Since this possibility does not exist in this second specification, the proposal time became part of the proposed value.
-With this simplification, several small changes to the [arXiv][arXiv] algorithm are no longer required.
 
 ## Time Monotonicity
 
