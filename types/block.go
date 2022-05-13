@@ -763,18 +763,13 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		return nil
 	}
 
-	// We expect there to not be any vote extension or vote extension signature
-	// on nil or absent votes.
-	if len(ecs.Extension) != 0 {
-		return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
-	}
-	if len(ecs.ExtensionSignature) != 0 {
-		return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	if len(ecs.ExtensionSignature) == 0 && len(ecs.Extension) != 0 {
+		return fmt.Errorf("vote extension signature absent on vote with extension")
 	}
 	return nil
 }
 
-func (ecs ExtendedCommitSig) ValidateExtension() error {
+func (ecs ExtendedCommitSig) EnsureExtension() error {
 	if len(ecs.ExtensionSignature) == 0 {
 		return errors.New("vote extension signature is missing")
 	}
