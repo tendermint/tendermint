@@ -9,6 +9,7 @@
 -M consensus.timeout-prevote-delta
 -M consensus.timeout-propose
 -M consensus.timeout-propose-delta
+-M mempool.recheck
 -M mempool.version
 -M p2p.addr-book-file
 -M p2p.addr-book-strict
