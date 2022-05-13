@@ -361,7 +361,7 @@ func TestValidVotes(t *testing.T) {
 		signVote(ctx, t, privVal, "test_chain_id", tc.vote)
 		tc.malleateVote(tc.vote)
 		require.NoError(t, tc.vote.ValidateBasic(), "ValidateBasic for %s", tc.name)
-		require.NoError(t, tc.vote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+		require.NoError(t, tc.vote.EnsureExtension(), "EnsureExtension for %s", tc.name)
 	}
 }
 
@@ -387,13 +387,13 @@ func TestInvalidVotes(t *testing.T) {
 		signVote(ctx, t, privVal, "test_chain_id", prevote)
 		tc.malleateVote(prevote)
 		require.Error(t, prevote.ValidateBasic(), "ValidateBasic for %s in invalid prevote", tc.name)
-		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s in invalid prevote", tc.name)
+		require.Error(t, prevote.EnsureExtension(), "EnsureExtension for %s in invalid prevote", tc.name)
 
 		precommit := examplePrecommit(t)
 		signVote(ctx, t, privVal, "test_chain_id", precommit)
 		tc.malleateVote(precommit)
 		require.Error(t, precommit.ValidateBasic(), "ValidateBasic for %s in invalid precommit", tc.name)
-		require.Error(t, precommit.ValidateWithExtension(), "ValidateWithExtension for %s in invalid precommit", tc.name)
+		require.Error(t, precommit.EnsureExtension(), "EnsureExtension for %s in invalid precommit", tc.name)
 	}
 }
 
@@ -414,7 +414,7 @@ func TestInvalidPrevotes(t *testing.T) {
 		signVote(ctx, t, privVal, "test_chain_id", prevote)
 		tc.malleateVote(prevote)
 		require.Error(t, prevote.ValidateBasic(), "ValidateBasic for %s", tc.name)
-		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+		require.Error(t, prevote.EnsureExtension(), "EnsureExtension for %s", tc.name)
 	}
 }
 
@@ -442,7 +442,7 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 		// We don't expect an error from ValidateBasic, because it doesn't
 		// handle vote extensions.
 		require.NoError(t, precommit.ValidateBasic(), "ValidateBasic for %s", tc.name)
-		require.Error(t, precommit.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+		require.Error(t, precommit.EnsureExtension(), "EnsureExtension for %s", tc.name)
 	}
 }
 

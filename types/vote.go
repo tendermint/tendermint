@@ -305,22 +305,8 @@ func (vote *Vote) ValidateBasic() error {
 	return nil
 }
 
-// ValidateWithExtension performs the same validations as ValidateBasic, but
-// additionally checks whether a vote extension signature is present. This
-// function is used in places where vote extension signatures are expected.
-func (vote *Vote) ValidateWithExtension() error {
-	if err := vote.ValidateBasic(); err != nil {
-		return err
-	}
-
-	if err := vote.EnsureExtension(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//
+// EnsureExtension checks for the presence of extensions signature data
+// on precommit vote types.
 func (vote *Vote) EnsureExtension() error {
 	// We should always see vote extension signatures in non-nil precommits
 	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
