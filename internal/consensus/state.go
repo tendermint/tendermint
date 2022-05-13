@@ -695,7 +695,7 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	requireExtensions := requireVoteExtensions(cs.state.ConsensusParams.Vote.ExtensionRequireHeight, state.LastBlockHeight)
+	requireExtensions := cs.state.ConsensusParams.Vote.RequireExtensions(state.LastBlockHeight)
 	votes, err := cs.votesFromExtendedCommit(state, requireExtensions)
 	if err == nil {
 		cs.LastCommit = votes
@@ -838,7 +838,8 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators, requireVoteExtensions(state.ConsensusParams.Vote.ExtensionRequireHeight, height))
+	requireExtensions := state.ConsensusParams.Vote.RequireExtensions(height)
+	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators, requireExtensions)
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -2389,7 +2390,7 @@ func (cs *State) addVote(
 			if !errors.Is(err, types.ErrVoteExtensionAbsent) {
 				return false, err
 			}
-			if requireVoteExtensions(cs.state.ConsensusParams.Vote.ExtensionRequireHeight, cs.Height) {
+			if cs.state.ConsensusParams.Vote.RequireExtensions(cs.Height) {
 				return false, err
 			}
 		}
@@ -2787,13 +2788,6 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 		cs.metrics.ProposalTimestampDifference.With("is_timely", fmt.Sprintf("%t", isTimely)).
 			Observe(cs.ProposalReceiveTime.Sub(cs.Proposal.Timestamp).Seconds())
 	}
-}
-
-func requireVoteExtensions(requireHeight, currentHeight int64) bool {
-	if requireHeight == 0 || currentHeight < requireHeight {
-		return false
-	}
-	return true
 }
 
 // proposerWaitTime determines how long the proposer should wait to propose its next block.
