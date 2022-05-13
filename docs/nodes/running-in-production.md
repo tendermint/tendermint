@@ -295,14 +295,6 @@ flush-throttle-timeout=10
 max-packet-msg-payload-size=10240 # 10KB
 ```
 
-- `mempool.recheck`
-
-After every block, Tendermint rechecks every transaction left in the
-mempool to see if transactions committed in that block affected the
-application state, so some of the transactions left may become invalid.
-If that does not apply to your application, you can disable it by
-setting `mempool.recheck=false`.
-
 - `mempool.broadcast`
 
 Setting this to false will stop the mempool from relaying transactions

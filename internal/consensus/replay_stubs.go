@@ -35,6 +35,7 @@ func (emptyMempool) Update(
 	_ []*abci.ExecTxResult,
 	_ mempool.PreCheckFunc,
 	_ mempool.PostCheckFunc,
+	_ bool,
 ) error {
 	return nil
 }

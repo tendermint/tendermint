@@ -281,7 +281,7 @@ recv-rate = 5120000
 #######################################################
 [mempool]
 
-recheck = true
+# Set true to broadcast transactions in the mempool to other nodes
 broadcast = true
 
 # Maximum number of transactions in the mempool

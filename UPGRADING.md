@@ -126,6 +126,18 @@ lays out the reasoning for the changes as well as [RFC
 009](https://tinyurl.com/rfc009) for a discussion of the complexities of
 upgrading consensus parameters.
 
+### RecheckTx Parameter Change
+
+`RecheckTx` was previously a parameter in the mempool section of the `config.toml`.
+Setting it to true means Tendermint will trigger the `CheckTx` ABCI call on
+every transaction remaining in the mempool following the execution of a block.
+Similar to the timeout parameter changes, this parameter makes more sense as a
+network-wide coordinated variable so that applications can be written knowing
+either all nodes run `RecheckTx` or that none of them do.
+
+Applications can turn on `RecheckTx` by altering the `ConsensusParams` in the
+`FinalizeBlock` `ABCI` response.
+
 ### CLI Changes
 
 The functionality around resetting a node has been extended to make it safer. The

@@ -315,6 +315,18 @@ txs included in a proposed block.
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
 
+### BlockParams.RecheckTx
+
+This indicates whether all nodes in the network should perform a `CheckTx` on all
+transactions in the mempool directly *after* the execution of every block i.e.
+whenever a new application state is created. This is often useful for garbage
+collection.
+
+The change will come into effect immediately after `FinalizeBlock` has been
+called.
+
+This was previously a local mempool config parameter.
+
 ### EvidenceParams.MaxAgeDuration
 
 This is the maximum age of evidence in time units.
