@@ -712,7 +712,7 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 }
 
 func (cs *State) votesFromExtendedCommit(state sm.State, requireExtensions bool) (*types.VoteSet, error) {
-	ec := cs.blockStore.LoadExtendedCommit(state.LastBlockHeight)
+	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
 	if ec == nil {
 		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}

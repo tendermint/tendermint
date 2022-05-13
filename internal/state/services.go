@@ -36,7 +36,7 @@ type BlockStore interface {
 
 	LoadBlockCommit(height int64) *types.Commit
 	LoadSeenCommit() *types.Commit
-	LoadExtendedCommit(height int64) *types.ExtendedCommit
+	LoadBlockExtendedCommit(height int64) *types.ExtendedCommit
 }
 
 //-----------------------------------------------------------------------------
