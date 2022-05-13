@@ -45,14 +45,14 @@ jobs:
         continue-on-error: true
 
       - name: Archive crashers
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: crashers
           path: test/fuzz/**/crashers
           retention-days: 1
 
       - name: Archive suppressions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: suppressions
           path: test/fuzz/**/suppressions
