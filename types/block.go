@@ -769,6 +769,8 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 	return nil
 }
 
+// EnsureExtensions validates that a vote extensions signature is present for
+// this ExtendedCommitSig.
 func (ecs ExtendedCommitSig) EnsureExtension() error {
 	if len(ecs.ExtensionSignature) == 0 {
 		return errors.New("vote extension signature is missing")
@@ -1054,9 +1056,8 @@ func (c *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	return voteSet
 }
 
-// TODO Comment
-// this should probably also verify the signature
-// probably want to change to just verify when present.
+// EnsureExtensions validates that a vote extensions signature is present for
+// every ExtendedCommitSig in the ExtendedCommit.
 func (ec *ExtendedCommit) EnsureExtensions() error {
 	for idx, ecs := range ec.ExtendedSignatures {
 		if ecs.BlockIDFlag == BlockIDFlagAbsent {
